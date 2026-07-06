@@ -14,11 +14,30 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const isDev = import.meta.env.DEV;
+
+const getMockProfile = (role: 'student' | 'admin'): Profile => ({
+  id: 'mock-user-id',
+  role,
+  full_name: `Dev ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+  avatar_url: null,
+  phone: '123-456-7890',
+  created_at: new Date().toISOString(),
+});
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const defaultRole = (isDev && typeof window !== 'undefined' && (localStorage.getItem('mock_role') as 'student' | 'admin')) || 'admin';
+
+  const [session, setSession] = useState<Session | null>(
+    isDev ? ({ user: { id: 'mock-user-id', email: `${defaultRole}@example.com` } } as any) : null
+  );
+  const [user, setUser] = useState<User | null>(
+    isDev ? ({ id: 'mock-user-id', email: `${defaultRole}@example.com` } as any) : null
+  );
+  const [profile, setProfile] = useState<Profile | null>(
+    isDev ? getMockProfile(defaultRole) : null
+  );
+  const [loading, setLoading] = useState(isDev ? false : true);
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -30,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    if (isDev) return;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -48,12 +69,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
+    if (isDev) {
+      const role: 'student' | 'admin' = email.toLowerCase().includes('student') ? 'student' : 'admin';
+      localStorage.setItem('mock_role', role);
+      setSession({ user: { id: 'mock-user-id', email } } as any);
+      setUser({ id: 'mock-user-id', email } as any);
+      setProfile(getMockProfile(role));
+      return { error: null };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
     return { error: null };
   };
 
   const signOut = async () => {
+    if (isDev) {
+      localStorage.removeItem('mock_role');
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      return;
+    }
     await supabase.auth.signOut();
   };
 
