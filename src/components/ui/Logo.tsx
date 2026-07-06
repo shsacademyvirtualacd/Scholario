@@ -3,10 +3,11 @@ import React from 'react';
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   variant?: 'full' | 'icon';
+  darkMode?: boolean;
   className?: string;
 }
 
-const Logo: React.FC<LogoProps> = ({ size = 'md', variant = 'full', className = '' }) => {
+const Logo: React.FC<LogoProps> = ({ size = 'md', variant = 'full', darkMode = false, className = '' }) => {
   const sizes = {
     sm: { tile: 32, iconSize: 16, text: 'text-lg', sub: 'text-[8px]' },
     md: { tile: 40, iconSize: 20, text: 'text-xl', sub: 'text-[9px]' },
@@ -58,13 +59,13 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', variant = 'full', className = 
       {variant === 'full' && (
         <div className="flex flex-col leading-none">
           <span
-            className={`${text} font-extrabold tracking-tight text-[#111111]`}
+            className={`${text} font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-[#111111]'}`}
             style={{ letterSpacing: '-0.03em' }}
           >
             Scholario
           </span>
           <span
-            className={`${sub} font-semibold tracking-[0.15em] uppercase text-[#737373] mt-0.5`}
+            className={`${sub} font-semibold tracking-[0.15em] uppercase ${darkMode ? 'text-[#525252]' : 'text-[#737373]'} mt-0.5`}
           >
             Learn&nbsp;·&nbsp;Grow&nbsp;·&nbsp;Achieve
           </span>
