@@ -55,16 +55,9 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
-// ─── Root redirect based on role ─────────────
+// ─── Root route is always the landing page ────
 const RootRedirect: React.FC = () => {
-  const { session, profile, loading } = useAuth();
-
-  if (loading) return <PageLoader />;
-  if (!session) return <LandingShell />;
-  if (!profile) return <Navigate to="/unregistered" replace />;
-  if (profile.role === 'admin') return <Navigate to="/admin" replace />;
-  if (profile.role === 'teacher') return <Navigate to="/teacher" replace />;
-  return <Navigate to="/student" replace />;
+  return <LandingShell />;
 };
 
 // ─── Router ──────────────────────────────────
