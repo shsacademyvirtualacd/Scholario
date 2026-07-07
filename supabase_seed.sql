@@ -24,7 +24,8 @@ INSERT INTO public.profiles (id, role, full_name, avatar_url, phone, stream, cre
   ('s6',             'student', 'Hamza Bilal',    NULL, '+92 306 789 0123', 'pre-engineering', '2026-06-01T12:00:00Z'),
   ('s7',             'student', 'Bilal Shah',     NULL, '+92 307 890 1234', 'ics',             '2026-06-01T12:00:00Z'),
   ('s8',             'student', 'Fatima Zahra',   NULL, '+92 308 901 2345', 'pre-medical',     '2026-06-01T12:00:00Z'),
-  ('mock-admin-id',  'admin',   'Dev Admin',      NULL, '123-456-7890',     NULL,              '2026-06-01T12:00:00Z')
+  ('mock-admin-id',  'admin',   'Dev Admin',      NULL, '123-456-7890',     NULL,              '2026-06-01T12:00:00Z'),
+  ('rayyan-admin-id', 'admin',   'Syed Rayyan',    NULL, '123-456-7890',     NULL,              '2026-07-07T12:00:00Z')
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── Teachers ──────────────────────────────────────────────────────────────
