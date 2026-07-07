@@ -3,7 +3,7 @@
 // Used during Batch 2 (Student Portal) development
 // ─────────────────────────────────────────────
 
-import type { Profile, Teacher, ClassOffering, ClassSlot, Enrollment, Attendance, Note, StudySession } from '../types';
+import type { Profile, Teacher, ClassOffering, ClassSlot, Enrollment, Attendance, Note } from '../types';
 
 export const MOCK_USER_ID = 'mock-user-id';
 
