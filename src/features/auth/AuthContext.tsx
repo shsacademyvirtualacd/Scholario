@@ -1,23 +1,27 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import type { Profile } from '../../types';
 import { MOCK_TEACHERS, MOCK_ROSTER, MOCK_FEE_STATUSES } from '../../lib/mockData';
 
+// ─── Context shape ────────────────────────────────────────────────────────────
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  /** Initiates Google OAuth flow (redirect-based). No-op params needed. */
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// ─── Mock mode flag ───────────────────────────────────────────────────────────
 const useMock = (import.meta as any).env.VITE_USE_MOCK_AUTH !== 'false';
 
+// ─── Mock profile helper ──────────────────────────────────────────────────────
 const getMockProfile = (
   role: 'student' | 'admin' | 'teacher',
   stream?: 'pre-engineering' | 'pre-medical' | 'ics',
@@ -28,9 +32,7 @@ const getMockProfile = (
 
   if (role === 'teacher') {
     const t = MOCK_TEACHERS.find(x => x.id === id);
-    if (t) {
-      full_name = t.full_name;
-    }
+    if (t) full_name = t.full_name;
   } else if (role === 'student' && id === 'mock-user-id') {
     full_name = 'Rayn Ahmad';
   }
@@ -46,7 +48,9 @@ const getMockProfile = (
   };
 };
 
+// ─── Provider ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Mock defaults
   const defaultRole = (useMock && typeof window !== 'undefined' && (localStorage.getItem('mock_role') as 'student' | 'admin' | 'teacher')) || 'admin';
   const defaultStream = (useMock && typeof window !== 'undefined' && (localStorage.getItem('student_stream') as 'pre-engineering' | 'pre-medical' | 'ics')) || 'pre-engineering';
   const defaultUserId = (useMock && typeof window !== 'undefined' && localStorage.getItem('mock_user_id')) || (defaultRole === 'student' ? 'mock-user-id' : defaultRole === 'teacher' ? 't1' : 'mock-admin-id');
@@ -62,107 +66,253 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
   const [loading, setLoading] = useState(useMock ? false : true);
 
+  // Guard against profile creation running twice for the same session
+  const processingRef = useRef<Set<string>>(new Set());
+
+  // ── Real Supabase: fetch profile by auth uid ──────────────────────────────
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    
-    if (data) {
-      setProfile(data);
-    } else {
-      setProfile(null);
+    setProfile(data ?? null);
+  };
+
+  // ── Real Supabase: roster-gated profile provisioning ─────────────────────
+  //
+  // Called after every SIGNED_IN event.
+  //
+  // Algorithm (deny-by-default):
+  //   1. Look up user's email in the roster table.
+  //   2. NOT found → sign them out, leave profile null → /unregistered.
+  //   3. Found → check if profiles row already exists.
+  //      a. No row yet → INSERT profile using roster.role (admin/teacher/student).
+  //      b. Row exists → just load it.
+  //   4. The roster.role is the single source of truth. There is no hardcoded
+  //      email check and no "default to student" fallback anywhere.
+  const provisionProfile = async (newSession: Session) => {
+    const userId = newSession.user.id;
+    const email  = newSession.user.email ?? '';
+
+    // Prevent double-run for the same auth event
+    if (processingRef.current.has(userId)) return;
+    processingRef.current.add(userId);
+
+    try {
+      // 1. Roster lookup — the gatekeeper
+      const { data: rosterEntry, error: rosterError } = await (supabase as any)
+        .from('roster')
+        .select('role, full_name, class_ids, profile_id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (rosterError) {
+        console.error('[Auth] Roster lookup error:', rosterError.message);
+        // Fail safe: sign out and show unregistered
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        return;
+      }
+
+      // 2. Email not in roster → deny access entirely
+      if (!rosterEntry) {
+        console.warn('[Auth] Email not in roster, signing out:', email);
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        // Profile stays null → router sends to /unregistered
+        return;
+      }
+
+      // 3. Email is in roster — check for existing profile
+      const { data: existingProfile } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (existingProfile) {
+        // Profile already provisioned on a previous login
+        setProfile(existingProfile);
+        return;
+      }
+
+      // 4. First login for this email: create the profile using roster.role
+      //    No "default to student" — the role comes entirely from the roster.
+      const role: 'admin' | 'teacher' | 'student' = rosterEntry.role;
+      const fullName: string =
+        rosterEntry.full_name ||
+        newSession.user.user_metadata?.full_name ||
+        email;
+
+      const { error: insertError } = await (supabase as any)
+        .from('profiles')
+        .insert({
+          id: userId,
+          role,
+          full_name: fullName,
+          avatar_url: newSession.user.user_metadata?.avatar_url ?? null,
+          phone: null,
+          stream: null, // Admin sets stream separately if needed for students
+        });
+
+      if (insertError) {
+        console.error('[Auth] Profile insert error:', insertError.message);
+        return;
+      }
+
+      // 5. Link the auth uid back to the roster entry so the admin can
+      //    see this user as "active" in the Roster Manager
+      await (supabase as any)
+        .from('roster')
+        .update({ profile_id: userId })
+        .eq('email', email);
+
+      // 6. Fetch and set the newly created profile
+      await fetchProfile(userId);
+    } finally {
+      processingRef.current.delete(userId);
     }
   };
 
-  const refreshProfile = async () => {
-    const currentUserId = user?.id || session?.user?.id;
-    if (currentUserId) {
-      const { getProfile } = await import('../../lib/db');
-      const updated = await getProfile(currentUserId);
-      setProfile(updated);
-    }
-  };
-
+  // ── Real Supabase: subscribe to auth state ────────────────────────────────
   useEffect(() => {
     if (useMock) return;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id).finally(() => setLoading(false));
-      else setLoading(false);
+    // Check for an existing session on mount
+    supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      setSession(existing);
+      setUser(existing?.user ?? null);
+      if (existing?.user) {
+        provisionProfile(existing).finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setProfile(null);
+
+      if (event === 'SIGNED_IN' && session) {
+        provisionProfile(session);
+      } else if (event === 'SIGNED_OUT') {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
+  // ── refreshProfile (used by profile pages after edits) ────────────────────
+  const refreshProfile = async () => {
+    const currentUserId = user?.id || session?.user?.id;
+    if (!currentUserId) return;
+    const { getProfile } = await import('../../lib/db');
+    const updated = await getProfile(currentUserId);
+    setProfile(updated);
+  };
+
+  // ── signInWithGoogle ──────────────────────────────────────────────────────
+  //
+  // For real Supabase: triggers the OAuth redirect. Supabase handles the
+  // callback URL and fires onAuthStateChange('SIGNED_IN') automatically.
+  //
+  // For mock mode: simulates the Google OAuth result by looking up
+  // mock_role in localStorage (set by developer / switcher), then does the
+  // same roster-gated logic against MOCK_ROSTER.
+  const signInWithGoogle = async (): Promise<void> => {
     if (useMock) {
-      const emailLower = email.toLowerCase().trim();
-      
-      const rosterEntry = MOCK_ROSTER.find(r => r.email.toLowerCase() === emailLower);
-      
+      // ── Mock OAuth simulation ─────────────────────────────────────────────
+      // In mock mode there's no real redirect; we simulate a sign-in by
+      // reading the role from localStorage (same as before) but route it
+      // through the roster-gating logic so the behavior is identical to prod.
+      const mockEmail = localStorage.getItem('mock_email') || 'admin@example.com';
+
+      const rosterEntry = MOCK_ROSTER.find(
+        (r: any) => r.email.toLowerCase() === mockEmail.toLowerCase()
+      );
+
       if (!rosterEntry) {
-        // Create temporary session but no profile
-        const mockUserId = `unregistered_${Date.now()}`;
-        setSession({ user: { id: mockUserId, email } } as any);
-        setUser({ id: mockUserId, email } as any);
+        // Not in roster → clear session, profile stays null
+        setSession(null);
+        setUser(null);
         setProfile(null);
-        return { error: null };
+        // The LoginPage useEffect will see no session → navigate('/unregistered')
+        // We force the signal by briefly setting a mock session with no profile:
+        const unregId = `unregistered_${Date.now()}`;
+        setSession({ user: { id: unregId, email: mockEmail } } as any);
+        setUser({ id: unregId, email: mockEmail } as any);
+        return;
       }
 
-      const role = rosterEntry.role;
+      const role = rosterEntry.role as 'student' | 'admin' | 'teacher';
       const mockUserId = rosterEntry.profile_id || `mock_user_${Date.now()}`;
-      const stream = role === 'student' ? 'pre-engineering' : undefined;
+      const stream = role === 'student'
+        ? ((localStorage.getItem('student_stream') as any) || 'pre-engineering')
+        : undefined;
 
       localStorage.setItem('mock_role', role);
       if (stream) localStorage.setItem('student_stream', stream);
       localStorage.setItem('mock_user_id', mockUserId);
 
-      setSession({ user: { id: mockUserId, email } } as any);
-      setUser({ id: mockUserId, email } as any);
-
       const matchedProfile = getMockProfile(role, stream, mockUserId);
       matchedProfile.full_name = rosterEntry.full_name;
-      setProfile(matchedProfile);
 
+      // Provision fee status for new student mock sessions
       if (!rosterEntry.profile_id) {
         rosterEntry.profile_id = mockUserId;
         if (role === 'student') {
-          const existsStatus = MOCK_FEE_STATUSES.find(fs => fs.student_id === mockUserId);
-          if (!existsStatus) {
+          const exists = MOCK_FEE_STATUSES.find((fs: any) => fs.student_id === mockUserId);
+          if (!exists) {
             MOCK_FEE_STATUSES.push({
               id: `fs_${Date.now()}`,
               student_id: mockUserId,
               status: 'unpaid',
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             });
           }
         }
       }
 
-      return { error: null };
+      setSession({ user: { id: mockUserId, email: mockEmail } } as any);
+      setUser({ id: mockUserId, email: mockEmail } as any);
+      setProfile(matchedProfile);
+      return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    return { error: null };
+    // ── Real Google OAuth ─────────────────────────────────────────────────
+    // Supabase redirects the browser to Google, then back to the app.
+    // onAuthStateChange fires SIGNED_IN → provisionProfile() runs.
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          // Force account chooser so shared devices always pick the right account
+          prompt: 'select_account',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[Auth] Google OAuth error:', error.message);
+      throw error;
+    }
+    // After this point the browser navigates away; nothing more to do here.
   };
 
+  // ── signOut ───────────────────────────────────────────────────────────────
   const signOut = async () => {
     if (useMock) {
       localStorage.removeItem('mock_role');
       localStorage.removeItem('student_stream');
       localStorage.removeItem('mock_user_id');
+      localStorage.removeItem('mock_email');
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -172,7 +322,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

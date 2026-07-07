@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import Logo from '../../components/ui/Logo';
 
 const LoginPage: React.FC = () => {
-  const { signIn, profile, session, loading: authLoading } = useAuth();
+  const { signInWithGoogle, profile, session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // ── Redirect once authenticated ────────────────────────────────────────────
   React.useEffect(() => {
     if (authLoading) return;
 
@@ -27,39 +25,30 @@ const LoginPage: React.FC = () => {
       if (from && from !== '/login') {
         navigate(from, { replace: true });
       } else {
-        if (profile.role === 'admin') {
-          navigate('/admin', { replace: true });
-        } else if (profile.role === 'teacher') {
-          navigate('/teacher', { replace: true });
-        } else {
-          navigate('/student', { replace: true });
-        }
+        if (profile.role === 'admin') navigate('/admin', { replace: true });
+        else if (profile.role === 'teacher') navigate('/teacher', { replace: true });
+        else navigate('/student', { replace: true });
       }
     }
   }, [session, profile, from, navigate, authLoading]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // ── Google sign-in handler ─────────────────────────────────────────────────
+  const handleGoogleSignIn = async () => {
     setError(null);
     setLoading(true);
-
     try {
-      const { error: signInError } = await signIn(email, password);
-
-      if (signInError) {
-        setError(signInError);
-        setLoading(false);
-        return;
-      }
+      await signInWithGoogle();
+      // For real OAuth: browser navigates away, nothing more to do.
+      // For mock mode: state updates fire above, loading stays until redirect.
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred during sign in.');
+      setError(err instanceof Error ? err.message : 'Sign-in failed. Please try again.');
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex">
-      {/* ─── Left panel — form ─── */}
+      {/* ─── Left panel — sign-in ─── */}
       <div className="flex-1 flex flex-col justify-center items-center px-6 py-12">
         <div className="w-full max-w-[400px]">
           {/* Logo */}
@@ -73,7 +62,7 @@ const LoginPage: React.FC = () => {
               Welcome back
             </h1>
             <p className="text-sm text-[#737373]">
-              Sign in to your Scholario account
+              Sign in to your Scholario account using your institutional Google address.
             </p>
           </div>
 
@@ -84,113 +73,45 @@ const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#262626] mb-1.5">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="input"
-              />
-            </div>
+          {/* Google OAuth Button */}
+          <button
+            id="google-sign-in"
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={loading || authLoading}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] hover:shadow-md active:scale-[0.98] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin text-[#737373]" />
+                Signing in…
+              </>
+            ) : (
+              <>
+                {/* Google "G" logo */}
+                <svg width="18" height="18" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                  <path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
+                  <path d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
+                  <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
+                  <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
+                </svg>
+                Continue with Google
+              </>
+            )}
+          </button>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="password" className="block text-sm font-medium text-[#262626]">
-                  Password
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs text-[#737373] hover:text-[#111111] transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="input pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A3A3A3] hover:text-[#525252] transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary btn-md w-full mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in…
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Google OAuth Button disabled for now
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-[#E5E5E5]" />
-            <span className="text-xs text-[#A3A3A3] font-medium">or continue with</span>
-            <div className="flex-1 h-px bg-[#E5E5E5]" />
+          {/* Access notice */}
+          <div className="mt-6 p-4 rounded-xl bg-[#FFFBF0] border border-[#F4C43033]">
+            <p className="text-xs text-[#92700A] leading-relaxed">
+              <strong>Access is restricted to pre-registered members.</strong> You must sign in with the exact Google account that your institution has registered for you. If you don't have access, contact your academic coordinator.
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleGoogleOAuth}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
-              <path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
-              <path d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
-              <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
-              <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
-            </svg>
-            Continue with Google
-          </button>
-          */ }
-
-          {/* Sign up link */}
-          <p className="mt-6 text-center text-sm text-[#737373]">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-semibold text-[#111111] hover:underline underline-offset-2">
-              Sign up
-            </Link>
-          </p>
-
-          {/* Admin shortcut */}
-          <div className="mt-6 pt-5 border-t border-[#F0F0F0]">
+          {/* Admin note */}
+          <div className="mt-5 pt-4 border-t border-[#F0F0F0]">
             <p className="flex items-center gap-1.5 text-xs text-[#A3A3A3] justify-center">
               <ShieldCheck size={12} className="text-[#F4C430]" />
-              Admin access uses the same login — you'll be redirected automatically.
+              All roles — Admin, Teacher, Student — use the same Google sign-in.
             </p>
           </div>
         </div>
@@ -203,7 +124,6 @@ const LoginPage: React.FC = () => {
           background: 'linear-gradient(135deg, #111111 0%, #1a1a1a 60%, #0d0d0d 100%)',
         }}
       >
-        {/* Top quote */}
         <div />
 
         {/* Center content */}

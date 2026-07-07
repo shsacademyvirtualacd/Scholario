@@ -6,7 +6,6 @@ import { useAuth } from '../features/auth/AuthContext';
 
 // ─── Public pages (eager loaded — small) ────
 import LoginPage from '../pages/public/LoginPage';
-import RegisterPage from '../pages/public/RegisterPage';
 import ForgotPasswordPage from '../pages/public/ForgotPasswordPage';
 import UnregisteredPage from '../pages/public/UnregisteredPage';
 
@@ -74,10 +73,9 @@ const AppRouter: React.FC = () => (
     <AuthProvider>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Public */}
+          {/* Public — no /register route; access is via roster + Google OAuth only */}
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/unregistered" element={<UnregisteredPage />} />
 
