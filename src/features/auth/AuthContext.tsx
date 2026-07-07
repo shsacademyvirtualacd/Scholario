@@ -11,6 +11,7 @@ interface AuthContextValue {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -72,6 +73,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(data);
     } else {
       setProfile(null);
+    }
+  };
+
+  const refreshProfile = async () => {
+    const currentUserId = user?.id || session?.user?.id;
+    if (currentUserId) {
+      const { getProfile } = await import('../../lib/db');
+      const updated = await getProfile(currentUserId);
+      setProfile(updated);
     }
   };
 
@@ -165,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

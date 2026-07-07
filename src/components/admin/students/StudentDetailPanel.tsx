@@ -1,21 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Phone, Mail } from 'lucide-react';
-import type { Profile } from '../../../types';
-import { MOCK_ATTENDANCE, MOCK_ENROLLMENTS, MOCK_OFFERINGS, MOCK_TEACHERS } from '../../../lib/mockData';
-import AttendanceCalendar from '../../student/AttendanceCalendar';
+import type { Profile, Enrollment, ClassOffering, Teacher } from '../../../types';
+import { getEnrollmentsForStudent, getAllOfferings, getAllTeachers } from '../../../lib/db';
 
 interface StudentDetailPanelProps {
   student: Profile;
 }
 
 export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student }) => {
-  // Filter attendance records for this student
-  const studentAttendance = MOCK_ATTENDANCE.filter((a) => a.student_id === student.id);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter enrollments for this student and enrich them with offering/teacher data
-  const studentEnrollments = MOCK_ENROLLMENTS.filter((e) => e.student_id === student.id).map(e => {
-    const offering = MOCK_OFFERINGS.find(o => o.id === e.offering_id);
-    const teacher = offering ? MOCK_TEACHERS.find(t => t.id === offering.teacher_id) : undefined;
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      getEnrollmentsForStudent(student.id),
+      getAllOfferings(),
+      getAllTeachers()
+    ]).then(([e, o, t]) => {
+      setEnrollments(e);
+      setOfferings(o);
+      setTeachers(t);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [student.id]);
+
+  // Enrich enrollments for this student with offering/teacher data
+  const studentEnrollments = enrollments.map(e => {
+    const offering = offerings.find(o => o.id === e.offering_id);
+    const teacher = offering ? teachers.find(t => t.id === offering.teacher_id) : undefined;
     return {
       ...e,
       offering: offering ? { ...offering, teacher } : undefined
@@ -36,6 +50,27 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
     return stream.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
+  const primaryEnrollment = studentEnrollments[0];
+  const boardLabel = primaryEnrollment?.offering
+    ? primaryEnrollment.offering.board === 'fbise'
+      ? 'FBISE Board'
+      : primaryEnrollment.offering.board === 'o_level'
+      ? 'O Level'
+      : primaryEnrollment.offering.board === 'a_level'
+      ? 'A Level'
+      : 'BISE (Local Board)'
+    : 'No Board';
+  const gradeLabel = primaryEnrollment?.offering ? `Grade ${primaryEnrollment.offering.grade}` : 'No Grade';
+
+  if (loading) {
+    return (
+      <div className="py-24 text-center">
+        <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
+        <p className="text-xs text-[#737373] font-bold">Loading student profile...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Profile card */}
@@ -48,7 +83,7 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
           {getStreamLabel(student.stream)}
         </span>
         <p className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mt-3">
-          Grade 10 · FBISE board
+          {gradeLabel} · {boardLabel}
         </p>
       </div>
 
@@ -67,22 +102,6 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
         </div>
       </div>
 
-      {/* Stats Counter */}
-      <div className="grid grid-cols-3 gap-2.5 opacity-40 pointer-events-none select-none">
-        <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center">
-          <div className="text-lg font-black text-[#111111]">—</div>
-          <div className="text-[9px] text-[#737373] font-black uppercase mt-0.5">Attendance</div>
-        </div>
-        <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center">
-          <div className="text-lg font-black text-[#111111]">—</div>
-          <div className="text-[9px] text-[#737373] font-black uppercase mt-0.5">Present / Late</div>
-        </div>
-        <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center">
-          <div className="text-lg font-black text-[#111111]">—</div>
-          <div className="text-[9px] text-[#737373] font-black uppercase mt-0.5">Absences</div>
-        </div>
-      </div>
-
       {/* Subject list */}
       <div className="space-y-3">
         <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Enrolled Subjects</h4>
@@ -98,19 +117,6 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
               </span>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Mini attendance calendar */}
-      <div className="space-y-3 relative">
-        <div className="flex justify-between items-center">
-          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Attendance Logs</h4>
-          <span className="text-[8px] bg-zinc-200 text-zinc-500 font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-            Soon
-          </span>
-        </div>
-        <div className="opacity-40 pointer-events-none select-none">
-          <AttendanceCalendar attendanceRecords={studentAttendance} />
         </div>
       </div>
     </div>

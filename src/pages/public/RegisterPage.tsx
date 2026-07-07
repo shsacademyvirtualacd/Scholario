@@ -100,6 +100,44 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
+      const useMock = (import.meta as any).env.VITE_USE_MOCK_AUTH !== 'false';
+      if (useMock) {
+        // Simulate registration locally
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        
+        const { MOCK_ROSTER, MOCK_STUDENTS } = await import('../../lib/mockData');
+        const emailLower = form.email.toLowerCase().trim();
+        
+        if (MOCK_ROSTER.some(r => r.email.toLowerCase() === emailLower)) {
+          throw new Error('Email is already registered in the roster.');
+        }
+
+        const mockUserId = `student_${Date.now()}`;
+        MOCK_ROSTER.push({
+          email: emailLower,
+          full_name: form.fullName,
+          role: 'student',
+          profile_id: mockUserId
+        });
+
+        MOCK_STUDENTS.push({
+          id: mockUserId,
+          role: 'student',
+          full_name: form.fullName,
+          avatar_url: null,
+          phone: form.phone || null,
+          created_at: new Date().toISOString(),
+          stream: form.stream as any
+        });
+
+        localStorage.setItem('mock_role', 'student');
+        localStorage.setItem('student_stream', form.stream);
+        localStorage.setItem('mock_user_id', mockUserId);
+
+        window.location.href = '/student';
+        return;
+      }
+
       // 1. Create Supabase auth user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: form.email,
@@ -112,23 +150,27 @@ const RegisterPage: React.FC = () => {
       if (signUpError) throw new Error(signUpError.message);
       if (!authData.user) throw new Error('Registration failed. Please try again.');
 
-      // 2. Pre-provisioning check: see if email matches a teacher record
-      let role: 'student' | 'teacher' = 'student';
+      // 2. Pre-provisioning check: see if email matches a teacher record or is the designated admin
+      let role: 'student' | 'teacher' | 'admin' = 'student';
       let phone = form.phone || null;
 
-      const { data: teacherData } = await (supabase as any)
-        .from('teachers')
-        .select('*')
-        .eq('email', form.email)
-        .maybeSingle();
-
-      if (teacherData) {
-        role = 'teacher';
-        phone = teacherData.phone || phone;
-        await (supabase as any)
+      if (form.email.toLowerCase().trim() === 'syedrayyanf1@gmail.com') {
+        role = 'admin';
+      } else {
+        const { data: teacherData } = await (supabase as any)
           .from('teachers')
-          .update({ id: authData.user.id } as any)
-          .eq('email', form.email);
+          .select('*')
+          .eq('email', form.email)
+          .maybeSingle();
+
+        if (teacherData) {
+          role = 'teacher';
+          phone = teacherData.phone || phone;
+          await (supabase as any)
+            .from('teachers')
+            .update({ id: authData.user.id } as any)
+            .eq('email', form.email);
+        }
       }
 
       // 3. Insert profile row
@@ -146,7 +188,11 @@ const RegisterPage: React.FC = () => {
       localStorage.setItem('mock_role', role);
 
       // Navigate to correct dashboard based on role
-      navigate(role === 'teacher' ? '/teacher' : '/student', { replace: true });
+      if (role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(role === 'teacher' ? '/teacher' : '/student', { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setLoading(false);

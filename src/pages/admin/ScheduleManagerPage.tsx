@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Calendar, Filter, RotateCcw, Megaphone } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -6,8 +6,9 @@ import WeeklyGrid from '../../components/admin/schedule/WeeklyGrid';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import SlotForm from '../../components/admin/schedule/SlotForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
-import { MOCK_SCHEDULE_SLOTS, MOCK_OFFERINGS, MOCK_TEACHERS, MOCK_ANNOUNCEMENTS } from '../../lib/mockData';
-import type { ClassSlot } from '../../types';
+import { MOCK_ANNOUNCEMENTS } from '../../lib/mockData';
+import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot } from '../../lib/db';
+import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
 const BOARDS = [
   { id: 'fbise', label: 'FBISE' },
@@ -45,8 +46,11 @@ const GRADES_BY_BOARD: Record<string, { id: string; label: string }[]> = {
 };
 
 export const ScheduleManagerPage: React.FC = () => {
-  // Local state initialized with mock database slots
-  const [slots, setSlots] = useState<ClassSlot[]>(MOCK_SCHEDULE_SLOTS);
+  const [slots, setSlots] = useState<ClassSlot[]>([]);
+  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [selectedSlot, setSelectedSlot] = useState<ClassSlot | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -58,10 +62,32 @@ export const ScheduleManagerPage: React.FC = () => {
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [showPublishBanner, setShowPublishBanner] = useState(false);
 
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [s, o, t] = await Promise.all([
+        getAllSlots(),
+        getAllOfferings(),
+        getAllTeachers()
+      ]);
+      setSlots(s);
+      setOfferings(o);
+      setTeachers(t);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   // Enrich raw slots with offering and teacher details for rendering
   const enrichedSlots = slots.map((slot) => {
-    const offering = MOCK_OFFERINGS.find((o) => o.id === slot.offering_id);
-    const teacher = offering ? MOCK_TEACHERS.find((t) => t.id === offering.teacher_id) : undefined;
+    const offering = offerings.find((o) => o.id === slot.offering_id);
+    const teacher = offering ? teachers.find((t) => t.id === offering.teacher_id) : undefined;
     return {
       ...slot,
       offering: offering ? { ...offering, teacher } : undefined,
@@ -88,7 +114,7 @@ export const ScheduleManagerPage: React.FC = () => {
   });
 
   // Handle drawer save (Add / Edit)
-  const handleSaveSlot = (formData: {
+  const handleSaveSlot = async (formData: {
     offering_id: string;
     day_of_week: number;
     start_time: string;
@@ -97,59 +123,45 @@ export const ScheduleManagerPage: React.FC = () => {
     publish_to_news: boolean;
   }) => {
     const isEditMode = !!(selectedSlot && selectedSlot.id);
-
-    if (isEditMode) {
-      // Edit Mode
-      const globalIdx = MOCK_SCHEDULE_SLOTS.findIndex((s) => s.id === selectedSlot.id);
-      if (globalIdx !== -1) {
-        MOCK_SCHEDULE_SLOTS[globalIdx] = {
-          ...MOCK_SCHEDULE_SLOTS[globalIdx],
-          offering_id: formData.offering_id,
-          day_of_week: formData.day_of_week as any,
-          start_time: formData.start_time,
-          end_time: formData.end_time,
-          room_or_link: formData.room_or_link,
-        };
-      }
-    } else {
-      // Add Mode
-      const newSlot: ClassSlot = {
-        id: `slot_${Date.now()}`,
+    
+    try {
+      const saved = await upsertSlot({
+        id: isEditMode ? selectedSlot!.id : undefined,
         offering_id: formData.offering_id,
         day_of_week: formData.day_of_week as any,
         start_time: formData.start_time,
         end_time: formData.end_time,
         room_or_link: formData.room_or_link,
-        is_cancelled: false,
-        created_at: new Date().toISOString(),
-      };
-      MOCK_SCHEDULE_SLOTS.push(newSlot);
-    }
+      });
 
-    // Refresh state from the mutated global array
-    setSlots([...MOCK_SCHEDULE_SLOTS]);
+      // Reload slots
+      await loadData();
 
-    // Publish to Student News Section if selected by admin
-    if (formData.publish_to_news) {
-      const offering = MOCK_OFFERINGS.find((o) => o.id === formData.offering_id);
-      const subject = offering ? offering.subject : 'Class';
-      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const dayName = dayNames[formData.day_of_week];
-      const timeStr = formData.start_time.slice(0, 5);
+      // Publish to Student News Section if selected by admin
+      if (formData.publish_to_news) {
+        const offering = offerings.find((o) => o.id === formData.offering_id);
+        const subject = offering ? offering.subject : 'Class';
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = dayNames[formData.day_of_week];
+        const timeStr = formData.start_time.slice(0, 5);
 
-      const announcement = {
-        id: `ann_${Date.now()}`,
-        title: `${isEditMode ? 'Rescheduled' : 'New Class Scheduled'}: ${subject}`,
-        content: `The timetable schedule for ${subject} has been updated. A class slot has been registered on ${dayName} at ${timeStr} (${formData.room_or_link}).`,
-        time: 'Just now',
-        date: new Date().toISOString().slice(0, 10),
-        icon: '📅',
-        priority: 'high' as const,
-      };
+        const announcement = {
+          id: `ann_${Date.now()}`,
+          title: `${isEditMode ? 'Rescheduled' : 'New Class Scheduled'}: ${subject}`,
+          content: `The timetable schedule for ${subject} has been updated. A class slot has been registered on ${dayName} at ${timeStr} (${formData.room_or_link}).`,
+          time: 'Just now',
+          date: new Date().toISOString().slice(0, 10),
+          icon: '📅',
+          priority: 'high' as const,
+        };
 
-      MOCK_ANNOUNCEMENTS.unshift(announcement);
-      setShowPublishBanner(true);
-      setTimeout(() => setShowPublishBanner(false), 4000);
+        MOCK_ANNOUNCEMENTS.unshift(announcement);
+        window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
+        setShowPublishBanner(true);
+        setTimeout(() => setShowPublishBanner(false), 4000);
+      }
+    } catch (err) {
+      console.error(err);
     }
 
     setDrawerOpen(false);
@@ -157,19 +169,22 @@ export const ScheduleManagerPage: React.FC = () => {
   };
 
   // Toggle cancellation status of class
-  const handleToggleCancel = (slotId: string, currentStatus: boolean) => {
-    const globalIdx = MOCK_SCHEDULE_SLOTS.findIndex((s) => s.id === slotId);
-    if (globalIdx !== -1) {
+  const handleToggleCancel = async (slotId: string, currentStatus: boolean) => {
+    const slot = slots.find((s) => s.id === slotId);
+    if (!slot) return;
+
+    try {
       const updatedStatus = !currentStatus;
-      MOCK_SCHEDULE_SLOTS[globalIdx] = {
-        ...MOCK_SCHEDULE_SLOTS[globalIdx],
+      await upsertSlot({
+        ...slot,
         is_cancelled: updatedStatus,
-      };
+      });
+
+      await loadData();
 
       // Automatically publish to news if slot is being marked as cancelled
       if (updatedStatus) {
-        const slot = MOCK_SCHEDULE_SLOTS[globalIdx];
-        const offering = MOCK_OFFERINGS.find((o) => o.id === slot.offering_id);
+        const offering = offerings.find((o) => o.id === slot.offering_id);
         const subject = offering ? offering.subject : 'Class';
         const board = offering?.board === 'local' ? 'BISE' : offering?.board?.toUpperCase() || 'FBISE';
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -193,6 +208,7 @@ export const ScheduleManagerPage: React.FC = () => {
         }
 
         MOCK_ANNOUNCEMENTS.unshift(announcement);
+        window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
         setShowPublishBanner(true);
         setTimeout(() => setShowPublishBanner(false), 4000);
       } else {
@@ -200,10 +216,11 @@ export const ScheduleManagerPage: React.FC = () => {
         const existingIdx = MOCK_ANNOUNCEMENTS.findIndex((a) => a.id === `ann_cancel_${slotId}`);
         if (existingIdx !== -1) {
           MOCK_ANNOUNCEMENTS.splice(existingIdx, 1);
+          window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
         }
       }
-
-      setSlots([...MOCK_SCHEDULE_SLOTS]);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -213,14 +230,16 @@ export const ScheduleManagerPage: React.FC = () => {
     setDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (slotToDelete) {
-      const globalIdx = MOCK_SCHEDULE_SLOTS.findIndex((s) => s.id === slotToDelete);
-      if (globalIdx !== -1) {
-        MOCK_SCHEDULE_SLOTS.splice(globalIdx, 1);
-        setSlots([...MOCK_SCHEDULE_SLOTS]);
+      try {
+        await deleteSlot(slotToDelete);
+        await loadData();
+      } catch (err) {
+        console.error(err);
       }
       setSlotToDelete(null);
+      setDeleteModalOpen(false);
     }
   };
 
@@ -251,14 +270,21 @@ export const ScheduleManagerPage: React.FC = () => {
 
   const handleBoardChange = (boardId: string) => {
     setSelectedBoard(boardId);
-    if (boardId === 'all') {
-      setSelectedGrade('all');
-    } else {
-      setSelectedGrade('all'); // Show all grades for that board initially
-    }
+    setSelectedGrade('all'); // Show all grades for that board initially
   };
 
   const activeGrades = selectedBoard !== 'all' ? GRADES_BY_BOARD[selectedBoard] || [] : [];
+
+  if (loading) {
+    return (
+      <AdminShell>
+        <div className="py-24 text-center">
+          <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
+          <p className="text-xs text-[#737373] font-bold">Loading timetable slots...</p>
+        </div>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell>
@@ -317,7 +343,7 @@ export const ScheduleManagerPage: React.FC = () => {
             className="input py-1 px-2.5 text-[10px] bg-white border-[#E5E5E5] rounded-md cursor-pointer"
           >
             <option value="all">All Tutors</option>
-            {MOCK_TEACHERS.map((t) => (
+            {teachers.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.full_name}
               </option>
@@ -375,7 +401,7 @@ export const ScheduleManagerPage: React.FC = () => {
       >
         <SlotForm
           slot={selectedSlot && selectedSlot.id ? selectedSlot : null}
-          offerings={MOCK_OFFERINGS}
+          offerings={offerings}
           onSave={handleSaveSlot}
           onCancel={() => {
             setDrawerOpen(false);

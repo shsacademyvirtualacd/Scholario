@@ -15,6 +15,14 @@ const ForgotPasswordPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
+    const useMock = (import.meta as any).env.VITE_USE_MOCK_AUTH !== 'false';
+    if (useMock) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      setSent(true);
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });

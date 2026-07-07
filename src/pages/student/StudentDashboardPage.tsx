@@ -8,8 +8,8 @@ import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
 import { MOCK_ENROLLMENT, MOCK_OFFERINGS } from '../../lib/mockData';
-import { getSlotsForStudent, getNotesForOfferings, getAttendanceForStudent, getOfferingsForStudent, getEnrollmentsForStudent } from '../../lib/db';
-import type { ClassSlot, Note, Attendance, Enrollment } from '../../types';
+import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getEnrollmentsForStudent } from '../../lib/db';
+import type { ClassSlot, Note, Enrollment } from '../../types';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
 type TimerMode = 'focus' | 'break';
@@ -243,14 +243,12 @@ const StudentDashboardPage: React.FC = () => {
   // ── DB-fetched data ──────────────────────────────────────────────
   const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
   const [studentNotes, setStudentNotes] = useState<Note[]>([]);
-  const [personalAttendance, setPersonalAttendance] = useState<Attendance[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 
   useEffect(() => {
     if (!studentId) return;
-    // Load slots, notes, attendance in parallel (each scoped to this student)
+    // Load slots, notes, and enrollments in parallel
     getSlotsForStudent(studentId).then(setScheduleSlots).catch(console.error);
-    getAttendanceForStudent(studentId).then(setPersonalAttendance).catch(console.error);
     getEnrollmentsForStudent(studentId).then(setEnrollments).catch(console.error);
     getOfferingsForStudent(studentId).then(async (offs) => {
       const ids = offs.map(o => o.id);
@@ -261,14 +259,11 @@ const StudentDashboardPage: React.FC = () => {
 
   const recentNotes = studentNotes.slice(0, 3);
 
-  // Compute attendance stats
-  const attendedCount = personalAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
-
   // Compute classes left details using real enrollments table
   const totalClasses = enrollments.reduce((sum, e) => sum + e.total_classes, 0) || 48;
-  const classesUsed = attendedCount;
-  const classesRemaining = Math.max(0, totalClasses - classesUsed);
-  const classesLeftPct = totalClasses > 0 ? Math.round((classesRemaining / totalClasses) * 100) : 0;
+  const classesUsed = 0;
+  const classesRemaining = totalClasses;
+  const classesLeftPct = 100;
 
   // Get Today's classes
   const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
@@ -481,20 +476,6 @@ const StudentDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Attendance summary ── */}
-      <div className="card card-elevated">
-        <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-2">
-          <h2 className="text-sm font-bold text-[#111111]">Attendance Overview</h2>
-          <span className="text-[10px] font-bold px-2.5 py-0.5 bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-md">
-            ⚠️ Under Work
-          </span>
-        </div>
-        <div className="py-8 flex flex-col items-center justify-center text-center">
-          <p className="text-xs text-[#737373] font-semibold max-w-md">
-            The automated attendance logging module is currently under development. Detailed metrics, monthly calendars, and class session checks will be activated soon.
-          </p>
-        </div>
-      </div>
     </StudentShell>
   );
 };

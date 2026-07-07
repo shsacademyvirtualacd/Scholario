@@ -132,7 +132,6 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
               <input
                 placeholder="Search classes, schedules…"
                 className="input pl-9 py-2 text-sm w-56 bg-[#FAFAFA] border-[#F0F0F0]"
-                disabled
               />
             </div>
           </div>

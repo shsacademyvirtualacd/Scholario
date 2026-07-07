@@ -90,18 +90,8 @@ export const AttendancePage: React.FC = () => {
         description="Monitor your weekly presence rate, subject stats, and calendar summaries."
       />
 
-      {/* Coming Soon Alert */}
-      <div className="p-5 bg-zinc-100 border border-zinc-200 rounded-2xl flex items-start gap-3.5 text-sm text-zinc-800 font-semibold leading-relaxed mb-6">
-        <div className="w-9 h-9 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-600 shrink-0 text-base">⚙️</div>
-        <div className="flex-1">
-          <p className="font-extrabold text-zinc-900">Attendance Module Coming Soon</p>
-          <p className="text-xs text-zinc-500 mt-0.5 font-medium">
-            This module is under construction and will be launched soon. The details below are temporary placeholders for design preview.
-          </p>
-        </div>
-      </div>
-
-      <div className="opacity-40 pointer-events-none select-none space-y-6">
+      {/* Summary stats */}
+      <div className="space-y-6">
         {/* Summary stats */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Attendance Rate */}

@@ -44,19 +44,14 @@ export const NotesPage: React.FC = () => {
     setActiveSubject('All');
   }, [studentGroup]);
 
-  // Allowed subjects for the selected group
-  const allowedSubjects = GROUP_SUBJECTS[studentGroup];
+  // Filter notes (already filtered by active student enrollments)
+  const groupNotes = notes;
 
-  // Filter notes that belong to the allowed subjects in this stream
-  const groupNotes = notes.filter(note => {
-    const subject = note.offering?.subject;
-    return subject && allowedSubjects.includes(subject);
-  });
-
-  // Extract unique subjects for the tabs based on allowed subjects in this stream
+  // Extract unique subjects for the tabs based on enrolled subjects
+  const enrolledSubjects = Array.from(new Set(notes.map(n => n.offering?.subject).filter(Boolean))) as string[];
   const subjects = [
     'All', 
-    ...allowedSubjects.filter(sub => groupNotes.some(n => n.offering?.subject === sub))
+    ...enrolledSubjects
   ];
 
   // Filter notes based on active subject and search term

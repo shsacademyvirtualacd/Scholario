@@ -1,7 +1,7 @@
-import React from 'react';
-import { Calendar, Phone, Mail, Clock, MapPin, Video, Award } from 'lucide-react';
-import type { Teacher } from '../../../types';
-import { MOCK_OFFERINGS, MOCK_SCHEDULE_SLOTS, MOCK_ENROLLMENTS } from '../../../lib/mockData';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Phone, Mail, Clock, MapPin, Video } from 'lucide-react';
+import type { Teacher, ClassOffering, ClassSlot } from '../../../types';
+import { getOfferingsForTeacher, getSlotsForTeacher, getStudentsForTeacher } from '../../../lib/db';
 
 interface TeacherDetailPanelProps {
   teacher: Teacher;
@@ -10,12 +10,23 @@ interface TeacherDetailPanelProps {
 const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher }) => {
-  // Compute workload and schedule detail
-  const teacherOfferings = MOCK_OFFERINGS.filter((o) => o.teacher_id === teacher.id);
-  const offeringIds = teacherOfferings.map((o) => o.id);
-  const teacherSlots = MOCK_SCHEDULE_SLOTS.filter((s) => offeringIds.includes(s.offering_id))
-    .sort((a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time));
-  const studentCount = MOCK_ENROLLMENTS.filter((e) => offeringIds.includes(e.offering_id)).length;
+  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [slots, setSlots] = useState<ClassSlot[]>([]);
+  const [studentCount, setStudentCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      getOfferingsForTeacher(teacher.id),
+      getSlotsForTeacher(teacher.id),
+      getStudentsForTeacher(teacher.id)
+    ]).then(([o, s, stds]) => {
+      setOfferings(o);
+      setSlots(s);
+      setStudentCount(stds.length);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [teacher.id]);
 
   const getInitials = (name: string) => {
     return name
@@ -33,6 +44,17 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
     const formattedHours = hours % 12 || 12;
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
   };
+
+  const sortedSlots = [...slots].sort((a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time));
+
+  if (loading) {
+    return (
+      <div className="py-24 text-center">
+        <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
+        <p className="text-xs text-[#737373] font-bold">Loading teacher workloads...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -69,26 +91,27 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
       {/* Key stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center">
-          <div className="text-xl font-black text-[#111111]">{teacherSlots.length}</div>
+          <div className="text-xl font-black text-[#111111]">{sortedSlots.length}</div>
           <div className="text-[10px] text-[#737373] font-bold uppercase mt-0.5">Classes / Wk</div>
         </div>
         <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center">
           <div className="text-xl font-black text-[#111111]">{studentCount}</div>
-          <div className="text-[10px] text-[#737373] font-bold uppercase mt-0.5">Active Students</div>
+          <div className="text-[10px] text-[#737373] font-bold uppercase mt-1">Active Students</div>
         </div>
       </div>
 
       {/* Schedule Slots */}
       <div className="space-y-3">
         <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Assigned Classes</h4>
-        {teacherSlots.length === 0 ? (
+        {sortedSlots.length === 0 ? (
           <div className="text-xs text-[#A3A3A3] font-semibold text-center py-6 bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
             No classes scheduled for this teacher.
           </div>
         ) : (
           <div className="space-y-2.5">
-            {teacherSlots.map((slot) => {
+            {sortedSlots.map((slot) => {
               const isOnline = slot.room_or_link?.toLowerCase().includes('http') || slot.room_or_link?.toLowerCase().includes('zoom');
+              const offering = offerings.find(o => o.id === slot.offering_id);
               return (
                 <div
                   key={slot.id}
@@ -101,7 +124,7 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
                       {DAYS_NAME[slot.day_of_week]}
                     </span>
                     <h5 className="text-xs font-bold text-[#111111] mt-1.5 truncate">
-                      {slot.offering?.subject} (Grade {slot.offering?.grade})
+                      {offering?.subject} (Grade {offering?.grade})
                     </h5>
                     <div className="flex items-center gap-1 text-[10px] text-[#A3A3A3] font-bold mt-1">
                       <Clock size={10} />

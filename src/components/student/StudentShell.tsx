@@ -15,6 +15,7 @@ import {
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getEnrichedNotes, getEnrichedScheduleSlots, GROUP_SUBJECTS } from '../../lib/mockData';
+import { getOfferingsForStudent } from '../../lib/db';
 
 interface StudentShellProps {
   children: React.ReactNode;
@@ -34,7 +35,6 @@ const NAV_ITEMS = [
   { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
   { icon: Calendar,        label: 'Schedule',   path: '/student/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/student/announcements' },
-  { icon: ClipboardCheck,  label: 'Attendance (Coming Soon)', path: '/student/attendance', disabled: true },
   { icon: CreditCard,      label: 'Fee Checkout', path: '/student/checkout' },
 ];
 
@@ -96,6 +96,18 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   }>({ notes: [], classes: [] });
 
   const activeNav = location.pathname;
+  const [enrolledSubjects, setEnrolledSubjects] = useState<string[]>([]);
+
+  // Fetch enrolled subjects dynamically
+  useEffect(() => {
+    if (profile?.id) {
+      getOfferingsForStudent(profile.id)
+        .then((offs) => {
+          setEnrolledSubjects(offs.map((o) => o.subject));
+        })
+        .catch(console.error);
+    }
+  }, [profile?.id]);
 
   // Initialize notifications dynamically based on the student's registered stream
   useEffect(() => {
@@ -114,14 +126,12 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
     }
 
     const query = searchQuery.toLowerCase();
-    const studentGroup = profile?.stream || 'pre-engineering';
-    const allowedSubjects = GROUP_SUBJECTS[studentGroup] || [];
 
-    // 1. Filter notes matching query and allowed subjects
+    // 1. Filter notes matching query and enrolled subjects
     const allNotes = getEnrichedNotes();
     const matchedNotes = allNotes.filter(note => {
       const subject = note.offering?.subject;
-      if (!subject || !allowedSubjects.includes(subject)) return false;
+      if (!subject || !enrolledSubjects.includes(subject)) return false;
 
       return (
         note.chapter_name.toLowerCase().includes(query) ||
@@ -130,11 +140,11 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
       );
     }).slice(0, 4);
 
-    // 2. Filter classes matching query and allowed subjects
+    // 2. Filter classes matching query and enrolled subjects
     const allSlots = getEnrichedScheduleSlots();
     const matchedClasses = allSlots.filter(slot => {
       const subject = slot.offering?.subject;
-      if (!subject || !allowedSubjects.includes(subject)) return false;
+      if (!subject || !enrolledSubjects.includes(subject)) return false;
 
       return (
         subject.toLowerCase().includes(query) ||
@@ -144,7 +154,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
     }).slice(0, 4);
 
     setSearchResults({ notes: matchedNotes, classes: matchedClasses });
-  }, [searchQuery, profile?.stream]);
+  }, [searchQuery, enrolledSubjects]);
 
   const handleNav = (path: string) => {
     setSidebarOpen(false);

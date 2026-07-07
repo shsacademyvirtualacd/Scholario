@@ -33,7 +33,6 @@ const NAV_ITEMS = [
   { icon: Bell,            label: 'Announcements', path: '/admin/announcements' },
   { icon: DollarSign,      label: 'Prices',     path: '/admin/prices' },
   { icon: Coins,           label: 'Fees',       path: '/admin/fees' },
-  { icon: ClipboardCheck,  label: 'Attendance (Coming Soon)', path: '/admin/attendance/all', disabled: true },
 ];
 
 export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
@@ -147,7 +146,6 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
               <input
                 placeholder="Search students, teachers…"
                 className="input pl-9 py-2 text-sm w-56 bg-[#FAFAFA] border-[#F0F0F0]"
-                disabled
               />
             </div>
           </div>

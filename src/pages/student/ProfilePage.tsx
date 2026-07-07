@@ -4,19 +4,28 @@ import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { MOCK_ENROLLMENT, GROUP_SUBJECTS } from '../../lib/mockData';
+import { updateProfile } from '../../lib/db';
 
 export const ProfilePage: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
-  const [fullName, setFullName] = useState(profile?.full_name || 'Rayn Ahmad');
-  const [phone, setPhone] = useState(profile?.phone || '+92 300 123 4567');
-  const [email, setEmail] = useState(profile?.user?.email || 'rayn.ahmad@example.com');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   
   // Validation / Feedback states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setPhone(profile.phone || '');
+      setEmail(profile.user?.email || 'student@example.com');
+    }
+  }, [profile]);
   
   // Package calculation
   const totalClasses = MOCK_ENROLLMENT.total_classes;
@@ -24,7 +33,7 @@ export const ProfilePage: React.FC = () => {
   const classesUsed = totalClasses - classesRemaining;
   const classesUsedPct = Math.round((classesUsed / totalClasses) * 100);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
@@ -41,10 +50,20 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
-    // Save success simulation
-    setIsEditing(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    try {
+      if (profile?.id) {
+        await updateProfile(profile.id, {
+          full_name: fullName.trim(),
+          phone: phone.trim() || null
+        });
+        await refreshProfile();
+        setIsEditing(false);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to save details.');
+    }
   };
 
   return (

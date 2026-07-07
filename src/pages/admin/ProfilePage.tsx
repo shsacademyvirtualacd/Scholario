@@ -4,21 +4,30 @@ import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_OFFERINGS, MOCK_ANNOUNCEMENTS } from '../../lib/mockData';
+import { updateProfile } from '../../lib/db';
 
 export const ProfilePage: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
-  const [fullName, setFullName] = useState(profile?.full_name || 'Ahmad Khan');
-  const [phone, setPhone] = useState(profile?.phone || '+92 321 987 6543');
-  const [email, setEmail] = useState(profile?.user?.email || 'ahmad.khan@shs.edu.pk');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   
   // Validation / Feedback states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setPhone(profile.phone || '');
+      setEmail(profile.user?.email || 'admin@example.com');
+    }
+  }, [profile]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
@@ -34,10 +43,20 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
-    // Save success simulation
-    setIsEditing(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    try {
+      if (profile?.id) {
+        await updateProfile(profile.id, {
+          full_name: fullName.trim(),
+          phone: phone.trim() || null
+        });
+        await refreshProfile();
+        setIsEditing(false);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to save details.');
+    }
   };
 
   const adminPermissions = [

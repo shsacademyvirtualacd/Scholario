@@ -4,7 +4,7 @@ import { Calendar, Video, MapPin, Clock, CheckCircle2 } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StatusPill from '../../components/ui/StatusPill';
-import { getEnrichedScheduleSlots, getTeacherOfferings } from '../../lib/mockData';
+import { getSlotsForTeacher } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import type { ClassSlot } from '../../types';
 
@@ -41,14 +41,16 @@ export const TeacherSchedulePage: React.FC = () => {
   };
 
   const [activeDay, setActiveDay] = useState<number>(getInitialDay());
+  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter schedule slots to only include those matching the teacher's offerings
-  const teacherOfferings = getTeacherOfferings(teacherId);
-  const teacherOfferingIds = teacherOfferings.map(o => o.id);
-
-  const scheduleSlots = getEnrichedScheduleSlots().filter(slot =>
-    teacherOfferingIds.includes(slot.offering_id)
-  );
+  useEffect(() => {
+    setLoading(true);
+    getSlotsForTeacher(teacherId)
+      .then(setScheduleSlots)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [teacherId]);
 
   // Synchronize day focus if URL query parameters change
   useEffect(() => {
@@ -141,6 +143,14 @@ export const TeacherSchedulePage: React.FC = () => {
         title="Teaching Schedule"
         description="Review your weekly lecture calendar, classroom assignments, and timing slots."
       />
+
+      {loading ? (
+        <div className="py-24 text-center">
+          <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
+          <p className="text-xs text-[#737373] font-bold">Loading schedule...</p>
+        </div>
+      ) : (
+        <>
 
       {/* Next Class Banner Alert */}
       {nextUpcomingSlot && (
@@ -250,6 +260,8 @@ export const TeacherSchedulePage: React.FC = () => {
           })
         )}
       </div>
+      </>
+      )}
     </TeacherShell>
   );
 };

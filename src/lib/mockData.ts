@@ -721,6 +721,15 @@ const DEFAULT_ROSTER: RosterEntry[] = [
     created_at: '2026-06-01T12:00:00Z',
   },
   {
+    id: 'r_rayyan_admin',
+    email: 'syedrayyanf1@gmail.com',
+    full_name: 'Syed Rayyan',
+    role: 'admin',
+    class_ids: [],
+    profile_id: 'rayyan-admin-id',
+    created_at: '2026-07-07T12:00:00Z',
+  },
+  {
     id: 'r1',
     email: 'student1@example.com',
     full_name: 'Ali Hassan',

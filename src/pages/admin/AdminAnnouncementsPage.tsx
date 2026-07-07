@@ -54,6 +54,8 @@ export const AdminAnnouncementsPage: React.FC = () => {
 
     // Mutate proxy array
     MOCK_ANNOUNCEMENTS.unshift(newAnn);
+    setAnnouncements([...MOCK_ANNOUNCEMENTS]);
+    window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
     
     // Reset Form
     setTitle('');
@@ -74,6 +76,8 @@ export const AdminAnnouncementsPage: React.FC = () => {
       const idx = MOCK_ANNOUNCEMENTS.findIndex(a => a.id === selectedId);
       if (idx !== -1) {
         MOCK_ANNOUNCEMENTS.splice(idx, 1);
+        setAnnouncements([...MOCK_ANNOUNCEMENTS]);
+        window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
         triggerNotification('success', 'Announcement deleted successfully.');
       }
       setSelectedId(null);
@@ -245,13 +249,13 @@ export const AdminAnnouncementsPage: React.FC = () => {
       </div>
 
       <ConfirmModal
-        isOpen={deleteModalOpen}
+        open={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Delete Announcement"
-        message="Are you sure you want to remove this announcement? It will be deleted permanently and removed from all student dashboards."
-        confirmText="Yes, delete it"
-        variant="danger"
+        description="Are you sure you want to remove this announcement? It will be deleted permanently and removed from all student dashboards."
+        confirmLabel="Yes, delete it"
+        danger
       />
     </AdminShell>
   );

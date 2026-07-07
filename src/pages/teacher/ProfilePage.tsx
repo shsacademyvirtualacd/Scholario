@@ -3,11 +3,11 @@ import { Mail, Phone, Camera, Edit3, Check, AlertCircle, BookOpen, Calendar } fr
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getOfferingsForTeacher } from '../../lib/db';
+import { getOfferingsForTeacher, updateProfile } from '../../lib/db';
 import type { ClassOffering } from '../../types';
 
 export const ProfilePage: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
@@ -54,7 +54,7 @@ export const ProfilePage: React.FC = () => {
     }
   }, [profile]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
@@ -70,10 +70,20 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
-    // Save success simulation
-    setIsEditing(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    try {
+      if (profile?.id) {
+        await updateProfile(profile.id, {
+          full_name: fullName.trim(),
+          phone: phone.trim() || null
+        });
+        await refreshProfile();
+        setIsEditing(false);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to save details.');
+    }
   };
 
   return (

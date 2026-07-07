@@ -129,6 +129,46 @@ export async function deleteStudent(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Update any profile details */
+export async function updateProfile(
+  id: string,
+  payload: Partial<Pick<Profile, 'full_name' | 'phone'>>
+): Promise<Profile> {
+  if (useMock) {
+    const studentIdx = MOCK_STUDENTS.findIndex(s => s.id === id);
+    if (studentIdx !== -1) {
+      Object.assign(MOCK_STUDENTS[studentIdx], payload);
+      return MOCK_STUDENTS[studentIdx];
+    }
+    const teacherIdx = MOCK_TEACHERS.findIndex(t => t.id === id);
+    if (teacherIdx !== -1) {
+      Object.assign(MOCK_TEACHERS[teacherIdx], payload);
+      return MOCK_TEACHERS[teacherIdx] as any;
+    }
+    const { MOCK_ROSTER } = await import('./mockData') as any;
+    const rosterIdx = MOCK_ROSTER.findIndex((r: any) => r.profile_id === id);
+    if (rosterIdx !== -1) {
+      Object.assign(MOCK_ROSTER[rosterIdx], { full_name: payload.full_name });
+    }
+    return {
+      id,
+      role: 'admin',
+      full_name: payload.full_name || 'Ahmad Khan',
+      phone: payload.phone || null,
+      created_at: new Date().toISOString()
+    };
+  }
+
+  const { data, error } = await (supabase as any)
+    .from('profiles')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+  return throwOnError(data, error, 'updateProfile') as Profile;
+}
+
+
 // =============================================================================
 // TEACHERS
 // =============================================================================
