@@ -178,7 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           full_name: fullName,
           avatar_url: newSession.user.user_metadata?.avatar_url ?? null,
           phone: null,
-          stream: null, // Admin sets stream separately if needed for students
+          // stream is intentionally omitted — it defaults to NULL in the DB.
+          // Admin sets stream after first login. Omitting avoids schema cache
+          // errors if the column hasn't been added via migration yet.
         });
 
       if (insertError) {

@@ -15,6 +15,15 @@
 -- Safe to re-run: uses DROP POLICY IF EXISTS before CREATE
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- 0. Ensure the optional profile columns exist
+--    (safe to re-run — ADD COLUMN IF NOT EXISTS is idempotent)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stream text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- Also reload Supabase schema cache (run this after the ALTER TABLEs)
+NOTIFY pgrst, 'reload schema';
+
 -- 1. Allow a user to create their own profile row on first login
 --    The WITH CHECK ensures they can ONLY insert a row where id = their auth uid.
 DROP POLICY IF EXISTS "profiles: self provision" ON public.profiles;
