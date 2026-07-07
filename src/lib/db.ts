@@ -32,7 +32,9 @@ import type {
 } from '../types';
 
 // ── flag (mirrors AuthContext) ────────────────────────────────────────────────
-const useMock = (import.meta as any).env?.VITE_USE_MOCK_AUTH !== 'false';
+// useMock is ONLY true when explicitly set to 'true'.
+// Absent/undefined defaults to real Supabase auth — safe for production.
+const useMock = (import.meta as any).env?.VITE_USE_MOCK_AUTH === 'true';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
 function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {

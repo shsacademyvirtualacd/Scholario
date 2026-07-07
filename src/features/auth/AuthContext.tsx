@@ -19,7 +19,9 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ─── Mock mode flag ───────────────────────────────────────────────────────────
-const useMock = (import.meta as any).env.VITE_USE_MOCK_AUTH !== 'false';
+// useMock is ONLY true when explicitly set to 'true'.
+// Absent/undefined defaults to real Supabase auth — safe for production.
+const useMock = (import.meta as any).env.VITE_USE_MOCK_AUTH === 'true';
 
 // ─── Mock profile helper ──────────────────────────────────────────────────────
 const getMockProfile = (
