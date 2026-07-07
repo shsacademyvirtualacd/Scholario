@@ -50,19 +50,20 @@ const getMockProfile = (
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Mock defaults
-  const defaultRole = (useMock && typeof window !== 'undefined' && (localStorage.getItem('mock_role') as 'student' | 'admin' | 'teacher')) || 'admin';
+  // Mock defaults: only log in automatically if mock_role is explicitly set in localStorage
+  const hasMockSession = useMock && typeof window !== 'undefined' && localStorage.getItem('mock_role') !== null;
+  const defaultRole = (useMock && typeof window !== 'undefined' && (localStorage.getItem('mock_role') as 'student' | 'admin' | 'teacher')) || null;
   const defaultStream = (useMock && typeof window !== 'undefined' && (localStorage.getItem('student_stream') as 'pre-engineering' | 'pre-medical' | 'ics')) || 'pre-engineering';
   const defaultUserId = (useMock && typeof window !== 'undefined' && localStorage.getItem('mock_user_id')) || (defaultRole === 'student' ? 'mock-user-id' : defaultRole === 'teacher' ? 't1' : 'mock-admin-id');
 
   const [session, setSession] = useState<Session | null>(
-    useMock ? ({ user: { id: defaultUserId, email: `${defaultRole}@example.com` } } as any) : null
+    hasMockSession ? ({ user: { id: defaultUserId, email: `${defaultRole}@example.com` } } as any) : null
   );
   const [user, setUser] = useState<User | null>(
-    useMock ? ({ id: defaultUserId, email: `${defaultRole}@example.com` } as any) : null
+    hasMockSession ? ({ id: defaultUserId, email: `${defaultRole}@example.com` } as any) : null
   );
   const [profile, setProfile] = useState<Profile | null>(
-    useMock ? getMockProfile(defaultRole, defaultStream, defaultUserId) : null
+    (hasMockSession && defaultRole) ? getMockProfile(defaultRole, defaultStream, defaultUserId) : null
   );
   const [loading, setLoading] = useState(useMock ? false : true);
 
