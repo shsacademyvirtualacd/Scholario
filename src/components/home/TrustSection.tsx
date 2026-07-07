@@ -25,39 +25,12 @@ const testimonials = [
   },
 ];
 
-const logos = [
-  { name: 'LUMS', abbr: 'LUMS' },
-  { name: 'NUST', abbr: 'NUST' },
-  { name: 'IBA', abbr: 'IBA' },
-  { name: 'Punjab University', abbr: 'PU' },
-  { name: 'FAST', abbr: 'FAST' },
-  { name: 'Aga Khan University', abbr: 'AKU' },
-  { name: 'Karachi University', abbr: 'KU' },
-];
+
 
 const TrustSection: React.FC = () => {
   return (
     <section className="py-28 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Trusted By */}
-        <div className="text-center mb-20">
-          <p className="text-sm font-semibold text-[#A3A3A3] uppercase tracking-widest mb-8">
-            Trusted by Pakistan's leading institutions
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-            {logos.map(({ name, abbr }) => (
-              <div
-                key={name}
-                className="flex items-center justify-center h-10 px-6 rounded-xl border border-[#E5E5E5] bg-white hover:border-[#D4D4D4] hover:shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <span className="text-sm font-extrabold text-[#D4D4D4] tracking-widest hover:text-[#A3A3A3] transition-colors">
-                  {abbr}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Testimonials */}
         <div className="mb-8">
           <span className="section-label justify-center mb-4">Testimonials</span>
@@ -140,7 +113,7 @@ const TrustSection: React.FC = () => {
           </div>
           <div className="text-center sm:text-left">
             <span className="text-3xl font-extrabold text-[#111111]">4.9/5</span>
-            <span className="text-[#737373] ml-2 text-sm">from 2,000+ reviews</span>
+            <span className="text-[#737373] ml-2 text-sm">from 1,240 ratings</span>
           </div>
         </div>
       </div>

@@ -1,240 +1,218 @@
 import React, { useState } from 'react';
-import { Check, ArrowRight, Zap } from 'lucide-react';
+import { Check, ArrowRight, Zap, GraduationCap, BookOpen } from 'lucide-react';
 
-const plans = [
-  {
-    name: 'Starter',
-    price: { monthly: 0, annual: 0 },
-    description: 'Perfect for individual tutors and small academies getting started with digital learning.',
-    features: [
-      'Up to 50 students',
-      '5 active courses',
-      'Basic quiz builder',
-      'Progress tracking',
-      'Community forum access',
-      'Email support',
-    ],
-    missing: ['Live classes', 'Custom branding', 'Advanced analytics', 'AI features'],
-    cta: 'Get Started Free',
-    highlighted: false,
-    badge: null,
-  },
-  {
-    name: 'Growth',
-    price: { monthly: 4999, annual: 3999 },
-    description: 'Ideal for growing institutions that need powerful tools to manage and scale their education.',
-    features: [
-      'Up to 500 students',
-      'Unlimited courses',
-      'Advanced assessments',
-      'Live class integration',
-      'Custom branding',
-      'Detailed analytics',
-      'Parent portal',
-      'Priority support',
-      'AI lesson suggestions',
-    ],
-    missing: ['White-label platform', 'API access', 'Dedicated CSM'],
-    cta: 'Start Free Trial',
-    highlighted: true,
-    badge: 'Most Popular',
-  },
-  {
-    name: 'Enterprise',
-    price: { monthly: null, annual: null },
-    description: 'For large universities, school networks, and EdTech companies requiring a fully tailored solution.',
-    features: [
-      'Unlimited students',
-      'Unlimited courses',
-      'White-label platform',
-      'Full API access',
-      'Custom integrations',
-      'Advanced AI tools',
-      'Dedicated CSM',
-      'SLA guarantee',
-      'On-premise option',
-      'Custom contracts',
-    ],
-    missing: [],
-    cta: 'Talk to Sales',
-    highlighted: false,
-    badge: null,
-  },
+const BOARDS = [
+  { value: 'fbise', label: 'Federal Board (FBISE)' },
+  { value: 'punjab', label: 'Punjab Board (BISE)' },
+  { value: 'cambridge', label: 'Cambridge (O/A Levels)' },
 ];
 
+interface GradeOption {
+  value: string;
+  label: string;
+  subjects: string[];
+  basePrice: number;
+}
+
+const GRADES: Record<string, GradeOption[]> = {
+  fbise: [
+    { value: '9', label: 'Class 9', subjects: ['Urdu', 'English', 'Mathematics', 'Physics', 'Chemistry', 'Biology / Computer Science'], basePrice: 2499 },
+    { value: '10', label: 'Class 10', subjects: ['Urdu', 'English', 'Mathematics', 'Physics', 'Chemistry', 'Biology / Computer Science'], basePrice: 2499 },
+    { value: '11', label: 'Class 11', subjects: ['Urdu', 'English', 'Mathematics / Biology', 'Physics', 'Chemistry / Computer Science'], basePrice: 3499 },
+    { value: '12', label: 'Class 12', subjects: ['Urdu', 'English', 'Mathematics / Biology', 'Physics', 'Chemistry / Computer Science'], basePrice: 3499 },
+  ],
+  punjab: [
+    { value: '9', label: 'Class 9', subjects: ['Urdu', 'English', 'Mathematics', 'Physics', 'Chemistry', 'Biology / Computer Science'], basePrice: 2299 },
+    { value: '10', label: 'Class 10', subjects: ['Urdu', 'English', 'Mathematics', 'Physics', 'Chemistry', 'Biology / Computer Science'], basePrice: 2299 },
+    { value: '11', label: 'Class 11', subjects: ['Urdu', 'English', 'Mathematics / Biology', 'Physics', 'Chemistry / Computer Science'], basePrice: 3199 },
+    { value: '12', label: 'Class 12', subjects: ['Urdu', 'English', 'Mathematics / Biology', 'Physics', 'Chemistry / Computer Science'], basePrice: 3199 },
+  ],
+  cambridge: [
+    { value: 'o', label: 'O Levels', subjects: ['Mathematics D', 'Physics', 'Chemistry', 'Computer Science'], basePrice: 4999 },
+    { value: 'a', label: 'A Levels', subjects: ['Mathematics (9709)', 'Physics (9702)', 'Computer Science (9618)'], basePrice: 6999 },
+  ],
+};
+
 const PricingSection: React.FC = () => {
-  const [annual, setAnnual] = useState(true);
+  const [selectedBoard, setSelectedBoard] = useState('fbise');
+  const [selectedGradeValue, setSelectedGradeValue] = useState('10');
+
+  const annual = false;
+
+  const activeGradesList = GRADES[selectedBoard] || [];
+  
+  // Find currently active grade option, fall back to first if none matches
+  const activeGrade = activeGradesList.find(g => g.value === selectedGradeValue) || activeGradesList[0];
+
+  const handleBoardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const board = e.target.value;
+    setSelectedBoard(board);
+    // Auto-select first grade of newly selected board
+    if (GRADES[board] && GRADES[board].length > 0) {
+      setSelectedGradeValue(GRADES[board][0].value);
+    }
+  };
+
+  // Calculate prices
+  const customPrice = activeGrade ? localStorage.getItem(`scholario_price_${selectedBoard}_${activeGrade.value}`) : null;
+  const basePrice = customPrice ? parseInt(customPrice, 10) : (activeGrade ? activeGrade.basePrice : 2499);
+  const displayPrice = basePrice;
 
   return (
     <section className="py-28 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
         {/* Header */}
-        <div className="text-center mb-14">
-          <span className="section-label justify-center mb-4">Pricing</span>
+        <div className="text-center mb-12">
+          <span className="section-label justify-center mb-4">Pricing Calculator</span>
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#111111] mb-5 leading-tight">
-            Simple, transparent pricing
+            Select your Board & Class
           </h2>
           <p className="text-xl text-[#737373] max-w-xl mx-auto mb-8">
-            No hidden fees. No long-term lock-ins. Choose the plan that fits your institution.
+            Choose your academic path below to see the exact subjects and personalized monthly pricing plans.
           </p>
 
-          {/* Toggle */}
-          <div className="inline-flex items-center gap-3 bg-[#F5F5F5] rounded-full p-1.5">
-            <button
-              onClick={() => setAnnual(false)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
-                !annual ? 'bg-white text-[#111111] shadow-sm' : 'text-[#737373]'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setAnnual(true)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                annual ? 'bg-white text-[#111111] shadow-sm' : 'text-[#737373]'
-              }`}
-            >
-              Annual
-              <span className="badge badge-green text-[10px]">Save 20%</span>
-            </button>
+          {/* Interactive Selectors Bar */}
+          <div className="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#FAFAFA] border border-[#E5E5E5] p-5 rounded-2xl mb-12">
+            <div>
+              <label htmlFor="board-select" className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
+                1. Select Board
+              </label>
+              <select
+                id="board-select"
+                value={selectedBoard}
+                onChange={handleBoardChange}
+                className="w-full bg-white border border-[#E5E5E5] rounded-xl px-4 py-3 text-sm font-semibold text-[#111111] focus:outline-none focus:border-[#F4C430] cursor-pointer"
+              >
+                {BOARDS.map((b) => (
+                  <option key={b.value} value={b.value}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="grade-select" className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
+                2. Select Class / Grade
+              </label>
+              <select
+                id="grade-select"
+                value={selectedGradeValue}
+                onChange={(e) => setSelectedGradeValue(e.target.value)}
+                className="w-full bg-white border border-[#E5E5E5] rounded-xl px-4 py-3 text-sm font-semibold text-[#111111] focus:outline-none focus:border-[#F4C430] cursor-pointer"
+              >
+                {activeGradesList.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl border p-7 transition-all duration-300 ${
-                plan.highlighted
-                  ? 'bg-[#111111] border-[#111111] shadow-2xl scale-[1.02]'
-                  : 'bg-white border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-lg'
-              }`}
-            >
-              {/* Badge */}
-              {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span
-                    className="px-3.5 py-1 rounded-full text-xs font-bold"
-                    style={{ background: '#F4C430', color: '#111111' }}
-                  >
-                    {plan.badge}
-                  </span>
+        {/* Pricing Layout Grid */}
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+          
+          {/* Included Subjects Info (Left Side - 5 Columns) */}
+          <div className="md:col-span-5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-[#FFFBF0] flex items-center justify-center border border-[#FDF3C8]">
+                  <GraduationCap size={16} className="text-[#D4A017]" />
                 </div>
-              )}
-
-              {/* Plan name */}
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="text-base font-bold"
-                    style={{ color: plan.highlighted ? '#ffffff' : '#111111' }}
-                  >
-                    {plan.name}
-                  </span>
-                  {plan.highlighted && (
-                    <Zap size={14} style={{ color: '#F4C430' }} />
-                  )}
-                </div>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: plan.highlighted ? '#737373' : '#737373' }}
-                >
-                  {plan.description}
-                </p>
+                <h3 className="font-bold text-[#111111] text-lg">Active Courses Included</h3>
               </div>
+              <p className="text-xs text-[#737373] mb-6 leading-relaxed">
+                You will get comprehensive access to complete video lectures, notes, resources, and live mock exams for the following subjects:
+              </p>
 
-              {/* Price */}
-              <div className="mb-7 pb-7 border-b" style={{ borderColor: plan.highlighted ? '#1F1F1F' : '#F0F0F0' }}>
-                {plan.price.monthly === null ? (
-                  <div>
-                    <div
-                      className="text-3xl font-extrabold tracking-tight mb-1"
-                      style={{ color: plan.highlighted ? '#ffffff' : '#111111' }}
-                    >
-                      Custom
-                    </div>
-                    <div className="text-sm" style={{ color: plan.highlighted ? '#525252' : '#A3A3A3' }}>
-                      Tailored to your institution
-                    </div>
-                  </div>
-                ) : plan.price.monthly === 0 ? (
-                  <div>
-                    <div
-                      className="text-3xl font-extrabold tracking-tight mb-1"
-                      style={{ color: plan.highlighted ? '#ffffff' : '#111111' }}
-                    >
-                      Free
-                    </div>
-                    <div className="text-sm" style={{ color: plan.highlighted ? '#525252' : '#A3A3A3' }}>
-                      Forever, no credit card needed
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-medium" style={{ color: plan.highlighted ? '#525252' : '#A3A3A3' }}>
-                        PKR
-                      </span>
-                      <span
-                        className="text-4xl font-extrabold tracking-tight"
-                        style={{ color: plan.highlighted ? '#ffffff' : '#111111' }}
-                      >
-                        {annual
-                          ? plan.price.annual?.toLocaleString()
-                          : plan.price.monthly?.toLocaleString()}
-                      </span>
-                      <span className="text-sm font-medium" style={{ color: plan.highlighted ? '#525252' : '#A3A3A3' }}>
-                        /mo
-                      </span>
-                    </div>
-                    {annual && (
-                      <div className="text-xs mt-1" style={{ color: plan.highlighted ? '#525252' : '#A3A3A3' }}>
-                        Billed annually · PKR {((plan.price.annual || 0) * 12).toLocaleString()}/yr
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* CTA */}
-              <button
-                className={`btn btn-md w-full mb-7 ${
-                  plan.highlighted ? 'btn-gold' : 'btn-primary'
-                }`}
-              >
-                {plan.cta}
-                <ArrowRight size={16} />
-              </button>
-
-              {/* Features */}
               <ul className="space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5">
-                    <Check
-                      size={15}
-                      className="shrink-0 mt-0.5"
-                      style={{ color: plan.highlighted ? '#F4C430' : '#22c55e' }}
-                    />
-                    <span
-                      className="text-sm"
-                      style={{ color: plan.highlighted ? '#D4D4D4' : '#525252' }}
-                    >
-                      {feature}
-                    </span>
+                {activeGrade?.subjects.map((sub) => (
+                  <li key={sub} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-[#F0F0F0]">
+                    <div className="w-5 h-5 rounded-full bg-green-50 flex items-center justify-center border border-green-100 shrink-0">
+                      <Check size={12} className="text-[#22c55e]" />
+                    </div>
+                    <span className="text-sm font-bold text-[#111111]">{sub}</span>
                   </li>
                 ))}
               </ul>
             </div>
-          ))}
+
+            <div className="mt-8 pt-6 border-t border-[#E5E5E5] text-[11px] text-[#A3A3A3] flex items-center gap-2">
+              <BookOpen size={12} />
+              <span>Full syllabus aligned with FBISE/Punjab/Cambridge requirements.</span>
+            </div>
+          </div>
+
+          {/* Pricing Cards (Right Side - 7 Columns) */}
+          <div className="md:col-span-7 flex justify-center items-stretch">
+            
+            {/* Dynamic Growth Plan Card */}
+            <div className="relative rounded-2xl bg-[#111111] border border-[#111111] p-7 shadow-2xl flex flex-col justify-between text-white w-full max-w-sm">
+              {/* Badge */}
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span
+                  className="px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide"
+                  style={{ background: '#F4C430', color: '#111111' }}
+                >
+                  Growth Bundle
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base font-bold text-white">Growth Plan</span>
+                  <Zap size={14} style={{ color: '#F4C430' }} />
+                </div>
+                <p className="text-xs text-[#737373] leading-relaxed mb-6">
+                  Ideal for students looking for structured daily schedules and note vaults.
+                </p>
+
+                {/* Dynamic Price */}
+                <div className="mb-6 pb-6 border-b border-[#262626]">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-semibold text-[#737373]">PKR</span>
+                    <span className="text-4xl font-extrabold tracking-tight text-white">
+                      {displayPrice.toLocaleString()}
+                    </span>
+                    <span className="text-xs font-semibold text-[#737373]">/mo</span>
+                  </div>
+                </div>
+
+                {/* Small checklist */}
+                <ul className="space-y-2.5 mb-6 text-xs text-[#D4D4D4]">
+                  <li className="flex items-center gap-2">
+                    <Check size={12} className="text-[#F4C430]" />
+                    <span>Complete Course access</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={12} className="text-[#F4C430]" />
+                    <span>Daily schedule logs</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={12} className="text-[#F4C430]" />
+                    <span>Resource library vaults</span>
+                  </li>
+                </ul>
+              </div>
+
+              <a 
+                href="/register"
+                className="btn btn-gold btn-md w-full flex items-center justify-center gap-1"
+              >
+                Get Started
+                <ArrowRight size={14} />
+              </a>
+            </div>
+
+          </div>
         </div>
 
-        {/* Note */}
-        <p className="text-center text-sm text-[#A3A3A3] mt-10">
-          All prices in Pakistani Rupees (PKR). 14-day free trial on Growth plan. No credit card required.{' '}
-          <a href="#" className="text-[#111111] underline underline-offset-2">
-            Compare all features →
-          </a>
+        {/* Footnote */}
+        <p className="text-center text-sm text-[#A3A3A3] mt-12">
+          All pricing options denominated in Pakistani Rupees (PKR).
         </p>
       </div>
     </section>

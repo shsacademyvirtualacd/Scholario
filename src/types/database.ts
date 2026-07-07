@@ -3,7 +3,7 @@
 // Mirrors the Supabase schema exactly
 // ─────────────────────────────────────────────
 
-export type Role = 'student' | 'admin';
+export type Role = 'student' | 'admin' | 'teacher';
 export type Board = 'local' | 'fbise' | 'o_level' | 'a_level';
 export type AttendanceStatus = 'present' | 'absent' | 'late';
 export type NoteFileType = 'pdf' | 'image';
@@ -17,6 +17,7 @@ export interface Profile {
   avatar_url: string | null;
   phone: string | null;
   created_at: string;
+  stream?: 'pre-medical' | 'pre-engineering' | 'ics';
 }
 
 // ─── teachers ───────────────────────────────
@@ -105,10 +106,26 @@ export interface StudySession {
   created_at: string;
 }
 
+// ─── roster ──────────────────────────────────
+export interface RosterEntry {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'student' | 'teacher' | 'admin';
+  class_ids: string[];
+  profile_id: string | null;
+  created_at: string;
+}
+
 // ─── Supabase Database shape ─────────────────
 export interface Database {
   public: {
     Tables: {
+      roster: {
+        Row: RosterEntry;
+        Insert: Omit<RosterEntry, 'id' | 'created_at'>;
+        Update: Partial<Omit<RosterEntry, 'id' | 'created_at'>>;
+      };
       profiles: {
         Row: Profile;
         Insert: Omit<Profile, 'created_at'>;

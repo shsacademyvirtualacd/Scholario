@@ -36,6 +36,19 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Universal pointer cursor for clickable elements */
+  button,
+  a,
+  select,
+  input[type="submit"],
+  input[type="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  [role="button"] {
+    cursor: pointer;
+  }
+
   ::selection {
     background-color: #F4C430;
     color: #111111;
@@ -315,6 +328,8 @@
   .sidebar-link {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
+    text-align: left;
     gap: 0.75rem;
     padding: 0.5625rem 0.75rem;
     border-radius: 0.5rem;

@@ -131,16 +131,6 @@ const TeachersSection: React.FC = () => {
             </div>
           ))}
         </div>
-
-        {/* Bottom CTA */}
-        <div className="mt-12 text-center">
-          <p className="text-[#737373] mb-4">
-            Join <span className="font-semibold text-[#111111]">500+ expert educators</span> already on Scholario
-          </p>
-          <button className="btn btn-primary btn-md">
-            Become an Educator <ArrowRight size={16} />
-          </button>
-        </div>
       </div>
     </section>
   );

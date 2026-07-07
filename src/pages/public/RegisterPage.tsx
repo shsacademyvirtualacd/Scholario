@@ -50,6 +50,7 @@ interface FormData {
   board: string;
   grade: string;
   subject: string;
+  stream: string;
 }
 
 const STEPS = ['Account', 'Course'] as const;
@@ -63,11 +64,21 @@ const RegisterPage: React.FC = () => {
 
   const [form, setForm] = useState<FormData>({
     fullName: '', email: '', phone: '', password: '', confirmPassword: '',
-    board: '', grade: '', subject: '',
+    board: '', grade: '', subject: '', stream: 'pre-engineering',
   });
 
-  const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
+  const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const val = e.target.value;
+    setForm((f) => {
+      const next = { ...f, [field]: val };
+      if (field === 'board') {
+        next.stream = (val === 'o_level' || val === 'a_level')
+          ? 'cambridge-pre-engineering'
+          : 'pre-engineering';
+      }
+      return next;
+    });
+  };
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,17 +112,41 @@ const RegisterPage: React.FC = () => {
       if (signUpError) throw new Error(signUpError.message);
       if (!authData.user) throw new Error('Registration failed. Please try again.');
 
-      // 2. Insert profile row
-      const { error: profileError } = await supabase.from('profiles').insert({
+      // 2. Pre-provisioning check: see if email matches a teacher record
+      let role: 'student' | 'teacher' = 'student';
+      let phone = form.phone || null;
+
+      const { data: teacherData } = await (supabase as any)
+        .from('teachers')
+        .select('*')
+        .eq('email', form.email)
+        .maybeSingle();
+
+      if (teacherData) {
+        role = 'teacher';
+        phone = teacherData.phone || phone;
+        await (supabase as any)
+          .from('teachers')
+          .update({ id: authData.user.id } as any)
+          .eq('email', form.email);
+      }
+
+      // 3. Insert profile row
+      const { error: profileError } = await (supabase as any).from('profiles').insert({
         id: authData.user.id,
-        role: 'student',
+        role,
         full_name: form.fullName,
-        phone: form.phone || null,
+        phone,
+        stream: role === 'student' ? form.stream : undefined,
       });
       if (profileError) throw new Error(profileError.message);
 
-      // Navigate to student dashboard
-      navigate('/student', { replace: true });
+      // Store stream and role locally for localhost bypass
+      localStorage.setItem('student_stream', form.stream);
+      localStorage.setItem('mock_role', role);
+
+      // Navigate to correct dashboard based on role
+      navigate(role === 'teacher' ? '/teacher' : '/student', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setLoading(false);
@@ -242,6 +277,30 @@ const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Academic Stream */}
+              <div>
+                <label className="block text-sm font-medium text-[#262626] mb-1.5">Academic Stream / Group</label>
+                <div className="relative">
+                  <select required value={form.stream} onChange={set('stream')} className="input appearance-none pr-9">
+                    {(form.board === 'o_level' || form.board === 'a_level') ? (
+                      <>
+                        <option value="cambridge-pre-engineering">Cambridge Science (Pre-Engineering)</option>
+                        <option value="cambridge-pre-medical">Cambridge Science (Pre-Medical)</option>
+                        <option value="cambridge-computer-science">Cambridge Computer Science (ICS)</option>
+                        <option value="cambridge-commerce">Cambridge Commerce (Accounts, Econ, Stats)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="pre-engineering">Pre-Engineering (Physics, Chemistry, Maths)</option>
+                        <option value="pre-medical">Pre-Medical (Physics, Chemistry, Biology)</option>
+                        <option value="ics">ICS (Physics, Maths, Computer Science)</option>
+                      </>
+                    )}
+                  </select>
+                  <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A3A3A3] pointer-events-none" />
+                </div>
+              </div>
+
               {/* Subject */}
               <div>
                 <label className="block text-sm font-medium text-[#262626] mb-1.5">Subject</label>
@@ -284,6 +343,28 @@ const RegisterPage: React.FC = () => {
             Sign in
           </Link>
         </p>
+
+        {/* Google OAuth */}
+        {/* <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-[#E5E5E5]" />
+          <span className="text-xs text-[#A3A3A3] font-medium">or sign up with</span>
+          <div className="flex-1 h-px bg-[#E5E5E5]" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleOAuth}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+            <path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
+            <path d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
+            <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
+            <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
+          </svg>
+          Continue with Google
+        </button> */}
       </div>
     </div>
   );

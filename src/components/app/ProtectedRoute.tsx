@@ -29,9 +29,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  if (!profile) {
+    return <Navigate to="/unregistered" replace />;
+  }
+
   if (requiredRole && profile?.role !== requiredRole) {
     // Redirect to their correct dashboard
-    const destination = profile?.role === 'admin' ? '/admin' : '/student';
+    const destination = 
+      profile?.role === 'admin' 
+        ? '/admin' 
+        : profile?.role === 'teacher'
+          ? '/teacher'
+          : '/student';
     return <Navigate to={destination} replace />;
   }
 

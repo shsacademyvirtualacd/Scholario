@@ -4,21 +4,18 @@ import { Check, X } from 'lucide-react';
 const features = [
   'Modern, intuitive interface',
   'Built for Pakistan\'s curriculum',
-  'Urdu language support',
-  'AI-powered tools',
-  'Live class integration',
-  'Mobile app (iOS & Android)',
-  'Real-time analytics',
-  'Verified certificates',
-  'Parent portal',
-  'Affordable pricing (PKR)',
+  'Live class scheduling',
+  'Real-time analytics & stats',
+  'Academic Notes sharing',
+  'Detailed attendance tracking',
+  'Institutional broadcasts',
 ];
 
 const competitors = [
-  { name: 'Scholario', values: [true, true, true, true, true, true, true, true, true, true], highlight: true },
-  { name: 'Moodle', values: [false, false, false, false, true, false, true, false, false, false] },
-  { name: 'Google Classroom', values: [true, false, false, false, true, true, false, false, true, false] },
-  { name: 'Edmodo', values: [true, false, false, false, false, true, false, false, true, false] },
+  { name: 'Scholario', values: [true, true, true, true, true, true, true], highlight: true },
+  { name: 'Moodle', values: [false, false, true, true, true, true, true] },
+  { name: 'Google Classroom', values: [true, false, true, false, true, false, true] },
+  { name: 'Edmodo', values: [true, false, false, false, true, false, true] },
 ];
 
 const ComparisonSection: React.FC = () => {

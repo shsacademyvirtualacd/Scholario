@@ -14,8 +14,8 @@ const articles = [
   {
     tag: 'Product',
     tagColor: '#F4C430',
-    title: 'Introducing AI-Powered Lesson Planning: Build Complete Curricula in Minutes',
-    excerpt: 'Our new AI assistant can generate lesson plans, learning objectives, quiz questions, and assignment rubrics — all tailored to Pakistani curricula standards.',
+    title: 'Boosting Student Engagement with Streaks & XP: The Science Behind Gamified Learning',
+    excerpt: 'Our new gamified Student Portal is live, featuring study streaks, XP rankings, and interactive progress trackers designed to keep students motivated and focused.',
     date: 'June 28, 2025',
     readTime: '6 min read',
     image: 'https://images.pexels.com/photos/577195/pexels-photo-577195.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=400&w=600',

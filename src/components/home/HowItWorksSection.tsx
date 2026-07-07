@@ -1,5 +1,4 @@
-import React from 'react';
-import { UserPlus, BookOpen, BarChart2, Award } from 'lucide-react';
+import { UserPlus, BookOpen, BarChart2 } from 'lucide-react';
 
 const steps = [
   {
@@ -12,27 +11,24 @@ const steps = [
   {
     number: '02',
     icon: BookOpen,
-    title: 'Build or Enroll in Courses',
-    description: 'Educators use our powerful drag-and-drop builder. Students browse and enroll in hundreds of curated courses.',
+    title: 'Manage or Access Courses',
+    description: 'Educators organize classes and resource materials. Students view and access their active enrolled subjects.',
     color: '#3b82f6',
   },
   {
     number: '03',
     icon: BarChart2,
     title: 'Track Progress in Real-Time',
-    description: 'Monitor engagement, completion, quiz scores, and more with live dashboards built for data-driven decisions.',
+    description: 'Monitor course metrics, grading charts, and class attendance records with active live dashboards.',
     color: '#22c55e',
-  },
-  {
-    number: '04',
-    icon: Award,
-    title: 'Earn Verified Certificates',
-    description: 'Students receive blockchain-verified certificates upon course completion — shareable directly to LinkedIn and CVs.',
-    color: '#a855f7',
   },
 ];
 
-const HowItWorksSection: React.FC = () => {
+interface HowItWorksSectionProps {
+  onNavigate?: (page: string) => void;
+}
+
+const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onNavigate }) => {
   return (
     <section className="py-28 bg-[#FAFAFA] relative overflow-hidden">
       {/* Background grid */}
@@ -69,7 +65,7 @@ const HowItWorksSection: React.FC = () => {
             }}
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-6">
             {steps.map((step, i) => {
               const Icon = step.icon;
               return (
@@ -114,10 +110,13 @@ const HowItWorksSection: React.FC = () => {
           >
             <div className="text-left">
               <div className="font-bold text-[#111111]">Ready to get started?</div>
-              <div className="text-sm text-[#737373]">Join 50,000+ learners already on Scholario</div>
+              <div className="text-sm text-[#737373]">Create your account today and start tracking your education.</div>
             </div>
-            <button className="btn btn-primary btn-md shrink-0">
-              Create Free Account →
+            <button 
+              onClick={() => onNavigate && onNavigate('register')}
+              className="btn btn-primary btn-md shrink-0"
+            >
+              Create Account →
             </button>
           </div>
         </div>

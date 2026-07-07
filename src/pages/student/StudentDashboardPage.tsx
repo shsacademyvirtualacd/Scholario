@@ -1,40 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, Calendar, Clock,
-  Bell, Search, Flame, ChevronRight, Play, Pause,
-  RotateCcw, User, LogOut, Timer, BookMarked,
-  ClipboardCheck, CheckCircle2, Circle, ArrowRight
+  Clock, Play, Pause, RotateCcw,
+  BookMarked, CheckCircle2, ChevronRight, ArrowRight
 } from 'lucide-react';
-import Logo from '../../components/ui/Logo';
+import StudentShell from '../../components/student/StudentShell';
+import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
-
-// ─── Mock data (replaced with Supabase queries in Batch 4) ───────
-const MOCK_STREAK = 7;
-const MOCK_CLASSES_LEFT = 34;
-const MOCK_TOTAL_CLASSES = 48;
-
-const MOCK_NEXT_CLASS = {
-  subject: 'Mathematics',
-  teacher: 'Mr. Ahmad Khan',
-  time: '4:00 PM',
-  date: 'Today',
-  board: 'FBISE',
-  grade: '10',
-};
-
-const MOCK_TODAY_CLASSES = [
-  { subject: 'Mathematics', time: '4:00 PM', duration: '90 min', teacher: 'Mr. Ahmad', status: 'upcoming', color: '#F4C430' },
-  { subject: 'Physics', time: '6:00 PM', duration: '90 min', teacher: 'Ms. Sara', status: 'upcoming', color: '#3b82f6' },
-];
-
-const MOCK_RECENT_NOTES = [
-  { chapter: 'Chapter 4 — Algebraic Expressions', subject: 'Mathematics', date: '2 days ago' },
-  { chapter: 'Chapter 2 — Vectors & Forces', subject: 'Physics', date: '4 days ago' },
-  { chapter: 'Chapter 6 — Chemical Bonding', subject: 'Chemistry', date: '1 week ago' },
-];
-
-const MOCK_ATTENDANCE = { attended: 14, total: 18 };
+import { MOCK_ENROLLMENT, MOCK_OFFERINGS } from '../../lib/mockData';
+import { getSlotsForStudent, getNotesForOfferings, getAttendanceForStudent, getOfferingsForStudent, getEnrollmentsForStudent } from '../../lib/db';
+import type { ClassSlot, Note, Attendance, Enrollment } from '../../types';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
 type TimerMode = 'focus' | 'break';
@@ -92,7 +67,7 @@ const PomodoroTimer: React.FC = () => {
     : ((BREAK_SECS - seconds) / BREAK_SECS) * 100;
 
   return (
-    <div className="stat-card flex flex-col gap-3 min-w-[200px]">
+    <div className="stat-card flex flex-col gap-3 min-w-[220px]">
       {/* Mode tabs */}
       <div className="flex items-center gap-1 bg-[#F5F5F5] rounded-lg p-1">
         {(['focus', 'break'] as TimerMode[]).map((m) => (
@@ -161,331 +136,366 @@ const PomodoroTimer: React.FC = () => {
   );
 };
 
-// ─── Sidebar navigation items ──────────────────────────────────────
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/student' },
-  { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
-  { icon: Calendar,        label: 'Schedule',   path: '/student/schedule' },
-  { icon: ClipboardCheck,  label: 'Attendance', path: '/student/attendance' },
-];
+// ─── Live Next Class Countdown Widget ─────────────────────────────
+const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
+
+  // Sort slots by day and time to find upcoming ones
+  const upcomingSlots = slots
+    .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
+    .sort((a, b) => {
+      if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+      return a.start_time.localeCompare(b.start_time);
+    });
+
+  const nextSlot = upcomingSlots[0] || slots[0]; // Fallback to first class next week if none today/later this week
+
+  useEffect(() => {
+    if (!nextSlot) return;
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const target = new Date();
+
+      // Calculate days to add to get to the class's day of week
+      let targetDay = nextSlot.day_of_week;
+      let currentDay = (now.getDay() + 6) % 7;
+
+      let daysToAdd = targetDay - currentDay;
+      if (daysToAdd < 0 || (daysToAdd === 0 && nextSlot.start_time < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
+        daysToAdd += 7; // Next week
+      }
+
+      target.setDate(now.getDate() + daysToAdd);
+
+      const [hours, minutes] = nextSlot.start_time.split(':').map(Number);
+      target.setHours(hours, minutes, 0, 0);
+
+      const diffMs = target.getTime() - now.getTime();
+      if (diffMs <= 0) {
+        setTimeLeft('Starting now');
+        return;
+      }
+
+      const diffMins = Math.floor(diffMs / 60000);
+      const h = Math.floor(diffMins / 60);
+      const m = diffMins % 60;
+
+      if (h > 0) {
+        setTimeLeft(`in ${h}h ${m}m`);
+      } else {
+        setTimeLeft(`in ${m}m`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000);
+    return () => clearInterval(interval);
+  }, [nextSlot]);
+
+  if (!nextSlot) {
+    return (
+      <div className="stat-card flex flex-col gap-2">
+        <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
+        <div className="text-sm font-medium text-[#737373]">No classes scheduled</div>
+      </div>
+    );
+  }
+
+  const formatClassTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  };
+
+  return (
+    <div className="stat-card flex flex-col justify-between min-h-[140px]">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
+        <span className="badge badge-gold text-[10px] font-bold">{timeLeft}</span>
+      </div>
+      <div>
+        <div className="text-base font-extrabold text-[#111111] truncate">{nextSlot.offering?.subject}</div>
+        <div className="text-xs text-[#737373] font-medium truncate mt-0.5">{nextSlot.offering?.teacher?.full_name}</div>
+      </div>
+      <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+        <Clock size={13} className="text-[#F4C430] shrink-0" />
+        <span className="text-xs font-bold text-[#111111]">{formatClassTime(nextSlot.start_time)}</span>
+        <span className="text-xs text-[#A3A3A3]">·</span>
+        <span className="text-xs font-semibold text-[#737373] capitalize">
+          {nextSlot.offering?.board} · Gr. {nextSlot.offering?.grade}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 // ─── Main page ────────────────────────────────────────────────────
 const StudentDashboardPage: React.FC = () => {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState('/student');
 
-  const handleNav = (path: string) => {
-    setActiveNav(path);
-    setSidebarOpen(false);
-    navigate(path);
+  const studentId = profile?.id || '';
+
+  // ── DB-fetched data ──────────────────────────────────────────────
+  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
+  const [studentNotes, setStudentNotes] = useState<Note[]>([]);
+  const [personalAttendance, setPersonalAttendance] = useState<Attendance[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+
+  useEffect(() => {
+    if (!studentId) return;
+    // Load slots, notes, attendance in parallel (each scoped to this student)
+    getSlotsForStudent(studentId).then(setScheduleSlots).catch(console.error);
+    getAttendanceForStudent(studentId).then(setPersonalAttendance).catch(console.error);
+    getEnrollmentsForStudent(studentId).then(setEnrollments).catch(console.error);
+    getOfferingsForStudent(studentId).then(async (offs) => {
+      const ids = offs.map(o => o.id);
+      const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
+      setStudentNotes(n);
+    }).catch(console.error);
+  }, [studentId]);
+
+  const recentNotes = studentNotes.slice(0, 3);
+
+  // Compute attendance stats
+  const attendedCount = personalAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
+
+  // Compute classes left details using real enrollments table
+  const totalClasses = enrollments.reduce((sum, e) => sum + e.total_classes, 0) || 48;
+  const classesUsed = attendedCount;
+  const classesRemaining = Math.max(0, totalClasses - classesUsed);
+  const classesLeftPct = totalClasses > 0 ? Math.round((classesRemaining / totalClasses) * 100) : 0;
+
+  // Get Today's classes
+  const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
+  const todayClasses = scheduleSlots
+    .filter(slot => slot.day_of_week === currentDayIndex)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+  // Dynamic colors for subjects
+  const getSubjectColor = (subject: string) => {
+    switch (subject.toLowerCase()) {
+      case 'mathematics': return '#F4C430'; // Gold
+      case 'physics': return '#3b82f6'; // Blue
+      case 'chemistry': return '#10b981'; // Green
+      default: return '#8b5cf6'; // Purple
+    }
   };
 
-  const attendancePct = Math.round((MOCK_ATTENDANCE.attended / MOCK_ATTENDANCE.total) * 100);
-  const classesUsed = MOCK_TOTAL_CLASSES - MOCK_CLASSES_LEFT;
+  const formatClassTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+    <StudentShell>
+      <style>{`
+        @keyframes fire-pulse {
+          0% { transform: scale(1); filter: drop-shadow(0 0 0px rgba(244, 196, 48, 0)); }
+          50% { transform: scale(1.2); filter: drop-shadow(0 0 8px rgba(244, 196, 48, 0.7)); }
+          100% { transform: scale(1); filter: drop-shadow(0 0 0px rgba(244, 196, 48, 0)); }
+        }
+        .fire-anim {
+          animation: fire-pulse 2s infinite ease-in-out;
+          display: inline-block;
+        }
+      `}</style>
 
-      {/* ── Sidebar overlay (mobile) ── */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* ── Sidebar ── */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#111111] flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
-      >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-5 border-b border-[#1F1F1F] shrink-0">
-          <Logo size="sm" variant="full" darkMode />
+      {/* ── Welcome ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'},{' '}
+            {profile?.full_name?.split(' ')[0] ?? 'Student'} 👋
+          </h1>
+          <p className="text-sm text-[#737373] mt-1 font-medium">Here's your study overview for today.</p>
         </div>
+      </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          {NAV_ITEMS.map(({ icon: Icon, label, path }) => (
-            <button
-              key={path}
-              onClick={() => handleNav(path)}
-              className={`sidebar-link w-full ${activeNav === path ? 'active' : ''}`}
-            >
-              <Icon size={17} className={`sidebar-icon shrink-0 ${activeNav === path ? '' : 'text-[#525252]'}`} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </nav>
-
-        {/* Profile + logout */}
-        <div className="p-3 border-t border-[#1F1F1F] space-y-0.5">
-          <button
-            onClick={() => handleNav('/student/profile')}
-            className="sidebar-link w-full"
-          >
-            <User size={17} className="sidebar-icon text-[#525252] shrink-0" />
-            <div className="flex flex-col items-start">
-              <span className="text-white text-xs font-semibold leading-tight">{profile?.full_name ?? 'Student'}</span>
-              <span className="text-[#525252] text-[10px]">View profile</span>
-            </div>
-          </button>
-          <button onClick={signOut} className="sidebar-link w-full text-[#525252] hover:text-red-400">
-            <LogOut size={17} className="shrink-0" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Main content ── */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
-
-        {/* Top bar */}
-        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <div className="w-5 h-3.5 flex flex-col justify-between">
-                <span className="h-0.5 bg-[#111111] rounded" />
-                <span className="h-0.5 bg-[#111111] rounded w-3/4" />
-                <span className="h-0.5 bg-[#111111] rounded" />
-              </div>
-            </button>
-            <div className="relative hidden sm:block">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
-              <input
-                placeholder="Search notes, schedule…"
-                className="input pl-9 py-2 text-sm w-52 bg-[#FAFAFA] border-[#F0F0F0]"
-              />
-            </div>
+      {/* ── Top strip: Streak · Classes Left · Next Class · Pomodoro ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        
+        {/* Streak */}
+        <div className="stat-card flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
+            <span className="text-xl fire-anim">🔥</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="relative w-9 h-9 rounded-lg border border-[#E5E5E5] flex items-center justify-center hover:bg-[#F5F5F5] transition-colors">
-              <Bell size={16} className="text-[#525252]" />
-              <span className="notif-dot" />
-            </button>
-            <button
-              onClick={() => handleNav('/student/profile')}
-              className="w-9 h-9 rounded-lg bg-[#F4C430] flex items-center justify-center text-sm font-bold text-[#111111]"
-            >
-              {(profile?.full_name?.[0] ?? 'S').toUpperCase()}
-            </button>
+          <div>
+            <div className="stat-value">{MOCK_ENROLLMENT.streak}</div>
+            <div className="stat-label">days in a row</div>
           </div>
-        </header>
-
-        {/* Page body */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6">
-
-          {/* ── Welcome ── */}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-extrabold text-[#111111] tracking-tight">
-                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'},{' '}
-                {profile?.full_name?.split(' ')[0] ?? 'Student'} 👋
-              </h1>
-              <p className="text-sm text-[#737373] mt-1">Here's what's on for today.</p>
-            </div>
-          </div>
-
-          {/* ── Top strip: Streak · Classes Left · Next Class · Pomodoro ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-
-            {/* Streak */}
-            <div className="stat-card flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
-                <span className="text-xl">🔥</span>
-              </div>
-              <div className="stat-value">{MOCK_STREAK}</div>
-              <div className="stat-label">days in a row</div>
-              <div className="flex gap-1 mt-1">
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 h-1.5 rounded-full transition-all duration-300"
-                    style={{ background: i < MOCK_STREAK ? '#F4C430' : '#F0F0F0' }}
-                  />
-                ))}
-              </div>
-              <p className="text-[11px] text-[#A3A3A3]">Keep going — you're on a roll!</p>
-            </div>
-
-            {/* Classes Left */}
-            <div className="stat-card flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Classes Left</span>
-                <BookOpen size={16} className="text-[#3b82f6]" />
-              </div>
-              <div className="stat-value">{MOCK_CLASSES_LEFT}</div>
-              <div className="stat-label">of {MOCK_TOTAL_CLASSES} total</div>
-              <div className="progress-bar mt-1">
+          <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
+            <div className="flex gap-0.5 flex-1 max-w-[120px]">
+              {Array.from({ length: 7 }).map((_, i) => (
                 <div
-                  className="progress-fill"
-                  style={{
-                    width: `${(classesUsed / MOCK_TOTAL_CLASSES) * 100}%`,
-                    background: '#3b82f6',
-                  }}
+                  key={i}
+                  className="flex-1 h-1.5 rounded-full transition-all duration-300"
+                  style={{ background: i < MOCK_ENROLLMENT.streak ? '#F4C430' : '#F0F0F0' }}
                 />
-              </div>
-              <p className="text-[11px] text-[#A3A3A3]">{classesUsed} classes attended so far</p>
+              ))}
             </div>
-
-            {/* Next Class */}
-            <div className="stat-card flex flex-col gap-3 sm:col-span-2 xl:col-span-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
-                <span className="badge badge-gold text-[10px]">{MOCK_NEXT_CLASS.date}</span>
-              </div>
-              <div>
-                <div className="text-base font-bold text-[#111111]">{MOCK_NEXT_CLASS.subject}</div>
-                <div className="text-xs text-[#737373] mt-0.5">{MOCK_NEXT_CLASS.teacher}</div>
-              </div>
-              <div className="flex items-center gap-2 pt-1 border-t border-[#F5F5F5]">
-                <Clock size={13} className="text-[#F4C430] shrink-0" />
-                <span className="text-sm font-semibold text-[#111111]">{MOCK_NEXT_CLASS.time}</span>
-                <span className="text-xs text-[#A3A3A3]">·</span>
-                <span className="text-xs text-[#737373]">{MOCK_NEXT_CLASS.board} · Gr. {MOCK_NEXT_CLASS.grade}</span>
-              </div>
-            </div>
-
-            {/* Pomodoro Timer */}
-            <PomodoroTimer />
+            <span className="text-[10px] text-[#A3A3A3] font-bold">PB: {MOCK_ENROLLMENT.personal_best_streak}d</span>
           </div>
+        </div>
 
-          {/* ── Today's Classes + Recent Notes ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Classes Left (Progress Ring) */}
+        <div className="stat-card flex items-center justify-between min-h-[140px] gap-2">
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide block">Classes Left</span>
+            <div className="stat-value mt-1">{classesRemaining}</div>
+            <div className="stat-label">of {totalClasses} total</div>
+            <p className="text-[10px] text-[#A3A3A3] mt-2 font-medium">{classesUsed} attended so far</p>
+          </div>
+          
+          <div className="relative w-16 h-16 shrink-0">
+            <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90">
+              <circle cx="32" cy="32" r="26" fill="none" stroke="#F5F5F5" strokeWidth="5" />
+              <circle
+                cx="32"
+                cy="32"
+                r="26"
+                fill="none"
+                stroke={classesLeftPct > 30 ? '#F4C430' : classesLeftPct > 10 ? '#f97316' : '#ef4444'}
+                strokeWidth="5"
+                strokeDasharray={`${2 * Math.PI * 26}`}
+                strokeDashoffset={`${2 * Math.PI * 26 * (1 - classesLeftPct / 100)}`}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-extrabold text-[#111111]">{classesLeftPct}%</span>
+            </div>
+          </div>
+        </div>
 
-            {/* Today's Classes */}
-            <div className="card card-elevated">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-[#111111]">Today's Classes</h2>
-                <button
-                  onClick={() => handleNav('/student/schedule')}
-                  className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
-                >
-                  Full schedule <ChevronRight size={12} />
-                </button>
+        {/* Next Class Countdown */}
+        <NextClassWidget slots={scheduleSlots} />
+
+        {/* Pomodoro Timer */}
+        <PomodoroTimer />
+      </div>
+
+      {/* ── Today's Classes + Recent Notes ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        
+        {/* Today's Classes */}
+        <div className="card card-elevated">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-[#111111]">Today's Classes</h2>
+            <button
+              onClick={() => navigate('/student/schedule')}
+              className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors font-semibold"
+            >
+              Full schedule <ChevronRight size={12} />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {todayClasses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
+                <CheckCircle2 size={32} className="text-[#D4D4D4] mb-2" />
+                <p className="text-xs text-[#737373] font-semibold">No classes scheduled for today.</p>
+                <p className="text-[10px] text-[#A3A3A3] mt-0.5">Enjoy your rest day!</p>
               </div>
-              <div className="space-y-3">
-                {MOCK_TODAY_CLASSES.length === 0 ? (
-                  <div className="empty-state">
-                    <CheckCircle2 size={32} className="text-[#D4D4D4]" />
-                    <p className="empty-state-description">No classes today — enjoy your rest day!</p>
-                  </div>
-                ) : (
-                  MOCK_TODAY_CLASSES.map((cls, i) => (
-                    <div key={i} className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all hover:shadow-sm">
-                      <div className="w-1 h-12 rounded-full shrink-0" style={{ background: cls.color }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-[#111111]">{cls.subject}</div>
-                        <div className="text-xs text-[#737373] mt-0.5">{cls.teacher} · {cls.duration}</div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-sm font-bold text-[#111111]">{cls.time}</div>
-                        <span className="badge badge-gold text-[10px] mt-1">{cls.status}</span>
+            ) : (
+              todayClasses.map((cls) => {
+                const color = getSubjectColor(cls.offering?.subject || '');
+                return (
+                  <div
+                    key={cls.id}
+                    className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all hover:shadow-sm bg-white"
+                  >
+                    <div className="w-1.5 h-12 rounded-full shrink-0" style={{ background: color }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm text-[#111111]">{cls.offering?.subject}</div>
+                      <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
+                        {cls.offering?.teacher?.full_name} · 90 min
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-extrabold text-[#111111]">{formatClassTime(cls.start_time)}</div>
+                      <div className="mt-1">
+                        <StatusPill status={cls.is_cancelled ? 'cancelled' : 'upcoming'} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
 
-            {/* Recent Notes */}
-            <div className="card card-elevated">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-[#111111]">Recent Notes</h2>
-                <button
-                  onClick={() => handleNav('/student/notes')}
-                  className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
-                >
-                  Notes library <ChevronRight size={12} />
-                </button>
-              </div>
-              <div className="space-y-2">
-                {MOCK_RECENT_NOTES.map((note, i) => (
+        {/* Recent Notes */}
+        <div className="card card-elevated flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-[#111111]">Recent Notes</h2>
+              <button
+                onClick={() => navigate('/student/notes')}
+                className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors font-semibold"
+              >
+                Notes library <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {recentNotes.map((note) => {
+                const offering = MOCK_OFFERINGS.find(o => o.id === note.offering_id);
+                const color = getSubjectColor(offering?.subject || '');
+                return (
                   <button
-                    key={i}
-                    onClick={() => handleNav('/student/notes')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#FAFAFA] transition-colors text-left group"
+                    key={note.id}
+                    onClick={() => navigate('/student/notes')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent hover:border-[#E5E5E5] hover:bg-[#FAFAFA] transition-all text-left group"
                   >
                     <div
                       className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: '#FFFBF0', border: '1px solid #F4C43033' }}
+                      style={{ background: `${color}1A`, border: `1.5px solid ${color}33` }}
                     >
-                      <BookMarked size={15} style={{ color: '#F4C430' }} />
+                      <BookMarked size={16} style={{ color: color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-[#262626] truncate">{note.chapter}</div>
-                      <div className="text-xs text-[#A3A3A3] mt-0.5">{note.subject} · {note.date}</div>
+                      <div className="text-sm font-bold text-[#111111] truncate">{note.chapter_name}</div>
+                      <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
+                        {offering?.subject} · {note.title}
+                      </div>
                     </div>
-                    <ArrowRight size={14} className="text-[#D4D4D4] group-hover:text-[#737373] transition-colors shrink-0" />
+                    <ArrowRight size={14} className="text-[#D4D4D4] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
-                ))}
-              </div>
-              <button
-                onClick={() => handleNav('/student/notes')}
-                className="btn btn-ghost btn-sm w-full mt-3"
-              >
-                View all notes
-              </button>
+                );
+              })}
             </div>
           </div>
-
-          {/* ── Attendance summary ── */}
-          <div className="card card-elevated">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-[#111111]">Attendance Overview</h2>
-              <button
-                onClick={() => handleNav('/student/attendance')}
-                className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
-              >
-                View history <ChevronRight size={12} />
-              </button>
-            </div>
-            <div className="flex items-center gap-6">
-              {/* Big pct */}
-              <div className="relative w-20 h-20 shrink-0">
-                <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
-                  <circle cx="40" cy="40" r="33" fill="none" stroke="#F5F5F5" strokeWidth="7" />
-                  <circle
-                    cx="40" cy="40" r="33" fill="none"
-                    stroke={attendancePct >= 75 ? '#22c55e' : attendancePct >= 60 ? '#F4C430' : '#ef4444'}
-                    strokeWidth="7"
-                    strokeDasharray={`${2 * Math.PI * 33}`}
-                    strokeDashoffset={`${2 * Math.PI * 33 * (1 - attendancePct / 100)}`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-lg font-extrabold text-[#111111]">{attendancePct}%</span>
-                </div>
-              </div>
-              {/* Details */}
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={15} className="text-[#22c55e] shrink-0" />
-                  <span className="text-sm text-[#525252]">Attended: <strong className="text-[#111111]">{MOCK_ATTENDANCE.attended}</strong> classes</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Circle size={15} className="text-[#D4D4D4] shrink-0" />
-                  <span className="text-sm text-[#525252]">Missed: <strong className="text-[#111111]">{MOCK_ATTENDANCE.total - MOCK_ATTENDANCE.attended}</strong> classes</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Clock size={15} className="text-[#F4C430] shrink-0" />
-                  <span className="text-sm text-[#525252]">Total scheduled: <strong className="text-[#111111]">{MOCK_ATTENDANCE.total}</strong> classes</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </main>
+          <button
+            onClick={() => navigate('/student/notes')}
+            className="btn btn-ghost btn-sm w-full mt-4 border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold"
+          >
+            View all notes
+          </button>
+        </div>
       </div>
-    </div>
+
+      {/* ── Attendance summary ── */}
+      <div className="card card-elevated">
+        <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-2">
+          <h2 className="text-sm font-bold text-[#111111]">Attendance Overview</h2>
+          <span className="text-[10px] font-bold px-2.5 py-0.5 bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-md">
+            ⚠️ Under Work
+          </span>
+        </div>
+        <div className="py-8 flex flex-col items-center justify-center text-center">
+          <p className="text-xs text-[#737373] font-semibold max-w-md">
+            The automated attendance logging module is currently under development. Detailed metrics, monthly calendars, and class session checks will be activated soon.
+          </p>
+        </div>
+      </div>
+    </StudentShell>
   );
 };
 

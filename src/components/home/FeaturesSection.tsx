@@ -1,78 +1,56 @@
 import React, { useState } from 'react';
 import {
-  BookOpen, BarChart2, Video, Award, Users, Smartphone,
-  Shield, Zap, MessageSquare
+  BookOpen, Video, LayoutDashboard, FileText, Bell, ClipboardList
 } from 'lucide-react';
 
 const features = [
   {
-    icon: BookOpen,
-    title: 'Drag-and-Drop Course Builder',
-    description: 'Create rich, structured courses with videos, PDFs, quizzes, and assignments — all from a beautifully simple editor. No technical expertise required.',
-    tag: 'Core',
-    highlight: false,
-  },
-  {
-    icon: BarChart2,
-    title: 'Real-Time Analytics',
-    description: 'Track student engagement, completion rates, assessment performance, and learning outcomes with intuitive dashboards built for educators.',
+    icon: LayoutDashboard,
+    title: 'Interactive Dashboards',
+    description: 'Track active courses, student grades, attendance records, and platform health at a glance with clean, dedicated views.',
     tag: 'Analytics',
     highlight: true,
   },
   {
+    icon: BookOpen,
+    title: 'Course Management',
+    description: 'Organize study streams (ICS, Pre-Med, Pre-Eng), upload notes, share documents, and track individual course progress.',
+    tag: 'Core',
+    highlight: false,
+  },
+  {
     icon: Video,
-    title: 'Live Class Integration',
-    description: 'Host interactive live sessions with built-in video conferencing, virtual whiteboards, and real-time Q&A — no third-party tools needed.',
+    title: 'Live Class Scheduling',
+    description: 'Check daily calendars for scheduled live lectures, interactive sessions, and recorded class links directly from the portal.',
     tag: 'Live',
     highlight: false,
   },
   {
-    icon: Award,
-    title: 'Verified Certificates',
-    description: 'Issue branded, blockchain-verified certificates upon course completion. Students can share credentials directly to LinkedIn.',
-    tag: 'Credentials',
-    highlight: false,
-  },
-  {
-    icon: Users,
-    title: 'Multi-Role Permissions',
-    description: 'Manage students, teachers, parents, and administrators with fine-grained role permissions. Built for schools, colleges, and academies.',
+    icon: ClipboardList,
+    title: 'Attendance Tracking',
+    description: 'Seamlessly record and review student attendance. Access attendance rate charts and trace remaining class slots dynamically.',
     tag: 'Management',
     highlight: false,
   },
   {
-    icon: Smartphone,
-    title: 'Mobile-First Learning',
-    description: 'Full-featured iOS and Android apps let students learn anywhere. Offline mode ensures continuity in areas with limited connectivity.',
-    tag: 'Mobile',
+    icon: FileText,
+    title: 'Resource Library',
+    description: 'Access or share course-specific study resources, worksheets, past papers, syllabus files, and lecture notes instantly.',
+    tag: 'Core',
     highlight: false,
   },
   {
-    icon: Shield,
-    title: 'Enterprise-Grade Security',
-    description: 'End-to-end encryption, GDPR compliance, two-factor authentication, and regular security audits keep your institution\'s data safe.',
-    tag: 'Security',
-    highlight: false,
-  },
-  {
-    icon: Zap,
-    title: 'AI-Powered Insights',
-    description: 'Scholario\'s AI suggests personalized learning paths, flags at-risk students early, and automates tedious administrative tasks.',
-    tag: 'AI',
-    highlight: true,
-  },
-  {
-    icon: MessageSquare,
-    title: 'Communication Tools',
-    description: 'Built-in messaging, announcements, discussion forums, and parent notifications keep everyone informed and engaged.',
+    icon: Bell,
+    title: 'Announcements Broadcast',
+    description: 'Broadcast and read institution-wide updates filtered by categories, complete with unread notification badges.',
     tag: 'Communication',
-    highlight: false,
+    highlight: true,
   },
 ];
 
 const FeaturesSection: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('All');
-  const categories = ['All', 'Core', 'Analytics', 'Live', 'AI', 'Security'];
+  const categories = ['All', 'Core', 'Analytics', 'Live', 'Management', 'Communication'];
 
   return (
     <section className="py-28 bg-white">
@@ -109,8 +87,10 @@ const FeaturesSection: React.FC = () => {
 
         {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((feature, i) => {
-            const Icon = feature.icon;
+          {features
+            .filter((f) => activeCategory === 'All' || f.tag === activeCategory)
+            .map((feature, i) => {
+              const Icon = feature.icon;
             return (
               <div
                 key={feature.title}
@@ -171,15 +151,6 @@ const FeaturesSection: React.FC = () => {
           })}
         </div>
 
-        {/* Bottom CTA */}
-        <div className="mt-16 text-center">
-          <p className="text-[#737373] text-base mb-4">
-            And many more features — <span className="text-[#111111] font-semibold">with new ones shipping every week.</span>
-          </p>
-          <button className="btn btn-ghost btn-md">
-            View Full Feature List →
-          </button>
-        </div>
       </div>
     </section>
   );

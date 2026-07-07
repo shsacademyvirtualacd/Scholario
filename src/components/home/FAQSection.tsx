@@ -3,41 +3,40 @@ import { Plus, Minus } from 'lucide-react';
 
 const faqs = [
   {
-    q: 'What is Scholario and who is it for?',
-    a: 'Scholario is a premium Learning Management System designed specifically for Pakistan\'s educational ecosystem. It\'s built for schools, colleges, universities, academies, and independent educators who want a modern, professional platform to deliver digital education. Whether you manage 10 students or 10,000, Scholario scales with you.',
+    q: 'What is Scholario?',
+    a: 'Scholario is a modern Learning Management System built exclusively for and operated on behalf of SHS Academy. It serves as a unified portal connecting students, parents, teachers, and administration to streamline the educational experience.',
   },
   {
-    q: 'Is Scholario free to use?',
-    a: 'Scholario offers a generous free tier for individual educators and small teams. Paid plans unlock advanced features like custom branding, analytics, live class integrations, and priority support. We also offer special pricing for government schools and non-profit educational institutions.',
+    q: 'Who is eligible to use Scholario?',
+    a: 'Currently, Scholario is a single-institution platform. Access is limited to enrolled students, parents/guardians, teachers, and staff members affiliated with SHS Academy. It is not open to self-registration by the general public.',
   },
   {
-    q: 'Does Scholario support Urdu and other regional languages?',
-    a: 'Yes. Scholario has full Urdu language support including RTL text rendering, Urdu course content, and a localized interface. We\'re actively working on support for Sindhi, Pashto, and Balochi as well.',
+    q: 'How does the Parent Portal work?',
+    a: 'Parent/guardian accounts are linked to their child\'s student record. Parents get secure, read-only access to view daily class attendance, assignment deadlines, teacher announcements, and term grades.',
   },
   {
-    q: 'Can I migrate from my existing LMS?',
-    a: 'Absolutely. Scholario supports SCORM and xAPI content imports, along with CSV-based student and course data migration. Our onboarding team assists with migration from popular platforms like Google Classroom, Moodle, and Edmodo at no additional cost.',
+    q: 'How are fee payments tracked and verified?',
+    a: 'Scholario uses a secure manual fee verification process. Payers transfer school fees directly to SHS Academy\'s bank or mobile wallet accounts, then submit the payment reference or receipt photo inside the portal for administrative verification.',
   },
   {
-    q: 'How does Scholario handle assessments and grading?',
-    a: 'Scholario includes a comprehensive assessment engine supporting MCQs, short answers, file submissions, and live proctored exams. Grading can be manual, automatic, or AI-assisted. You can set custom rubrics, weight scores, and generate detailed grade reports.',
-  },
-  {
-    q: 'Is Scholario compatible with the Pakistani national curriculum?',
-    a: 'Yes. Scholario\'s course templates and resource library are aligned with HEC, FBISE, and provincial board standards. We\'ve worked with curriculum experts to ensure the platform meets regulatory requirements for accredited institutions.',
-  },
-  {
-    q: 'What kind of support does Scholario offer?',
-    a: 'All plans include email support and access to our documentation and community forums. Growth and Enterprise plans include dedicated account managers, priority live chat support, and onboarding assistance. We also offer weekly free webinars for new users.',
-  },
-  {
-    q: 'How secure is the platform?',
-    a: 'Scholario is built with enterprise-grade security from the ground up. All data is encrypted in transit and at rest. We conduct regular third-party security audits, maintain strict data privacy policies compliant with international standards, and never sell user data.',
+    q: 'Are live classes hosted directly on Scholario?',
+    a: 'No. Scholario manages class timetables and schedules, and provides direct launching links for live classes. The actual live video and audio sessions are hosted externally via integrations with standard tools like Zoom and Google Meet.',
   },
 ];
 
-const FAQSection: React.FC = () => {
+interface FAQSectionProps {
+  onOpenContact?: () => void;
+}
+
+const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  const handleContactClick = (e: React.MouseEvent) => {
+    if (onOpenContact) {
+      e.preventDefault();
+      onOpenContact();
+    }
+  };
 
   return (
     <section className="py-28 bg-white">
@@ -52,7 +51,11 @@ const FAQSection: React.FC = () => {
           </h2>
           <p className="text-[#737373] text-lg max-w-xl mx-auto">
             Everything you need to know about Scholario. Can't find what you're looking for?{' '}
-            <a href="#" className="text-[#111111] font-semibold underline underline-offset-2">
+            <a 
+              href="#" 
+              onClick={handleContactClick}
+              className="text-[#111111] font-semibold underline underline-offset-2"
+            >
               Chat with us.
             </a>
           </p>
@@ -96,13 +99,13 @@ const FAQSection: React.FC = () => {
           <p className="text-[#737373] text-sm mb-5">
             Our team is available 9 AM – 9 PM PKT, Monday to Saturday.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button className="btn btn-primary btn-md">
-              Chat with Support
-            </button>
-            <button className="btn btn-ghost btn-md">
-              hello@scholario.pk
-            </button>
+          <div className="flex justify-center">
+            <a 
+              href="mailto:shs.academy.virtual@gmail.com"
+              className="btn btn-primary btn-md"
+            >
+              shs.academy.virtual@gmail.com
+            </a>
           </div>
         </div>
       </div>

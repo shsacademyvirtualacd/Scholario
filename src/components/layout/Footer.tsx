@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
+import { LegalModal } from '../ui/LegalModal';
+import { AboutModal } from '../ui/AboutModal';
+import { ContactModal } from '../ui/ContactModal';
 
 const SocialIcon: React.FC<{ name: string }> = ({ name }) => {
   const icons: Record<string, React.ReactNode> = {
@@ -27,12 +30,38 @@ const SocialIcon: React.FC<{ name: string }> = ({ name }) => {
   return <>{icons[name]}</>;
 };
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  onOpenAbout?: () => void;
+  onOpenContact?: () => void;
+  onNavigate?: (page: string) => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const [legalModalType, setLegalModalType] = useState<'privacy' | 'terms' | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
   const links = {
-    Platform: ['Course Builder', 'Live Classes', 'Analytics', 'Assessments', 'Certificates', 'Mobile App'],
-    Company: ['About Us', 'Careers', 'Blog', 'Press', 'Partners', 'Contact'],
-    Resources: ['Documentation', 'Help Center', 'Community', 'Webinars', 'Case Studies', 'API'],
-    Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'GDPR', 'Refund Policy'],
+    Company: ['About Us', 'Contact'],
+    Legal: ['Privacy Policy', 'Terms of Conditions'],
+  };
+
+  const handleLinkClick = (e: React.MouseEvent, category: string, item: string) => {
+    if (category === 'Legal') {
+      e.preventDefault();
+      if (item === 'Privacy Policy') {
+        setLegalModalType('privacy');
+      } else if (item === 'Terms of Conditions') {
+        setLegalModalType('terms');
+      }
+    } else if (category === 'Company') {
+      e.preventDefault();
+      if (item === 'About Us') {
+        setAboutOpen(true);
+      } else if (item === 'Contact') {
+        setContactOpen(true);
+      }
+    }
   };
 
   return (
@@ -50,17 +79,14 @@ const Footer: React.FC = () => {
             <span style={{ color: '#F4C430' }}>education in Pakistan?</span>
           </h2>
           <p className="text-[#A3A3A3] text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-            Join thousands of educators and students already using Scholario to deliver world-class learning experiences.
+            Join the 2,800+ active learners and educators already using Scholario to deliver world-class learning experiences.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button className="btn btn-gold btn-lg">
-              Get Started — It's Free
-            </button>
-            <button
-              className="btn btn-lg"
-              style={{ background: 'transparent', color: '#ffffff', border: '1.5px solid #404040' }}
+            <button 
+              onClick={() => onNavigate && onNavigate('login')}
+              className="btn btn-gold btn-lg"
             >
-              Schedule a Demo
+              Get Started
             </button>
           </div>
         </div>
@@ -101,15 +127,15 @@ const Footer: React.FC = () => {
             <div className="space-y-2 text-sm text-[#737373]">
               <div className="flex items-center gap-2.5">
                 <MapPin size={14} className="shrink-0" style={{ color: '#F4C430' }} />
-                Lahore, Punjab, Pakistan
+                Rawalpindi, Punjab, Pakistan
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail size={14} className="shrink-0" style={{ color: '#F4C430' }} />
-                hello@scholario.pk
+                shs.academy.virtual@gmail.com
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone size={14} className="shrink-0" style={{ color: '#F4C430' }} />
-                +92 300 1234567
+                +92 305 8969050
               </div>
             </div>
           </div>
@@ -125,6 +151,7 @@ const Footer: React.FC = () => {
                   <li key={item}>
                     <a
                       href="#"
+                      onClick={(e) => handleLinkClick(e, category, item)}
                       className="text-sm text-[#737373] hover:text-white transition-colors duration-150"
                     >
                       {item}
@@ -156,6 +183,9 @@ const Footer: React.FC = () => {
           </div>
         </div>
       </div>
+      <LegalModal type={legalModalType} onClose={() => setLegalModalType(null)} />
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </footer>
   );
 };

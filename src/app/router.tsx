@@ -8,6 +8,7 @@ import { useAuth } from '../features/auth/AuthContext';
 import LoginPage from '../pages/public/LoginPage';
 import RegisterPage from '../pages/public/RegisterPage';
 import ForgotPasswordPage from '../pages/public/ForgotPasswordPage';
+import UnregisteredPage from '../pages/public/UnregisteredPage';
 
 // ─── Marketing page (eager — entry point) ───
 import LandingShell from '../pages/public/LandingShell';
@@ -16,11 +17,23 @@ import LandingShell from '../pages/public/LandingShell';
 const StudentDashboardPage = lazy(() => import('../pages/student/StudentDashboardPage'));
 const AdminDashboardPage   = lazy(() => import('../pages/admin/AdminDashboardPage'));
 
+// ─── Teacher Portal (lazy) ──────────────────
+const TeacherDashboardPage = lazy(() => import('../pages/teacher/TeacherDashboardPage'));
+const TeacherNotesPage = lazy(() => import('../pages/teacher/TeacherNotesPage'));
+const TeacherSchedulePage = lazy(() => import('../pages/teacher/TeacherSchedulePage'));
+const TeacherAnnouncementsPage = lazy(() => import('../pages/teacher/TeacherAnnouncementsPage'));
+const TeacherProfilePage = lazy(() => import('../pages/teacher/ProfilePage'));
+
+// ─── Fee Pages (lazy) ───────────────────────
+const StudentCheckoutPage = lazy(() => import('../pages/student/StudentCheckoutPage'));
+const AdminFeesPage = lazy(() => import('../pages/admin/AdminFeesPage'));
+
 // ─── Student sub-pages (lazy) ────────────────
 const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
 const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
 const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
 const ProfilePage    = lazy(() => import('../pages/student/ProfilePage'));
+const StudentAnnouncementsPage = lazy(() => import('../pages/student/StudentAnnouncementsPage'));
 
 // ─── Admin sub-pages (lazy) ──────────────────
 const ScheduleManagerPage  = lazy(() => import('../pages/admin/ScheduleManagerPage'));
@@ -28,6 +41,10 @@ const TeachersPage         = lazy(() => import('../pages/admin/TeachersPage'));
 const StudentsAdminPage    = lazy(() => import('../pages/admin/StudentsAdminPage'));
 const NotesManagerPage     = lazy(() => import('../pages/admin/NotesManagerPage'));
 const AttendanceAdminPage  = lazy(() => import('../pages/admin/AttendanceAdminPage'));
+const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
+const AdminProfilePage     = lazy(() => import('../pages/admin/ProfilePage'));
+const PriceManagerPage     = lazy(() => import('../pages/admin/PriceManagerPage'));
+const RosterManagerPage    = lazy(() => import('../pages/admin/RosterManagerPage'));
 
 // ─── Page loader ────────────────────────────
 const PageLoader: React.FC = () => (
@@ -45,7 +62,9 @@ const RootRedirect: React.FC = () => {
 
   if (loading) return <PageLoader />;
   if (!session) return <LandingShell />;
-  if (profile?.role === 'admin') return <Navigate to="/admin" replace />;
+  if (!profile) return <Navigate to="/unregistered" replace />;
+  if (profile.role === 'admin') return <Navigate to="/admin" replace />;
+  if (profile.role === 'teacher') return <Navigate to="/teacher" replace />;
   return <Navigate to="/student" replace />;
 };
 
@@ -60,6 +79,7 @@ const AppRouter: React.FC = () => (
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/unregistered" element={<UnregisteredPage />} />
 
           {/* Student Portal */}
           <Route
@@ -82,11 +102,23 @@ const AppRouter: React.FC = () => (
             path="/student/profile"
             element={<ProtectedRoute requiredRole="student"><ProfilePage /></ProtectedRoute>}
           />
+          <Route
+            path="/student/announcements"
+            element={<ProtectedRoute requiredRole="student"><StudentAnnouncementsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/student/checkout"
+            element={<ProtectedRoute requiredRole="student"><StudentCheckoutPage /></ProtectedRoute>}
+          />
 
           {/* Admin Panel */}
           <Route
             path="/admin"
             element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/roster"
+            element={<ProtectedRoute requiredRole="admin"><RosterManagerPage /></ProtectedRoute>}
           />
           <Route
             path="/admin/schedule"
@@ -107,6 +139,44 @@ const AppRouter: React.FC = () => (
           <Route
             path="/admin/attendance/:classId"
             element={<ProtectedRoute requiredRole="admin"><AttendanceAdminPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/announcements"
+            element={<ProtectedRoute requiredRole="admin"><AdminAnnouncementsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/profile"
+            element={<ProtectedRoute requiredRole="admin"><AdminProfilePage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/prices"
+            element={<ProtectedRoute requiredRole="admin"><PriceManagerPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/fees"
+            element={<ProtectedRoute requiredRole="admin"><AdminFeesPage /></ProtectedRoute>}
+          />
+
+          {/* Teacher Portal */}
+          <Route
+            path="/teacher"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherDashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/notes"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherNotesPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/schedule"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherSchedulePage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/announcements"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherAnnouncementsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/profile"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherProfilePage /></ProtectedRoute>}
           />
 
           {/* Catch-all */}

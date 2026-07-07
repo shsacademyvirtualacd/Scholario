@@ -5,7 +5,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import Logo from '../../components/ui/Logo';
 
 const LoginPage: React.FC = () => {
-  const { signIn, profile } = useAuth();
+  const { signIn, profile, session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
@@ -15,6 +15,22 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (session && profile) {
+      if (from && from !== '/login') {
+        navigate(from, { replace: true });
+      } else {
+        if (profile.role === 'admin') {
+          navigate('/admin', { replace: true });
+        } else if (profile.role === 'teacher') {
+          navigate('/teacher', { replace: true });
+        } else {
+          navigate('/student', { replace: true });
+        }
+      }
+    }
+  }, [session, profile, from, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,17 +43,6 @@ const LoginPage: React.FC = () => {
       setError(signInError);
       setLoading(false);
       return;
-    }
-
-    // Redirect to original destination or role default
-    if (from && from !== '/login') {
-      navigate(from, { replace: true });
-    } else {
-      // Wait a tick for profile to populate
-      setTimeout(() => {
-        const role = profile?.role;
-        navigate(role === 'admin' ? '/admin' : '/student', { replace: true });
-      }, 100);
     }
   };
 
@@ -139,16 +144,39 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
+          {/* Google OAuth Button disabled for now
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-[#E5E5E5]" />
+            <span className="text-xs text-[#A3A3A3] font-medium">or continue with</span>
+            <div className="flex-1 h-px bg-[#E5E5E5]" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleOAuth}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+              <path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
+              <path d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
+              <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
+              <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
+            </svg>
+            Continue with Google
+          </button>
+          */ }
+
           {/* Sign up link */}
           <p className="mt-6 text-center text-sm text-[#737373]">
             Don't have an account?{' '}
             <Link to="/register" className="font-semibold text-[#111111] hover:underline underline-offset-2">
-              Create one free
+              Sign up
             </Link>
           </p>
 
           {/* Admin shortcut */}
-          <div className="mt-8 pt-6 border-t border-[#F0F0F0]">
+          <div className="mt-6 pt-5 border-t border-[#F0F0F0]">
             <p className="flex items-center gap-1.5 text-xs text-[#A3A3A3] justify-center">
               <ShieldCheck size={12} className="text-[#F4C430]" />
               Admin access uses the same login — you'll be redirected automatically.

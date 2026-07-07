@@ -1,45 +1,9 @@
 import React from 'react';
 import {
-  BookOpen, Users, TrendingUp, Award, Bell, Search,
-  Clock, BarChart2, ChevronRight,
-  Calendar, Star, ArrowUpRight
+  LayoutDashboard, BookOpen, Calendar, Bell, Search, Clock, Play, RotateCcw
 } from 'lucide-react';
 
 const DashboardPreview: React.FC = () => {
-  const stats = [
-    { label: 'Active Students', value: '2,847', change: '+12%', icon: Users, color: '#3b82f6' },
-    { label: 'Courses Active', value: '48', change: '+3', icon: BookOpen, color: '#F4C430' },
-    { label: 'Completion Rate', value: '87%', change: '+4%', icon: TrendingUp, color: '#22c55e' },
-    { label: 'Certificates', value: '1,293', change: '+89', icon: Award, color: '#a855f7' },
-  ];
-
-  const courses = [
-    { name: 'Mathematics — Grade 10', students: 64, progress: 78, color: '#F4C430' },
-    { name: 'Physics — Grade 11', students: 38, progress: 55, color: '#3b82f6' },
-    { name: 'English Literature', students: 52, progress: 91, color: '#22c55e' },
-    { name: 'Computer Science', students: 41, progress: 43, color: '#a855f7' },
-  ];
-
-  const upcoming = [
-    { title: 'Calculus — Live Session', time: '9:00 AM', tag: 'Live', tagColor: '#ef4444' },
-    { title: 'Physics Lab Report Due', time: '11:59 PM', tag: 'Deadline', tagColor: '#f97316' },
-    { title: 'CS Mock Exam', time: '2:00 PM', tag: 'Exam', tagColor: '#3b82f6' },
-  ];
-
-  const announcements = [
-    { title: 'Mid-term exams schedule released', time: '2h ago', unread: true },
-    { title: 'New course: Data Structures & Algorithms', time: '5h ago', unread: true },
-    { title: 'Holiday notice — Eid ul-Adha break', time: '1d ago', unread: false },
-  ];
-
-  const navItems = [
-    { icon: BarChart2, label: 'Dashboard', active: true },
-    { icon: BookOpen, label: 'Courses', active: false },
-    { icon: Users, label: 'Students', active: false },
-    { icon: Calendar, label: 'Schedule', active: false },
-    { icon: Award, label: 'Grades', active: false },
-  ];
-
   return (
     <div
       className="relative w-full rounded-2xl overflow-hidden shadow-2xl border border-[#E5E5E5]"
@@ -58,190 +22,246 @@ const DashboardPreview: React.FC = () => {
           <div className="w-3 h-3 rounded-full bg-[#28C840]" />
         </div>
         <div className="flex-1 mx-3">
-          <div className="bg-[#F5F5F5] rounded-md px-3 py-1 text-[10px] text-[#737373] max-w-[200px] mx-auto text-center">
-            app.scholario.pk/dashboard
+          <div className="bg-[#F5F5F5] rounded-md px-3 py-1 text-[10px] text-[#737373] max-w-[240px] mx-auto text-center font-medium">
+            app.scholario.pk/student/dashboard
           </div>
         </div>
       </div>
 
       {/* Dashboard layout */}
       <div className="flex h-full" style={{ height: 'calc(100% - 44px)' }}>
+        
         {/* Sidebar */}
-        <div className="w-[180px] shrink-0 bg-[#111111] flex flex-col py-4 px-3" style={{ minWidth: 180 }}>
+        <div className="w-[200px] shrink-0 bg-[#111111] flex flex-col py-5 px-4" style={{ minWidth: 200 }}>
+          
           {/* Logo */}
-          <div className="flex items-center gap-2 px-2 mb-6">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: '#F4C430' }}>
-              <span className="text-[10px] font-extrabold text-[#111111]">S</span>
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#F4C430' }}>
+              <svg width="18" height="18" viewBox="0 0 100 100" fill="none">
+                <polygon points="50,8 90,28 50,28 10,28" fill="#111111" />
+                <path d="M22 86 Q22 78 30 76 L50 72 L70 76 Q78 78 78 86 L78 92 L22 92 Z" fill="#111111" />
+                <path d="M50 72 L50 92" stroke="#F4C430" strokeWidth="2" />
+                <path
+                  d="M62 38 C62 33 57 29 50 29 C43 29 38 33 38 38 C38 43 43 47 50 47 L50 53 C43 53 38 57 38 62 C38 67 43 71 50 71 C57 71 62 67 62 62"
+                  stroke="#111111"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
-            <span className="text-white text-xs font-bold tracking-tight">Scholario</span>
+            <div className="flex flex-col leading-none">
+              <span className="text-white text-[13px] font-extrabold tracking-tight">Scholario</span>
+              <span className="text-[7.5px] text-[#525252] font-semibold tracking-wider mt-0.5">LEARN · GROW · ACHIEVE</span>
+            </div>
           </div>
 
-          {/* Nav */}
-          <nav className="flex flex-col gap-0.5 flex-1">
-            {navItems.map(({ icon: Icon, label, active }) => (
-              <div
-                key={label}
-                className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all"
-                style={{
-                  background: active ? '#1F1F1F' : 'transparent',
-                  color: active ? '#F4C430' : '#737373',
-                }}
-              >
-                <Icon size={13} />
-                <span className="text-[11px] font-medium">{label}</span>
-              </div>
-            ))}
+          {/* Navigation Links */}
+          <nav className="flex flex-col gap-1.5 flex-1">
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white font-bold bg-[#1F1F1F] text-[11px] cursor-pointer">
+              <LayoutDashboard size={14} className="text-[#F4C430]" />
+              <span>Dashboard</span>
+            </div>
+            
+            <div className="flex items-center gap-3 px-3 py-2.5 text-[#737373] hover:text-white font-semibold text-[11px] cursor-pointer">
+              <BookOpen size={14} />
+              <span>Notes</span>
+            </div>
+
+            <div className="flex items-center gap-3 px-3 py-2.5 text-[#737373] hover:text-white font-semibold text-[11px] cursor-pointer">
+              <Calendar size={14} />
+              <span>Schedule</span>
+            </div>
+
+            <div className="flex items-center gap-3 px-3 py-2.5 text-[#737373] hover:text-white font-semibold text-[11px] cursor-pointer">
+              <Bell size={14} />
+              <span>Announcements</span>
+            </div>
+
+            <div className="flex items-center gap-3 px-3 py-2.5 text-[#404040] font-semibold text-[11px] cursor-default">
+              <BookOpen size={14} />
+              <span>Attendance (Coming Soon)</span>
+            </div>
           </nav>
 
-          {/* User */}
-          <div className="flex items-center gap-2 px-2 pt-3 border-t border-[#262626]">
-            <div className="w-6 h-6 rounded-full bg-[#F4C430] flex items-center justify-center shrink-0">
-              <span className="text-[9px] font-bold text-[#111111]">AK</span>
+          {/* Profile at Bottom */}
+          <div className="flex items-center gap-2.5 pt-3 border-t border-[#1F1F1F]">
+            <div className="w-7 h-7 rounded-full bg-[#F4C430] flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-bold text-[#111111]">D</span>
             </div>
-            <div>
-              <div className="text-[10px] text-white font-semibold leading-tight">Ahmad Khan</div>
-              <div className="text-[9px] text-[#525252]">Educator</div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-white font-semibold truncate leading-tight">Dev Student</div>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Top Bar */}
-          <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-[#F0F0F0]">
-            <div>
-              <div className="text-[12px] font-bold text-[#111111]">Good morning, Ahmad 👋</div>
-              <div className="text-[10px] text-[#737373]">Monday, 14 July 2025</div>
+        {/* Main Workspace */}
+        <div className="flex-1 overflow-hidden flex flex-col bg-white">
+          
+          {/* Header Bar */}
+          <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-[#F5F5F5]">
+            <div className="relative flex items-center bg-[#F5F5F5] rounded-xl px-3 py-1.5 w-64">
+              <Search size={12} className="text-[#737373] shrink-0 mr-2" />
+              <span className="text-[10.5px] text-[#A3A3A3]">Search notes, schedule...</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-[#F5F5F5] rounded-lg px-2.5 py-1.5">
-                <Search size={11} className="text-[#A3A3A3]" />
-                <span className="text-[10px] text-[#A3A3A3]">Search...</span>
-              </div>
-              <div className="relative w-7 h-7 flex items-center justify-center rounded-lg bg-[#F5F5F5]">
+            
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 flex items-center justify-center rounded-xl bg-[#FAFAFA] border border-[#F0F0F0] relative">
                 <Bell size={13} className="text-[#525252]" />
-                <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#F4C430]" />
+                <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
+              </div>
+              <div className="w-8 h-8 rounded-xl bg-[#FDF3C8] text-[#D4A017] flex items-center justify-center shrink-0 border border-[#FDF3C8] font-bold text-xs">
+                D
               </div>
             </div>
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ fontSize: '10px' }}>
-            {/* Stats Row */}
-            <div className="grid grid-cols-4 gap-3">
-              {stats.map(({ label, value, change, icon: Icon, color }) => (
-                <div key={label} className="bg-white rounded-xl border border-[#F0F0F0] p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: `${color}15` }}>
-                      <Icon size={12} style={{ color }} />
-                    </div>
-                    <span className="text-[9px] font-semibold" style={{ color: '#22c55e' }}>{change}</span>
+          {/* Inner Content Grid */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            
+            {/* Title Block */}
+            <div>
+              <h2 className="text-[18px] font-extrabold text-[#111111] leading-tight">Good afternoon, Dev 👋</h2>
+              <p className="text-[11px] text-[#737373] mt-0.5 font-medium">Here's your study overview for today.</p>
+            </div>
+
+            {/* First Row of Cards */}
+            <div className="grid grid-cols-4 gap-4">
+              
+              {/* Day Streak */}
+              <div className="bg-white rounded-2xl border border-[#E5E5E5] p-4 flex flex-col justify-between h-[115px] relative">
+                <span className="absolute top-4 right-4 text-base">🔥</span>
+                <div>
+                  <span className="text-[9px] font-bold text-[#A3A3A3] uppercase tracking-wider block">Day Streak</span>
+                  <span className="text-[28px] font-extrabold text-[#111111] leading-tight block mt-1">7</span>
+                  <span className="text-[10px] text-[#737373] font-medium">days in a row</span>
+                </div>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#F5F5F5]">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5, 6, 7].map((bar) => (
+                      <div key={bar} className="w-3.5 h-1.5 rounded-full bg-[#F4C430]" />
+                    ))}
                   </div>
-                  <div className="text-[15px] font-extrabold text-[#111111] leading-tight">{value}</div>
-                  <div className="text-[9px] text-[#737373] mt-0.5">{label}</div>
+                  <span className="text-[8px] font-bold text-[#A3A3A3]">PB: 12d</span>
                 </div>
-              ))}
+              </div>
+
+              {/* Classes Left */}
+              <div className="bg-white rounded-2xl border border-[#E5E5E5] p-4 flex justify-between items-center h-[115px] relative">
+                <div>
+                  <span className="text-[9px] font-bold text-[#A3A3A3] uppercase tracking-wider block">Classes Left</span>
+                  <span className="text-[28px] font-extrabold text-[#111111] leading-tight block mt-1">34</span>
+                  <span className="text-[9px] text-[#A3A3A3] font-semibold block">of 48 total</span>
+                  <span className="text-[8.5px] text-[#737373] font-medium mt-1 block">14 attended so far</span>
+                </div>
+                
+                {/* Circular indicator */}
+                <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="24" cy="24" r="20" stroke="#F5F5F5" strokeWidth="3.5" fill="transparent" />
+                    <circle cx="24" cy="24" r="20" stroke="#F4C430" strokeWidth="3.5" fill="transparent" strokeDasharray="125" strokeDashoffset="36" strokeLinecap="round" />
+                  </svg>
+                  <span className="absolute text-[10px] font-bold text-[#111111]">71%</span>
+                </div>
+              </div>
+
+              {/* Next Class */}
+              <div className="bg-white rounded-2xl border border-[#E5E5E5] p-4 flex flex-col justify-between h-[115px] relative">
+                <span className="absolute top-4 right-4 text-[8px] font-bold px-2 py-0.5 rounded-full bg-[#FFFBF0] text-[#D4A017] border border-[#FDF3C8]">
+                  in 27h 36m
+                </span>
+                <div>
+                  <span className="text-[9px] font-bold text-[#A3A3A3] uppercase tracking-wider block">Next Class</span>
+                  <span className="text-[15px] font-extrabold text-[#111111] leading-tight block mt-2 truncate">Mathematics</span>
+                  <span className="text-[10px] text-[#737373] font-medium block">Mr. Ahmad Khan</span>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] text-[#737373] mt-2 pt-2 border-t border-[#F5F5F5]">
+                  <Clock size={10} className="text-[#A3A3A3]" />
+                  <span>4:00 PM</span>
+                  <span className="text-[#D4D4D4]">•</span>
+                  <span>Fbise · Gr. 10</span>
+                </div>
+              </div>
+
+              {/* Pomodoro Timer */}
+              <div className="bg-white rounded-2xl border border-[#E5E5E5] p-3.5 flex flex-col justify-between h-[115px] relative text-center">
+                {/* Mode toggle */}
+                <div className="flex justify-center bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg p-0.5 text-[8.5px]">
+                  <span className="flex-1 py-0.5 font-bold rounded-md bg-white border border-[#E5E5E5] text-[#111111] flex items-center justify-center gap-1 shadow-sm">
+                    <span>🍅</span> Focus
+                  </span>
+                  <span className="flex-1 py-0.5 font-semibold text-[#A3A3A3] flex items-center justify-center gap-1 cursor-pointer">
+                    <span>☕</span> Break
+                  </span>
+                </div>
+
+                <div className="my-1">
+                  <span className="text-[20px] font-extrabold text-[#111111] tracking-tight block leading-none">25:00</span>
+                  <span className="text-[7.5px] font-bold text-[#A3A3A3] uppercase tracking-widest mt-0.5 block">Focus</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1.5 border-t border-[#F5F5F5]">
+                  <RotateCcw size={10} className="text-[#A3A3A3] cursor-pointer" />
+                  <div className="w-5 h-5 rounded-full bg-[#F4C430] flex items-center justify-center text-[#111111] cursor-pointer">
+                    <Play size={8} fill="currentColor" />
+                  </div>
+                  <span className="text-[8px] font-bold text-[#A3A3A3]">0 sessions</span>
+                </div>
+              </div>
+
             </div>
 
-            {/* Middle Row */}
-            <div className="grid grid-cols-5 gap-3">
-              {/* Courses */}
-              <div className="col-span-3 bg-white rounded-xl border border-[#F0F0F0] p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-bold text-[#111111]">Active Courses</span>
-                  <button className="flex items-center gap-1 text-[9px] text-[#737373] hover:text-[#111111]">
-                    View all <ChevronRight size={10} />
-                  </button>
+            {/* Second Row Grid */}
+            <div className="grid grid-cols-5 gap-4">
+              
+              {/* Today's Classes list */}
+              <div className="col-span-3 bg-white rounded-2xl border border-[#E5E5E5] p-4 h-[130px] flex flex-col justify-between">
+                <div className="flex items-center justify-between pb-2 border-b border-[#F5F5F5]">
+                  <span className="text-[11px] font-extrabold text-[#111111]">Today's Classes</span>
+                  <span className="text-[9px] text-[#A3A3A3] font-bold cursor-pointer">Full schedule &gt;</span>
                 </div>
-                <div className="space-y-2.5">
-                  {courses.map((course) => (
-                    <div key={course.name}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-medium text-[#262626] truncate mr-2">{course.name}</span>
-                        <span className="text-[9px] text-[#737373] shrink-0">{course.students} students</span>
-                      </div>
-                      <div className="h-1.5 bg-[#F5F5F5] rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${course.progress}%`, background: course.color }}
-                        />
-                      </div>
+                
+                <div className="flex-1 flex items-center justify-center py-2">
+                  <div className="text-center text-[#A3A3A3] text-xs py-3">
+                    <div className="w-7 h-7 rounded-full bg-green-50 text-green-600 flex items-center justify-center mx-auto border border-green-100 mb-1.5">
+                      ✓
                     </div>
-                  ))}
+                    No classes scheduled for today.
+                  </div>
                 </div>
               </div>
 
-              {/* Upcoming */}
-              <div className="col-span-2 bg-white rounded-xl border border-[#F0F0F0] p-3">
-                <div className="text-[11px] font-bold text-[#111111] mb-3">Today's Schedule</div>
-                <div className="space-y-2">
-                  {upcoming.map((item) => (
-                    <div key={item.title} className="flex items-start gap-2">
-                      <div className="w-1 h-full min-h-[32px] rounded-full shrink-0" style={{ background: item.tagColor }} />
-                      <div>
-                        <div className="text-[9.5px] font-semibold text-[#262626] leading-tight">{item.title}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Clock size={8} className="text-[#A3A3A3]" />
-                          <span className="text-[8.5px] text-[#737373]">{item.time}</span>
-                          <span
-                            className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full"
-                            style={{ background: `${item.tagColor}18`, color: item.tagColor }}
-                          >
-                            {item.tag}
-                          </span>
-                        </div>
+              {/* Recent Notes */}
+              <div className="col-span-2 bg-white rounded-2xl border border-[#E5E5E5] p-4 h-[130px] flex flex-col justify-between">
+                <div className="flex items-center justify-between pb-2 border-b border-[#F5F5F5]">
+                  <span className="text-[11px] font-extrabold text-[#111111]">Recent Notes</span>
+                  <span className="text-[9px] text-[#A3A3A3] font-bold cursor-pointer">Notes library &gt;</span>
+                </div>
+
+                <div className="flex-grow flex items-center mt-2.5">
+                  <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#FAFAFA] border border-[#F5F5F5] cursor-pointer hover:border-[#D4D4D4] transition-all">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-[#FFFBF0] flex items-center justify-center shrink-0 border border-[#FDF3C8]">
+                        <span className="text-xs">📔</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[9.5px] font-bold text-[#111111] truncate">Chapter 4 — Algebraic Expressions</div>
+                        <div className="text-[8.5px] text-[#737373] mt-0.5 truncate">Mathematics · Exercise 4.1 & 4.2 Solved Examples</div>
                       </div>
                     </div>
-                  ))}
+                    <span className="text-[#A3A3A3] text-[10px] shrink-0 font-bold ml-1">&gt;</span>
+                  </div>
                 </div>
               </div>
+
             </div>
 
-            {/* Bottom Row */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Announcements */}
-              <div className="bg-white rounded-xl border border-[#F0F0F0] p-3">
-                <div className="text-[11px] font-bold text-[#111111] mb-3">Announcements</div>
-                <div className="space-y-2">
-                  {announcements.map((item) => (
-                    <div key={item.title} className="flex items-start gap-2">
-                      {item.unread && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#F4C430] shrink-0 mt-1" />
-                      )}
-                      <div className={item.unread ? '' : 'ml-3.5'}>
-                        <div className="text-[10px] font-medium text-[#262626] leading-tight">{item.title}</div>
-                        <div className="text-[8.5px] text-[#A3A3A3] mt-0.5">{item.time}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick Stats */}
-              <div className="bg-[#111111] rounded-xl p-3 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-5 bg-white -translate-y-4 translate-x-4" />
-                <div className="text-[11px] font-bold text-white mb-1">Platform Performance</div>
-                <div className="text-[9px] text-[#525252] mb-3">Last 30 days</div>
-                <div className="space-y-2">
-                  {[
-                    { label: 'Avg. Session', value: '28 min', icon: Clock },
-                    { label: 'Satisfaction', value: '4.9 ★', icon: Star },
-                    { label: 'Engagement', value: '+18%', icon: ArrowUpRight },
-                  ].map(({ label, value, icon: Icon }) => (
-                    <div key={label} className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Icon size={9} style={{ color: '#F4C430' }} />
-                        <span className="text-[9px] text-[#737373]">{label}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-white">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
+
         </div>
+
       </div>
+
     </div>
   );
 };
