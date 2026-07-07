@@ -6,7 +6,6 @@ import {
   GraduationCap,
   Users,
   BookMarked,
-  ClipboardCheck,
   LogOut,
   Bell,
   Search,
@@ -23,7 +22,14 @@ interface AdminShellProps {
   children: React.ReactNode;
 }
 
-const NAV_ITEMS = [
+interface NavItem {
+  icon: any;
+  label: string;
+  path: string;
+  disabled?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard',  path: '/admin' },
   { icon: UserCheck,       label: 'Roster Manager', path: '/admin/roster' },
   { icon: Calendar,        label: 'Schedule',   path: '/admin/schedule' },

@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Calendar,
   BookMarked,
-  ClipboardCheck,
   LogOut,
   Bell,
   Search,
@@ -14,7 +13,7 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getEnrichedNotes, getEnrichedScheduleSlots, GROUP_SUBJECTS } from '../../lib/mockData';
+import { getEnrichedNotes, getEnrichedScheduleSlots } from '../../lib/mockData';
 import { getOfferingsForStudent } from '../../lib/db';
 
 interface StudentShellProps {
@@ -30,7 +29,14 @@ interface NotificationItem {
   isRead: boolean;
 }
 
-const NAV_ITEMS = [
+interface NavItem {
+  icon: any;
+  label: string;
+  path: string;
+  disabled?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/student' },
   { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
   { icon: Calendar,        label: 'Schedule',   path: '/student/schedule' },
@@ -149,7 +155,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
       return (
         subject.toLowerCase().includes(query) ||
         (slot.offering?.teacher?.full_name && slot.offering.teacher.full_name.toLowerCase().includes(query)) ||
-        slot.room_or_link.toLowerCase().includes(query)
+        (slot.room_or_link && slot.room_or_link.toLowerCase().includes(query))
       );
     }).slice(0, 4);
 
