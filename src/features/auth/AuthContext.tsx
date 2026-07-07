@@ -10,6 +10,8 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  /** True when user signed in with Google but their email isn't in the roster */
+  rosterRejected: boolean;
   /** Initiates Google OAuth flow (redirect-based). No-op params needed. */
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -68,6 +70,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (hasMockSession && defaultRole) ? getMockProfile(defaultRole, defaultStream, defaultUserId) : null
   );
   const [loading, setLoading] = useState(useMock ? false : true);
+  // Transient flag: set when a real Google sign-in is rejected due to missing roster entry.
+  // Resets to false on explicit sign-out or page reload (no persistence needed — session
+  // is also cleared, so reload naturally shows landing page).
+  const [rosterRejected, setRosterRejected] = useState(false);
 
   // Guard against profile creation running twice for the same session
   const processingRef = useRef<Set<string>>(new Set());
@@ -112,8 +118,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (rosterError) {
         console.error('[Auth] Roster lookup error:', rosterError.message);
-        // Keep session alive — router will see profile=null and redirect to /unregistered
-        // The user can then sign out explicitly from that page
+        // Sign out to clear session (reload = landing page), flag for immediate redirect
+        setRosterRejected(true);
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
         setProfile(null);
         return;
       }
@@ -121,9 +130,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Email not in roster → deny access, show unregistered page
       if (!rosterEntry) {
         console.warn('[Auth] Email not in roster:', email);
-        // Do NOT sign out here — keep the session so the router can redirect to /unregistered
-        // (signing out clears the session, router then shows landing page instead)
-        // The /unregistered page has an explicit "Sign Out & Try Again" button
+        // Sign out to clear session so page reload = landing page (not stuck on /unregistered)
+        // rosterRejected flag keeps the /unregistered redirect alive for this browser session
+        setRosterRejected(true);
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
         setProfile(null);
         return;
       }
@@ -308,6 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── signOut ───────────────────────────────────────────────────────────────
   const signOut = async () => {
+    setRosterRejected(false);
     if (useMock) {
       localStorage.removeItem('mock_role');
       localStorage.removeItem('student_stream');
@@ -322,7 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, rosterRejected, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -56,13 +56,16 @@ const PageLoader: React.FC = () => (
 );
 
 // ─── Root redirect ──────────────────────────────────────────────────────────
-// Unauthenticated → landing page
-// Authenticated   → role-specific dashboard (this is what makes OAuth callback work:
-//                   Google returns to /, session is detected, user is sent to /admin etc.)
+// Logic:
+//   rosterRejected → /unregistered (user just tried to log in but isn't on roster)
+//   no session     → landing page  (normal public visitor)
+//   session+profile → role dashboard
+//   session+no profile → /unregistered (shouldn't happen, but safe fallback)
 const RootRedirect: React.FC = () => {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, rosterRejected } = useAuth();
 
   if (loading) return <PageLoader />;
+  if (rosterRejected) return <Navigate to="/unregistered" replace />;
   if (!session) return <LandingShell />;
   if (!profile) return <Navigate to="/unregistered" replace />;
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
