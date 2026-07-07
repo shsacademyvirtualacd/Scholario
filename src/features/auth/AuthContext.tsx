@@ -112,22 +112,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (rosterError) {
         console.error('[Auth] Roster lookup error:', rosterError.message);
-        // Fail safe: sign out and show unregistered
-        await supabase.auth.signOut();
-        setSession(null);
-        setUser(null);
+        // Keep session alive — router will see profile=null and redirect to /unregistered
+        // The user can then sign out explicitly from that page
         setProfile(null);
         return;
       }
 
-      // 2. Email not in roster → deny access entirely
+      // 2. Email not in roster → deny access, show unregistered page
       if (!rosterEntry) {
-        console.warn('[Auth] Email not in roster, signing out:', email);
-        await supabase.auth.signOut();
-        setSession(null);
-        setUser(null);
+        console.warn('[Auth] Email not in roster:', email);
+        // Do NOT sign out here — keep the session so the router can redirect to /unregistered
+        // (signing out clears the session, router then shows landing page instead)
+        // The /unregistered page has an explicit "Sign Out & Try Again" button
         setProfile(null);
-        // Profile stays null → router sends to /unregistered
         return;
       }
 
