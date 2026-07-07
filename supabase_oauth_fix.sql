@@ -42,3 +42,13 @@ CREATE POLICY "roster: self link"
   ON public.roster FOR UPDATE
   USING (email = auth.jwt()->>'email')
   WITH CHECK (email = auth.jwt()->>'email');
+
+
+-- 3. Add ktkhashir90@gmail.com as admin
+INSERT INTO public.profiles (id, role, full_name, avatar_url, phone, stream, created_at)
+VALUES ('a0000000-0000-0000-0000-000000000012', 'admin', 'Khashir', NULL, '123-456-7890', NULL, '2026-07-07T12:00:00Z')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.roster (email, full_name, role, class_ids, profile_id, created_at)
+VALUES ('ktkhashir90@gmail.com', 'Khashir', 'admin', '{}'::uuid[], 'a0000000-0000-0000-0000-000000000012'::uuid, '2026-07-07T12:00:00Z')
+ON CONFLICT (email) DO NOTHING;

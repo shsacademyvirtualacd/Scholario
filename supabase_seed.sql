@@ -32,7 +32,8 @@ INSERT INTO public.profiles (id, role, full_name, avatar_url, phone, stream, cre
   ('a0000000-0000-0000-0000-000000000008',             'student', 'Bilal Shah',     NULL, '+92 307 890 1234', 'ics',             '2026-06-01T12:00:00Z'),
   ('a0000000-0000-0000-0000-000000000009',             'student', 'Fatima Zahra',   NULL, '+92 308 901 2345', 'pre-medical',     '2026-06-01T12:00:00Z'),
   ('a0000000-0000-0000-0000-000000000010',  'admin',   'Dev Admin',      NULL, '123-456-7890',     NULL,              '2026-06-01T12:00:00Z'),
-  ('a0000000-0000-0000-0000-000000000011', 'admin',   'Syed Rayyan',    NULL, '123-456-7890',     NULL,              '2026-07-07T12:00:00Z')
+  ('a0000000-0000-0000-0000-000000000011', 'admin',   'Syed Rayyan',    NULL, '123-456-7890',     NULL,              '2026-07-07T12:00:00Z'),
+  ('a0000000-0000-0000-0000-000000000012', 'admin',   'Khashir',        NULL, '123-456-7890',     NULL,              '2026-07-07T12:00:00Z')
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── Teachers ──────────────────────────────────────────────────────────────
@@ -179,6 +180,7 @@ INSERT INTO public.roster (email, full_name, role, class_ids, profile_id, create
   ('student@example.com', 'Rayn Ahmad', 'student', ARRAY['c0000000-0000-0000-0000-000000000001'::uuid], 'a0000000-0000-0000-0000-000000000001'::uuid, '2026-06-01T12:00:00Z'),
   ('admin@example.com', 'Dev Admin', 'admin', '{}'::uuid[], 'a0000000-0000-0000-0000-000000000010'::uuid, '2026-06-01T12:00:00Z'),
   ('syedrayyanf1@gmail.com', 'Syed Rayyan', 'admin', '{}'::uuid[], 'a0000000-0000-0000-0000-000000000011'::uuid, '2026-07-07T12:00:00Z'),
+  ('ktkhashir90@gmail.com', 'Khashir', 'admin', '{}'::uuid[], 'a0000000-0000-0000-0000-000000000012'::uuid, '2026-07-07T12:00:00Z'),
   ('student1@example.com', 'Ali Hassan', 'student', ARRAY['c0000000-0000-0000-0000-000000000001'::uuid], 'a0000000-0000-0000-0000-000000000002'::uuid, '2026-06-01T12:00:00Z'),
   ('student2@example.com', 'Sara Malik', 'student', ARRAY['c0000000-0000-0000-0000-000000000004'::uuid], 'a0000000-0000-0000-0000-000000000003'::uuid, '2026-06-01T12:00:00Z'),
   ('ahmad.khan@shs.edu.pk', 'Mr. Ahmad Khan', 'teacher', ARRAY['c0000000-0000-0000-0000-000000000001'::uuid, 'c0000000-0000-0000-0000-000000000005'::uuid, 'c0000000-0000-0000-0000-000000000006'::uuid, 'c0000000-0000-0000-0000-000000000008'::uuid, 'c0000000-0000-0000-0000-000000000011'::uuid], 'b0000000-0000-0000-0000-000000000001'::uuid, '2024-01-10T08:00:00Z'),
