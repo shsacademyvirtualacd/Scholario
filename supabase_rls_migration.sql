@@ -113,6 +113,12 @@ CREATE POLICY "profiles: admin insert"
   ON public.profiles FOR INSERT
   WITH CHECK (is_admin());
 
+-- Allow first-time OAuth users to create their own profile row
+-- (provisionProfile() inserts with id = auth.uid() after roster check)
+CREATE POLICY "profiles: self provision"
+  ON public.profiles FOR INSERT
+  WITH CHECK (id = auth.uid());
+
 CREATE POLICY "profiles: admin delete"
   ON public.profiles FOR DELETE
   USING (is_admin());

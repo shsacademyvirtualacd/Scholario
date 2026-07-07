@@ -27,6 +27,13 @@ CREATE POLICY "roster: select own"
   ON public.roster FOR SELECT
   USING (email = auth.jwt()->>'email' OR public.is_admin());
 
+-- Allow users to link their auth uid to their own roster entry on first login
+-- (provisionProfile() does: .update({ profile_id: userId }).eq('email', email))
+CREATE POLICY "roster: self link"
+  ON public.roster FOR UPDATE
+  USING (email = auth.jwt()->>'email')
+  WITH CHECK (email = auth.jwt()->>'email');
+
 
 -- 2. Secure RPC Functions (SECURITY DEFINER to bypass standard client-side writes)
 

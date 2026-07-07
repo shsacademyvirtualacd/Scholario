@@ -108,8 +108,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (processingRef.current.has(userId)) return;
     processingRef.current.add(userId);
 
+    setLoading(true);
+    console.log('[Auth] provisionProfile started for', email, '(uid:', userId, ')');
+
     try {
       // 1. Roster lookup — the gatekeeper
+      console.log('[Auth] Step 1: Roster lookup for', email);
       const { data: rosterEntry, error: rosterError } = await (supabase as any)
         .from('roster')
         .select('role, full_name, class_ids, profile_id')
@@ -117,8 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (rosterError) {
-        console.error('[Auth] Roster lookup error:', rosterError.message);
-        // Sign out to clear session (reload = landing page), flag for immediate redirect
+        console.error('[Auth] ❌ Roster lookup FAILED:', rosterError.message, rosterError);
         setRosterRejected(true);
         await supabase.auth.signOut();
         setSession(null);
@@ -129,9 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2. Email not in roster → deny access, show unregistered page
       if (!rosterEntry) {
-        console.warn('[Auth] Email not in roster:', email);
-        // Sign out to clear session so page reload = landing page (not stuck on /unregistered)
-        // rosterRejected flag keeps the /unregistered redirect alive for this browser session
+        console.warn('[Auth] ❌ Email NOT found in roster:', email);
         setRosterRejected(true);
         await supabase.auth.signOut();
         setSession(null);
@@ -140,15 +141,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      console.log('[Auth] ✅ Roster entry found:', JSON.stringify(rosterEntry));
+
       // 3. Email is in roster — check for existing profile
-      const { data: existingProfile } = await (supabase as any)
+      console.log('[Auth] Step 3: Checking for existing profile with id =', userId);
+      const { data: existingProfile, error: profileFetchError } = await (supabase as any)
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
+      if (profileFetchError) {
+        console.error('[Auth] ❌ Profile fetch error:', profileFetchError.message, profileFetchError);
+      }
+
       if (existingProfile) {
-        // Profile already provisioned on a previous login
+        console.log('[Auth] ✅ Existing profile found:', JSON.stringify(existingProfile));
         setProfile(existingProfile);
         return;
       }
@@ -161,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newSession.user.user_metadata?.full_name ||
         email;
 
+      console.log('[Auth] Step 4: Creating new profile — role:', role, ', name:', fullName);
       const { error: insertError } = await (supabase as any)
         .from('profiles')
         .insert({
@@ -173,21 +182,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
       if (insertError) {
-        console.error('[Auth] Profile insert error:', insertError.message);
+        console.error('[Auth] ❌ Profile INSERT FAILED (likely RLS policy):', insertError.message, insertError);
+        // Don't leave user in limbo — sign out and show error
+        setRosterRejected(true);
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setProfile(null);
         return;
       }
 
+      console.log('[Auth] ✅ Profile created successfully');
+
       // 5. Link the auth uid back to the roster entry so the admin can
       //    see this user as "active" in the Roster Manager
-      await (supabase as any)
+      console.log('[Auth] Step 5: Linking profile_id to roster entry');
+      const { error: rosterUpdateError } = await (supabase as any)
         .from('roster')
         .update({ profile_id: userId })
         .eq('email', email);
 
+      if (rosterUpdateError) {
+        // Non-fatal: profile was created, roster link is cosmetic
+        console.warn('[Auth] ⚠️ Roster link update failed (non-fatal):', rosterUpdateError.message);
+      } else {
+        console.log('[Auth] ✅ Roster entry linked');
+      }
+
       // 6. Fetch and set the newly created profile
+      console.log('[Auth] Step 6: Fetching newly created profile');
       await fetchProfile(userId);
+      console.log('[Auth] ✅ provisionProfile complete');
     } finally {
       processingRef.current.delete(userId);
+      setLoading(false);
     }
   };
 
@@ -195,18 +223,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (useMock) return;
 
+    let mounted = true;
+
     // Check for an existing session on mount
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      if (!mounted) return;
       setSession(existing);
       setUser(existing?.user ?? null);
       if (existing?.user) {
-        provisionProfile(existing).finally(() => setLoading(false));
+        provisionProfile(existing);
       } else {
         setLoading(false);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      console.log('[Auth] onAuthStateChange:', event, session?.user?.email ?? '(no session)');
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -214,10 +247,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         provisionProfile(session);
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
+        setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── refreshProfile (used by profile pages after edits) ────────────────────

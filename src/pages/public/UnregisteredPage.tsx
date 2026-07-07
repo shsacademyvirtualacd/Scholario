@@ -5,8 +5,16 @@ import { useAuth } from '../../features/auth/AuthContext';
 import Logo from '../../components/ui/Logo';
 
 export const UnregisteredPage: React.FC = () => {
-  const { signOut, user } = useAuth();
+  const { signOut, user, profile } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (profile) {
+      if (profile.role === 'admin') navigate('/admin', { replace: true });
+      else if (profile.role === 'teacher') navigate('/teacher', { replace: true });
+      else navigate('/student', { replace: true });
+    }
+  }, [profile, navigate]);
 
   const handleSignOut = async () => {
     await signOut();
