@@ -55,9 +55,19 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
-// ─── Root route is always the landing page ────
+// ─── Root redirect ──────────────────────────────────────────────────────────
+// Unauthenticated → landing page
+// Authenticated   → role-specific dashboard (this is what makes OAuth callback work:
+//                   Google returns to /, session is detected, user is sent to /admin etc.)
 const RootRedirect: React.FC = () => {
-  return <LandingShell />;
+  const { session, profile, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+  if (!session) return <LandingShell />;
+  if (!profile) return <Navigate to="/unregistered" replace />;
+  if (profile.role === 'admin') return <Navigate to="/admin" replace />;
+  if (profile.role === 'teacher') return <Navigate to="/teacher" replace />;
+  return <Navigate to="/student" replace />;
 };
 
 // ─── Router ──────────────────────────────────
