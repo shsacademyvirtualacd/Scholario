@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import type { Profile } from '../../types';
-import { MOCK_TEACHERS } from '../../lib/mockData';
+import { MOCK_TEACHERS, MOCK_ROSTER, MOCK_FEE_STATUSES } from '../../lib/mockData';
 
 interface AuthContextValue {
   session: Session | null;
@@ -109,10 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (useMock) {
       const emailLower = email.toLowerCase().trim();
       
-      // Import MOCK_ROSTER & MOCK_FEE_STATUSES dynamically or reference them
-      const { MOCK_ROSTER: rosterMock, MOCK_FEE_STATUSES: feeStatusesMock } = await import('../../lib/mockData');
-      
-      const rosterEntry = rosterMock.find(r => r.email.toLowerCase() === emailLower);
+      const rosterEntry = MOCK_ROSTER.find(r => r.email.toLowerCase() === emailLower);
       
       if (!rosterEntry) {
         // Create temporary session but no profile
@@ -141,9 +138,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!rosterEntry.profile_id) {
         rosterEntry.profile_id = mockUserId;
         if (role === 'student') {
-          const existsStatus = feeStatusesMock.find(fs => fs.student_id === mockUserId);
+          const existsStatus = MOCK_FEE_STATUSES.find(fs => fs.student_id === mockUserId);
           if (!existsStatus) {
-            feeStatusesMock.push({
+            MOCK_FEE_STATUSES.push({
               id: `fs_${Date.now()}`,
               student_id: mockUserId,
               status: 'unpaid',

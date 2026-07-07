@@ -5,7 +5,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import Logo from '../../components/ui/Logo';
 
 const LoginPage: React.FC = () => {
-  const { signIn, profile, session } = useAuth();
+  const { signIn, profile, session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
@@ -17,7 +17,13 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
-    if (session && profile) {
+    if (authLoading) return;
+
+    if (session) {
+      if (!profile) {
+        navigate('/unregistered', { replace: true });
+        return;
+      }
       if (from && from !== '/login') {
         navigate(from, { replace: true });
       } else {
@@ -30,19 +36,24 @@ const LoginPage: React.FC = () => {
         }
       }
     }
-  }, [session, profile, from, navigate]);
+  }, [session, profile, from, navigate, authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const { error: signInError } = await signIn(email, password);
+    try {
+      const { error: signInError } = await signIn(email, password);
 
-    if (signInError) {
-      setError(signInError);
+      if (signInError) {
+        setError(signInError);
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred during sign in.');
       setLoading(false);
-      return;
     }
   };
 
