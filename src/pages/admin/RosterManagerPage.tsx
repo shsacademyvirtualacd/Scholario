@@ -57,7 +57,9 @@ export const RosterManagerPage: React.FC = () => {
     setSelectedEntry(null);
     setEmail('');
     setFullName('');
-    setSelectedClass(offerings[0]?.id || '');
+    // Fallback to first offering ID
+    const defaultClass = offerings.length > 0 ? offerings[0].id : '';
+    setSelectedClass(defaultClass);
     setFormError(null);
     setDrawerMode('add_student');
     setDrawerOpen(true);
@@ -110,7 +112,8 @@ export const RosterManagerPage: React.FC = () => {
     try {
       if (drawerMode === 'edit' && selectedEntry) {
         // Edit only class assignments
-        const classesToSave = selectedEntry.role === 'student' ? [selectedClass] : selectedClasses;
+        const studentClass = selectedClass || (offerings.length > 0 ? offerings[0].id : '');
+        const classesToSave = selectedEntry.role === 'student' ? [studentClass] : selectedClasses;
         await updateRosterEntry(selectedEntry.id, classesToSave);
         
         setRoster(prev => prev.map(r => r.id === selectedEntry.id ? { ...r, class_ids: classesToSave } : r));
@@ -118,7 +121,8 @@ export const RosterManagerPage: React.FC = () => {
       } else {
         // Add new entry
         const role = drawerMode === 'add_student' ? 'student' : 'teacher';
-        const classesToSave = role === 'student' ? [selectedClass] : selectedClasses;
+        const studentClass = selectedClass || (offerings.length > 0 ? offerings[0].id : '');
+        const classesToSave = role === 'student' ? [studentClass] : selectedClasses;
 
         // Frontend email uniqueness check before submit
         if (roster.some(r => r.email.toLowerCase() === emailTrim)) {
