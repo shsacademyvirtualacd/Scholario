@@ -99,3 +99,9 @@ dist-ssr/
 # Antigravity/Gemini internal workspace directories
 .gemini/
 .agents/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
