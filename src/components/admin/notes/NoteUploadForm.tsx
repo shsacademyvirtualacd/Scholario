@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen } from 'lucide-react';
 import type { ClassOffering } from '../../../types';
-import { uploadNoteFile, getTaxonomy } from '../../../lib/db';
+import { uploadNoteFileToR2, getTaxonomy } from '../../../lib/db';
 import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../../lib/taxonomy';
 
 interface NoteUploadFormProps {
@@ -155,19 +155,19 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
 
     try {
       setLoading(true);
-      const { path, url } = await uploadNoteFile(selectedFile, 'admin_notes');
+      setError(null);
 
       const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
       const fileType: 'pdf' | 'image' = isPdf ? 'pdf' : 'image';
 
-      await onUpload({
+      const createdNote = await uploadNoteFileToR2(selectedFile, {
         offering_id: offeringId,
         chapter_name: chapterName.trim(),
         title: title.trim(),
-        file_url: url,
-        file_path: path,
         file_type: fileType,
       });
+
+      await onUpload(createdNote as any);
     } catch (err: any) {
       console.error('Admin upload error:', err);
       setError(err.message || 'Failed to upload document file.');

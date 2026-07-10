@@ -99,3 +99,6 @@ dist-ssr/
 # Antigravity/Gemini internal workspace directories
 .gemini/
 .agents/
+
+# Wrangler local state and build cache
+.wrangler/
