@@ -1,20 +1,20 @@
 import React from 'react';
 import { Video, MapPin, Clock } from 'lucide-react';
 import StatusPill from '../ui/StatusPill';
-import type { ClassSlot } from '../../types';
-
 interface ClassSlotCardProps {
-  slot: ClassSlot & { offering?: { subject: string; teacher?: { full_name: string } } };
+  slot: any;
 }
 
 export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
   const isCancelled = slot.is_cancelled;
-  const subject = slot.offering?.subject || 'Class';
+  const rawSubj = slot.custom_title || (slot.offering as any)?.subject_name || slot.offering?.subject || 'Class';
+  const subject = typeof rawSubj === 'string' ? rawSubj : (rawSubj?.name || 'Class');
   const teacherName = slot.offering?.teacher?.full_name || 'Staff';
 
   // Format time range nicely
-  const formatTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
+  const formatTime = (timeStr?: string) => {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const formattedHours = hours % 12 || 12;
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;

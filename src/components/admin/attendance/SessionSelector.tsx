@@ -1,6 +1,5 @@
 import React from 'react';
-import { Calendar, BookOpen, Clock } from 'lucide-react';
-import type { ClassSlot } from '../../../types';
+import { Calendar, BookOpen } from 'lucide-react';
 
 interface SessionSelectorProps {
   slots: any[];

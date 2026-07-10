@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Coins, Settings, ShieldCheck, Clock, Search, Check,
+  Settings, ShieldCheck, Clock, Search, Check,
   AlertCircle, Sparkles, Save
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { 
-  getAllOfferings, getFeeConfig, saveFeeConfig, 
+  getUniversalFeeConfig, saveUniversalFeeConfig, 
   getPendingFeeStatuses, updateFeeStatus 
 } from '../../lib/db';
-import type { ClassOffering } from '../../types';
 
 export const AdminFeesPage: React.FC = () => {
   // Tabs
@@ -22,14 +21,11 @@ export const AdminFeesPage: React.FC = () => {
   const [successNotif, setSuccessNotif] = useState<string | null>(null);
 
   // Data States
-  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [pendingList, setPendingList] = useState<any[]>([]);
 
   // Config Form States
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [feeAmount, setFeeAmount] = useState<number>(4500);
   const [instructions, setInstructions] = useState<string>('');
-  const [whatsappNum, setWhatsappNum] = useState<string>('+923001234567');
+  const [whatsappNum, setWhatsappNum] = useState<string>('03222314436');
 
   // Search filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,15 +42,19 @@ export const AdminFeesPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [offeringsData, pendingData] = await Promise.all([
-        getAllOfferings(),
-        getPendingFeeStatuses()
+      const [pendingData, configData] = await Promise.all([
+        getPendingFeeStatuses(),
+        getUniversalFeeConfig()
       ]);
-      setOfferings(offeringsData);
       setPendingList(pendingData);
 
-      if (offeringsData.length > 0) {
-        setSelectedClassId(offeringsData[0].id);
+      if (configData) {
+        setInstructions(configData.payment_instructions);
+        setWhatsappNum(configData.whatsapp_number);
+      } else {
+        // Fallback default structure
+        setInstructions('Easypaisa:\nNumber: 03335292094\nName: Sadia Fatima\n\nJazzCash:\nNumber: 03058969050\nName: Haseena Bibi');
+        setWhatsappNum('03222314436');
       }
     } catch (err: any) {
       console.error(err);
@@ -68,31 +68,13 @@ export const AdminFeesPage: React.FC = () => {
     loadData();
   }, []);
 
-  // Fetch fee config when selected offering changes
-  useEffect(() => {
-    if (!selectedClassId) return;
-    getFeeConfig(selectedClassId).then(config => {
-      if (config) {
-        setFeeAmount(config.amount);
-        setInstructions(config.payment_instructions);
-        setWhatsappNum(config.whatsapp_number);
-      } else {
-        // Fallback default structure
-        setFeeAmount(4500);
-        setInstructions('Bank Alfalah\nAccount Title: SHS Academy\nAccount No: 5502-1928-3746\n\nJazzCash / Easypaisa:\nNumber: 0300-1234567\nName: Ahmad Khan');
-        setWhatsappNum('+923001234567');
-      }
-    }).catch(console.error);
-  }, [selectedClassId]);
-
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClassId) return;
     try {
       setSaving(true);
       setError(null);
-      await saveFeeConfig(selectedClassId, feeAmount, instructions.trim(), whatsappNum.trim());
-      showNotification('Fee configuration successfully saved!');
+      await saveUniversalFeeConfig(instructions.trim(), whatsappNum.trim());
+      showNotification('Universal fee configuration successfully saved!');
     } catch (err: any) {
       setError(err.message || 'Failed to save configuration.');
     } finally {
@@ -221,9 +203,14 @@ export const AdminFeesPage: React.FC = () => {
                       <div key={item.student_id} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         {/* Student Meta */}
                         <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-extrabold text-[#111111]">{item.full_name}</span>
                             <span className="badge badge-gray text-[10px]">{item.class_name}</span>
+                            {item.amount && typeof item.amount === 'number' && item.amount > 0 && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black">
+                                PKR {item.amount.toLocaleString()} / term
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-[#737373]">{item.email}</p>
                           <div className="flex items-center gap-1.5 text-[10px] text-[#A3A3A3] font-semibold mt-1">
@@ -261,116 +248,71 @@ export const AdminFeesPage: React.FC = () => {
 
             {/* Tab 2: Configurations */}
             {activeTab === 'configs' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Side: Select Class */}
-                <div className="lg:col-span-1">
-                  <div className="bg-white rounded-2xl border border-[#E5E5E5] p-5 space-y-4">
-                    <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
-                      <Coins size={16} className="text-[#F4C430]" />
-                      <h2 className="font-extrabold text-[#111111] text-sm">Select Class</h2>
+              <div className="max-w-2xl mx-auto">
+                <form onSubmit={handleSaveConfig} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
+                  <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
+                    <Sparkles size={16} className="text-[#F4C430]" />
+                    <h2 className="font-extrabold text-[#111111] text-sm">
+                      Universal Payment Setup
+                    </h2>
+                  </div>
+
+                  <p className="text-xs text-[#737373] leading-relaxed">
+                    Set up details that will apply universally across all classes and streams. Tuition fees are managed automatically based on the prices set in the syllabus pricing manager.
+                  </p>
+
+                  <div className="space-y-4">
+                    {/* WhatsApp Phone */}
+                    <div>
+                      <label className="block text-xs font-bold text-[#262626] mb-1.5">
+                        WhatsApp Verification Line (wa.me Number)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={whatsappNum}
+                        onChange={(e) => setWhatsappNum(e.target.value)}
+                        placeholder="e.g. 03222314436"
+                        className="input py-2 text-xs"
+                      />
+                      <span className="text-[10px] text-[#A3A3A3] mt-1 block">
+                        Specify the phone number where students will send their payment receipts via WhatsApp.
+                      </span>
                     </div>
 
-                    <p className="text-xs text-[#737373] leading-relaxed">
-                      Select which syllabus class offering you want to update payment settings for. Each class can have custom rates and receipt lines.
-                    </p>
-
+                    {/* Instructions */}
                     <div>
-                      <label className="block text-[10px] font-bold text-[#737373] uppercase tracking-wider mb-1.5">
-                        Class Offering
+                      <label className="block text-xs font-bold text-[#262626] mb-1.5">
+                        Payment Account Details (Bank, Easypaisa, JazzCash)
                       </label>
-                      <select
-                        value={selectedClassId}
-                        onChange={(e) => setSelectedClassId(e.target.value)}
-                        className="input text-xs cursor-pointer"
-                      >
-                        {offerings.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.subject} ({o.grade})
-                          </option>
-                        ))}
-                      </select>
+                      <textarea
+                        required
+                        rows={8}
+                        value={instructions}
+                        onChange={(e) => setInstructions(e.target.value)}
+                        className="input py-2 text-xs font-mono leading-relaxed"
+                        placeholder="Easypaisa:&#10;Number: 03335292094&#10;Name: Sadia Fatima"
+                      />
                     </div>
                   </div>
-                </div>
 
-                {/* Right Side: Configuration Editor */}
-                <div className="lg:col-span-2">
-                  <form onSubmit={handleSaveConfig} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
-                    <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
-                      <Sparkles size={16} className="text-[#F4C430]" />
-                      <h2 className="font-extrabold text-[#111111] text-sm">
-                        Configure payment for {offerings.find(o => o.id === selectedClassId)?.subject}
-                      </h2>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Fee Amount */}
-                      <div>
-                        <label className="block text-xs font-bold text-[#262626] mb-1.5">
-                          Tuition Fee Amount (PKR)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          required
-                          value={feeAmount}
-                          onChange={(e) => setFeeAmount(parseInt(e.target.value, 10) || 0)}
-                          className="input py-2 text-xs font-semibold"
-                        />
-                      </div>
-
-                      {/* WhatsApp Phone */}
-                      <div>
-                        <label className="block text-xs font-bold text-[#262626] mb-1.5">
-                          WhatsApp Line (wa.me Number)
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={whatsappNum}
-                          onChange={(e) => setWhatsappNum(e.target.value)}
-                          placeholder="e.g. +923001234567"
-                          className="input py-2 text-xs"
-                        />
-                        <span className="text-[10px] text-[#A3A3A3] mt-1 block">
-                          Include country code without special characters (e.g. +92 or 92).
-                        </span>
-                      </div>
-
-                      {/* Instructions */}
-                      <div>
-                        <label className="block text-xs font-bold text-[#262626] mb-1.5">
-                          Payment Instructions (Bank Account / Wallet details)
-                        </label>
-                        <textarea
-                          required
-                          rows={6}
-                          value={instructions}
-                          onChange={(e) => setInstructions(e.target.value)}
-                          className="input py-2 text-xs font-mono leading-relaxed"
-                          placeholder="Bank Alfalah&#10;Account Name: SHS Academy&#10;Account No: 1234-5678"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-[#F5F5F5] flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="btn btn-gold flex items-center justify-center gap-1.5 px-6 py-2.5 text-xs font-bold"
-                      >
-                        {saving ? (
-                          <div className="w-4 h-4 rounded-full border border-current border-t-transparent animate-spin" />
-                        ) : (
-                          <>
-                            <Save size={14} />
-                            Save Config
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                </div>
+                  <div className="pt-4 border-t border-[#F5F5F5] flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="btn btn-gold flex items-center justify-center gap-1.5 px-6 py-2.5 text-xs font-bold"
+                    >
+                      {saving ? (
+                        <div className="w-4 h-4 rounded-full border border-current border-t-transparent animate-spin" />
+                      ) : (
+                        <>
+                          <Save size={14} />
+                          Save Universal Setup
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
           </div>

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '../features/auth/AuthContext';
 import ProtectedRoute from '../components/app/ProtectedRoute';
 import { useAuth } from '../features/auth/AuthContext';
+import OnboardingPage from '../pages/student/OnboardingPage';
+import RegisterPage from '../pages/public/RegisterPage';
 
 // ─── Public pages (eager loaded — small) ────
 import LoginPage from '../pages/public/LoginPage';
@@ -57,12 +59,13 @@ const PageLoader: React.FC = () => (
 
 // ─── Root redirect ──────────────────────────────────────────────────────────
 // Logic:
-//   rosterRejected → /unregistered (user just tried to log in but isn't on roster)
-//   no session     → landing page  (normal public visitor)
+//   rosterRejected  → /unregistered (user tried to log in but isn't on roster)
+//   no session      → landing page  (normal public visitor)
+//   session+profile+needsOnboarding → /student/onboarding (first-time student)
 //   session+profile → role dashboard
-//   session+no profile → /unregistered (shouldn't happen, but safe fallback)
+//   session+no profile → /unregistered (safe fallback — roster check failed)
 const RootRedirect: React.FC = () => {
-  const { session, profile, loading, rosterRejected } = useAuth();
+  const { session, profile, loading, rosterRejected, needsOnboarding } = useAuth();
 
   if (loading) return <PageLoader />;
   if (rosterRejected) return <Navigate to="/unregistered" replace />;
@@ -70,6 +73,8 @@ const RootRedirect: React.FC = () => {
   if (!profile) return <Navigate to="/unregistered" replace />;
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
   if (profile.role === 'teacher') return <Navigate to="/teacher" replace />;
+  // Student: check onboarding before going to dashboard
+  if (needsOnboarding) return <Navigate to="/student/onboarding" replace />;
   return <Navigate to="/student" replace />;
 };
 
@@ -79,9 +84,10 @@ const AppRouter: React.FC = () => (
     <AuthProvider>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Public — no /register route; access is via roster + Google OAuth only */}
+          {/* Public Pages */}
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/unregistered" element={<UnregisteredPage />} />
 
@@ -115,6 +121,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/student/checkout"
             element={<ProtectedRoute requiredRole="student"><StudentCheckoutPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/student/onboarding"
+            element={<ProtectedRoute requiredRole="student"><OnboardingPage /></ProtectedRoute>}
           />
 
           {/* Admin Panel */}

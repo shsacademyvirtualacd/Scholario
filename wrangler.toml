@@ -1,0 +1,7 @@
+name = "scholario-lms-visual-prototype"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-03-01"
+
+[[r2_buckets]]
+binding = "NOTES_BUCKET"
+bucket_name = "scholario-notes"

@@ -1,11 +1,12 @@
-import React from 'react';
-import { FileText, Image as ImageIcon, Eye, Download, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Image as ImageIcon, Eye, Download, Trash2, Loader2 } from 'lucide-react';
 import type { Note } from '../../../types';
+import { downloadNoteBlob } from '../../../lib/db';
 
 interface AdminNoteCardProps {
-  note: Note & { offering?: { subject: string; teacher?: { full_name: string } } };
+  note: Note;
   onView: (note: Note) => void;
-  onDelete: (noteId: string) => void;
+  onDelete?: (noteId: string) => void;
 }
 
 export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
@@ -13,9 +14,25 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
   onView,
   onDelete,
 }) => {
+  const [downloading, setDownloading] = useState(false);
   const subject = note.offering?.subject || 'General';
   const isPdf = note.file_type.toLowerCase() === 'pdf';
   const teacherName = note.offering?.teacher?.full_name || 'Staff';
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (downloading) return;
+    try {
+      setDownloading(true);
+      await downloadNoteBlob(note);
+    } catch (err) {
+      console.error('Download failed:', err);
+      alert('Failed to download note file.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -77,23 +94,23 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
           >
             <Eye size={13} />
           </button>
-          <a
-            href={note.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] transition-colors"
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer"
             title="Download document"
           >
-            <Download size={13} />
-          </a>
-          <button
-            onClick={() => onDelete(note.id)}
-            className="p-1.5 rounded-lg hover:bg-red-50 text-[#737373] hover:text-red-500 transition-colors"
-            title="Delete note"
-          >
-            <Trash2 size={13} />
+            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
           </button>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(note.id)}
+              className="p-1.5 rounded-lg hover:bg-red-50 text-[#737373] hover:text-red-500 transition-colors"
+              title="Delete note"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
         </div>
       </div>
     </div>

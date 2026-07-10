@@ -1,71 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle2, AlertTriangle, Coins, Save } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertTriangle, Coins, Save, Loader2 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
-
-const BOARDS = [
-  { value: 'fbise', label: 'Federal Board (FBISE)' },
-  { value: 'punjab', label: 'Punjab Board (BISE)' },
-  { value: 'cambridge', label: 'Cambridge (O/A Levels)' },
-];
-
-const GRADES = {
-  fbise: [
-    { value: '9', label: 'Class 9', defaultPrice: 2499 },
-    { value: '10', label: 'Class 10', defaultPrice: 2499 },
-    { value: '11', label: 'Class 11', defaultPrice: 3499 },
-    { value: '12', label: 'Class 12', defaultPrice: 3499 },
-  ],
-  punjab: [
-    { value: '9', label: 'Class 9', defaultPrice: 2299 },
-    { value: '10', label: 'Class 10', defaultPrice: 2299 },
-    { value: '11', label: 'Class 11', defaultPrice: 3199 },
-    { value: '12', label: 'Class 12', defaultPrice: 3199 },
-  ],
-  cambridge: [
-    { value: 'o', label: 'O Levels', defaultPrice: 4999 },
-    { value: 'a', label: 'A Levels', defaultPrice: 6999 },
-  ],
-};
+import { syncPricingToFeeConfigs, getTaxonomy, getFeeConfig } from '../../lib/db';
+import { BOARD } from '../../lib/taxonomy';
 
 export const PriceManagerPage: React.FC = () => {
-  const [selectedBoard, setSelectedBoard] = useState('fbise');
+  const [taxonomy, setTaxonomy] = useState<any>(null);
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
   const [notif, setNotif] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Load configured prices from localStorage whenever the selected board changes
   useEffect(() => {
-    const list = GRADES[selectedBoard as keyof typeof GRADES] || [];
-    const initialPrices: Record<string, number> = {};
-    list.forEach((g) => {
-      const stored = localStorage.getItem(`scholario_price_${selectedBoard}_${g.value}`);
-      initialPrices[g.value] = stored ? parseInt(stored, 10) : g.defaultPrice;
-    });
-    setPrices(initialPrices);
-  }, [selectedBoard]);
+    getTaxonomy().then(setTaxonomy).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!taxonomy) return;
+    const list = taxonomy.classes.filter((c: any) => c.board_id === BOARD.id);
+    const loadPrices = async () => {
+      const initialPrices: Record<string, number> = {};
+      for (const c of list) {
+        try {
+          const cfg = await getFeeConfig(c.id);
+          initialPrices[c.id] = cfg?.amount && typeof cfg.amount === 'number' ? cfg.amount : 0;
+        } catch (err) {
+          console.error(err);
+          initialPrices[c.id] = 0;
+        }
+      }
+      setPrices(initialPrices);
+    };
+    loadPrices();
+  }, [taxonomy]);
 
   const triggerNotification = (type: 'success' | 'error', message: string) => {
     setNotif({ type, message });
     setTimeout(() => setNotif(null), 3000);
   };
 
-  const handlePriceChange = (gradeValue: string, newPriceVal: string) => {
+  const handlePriceChange = (classId: string, newPriceVal: string) => {
     const parsed = parseInt(newPriceVal, 10);
     setPrices((prev) => ({
       ...prev,
-      [gradeValue]: isNaN(parsed) ? 0 : parsed,
+      [classId]: isNaN(parsed) ? 0 : parsed,
     }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    Object.entries(prices).forEach(([gradeValue, price]) => {
-      localStorage.setItem(`scholario_price_${selectedBoard}_${gradeValue}`, String(price));
-    });
-    triggerNotification('success', 'Pricing plan configurations saved successfully!');
+    setSaving(true);
+    try {
+      // Sync strictly by exact class ID (UUID from classes table) to fee_configs
+      const syncPromises = Object.entries(prices).map(([classId, price]) =>
+        syncPricingToFeeConfigs(classId, price)
+      );
+      await Promise.all(syncPromises);
+
+      triggerNotification('success', 'Pricing configurations saved and synced to live database!');
+    } catch (err: any) {
+      console.error(err);
+      triggerNotification('error', 'Failed to save database pricing: ' + (err.message || 'database error'));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const currentGradesList = GRADES[selectedBoard as keyof typeof GRADES] || [];
+  const currentGradesList = taxonomy
+    ? taxonomy.classes
+        .filter((c: any) => c.board_id === BOARD.id)
+        .map((c: any) => ({
+          id: c.id,
+          value: c.grade,
+          label: c.display_name,
+        }))
+    : [];
 
   return (
     <AdminShell>
@@ -93,30 +102,16 @@ export const PriceManagerPage: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Instructions and Select Board */}
+          {/* Instructions */}
           <div className="lg:col-span-1">
             <div className="card card-elevated sticky top-24 space-y-4">
               <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
                 <Coins size={18} className="text-[#F4C430]" />
-                <h2 className="font-bold text-[#111111] text-base">Select Board</h2>
+                <h2 className="font-bold text-[#111111] text-base">FBISE Pricing</h2>
               </div>
               <p className="text-xs text-[#737373] leading-relaxed">
-                Choose the educational system you want to configure. Once saved, the price will instantly sync to the client pricing widget.
+                Configure tuition pricing for each FBISE grade. Once saved, the price will instantly sync to the client pricing widget.
               </p>
-              <div>
-                <label className="label text-xs font-bold text-[#737373] uppercase tracking-wide mb-1.5 block">Board Roster</label>
-                <select
-                  value={selectedBoard}
-                  onChange={(e) => setSelectedBoard(e.target.value)}
-                  className="input text-sm"
-                >
-                  {BOARDS.map((b) => (
-                    <option key={b.value} value={b.value}>
-                      {b.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
 
@@ -127,7 +122,7 @@ export const PriceManagerPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-[#F4C430]" />
                   <h2 className="font-bold text-[#111111] text-base">
-                    {BOARDS.find((b) => b.value === selectedBoard)?.label} Pricing
+                    Federal Board (FBISE) Pricing
                   </h2>
                 </div>
                 <span className="badge badge-gray text-xs">{currentGradesList.length} packages</span>
@@ -135,14 +130,16 @@ export const PriceManagerPage: React.FC = () => {
 
               <form onSubmit={handleSave} className="space-y-5">
                 <div className="divide-y divide-[#F5F5F5]">
-                  {currentGradesList.map((g) => {
-                    const priceValue = prices[g.value] !== undefined ? prices[g.value] : g.defaultPrice;
+                  {currentGradesList.map((g: any) => {
+                    const priceValue = prices[g.id] !== undefined ? prices[g.id] : '';
                     return (
-                      <div key={g.value} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div key={g.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="min-w-0 flex-1">
                           <span className="text-sm font-bold text-[#111111] block leading-tight">{g.label}</span>
                           <span className="text-[10px] text-[#A3A3A3] font-semibold mt-1 block">
-                            Default Package Rate: PKR {g.defaultPrice.toLocaleString()}
+                            {prices[g.id] && prices[g.id] > 0
+                              ? `Current Live DB Rate: PKR ${prices[g.id].toLocaleString()} / term`
+                              : 'Status: Price not yet set in database'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -151,11 +148,12 @@ export const PriceManagerPage: React.FC = () => {
                             type="number"
                             min="0"
                             value={priceValue}
-                            onChange={(e) => handlePriceChange(g.value, e.target.value)}
+                            onChange={(e) => handlePriceChange(g.id, e.target.value)}
+                            placeholder="Not set"
                             className="input py-2 text-sm w-36 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-bold font-mono text-right"
                             required
                           />
-                          <span className="text-xs text-[#737373]">/mo</span>
+                          <span className="text-xs text-[#737373]">/term</span>
                         </div>
                       </div>
                     );
@@ -163,9 +161,22 @@ export const PriceManagerPage: React.FC = () => {
                 </div>
 
                 <div className="pt-4 border-t border-[#F5F5F5] flex justify-end">
-                  <button type="submit" className="btn btn-gold flex items-center justify-center gap-2 px-6 py-2">
-                    <Save size={14} />
-                    Save Board Prices
+                  <button 
+                    type="submit" 
+                    disabled={saving}
+                    className="btn btn-gold flex items-center justify-center gap-2 px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Saving & Syncing…
+                      </>
+                    ) : (
+                      <>
+                        <Save size={14} />
+                        Save Prices
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

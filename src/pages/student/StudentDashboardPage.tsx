@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Clock, Play, Pause, RotateCcw,
-  BookMarked, CheckCircle2, ChevronRight, ArrowRight
+  BookMarked, CheckCircle2, ChevronRight, ArrowRight, GraduationCap,
+  Clock, Play, Pause, RotateCcw
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
-import { MOCK_ENROLLMENT, MOCK_OFFERINGS } from '../../lib/mockData';
-import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getEnrollmentsForStudent } from '../../lib/db';
-import type { ClassSlot, Note, Enrollment } from '../../types';
+import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getAttendanceForStudent, computeAttendanceStreak } from '../../lib/db';
+import { pageCache } from '../../lib/pageCache';
+import type { ClassSlot, Note, Attendance } from '../../types';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
 type TimerMode = 'focus' | 'break';
@@ -147,7 +147,7 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
     .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
     .sort((a, b) => {
       if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-      return a.start_time.localeCompare(b.start_time);
+      return (a.start_time || '').localeCompare(b.start_time || '');
     });
 
   const nextSlot = upcomingSlots[0] || slots[0]; // Fallback to first class next week if none today/later this week
@@ -155,22 +155,24 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
   useEffect(() => {
     if (!nextSlot) return;
 
+    const startTimeStr = nextSlot.start_time || '09:00:00';
+
     const updateCountdown = () => {
       const now = new Date();
       const target = new Date();
 
       // Calculate days to add to get to the class's day of week
-      let targetDay = nextSlot.day_of_week;
+      let targetDay = nextSlot.day_of_week ?? 0;
       let currentDay = (now.getDay() + 6) % 7;
 
       let daysToAdd = targetDay - currentDay;
-      if (daysToAdd < 0 || (daysToAdd === 0 && nextSlot.start_time < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
+      if (daysToAdd < 0 || (daysToAdd === 0 && startTimeStr < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
         daysToAdd += 7; // Next week
       }
 
       target.setDate(now.getDate() + daysToAdd);
 
-      const [hours, minutes] = nextSlot.start_time.split(':').map(Number);
+      const [hours = 9, minutes = 0] = startTimeStr.split(':').map(Number);
       target.setHours(hours, minutes, 0, 0);
 
       const diffMs = target.getTime() - now.getTime();
@@ -204,12 +206,18 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
     );
   }
 
-  const formatClassTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
+  const formatClassTime = (timeStr?: string) => {
+    if (!timeStr) return 'TBA';
+    const parts = timeStr.split(':').map(Number);
+    const hours = parts[0] || 0;
+    const minutes = parts[1] || 0;
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const formattedHours = hours % 12 || 12;
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
   };
+
+  const rawTitle = nextSlot.custom_title || (nextSlot.offering as any)?.subject_name || nextSlot.offering?.subject || 'Class';
+  const nextTitle = typeof rawTitle === 'string' ? rawTitle : ((rawTitle as any)?.name || 'Class');
 
   return (
     <div className="stat-card flex flex-col justify-between min-h-[140px]">
@@ -218,7 +226,7 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
         <span className="badge badge-gold text-[10px] font-bold">{timeLeft}</span>
       </div>
       <div>
-        <div className="text-base font-extrabold text-[#111111] truncate">{nextSlot.offering?.subject}</div>
+        <div className="text-base font-extrabold text-[#111111] truncate">{nextTitle}</div>
         <div className="text-xs text-[#737373] font-medium truncate mt-0.5">{nextSlot.offering?.teacher?.full_name}</div>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
@@ -226,7 +234,7 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
         <span className="text-xs font-bold text-[#111111]">{formatClassTime(nextSlot.start_time)}</span>
         <span className="text-xs text-[#A3A3A3]">·</span>
         <span className="text-xs font-semibold text-[#737373] capitalize">
-          {nextSlot.offering?.board} · Gr. {nextSlot.offering?.grade}
+          FBISE · Gr. {nextSlot.offering?.grade || '10'}
         </span>
       </div>
     </div>
@@ -241,35 +249,82 @@ const StudentDashboardPage: React.FC = () => {
   const studentId = profile?.id || '';
 
   // ── DB-fetched data ──────────────────────────────────────────────
-  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
-  const [studentNotes, setStudentNotes] = useState<Note[]>([]);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const cachedSlots = studentId ? pageCache.get<ClassSlot[]>('schedule_slots', studentId) : null;
+  const cachedNotes = studentId ? pageCache.get<Note[]>('student_notes', studentId) : null;
+  const cachedAttendance = studentId ? pageCache.get<Attendance[]>('student_attendance', studentId) : null;
+  const cachedOfferings = studentId ? pageCache.get<any[]>('student_offerings', studentId) : null;
+
+  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>(cachedSlots || []);
+  const [studentNotes, setStudentNotes] = useState<Note[]>(cachedNotes || []);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(cachedAttendance || []);
+  const [offerings, setOfferings] = useState<any[]>(cachedOfferings || []);
 
   useEffect(() => {
     if (!studentId) return;
-    // Load slots, notes, and enrollments in parallel
-    getSlotsForStudent(studentId).then(setScheduleSlots).catch(console.error);
-    getEnrollmentsForStudent(studentId).then(setEnrollments).catch(console.error);
+    let mounted = true;
+
+    // Render cached data immediately on studentId ready
+    const initSlots = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
+    const initNotes = pageCache.get<Note[]>('student_notes', studentId);
+    const initAtt = pageCache.get<Attendance[]>('student_attendance', studentId);
+    const initOffs = pageCache.get<any[]>('student_offerings', studentId);
+
+    if (initSlots && scheduleSlots.length === 0 && mounted) setScheduleSlots(initSlots);
+    if (initNotes && studentNotes.length === 0 && mounted) setStudentNotes(initNotes);
+    if (initAtt && attendanceRecords.length === 0 && mounted) setAttendanceRecords(initAtt);
+    if (initOffs && offerings.length === 0 && mounted) setOfferings(initOffs);
+
+    // Background fetch + diff update
+    getSlotsForStudent(studentId).then((slots) => {
+      if (!mounted) return;
+      const currentSlots = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
+      if (!currentSlots || JSON.stringify(currentSlots) !== JSON.stringify(slots)) {
+        setScheduleSlots(slots);
+        pageCache.set('schedule_slots', slots, studentId);
+      }
+    }).catch(console.error);
+
+    getAttendanceForStudent(studentId).then((att) => {
+      if (!mounted) return;
+      const currentAtt = pageCache.get<Attendance[]>('student_attendance', studentId);
+      if (!currentAtt || JSON.stringify(currentAtt) !== JSON.stringify(att)) {
+        setAttendanceRecords(att);
+        pageCache.set('student_attendance', att, studentId);
+      }
+    }).catch(console.error);
+
     getOfferingsForStudent(studentId).then(async (offs) => {
+      if (!mounted) return;
+      const currentOffs = pageCache.get<any[]>('student_offerings', studentId);
+      if (!currentOffs || JSON.stringify(currentOffs) !== JSON.stringify(offs)) {
+        setOfferings(offs);
+        pageCache.set('student_offerings', offs, studentId);
+      }
+
       const ids = offs.map(o => o.id);
       const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
-      setStudentNotes(n);
+      if (!mounted) return;
+      
+      const currentNotes = pageCache.get<Note[]>('student_notes', studentId);
+      if (!currentNotes || JSON.stringify(currentNotes) !== JSON.stringify(n)) {
+        setStudentNotes(n);
+        pageCache.set('student_notes', n, studentId);
+      }
     }).catch(console.error);
+
+    return () => {
+      mounted = false;
+    };
   }, [studentId]);
 
+  const { currentStreak, personalBest, last7Days } = computeAttendanceStreak(attendanceRecords);
   const recentNotes = studentNotes.slice(0, 3);
-
-  // Compute classes left details using real enrollments table
-  const totalClasses = enrollments.reduce((sum, e) => sum + e.total_classes, 0) || 48;
-  const classesUsed = 0;
-  const classesRemaining = totalClasses;
-  const classesLeftPct = 100;
 
   // Get Today's classes
   const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
   const todayClasses = scheduleSlots
     .filter(slot => slot.day_of_week === currentDayIndex)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
   // Dynamic colors for subjects
   const getSubjectColor = (subject: string) => {
@@ -281,8 +336,9 @@ const StudentDashboardPage: React.FC = () => {
     }
   };
 
-  const formatClassTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
+  const formatClassTime = (timeStr?: string) => {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const formattedHours = hours % 12 || 12;
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
@@ -323,51 +379,38 @@ const StudentDashboardPage: React.FC = () => {
             <span className="text-xl fire-anim">🔥</span>
           </div>
           <div>
-            <div className="stat-value">{MOCK_ENROLLMENT.streak}</div>
+            <div className="stat-value">{currentStreak}</div>
             <div className="stat-label">days in a row</div>
           </div>
           <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
             <div className="flex gap-0.5 flex-1 max-w-[120px]">
-              {Array.from({ length: 7 }).map((_, i) => (
+              {last7Days.map((attended, i) => (
                 <div
                   key={i}
                   className="flex-1 h-1.5 rounded-full transition-all duration-300"
-                  style={{ background: i < MOCK_ENROLLMENT.streak ? '#F4C430' : '#F0F0F0' }}
+                  style={{ background: attended ? '#F4C430' : '#F0F0F0' }}
+                  title={attended ? 'Attended' : 'Absent/No Class'}
                 />
               ))}
             </div>
-            <span className="text-[10px] text-[#A3A3A3] font-bold">PB: {MOCK_ENROLLMENT.personal_best_streak}d</span>
+            <span className="text-[10px] text-[#A3A3A3] font-bold">PB: {personalBest}d</span>
           </div>
         </div>
-
-        {/* Classes Left (Progress Ring) */}
-        <div className="stat-card flex items-center justify-between min-h-[140px] gap-2">
-          <div className="flex-1 min-w-0">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide block">Classes Left</span>
-            <div className="stat-value mt-1">{classesRemaining}</div>
-            <div className="stat-label">of {totalClasses} total</div>
-            <p className="text-[10px] text-[#A3A3A3] mt-2 font-medium">{classesUsed} attended so far</p>
-          </div>
-          
-          <div className="relative w-16 h-16 shrink-0">
-            <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90">
-              <circle cx="32" cy="32" r="26" fill="none" stroke="#F5F5F5" strokeWidth="5" />
-              <circle
-                cx="32"
-                cy="32"
-                r="26"
-                fill="none"
-                stroke={classesLeftPct > 30 ? '#F4C430' : classesLeftPct > 10 ? '#f97316' : '#ef4444'}
-                strokeWidth="5"
-                strokeDasharray={`${2 * Math.PI * 26}`}
-                strokeDashoffset={`${2 * Math.PI * 26 * (1 - classesLeftPct / 100)}`}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-extrabold text-[#111111]">{classesLeftPct}%</span>
+        {/* Academic Program */}
+        <div className="stat-card flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide block">Academic Program</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-50 text-[#F4C430] flex items-center justify-center">
+              <GraduationCap size={14} />
             </div>
+          </div>
+          <div>
+            <div className="stat-value text-lg leading-tight truncate">{profile?.class?.display_name || offerings[0]?.class?.display_name || 'Grade Setup'}</div>
+            <div className="stat-label truncate mt-0.5">{profile?.class?.board?.name || offerings[0]?.class?.board?.name || 'FBISE'}</div>
+          </div>
+          <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
+            <span className="truncate">{profile?.stream_obj?.name || profile?.stream || offerings[0]?.stream || 'General'} Stream</span>
+            <span className="text-emerald-600 shrink-0">Enrolled</span>
           </div>
         </div>
 
@@ -401,7 +444,9 @@ const StudentDashboardPage: React.FC = () => {
               </div>
             ) : (
               todayClasses.map((cls) => {
-                const color = getSubjectColor(cls.offering?.subject || '');
+                const rawClsSubj = cls.custom_title || (cls.offering as any)?.subject_name || cls.offering?.subject || '';
+                const clsSubj = typeof rawClsSubj === 'string' ? rawClsSubj : ((rawClsSubj as any)?.name || 'Class');
+                const color = getSubjectColor(clsSubj);
                 return (
                   <div
                     key={cls.id}
@@ -409,9 +454,9 @@ const StudentDashboardPage: React.FC = () => {
                   >
                     <div className="w-1.5 h-12 rounded-full shrink-0" style={{ background: color }} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm text-[#111111]">{cls.offering?.subject}</div>
+                      <div className="font-bold text-sm text-[#111111]">{clsSubj}</div>
                       <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
-                        {cls.offering?.teacher?.full_name} · 90 min
+                        {cls.offering?.teacher?.full_name || 'Staff'} · 90 min
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -440,31 +485,39 @@ const StudentDashboardPage: React.FC = () => {
               </button>
             </div>
             <div className="space-y-2">
-              {recentNotes.map((note) => {
-                const offering = MOCK_OFFERINGS.find(o => o.id === note.offering_id);
-                const color = getSubjectColor(offering?.subject || '');
-                return (
-                  <button
-                    key={note.id}
-                    onClick={() => navigate('/student/notes')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent hover:border-[#E5E5E5] hover:bg-[#FAFAFA] transition-all text-left group"
-                  >
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: `${color}1A`, border: `1.5px solid ${color}33` }}
+              {recentNotes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
+                  <BookMarked size={32} className="text-[#D4D4D4] mb-2" />
+                  <p className="text-xs text-[#737373] font-semibold">No notes uploaded yet.</p>
+                  <p className="text-[10px] text-[#A3A3A3] mt-0.5">Your study materials will appear here once teachers upload them.</p>
+                </div>
+              ) : (
+                recentNotes.map((note) => {
+                  const offering = note.offering;
+                  const color = getSubjectColor(offering?.subject || '');
+                  return (
+                    <button
+                      key={note.id}
+                      onClick={() => navigate('/student/notes')}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent hover:border-[#E5E5E5] hover:bg-[#FAFAFA] transition-all text-left group"
                     >
-                      <BookMarked size={16} style={{ color: color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-[#111111] truncate">{note.chapter_name}</div>
-                      <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
-                        {offering?.subject} · {note.title}
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: `${color}1A`, border: `1.5px solid ${color}33` }}
+                      >
+                        <BookMarked size={16} style={{ color: color }} />
                       </div>
-                    </div>
-                    <ArrowRight size={14} className="text-[#D4D4D4] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </button>
-                );
-              })}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-[#111111] truncate">{note.chapter_name}</div>
+                        <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
+                          {offering?.subject} · {note.title}
+                        </div>
+                      </div>
+                      <ArrowRight size={14} className="text-[#D4D4D4] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
           <button

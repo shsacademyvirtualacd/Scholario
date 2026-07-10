@@ -5,16 +5,27 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import TeacherTable from '../../components/admin/teachers/TeacherTable';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import TeacherDetailPanel from '../../components/admin/teachers/TeacherDetailPanel';
-import { getAllTeachers } from '../../lib/db';
-import type { Teacher } from '../../types';
+import { getAllTeachers, getAllOfferings, getAllSlots, getAllEnrollments } from '../../lib/db';
+import type { Teacher, ClassOffering, ClassSlot, Enrollment } from '../../types';
 
 export const TeachersPage: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [slots, setSlots] = useState<ClassSlot[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [_loading, setLoading] = useState(true);
 
   // ── Load from DB (or mock) on mount ──────────────────────────────────────
   useEffect(() => {
-    getAllTeachers().then(setTeachers).catch(console.error);
+    setLoading(true);
+    Promise.all([
+      getAllTeachers().then(setTeachers),
+      getAllOfferings().then(setOfferings),
+      getAllSlots().then(setSlots),
+      getAllEnrollments().then(setEnrollments)
+    ]).catch(console.error).finally(() => setLoading(false));
   }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   
@@ -138,6 +149,9 @@ export const TeachersPage: React.FC = () => {
         <TeacherTable
           teachers={filteredTeachers}
           onView={handleViewDetails}
+          offerings={offerings}
+          slots={slots}
+          enrollments={enrollments}
         />
       )}
 

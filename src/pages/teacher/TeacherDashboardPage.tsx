@@ -12,6 +12,7 @@ import {
   getStudentsInOffering,
   getSlotsForTeacher,
 } from '../../lib/db';
+import { pageCache } from '../../lib/pageCache';
 import type { ClassOffering, ClassSlot, Profile } from '../../types';
 
 // ─── Live Next Class Countdown Widget for Teacher ──────────────────
@@ -25,29 +26,30 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
     .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
     .sort((a, b) => {
       if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-      return a.start_time.localeCompare(b.start_time);
+      return (a.start_time || '').localeCompare(b.start_time || '');
     });
 
   const nextSlot = upcomingSlots[0] || slots[0];
 
   useEffect(() => {
-    if (!nextSlot) return;
+    if (!nextSlot || !nextSlot.start_time) return;
 
     const updateCountdown = () => {
       const now = new Date();
       const target = new Date();
 
-      let targetDay = nextSlot.day_of_week;
+      const startTimeStr = nextSlot.start_time || '09:00:00';
+      let targetDay = nextSlot.day_of_week ?? 0;
       let currentDay = (now.getDay() + 6) % 7;
 
       let daysToAdd = targetDay - currentDay;
-      if (daysToAdd < 0 || (daysToAdd === 0 && nextSlot.start_time < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
+      if (daysToAdd < 0 || (daysToAdd === 0 && startTimeStr < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
         daysToAdd += 7;
       }
 
       target.setDate(now.getDate() + daysToAdd);
 
-      const [hours, minutes] = nextSlot.start_time.split(':').map(Number);
+      const [hours = 9, minutes = 0] = startTimeStr.split(':').map(Number);
       target.setHours(hours, minutes, 0, 0);
 
       const diffMs = target.getTime() - now.getTime();
@@ -81,8 +83,11 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
     );
   }
 
-  const formatClassTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
+  const formatClassTime = (timeStr?: string) => {
+    if (!timeStr || typeof timeStr !== 'string') return 'TBA';
+    const parts = timeStr.split(':').map(Number);
+    const hours = parts[0] || 0;
+    const minutes = parts[1] || 0;
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const formattedHours = hours % 12 || 12;
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
@@ -95,9 +100,9 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
         <span className="badge badge-gold text-[10px] font-bold">{timeLeft}</span>
       </div>
       <div>
-        <div className="text-base font-extrabold text-[#111111] truncate">{nextSlot.offering?.subject}</div>
+        <div className="text-base font-extrabold text-[#111111] truncate">{nextSlot.custom_title || nextSlot.offering?.subject_name || nextSlot.offering?.subject || 'Class'}</div>
         <div className="text-xs text-[#737373] font-medium truncate mt-0.5">
-          Class {nextSlot.offering?.grade} · {nextSlot.offering?.board.toUpperCase()}
+          Class {nextSlot.offering?.grade} · FBISE
         </div>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
@@ -119,43 +124,92 @@ export const TeacherDashboardPage: React.FC = () => {
   const teacherId = profile?.id || 't1';
 
   // ── Load teacher-scoped data from DB ─────────────────────────────────
-  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
-  const [students, setStudents] = useState<Profile[]>([]);
-  const [allSlots, setAllSlots] = useState<ClassSlot[]>([]);
+  const cachedOfferings = teacherId ? pageCache.get<ClassOffering[]>('teacher_offerings', teacherId) : null;
+  const cachedStudents = teacherId ? pageCache.get<Profile[]>('teacher_students', teacherId) : null;
+  const cachedSlots = teacherId ? pageCache.get<ClassSlot[]>('teacher_slots', teacherId) : null;
+
+  const [offerings, setOfferings] = useState<ClassOffering[]>(cachedOfferings || []);
+  const [students, setStudents] = useState<Profile[]>(cachedStudents || []);
+  const [allSlots, setAllSlots] = useState<ClassSlot[]>(cachedSlots || []);
 
   useEffect(() => {
+    let mounted = true;
+
+    const initOffs = pageCache.get<ClassOffering[]>('teacher_offerings', teacherId);
+    const initStuds = pageCache.get<Profile[]>('teacher_students', teacherId);
+    const initSlots = pageCache.get<ClassSlot[]>('teacher_slots', teacherId);
+
+    if (initOffs && offerings.length === 0 && mounted) setOfferings(initOffs);
+    if (initStuds && students.length === 0 && mounted) setStudents(initStuds);
+    if (initSlots && allSlots.length === 0 && mounted) setAllSlots(initSlots);
+
+    if (initOffs && initOffs.length > 0 && !selectedOfferingId && mounted) {
+      setSelectedOfferingId(initOffs[0].id);
+    }
+
     Promise.all([
       getOfferingsForTeacher(teacherId),
       getStudentsForTeacher(teacherId),
       getSlotsForTeacher(teacherId),
     ]).then(([offs, studs, slots]) => {
-      setOfferings(offs);
-      setStudents(studs);
-      setAllSlots(slots);
+      if (!mounted) return;
+      const currentOffs = pageCache.get<ClassOffering[]>('teacher_offerings', teacherId);
+      if (!currentOffs || JSON.stringify(currentOffs) !== JSON.stringify(offs)) {
+        setOfferings(offs);
+        pageCache.set('teacher_offerings', offs, teacherId);
+      }
+      const currentStuds = pageCache.get<Profile[]>('teacher_students', teacherId);
+      if (!currentStuds || JSON.stringify(currentStuds) !== JSON.stringify(studs)) {
+        setStudents(studs);
+        pageCache.set('teacher_students', studs, teacherId);
+      }
+      const currentSlots = pageCache.get<ClassSlot[]>('teacher_slots', teacherId);
+      if (!currentSlots || JSON.stringify(currentSlots) !== JSON.stringify(slots)) {
+        setAllSlots(slots);
+        pageCache.set('teacher_slots', slots, teacherId);
+      }
       if (offs.length > 0 && !selectedOfferingId) {
         setSelectedOfferingId(offs[0].id);
       }
     }).catch(console.error);
+
+    return () => {
+      mounted = false;
+    };
   }, [teacherId]);
 
   const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
   const todayClasses = allSlots
     .filter(slot => slot.day_of_week === currentDayIndex)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
   // Active Class Roster View states
-  const [selectedOfferingId, setSelectedOfferingId] = useState<string>('');
-  const [rosterStudents, setRosterStudents] = useState<Profile[]>([]);
+  const [selectedOfferingId, setSelectedOfferingId] = useState<string>(cachedOfferings && cachedOfferings.length > 0 ? cachedOfferings[0].id : '');
+  const cachedRoster = (teacherId && selectedOfferingId) ? pageCache.get<Profile[]>(`teacher_roster_${selectedOfferingId}`, teacherId) : null;
+  const [rosterStudents, setRosterStudents] = useState<Profile[]>(cachedRoster || []);
 
   useEffect(() => {
-    if (selectedOfferingId) {
-      getStudentsInOffering(selectedOfferingId).then(setRosterStudents).catch(console.error);
-    } else {
+    if (!selectedOfferingId) {
       setRosterStudents([]);
+      return;
     }
-  }, [selectedOfferingId]);
+    let mounted = true;
+    const initRoster = pageCache.get<Profile[]>(`teacher_roster_${selectedOfferingId}`, teacherId);
+    if (initRoster && mounted) setRosterStudents(initRoster);
 
-  const selectedOffering = offerings.find(o => o.id === selectedOfferingId);
+    getStudentsInOffering(selectedOfferingId).then((studs) => {
+      if (!mounted) return;
+      const currentRoster = pageCache.get<Profile[]>(`teacher_roster_${selectedOfferingId}`, teacherId);
+      if (!currentRoster || JSON.stringify(currentRoster) !== JSON.stringify(studs)) {
+        setRosterStudents(studs);
+        pageCache.set(`teacher_roster_${selectedOfferingId}`, studs, teacherId);
+      }
+    }).catch(console.error);
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedOfferingId, teacherId]);
 
   // Dynamic colors for subjects
   const getSubjectColor = (subject: string) => {
@@ -168,8 +222,9 @@ export const TeacherDashboardPage: React.FC = () => {
     }
   };
 
-  const formatClassTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
+  const formatClassTime = (timeStr?: string) => {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const formattedHours = hours % 12 || 12;
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
@@ -273,7 +328,7 @@ export const TeacherDashboardPage: React.FC = () => {
               </div>
             ) : (
               todayClasses.map((cls) => {
-                const color = getSubjectColor(cls.offering?.subject || '');
+                const color = getSubjectColor(cls.custom_title || cls.offering?.subject || '');
                 return (
                   <div
                     key={cls.id}
@@ -281,9 +336,9 @@ export const TeacherDashboardPage: React.FC = () => {
                   >
                     <div className="w-1.5 h-10 rounded-full shrink-0" style={{ background: color }} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-xs text-[#111111]">{cls.offering?.subject}</div>
+                      <div className="font-bold text-xs text-[#111111]">{cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class'}</div>
                       <div className="text-[10px] text-[#737373] font-semibold mt-0.5 truncate">
-                        Class {cls.offering?.grade} ({cls.offering?.board.toUpperCase()})
+                        Class {cls.offering?.grade} (FBISE)
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -316,7 +371,7 @@ export const TeacherDashboardPage: React.FC = () => {
               >
                 {offerings.map((o) => (
                   <option key={o.id} value={o.id}>
-                    {o.subject} (Class {o.grade} {o.board.toUpperCase()})
+                    {o.subject_name || o.subject} (Class {o.grade} FBISE)
                   </option>
                 ))}
               </select>

@@ -6,8 +6,9 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import NoteCard from '../../components/student/NoteCard';
 import NoteViewerModal from '../../components/student/NoteViewerModal';
 import EmptyState from '../../components/ui/EmptyState';
-import { GROUP_SUBJECTS } from '../../lib/mockData';
 import { getOfferingsForStudent, getNotesForOfferings } from '../../lib/db';
+import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { pageCache } from '../../lib/pageCache';
 import type { Note } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
 
@@ -15,20 +16,55 @@ export const NotesPage: React.FC = () => {
   const { profile } = useAuth();
   const [searchParams] = useSearchParams();
   const studentId = profile?.id || '';
-  const studentGroup = profile?.stream || 'pre-engineering';
   
-  const [notes, setNotes] = useState<Note[]>([]);
+  const cachedNotes = studentId ? pageCache.get<Note[]>('student_notes', studentId) : null;
+  const cachedOfferings = studentId ? pageCache.get<any[]>('student_offerings', studentId) : null;
+
+  const [notes, setNotes] = useState<Note[]>(cachedNotes || []);
+  const [offerings, setOfferings] = useState<any[]>(cachedOfferings || []);
+  const [loading, setLoading] = useState<boolean>(!cachedNotes);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [activeSubject, setActiveSubject] = useState<string>('All');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
   useEffect(() => {
     if (!studentId) return;
+    let mounted = true;
+
+    const initNotes = pageCache.get<Note[]>('student_notes', studentId);
+    const initOffs = pageCache.get<any[]>('student_offerings', studentId);
+    if (initNotes && notes.length === 0 && mounted) {
+      setNotes(initNotes);
+      if (initOffs) setOfferings(initOffs);
+      setLoading(false);
+    }
+
     getOfferingsForStudent(studentId).then(async (offs) => {
+      if (!mounted) return;
+      const currentOffs = pageCache.get<any[]>('student_offerings', studentId);
+      if (!currentOffs || JSON.stringify(currentOffs) !== JSON.stringify(offs)) {
+        setOfferings(offs);
+        pageCache.set('student_offerings', offs, studentId);
+      }
+
       const ids = offs.map(o => o.id);
       const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
-      setNotes(n);
-    }).catch(console.error);
+      if (!mounted) return;
+      
+      const currentNotes = pageCache.get<Note[]>('student_notes', studentId);
+      if (!currentNotes || JSON.stringify(currentNotes) !== JSON.stringify(n)) {
+        setNotes(n);
+        pageCache.set('student_notes', n, studentId);
+      }
+      setLoading(false);
+    }).catch((err) => {
+      console.error(err);
+      if (mounted) setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+    };
   }, [studentId]);
 
   // Synchronize search query from URL search parameters
@@ -39,16 +75,16 @@ export const NotesPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // When student group changes, reset activeSubject to 'All'
+  // Reset activeSubject to 'All' on studentId change
   useEffect(() => {
     setActiveSubject('All');
-  }, [studentGroup]);
+  }, [studentId]);
 
   // Filter notes (already filtered by active student enrollments)
   const groupNotes = notes;
 
   // Extract unique subjects for the tabs based on enrolled subjects
-  const enrolledSubjects = Array.from(new Set(notes.map(n => n.offering?.subject).filter(Boolean))) as string[];
+  const enrolledSubjects = getEnrolledSubjectsForStudent(profile, offerings);
   const subjects = [
     'All', 
     ...enrolledSubjects
@@ -57,19 +93,21 @@ export const NotesPage: React.FC = () => {
   // Filter notes based on active subject and search term
   const filteredNotes = groupNotes.filter(note => {
     const matchesSubject = activeSubject === 'All' || note.offering?.subject === activeSubject;
-    const matchesSearch = 
-      note.chapter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      note.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const q = searchTerm.toLowerCase();
+    const matchesSearch = !q ||
+      (note.chapter_name || '').toLowerCase().includes(q) ||
+      (note.title || '').toLowerCase().includes(q);
     return matchesSubject && matchesSearch;
   });
 
   // Group notes by chapter
   const groupedNotes: Record<string, typeof filteredNotes> = {};
   filteredNotes.forEach(note => {
-    if (!groupedNotes[note.chapter_name]) {
-      groupedNotes[note.chapter_name] = [];
+    const chap = note.chapter_name || 'General Notes';
+    if (!groupedNotes[chap]) {
+      groupedNotes[chap] = [];
     }
-    groupedNotes[note.chapter_name].push(note);
+    groupedNotes[chap].push(note);
   });
 
   return (
@@ -115,7 +153,30 @@ export const NotesPage: React.FC = () => {
       </div>
 
       {/* Main Grid View */}
-      {filteredNotes.length === 0 ? (
+      {loading && filteredNotes.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <div key={n} className="bg-white rounded-xl border border-[#E5E5E5] p-5 shadow-xs flex flex-col justify-between h-44">
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <div className="h-5 bg-[#F5F5F5] rounded w-20" />
+                  <div className="h-5 bg-[#F5F5F5] rounded-full w-12" />
+                </div>
+                <div className="h-4 bg-[#F5F5F5] rounded w-3/4" />
+                <div className="h-3 bg-[#F5F5F5] rounded w-full" />
+                <div className="h-3 bg-[#F5F5F5] rounded w-2/3" />
+              </div>
+              <div className="flex justify-between pt-3 border-t border-[#F5F5F5]">
+                <div className="h-3 bg-[#F5F5F5] rounded w-16" />
+                <div className="flex gap-2">
+                  <div className="w-7 h-7 bg-[#F5F5F5] rounded-lg" />
+                  <div className="w-7 h-7 bg-[#F5F5F5] rounded-lg" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredNotes.length === 0 ? (
         <EmptyState
           icon={BookMarked}
           title="No notes found"
@@ -155,7 +216,7 @@ export const NotesPage: React.FC = () => {
                 {groupedNotes[chapterName].map(note => (
                   <NoteCard
                     key={note.id}
-                    note={note}
+                    note={note as any}
                     onView={(n) => setSelectedNote(n)}
                   />
                 ))}

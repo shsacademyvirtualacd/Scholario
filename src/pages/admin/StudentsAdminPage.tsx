@@ -5,15 +5,21 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import StudentTable from '../../components/admin/students/StudentTable';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import StudentDetailPanel from '../../components/admin/students/StudentDetailPanel';
-import { getAllStudents } from '../../lib/db';
-import type { Profile } from '../../types';
+import { getAllStudents, getAllEnrollments, getAllOfferings } from '../../lib/db';
+import type { Profile, Enrollment, ClassOffering } from '../../types';
 
 export const StudentsAdminPage: React.FC = () => {
   const [students, setStudents] = useState<Profile[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
 
   // ── Load from DB (or mock) on mount ──────────────────────────────────────
   useEffect(() => {
-    getAllStudents().then(setStudents).catch(console.error);
+    Promise.all([
+      getAllStudents().then(setStudents),
+      getAllEnrollments().then(setEnrollments),
+      getAllOfferings().then(setOfferings)
+    ]).catch(console.error);
   }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [streamFilter, setStreamFilter] = useState<'all' | 'pre-medical' | 'pre-engineering' | 'ics'>('all');
@@ -141,6 +147,8 @@ export const StudentsAdminPage: React.FC = () => {
         <StudentTable
           students={filteredStudents}
           onView={handleViewTrigger}
+          enrollments={enrollments}
+          offerings={offerings}
         />
       )}
 

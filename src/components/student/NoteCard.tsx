@@ -1,15 +1,33 @@
-import React from 'react';
-import { FileText, Image as ImageIcon, Eye, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Image as ImageIcon, Eye, Download, Loader2 } from 'lucide-react';
 import type { Note } from '../../types';
+import { downloadNoteBlob } from '../../lib/db';
 
 interface NoteCardProps {
-  note: Note & { offering?: { subject: string } };
+  note: Note;
   onView: (note: Note) => void;
 }
 
 export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
+  const [downloading, setDownloading] = useState(false);
   const subject = note.offering?.subject || 'General';
-  const isPdf = note.file_type.toLowerCase() === 'pdf';
+  const fileType = note.file_type || 'pdf';
+  const isPdf = fileType.toLowerCase() === 'pdf';
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (downloading) return;
+    try {
+      setDownloading(true);
+      await downloadNoteBlob(note);
+    } catch (err) {
+      console.error('Download failed:', err);
+      alert('Failed to download note file.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Format date nicely
   const formatDate = (dateStr: string) => {
@@ -49,7 +67,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
             isPdf ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'
           }`}>
             {isPdf ? <FileText size={10} /> : <ImageIcon size={10} />}
-            {note.file_type.toUpperCase()}
+            {fileType.toUpperCase()}
           </span>
         </div>
         
@@ -67,16 +85,14 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
           >
             <Eye size={14} />
           </button>
-          <a
-            href={note.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] transition-colors"
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer"
             title="Download file"
           >
-            <Download size={14} />
-          </a>
+            {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          </button>
         </div>
       </div>
     </div>

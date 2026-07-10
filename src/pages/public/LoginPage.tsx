@@ -5,7 +5,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import Logo from '../../components/ui/Logo';
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, profile, session, loading: authLoading } = useAuth();
+  const { signInWithGoogle, profile, session, loading: authLoading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
@@ -22,15 +22,17 @@ const LoginPage: React.FC = () => {
         navigate('/unregistered', { replace: true });
         return;
       }
-      if (from && from !== '/login') {
-        navigate(from, { replace: true });
-      } else {
-        if (profile.role === 'admin') navigate('/admin', { replace: true });
-        else if (profile.role === 'teacher') navigate('/teacher', { replace: true });
-        else navigate('/student', { replace: true });
+      // Determine destination
+      let dest = from && from !== '/login' ? from : '/';
+      if (!from || from === '/login') {
+        if (profile.role === 'admin')        dest = '/admin';
+        else if (profile.role === 'teacher') dest = '/teacher';
+        else if (needsOnboarding)            dest = '/student/onboarding';
+        else                                 dest = '/student';
       }
+      navigate(dest, { replace: true });
     }
-  }, [session, profile, from, navigate, authLoading]);
+  }, [session, profile, from, navigate, authLoading, needsOnboarding]);
 
   // ── Google sign-in handler ─────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
@@ -147,7 +149,7 @@ const LoginPage: React.FC = () => {
           <div className="mt-10 grid grid-cols-2 gap-4">
             {[
               { val: '9–12', label: 'All Grades' },
-              { val: '4 Boards', label: 'Local · FBISE · O · A Level' },
+              { val: '1 Board', label: 'FBISE' },
               { val: '100%', label: 'Focused Learning' },
               { val: 'Live', label: 'Class Schedule' },
             ].map(({ val, label }) => (

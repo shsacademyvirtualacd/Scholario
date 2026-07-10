@@ -7,7 +7,7 @@ import { getOfferingsForTeacher, updateProfile } from '../../lib/db';
 import type { ClassOffering } from '../../types';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
@@ -36,23 +36,23 @@ export const ProfilePage: React.FC = () => {
           setClasses(data);
           // If classes are found and have teacher info, extract joining date & email
           if (data.length > 0 && data[0].teacher) {
-            setEmail(data[0].teacher.email || '');
+            setEmail(data[0].teacher.email || user?.email || '');
             setJoiningDate(data[0].teacher.joining_date || '');
           } else {
-            setEmail('ahmad.khan@shs.edu.pk');
-            setJoiningDate('2024-01-10');
+            setEmail(user?.email || '');
+            setJoiningDate('');
           }
         })
         .catch(err => {
           console.error(err);
-          setEmail('ahmad.khan@shs.edu.pk');
-          setJoiningDate('2024-01-10');
+          setEmail(user?.email || '');
+          setJoiningDate('');
         })
         .finally(() => {
           setLoadingClasses(false);
         });
     }
-  }, [profile]);
+  }, [profile, user]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,8 +238,8 @@ export const ProfilePage: React.FC = () => {
                 {classes.map((cls) => (
                   <div key={cls.id} className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="block text-xs font-bold text-[#111111]">{cls.subject}</span>
-                      <span className="text-[10px] font-semibold text-[#737373]">Grade {cls.grade} ({cls.board.toUpperCase()})</span>
+                      <span className="block text-xs font-bold text-[#111111]">{cls.subject_name || cls.subject}</span>
+                      <span className="text-[10px] font-semibold text-[#737373]">Grade {cls.grade} (FBISE)</span>
                     </div>
                   </div>
                 ))}

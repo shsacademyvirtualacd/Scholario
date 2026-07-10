@@ -1,21 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, Calendar, ChevronRight, ArrowUpRight,
-  GraduationCap, Percent, BookOpen,
+  Users, ChevronRight, ArrowUpRight,
+  GraduationCap, Percent, BookOpen
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
-import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_OFFERINGS, MOCK_SCHEDULE_SLOTS, MOCK_ENROLLMENTS } from '../../lib/mockData';
-import { getDashboardCounts } from '../../lib/db';
+import {
+  getDashboardCounts,
+  getAllTeachers,
+  getAllOfferings,
+  getAllSlots,
+  getAllEnrollments
+} from '../../lib/db';
+import type { Teacher, ClassOffering, ClassSlot, Enrollment } from '../../types';
 
 // ─── Main ────────────────────────────────────────────────────────
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [counts, setCounts] = useState({ students: 0, teachers: 0, offerings: 0 });
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [slots, setSlots] = useState<ClassSlot[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getDashboardCounts().then(setCounts).catch(console.error);
+    setLoading(true);
+    Promise.all([
+      getDashboardCounts().then(setCounts),
+      getAllTeachers().then(setTeachers),
+      getAllOfferings().then(setOfferings),
+      getAllSlots().then(setSlots),
+      getAllEnrollments().then(setEnrollments)
+    ]).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   // Dynamic stats calculation
@@ -23,7 +41,7 @@ const AdminDashboardPage: React.FC = () => {
     {
       label: 'Total Students',
       value: counts.students.toString(),
-      change: '+2',
+      change: '+0',
       changeLabel: 'this month',
       positive: true,
       icon: Users,
@@ -32,8 +50,8 @@ const AdminDashboardPage: React.FC = () => {
     },
     {
       label: 'Attendance Rate',
-      value: '83%',
-      change: '+2%',
+      value: '—',
+      change: '+0%',
       changeLabel: 'vs last week',
       positive: true,
       icon: Percent,
@@ -53,7 +71,7 @@ const AdminDashboardPage: React.FC = () => {
     {
       label: 'Active Courses',
       value: counts.offerings.toString(),
-      change: '+3',
+      change: '+0',
       changeLabel: 'new this semester',
       positive: true,
       icon: BookOpen,
@@ -63,36 +81,30 @@ const AdminDashboardPage: React.FC = () => {
   ];
 
   // Dynamic teacher workload calculation
-  const teacherWorkload = MOCK_TEACHERS.map(teacher => {
-    const offerings = MOCK_OFFERINGS.filter(o => o.teacher_id === teacher.id);
+  const teacherWorkload = teachers.map(teacher => {
+    const teacherOfferings = offerings.filter(o => o.teacher_id === teacher.id);
     
     // Unique subjects
-    const subjects = Array.from(new Set(offerings.map(o => o.subject))).join(', ') || 'N/A';
+    const subjects = Array.from(new Set(teacherOfferings.map(o => o.subject_name))).join(', ') || 'N/A';
     
     // Unique boards
-    const boards = Array.from(new Set(offerings.map(o => {
-      if (o.board === 'fbise') return 'FBISE';
-      if (o.board === 'o_level') return 'O Level';
-      if (o.board === 'a_level') return 'A Level';
-      if (o.board === 'local') return 'BISE';
-      return o.board.toUpperCase();
-    }))).join(' & ') || 'N/A';
+    const boards = 'FBISE';
     
     // Unique grades
-    const grades = Array.from(new Set(offerings.map(o => o.grade))).join(' & ') || 'N/A';
+    const grades = Array.from(new Set(teacherOfferings.map(o => o.grade))).join(' & ') || 'N/A';
     
     // Unique students count
-    const offeringIds = offerings.map(o => o.id);
+    const offeringIds = teacherOfferings.map(o => o.id);
     const enrolledStudentIds = new Set(
-      MOCK_ENROLLMENTS
+      enrollments
         .filter(e => offeringIds.includes(e.offering_id))
         .map(e => e.student_id)
     );
     const studentsCount = enrolledStudentIds.size;
     
     // Classes per week
-    const classesPerWeek = MOCK_SCHEDULE_SLOTS.filter(
-      s => offeringIds.includes(s.offering_id) && !s.is_cancelled
+    const classesPerWeek = slots.filter(
+      s => s.offering_id !== null && offeringIds.includes(s.offering_id) && !s.is_cancelled
     ).length;
 
     // Initials for avatar
@@ -100,7 +112,8 @@ const AdminDashboardPage: React.FC = () => {
       .split(' ')
       .map(n => n[0])
       .join('')
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
 
     return {
       name: teacher.full_name,
@@ -125,6 +138,7 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const formatTime12h = (timeStr: string) => {
+    if (!timeStr) return '';
     const [hoursStr, minutesStr] = timeStr.split(':');
     const hours = parseInt(hoursStr, 10);
     const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -141,47 +155,41 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   // Build upcoming classes dynamically
-  const upcomingClasses = MOCK_SCHEDULE_SLOTS.filter(s => !s.is_cancelled).map(slot => {
-    const offering = MOCK_OFFERINGS.find(o => o.id === slot.offering_id);
-    const teacher = offering ? MOCK_TEACHERS.find(t => t.id === offering.teacher_id) : null;
-    const enrollmentsCount = MOCK_ENROLLMENTS.filter(e => e.offering_id === slot.offering_id).length;
+  const upcomingClasses = slots.filter(s => !s.is_cancelled).map(slot => {
+    const offering = offerings.find(o => o.id === slot.offering_id);
+    const teacher = offering ? teachers.find(t => t.id === offering.teacher_id) : null;
+    const enrollmentsCount = enrollments.filter(e => e.offering_id === slot.offering_id).length;
     
-    const boardLabel = offering
-      ? offering.board === 'fbise'
-        ? 'FBISE'
-        : offering.board === 'o_level'
-        ? 'O Level'
-        : offering.board === 'a_level'
-        ? 'A Level'
-        : 'BISE'
-      : 'N/A';
+    const boardLabel = 'FBISE';
 
     return {
-      subject: offering ? `${offering.subject} Gr.${offering.grade}` : 'N/A',
+      subject: offering ? `${offering.subject_name} Gr.${offering.grade}` : 'N/A',
       teacher: teacher ? getShortName(teacher.full_name) : 'N/A',
       time: formatTime12h(slot.start_time),
       board: boardLabel,
       students: enrollmentsCount,
-      color: offering ? (subjectColors[offering.subject] || '#a855f7') : '#737373',
+      color: (offering && offering.subject_name) ? (subjectColors[offering.subject_name] || '#a855f7') : '#737373',
     };
   }).slice(0, 3);
-
-  const lowAttendanceAlerts = [
-    { name: 'Ali Hassan', subject: 'Mathematics', pct: 58, classes: 7, total: 12 },
-    { name: 'Sara Malik', subject: 'Physics', pct: 63, classes: 5, total: 8 },
-    { name: 'Usman Khan', subject: 'Chemistry', pct: 67, classes: 6, total: 9 },
-  ];
 
   return (
     <AdminShell>
       {/* Heading */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-[#111111] tracking-tight">
-          Admin Dashboard
-        </h1>
-        <p className="text-sm text-[#737373] mt-1">
-          {new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+            Admin Dashboard
+          </h1>
+          <p className="text-sm text-[#737373] mt-1">
+            {new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        {loading && (
+          <span className="text-xs text-[#737373] font-bold flex items-center gap-1.5 bg-[#FAFAFA] border border-[#E5E5E5] px-3 py-1.5 rounded-xl">
+            <span className="w-3.5 h-3.5 border-2 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block" />
+            Syncing database...
+          </span>
+        )}
       </div>
 
       {/* ── Stat cards ── */}
@@ -232,19 +240,25 @@ const AdminDashboardPage: React.FC = () => {
             </button>
           </div>
           <div className="space-y-3">
-            {upcomingClasses.map((cls, i) => (
-              <div key={i} className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all">
-                <div className="w-1 h-12 rounded-full shrink-0" style={{ background: cls.color }} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm text-[#111111]">{cls.subject}</div>
-                  <div className="text-xs text-[#737373] mt-0.5">{cls.teacher} · {cls.board}</div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-sm font-bold text-[#111111]">{cls.time}</div>
-                  <div className="text-xs text-[#A3A3A3] mt-0.5">{cls.students} students</div>
-                </div>
+            {upcomingClasses.length === 0 ? (
+              <div className="text-xs text-[#A3A3A3] font-bold text-center py-8">
+                No classes scheduled for today.
               </div>
-            ))}
+            ) : (
+              upcomingClasses.map((cls, i) => (
+                <div key={i} className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all">
+                  <div className="w-1 h-12 rounded-full shrink-0" style={{ background: cls.color }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm text-[#111111]">{cls.subject}</div>
+                    <div className="text-xs text-[#737373] mt-0.5">{cls.teacher} · {cls.board}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-bold text-[#111111]">{cls.time}</div>
+                    <div className="text-xs text-[#A3A3A3] mt-0.5">{cls.students} students</div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -257,18 +271,16 @@ const AdminDashboardPage: React.FC = () => {
             </span>
           </div>
           <div className="space-y-3 opacity-40 pointer-events-none select-none">
-            {lowAttendanceAlerts.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420]">
-                <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
-                  {s.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-[#111111]">{s.name}</div>
-                  <div className="text-xs text-[#737373]">{s.subject} · {s.classes}/{s.total} classes</div>
-                </div>
-                <span className="text-sm font-bold text-[#ef4444]">{s.pct}%</span>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420]">
+              <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                AH
               </div>
-            ))}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-[#111111]">Ali Hassan</div>
+                <div className="text-xs text-[#737373]">Mathematics · 5/8 classes</div>
+              </div>
+              <span className="text-sm font-bold text-[#ef4444]">62%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -297,32 +309,40 @@ const AdminDashboardPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {teacherWorkload.map((t, i) => (
-                <tr key={i}>
-                  <td>
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-[#F4C430] flex items-center justify-center text-xs font-bold text-[#111111] shrink-0">
-                        {t.avatar}
-                      </div>
-                      <span className="font-medium text-[#111111]">{t.name}</span>
-                    </div>
-                  </td>
-                  <td>{t.subject}</td>
-                  <td><span className="badge badge-gray">{t.board}</span></td>
-                  <td className="text-[#525252]">{t.grade}</td>
-                  <td>
-                    <span className="font-semibold text-[#111111]">{t.students}</span>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <div className="progress-bar w-16">
-                        <div className="progress-fill" style={{ width: `${(t.classesPerWeek / 10) * 100}%` }} />
-                      </div>
-                      <span className="text-xs text-[#737373]">{t.classesPerWeek}</span>
-                    </div>
+              {teacherWorkload.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-xs text-[#A3A3A3] font-bold text-center py-6">
+                    No teachers registered in the database.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                teacherWorkload.map((t, i) => (
+                  <tr key={i}>
+                    <td>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-[#F4C430] flex items-center justify-center text-xs font-bold text-[#111111] shrink-0">
+                          {t.avatar}
+                        </div>
+                        <span className="font-medium text-[#111111]">{t.name}</span>
+                      </div>
+                    </td>
+                    <td>{t.subject}</td>
+                    <td><span className="badge badge-gray">{t.board}</span></td>
+                    <td className="text-[#525252]">{t.grade}</td>
+                    <td>
+                      <span className="font-semibold text-[#111111]">{t.students}</span>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <div className="progress-bar w-16">
+                          <div className="progress-fill" style={{ width: `${Math.min((t.classesPerWeek / 10) * 100, 100)}%` }} />
+                        </div>
+                        <span className="text-xs text-[#737373]">{t.classesPerWeek}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

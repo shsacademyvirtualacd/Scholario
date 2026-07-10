@@ -99,8 +99,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
           className="flex flex-col sm:flex-row gap-3 justify-center mb-7 animate-fade-up"
           style={{ animationDelay: '160ms' }}
         >
-          <button onClick={() => onNavigate('student')} className="btn btn-primary btn-lg group">
-            Start Today
+          <button onClick={() => onNavigate('login')} className="btn btn-primary btn-lg group">
+            Get Started
             <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform duration-200" />
           </button>
         </div>

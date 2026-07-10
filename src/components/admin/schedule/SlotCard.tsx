@@ -7,7 +7,8 @@ interface SlotCardProps {
     offering?: {
       board: string;
       grade: string;
-      subject: string;
+      subject_name?: string;
+      subject?: string;
       teacher?: { full_name: string };
     };
   };
@@ -23,14 +24,14 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   onToggleCancel,
 }) => {
   const isCancelled = slot.is_cancelled;
-  const subject = slot.offering?.subject || 'Class';
+  const subject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class';
   const teacherName = slot.offering?.teacher?.full_name || 'Staff';
-  const board = slot.offering?.board === 'local' ? 'BISE' : slot.offering?.board?.toUpperCase() || 'FBISE';
+  const board = 'FBISE';
   const grade = slot.offering?.grade || '10';
 
-  const formatTime = (timeStr: string) => {
-    if (!timeStr) return '';
-    const [hours, minutes] = timeStr.split(':').map(Number);
+  const formatTime = (timeStr?: string) => {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const formattedHours = hours % 12 || 12;
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;

@@ -3,8 +3,8 @@ import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import AttendanceCalendar from '../../components/student/AttendanceCalendar';
 import StatusPill from '../../components/ui/StatusPill';
-import { MOCK_ENROLLMENT } from '../../lib/mockData';
-import { getAttendanceForStudent } from '../../lib/db';
+import { getAttendanceForStudent, computeAttendanceStreak } from '../../lib/db';
+import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import type { Attendance } from '../../types';
 
@@ -28,11 +28,15 @@ export const AttendancePage: React.FC = () => {
   const absentCount = totalClassesCount - attendedCount;
   const attendancePct = totalClassesCount > 0 ? Math.round((attendedCount / totalClassesCount) * 100) : 0;
   
-  const streak = MOCK_ENROLLMENT.streak;
-  const personalBest = MOCK_ENROLLMENT.personal_best_streak;
+  const { currentStreak: streak, personalBest } = computeAttendanceStreak(studentRecords);
 
-  // Group stats by subject
+  // Group stats by subject derived from taxonomy
+  const enrolledSubjs = getEnrolledSubjectsForStudent(profile, studentRecords);
   const subjectsMap: Record<string, { total: number; attended: number }> = {};
+  enrolledSubjs.forEach((sub) => {
+    subjectsMap[sub] = { total: 0, attended: 0 };
+  });
+
   studentRecords.forEach((a) => {
     const sub = a.slot?.offering?.subject;
     if (!sub) return;
@@ -56,8 +60,8 @@ export const AttendancePage: React.FC = () => {
   });
 
   const uniqueSubjects = Array.from(
-    new Set(studentRecords.map((a) => a.slot?.offering?.subject).filter(Boolean))
-  );
+    new Set([...enrolledSubjs, ...studentRecords.map((a) => a.slot?.offering?.subject).filter(Boolean)])
+  ) as string[];
 
   const getSubjectColor = (sub: string) => {
     switch (sub.toLowerCase()) {

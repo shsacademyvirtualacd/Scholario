@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Calendar, Video, MapPin, Clock, CheckCircle2 } from 'lucide-react';
+import { Video, MapPin, Clock, CheckCircle2 } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StatusPill from '../../components/ui/StatusPill';
@@ -37,7 +37,7 @@ export const TeacherSchedulePage: React.FC = () => {
         return parsed;
       }
     }
-    return getTodayIndex();
+    return 0; // Default to Monday
   };
 
   const [activeDay, setActiveDay] = useState<number>(getInitialDay());
@@ -66,7 +66,7 @@ export const TeacherSchedulePage: React.FC = () => {
   // Filter slots for the selected day
   const filteredSlots = scheduleSlots
     .filter(slot => slot.day_of_week === activeDay)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
   // Next class calculation for banner
   const [timeLeft, setTimeLeft] = useState<string>('');
@@ -75,26 +75,27 @@ export const TeacherSchedulePage: React.FC = () => {
     .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
     .sort((a, b) => {
       if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-      return a.start_time.localeCompare(b.start_time);
+      return (a.start_time || '').localeCompare(b.start_time || '');
     })[0] || scheduleSlots[0];
 
   useEffect(() => {
-    if (!nextUpcomingSlot) return;
+    if (!nextUpcomingSlot || !nextUpcomingSlot.start_time) return;
 
     const updateCountdown = () => {
       const now = new Date();
       const target = new Date();
 
-      let targetDay = nextUpcomingSlot.day_of_week;
+      let targetDay = nextUpcomingSlot.day_of_week ?? 0;
       let currentDay = (now.getDay() + 6) % 7;
 
       let daysToAdd = targetDay - currentDay;
-      if (daysToAdd < 0 || (daysToAdd === 0 && nextUpcomingSlot.start_time < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
+      const safeStartTime = nextUpcomingSlot.start_time || '16:00:00';
+      if (daysToAdd < 0 || (daysToAdd === 0 && safeStartTime < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
         daysToAdd += 7;
       }
 
       target.setDate(now.getDate() + daysToAdd);
-      const [hours, minutes] = nextUpcomingSlot.start_time.split(':').map(Number);
+      const [hours = 16, minutes = 0] = safeStartTime.split(':').map(Number);
       target.setHours(hours, minutes, 0, 0);
 
       const diffMs = target.getTime() - now.getTime();
@@ -161,10 +162,10 @@ export const TeacherSchedulePage: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-bold text-[#111111]">
-                Next Lecture Session: {nextUpcomingSlot.offering?.subject}
+                Next Lecture Session: {nextUpcomingSlot.custom_title || nextUpcomingSlot.offering?.subject_name || nextUpcomingSlot.offering?.subject || 'Class'}
               </h3>
               <p className="text-xs text-[#737373] mt-0.5 font-medium">
-                Class {nextUpcomingSlot.offering?.grade} ({nextUpcomingSlot.offering?.board.toUpperCase()}) ·{' '}
+                Class {nextUpcomingSlot.offering?.grade} (FBISE) ·{' '}
                 {nextUpcomingSlot.room_or_link || 'Room Link'}
               </p>
             </div>
@@ -204,7 +205,7 @@ export const TeacherSchedulePage: React.FC = () => {
         ) : (
           filteredSlots.map((slot) => {
             const isCancelled = slot.is_cancelled;
-            const subject = slot.offering?.subject || 'Class';
+            const subject: string = (slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class') as string;
             const subjectColor = getSubjectColor(subject);
             const isOnline = slot.room_or_link?.toLowerCase().includes('http') || slot.room_or_link?.toLowerCase().includes('zoom');
 
@@ -235,7 +236,7 @@ export const TeacherSchedulePage: React.FC = () => {
                     {subject}
                   </h3>
                   <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">
-                    Class {slot.offering?.grade} ({slot.offering?.board.toUpperCase()})
+                    Class {slot.offering?.grade} (FBISE)
                   </p>
                 </div>
 

@@ -44,11 +44,43 @@ CREATE POLICY "roster: self link"
   WITH CHECK (email = auth.jwt()->>'email');
 
 
--- 3. Add ktkhashir90@gmail.com as admin
+-- 3. Add admins
 INSERT INTO public.profiles (id, role, full_name, avatar_url, phone, stream, created_at)
-VALUES ('a0000000-0000-0000-0000-000000000012', 'admin', 'Khashir', NULL, '123-456-7890', NULL, '2026-07-07T12:00:00Z')
+VALUES 
+  ('a0000000-0000-0000-0000-000000000011', 'admin', 'Syed Rayyan', NULL, '123-456-7890', NULL, '2026-07-07T12:00:00Z'),
+  ('a0000000-0000-0000-0000-000000000012', 'admin', 'Site Owner', NULL, '123-456-7890', NULL, '2026-07-07T12:00:00Z')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.roster (email, full_name, role, class_ids, profile_id, created_at)
-VALUES ('ktkhashir90@gmail.com', 'Khashir', 'admin', '{}'::uuid[], 'a0000000-0000-0000-0000-000000000012'::uuid, '2026-07-07T12:00:00Z')
+VALUES 
+  ('syedrayyanf1@gmail.com', 'Syed Rayyan', 'admin', '{}'::uuid[], 'a0000000-0000-0000-0000-000000000011'::uuid, '2026-07-07T12:00:00Z'),
+  ('shs.academy.virtual@gmail.com', 'Site Owner', 'admin', '{}'::uuid[], 'a0000000-0000-0000-0000-000000000012'::uuid, '2026-07-07T12:00:00Z')
 ON CONFLICT (email) DO NOTHING;
+
+-- 4. Clean up any other admins or students from database
+DELETE FROM public.roster WHERE email NOT IN ('syedrayyanf1@gmail.com', 'shs.academy.virtual@gmail.com');
+
+-- Clean up referencing tables first to prevent foreign key violations
+DELETE FROM public.notes WHERE uploaded_by IN (
+  SELECT id FROM public.profiles WHERE role = 'student' OR (role = 'admin' AND id NOT IN (
+    SELECT profile_id FROM public.roster WHERE email IN ('syedrayyanf1@gmail.com', 'shs.academy.virtual@gmail.com') AND profile_id IS NOT NULL
+  ))
+);
+DELETE FROM public.enrollments WHERE student_id IN (
+  SELECT id FROM public.profiles WHERE role = 'student' OR (role = 'admin' AND id NOT IN (
+    SELECT profile_id FROM public.roster WHERE email IN ('syedrayyanf1@gmail.com', 'shs.academy.virtual@gmail.com') AND profile_id IS NOT NULL
+  ))
+);
+DELETE FROM public.attendance WHERE student_id IN (
+  SELECT id FROM public.profiles WHERE role = 'student' OR (role = 'admin' AND id NOT IN (
+    SELECT profile_id FROM public.roster WHERE email IN ('syedrayyanf1@gmail.com', 'shs.academy.virtual@gmail.com') AND profile_id IS NOT NULL
+  ))
+);
+DELETE FROM public.study_sessions WHERE student_id IN (
+  SELECT id FROM public.profiles WHERE role = 'student' OR (role = 'admin' AND id NOT IN (
+    SELECT profile_id FROM public.roster WHERE email IN ('syedrayyanf1@gmail.com', 'shs.academy.virtual@gmail.com') AND profile_id IS NOT NULL
+  ))
+);
+
+DELETE FROM public.profiles WHERE role = 'student' OR (role = 'admin' AND id NOT IN (SELECT profile_id FROM public.roster WHERE email IN ('syedrayyanf1@gmail.com', 'shs.academy.virtual@gmail.com') AND profile_id IS NOT NULL));
+

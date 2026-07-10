@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, feeStatus } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -42,6 +42,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
           ? '/teacher'
           : '/student';
     return <Navigate to={destination} replace />;
+  }
+
+  // Student authorization gating (fee-based): must be paid to visit pages other than checkout
+  if (profile?.role === 'student' && feeStatus !== 'paid' && location.pathname !== '/student/checkout') {
+    return <Navigate to="/student/checkout" replace />;
   }
 
   return <>{children}</>;

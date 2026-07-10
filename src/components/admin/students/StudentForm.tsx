@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import type { Profile } from '../../../types';
+import { GRADES, getStreamsForGrade } from '../../../lib/taxonomy';
 
 interface StudentFormProps {
   student?: Profile | null;
   onSave: (data: {
     full_name: string;
     phone: string;
-    stream: 'pre-medical' | 'pre-engineering' | 'ics';
-    board: 'local' | 'fbise' | 'o_level' | 'a_level';
+    stream: string;
+    board: 'fbise';
     grade: string;
   }) => void;
   onCancel: () => void;
@@ -20,24 +21,34 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 }) => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [stream, setStream] = useState<'pre-medical' | 'pre-engineering' | 'ics'>('pre-engineering');
-  const [board, setBoard] = useState<'local' | 'fbise' | 'o_level' | 'a_level'>('fbise');
+  const [stream, setStream] = useState<string>('');
   const [grade, setGrade] = useState('10');
   const [error, setError] = useState<string | null>(null);
+
+  const getStreamsList = () => {
+    return getStreamsForGrade(grade).map(s => ({
+      value: s.name.toLowerCase().replace(/\s+/g, '-'),
+      label: s.name,
+    }));
+  };
+
+  useEffect(() => {
+    const valid = getStreamsList();
+    if (!valid.some(s => s.value === stream)) {
+      setStream(valid[0]?.value || '');
+    }
+  }, [grade]);
 
   useEffect(() => {
     if (student) {
       setFullName(student.full_name);
       setPhone(student.phone || '');
-      setStream(student.stream || 'pre-engineering');
-      // For mock simplicity, default to FBISE 10 if not present
-      setBoard('fbise');
+      setStream(student.stream || '');
       setGrade('10');
     } else {
       setFullName('');
       setPhone('');
-      setStream('pre-engineering');
-      setBoard('fbise');
+      setStream('');
       setGrade('10');
     }
     setError(null);
@@ -64,7 +75,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
       full_name: fullName.trim(),
       phone: phone.trim(),
       stream,
-      board,
+      board: 'fbise',
       grade,
     });
   };
@@ -101,53 +112,32 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         />
       </div>
 
+      {/* Grade */}
+      <div className="space-y-1">
+        <label className="text-xs font-bold text-[#525252] block">Grade</label>
+        <select
+          value={grade}
+          onChange={(e) => setGrade(e.target.value)}
+          className="input py-2 text-sm w-full bg-white border-[#E5E5E5] rounded-xl"
+        >
+          {GRADES.map(g => (
+            <option key={g.grade} value={g.grade}>{g.displayName}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Stream Selector */}
       <div className="space-y-1">
         <label className="text-xs font-bold text-[#525252] block">Academic Stream</label>
         <select
           value={stream}
-          onChange={(e) => setStream(e.target.value as any)}
+          onChange={(e) => setStream(e.target.value)}
           className="input py-2 text-sm w-full bg-white border-[#E5E5E5] rounded-xl"
         >
-          <option value="pre-engineering">Pre-Engineering (Math, Phys, Chem)</option>
-          <option value="pre-medical">Pre-Medical (Bio, Phys, Chem)</option>
-          <option value="ics">ICS (CompSci, Math, Phys)</option>
+          {getStreamsList().map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
         </select>
-      </div>
-
-      {/* Board & Grade Row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-[#525252] block">Education Board</label>
-          <select
-            value={board}
-            onChange={(e) => setBoard(e.target.value as any)}
-            className="input py-2 text-sm w-full bg-white border-[#E5E5E5] rounded-xl"
-          >
-            <option value="fbise">FBISE</option>
-            <option value="local">Local Board</option>
-            <option value="o_level">O Level</option>
-            <option value="a_level">A Level</option>
-          </select>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-[#525252] block">Grade / Year</label>
-          <select
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-            className="input py-2 text-sm w-full bg-white border-[#E5E5E5] rounded-xl"
-          >
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
-            <option value="11">Grade 11</option>
-            <option value="12">Grade 12</option>
-            <option value="o1">O1</option>
-            <option value="o2">O2</option>
-            <option value="as">AS Level</option>
-            <option value="a2">A2 Level</option>
-          </select>
-        </div>
       </div>
 
       {/* Actions */}

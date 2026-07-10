@@ -1,40 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Scholario — Central Data Service
-//
+// Central Data Service
 // All Supabase reads/writes go through functions in this file.
 // Pages import from here — they never call supabase.from() directly.
-//
-// MOCK MODE: when VITE_USE_MOCK_AUTH=true, functions return mock data
-//            and skip real network calls entirely.
-//
-// REAL MODE: when VITE_USE_MOCK_AUTH=false (or unset), every function
-//            executes a scoped Supabase query with RLS enforced by the
-//            authenticated user's JWT.
+// Real mode only — mock mode has been removed.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { supabase } from './supabase';
-import {
-  MOCK_STUDENTS,
-  MOCK_TEACHERS,
-  MOCK_OFFERINGS,
-  MOCK_SCHEDULE_SLOTS,
-  MOCK_ENROLLMENTS,
-  MOCK_ATTENDANCE,
-  MOCK_NOTES,
-  MOCK_ROSTER,
-  getTeacherOfferings as mockGetTeacherOfferings,
-  getStudentsByOffering as mockGetStudentsByOffering,
-  getStudentsByTeacher as mockGetStudentsByTeacher,
-} from './mockData';
+import { getSubjectsForStream } from './taxonomy';
 import type {
   Profile, Teacher, ClassOffering, ClassSlot,
   Enrollment, Attendance, Note, RosterEntry,
+  BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
 } from '../types';
-
-// ── flag (mirrors AuthContext) ────────────────────────────────────────────────
-// useMock is ONLY true when explicitly set to 'true'.
-// Absent/undefined defaults to real Supabase auth — safe for production.
-const useMock = (import.meta as any).env?.VITE_USE_MOCK_AUTH === 'true';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
 function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
@@ -43,20 +20,31 @@ function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
   return data;
 }
 
+function mapOffering(off: any): any {
+  if (!off) return off;
+  const subjName = off.subject?.name || (typeof off.subject === 'string' ? off.subject : null) || off.subject_name || 'Subject';
+  return {
+    ...off,
+    board: off.class?.board_id || off.class?.board?.id || off.board,
+    grade: off.class?.grade || off.grade || '10',
+    stream_id: off.stream_id || off.stream?.id || null,
+    stream: typeof off.stream === 'string' ? off.stream : (off.stream?.name || off.stream_name || null),
+    subject_name: subjName,
+    subject: subjName,
+    subject_obj: typeof off.subject === 'object' && off.subject !== null ? off.subject : null,
+    teacher: off.teacher
+  };
+}
+
 // =============================================================================
 // PROFILES
 // =============================================================================
 
 /** Fetch a single profile by its Supabase auth UID */
 export async function getProfile(userId: string): Promise<Profile | null> {
-  if (useMock) {
-    return MOCK_STUDENTS.find(s => s.id === userId)
-      || MOCK_TEACHERS.find(t => t.id === userId) as any
-      || null;
-  }
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -65,10 +53,9 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 /** Admin: get all student profiles */
 export async function getAllStudents(): Promise<Profile[]> {
-  if (useMock) return [...MOCK_STUDENTS];
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
     .eq('role', 'student')
     .order('full_name');
   return throwOnError(data, error, 'getAllStudents');
@@ -78,21 +65,11 @@ export async function getAllStudents(): Promise<Profile[]> {
 export async function insertStudent(payload: {
   full_name: string;
   phone: string | null;
-  stream: 'pre-medical' | 'pre-engineering' | 'ics';
+  stream: string | null;
+  board_id?: string | null;
+  class_id?: string | null;
+  stream_id?: string | null;
 }): Promise<Profile> {
-  if (useMock) {
-    const mock: Profile = {
-      id: `s_mock_${Date.now()}`,
-      role: 'student',
-      full_name: payload.full_name,
-      avatar_url: null,
-      phone: payload.phone,
-      created_at: new Date().toISOString(),
-      stream: payload.stream,
-    };
-    MOCK_STUDENTS.push(mock);
-    return mock;
-  }
   const { data, error } = await (supabase as any)
     .from('profiles')
     .insert({ role: 'student', ...payload })
@@ -104,13 +81,8 @@ export async function insertStudent(payload: {
 /** Admin: update an existing student profile */
 export async function updateStudent(
   id: string,
-  payload: Partial<Pick<Profile, 'full_name' | 'phone' | 'stream'>>
+  payload: Partial<Pick<Profile, 'full_name' | 'phone' | 'stream' | 'board_id' | 'class_id' | 'stream_id'>>
 ): Promise<Profile> {
-  if (useMock) {
-    const idx = MOCK_STUDENTS.findIndex(s => s.id === id);
-    if (idx !== -1) Object.assign(MOCK_STUDENTS[idx], payload);
-    return MOCK_STUDENTS[idx];
-  }
   const { data, error } = await (supabase as any)
     .from('profiles')
     .update(payload)
@@ -122,11 +94,6 @@ export async function updateStudent(
 
 /** Admin: delete a student profile (also cascades via DB FK) */
 export async function deleteStudent(id: string): Promise<void> {
-  if (useMock) {
-    const idx = MOCK_STUDENTS.findIndex(s => s.id === id);
-    if (idx !== -1) MOCK_STUDENTS.splice(idx, 1);
-    return;
-  }
   const { error } = await (supabase as any).from('profiles').delete().eq('id', id);
   if (error) throw error;
 }
@@ -134,33 +101,8 @@ export async function deleteStudent(id: string): Promise<void> {
 /** Update any profile details */
 export async function updateProfile(
   id: string,
-  payload: Partial<Pick<Profile, 'full_name' | 'phone'>>
+  payload: Partial<Pick<Profile, 'full_name' | 'phone' | 'stream' | 'board_id' | 'class_id' | 'stream_id' | 'onboarding_complete'>>
 ): Promise<Profile> {
-  if (useMock) {
-    const studentIdx = MOCK_STUDENTS.findIndex(s => s.id === id);
-    if (studentIdx !== -1) {
-      Object.assign(MOCK_STUDENTS[studentIdx], payload);
-      return MOCK_STUDENTS[studentIdx];
-    }
-    const teacherIdx = MOCK_TEACHERS.findIndex(t => t.id === id);
-    if (teacherIdx !== -1) {
-      Object.assign(MOCK_TEACHERS[teacherIdx], payload);
-      return MOCK_TEACHERS[teacherIdx] as any;
-    }
-    const { MOCK_ROSTER } = await import('./mockData') as any;
-    const rosterIdx = MOCK_ROSTER.findIndex((r: any) => r.profile_id === id);
-    if (rosterIdx !== -1) {
-      Object.assign(MOCK_ROSTER[rosterIdx], { full_name: payload.full_name });
-    }
-    return {
-      id,
-      role: 'admin',
-      full_name: payload.full_name || 'Ahmad Khan',
-      phone: payload.phone || null,
-      created_at: new Date().toISOString()
-    };
-  }
-
   const { data, error } = await (supabase as any)
     .from('profiles')
     .update(payload)
@@ -170,6 +112,123 @@ export async function updateProfile(
   return throwOnError(data, error, 'updateProfile') as Profile;
 }
 
+/**
+ * Student onboarding: save grade + board + stream, then create enrollments
+ * for all class_offerings that match that grade+board combo.
+ * Also initialises the student's fee_status row if it doesn't exist.
+ */
+export async function completeStudentOnboarding(
+  studentId: string,
+  boardId: string,
+  classId: string,
+  streamId: string | null,
+  _selectedSubjectIds: string[],
+  fullName?: string
+): Promise<void> {
+  // FBISE: query stream_subjects mapping to find which subjects the student should be enrolled in
+  let offeringIds: string[] = [];
+  if (streamId) {
+    const { data: streamSubjs, error: mappingError } = await (supabase as any)
+      .from('stream_subjects')
+      .select('subject_id')
+      .eq('stream_id', streamId);
+    if (mappingError) throw mappingError;
+    const subjectIds = (streamSubjs || []).map((ss: any) => ss.subject_id);
+
+    const { data: offerings, error: offeringError } = await (supabase as any)
+      .from('class_offerings')
+      .select('id')
+      .eq('class_id', classId)
+      .in('subject_id', subjectIds);
+    if (offeringError) throw offeringError;
+    offeringIds = (offerings || []).map((o: any) => o.id);
+  }
+
+  // 2. Update or insert the profile FIRST to guarantee FK compliance on enrollments
+  let streamText = 'General';
+  if (streamId) {
+    const { data: streamRow } = await (supabase as any)
+      .from('streams')
+      .select('name')
+      .eq('id', streamId)
+      .maybeSingle();
+    streamText = streamRow?.name || '';
+  }
+
+  // Look up existing profile fields if available
+  const { data: existingProfile } = await (supabase as any)
+    .from('profiles')
+    .select('role, full_name, avatar_url, phone')
+    .eq('id', studentId)
+    .maybeSingle();
+
+  const profilePayload = {
+    id: studentId,
+    role: existingProfile?.role || 'student',
+    full_name: fullName || existingProfile?.full_name || 'Student',
+    avatar_url: existingProfile?.avatar_url || null,
+    phone: existingProfile?.phone || null,
+    board_id: boardId,
+    class_id: classId,
+    stream_id: streamId,
+    stream: streamText,
+    onboarding_complete: true
+  };
+
+  const { error: profileError } = await (supabase as any)
+    .from('profiles')
+    .upsert(profilePayload, { onConflict: 'id' });
+
+  if (profileError) {
+    throw new Error(`[db:completeStudentOnboarding] Profile upsert failed: ${profileError.message}`);
+  }
+
+  // Explicitly verify and confirm the profile row is readable in DB before proceeding to enrollments
+  let profileConfirmed = false;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: checkData, error: checkErr } = await (supabase as any)
+      .from('profiles')
+      .select('id')
+      .eq('id', studentId)
+      .maybeSingle();
+    if (checkData && checkData.id === studentId && !checkErr) {
+      profileConfirmed = true;
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  if (!profileConfirmed) {
+    throw new Error("[db:completeStudentOnboarding] Profile row could not be verified in database after upsert. Cannot proceed to enrollment insert without violating FK constraint.");
+  }
+
+  // 3. Remove any existing enrollments (clean slate)
+  await (supabase as any).from('enrollments').delete().eq('student_id', studentId);
+
+  // 4. Create new enrollments for the matching offerings
+  if (offeringIds.length > 0) {
+    const enrollmentRows = offeringIds.map((oid) => ({
+      student_id: studentId,
+      offering_id: oid,
+      total_classes: 48,
+    }));
+
+    const { error: enrollError } = await (supabase as any)
+      .from('enrollments')
+      .insert(enrollmentRows);
+
+    if (enrollError) throw new Error(`[db:completeStudentOnboarding] Enrollment failed: ${enrollError.message}`);
+  }
+
+  // 5. Ensure fee_status row exists (upsert to avoid conflict)
+  const { error: feeError } = await (supabase as any)
+    .from('fee_statuses')
+    .upsert({ student_id: studentId, status: 'unpaid' }, { onConflict: 'student_id', ignoreDuplicates: true });
+
+  if (feeError) {
+    console.warn('[db:completeStudentOnboarding] fee_statuses upsert warning:', feeError.message);
+  }
+}
 
 // =============================================================================
 // TEACHERS
@@ -177,7 +236,6 @@ export async function updateProfile(
 
 /** Admin + Teacher: get all teachers */
 export async function getAllTeachers(): Promise<Teacher[]> {
-  if (useMock) return [...MOCK_TEACHERS];
   const { data, error } = await supabase
     .from('teachers')
     .select('*')
@@ -187,16 +245,6 @@ export async function getAllTeachers(): Promise<Teacher[]> {
 
 /** Admin: insert a new teacher record */
 export async function insertTeacher(payload: Omit<Teacher, 'id' | 'created_at' | 'avatar_url'>): Promise<Teacher> {
-  if (useMock) {
-    const mock: Teacher = {
-      id: `t_mock_${Date.now()}`,
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      ...payload,
-    };
-    MOCK_TEACHERS.push(mock);
-    return mock;
-  }
   const { data, error } = await (supabase as any)
     .from('teachers')
     .insert({ avatar_url: null, ...payload })
@@ -210,11 +258,6 @@ export async function updateTeacher(
   id: string,
   payload: Partial<Omit<Teacher, 'id' | 'created_at' | 'avatar_url'>>
 ): Promise<Teacher> {
-  if (useMock) {
-    const idx = MOCK_TEACHERS.findIndex(t => t.id === id);
-    if (idx !== -1) Object.assign(MOCK_TEACHERS[idx], payload);
-    return MOCK_TEACHERS[idx];
-  }
   const { data, error } = await (supabase as any)
     .from('teachers')
     .update(payload)
@@ -230,46 +273,35 @@ export async function updateTeacher(
 
 /** All roles: get all class offerings (joined with teacher) */
 export async function getAllOfferings(): Promise<ClassOffering[]> {
-  if (useMock) return [...MOCK_OFFERINGS];
   const { data, error } = await supabase
     .from('class_offerings')
-    .select('*, teacher:teachers(*)')
-    .order('subject');
-  return throwOnError(data, error, 'getAllOfferings');
+    .select('*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)');
+  const rows = throwOnError(data, error, 'getAllOfferings');
+  return rows.map(mapOffering).sort((a: any, b: any) => (a.subject_name || a.subject?.name || '').localeCompare(b.subject_name || b.subject?.name || ''));
 }
 
 /** Teacher: get only offerings assigned to this teacher */
 export async function getOfferingsForTeacher(teacherId: string): Promise<ClassOffering[]> {
-  if (useMock) return mockGetTeacherOfferings(teacherId);
   const { data, error } = await supabase
     .from('class_offerings')
-    .select('*, teacher:teachers(*)')
-    .eq('teacher_id', teacherId)
-    .order('subject');
-  return throwOnError(data, error, 'getOfferingsForTeacher');
+    .select('*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)')
+    .eq('teacher_id', teacherId);
+  const rows = throwOnError(data, error, 'getOfferingsForTeacher');
+  return rows.map(mapOffering).sort((a: any, b: any) => (a.subject_name || a.subject?.name || '').localeCompare(b.subject_name || b.subject?.name || ''));
 }
 
 /** Student: get offerings the student is enrolled in */
 export async function getOfferingsForStudent(studentId: string): Promise<ClassOffering[]> {
-  if (useMock) {
-    const enrolled = MOCK_ENROLLMENTS.filter(e => e.student_id === studentId).map(e => e.offering_id);
-    return MOCK_OFFERINGS.filter(o => enrolled.includes(o.id));
-  }
   const { data, error } = await supabase
     .from('enrollments')
-    .select('offering:class_offerings(*, teacher:teachers(*))')
+    .select('offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .eq('student_id', studentId);
   const rows = throwOnError(data, error, 'getOfferingsForStudent');
-  return rows.map((r: any) => r.offering).filter(Boolean);
+  return rows.map((r: any) => mapOffering(r.offering)).filter(Boolean);
 }
 
 /** Admin: assign/update teacher on a class offering */
 export async function updateOfferingTeacher(offeringId: string, teacherId: string | null): Promise<void> {
-  if (useMock) {
-    const idx = MOCK_OFFERINGS.findIndex(o => o.id === offeringId);
-    if (idx !== -1) MOCK_OFFERINGS[idx].teacher_id = teacherId;
-    return;
-  }
   const { error } = await (supabase as any)
     .from('class_offerings')
     .update({ teacher_id: teacherId })
@@ -283,66 +315,116 @@ export async function updateOfferingTeacher(offeringId: string, teacherId: strin
 
 /** All roles: get all class slots, with offering + teacher joined */
 export async function getAllSlots(): Promise<ClassSlot[]> {
-  if (useMock) return [...MOCK_SCHEDULE_SLOTS];
   const { data, error } = await supabase
     .from('class_slots')
-    .select('*, offering:class_offerings(*, teacher:teachers(*))')
+    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .order('day_of_week')
     .order('start_time');
-  return throwOnError(data, error, 'getAllSlots');
+  const rows = throwOnError(data, error, 'getAllSlots');
+  return rows.map((r: any) => ({
+    ...r,
+    start_time: r.start_time || '16:00:00',
+    end_time: r.end_time || '17:00:00',
+    day_of_week: r.day_of_week ?? 0,
+    offering: mapOffering(r.offering),
+  }));
 }
 
 /** Teacher: get slots for this teacher's offerings only */
 export async function getSlotsForTeacher(teacherId: string): Promise<ClassSlot[]> {
-  if (useMock) {
-    const ids = mockGetTeacherOfferings(teacherId).map(o => o.id);
-    return MOCK_SCHEDULE_SLOTS.filter(s => ids.includes(s.offering_id));
-  }
   const { data, error } = await supabase
     .from('class_slots')
-    .select('*, offering:class_offerings!inner(*, teacher:teachers(*))')
+    .select('*, offering:class_offerings!inner(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .eq('offering.teacher_id', teacherId)
     .order('day_of_week')
     .order('start_time');
-  return throwOnError(data, error, 'getSlotsForTeacher');
+  const rows = throwOnError(data, error, 'getSlotsForTeacher');
+  return rows.map((r: any) => ({
+    ...r,
+    start_time: r.start_time || '16:00:00',
+    end_time: r.end_time || '17:00:00',
+    day_of_week: r.day_of_week ?? 0,
+    offering: mapOffering(r.offering),
+  }));
 }
 
 /** Student: get slots for this student's enrolled offerings */
 export async function getSlotsForStudent(studentId: string): Promise<ClassSlot[]> {
-  if (useMock) {
-    const enrolled = MOCK_ENROLLMENTS.filter(e => e.student_id === studentId).map(e => e.offering_id);
-    return MOCK_SCHEDULE_SLOTS
-      .filter(s => enrolled.includes(s.offering_id))
-      .map(slot => {
-        const offering = MOCK_OFFERINGS.find(o => o.id === slot.offering_id);
-        const teacher = offering ? MOCK_TEACHERS.find(t => t.id === offering.teacher_id) : undefined;
-        return { ...slot, offering: offering ? { ...offering, teacher } : undefined };
-      });
-  }
   const enrolledOfferings = await getOfferingsForStudent(studentId);
   const ids = enrolledOfferings.map(o => o.id);
-  if (ids.length === 0) return [];
+
+  const [profRes, classRes, streamRes] = await Promise.all([
+    (supabase as any).from('profiles').select('class_id, stream, stream_id, class:classes(*, board:boards(*)), stream_obj:streams(*)').eq('id', studentId).maybeSingle(),
+    (supabase as any).from('classes').select('*'),
+    (supabase as any).from('streams').select('*'),
+  ]);
+  const profData = profRes.data;
+  const allClasses = classRes.data || [];
+  const allStreams = streamRes.data || [];
+
+  const classId: string | null = profData?.class_id || enrolledOfferings[0]?.class?.id || null;
+  const studentGrade = String(profData?.class?.grade || allClasses.find((c: any) => c.id === classId)?.grade || enrolledOfferings[0]?.class?.grade || (enrolledOfferings[0] as any)?.grade || '10');
+  const studentStreamId = profData?.stream_id || profData?.stream_obj?.id || null;
+  const studentStreamName = typeof profData?.stream === 'string' && profData.stream ? profData.stream : (profData?.stream_obj?.name || allStreams.find((s: any) => s.id === studentStreamId)?.name || (enrolledOfferings[0] as any)?.stream || '');
+
   const { data, error } = await supabase
     .from('class_slots')
-    .select('*, offering:class_offerings(*, teacher:teachers(*))')
-    .in('offering_id', ids)
+    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .order('day_of_week')
     .order('start_time');
-  return throwOnError(data, error, 'getSlotsForStudent');
+
+  const rawRows = throwOnError(data, error, 'getSlotsForStudent');
+  const allRows = rawRows.map((r: any) => ({
+    ...r,
+    start_time: r.start_time || '16:00:00',
+    end_time: r.end_time || '17:00:00',
+    day_of_week: r.day_of_week ?? 0,
+    offering: r.offering ? mapOffering(r.offering) : undefined,
+  }));
+
+  const streamSubjects = getSubjectsForStream(studentGrade, studentStreamName) || [];
+
+  const filtered = allRows.filter((r: any) => {
+    // 1. If exact offering ID is enrolled, include slot
+    if (r.offering_id && ids.includes(r.offering_id)) return true;
+
+    // Determine target class and grade for this slot
+    const slotClassId = r.class_id || r.offering?.class_id || r.offering?.class?.id || null;
+    const slotGrade = String(r.offering?.grade || allClasses.find((c: any) => c.id === slotClassId)?.grade || '');
+
+    // 2. Grade & Class check
+    const gradeMatches = studentGrade && slotGrade && String(studentGrade) === String(slotGrade);
+    const classMatches = classId && slotClassId && classId === slotClassId;
+    if (!gradeMatches && !classMatches) return false;
+
+    // 3. Determine stream alignment exactly like ScheduleManagerPage does
+    const slotStreamId = r.stream_id || r.offering?.stream_id || null;
+
+    if (slotStreamId && slotStreamId !== 'all') {
+      if (studentStreamId && slotStreamId === studentStreamId) return true;
+      const slotStreamObj = allStreams.find((s: any) => s.id === slotStreamId);
+      if (slotStreamObj && slotStreamObj.name && studentStreamName) {
+        if (slotStreamObj.name.toLowerCase() === studentStreamName.toLowerCase()) return true;
+      }
+      return false;
+    }
+
+    if (r.offering_id && r.offering) {
+      const offeringSubject = r.offering.subject_name || r.offering.subject?.name || '';
+      if (studentStreamName && studentStreamName !== 'General Stream' && streamSubjects.length > 0) {
+        return streamSubjects.includes(offeringSubject);
+      }
+      return true;
+    }
+
+    return !slotStreamId || slotStreamId === studentStreamId;
+  });
+
+  return filtered;
 }
 
 /** Admin: upsert a class slot */
-export async function upsertSlot(slot: Partial<ClassSlot> & { offering_id: string }): Promise<ClassSlot> {
-  if (useMock) {
-    if (slot.id) {
-      const idx = MOCK_SCHEDULE_SLOTS.findIndex(s => s.id === slot.id);
-      if (idx !== -1) Object.assign(MOCK_SCHEDULE_SLOTS[idx], slot);
-      return MOCK_SCHEDULE_SLOTS[idx];
-    }
-    const newSlot = { ...slot, id: `slot_${Date.now()}`, is_cancelled: false, created_at: new Date().toISOString() } as ClassSlot;
-    MOCK_SCHEDULE_SLOTS.push(newSlot);
-    return newSlot;
-  }
+export async function upsertSlot(slot: Partial<ClassSlot> & { offering_id?: string | null; custom_title?: string | null; class_id?: string | null; stream_id?: string | null }): Promise<ClassSlot> {
   const { data, error } = await (supabase as any)
     .from('class_slots')
     .upsert(slot as any)
@@ -353,11 +435,6 @@ export async function upsertSlot(slot: Partial<ClassSlot> & { offering_id: strin
 
 /** Admin: delete a slot */
 export async function deleteSlot(slotId: string): Promise<void> {
-  if (useMock) {
-    const idx = MOCK_SCHEDULE_SLOTS.findIndex(s => s.id === slotId);
-    if (idx !== -1) MOCK_SCHEDULE_SLOTS.splice(idx, 1);
-    return;
-  }
   const { error } = await (supabase as any).from('class_slots').delete().eq('id', slotId);
   if (error) throw error;
 }
@@ -366,9 +443,16 @@ export async function deleteSlot(slotId: string): Promise<void> {
 // ENROLLMENTS
 // =============================================================================
 
+/** Admin: get all enrollments in the system */
+export async function getAllEnrollments(): Promise<Enrollment[]> {
+  const { data, error } = await supabase
+    .from('enrollments')
+    .select('*');
+  return throwOnError(data, error, 'getAllEnrollments');
+}
+
 /** Admin/Teacher: get all students enrolled in a specific offering */
 export async function getStudentsInOffering(offeringId: string): Promise<Profile[]> {
-  if (useMock) return mockGetStudentsByOffering(offeringId);
   const { data, error } = await supabase
     .from('enrollments')
     .select('student:profiles(*)')
@@ -379,7 +463,6 @@ export async function getStudentsInOffering(offeringId: string): Promise<Profile
 
 /** Teacher: get all unique students across this teacher's offerings */
 export async function getStudentsForTeacher(teacherId: string): Promise<Profile[]> {
-  if (useMock) return mockGetStudentsByTeacher(teacherId);
   const offerings = await getOfferingsForTeacher(teacherId);
   const ids = offerings.map(o => o.id);
   if (ids.length === 0) return [];
@@ -398,11 +481,6 @@ export async function getStudentsForTeacher(teacherId: string): Promise<Profile[
 
 /** Admin: enrol a student in an offering */
 export async function enrollStudent(studentId: string, offeringId: string, totalClasses = 48): Promise<Enrollment> {
-  if (useMock) {
-    const mock: Enrollment = { id: `e_${Date.now()}`, student_id: studentId, offering_id: offeringId, total_classes: totalClasses, enrolled_at: new Date().toISOString() };
-    MOCK_ENROLLMENTS.push(mock);
-    return mock;
-  }
   const { data, error } = await (supabase as any)
     .from('enrollments')
     .insert({ student_id: studentId, offering_id: offeringId, total_classes: totalClasses })
@@ -413,21 +491,34 @@ export async function enrollStudent(studentId: string, offeringId: string, total
 
 /** Student: get enrollments for a student */
 export async function getEnrollmentsForStudent(studentId: string): Promise<Enrollment[]> {
-  if (useMock) return MOCK_ENROLLMENTS.filter(e => e.student_id === studentId);
   const { data, error } = await supabase
     .from('enrollments')
-    .select('*')
+    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .eq('student_id', studentId);
-  return throwOnError(data, error, 'getEnrollmentsForStudent');
+  const rows = throwOnError(data, error, 'getEnrollmentsForStudent');
+  return rows.map((r: any) => ({ ...r, offering: mapOffering(r.offering) }));
 }
 
 // =============================================================================
 // ATTENDANCE
 // =============================================================================
 
+/** Get all attendance records in the database */
+export async function getAllAttendance(): Promise<Attendance[]> {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))');
+  const rows = throwOnError(data, error, 'getAllAttendance');
+  return rows.map((r: any) => {
+    if (r.slot) {
+      r.slot.offering = mapOffering(r.slot.offering);
+    }
+    return r;
+  });
+}
+
 /** Admin/Teacher: get attendance for a specific slot + date */
 export async function getAttendanceForSession(slotId: string, date: string): Promise<Attendance[]> {
-  if (useMock) return MOCK_ATTENDANCE.filter(a => a.slot_id === slotId && a.session_date === date);
   const { data, error } = await supabase
     .from('attendance')
     .select('*')
@@ -438,13 +529,85 @@ export async function getAttendanceForSession(slotId: string, date: string): Pro
 
 /** Student: get all attendance records for a student */
 export async function getAttendanceForStudent(studentId: string): Promise<Attendance[]> {
-  if (useMock) return MOCK_ATTENDANCE.filter(a => a.student_id === studentId);
   const { data, error } = await supabase
     .from('attendance')
-    .select('*, slot:class_slots(*, offering:class_offerings(*, teacher:teachers(*)))')
+    .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))')
     .eq('student_id', studentId)
     .order('session_date', { ascending: false });
-  return throwOnError(data, error, 'getAttendanceForStudent');
+  const rows = throwOnError(data, error, 'getAttendanceForStudent');
+  return rows.map((r: any) => {
+    if (r.slot) {
+      r.slot.offering = mapOffering(r.slot.offering);
+    }
+    return r;
+  });
+}
+
+/** Compute live attendance streak metrics for a student */
+export function computeAttendanceStreak(records: Attendance[]): {
+  currentStreak: number;
+  personalBest: number;
+  last7Days: boolean[];
+} {
+  if (!records || records.length === 0) {
+    return { currentStreak: 0, personalBest: 0, last7Days: [false, false, false, false, false, false, false] };
+  }
+
+  // Group attendance by date and see if they attended ('present' or 'late') on that date
+  const attendedDates = new Set<string>();
+  const allDatesSet = new Set<string>();
+
+  records.forEach((r) => {
+    if (!r.session_date) return;
+    const dateStr = r.session_date.slice(0, 10);
+    allDatesSet.add(dateStr);
+    if (r.status === 'present' || r.status === 'late') {
+      attendedDates.add(dateStr);
+    }
+  });
+
+  const sortedDates = Array.from(allDatesSet).sort();
+  let currentStreak = 0;
+  let personalBest = 0;
+  let tempStreak = 0;
+
+  for (let i = 0; i < sortedDates.length; i++) {
+    const d = sortedDates[i];
+    if (attendedDates.has(d)) {
+      tempStreak += 1;
+      if (tempStreak > personalBest) personalBest = tempStreak;
+    } else {
+      tempStreak = 0;
+    }
+  }
+
+  // Calculate current active streak leading up to today or recent active date
+  let streakCount = 0;
+  for (let i = sortedDates.length - 1; i >= 0; i--) {
+    const d = sortedDates[i];
+    if (attendedDates.has(d)) {
+      streakCount += 1;
+    } else {
+      break;
+    }
+  }
+  currentStreak = streakCount;
+
+  // Last 7 days boolean presence array (Mon to Sun)
+  const now = new Date();
+  const currentDayIndex = (now.getDay() + 6) % 7; // 0 = Mon ... 6 = Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - currentDayIndex);
+
+  const last7Days: boolean[] = [];
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(monday);
+    dt.setDate(monday.getDate() + i);
+    const dtStr = dt.toISOString().slice(0, 10);
+    last7Days.push(attendedDates.has(dtStr));
+  }
+
+  return { currentStreak, personalBest, last7Days };
 }
 
 /** Admin: bulk upsert attendance records for a session */
@@ -454,17 +617,6 @@ export async function upsertAttendanceBatch(records: Array<{
   session_date: string;
   status: 'present' | 'absent' | 'late';
 }>): Promise<void> {
-  if (useMock) {
-    records.forEach(rec => {
-      const idx = MOCK_ATTENDANCE.findIndex(a => a.student_id === rec.student_id && a.slot_id === rec.slot_id && a.session_date === rec.session_date);
-      if (idx !== -1) {
-        MOCK_ATTENDANCE[idx] = { ...MOCK_ATTENDANCE[idx], ...rec };
-      } else {
-        MOCK_ATTENDANCE.push({ id: `att_${Date.now()}_${Math.random().toString(36).slice(2)}`, marked_at: new Date().toISOString(), ...rec });
-      }
-    });
-    return;
-  }
   const { error } = await (supabase as any)
     .from('attendance')
     .upsert(records, { onConflict: 'student_id,slot_id,session_date' });
@@ -475,75 +627,139 @@ export async function upsertAttendanceBatch(records: Array<{
 // NOTES
 // =============================================================================
 
+async function enrichNotesUrls(notes: any[]): Promise<Note[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+  return Promise.all(
+    notes.map(async (r: any) => {
+      let url = r.file_url || '';
+      if (r.id) {
+        url = `/api/notes/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+      }
+      return { ...r, file_url: url, offering: mapOffering(r.offering) };
+    })
+  );
+}
+
+/** Get view URL for a note via Cloudflare R2 /api/notes/view endpoint */
+export async function getNoteSignedUrl(_filePath: string, noteId?: string): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+  if (noteId) {
+    return `/api/notes/view/${noteId}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  }
+  return '';
+}
+
+/** Upload note file and insert row via Cloudflare R2 /api/notes/upload endpoint */
+export async function uploadNoteFileToR2(
+  file: File,
+  payload: {
+    offering_id: string;
+    chapter_name: string;
+    title: string;
+    file_type: 'pdf' | 'image';
+  }
+): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('offering_id', payload.offering_id);
+  formData.append('chapter_name', payload.chapter_name);
+  formData.append('title', payload.title);
+  formData.append('file_type', payload.file_type);
+
+  const response = await fetch('/api/notes/upload', {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let errMsg = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed.error) errMsg = parsed.error;
+    } catch {}
+    throw new Error(`Upload failed (${response.status}): ${errMsg}`);
+  }
+
+  return await response.json();
+}
+
+/** Legacy signature stub kept to prevent breaking unknown imports — points to Cloudflare R2 API */
+export async function uploadNoteFile(_file: File, _folderPath: string = 'uploads'): Promise<{ path: string; url: string }> {
+  throw new Error('uploadNoteFile direct Supabase Storage call removed. Use uploadNoteFileToR2.');
+}
+
+/** Securely download a note via fetch-then-blob calling Cloudflare R2 /api/notes/dl endpoint */
+export async function downloadNoteBlob(note: any): Promise<void> {
+  if (!note.id) {
+    throw new Error('Note ID is required for download.');
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const dlUrl = `/api/notes/dl/${note.id}`;
+  const response = await fetch(dlUrl, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) throw new Error(`Download fetch failed with status ${response.status}`);
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = note.title ? `${note.title.replace(/[^a-zA-Z0-9_\-\.]/g, '_')}.pdf` : 'download.pdf';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
+}
+
 /** All roles: get all notes for a set of offering IDs */
 export async function getNotesForOfferings(offeringIds: string[]): Promise<Note[]> {
-  if (useMock) {
-    const filtered = MOCK_NOTES.filter(n => offeringIds.includes(n.offering_id));
-    return filtered.map(note => {
-      const offering = MOCK_OFFERINGS.find(o => o.id === note.offering_id);
-      const teacher = offering ? MOCK_TEACHERS.find(t => t.id === offering.teacher_id) : undefined;
-      return {
-        ...note,
-        offering: offering ? { ...offering, teacher } : undefined
-      };
-    });
-  }
   if (offeringIds.length === 0) return [];
   const { data, error } = await supabase
     .from('notes')
-    .select('*, offering:class_offerings(*, teacher:teachers(*))')
+    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .in('offering_id', offeringIds)
     .order('created_at', { ascending: false });
-  return throwOnError(data, error, 'getNotesForOfferings');
+  const rows = throwOnError(data, error, 'getNotesForOfferings');
+  return enrichNotesUrls(rows);
 }
 
 /** Admin: get all notes */
 export async function getAllNotes(): Promise<Note[]> {
-  if (useMock) {
-    return MOCK_NOTES.map(note => {
-      const offering = MOCK_OFFERINGS.find(o => o.id === note.offering_id);
-      const teacher = offering ? MOCK_TEACHERS.find(t => t.id === offering.teacher_id) : undefined;
-      return {
-        ...note,
-        offering: offering ? { ...offering, teacher } : undefined
-      };
-    });
-  }
   const { data, error } = await supabase
     .from('notes')
-    .select('*, offering:class_offerings(*, teacher:teachers(*))')
+    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .order('created_at', { ascending: false });
-  return throwOnError(data, error, 'getAllNotes');
+  const rows = throwOnError(data, error, 'getAllNotes');
+  return enrichNotesUrls(rows);
 }
 
 /** Teacher/Admin: insert a new note */
 export async function insertNote(payload: Omit<Note, 'id' | 'created_at'>): Promise<Note> {
-  if (useMock) {
-    const offering = MOCK_OFFERINGS.find(o => o.id === payload.offering_id);
-    const teacher = offering ? MOCK_TEACHERS.find(t => t.id === offering.teacher_id) : undefined;
-    const mock: Note = {
-      id: `n_${Date.now()}`,
-      created_at: new Date().toISOString(),
-      ...payload,
-      offering: offering ? { ...offering, teacher } : undefined
-    };
-    MOCK_NOTES.unshift(mock);
-    return mock;
-  }
   const { data, error } = await (supabase as any)
     .from('notes')
     .insert(payload)
-    .select()
+    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .single();
-  return throwOnError(data, error, 'insertNote') as Note;
+  const row = throwOnError(data, error, 'insertNote');
+  const enriched = await enrichNotesUrls([row]);
+  return enriched[0];
 }
 
 /** Teacher/Admin: delete a note */
 export async function deleteNote(noteId: string): Promise<void> {
-  if (useMock) {
-    const idx = MOCK_NOTES.findIndex(n => n.id === noteId);
-    if (idx !== -1) MOCK_NOTES.splice(idx, 1);
-    return;
+  const { data: note } = (await supabase.from('notes').select('file_path').eq('id', noteId).maybeSingle()) as any;
+  if (note?.file_path) {
+    await supabase.storage.from('notes').remove([note.file_path]).catch(() => {});
   }
   const { error } = await (supabase as any).from('notes').delete().eq('id', noteId);
   if (error) throw error;
@@ -554,24 +770,22 @@ export async function deleteNote(noteId: string): Promise<void> {
 // =============================================================================
 
 export async function getDashboardCounts(): Promise<{
-  students: number; teachers: number; offerings: number;
+  students: number; teachers: number; offerings: number; admins: number; announcements: number;
 }> {
-  if (useMock) {
-    return {
-      students: MOCK_STUDENTS.length,
-      teachers: MOCK_TEACHERS.length,
-      offerings: MOCK_OFFERINGS.length,
-    };
-  }
-  const [studentsRes, teachersRes, offeringsRes] = await Promise.all([
+  const [studentsRes, teachersRes, offeringsRes, adminProfilesRes, adminRosterRes, announcementsRes] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
     supabase.from('teachers').select('id', { count: 'exact', head: true }),
     supabase.from('class_offerings').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin'),
+    supabase.from('roster').select('id', { count: 'exact', head: true }).eq('role', 'admin'),
+    supabase.from('announcements').select('id', { count: 'exact', head: true })
   ]);
   return {
     students: studentsRes.count ?? 0,
     teachers: teachersRes.count ?? 0,
     offerings: offeringsRes.count ?? 0,
+    admins: Math.max(adminProfilesRes.count ?? 0, adminRosterRes.count ?? 0),
+    announcements: announcementsRes.count ?? 0,
   };
 }
 
@@ -579,13 +793,111 @@ export async function getDashboardCounts(): Promise<{
 // ROSTER PROVISIONING
 // =============================================================================
 
+function normalizeCanonicalEmail(email?: string): string {
+  if (!email) return '';
+  const cleaned = email.trim().toLowerCase();
+  if (cleaned.replace(/[^a-z0-9]/g, '').includes('shsacademyvirtual')) {
+    return 'shs.academy.virtual@gmail.com';
+  }
+  return cleaned;
+}
+
 export async function getAllRoster(): Promise<RosterEntry[]> {
-  if (useMock) return [...MOCK_ROSTER];
-  const { data, error } = await (supabase as any)
-    .from('roster')
-    .select('*')
-    .order('created_at', { ascending: false });
-  return throwOnError(data, error, 'getAllRoster');
+  const [rosterRes, profilesRes, teachersRes] = await Promise.all([
+    (supabase as any).from('roster').select('*'),
+    supabase.from('profiles').select('*'),
+    supabase.from('teachers').select('*')
+  ]);
+
+  if (rosterRes.error) console.warn('roster select error:', rosterRes.error);
+  if (profilesRes.error) console.warn('profiles select error:', profilesRes.error);
+
+  const rosterEntries: RosterEntry[] = rosterRes.data || [];
+  const profiles: any[] = profilesRes.data || [];
+  const teachers: any[] = teachersRes.data || [];
+
+  const entryByEmail = new Map<string, RosterEntry>();
+  const entryByProfileId = new Map<string, RosterEntry>();
+  const mergedList: RosterEntry[] = [];
+
+  // 1. Put all roster entries in map
+  for (const entry of rosterEntries) {
+    const emailKey = normalizeCanonicalEmail(entry.email);
+    if (emailKey && entryByEmail.has(emailKey)) {
+      const existing = entryByEmail.get(emailKey)!;
+      if (entry.profile_id && !existing.profile_id) {
+        existing.profile_id = entry.profile_id;
+        entryByProfileId.set(entry.profile_id, existing);
+      }
+      continue;
+    }
+
+    const normalizedEntry = { ...entry, email: emailKey || entry.email };
+    if (emailKey) entryByEmail.set(emailKey, normalizedEntry);
+    mergedList.push(normalizedEntry);
+    if (entry.profile_id) {
+      entryByProfileId.set(entry.profile_id, normalizedEntry);
+    }
+  }
+
+  // 2. Merge all profiles (students, admins, teachers)
+  for (const p of profiles) {
+    const emailKey = normalizeCanonicalEmail(p.email);
+    const existing = (emailKey ? entryByEmail.get(emailKey) : null) || entryByProfileId.get(p.id);
+
+    if (existing) {
+      existing.profile_id = p.id;
+      existing.full_name = p.full_name || existing.full_name;
+      existing.role = p.role || existing.role;
+      existing.email = emailKey || existing.email;
+      if (p.class_id && !existing.class_ids?.includes(p.class_id)) {
+        existing.class_ids = [...(existing.class_ids || []), p.class_id];
+      }
+      entryByProfileId.set(p.id, existing);
+    } else {
+      const newEntry: RosterEntry = {
+        id: p.id,
+        email: emailKey || `${(p.full_name || 'user').toLowerCase().replace(/\s+/g, '.')}.${p.id.slice(0, 4)}@scholario.app`,
+        full_name: p.full_name || 'Unnamed Account',
+        role: p.role || 'student',
+        class_ids: p.class_id ? [p.class_id] : [],
+        profile_id: p.id,
+        suspended: false,
+        created_at: p.created_at || new Date().toISOString()
+      };
+      mergedList.push(newEntry);
+      if (emailKey) entryByEmail.set(emailKey, newEntry);
+      entryByProfileId.set(p.id, newEntry);
+    }
+  }
+
+  // 3. Merge all teachers from teachers table
+  for (const t of teachers) {
+    const emailKey = normalizeCanonicalEmail(t.email);
+    const existing = (emailKey ? entryByEmail.get(emailKey) : null) || entryByProfileId.get(t.id);
+
+    if (existing) {
+      existing.profile_id = existing.profile_id || t.id;
+      existing.full_name = t.full_name || existing.full_name;
+      existing.role = 'teacher';
+    } else {
+      const newEntry: RosterEntry = {
+        id: t.id,
+        email: emailKey || `teacher.${t.id.slice(0, 4)}@scholario.app`,
+        full_name: t.full_name || 'Teacher',
+        role: 'teacher',
+        class_ids: [],
+        profile_id: t.id,
+        suspended: !t.is_active,
+        created_at: t.created_at || new Date().toISOString()
+      };
+      mergedList.push(newEntry);
+      if (emailKey) entryByEmail.set(emailKey, newEntry);
+      entryByProfileId.set(t.id, newEntry);
+    }
+  }
+
+  return mergedList;
 }
 
 export async function addRosterEntry(
@@ -594,68 +906,6 @@ export async function addRosterEntry(
   role: 'student' | 'teacher',
   classIds: string[]
 ): Promise<RosterEntry> {
-  if (useMock) {
-    const emailLower = email.toLowerCase().trim();
-    if (MOCK_ROSTER.some(r => r.email.toLowerCase() === emailLower)) {
-      throw new Error('Email is already registered in the roster.');
-    }
-    
-    const rosterId = `r_mock_${Date.now()}`;
-    const generatedProfileId = role === 'student' ? `s_mock_${Date.now()}` : `t_mock_${Date.now()}`;
-
-    const newEntry: RosterEntry = {
-      id: rosterId,
-      email: emailLower,
-      full_name: fullName,
-      role,
-      class_ids: classIds,
-      profile_id: generatedProfileId,
-      created_at: new Date().toISOString()
-    };
-    
-    MOCK_ROSTER.push(newEntry);
-
-    if (role === 'student') {
-      MOCK_STUDENTS.push({
-        id: generatedProfileId,
-        role: 'student',
-        full_name: fullName,
-        avatar_url: null,
-        phone: null,
-        created_at: new Date().toISOString()
-      });
-
-      for (const cid of classIds) {
-        MOCK_ENROLLMENTS.push({
-          id: `e_mock_${Date.now()}_${cid}`,
-          student_id: generatedProfileId,
-          offering_id: cid,
-          total_classes: 48,
-          enrolled_at: new Date().toISOString()
-        });
-      }
-    } else if (role === 'teacher') {
-      MOCK_TEACHERS.push({
-        id: generatedProfileId,
-        full_name: fullName,
-        avatar_url: null,
-        phone: null,
-        email: emailLower,
-        joining_date: new Date().toISOString().split('T')[0],
-        is_active: true,
-        created_at: new Date().toISOString()
-      });
-
-      // Update class offerings
-      for (const cid of classIds) {
-        const off = MOCK_OFFERINGS.find(o => o.id === cid);
-        if (off) off.teacher_id = generatedProfileId;
-      }
-    }
-    
-    return newEntry;
-  }
-
   const { data, error } = await (supabase as any).rpc('add_to_roster', {
     p_email: email,
     p_full_name: fullName,
@@ -680,48 +930,6 @@ export async function updateRosterEntry(
   rosterId: string,
   classIds: string[]
 ): Promise<void> {
-  if (useMock) {
-    const entry = MOCK_ROSTER.find(r => r.id === rosterId);
-    if (!entry) throw new Error('Roster entry not found.');
-
-    entry.class_ids = classIds;
-
-    if (entry.role === 'student' && entry.profile_id) {
-      // Remove mock enrollments
-      for (let i = MOCK_ENROLLMENTS.length - 1; i >= 0; i--) {
-        if (MOCK_ENROLLMENTS[i].student_id === entry.profile_id) {
-          MOCK_ENROLLMENTS.splice(i, 1);
-        }
-      }
-      // Re-create enrollments
-      for (const cid of classIds) {
-        MOCK_ENROLLMENTS.push({
-          id: `e_mock_${Date.now()}_${cid}`,
-          student_id: entry.profile_id,
-          offering_id: cid,
-          total_classes: 48,
-          enrolled_at: new Date().toISOString()
-        });
-      }
-    } else if (entry.role === 'teacher') {
-      const teacher = MOCK_TEACHERS.find(t => t.email === entry.email);
-      if (teacher) {
-        // Clear old classes
-        for (const off of MOCK_OFFERINGS) {
-          if (off.teacher_id === teacher.id) {
-            off.teacher_id = null;
-          }
-        }
-        // Assign new classes
-        for (const cid of classIds) {
-          const off = MOCK_OFFERINGS.find(o => o.id === cid);
-          if (off) off.teacher_id = teacher.id;
-        }
-      }
-    }
-    return;
-  }
-
   const { error } = await (supabase as any).rpc('update_roster_entry', {
     p_roster_id: rosterId,
     p_class_ids: classIds
@@ -730,48 +938,108 @@ export async function updateRosterEntry(
   if (error) throw error;
 }
 
-export async function deleteRosterEntry(rosterId: string): Promise<void> {
-  if (useMock) {
-    const idx = MOCK_ROSTER.findIndex(r => r.id === rosterId);
-    if (idx === -1) throw new Error('Roster entry not found.');
-    
-    const entry = MOCK_ROSTER[idx];
-    
-    if (entry.role === 'student') {
-      if (entry.profile_id) {
-        // Delete student profile and enrollments
-        const pIdx = MOCK_STUDENTS.findIndex(s => s.id === entry.profile_id);
-        if (pIdx !== -1) MOCK_STUDENTS.splice(pIdx, 1);
-        
-        for (let i = MOCK_ENROLLMENTS.length - 1; i >= 0; i--) {
-          if (MOCK_ENROLLMENTS[i].student_id === entry.profile_id) {
-            MOCK_ENROLLMENTS.splice(i, 1);
-          }
-        }
-      }
-    } else if (entry.role === 'teacher') {
-      const teacher = MOCK_TEACHERS.find(t => t.email === entry.email);
-      if (teacher) {
-        // Clear classes and delete teacher
-        for (const off of MOCK_OFFERINGS) {
-          if (off.teacher_id === teacher.id) {
-            off.teacher_id = null;
-          }
-        }
-        const tIdx = MOCK_TEACHERS.findIndex(t => t.id === teacher.id);
-        if (tIdx !== -1) MOCK_TEACHERS.splice(tIdx, 1);
-      }
+export async function toggleRosterAccess(
+  rosterId: string,
+  suspended: boolean
+): Promise<void> {
+  // Try updating by id or profile_id on roster table
+  const { data, error } = await (supabase as any)
+    .from('roster')
+    .update({ suspended })
+    .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
+    .select();
+
+  if (error && error.code !== 'PGRST116') throw error;
+
+  // If entry didn't exist in roster table (direct profile), insert/upsert a roster record for them
+  if (!data || data.length === 0) {
+    const { data: profile } = (await supabase.from('profiles').select('*').eq('id', rosterId).single()) as any;
+    if (profile) {
+      const fallbackEmail = `${(profile.full_name || 'user').toLowerCase().replace(/\s+/g, '.')}.${profile.id.slice(0, 4)}@scholario.app`;
+      await (supabase as any).from('roster').upsert({
+        id: profile.id,
+        email: fallbackEmail,
+        full_name: profile.full_name || 'Unnamed Account',
+        role: profile.role || 'student',
+        class_ids: profile.class_id ? [profile.class_id] : [],
+        profile_id: profile.id,
+        suspended
+      });
     }
-    
-    MOCK_ROSTER.splice(idx, 1);
-    return;
+  }
+}
+
+export async function deleteRosterEntry(rosterId: string): Promise<void> {
+  // Check if target is protected admin before anything else
+  const { data: checkRole } = (await supabase
+    .from('profiles')
+    .select('role, full_name')
+    .eq('id', rosterId)
+    .single()) as any;
+  
+  if (checkRole?.role === 'admin') {
+    throw new Error('Access denied: Administrators cannot be removed.');
   }
 
+  const { data: rosterCheck } = await (supabase as any)
+    .from('roster')
+    .select('role, full_name, email, profile_id')
+    .eq('id', rosterId)
+    .single();
+    
+  if (rosterCheck?.role === 'admin') {
+    throw new Error('Access denied: Administrators cannot be removed.');
+  }
+
+  // First try the server-side RPC if available and up to date
   const { error } = await (supabase as any).rpc('delete_from_roster', {
     p_roster_id: rosterId
   });
 
-  if (error) throw error;
+  // Client-side comprehensive cleanup fallback to guarantee no orphaned records or broken schedules
+  const profileId = rosterCheck?.profile_id || (checkRole ? rosterId : null);
+  const email = rosterCheck?.email;
+
+  if (profileId) {
+    // 1. Clean fee audit and fee statuses
+    await (supabase as any).from('fee_audit_trail').delete().or(`student_id.eq.${profileId},changed_by.eq.${profileId}`);
+    await (supabase as any).from('fee_statuses').delete().eq('student_id', profileId);
+    
+    // 2. Clean enrollments, attendance, study sessions, notes
+    await (supabase as any).from('enrollments').delete().eq('student_id', profileId);
+    await (supabase as any).from('attendance').delete().eq('student_id', profileId);
+    await (supabase as any).from('study_sessions').delete().eq('student_id', profileId);
+    await (supabase as any).from('notes').delete().eq('uploaded_by', profileId);
+
+    // 3. If teacher, unassign class offerings safely without breaking schedule slots
+    if (rosterCheck?.role === 'teacher' || checkRole?.role === 'teacher') {
+      const { data: tRow } = await (supabase as any).from('teachers').select('id').or(`id.eq.${profileId}${email ? `,email.ilike.${email}` : ''}`).maybeSingle();
+      const teacherIdToUnlink = tRow?.id || profileId;
+      await (supabase as any).from('class_offerings').update({ teacher_id: null }).eq('teacher_id', teacherIdToUnlink);
+      await (supabase as any).from('teachers').delete().eq('id', teacherIdToUnlink);
+    }
+
+    // 4. Delete profile itself
+    await supabase.from('profiles').delete().eq('id', profileId);
+  } else if (rosterCheck?.role === 'teacher' && email) {
+    const { data: tRow } = await (supabase as any).from('teachers').select('id').ilike('email', email).maybeSingle();
+    if (tRow?.id) {
+      await (supabase as any).from('class_offerings').update({ teacher_id: null }).eq('teacher_id', tRow.id);
+      await (supabase as any).from('teachers').delete().eq('id', tRow.id);
+    }
+  }
+
+  // Delete from roster table
+  if (rosterId) {
+    await (supabase as any).from('roster').delete().eq('id', rosterId);
+  }
+  if (profileId) {
+    await (supabase as any).from('roster').delete().eq('profile_id', profileId);
+  }
+  if (error && error.message && !error.message.includes('not found')) {
+    // If RPC threw a non-404 error but client fallback cleaned it up, we continue without throwing
+    console.warn('RPC delete_from_roster returned info/error (handled by client fallback):', error.message);
+  }
 }
 
 // =============================================================================
@@ -779,17 +1047,85 @@ export async function deleteRosterEntry(rosterId: string): Promise<void> {
 // =============================================================================
 
 export async function getFeeConfig(classId: string): Promise<any | null> {
-  if (useMock) {
-    const { MOCK_FEE_CONFIGS } = await import('./mockData') as any;
-    return MOCK_FEE_CONFIGS.find((fc: any) => fc.class_id === classId) || null;
-  }
+  if (!classId) return null;
   const { data, error } = await (supabase as any)
     .from('fee_configs')
     .select('*')
     .eq('class_id', classId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+    .limit(1);
+  if (error && error.code !== 'PGRST116') {
+    console.warn('[db:getFeeConfig] error:', error);
+    return null;
+  }
+  const row = data?.[0] || (Array.isArray(data) ? data[0] : data) || null;
+  if (row && typeof row.payment_instructions === 'string' && row.payment_instructions.includes('033353292094')) {
+    row.payment_instructions = row.payment_instructions.replace(/033353292094/g, '03335292094');
+  }
+  return row;
+}
+
+export async function getUniversalFeeConfig(): Promise<any | null> {
+  const { data, error } = await (supabase as any)
+    .from('fee_configs')
+    .select('*')
+    .is('class_id', null)
+    .limit(1);
+  if (error && error.code !== 'PGRST116') {
+    console.warn('[db:getUniversalFeeConfig] error:', error);
+    return null;
+  }
+  const row = data?.[0] || (Array.isArray(data) ? data[0] : data) || null;
+  if (row && typeof row.payment_instructions === 'string' && row.payment_instructions.includes('033353292094')) {
+    row.payment_instructions = row.payment_instructions.replace(/033353292094/g, '03335292094');
+  }
+  return row;
+}
+
+/** Resolve live fee configuration for a given grade / class with single source of truth resolution */
+export async function resolveGradeFeeConfig(grade: string, classId?: string | null): Promise<{
+  amount: number;
+  payment_instructions: string;
+  whatsapp_number: string;
+}> {
+  let targetClassId = classId;
+  if (!targetClassId) {
+    const { data: clsData } = await (supabase as any)
+      .from('classes')
+      .select('id')
+      .eq('board_id', 'fbise')
+      .eq('grade', grade)
+      .limit(1);
+    if (clsData?.[0]?.id) targetClassId = clsData[0].id;
+  }
+
+  let amount: number | null = null;
+  let classConfig: any = null;
+  if (targetClassId) {
+    classConfig = await getFeeConfig(targetClassId);
+    if (classConfig && typeof classConfig.amount === 'number' && classConfig.amount > 0) {
+      amount = classConfig.amount;
+    }
+  }
+
+  const config = await getUniversalFeeConfig();
+  if ((amount === null || amount <= 0) && config && typeof config.amount === 'number' && config.amount > 0) {
+    amount = config.amount;
+  }
+  if (amount === null || amount <= 0) {
+    const fallbackPrice = ['11', '12'].includes(grade) ? 3499 : 2499;
+    amount = fallbackPrice;
+  }
+
+  let rawInstructions = classConfig?.payment_instructions || config?.payment_instructions || 'Easypaisa:\nNumber: 03335292094\nName: Sadia Fatima\n\nJazzCash:\nNumber: 03058969050\nName: Haseena Bibi';
+  if (rawInstructions.includes('033353292094')) {
+    rawInstructions = rawInstructions.replace(/033353292094/g, '03335292094');
+  }
+
+  return {
+    amount,
+    payment_instructions: rawInstructions,
+    whatsapp_number: classConfig?.whatsapp_number || config?.whatsapp_number || '03222314436'
+  };
 }
 
 export async function saveFeeConfig(
@@ -798,25 +1134,6 @@ export async function saveFeeConfig(
   paymentInstructions: string,
   whatsappNumber: string
 ): Promise<void> {
-  if (useMock) {
-    const { MOCK_FEE_CONFIGS } = await import('./mockData') as any;
-    const existing = MOCK_FEE_CONFIGS.find((fc: any) => fc.class_id === classId);
-    if (existing) {
-      existing.amount = amount;
-      existing.payment_instructions = paymentInstructions;
-      existing.whatsapp_number = whatsappNumber;
-    } else {
-      MOCK_FEE_CONFIGS.push({
-        id: `fc_${Date.now()}`,
-        class_id: classId,
-        amount,
-        payment_instructions: paymentInstructions,
-        whatsapp_number: whatsappNumber,
-      });
-    }
-    return;
-  }
-
   const { error } = await (supabase as any)
     .from('fee_configs')
     .upsert({
@@ -829,56 +1146,61 @@ export async function saveFeeConfig(
   if (error) throw error;
 }
 
-export async function getFeeStatus(studentId: string): Promise<any | null> {
-  if (useMock) {
-    const { MOCK_FEE_STATUSES } = await import('./mockData') as any;
-    return MOCK_FEE_STATUSES.find((fs: any) => fs.student_id === studentId) || null;
+export async function saveUniversalFeeConfig(
+  paymentInstructions: string,
+  whatsappNumber: string
+): Promise<void> {
+  // First look up if there is an existing row where class_id IS NULL
+  const { data: existing, error: findError } = await (supabase as any)
+    .from('fee_configs')
+    .select('id')
+    .is('class_id', null)
+    .maybeSingle();
+
+  if (findError) throw findError;
+
+  if (existing) {
+    const { error } = await (supabase as any)
+      .from('fee_configs')
+      .update({
+        payment_instructions: paymentInstructions,
+        whatsapp_number: whatsappNumber,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await (supabase as any)
+      .from('fee_configs')
+      .insert({
+        class_id: null,
+        amount: 0,
+        payment_instructions: paymentInstructions,
+        whatsapp_number: whatsappNumber
+      });
+    if (error) throw error;
   }
+}
+
+export async function getFeeStatus(studentId: string): Promise<any | null> {
+  if (!studentId) return null;
   const { data, error } = await (supabase as any)
     .from('fee_statuses')
     .select('*')
     .eq('student_id', studentId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+    .limit(1);
+  if (error && error.code !== 'PGRST116') {
+    console.warn('[db:getFeeStatus] error:', error);
+    return null;
+  }
+  return data?.[0] || (Array.isArray(data) ? data[0] : data) || null;
 }
 
 export async function updateFeeStatus(
   studentId: string,
   status: 'unpaid' | 'pending' | 'paid',
-  notes?: string
+  _notes?: string
 ): Promise<void> {
-  if (useMock) {
-    const { MOCK_FEE_STATUSES, MOCK_FEE_AUDIT_LOGS } = await import('./mockData') as any;
-    const existing = MOCK_FEE_STATUSES.find((fs: any) => fs.student_id === studentId);
-    const oldStatus = existing ? existing.status : 'unpaid';
-    
-    if (existing) {
-      existing.status = status;
-      existing.updated_at = new Date().toISOString();
-    } else {
-      MOCK_FEE_STATUSES.push({
-        id: `fs_${Date.now()}`,
-        student_id: studentId,
-        status,
-        updated_at: new Date().toISOString()
-      });
-    }
-
-    if (oldStatus !== status) {
-      MOCK_FEE_AUDIT_LOGS.push({
-        id: `al_${Date.now()}`,
-        student_id: studentId,
-        status_from: oldStatus,
-        status_to: status,
-        changed_by: 'mock-admin-id',
-        changed_at: new Date().toISOString(),
-        notes: notes || `Status updated from ${oldStatus} to ${status}`
-      });
-    }
-    return;
-  }
-
   // Real Supabase flow: updates fee_statuses. The trigger automatically creates the audit entry.
   // First, verify status exists. If not, insert first.
   const { data: existing } = await (supabase as any)
@@ -902,32 +1224,6 @@ export async function updateFeeStatus(
 }
 
 export async function getPendingFeeStatuses(): Promise<any[]> {
-  if (useMock) {
-    const { MOCK_FEE_STATUSES, MOCK_STUDENTS, MOCK_ROSTER, MOCK_OFFERINGS } = await import('./mockData') as any;
-    const pendingList = MOCK_FEE_STATUSES.filter((fs: any) => fs.status === 'pending');
-    
-    return pendingList.map((fs: any) => {
-      const student = MOCK_STUDENTS.find((s: any) => s.id === fs.student_id);
-      const rosterEntry = MOCK_ROSTER.find((r: any) => r.profile_id === fs.student_id);
-      let className = 'No Class';
-      if (rosterEntry && rosterEntry.class_ids.length > 0) {
-        const off = MOCK_OFFERINGS.find((o: any) => o.id === rosterEntry.class_ids[0]);
-        if (off) {
-          className = `${off.subject} (${off.grade})`;
-        }
-      }
-      return {
-        student_id: fs.student_id,
-        full_name: student?.full_name || 'Unknown Student',
-        email: rosterEntry?.email || 'N/A',
-        status: fs.status,
-        updated_at: fs.updated_at,
-        class_name: className
-      };
-    });
-  }
-
-  // Real Supabase flow: Join profiles and roster/enrollments to show pending
   const { data, error } = await (supabase as any)
     .from('fee_statuses')
     .select(`
@@ -936,10 +1232,19 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       updated_at,
       profiles!inner (
         full_name,
+        class_id,
         enrollments (
           class_offerings (
-            subject,
-            grade
+            class:classes (
+              grade,
+              board:boards (
+                id,
+                name
+              )
+            ),
+            subject:subjects (
+              name
+            )
           )
         )
       )
@@ -948,37 +1253,315 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
 
   if (error) throw error;
 
-  // Roster email lookup is optional/secondary. Let's map it nicely.
+  // Also fetch all fee configs so we can attach the exact live amount per student's class
+  const { data: allFeeConfigs } = await (supabase as any)
+    .from('fee_configs')
+    .select('class_id, amount');
+
+  const feeMap = new Map<string, number>();
+  (allFeeConfigs || []).forEach((fc: any) => {
+    if (fc.class_id && typeof fc.amount === 'number') {
+      feeMap.set(fc.class_id, fc.amount);
+    }
+  });
+
   return (data || []).map((row: any) => {
     const classOfferings = row.profiles?.enrollments?.map((e: any) => e.class_offerings).filter(Boolean) || [];
     const className = classOfferings.length > 0 
-      ? `${classOfferings[0].subject} (${classOfferings[0].grade})`
+      ? `${classOfferings[0].subject?.name || ''} (${classOfferings[0].class?.grade || ''})`
       : 'No Class';
+
+    const classId = row.profiles?.class_id;
+    const amount = classId && feeMap.has(classId) ? feeMap.get(classId) : null;
 
     return {
       student_id: row.student_id,
       full_name: row.profiles?.full_name || 'Unknown Student',
-      email: '', // will be queried or fallback
+      email: '',
       status: row.status,
       updated_at: row.updated_at,
-      class_name: className
+      class_name: className,
+      amount
     };
   });
 }
 
 export async function getFeeAuditLogs(studentId: string): Promise<any[]> {
-  if (useMock) {
-    const { MOCK_FEE_AUDIT_LOGS } = await import('./mockData') as any;
-    return MOCK_FEE_AUDIT_LOGS.filter((log: any) => log.student_id === studentId)
-      .sort((a: any, b: any) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime());
-  }
+  if (!studentId) return [];
   const { data, error } = await (supabase as any)
     .from('fee_audit_trail')
     .select('*')
     .eq('student_id', studentId)
     .order('changed_at', { ascending: false });
-  if (error) throw error;
-  return data;
+  if (error) {
+    console.warn('[db:getFeeAuditLogs] error:', error);
+    return [];
+  }
+  return data || [];
 }
 
+export async function syncPricingToFeeConfigs(
+  classIdOrBoard: string,
+  amountOrGrade: number | string,
+  maybeAmount?: number
+): Promise<void> {
+  let classId: string;
+  let amount: number;
 
+  if (typeof amountOrGrade === 'string' && typeof maybeAmount === 'number') {
+    // Legacy fallback: called as syncPricingToFeeConfigs(board, grade, amount)
+    const { data: clsRow, error: clsErr } = await (supabase as any)
+      .from('classes')
+      .select('id')
+      .eq('board_id', classIdOrBoard)
+      .eq('grade', amountOrGrade)
+      .maybeSingle();
+    if (clsErr) throw clsErr;
+    if (!clsRow) return;
+    classId = clsRow.id;
+    amount = maybeAmount;
+  } else if (typeof amountOrGrade === 'number') {
+    // Direct robust call: called as syncPricingToFeeConfigs(classId, amount)
+    classId = classIdOrBoard;
+    amount = amountOrGrade;
+  } else {
+    throw new Error('[syncPricingToFeeConfigs] Invalid arguments');
+  }
+
+  const { data: existing, error: configsError } = await (supabase as any)
+    .from('fee_configs')
+    .select('*')
+    .eq('class_id', classId)
+    .maybeSingle();
+
+  if (configsError) throw configsError;
+
+  const defaultInstructions = 'Easypaisa:\nNumber: 03335292094\nName: Sadia Fatima\n\nJazzCash:\nNumber: 03058969050\nName: Haseena Bibi';
+  const defaultWhatsapp = '03222314436';
+
+  const payload = {
+    class_id: classId,
+    amount,
+    payment_instructions: existing?.payment_instructions || defaultInstructions,
+    whatsapp_number: existing?.whatsapp_number || defaultWhatsapp,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error: upsertError } = await (supabase as any)
+    .from('fee_configs')
+    .upsert(payload, { onConflict: 'class_id' });
+
+  if (upsertError) throw upsertError;
+}
+
+export async function getTaxonomy(): Promise<{
+  boards: BoardEntry[];
+  classes: ClassEntry[];
+  streams: StreamEntry[];
+  subjects: SubjectEntry[];
+  streamSubjects: { stream_id: string; subject_id: string }[];
+}> {
+  const [b, c, s, sub, ss] = await Promise.all([
+    supabase.from('boards').select('*').order('name'),
+    supabase.from('classes').select('*, board:boards(*)').order('display_name'),
+    supabase.from('streams').select('*, class:classes(*)').order('name'),
+    supabase.from('subjects').select('*').order('name'),
+    supabase.from('stream_subjects').select('*'),
+  ]);
+
+  return {
+    boards: b.data || [],
+    classes: c.data || [],
+    streams: s.data || [],
+    subjects: sub.data || [],
+    streamSubjects: ss.data || [],
+  };
+}
+
+// =============================================================================
+// ANNOUNCEMENTS
+// =============================================================================
+
+function sortAnnouncements(list: Announcement[]): Announcement[] {
+  return list.sort((a, b) => {
+    if (a.severity === 'crucial' && b.severity !== 'crucial') return -1;
+    if (a.severity !== 'crucial' && b.severity === 'crucial') return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
+export async function getAnnouncements(): Promise<Announcement[]> {
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*, class:classes(*, board:boards(*)), stream:streams(*), creator:profiles(*)')
+    .order('created_at', { ascending: false });
+  const rows = throwOnError(data, error, 'getAnnouncements');
+  return sortAnnouncements(rows as unknown as Announcement[]);
+}
+
+export async function createAnnouncement(payload: {
+  title: string;
+  body: string;
+  severity?: 'normal' | 'crucial';
+  scope?: 'system' | 'class';
+  class_id?: string | null;
+  stream_id?: string | null;
+  created_by?: string | null;
+}): Promise<Announcement> {
+  const { data, error } = await (supabase as any)
+    .from('announcements')
+    .insert([{
+      title: payload.title,
+      body: payload.body,
+      severity: payload.severity || 'normal',
+      scope: payload.scope || 'system',
+      class_id: payload.class_id || null,
+      stream_id: payload.stream_id || null,
+      created_by: payload.created_by || null,
+    }])
+    .select('*, class:classes(*, board:boards(*)), stream:streams(*), creator:profiles(*)')
+    .single();
+  const newAnn = throwOnError(data, error, 'createAnnouncement') as unknown as Announcement;
+
+  // Fan-out notifications to actual recipients
+  try {
+    const recipientIds = new Set<string>();
+
+    if (payload.scope === 'system' || !payload.scope) {
+      // scope='system': one row per profile of role Student, Teacher, and Admin
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('role', ['student', 'teacher', 'admin']);
+      
+      if (profiles) {
+        profiles.forEach((p: any) => recipientIds.add(p.id));
+      }
+    } else if (payload.scope === 'class' && payload.class_id) {
+      // scope='class' (with or without stream):
+      // 1. Enrolled students via enrollments + class_offerings
+      const { data: enrolledData } = await supabase
+        .from('enrollments')
+        .select('student_id, offering:class_offerings!inner(class_id, stream_id)')
+        .eq('offering.class_id', payload.class_id);
+      
+      if (enrolledData) {
+        enrolledData.forEach((e: any) => {
+          if (!payload.stream_id || !e.offering?.stream_id || e.offering.stream_id === payload.stream_id) {
+            recipientIds.add(e.student_id);
+          }
+        });
+      }
+
+      // Also include student profiles directly assigned to class_id (+ stream_id if set)
+      const { data: studentProfiles } = await supabase
+        .from('profiles')
+        .select('id, stream_id')
+        .eq('role', 'student')
+        .eq('class_id', payload.class_id);
+      
+      if (studentProfiles) {
+        studentProfiles.forEach((p: any) => {
+          if (!payload.stream_id || !p.stream_id || p.stream_id === payload.stream_id) {
+            recipientIds.add(p.id);
+          }
+        });
+      }
+
+      // 2. Teachers assigned to that class via class_offerings.teacher_id
+      const { data: teacherOfferings } = await supabase
+        .from('class_offerings')
+        .select('teacher_id')
+        .eq('class_id', payload.class_id);
+      
+      if (teacherOfferings) {
+        teacherOfferings.forEach((o: any) => {
+          if (o.teacher_id) recipientIds.add(o.teacher_id);
+        });
+      }
+
+      // Plus existing teacher-class relationship via roster
+      const { data: rosterRows } = await supabase
+        .from('roster')
+        .select('profile_id, class_ids');
+      
+      if (rosterRows) {
+        rosterRows.forEach((r: any) => {
+          if (Array.isArray(r.class_ids) && r.class_ids.includes(payload.class_id!)) {
+            if (r.profile_id) recipientIds.add(r.profile_id);
+          }
+        });
+      }
+      // Note: Do not add extra Admin rows for scope='class' beyond creator having full visibility via announcements table
+    }
+
+    if (recipientIds.size > 0) {
+      const notifRows = Array.from(recipientIds).map((uid) => ({
+        recipient_id: uid,
+        announcement_id: newAnn.id,
+        type: 'announcement',
+        title: newAnn.title,
+        message: newAnn.body,
+        severity: newAnn.severity || 'normal',
+        is_read: false,
+      }));
+
+      await (supabase as any).from('notifications').insert(notifRows);
+    }
+  } catch (fanoutErr) {
+    console.error('[createAnnouncement] Fan-out notification error:', fanoutErr);
+  }
+
+  return newAnn;
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('announcements')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export interface NotificationRow {
+  id: string;
+  recipient_id: string;
+  announcement_id: string | null;
+  type: 'announcement' | 'class_reminder';
+  title: string;
+  message: string;
+  severity: 'normal' | 'crucial';
+  is_read: boolean;
+  created_at: string;
+}
+
+export async function getNotificationsForUser(userId: string): Promise<NotificationRow[]> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('recipient_id', userId)
+    .order('created_at', { ascending: false });
+  const rows = throwOnError(data, error, 'getNotificationsForUser');
+  
+  return (rows as unknown as NotificationRow[]).sort((a, b) => {
+    if (a.severity === 'crucial' && b.severity !== 'crucial') return -1;
+    if (a.severity !== 'crucial' && b.severity === 'crucial') return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('recipient_id', userId);
+  if (error) throw error;
+}

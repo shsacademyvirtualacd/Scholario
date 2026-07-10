@@ -4,8 +4,8 @@ import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import SessionSelector from '../../components/admin/attendance/SessionSelector';
 import AttendanceGrid from '../../components/admin/attendance/AttendanceGrid';
-import { getAllSlots, getStudentsInOffering, getAttendanceForSession, upsertAttendanceBatch } from '../../lib/db';
-import type { AttendanceStatus, ClassSlot, Profile } from '../../types';
+import { getAllSlots, getStudentsInOffering, getAttendanceForSession, upsertAttendanceBatch, getAllAttendance } from '../../lib/db';
+import type { AttendanceStatus, ClassSlot, Profile, Attendance } from '../../types';
 
 export const AttendanceAdminPage: React.FC = () => {
   const [enrichedSlots, setEnrichedSlots] = useState<ClassSlot[]>([]);
@@ -15,15 +15,18 @@ export const AttendanceAdminPage: React.FC = () => {
   );
   const [enrolledStudents, setEnrolledStudents] = useState<Profile[]>([]);
   const [attendanceState, setAttendanceState] = useState<Record<string, AttendanceStatus>>({});
+  const [allAttendance, setAllAttendance] = useState<Attendance[]>([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // ── Load all slots on mount ──────────────────────────────────────────
+  // ── Load all slots + overall attendance logs on mount ──────────────────────────────────
   useEffect(() => {
     getAllSlots().then((slots) => {
       setEnrichedSlots(slots);
       if (slots.length > 0) setSelectedSlotId(slots[0].id);
     }).catch(console.error);
+
+    getAllAttendance().then(setAllAttendance).catch(console.error);
   }, []);
 
   const currentSlot = enrichedSlots.find((s) => s.id === selectedSlotId);
@@ -63,6 +66,8 @@ export const AttendanceAdminPage: React.FC = () => {
       status: attendanceState[student.id] ?? 'present',
     }));
     await upsertAttendanceBatch(records).catch(console.error);
+    // Refresh all attendance logs to compute correct overall attendance percentage
+    await getAllAttendance().then(setAllAttendance).catch(console.error);
     setSaving(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
@@ -79,38 +84,38 @@ export const AttendanceAdminPage: React.FC = () => {
       <div className="flex flex-col gap-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <SectionHeader
-          title="Attendance Sheet"
-          description="Mark student session presence, record late entries, and track weekly attendance statistics."
-        />
-        <button
-          onClick={handleSaveAttendance}
-          disabled={saving || enrolledStudents.length === 0}
-          className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-sm shrink-0 self-start sm:self-center transition-all"
-        >
-          <Save size={14} />
-          {saving ? 'Saving…' : 'Save Attendance Sheet'}
-        </button>
-      </div>
-
-      {/* Session Selector */}
-      <SessionSelector
-        slots={enrichedSlots}
-        selectedSlotId={selectedSlotId}
-        onSelectSlot={setSelectedSlotId}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-      />
-
-      {/* Success Toast Notification Banner */}
-      {saveSuccess && (
-        <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-800">
-            <Sparkles size={14} className="text-emerald-600 shrink-0" />
-            <span>Success: Attendance sheet for {currentSlot?.offering?.subject} marked and updated successfully!</span>
-          </div>
+          <SectionHeader
+            title="Attendance Sheet"
+            description="Mark student session presence, record late entries, and track weekly attendance statistics."
+          />
+          <button
+            onClick={handleSaveAttendance}
+            disabled={saving || enrolledStudents.length === 0}
+            className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-sm shrink-0 self-start sm:self-center transition-all"
+          >
+            <Save size={14} />
+            {saving ? 'Saving…' : 'Save Attendance Sheet'}
+          </button>
         </div>
-      )}
+
+        {/* Session Selector */}
+        <SessionSelector
+          slots={enrichedSlots}
+          selectedSlotId={selectedSlotId}
+          onSelectSlot={setSelectedSlotId}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
+
+        {/* Success Toast Notification Banner */}
+        {saveSuccess && (
+          <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800">
+              <Sparkles size={14} className="text-emerald-600 shrink-0" />
+              <span>Success: Attendance sheet for {currentSlot?.offering?.subject} marked and updated successfully!</span>
+            </div>
+          </div>
+        )}
 
         {/* Session stats counts */}
         {totalStudentsCount > 0 && (
@@ -177,6 +182,7 @@ export const AttendanceAdminPage: React.FC = () => {
             students={enrolledStudents}
             attendanceState={attendanceState}
             onStatusChange={handleStatusChange}
+            allAttendance={allAttendance}
           />
         )}
       </div>

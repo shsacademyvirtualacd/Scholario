@@ -4,10 +4,36 @@
 // ─────────────────────────────────────────────
 
 export type Role = 'student' | 'admin' | 'teacher';
-export type Board = 'local' | 'fbise' | 'o_level' | 'a_level';
+export type Board = 'fbise';
 export type AttendanceStatus = 'present' | 'absent' | 'late';
 export type NoteFileType = 'pdf' | 'image';
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5; // 0=Mon … 5=Sat
+
+// ─── taxonomy reference tables ───────────────
+export interface BoardEntry {
+  id: string;
+  name: string;
+}
+
+export interface ClassEntry {
+  id: string;
+  board_id: string;
+  grade: string;
+  display_name: string;
+  board?: BoardEntry;
+}
+
+export interface StreamEntry {
+  id: string;
+  class_id: string;
+  name: string;
+  class?: ClassEntry;
+}
+
+export interface SubjectEntry {
+  id: string;
+  name: string;
+}
 
 // ─── profiles ───────────────────────────────
 export interface Profile {
@@ -17,7 +43,16 @@ export interface Profile {
   avatar_url: string | null;
   phone: string | null;
   created_at: string;
-  stream?: 'pre-medical' | 'pre-engineering' | 'ics';
+  stream?: string | null;
+  board_id?: string | null;
+  class_id?: string | null;
+  stream_id?: string | null;
+  /** False until a student completes the onboarding grade/board/stream flow */
+  onboarding_complete?: boolean;
+  // joined
+  board?: BoardEntry;
+  class?: ClassEntry;
+  stream_obj?: StreamEntry;
 }
 
 // ─── teachers ───────────────────────────────
@@ -35,19 +70,30 @@ export interface Teacher {
 // ─── class_offerings ────────────────────────
 export interface ClassOffering {
   id: string;
-  board: Board;
-  grade: string; // '9' | '10' | '11' | '12' | 'as' | 'a2' | 'o1' | 'o2'
-  subject: string;
+  class_id: string;
+  subject_id: string;
+  stream_id?: string | null;
   teacher_id: string | null;
   created_at: string;
   // joined
+  class?: any;
+  subject?: any;
   teacher?: Teacher;
+  
+  // Flattened for backward compatibility in the frontend
+  board?: any;
+  grade?: string;
+  stream?: any;
+  subject_name?: string;
 }
 
 // ─── class_slots ────────────────────────────
 export interface ClassSlot {
   id: string;
-  offering_id: string;
+  offering_id: string | null;
+  custom_title?: string | null;
+  class_id?: string | null;
+  stream_id?: string | null;
   day_of_week: DayOfWeek;
   start_time: string; // HH:MM:SS
   end_time: string;   // HH:MM:SS
@@ -89,6 +135,7 @@ export interface Note {
   chapter_name: string;
   title: string;
   file_url: string;
+  file_path?: string;
   file_type: NoteFileType;
   uploaded_by: string;
   created_at: string;
@@ -106,6 +153,23 @@ export interface StudySession {
   created_at: string;
 }
 
+// ─── announcements ──────────────────────────
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  severity: 'normal' | 'crucial';
+  scope: 'system' | 'class';
+  class_id?: string | null;
+  stream_id?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  // joined
+  class?: ClassEntry;
+  stream?: StreamEntry;
+  creator?: Profile;
+}
+
 // ─── roster ──────────────────────────────────
 export interface RosterEntry {
   id: string;
@@ -114,6 +178,7 @@ export interface RosterEntry {
   role: 'student' | 'teacher' | 'admin';
   class_ids: string[];
   profile_id: string | null;
+  suspended?: boolean;
   created_at: string;
 }
 
@@ -166,6 +231,48 @@ export interface Database {
         Insert: Omit<StudySession, 'id' | 'created_at'>;
         Update: Partial<Omit<StudySession, 'id' | 'created_at'>>;
       };
+      fee_configs: {
+        Row: {
+          id: string;
+          class_id: string;
+          amount: number;
+          payment_instructions: string;
+          whatsapp_number: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['fee_configs']['Row'], 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['fee_configs']['Row']>;
+      };
+      fee_statuses: {
+        Row: {
+          id: string;
+          student_id: string;
+          status: 'unpaid' | 'pending' | 'paid';
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['fee_statuses']['Row'], 'id' | 'updated_at'> & { id?: string; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['fee_statuses']['Row']>;
+      };
+      fee_audit_trail: {
+        Row: {
+          id: string;
+          student_id: string;
+          status_from: string;
+          status_to: string;
+          changed_by: string | null;
+          changed_at: string;
+          notes: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['fee_audit_trail']['Row'], 'id' | 'changed_at'> & { id?: string; changed_at?: string };
+        Update: Partial<Database['public']['Tables']['fee_audit_trail']['Row']>;
+      };
+      announcements: {
+        Row: Announcement;
+        Insert: Omit<Announcement, 'id' | 'created_at' | 'class' | 'stream' | 'creator'> & { id?: string; created_at?: string };
+        Update: Partial<Omit<Announcement, 'id' | 'created_at' | 'class' | 'stream' | 'creator'>>;
+      };
     };
   };
 }
+

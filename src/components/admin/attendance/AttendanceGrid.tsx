@@ -1,23 +1,24 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
-import type { Profile, AttendanceStatus } from '../../../types';
+import type { Profile, AttendanceStatus, Attendance } from '../../../types';
 import StatusToggle from './StatusToggle';
-import { MOCK_ATTENDANCE } from '../../../lib/mockData';
 
 interface AttendanceGridProps {
   students: Profile[];
   attendanceState: Record<string, AttendanceStatus>;
   onStatusChange: (studentId: string, status: AttendanceStatus) => void;
+  allAttendance?: Attendance[];
 }
 
 export const AttendanceGrid: React.FC<AttendanceGridProps> = ({
   students,
   attendanceState,
   onStatusChange,
+  allAttendance = [],
 }) => {
   // Compute overall attendance % helper
   const getOverallAttendancePct = (studentId: string) => {
-    const records = MOCK_ATTENDANCE.filter((a) => a.student_id === studentId);
+    const records = allAttendance.filter((a) => a.student_id === studentId);
     const total = records.length;
     const attended = records.filter((a) => a.status === 'present' || a.status === 'late').length;
     return total > 0 ? Math.round((attended / total) * 100) : 100;
@@ -73,9 +74,8 @@ export const AttendanceGrid: React.FC<AttendanceGridProps> = ({
                   </div>
                 </td>
 
-                {/* Stream */}
                 <td>
-                  <span className="text-xs font-semibold text-[#525252]">{getStreamLabel(student.stream)}</span>
+                  <span className="text-xs font-semibold text-[#525252]">{getStreamLabel(student.stream || undefined)}</span>
                 </td>
 
                 {/* Overall Attendance */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Shield, Scale, Calendar, Mail, Phone, MapPin } from 'lucide-react';
+import { X, Shield, Scale, Calendar, Mail, Phone } from 'lucide-react';
 
 interface LegalModalProps {
   type: 'privacy' | 'terms' | null;

@@ -1,0 +1,189 @@
+import React, { useState, useEffect } from 'react';
+import { Bell, Calendar, BookMarked, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../features/auth/AuthContext';
+import {
+  NotificationRow,
+  getNotificationsForUser,
+  markNotificationRead,
+  markAllNotificationsRead
+} from '../../lib/db';
+
+export const NotificationBell: React.FC = () => {
+  const { profile } = useAuth();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchNotifications = async () => {
+    if (!profile?.id) return;
+    try {
+      setLoading(true);
+      const data = await getNotificationsForUser(profile.id);
+      setNotifications(data);
+    } catch (err) {
+      console.error('[NotificationBell] Failed to load notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (notifOpen) {
+      fetchNotifications();
+    }
+  }, [notifOpen]);
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const toggleRead = async (id: string) => {
+    const target = notifications.find(n => n.id === id);
+    if (!target) return;
+    try {
+      if (!target.is_read) {
+        await markNotificationRead(id);
+        setNotifications(prev =>
+          prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
+        );
+      }
+    } catch (err) {
+      console.error('[NotificationBell] Failed to mark read:', err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    if (!profile?.id) return;
+    try {
+      await markAllNotificationsRead(profile.id);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error('[NotificationBell] Failed to mark all read:', err);
+    }
+  };
+
+  const formatTimestamp = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setNotifOpen(!notifOpen)}
+        className={`relative w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
+          notifOpen
+            ? 'bg-[#111111] border-[#111111] text-[#F4C430]'
+            : 'border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111]'
+        }`}
+        title="Notifications"
+      >
+        <Bell size={16} />
+        {unreadCount > 0 && (
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ef4444] border-2 border-white rounded-full" />
+        )}
+      </button>
+
+      {notifOpen && (
+        <>
+          {/* Click-out backdrop */}
+          <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
+          {/* Popover panel */}
+          <div className="absolute right-0 mt-2 w-80 bg-white border border-[#E5E5E5] rounded-2xl shadow-xl z-40 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
+            <div className="p-3.5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">
+              <span className="text-[10px] font-black text-[#111111] uppercase tracking-wider">Notifications</span>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-[10px] font-bold text-[#737373] hover:text-[#111111] transition-colors"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-[#F5F5F5] max-h-72 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center text-xs text-[#A3A3A3] font-semibold">
+                  {loading ? 'Loading notifications...' : 'You are all caught up!'}
+                </div>
+              ) : (
+                notifications.map(notif => {
+                  const isCrucial = notif.severity === 'crucial';
+                  return (
+                    <div
+                      key={notif.id}
+                      onClick={() => toggleRead(notif.id)}
+                      className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors ${
+                        notif.is_read
+                          ? 'bg-white hover:bg-[#FAFAFA]'
+                          : isCrucial
+                          ? 'bg-[#FFF1F2] hover:bg-[#FFE4E6]'
+                          : 'bg-[#FFFDF0] hover:bg-[#FFFBEA]'
+                      } ${isCrucial ? 'border-l-4 border-l-[#E11D48]' : ''}`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                          isCrucial
+                            ? 'bg-[#FFE4E6] text-[#E11D48] border border-[#FECDD3]'
+                            : notif.type === 'class_reminder'
+                            ? 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]'
+                            : 'bg-blue-50 text-blue-700 border border-blue-100'
+                        }`}
+                      >
+                        {isCrucial ? (
+                          <AlertCircle size={14} />
+                        ) : notif.type === 'class_reminder' ? (
+                          <Calendar size={14} />
+                        ) : (
+                          <BookMarked size={14} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {isCrucial && (
+                            <span className="text-[8px] font-black uppercase tracking-wider bg-[#E11D48] text-white px-1.5 py-0.5 rounded">
+                              Crucial
+                            </span>
+                          )}
+                          <p className="text-xs font-bold text-[#111111] leading-snug truncate">
+                            {notif.title}
+                          </p>
+                        </div>
+                        <p className="text-[11px] text-[#525252] leading-relaxed mt-0.5 font-medium">
+                          {notif.message}
+                        </p>
+                        <span className="text-[9px] text-[#A3A3A3] font-bold block mt-1">
+                          {formatTimestamp(notif.created_at)}
+                        </span>
+                      </div>
+                      {!notif.is_read && (
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
+                            isCrucial ? 'bg-[#E11D48]' : 'bg-[#F4C430]'
+                          }`}
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default NotificationBell;

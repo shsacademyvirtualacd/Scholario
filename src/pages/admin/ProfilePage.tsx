@@ -3,11 +3,11 @@ import { Mail, Phone, Camera, Edit3, Check, X, ShieldCheck } from 'lucide-react'
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
-import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_OFFERINGS, MOCK_ANNOUNCEMENTS } from '../../lib/mockData';
-import { updateProfile } from '../../lib/db';
+import { updateProfile, getDashboardCounts } from '../../lib/db';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
+  const [counts, setCounts] = useState({ students: 0, teachers: 0, offerings: 0, announcements: 0 });
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
@@ -23,9 +23,13 @@ export const ProfilePage: React.FC = () => {
     if (profile) {
       setFullName(profile.full_name || '');
       setPhone(profile.phone || '');
-      setEmail(profile.user?.email || 'admin@example.com');
+      setEmail(user?.email || 'admin@example.com');
     }
-  }, [profile]);
+  }, [profile, user]);
+
+  React.useEffect(() => {
+    getDashboardCounts().then(setCounts).catch(console.error);
+  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,19 +215,19 @@ export const ProfilePage: React.FC = () => {
             <h3 className="text-sm font-bold text-[#111111] mb-4 border-b border-[#F5F5F5] pb-3">Platform Scope Statistics</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
               <div className="p-3 bg-[#EFF6FF] border border-[#EFF6FF] rounded-xl">
-                <span className="text-2xl font-black text-[#3b82f6]">{MOCK_STUDENTS.length}</span>
+                <span className="text-2xl font-black text-[#3b82f6]">{counts.students}</span>
                 <span className="text-[10px] font-bold text-[#737373] uppercase tracking-wide block mt-1">Students</span>
               </div>
               <div className="p-3 bg-[#FFFBF0] border border-[#FFFBF0] rounded-xl">
-                <span className="text-2xl font-black text-[#F4C430]">{MOCK_TEACHERS.length}</span>
+                <span className="text-2xl font-black text-[#F4C430]">{counts.teachers}</span>
                 <span className="text-[10px] font-bold text-[#737373] uppercase tracking-wide block mt-1">Teachers</span>
               </div>
               <div className="p-3 bg-[#FAF5FF] border border-[#FAF5FF] rounded-xl">
-                <span className="text-2xl font-black text-[#a855f7]">{MOCK_OFFERINGS.length}</span>
+                <span className="text-2xl font-black text-[#a855f7]">{counts.offerings}</span>
                 <span className="text-[10px] font-bold text-[#737373] uppercase tracking-wide block mt-1">Active Offerings</span>
               </div>
               <div className="p-3 bg-[#F0FDF4] border border-[#F0FDF4] rounded-xl">
-                <span className="text-2xl font-black text-[#22c55e]">{MOCK_ANNOUNCEMENTS.length}</span>
+                <span className="text-2xl font-black text-[#22c55e]">{counts.announcements || 0}</span>
                 <span className="text-[10px] font-bold text-[#737373] uppercase tracking-wide block mt-1">Broadcasts</span>
               </div>
             </div>

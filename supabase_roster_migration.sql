@@ -17,32 +17,38 @@ CREATE TABLE IF NOT EXISTS public.roster (
 ALTER TABLE public.roster ENABLE ROW LEVEL SECURITY;
 
 -- Allow admins full access to roster
+DROP POLICY IF EXISTS "roster: admin all" ON public.roster;
 CREATE POLICY "roster: admin all"
   ON public.roster FOR ALL
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
 -- Allow authenticated users to read their own roster entry by email
+DROP POLICY IF EXISTS "roster: select own" ON public.roster;
 CREATE POLICY "roster: select own"
   ON public.roster FOR SELECT
   USING (email = auth.jwt()->>'email' OR public.is_admin());
 
 -- Allow users to link their auth uid to their own roster entry on first login
 -- (provisionProfile() does: .update({ profile_id: userId }).eq('email', email))
+DROP POLICY IF EXISTS "roster: self link" ON public.roster;
 CREATE POLICY "roster: self link"
   ON public.roster FOR UPDATE
   USING (email = auth.jwt()->>'email')
   WITH CHECK (email = auth.jwt()->>'email');
 
 
--- 2. Secure RPC Functions (SECURITY DEFINER to bypass standard client-side writes)
+-- Ensure we drop all old signatures first to avoid overloaded duplicates
+DROP FUNCTION IF EXISTS public.add_to_roster(text, text, text, uuid[]);
+DROP FUNCTION IF EXISTS public.add_to_roster(text, text, text, text[]);
+DROP FUNCTION IF EXISTS public.add_to_roster(text, text, text, jsonb);
 
 -- Add a new entry to the roster
 CREATE OR REPLACE FUNCTION public.add_to_roster(
   p_email text,
   p_full_name text,
   p_role text,
-  p_class_ids uuid[]
+  p_class_ids jsonb
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -52,6 +58,7 @@ DECLARE
   v_roster_id uuid;
   v_profile_id uuid;
   v_class_id uuid;
+  v_class_ids uuid[];
 BEGIN
   -- Server-side Admin security check
   IF NOT public.is_admin() THEN
@@ -73,6 +80,9 @@ BEGIN
     RAISE EXCEPTION 'A user profile with this email already exists.';
   END IF;
 
+  -- Convert jsonb array to uuid[]
+  v_class_ids := ARRAY(SELECT jsonb_array_elements_text(p_class_ids)::uuid);
+
   -- Generate profile ID upfront
   v_profile_id := gen_random_uuid();
 
@@ -82,12 +92,12 @@ BEGIN
 
   -- Insert into roster linking the profile
   INSERT INTO public.roster (email, full_name, role, class_ids, profile_id)
-  VALUES (LOWER(p_email), p_full_name, p_role, p_class_ids, v_profile_id)
+  VALUES (LOWER(p_email), p_full_name, p_role, v_class_ids, v_profile_id)
   RETURNING id INTO v_roster_id;
 
   -- If it's a student, enroll them in classes
   IF p_role = 'student' THEN
-    FOREACH v_class_id IN ARRAY p_class_ids
+    FOREACH v_class_id IN ARRAY v_class_ids
     LOOP
       INSERT INTO public.enrollments (student_id, offering_id, total_classes)
       VALUES (v_profile_id, v_class_id, 48);
@@ -97,7 +107,7 @@ BEGIN
     INSERT INTO public.teachers (id, full_name, email, is_active, joining_date)
     VALUES (v_profile_id, p_full_name, LOWER(p_email), TRUE, CURRENT_DATE);
 
-    FOREACH v_class_id IN ARRAY p_class_ids
+    FOREACH v_class_id IN ARRAY v_class_ids
     LOOP
       UPDATE public.class_offerings
       SET teacher_id = v_profile_id
@@ -110,10 +120,15 @@ END;
 $$;
 
 
+-- Ensure we drop all old signatures first to avoid overloaded duplicates
+DROP FUNCTION IF EXISTS public.update_roster_entry(uuid, uuid[]);
+DROP FUNCTION IF EXISTS public.update_roster_entry(uuid, text[]);
+DROP FUNCTION IF EXISTS public.update_roster_entry(uuid, jsonb);
+
 -- Update an existing roster entry's class assignment
 CREATE OR REPLACE FUNCTION public.update_roster_entry(
   p_roster_id uuid,
-  p_class_ids uuid[]
+  p_class_ids jsonb
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -125,6 +140,7 @@ DECLARE
   v_teacher_id uuid;
   v_class_id uuid;
   v_profile_id uuid;
+  v_class_ids uuid[];
 BEGIN
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Access denied: Admin role required.';
@@ -139,9 +155,12 @@ BEGIN
     RAISE EXCEPTION 'Roster entry not found.';
   END IF;
 
+  -- Convert jsonb array to uuid[]
+  v_class_ids := ARRAY(SELECT jsonb_array_elements_text(p_class_ids)::uuid);
+
   -- Update class_ids in roster
   UPDATE public.roster
-  SET class_ids = p_class_ids
+  SET class_ids = v_class_ids
   WHERE id = p_roster_id;
 
   -- Apply live updates to current mappings
@@ -153,7 +172,7 @@ BEGIN
       WHERE student_id = v_profile_id;
 
       -- Create new enrollments
-      FOREACH v_class_id IN ARRAY p_class_ids
+      FOREACH v_class_id IN ARRAY v_class_ids
       LOOP
         INSERT INTO public.enrollments (student_id, offering_id, total_classes)
         VALUES (v_profile_id, v_class_id, 48);
@@ -173,7 +192,7 @@ BEGIN
       WHERE teacher_id = v_teacher_id;
 
       -- Assign new offerings
-      FOREACH v_class_id IN ARRAY p_class_ids
+      FOREACH v_class_id IN ARRAY v_class_ids
       LOOP
         UPDATE public.class_offerings
         SET teacher_id = v_teacher_id
@@ -210,6 +229,11 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Roster entry not found.';
+  END IF;
+
+  -- Enforce admin delete prevention
+  IF v_role = 'admin' THEN
+    RAISE EXCEPTION 'Access denied: Administrators cannot be removed from the roster.';
   END IF;
 
   -- 1. Clean up linked operational tables

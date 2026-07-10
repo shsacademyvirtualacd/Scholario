@@ -1,10 +1,10 @@
 import React from 'react';
-import { Plus, CalendarDays } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 import SlotCard from './SlotCard';
-import type { ClassSlot } from '../../../types';
 
 interface WeeklyGridProps {
   slots: any[];
+  onAddSlot?: (dayIndex: number) => void;
   onEdit: (slot: any) => void;
   onDelete: (slotId: string) => void;
   onToggleCancel: (slotId: string, currentStatus: boolean) => void;
@@ -14,6 +14,7 @@ const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satu
 
 export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
   slots,
+  onAddSlot,
   onEdit,
   onDelete,
   onToggleCancel,
@@ -22,7 +23,7 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
   const getSlotsForDay = (dayIndex: number) => {
     return slots
       .filter((s) => s.day_of_week === dayIndex)
-      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+      .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
   };
 
   return (
@@ -51,12 +52,14 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                     <CalendarDays size={14} />
                   </div>
                   <span className="text-[10px] text-[#A3A3A3] font-extrabold uppercase tracking-wider">No Classes</span>
-                  <button
-                    onClick={() => onAddSlot(dayIndex)}
-                    className="text-[10px] text-[#737373] hover:text-[#111111] font-bold mt-1.5 underline"
-                  >
-                    Schedule one
-                  </button>
+                  {onAddSlot && (
+                    <button
+                      onClick={() => onAddSlot(dayIndex)}
+                      className="text-[10px] text-[#737373] hover:text-[#111111] font-bold mt-1.5 underline"
+                    >
+                      Schedule one
+                    </button>
+                  )}
                 </div>
               ) : (
                 daySlots.map((slot) => (

@@ -1,0 +1,27 @@
+# Task List — BISE Removal & Simplified Class Taxonomy Alignment
+
+- [x] **Part 1: Database Setup**
+  - [x] Write and run `supabase_taxonomy_migration.sql` to clean up BISE and non-pricing subjects and seed simplified FBISE, O-Level & A-Level offerings.
+- [x] **Part 2: Type Definition Updates**
+  - [x] Simplify `database.ts` types (StudentGroup, Profile stream, and GROUP_SUBJECTS).
+- [x] **Part 3: UI & Page Updates**
+  - [x] Update student onboarding flow (`OnboardingPage.tsx`) with simplified streams and A-Level support.
+  - [x] Refactor student registration flow in `src/pages/public/UnregisteredPage.tsx`) with dynamic stream filters.
+  - [x] Update admin pricing manager (`PriceManagerPage.tsx`) to support AS/A2 A-Level prices.
+  - [x] Update student pricing widget (`PricingSection.tsx`) with AS/A2 pricing.
+  - [x] Update schedule manager (`ScheduleManagerPage.tsx`) board/grade filter arrays.
+  - [x] Update admin student form (`StudentForm.tsx`) grade options.
+- [x] **Part 4: Verification & Walkthrough**
+  - [x] Run `npm run build` to verify the build compiles cleanly.
+  - [x] Create simplified walkthrough documentation.
+- [x] **Part 5: Automated Price-matching Integration**
+  - [x] Implement database bulk-sync routine `syncPricingToFeeConfigs` in `db.ts` to automatically populate class `fee_configs` rows.
+  - [x] Wire database sync directly to admin `PriceManagerPage.tsx` submit handler with status/saving spinner.
+- [x] **Part 6: Universal Fee Configuration**
+  - [x] Create universal fee configuration helpers (`getUniversalFeeConfig`, `saveUniversalFeeConfig`) in `db.ts` to store global payment details.
+  - [x] Refactor `AdminFeesPage.tsx` to remove class dropdown and amount settings, leaving a single universal payment setup card.
+  - [x] Update `StudentCheckoutPage.tsx` to read amount dynamically from pricing configurations and instructions universally from the fallback DB row.
+- [x] **Part 7: User Deletion & Access Suspension**
+  - [x] Add `suspended` column to `roster` table and update the `delete_from_roster` RPC inside `supabase_taxonomy_migration.sql` to purge accounts from `auth.users` schema.
+  - [x] Update `AuthContext.tsx` to check roster existence and suspension status on every session load or profile refresh.
+  - [x] Implement toggle roster access helper in `db.ts` and add Lock/Unlock inline access controls in `RosterManagerPage.tsx` next to the permanent delete action.

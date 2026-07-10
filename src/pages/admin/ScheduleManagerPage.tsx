@@ -1,54 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Filter, RotateCcw, Megaphone } from 'lucide-react';
+import { Plus, Filter, RotateCcw, Megaphone } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import WeeklyGrid from '../../components/admin/schedule/WeeklyGrid';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import SlotForm from '../../components/admin/schedule/SlotForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
-import { MOCK_ANNOUNCEMENTS } from '../../lib/mockData';
-import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot } from '../../lib/db';
+import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, getTaxonomy, createAnnouncement } from '../../lib/db';
+import { getSubjectsForStream } from '../../lib/taxonomy';
 import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
 const BOARDS = [
   { id: 'fbise', label: 'FBISE' },
-  { id: 'local', label: 'BISE (Local Board)' },
-  { id: 'o_level', label: 'O Level' },
-  { id: 'a_level', label: 'A Level' },
-  { id: 'all', label: 'All Boards' },
 ];
-
-const GRADES_BY_BOARD: Record<string, { id: string; label: string }[]> = {
-  fbise: [
-    { id: '9', label: 'Grade 9' },
-    { id: '10', label: 'Grade 10' },
-    { id: '11', label: 'Grade 11' },
-    { id: '12', label: 'Grade 12' },
-    { id: 'all', label: 'All Grades' },
-  ],
-  local: [
-    { id: '9', label: 'Grade 9' },
-    { id: '10', label: 'Grade 10' },
-    { id: '11', label: 'Grade 11' },
-    { id: '12', label: 'Grade 12' },
-    { id: 'all', label: 'All Grades' },
-  ],
-  o_level: [
-    { id: 'o1', label: 'O1' },
-    { id: 'o2', label: 'O2' },
-    { id: 'all', label: 'All O Levels' },
-  ],
-  a_level: [
-    { id: 'as', label: 'AS' },
-    { id: 'a2', label: 'A2' },
-    { id: 'all', label: 'All A Levels' },
-  ],
-};
 
 export const ScheduleManagerPage: React.FC = () => {
   const [slots, setSlots] = useState<ClassSlot[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [taxonomy, setTaxonomy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const [selectedSlot, setSelectedSlot] = useState<ClassSlot | null>(null);
@@ -59,20 +29,23 @@ export const ScheduleManagerPage: React.FC = () => {
   // Filters - default to Grade 10 class-wise view for better usability
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>('10');
+  const [selectedStream, setSelectedStream] = useState<string>('all');
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [showPublishBanner, setShowPublishBanner] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [s, o, t] = await Promise.all([
+      const [s, o, t, tax] = await Promise.all([
         getAllSlots(),
         getAllOfferings(),
-        getAllTeachers()
+        getAllTeachers(),
+        getTaxonomy()
       ]);
       setSlots(s);
       setOfferings(o);
       setTeachers(t);
+      setTaxonomy(tax);
     } catch (err) {
       console.error(err);
     } finally {
@@ -94,40 +67,73 @@ export const ScheduleManagerPage: React.FC = () => {
     };
   });
 
+  const activeClass = taxonomy?.classes?.find((c: any) => c.grade === selectedGrade && c.board_id === selectedBoard);
+  const activeStreams = activeClass
+    ? taxonomy.streams.filter((s: any) => s.class_id === activeClass.id)
+    : [];
+
   // Apply active class-wise and teacher filters
   const filteredSlots = enrichedSlots.filter((slot) => {
-    if (!slot.offering) return false;
+    // 1. Grade match
+    const slotGrade = slot.offering?.grade || taxonomy?.classes?.find((c: any) => c.id === slot.class_id)?.grade;
+    const gradeMatch = selectedGrade === 'all' || String(slotGrade) === String(selectedGrade);
 
-    // 1. Board match
-    const boardMatch = selectedBoard === 'all' || slot.offering.board === selectedBoard;
-
-    // 2. Grade match
-    const gradeMatch =
-      selectedBoard === 'all' ||
-      selectedGrade === 'all' ||
-      slot.offering.grade === selectedGrade;
+    // 2. Board match
+    const slotBoard = slot.offering?.board || taxonomy?.classes?.find((c: any) => c.id === slot.class_id)?.board_id;
+    const boardMatch = selectedBoard === 'all' || slotBoard === selectedBoard;
 
     // 3. Teacher match
-    const teacherMatch = teacherFilter === 'all' || slot.offering.teacher_id === teacherFilter;
+    const slotTeacherId = slot.offering?.teacher_id;
+    const teacherMatch = teacherFilter === 'all' || slotTeacherId === teacherFilter;
 
-    return boardMatch && gradeMatch && teacherMatch;
+    // 4. Stream match
+    let streamMatch = true;
+    if (selectedStream !== 'all') {
+      if (slot.offering_id && slot.offering) {
+        // Match explicit stream_id first
+        if (slot.offering.stream_id === selectedStream) {
+          streamMatch = true;
+        } else {
+          const activeStreamName = activeStreams.find((s: any) => s.id === selectedStream)?.name || taxonomy?.streams?.find((s: any) => s.id === selectedStream)?.name;
+          if (activeStreamName && slotGrade) {
+            const streamSubjects = getSubjectsForStream(slotGrade, activeStreamName);
+            const offeringSubject = slot.offering.subject_name || slot.offering.subject?.name;
+            streamMatch = streamSubjects ? streamSubjects.includes(offeringSubject) : false;
+          } else {
+            streamMatch = false;
+          }
+        }
+      } else {
+        // If it's a schedule-only slot, match stream_id directly. If stream_id is null, it's common.
+        streamMatch = !slot.stream_id || slot.stream_id === selectedStream;
+      }
+    }
+
+    return boardMatch && gradeMatch && teacherMatch && streamMatch;
   });
 
   // Handle drawer save (Add / Edit)
   const handleSaveSlot = async (formData: {
-    offering_id: string;
+    offering_id: string | null;
+    custom_title?: string | null;
+    class_id?: string | null;
+    stream_id?: string | null;
     day_of_week: number;
     start_time: string;
     end_time: string;
     room_or_link: string;
     publish_to_news: boolean;
+    notify_affected?: boolean;
   }) => {
     const isEditMode = !!(selectedSlot && selectedSlot.id);
     
     try {
-      const saved = await upsertSlot({
+      await upsertSlot({
         id: isEditMode ? selectedSlot!.id : undefined,
-        offering_id: formData.offering_id,
+        offering_id: formData.offering_id || null,
+        custom_title: formData.custom_title || null,
+        class_id: formData.class_id || null,
+        stream_id: formData.stream_id || null,
         day_of_week: formData.day_of_week as any,
         start_time: formData.start_time,
         end_time: formData.end_time,
@@ -137,26 +143,25 @@ export const ScheduleManagerPage: React.FC = () => {
       // Reload slots
       await loadData();
 
-      // Publish to Student News Section if selected by admin
-      if (formData.publish_to_news) {
+      // Notify affected students if checked by admin alongside save
+      if (formData.publish_to_news || formData.notify_affected) {
         const offering = offerings.find((o) => o.id === formData.offering_id);
-        const subject = offering ? offering.subject : 'Class';
+        const subject = formData.custom_title || (offering ? (offering.subject_name || offering.subject?.name || 'Class') : 'Class');
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayName = dayNames[formData.day_of_week];
         const timeStr = formData.start_time.slice(0, 5);
 
-        const announcement = {
-          id: `ann_${Date.now()}`,
-          title: `${isEditMode ? 'Rescheduled' : 'New Class Scheduled'}: ${subject}`,
-          content: `The timetable schedule for ${subject} has been updated. A class slot has been registered on ${dayName} at ${timeStr} (${formData.room_or_link}).`,
-          time: 'Just now',
-          date: new Date().toISOString().slice(0, 10),
-          icon: '📅',
-          priority: 'high' as const,
-        };
+        const targetClassId = formData.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
+        const targetStreamId = formData.stream_id && formData.stream_id !== 'all' ? formData.stream_id : (offering?.stream_id || null);
 
-        MOCK_ANNOUNCEMENTS.unshift(announcement);
-        window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
+        await createAnnouncement({
+          title: `${isEditMode ? 'Rescheduled' : 'New Class Scheduled'}: ${subject}`,
+          body: `The timetable schedule for ${subject} has been updated. A class slot has been registered on ${dayName} at ${timeStr} (${formData.room_or_link}).`,
+          severity: 'crucial',
+          scope: 'class',
+          class_id: targetClassId || null,
+          stream_id: targetStreamId || null,
+        });
         setShowPublishBanner(true);
         setTimeout(() => setShowPublishBanner(false), 4000);
       }
@@ -185,39 +190,25 @@ export const ScheduleManagerPage: React.FC = () => {
       // Automatically publish to news if slot is being marked as cancelled
       if (updatedStatus) {
         const offering = offerings.find((o) => o.id === slot.offering_id);
-        const subject = offering ? offering.subject : 'Class';
-        const board = offering?.board === 'local' ? 'BISE' : offering?.board?.toUpperCase() || 'FBISE';
+        const subject = slot.custom_title || (offering ? (offering.subject_name || offering.subject?.name || 'Class') : 'Class');
+        const board = 'FBISE';
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayName = dayNames[slot.day_of_week];
         const timeStr = slot.start_time.slice(0, 5);
 
-        const announcement = {
-          id: `ann_cancel_${slotId}`, // Deterministic ID using slotId
-          title: `⚠️ Class Cancelled: ${board} Gr. ${offering?.grade || '10'} ${subject}`,
-          content: `The scheduled session for ${subject} on ${dayName} at ${timeStr} has been CANCELLED by the admin. Please plan your study slots accordingly.`,
-          time: 'Just now',
-          date: new Date().toISOString().slice(0, 10),
-          icon: '⚠️',
-          priority: 'high' as const,
-        };
+        const targetClassId = slot.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
+        const targetGrade = offering?.grade || (offering as any)?.class?.grade || taxonomy?.classes?.find((c: any) => c.id === targetClassId)?.grade || (selectedGrade !== 'all' ? selectedGrade : '10');
 
-        // Remove any pre-existing announcement for this cancel action to avoid duplicates
-        const existingIdx = MOCK_ANNOUNCEMENTS.findIndex((a) => a.id === `ann_cancel_${slotId}`);
-        if (existingIdx !== -1) {
-          MOCK_ANNOUNCEMENTS.splice(existingIdx, 1);
-        }
-
-        MOCK_ANNOUNCEMENTS.unshift(announcement);
-        window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
+        await createAnnouncement({
+          title: `⚠️ Class Cancelled: ${board} Gr. ${targetGrade || '10'} ${subject}`,
+          body: `The scheduled session for ${subject} on ${dayName} at ${timeStr} has been CANCELLED by the admin. Please plan your study slots accordingly.`,
+          severity: 'crucial',
+          scope: 'class',
+          class_id: targetClassId || null,
+          stream_id: slot.stream_id && slot.stream_id !== 'all' ? slot.stream_id : (offering?.stream_id || null),
+        });
         setShowPublishBanner(true);
         setTimeout(() => setShowPublishBanner(false), 4000);
-      } else {
-        // If uncancelled, remove the cancellation announcement
-        const existingIdx = MOCK_ANNOUNCEMENTS.findIndex((a) => a.id === `ann_cancel_${slotId}`);
-        if (existingIdx !== -1) {
-          MOCK_ANNOUNCEMENTS.splice(existingIdx, 1);
-          window.dispatchEvent(new CustomEvent('scholario_announcements_updated'));
-        }
       }
     } catch (err) {
       console.error(err);
@@ -247,14 +238,14 @@ export const ScheduleManagerPage: React.FC = () => {
   const handleAddTrigger = (dayOfWeekIndex: number = 0) => {
     setSelectedSlot(null);
     setDrawerOpen(true);
-    const mockNewSlot: Partial<ClassSlot> = {
+    const newSlotTemplate: Partial<ClassSlot> = {
       offering_id: '',
       day_of_week: dayOfWeekIndex as any,
       start_time: '16:00:00',
       end_time: '17:30:00',
       room_or_link: '',
     };
-    setSelectedSlot(mockNewSlot as any);
+    setSelectedSlot(newSlotTemplate as any);
   };
 
   const handleEditTrigger = (slot: ClassSlot) => {
@@ -265,15 +256,73 @@ export const ScheduleManagerPage: React.FC = () => {
   const resetFilters = () => {
     setSelectedBoard('fbise');
     setSelectedGrade('10');
+    setSelectedStream('all');
     setTeacherFilter('all');
   };
 
   const handleBoardChange = (boardId: string) => {
     setSelectedBoard(boardId);
     setSelectedGrade('all'); // Show all grades for that board initially
+    setSelectedStream('all');
   };
 
-  const activeGrades = selectedBoard !== 'all' ? GRADES_BY_BOARD[selectedBoard] || [] : [];
+  const handleGradeChange = (gradeId: string) => {
+    setSelectedGrade(gradeId);
+    setSelectedStream('all'); // Reset stream when grade changes
+  };
+
+  const activeGrades = taxonomy
+    ? [
+        ...taxonomy.classes
+          .filter((c: any) => c.board_id === 'fbise')
+          .map((c: any) => ({ id: c.grade, label: c.display_name })),
+        { id: 'all', label: 'All FBISE' }
+      ]
+    : [];
+
+  // Compute offerings specifically for the Add/Edit drawer context based on active grade & stream tabs
+  const targetGrade = (selectedSlot && selectedSlot.id)
+    ? (selectedSlot.offering?.grade || taxonomy?.classes?.find((c: any) => c.id === selectedSlot.class_id)?.grade || selectedGrade)
+    : selectedGrade;
+
+  const targetStreamId = (selectedSlot && selectedSlot.id)
+    ? (selectedSlot.offering?.stream_id || selectedSlot.stream_id || selectedStream)
+    : selectedStream;
+
+  const filteredOfferingsForDrawer = offerings.filter((offering) => {
+    // Always include currently selected slot's offering when editing so it is never hidden
+    if (selectedSlot && selectedSlot.id && offering.id === selectedSlot.offering_id) {
+      return true;
+    }
+
+    // Filter by grade if targetGrade is specified and not 'all'
+    const offeringGrade = offering.grade || taxonomy?.classes?.find((c: any) => c.id === offering.class_id)?.grade;
+    if (targetGrade && targetGrade !== 'all' && String(offeringGrade) !== String(targetGrade)) {
+      return false;
+    }
+
+    // Filter by board if selectedBoard is not 'all'
+    const offeringBoard = offering.board || taxonomy?.classes?.find((c: any) => c.id === offering.class_id)?.board_id;
+    if (selectedBoard !== 'all' && offeringBoard !== selectedBoard) {
+      return false;
+    }
+
+    // Filter by stream if targetStreamId is specified and not 'all'
+    if (targetStreamId && targetStreamId !== 'all') {
+      const activeStreamObj = activeStreams.find((s: any) => s.id === targetStreamId) || taxonomy?.streams?.find((s: any) => s.id === targetStreamId);
+      if (activeStreamObj && targetGrade) {
+        const streamSubjects = getSubjectsForStream(targetGrade, activeStreamObj.name) || [];
+        const offeringSubject = offering.subject_name || offering.subject?.name;
+        if (offering.stream_id === targetStreamId || (streamSubjects && streamSubjects.includes(offeringSubject))) {
+          return true;
+        }
+        return false;
+      }
+      return offering.stream_id === targetStreamId || !offering.stream_id;
+    }
+
+    return true;
+  });
 
   if (loading) {
     return (
@@ -350,7 +399,7 @@ export const ScheduleManagerPage: React.FC = () => {
             ))}
           </select>
 
-          {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all') && (
+          {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || teacherFilter !== 'all') && (
             <button
               onClick={resetFilters}
               className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5"
@@ -369,7 +418,7 @@ export const ScheduleManagerPage: React.FC = () => {
           {activeGrades.map((g) => (
             <button
               key={g.id}
-              onClick={() => setSelectedGrade(g.id)}
+              onClick={() => handleGradeChange(g.id)}
               className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                 selectedGrade === g.id
                   ? 'bg-[#111111] border-[#111111] text-white'
@@ -382,9 +431,40 @@ export const ScheduleManagerPage: React.FC = () => {
         </div>
       )}
 
+      {/* Stream Sub-row filter if grade is selected */}
+      {selectedGrade !== 'all' && activeStreams.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 py-2 bg-[#F9F9F9] px-4 border-b border-[#E5E5E5] transition-all duration-250 animate-in slide-in-from-top-1">
+          <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream Cohort:</span>
+          <button
+            onClick={() => setSelectedStream('all')}
+            className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+              selectedStream === 'all'
+                ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
+                : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+            }`}
+          >
+            All Stream Schedules
+          </button>
+          {activeStreams.map((s: any) => (
+            <button
+              key={s.id}
+              onClick={() => setSelectedStream(s.id)}
+              className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                selectedStream === s.id
+                  ? 'bg-[#111111] border-[#111111] text-white'
+                  : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+              }`}
+            >
+              {s.name} Stream
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Timetable Weekly Columns */}
       <WeeklyGrid
         slots={filteredSlots}
+        onAddSlot={handleAddTrigger}
         onEdit={handleEditTrigger}
         onDelete={handleDeleteTrigger}
         onToggleCancel={handleToggleCancel}
@@ -400,8 +480,11 @@ export const ScheduleManagerPage: React.FC = () => {
         title={selectedSlot && selectedSlot.id ? 'Edit Class Slot' : 'Schedule New Class'}
       >
         <SlotForm
-          slot={selectedSlot && selectedSlot.id ? selectedSlot : null}
-          offerings={offerings}
+          slot={selectedSlot}
+          offerings={filteredOfferingsForDrawer}
+          taxonomy={taxonomy}
+          defaultClassId={activeClass?.id || ''}
+          defaultStreamId={selectedStream !== 'all' ? selectedStream : ''}
           onSave={handleSaveSlot}
           onCancel={() => {
             setDrawerOpen(false);

@@ -1,25 +1,33 @@
 import React from 'react';
-import { Eye, Edit2, Trash2 } from 'lucide-react';
-import type { Profile } from '../../../types';
-import { MOCK_ATTENDANCE, MOCK_ENROLLMENTS } from '../../../lib/mockData';
+import { Eye } from 'lucide-react';
+import type { Profile, Enrollment, ClassOffering } from '../../../types';
 
 interface StudentTableProps {
   students: Profile[];
   onView: (student: Profile) => void;
+  enrollments?: Enrollment[];
+  offerings?: ClassOffering[];
 }
 
 export const StudentTable: React.FC<StudentTableProps> = ({
   students,
   onView,
+  enrollments = [],
+  offerings = [],
 }) => {
   // Compute student attendance stats dynamically
   const getStats = (studentId: string) => {
-    const records = MOCK_ATTENDANCE.filter((a) => a.student_id === studentId);
-    const total = records.length;
-    const attended = records.filter((a) => a.status === 'present' || a.status === 'late').length;
-    const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
-    const classesCount = MOCK_ENROLLMENTS.filter((e) => e.student_id === studentId).length;
-    return { pct, classesCount };
+    const studentEnrollments = enrollments.filter((e) => e.student_id === studentId);
+    const classesCount = studentEnrollments.length;
+    
+    let boardAndGrade = 'No active classes';
+    if (studentEnrollments.length > 0) {
+      const primaryOffering = offerings.find(o => o.id === studentEnrollments[0].offering_id);
+      if (primaryOffering) {
+        boardAndGrade = `Grade ${primaryOffering.grade} · FBISE`;
+      }
+    }
+    return { classesCount, boardAndGrade };
   };
 
   const getInitials = (name: string) => {
@@ -31,7 +39,7 @@ export const StudentTable: React.FC<StudentTableProps> = ({
       .slice(0, 2);
   };
 
-  const getStreamColor = (stream?: string) => {
+  const getStreamColor = (stream?: string | null) => {
     switch (stream) {
       case 'pre-medical': return 'badge-gold bg-amber-50 text-amber-700 border-amber-200';
       case 'pre-engineering': return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -49,7 +57,6 @@ export const StudentTable: React.FC<StudentTableProps> = ({
             <th>Stream</th>
             <th>Board & Grade</th>
             <th>Phone</th>
-            <th className="text-center">Enrolled Classes</th>
             <th className="text-center opacity-40">Attendance Rate</th>
             <th className="text-right">Actions</th>
           </tr>
@@ -78,14 +85,11 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                 </td>
                 <td>
                   <div className="text-xs font-semibold text-[#525252]">
-                    Grade {student.id === 'mock-user-id' ? '10' : '10'} · FBISE
+                    {stats.boardAndGrade}
                   </div>
                 </td>
                 <td>
                   <span className="text-xs font-medium text-[#737373]">{student.phone || 'N/A'}</span>
-                </td>
-                <td className="text-center font-bold text-[#111111]">
-                  {stats.classesCount}
                 </td>
                 <td className="text-center opacity-40 select-none">
                   <span className="text-[10px] bg-zinc-200 text-zinc-500 font-black px-1.5 py-0.5 rounded uppercase tracking-wider">

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
+import { NotificationBell } from '../common/NotificationBell';
 
 interface TeacherShellProps {
   children: React.ReactNode;
@@ -137,6 +138,7 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <div className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-[#F4C430]">
               {(profile?.full_name?.[0] ?? 'T').toUpperCase()}
             </div>

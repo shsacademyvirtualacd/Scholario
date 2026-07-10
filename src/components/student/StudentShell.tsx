@@ -13,20 +13,12 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getEnrichedNotes, getEnrichedScheduleSlots } from '../../lib/mockData';
-import { getOfferingsForStudent } from '../../lib/db';
+import { getOfferingsForStudent, getSlotsForStudent, getNotesForOfferings } from '../../lib/db';
+import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { NotificationBell } from '../common/NotificationBell';
 
 interface StudentShellProps {
   children: React.ReactNode;
-}
-
-interface NotificationItem {
-  id: string;
-  type: 'class_reminder' | 'note_uploaded';
-  title: string;
-  message: string;
-  timestamp: string;
-  isRead: boolean;
 }
 
 interface NavItem {
@@ -43,45 +35,6 @@ const NAV_ITEMS: NavItem[] = [
   { icon: Bell,            label: 'Announcements', path: '/student/announcements' },
   { icon: CreditCard,      label: 'Fee Checkout', path: '/student/checkout' },
 ];
-
-const getMockNotifications = (stream: string): NotificationItem[] => {
-  const subjects = 
-    stream === 'pre-medical' || stream === 'cambridge-pre-medical'
-      ? ['Biology', 'Physics']
-      : stream === 'ics' || stream === 'cambridge-computer-science'
-        ? ['Computer Science', 'Mathematics']
-        : stream === 'cambridge-commerce'
-          ? ['Accounting', 'Economics']
-          : ['Mathematics', 'Physics'];
-
-  return [
-    {
-      id: 'notif-1',
-      type: 'class_reminder',
-      title: 'Class Starting in 15 Mins',
-      message: `Your ${subjects[0]} lecture starts soon. Make sure to prepare your workspace and check your Zoom link.`,
-      timestamp: '15 mins before class',
-      isRead: false,
-    },
-    {
-      id: 'notif-2',
-      type: 'note_uploaded',
-      title: 'New Note Uploaded',
-      message: `Admin uploaded the latest chapter study reference guide for ${subjects[1] || 'Physics'}.`,
-      timestamp: '2 hours ago',
-      isRead: false,
-    },
-    {
-      id: 'notif-3',
-      type: 'class_reminder',
-      title: 'Class Starting in 15 Mins',
-      message: `Your yesterday's ${subjects[0]} class completed successfully.`,
-      timestamp: 'Yesterday',
-      isRead: true,
-    }
-  ];
-};
-
 const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
@@ -90,8 +43,6 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   const location = useLocation();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Universal Search States
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,26 +54,26 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
   const activeNav = location.pathname;
   const [enrolledSubjects, setEnrolledSubjects] = useState<string[]>([]);
+  const [studentSlots, setStudentSlots] = useState<any[]>([]);
+  const [studentNotes, setStudentNotes] = useState<any[]>([]);
 
-  // Fetch enrolled subjects dynamically
+  // Fetch enrolled subjects, slots, and notes dynamically
   useEffect(() => {
     if (profile?.id) {
       getOfferingsForStudent(profile.id)
         .then((offs) => {
-          setEnrolledSubjects(offs.map((o) => o.subject));
+          setEnrolledSubjects(getEnrolledSubjectsForStudent(profile, offs));
+          const ids = offs.map(o => o.id);
+          return getNotesForOfferings(ids);
         })
+        .then(setStudentNotes)
+        .catch(console.error);
+
+      getSlotsForStudent(profile.id)
+        .then(setStudentSlots)
         .catch(console.error);
     }
   }, [profile?.id]);
-
-  // Initialize notifications dynamically based on the student's registered stream
-  useEffect(() => {
-    if (profile?.stream) {
-      setNotifications(getMockNotifications(profile.stream));
-    } else {
-      setNotifications(getMockNotifications('pre-engineering'));
-    }
-  }, [profile?.stream]);
 
   // Handle live universal search querying
   useEffect(() => {
@@ -134,23 +85,21 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
     const query = searchQuery.toLowerCase();
 
     // 1. Filter notes matching query and enrolled subjects
-    const allNotes = getEnrichedNotes();
-    const matchedNotes = allNotes.filter(note => {
+    const matchedNotes = studentNotes.filter(note => {
       const subject = note.offering?.subject;
       if (!subject || !enrolledSubjects.includes(subject)) return false;
 
       return (
-        note.chapter_name.toLowerCase().includes(query) ||
-        note.title.toLowerCase().includes(query) ||
+        (note.chapter_name || '').toLowerCase().includes(query) ||
+        (note.title || '').toLowerCase().includes(query) ||
         subject.toLowerCase().includes(query)
       );
     }).slice(0, 4);
 
     // 2. Filter classes matching query and enrolled subjects
-    const allSlots = getEnrichedScheduleSlots();
-    const matchedClasses = allSlots.filter(slot => {
-      const subject = slot.offering?.subject;
-      if (!subject || !enrolledSubjects.includes(subject)) return false;
+    const matchedClasses = studentSlots.filter(slot => {
+      const subject = slot.custom_title || slot.offering?.subject;
+      if (!subject || (!slot.custom_title && !enrolledSubjects.includes(subject))) return false;
 
       return (
         subject.toLowerCase().includes(query) ||
@@ -160,7 +109,8 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
     }).slice(0, 4);
 
     setSearchResults({ notes: matchedNotes, classes: matchedClasses });
-  }, [searchQuery, enrolledSubjects]);
+  }, [searchQuery, enrolledSubjects, studentNotes, studentSlots]);
+
 
   const handleNav = (path: string) => {
     setSidebarOpen(false);
@@ -175,18 +125,6 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
     } else {
       navigate(`/student/schedule?day=${item.day_of_week}`);
     }
-  };
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const toggleRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: !n.isRead } : n))
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
   };
 
   const hasSearchResults = searchResults.notes.length > 0 || searchResults.classes.length > 0;
@@ -232,33 +170,20 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
         {/* Profile + logout */}
         <div className="p-3 border-t border-[#1F1F1F] space-y-2">
-          {/* Sidebar Profile Card */}
-          <button
-            onClick={() => handleNav('/student/profile')}
-            className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all duration-200 text-left ${
-              activeNav === '/student/profile'
-                ? 'bg-[#F4C430] text-[#111111]'
-                : 'bg-[#1A1A1A] hover:bg-[#262626] text-white border border-[#2A2A2A]'
-            }`}
-          >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-              activeNav === '/student/profile' ? 'bg-[#111111] text-[#F4C430]' : 'bg-[#F4C430] text-[#111111]'
-            }`}>
+          {/* Sidebar Profile Card (Non-interactive) */}
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] text-white border border-[#2A2A2A]">
+            <div className="w-8 h-8 rounded-lg bg-[#F4C430] text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
               {(profile?.full_name?.[0] ?? 'S').toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-xs font-bold truncate leading-tight ${
-                activeNav === '/student/profile' ? 'text-[#111111]' : 'text-white'
-              }`}>
+              <p className="text-xs font-bold truncate leading-tight text-white">
                 {profile?.full_name ?? 'Student'}
               </p>
-              <p className={`text-[10px] leading-tight mt-0.5 truncate ${
-                activeNav === '/student/profile' ? 'text-[#111111]/70' : 'text-[#737373]'
-              }`}>
-                View profile
+              <p className="text-[10px] leading-tight mt-0.5 truncate text-[#737373]">
+                {profile?.class?.display_name || 'SHS Student'}
               </p>
             </div>
-          </button>
+          </div>
 
           <button
             onClick={signOut}
@@ -347,7 +272,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
                                   <Calendar size={13} />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-[#111111] truncate">{cls.offering?.subject}</p>
+                                  <p className="text-xs font-bold text-[#111111] truncate">{cls.custom_title || cls.offering?.subject}</p>
                                   <p className="text-[10px] text-[#737373] truncate mt-0.5 flex items-center gap-1">
                                     <Clock size={10} /> {DAYS_NAME[cls.day_of_week]} at {cls.start_time.slice(0, 5)}
                                   </p>
@@ -367,73 +292,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           
           <div className="flex items-center gap-2">
             {/* Notification Bell Dropdown Container */}
-            <div className="relative">
-              <button
-                onClick={() => setNotifOpen(!notifOpen)}
-                className={`relative w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
-                  notifOpen 
-                    ? 'bg-[#111111] border-[#111111] text-[#F4C430]' 
-                    : 'border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111]'
-                }`}
-              >
-                <Bell size={16} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ef4444] border-2 border-white rounded-full" />
-                )}
-              </button>
-
-              {notifOpen && (
-                <>
-                  {/* Click-out backdrop */}
-                  <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
-                  {/* Popover panel */}
-                  <div className="absolute right-0 mt-2 w-80 bg-white border border-[#E5E5E5] rounded-2xl shadow-xl z-40 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
-                    <div className="p-3.5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">
-                      <span className="text-[10px] font-black text-[#111111] uppercase tracking-wider">Notifications</span>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-[10px] font-bold text-[#737373] hover:text-[#111111] transition-colors"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-                    <div className="divide-y divide-[#F5F5F5] max-h-72 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-8 text-center text-xs text-[#A3A3A3] font-semibold">
-                          You are all caught up!
-                        </div>
-                      ) : (
-                        notifications.map(notif => (
-                          <div
-                            key={notif.id}
-                            onClick={() => toggleRead(notif.id)}
-                            className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors ${
-                              notif.isRead ? 'bg-white hover:bg-[#FAFAFA]' : 'bg-[#FFFDF0] hover:bg-[#FFFBEA]'
-                            }`}
-                          >
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                              notif.type === 'class_reminder' ? 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]' : 'bg-blue-50 text-blue-700 border border-blue-100'
-                            }`}>
-                              {notif.type === 'class_reminder' ? <Calendar size={14} /> : <BookMarked size={14} />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-[#111111] leading-snug">{notif.title}</p>
-                              <p className="text-[11px] text-[#525252] leading-relaxed mt-0.5 font-medium">{notif.message}</p>
-                              <span className="text-[9px] text-[#A3A3A3] font-bold block mt-1">{notif.timestamp}</span>
-                            </div>
-                            {!notif.isRead && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#F4C430] shrink-0 mt-1.5" />
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+            <NotificationBell />
 
             <button
               onClick={() => handleNav('/student/profile')}

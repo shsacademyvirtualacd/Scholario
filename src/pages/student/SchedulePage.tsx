@@ -7,6 +7,7 @@ import ClassSlotCard from '../../components/student/ClassSlotCard';
 import EmptyState from '../../components/ui/EmptyState';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getSlotsForStudent } from '../../lib/db';
+import { pageCache } from '../../lib/pageCache';
 import type { ClassSlot } from '../../types';
 
 const DAYS_OF_WEEK = [
@@ -23,12 +24,40 @@ export const SchedulePage: React.FC = () => {
   const { profile } = useAuth();
   const studentId = profile?.id;
   
-  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
+  const cachedSlots = studentId ? pageCache.get<ClassSlot[]>('schedule_slots', studentId) : null;
+  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>(cachedSlots || []);
+  const [loading, setLoading] = useState<boolean>(!cachedSlots);
 
   useEffect(() => {
-    if (studentId) {
-      getSlotsForStudent(studentId).then(setScheduleSlots).catch(console.error);
+    if (!studentId) return;
+    let mounted = true;
+
+    // If cache becomes available on studentId ready and we don't have slots yet
+    const initialCache = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
+    if (initialCache && scheduleSlots.length === 0 && mounted) {
+      setScheduleSlots(initialCache);
+      setLoading(false);
     }
+
+    getSlotsForStudent(studentId)
+      .then((freshSlots) => {
+        if (!mounted) return;
+        const currentCached = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
+        const differs = !currentCached || JSON.stringify(currentCached) !== JSON.stringify(freshSlots);
+        if (differs) {
+          setScheduleSlots(freshSlots);
+          pageCache.set('schedule_slots', freshSlots, studentId);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, [studentId]);
 
   // Determine today's day to default select (Sunday maps to Monday)
@@ -46,7 +75,7 @@ export const SchedulePage: React.FC = () => {
         return parsed;
       }
     }
-    return getTodayIndex();
+    return 0; // Default to Monday
   };
 
   const [activeDay, setActiveDay] = useState<number>(getInitialDay());
@@ -66,7 +95,7 @@ export const SchedulePage: React.FC = () => {
   // Filter slots for the selected day
   const filteredSlots = scheduleSlots
     .filter(slot => slot.day_of_week === activeDay)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
   // Next class calculation for banner
   const [timeLeft, setTimeLeft] = useState<string>('');
@@ -75,26 +104,27 @@ export const SchedulePage: React.FC = () => {
     .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
     .sort((a, b) => {
       if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-      return a.start_time.localeCompare(b.start_time);
+      return (a.start_time || '').localeCompare(b.start_time || '');
     })[0] || scheduleSlots[0];
 
   useEffect(() => {
-    if (!nextUpcomingSlot) return;
+    if (!nextUpcomingSlot || !nextUpcomingSlot.start_time) return;
 
     const updateCountdown = () => {
       const now = new Date();
       const target = new Date();
 
-      let targetDay = nextUpcomingSlot.day_of_week;
+      let targetDay = nextUpcomingSlot.day_of_week ?? 0;
       let currentDay = (now.getDay() + 6) % 7;
 
       let daysToAdd = targetDay - currentDay;
-      if (daysToAdd < 0 || (daysToAdd === 0 && nextUpcomingSlot.start_time < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
+      const safeStartTime = nextUpcomingSlot.start_time || '16:00:00';
+      if (daysToAdd < 0 || (daysToAdd === 0 && safeStartTime < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
         daysToAdd += 7;
       }
 
       target.setDate(now.getDate() + daysToAdd);
-      const [hours, minutes] = nextUpcomingSlot.start_time.split(':').map(Number);
+      const [hours = 16, minutes = 0] = safeStartTime.split(':').map(Number);
       target.setHours(hours, minutes, 0, 0);
 
       const diffMs = target.getTime() - now.getTime();
@@ -136,10 +166,10 @@ export const SchedulePage: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-bold text-[#111111]">
-                Next Scheduled Class: {nextUpcomingSlot.offering?.subject}
+                Next Scheduled Class: {typeof nextUpcomingSlot.custom_title === 'string' && nextUpcomingSlot.custom_title ? nextUpcomingSlot.custom_title : (typeof (nextUpcomingSlot.offering as any)?.subject_name === 'string' && (nextUpcomingSlot.offering as any)?.subject_name ? (nextUpcomingSlot.offering as any).subject_name : (typeof nextUpcomingSlot.offering?.subject === 'string' ? nextUpcomingSlot.offering.subject : ((nextUpcomingSlot.offering?.subject as any)?.name || 'Class Session')))}
               </h3>
               <p className="text-xs text-[#737373] mt-0.5 font-medium">
-                with {nextUpcomingSlot.offering?.teacher?.full_name} ·{' '}
+                with {nextUpcomingSlot.offering?.teacher?.full_name || 'Staff'} ·{' '}
                 {nextUpcomingSlot.room_or_link || 'Room Link'}
               </p>
             </div>
@@ -170,7 +200,31 @@ export const SchedulePage: React.FC = () => {
 
       {/* Slots List */}
       <div className="space-y-4">
-        {filteredSlots.length === 0 ? (
+        {loading && scheduleSlots.length === 0 ? (
+          <div className="space-y-4 animate-pulse">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="bg-white rounded-xl border border-[#E5E5E5] p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                  <div className="w-12 h-12 rounded-xl bg-[#F5F5F5] shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-[#F5F5F5] rounded w-40" />
+                    <div className="h-3 bg-[#F5F5F5] rounded w-28" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                  <div className="h-8 bg-[#F5F5F5] rounded-xl w-24" />
+                  <div className="h-8 bg-[#F5F5F5] rounded-xl w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : scheduleSlots.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="No schedule set yet"
+            description="The school administration or timetable manager has not set a class schedule for your grade and stream yet. Please check back soon!"
+          />
+        ) : filteredSlots.length === 0 ? (
           <EmptyState
             icon={Calendar}
             title="No classes scheduled"

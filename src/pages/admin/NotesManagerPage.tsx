@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, BookOpen } from 'lucide-react';
+import { Plus, Search, BookOpen, RotateCcw, Filter } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import AdminNoteCard from '../../components/admin/notes/AdminNoteCard';
@@ -8,22 +8,31 @@ import NoteUploadForm from '../../components/admin/notes/NoteUploadForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import NoteViewerModal from '../../components/student/NoteViewerModal';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getAllNotes, insertNote, deleteNote, getAllOfferings } from '../../lib/db';
+import { getAllNotes, insertNote, deleteNote, getAllOfferings, getTaxonomy } from '../../lib/db';
+import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../lib/taxonomy';
 import type { Note, ClassOffering } from '../../types';
 
 export const NotesManagerPage: React.FC = () => {
   const { profile } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [taxonomy, setTaxonomy] = useState<any>(null);
 
   // ── Load from DB (or mock) on mount ──────────────────────────────────────
   useEffect(() => {
+    getTaxonomy().then(setTaxonomy).catch(console.error);
     getAllNotes().then(setNotes).catch(console.error);
     getAllOfferings().then(setOfferings).catch(console.error);
   }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'pdf' | 'image'>('all');
+
+  // 4-Layer Taxonomy Filters (Board → Grade → Stream → Subject)
+  const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
+  const [selectedGrade, setSelectedGrade] = useState<string>('10');
+  const [selectedStream, setSelectedStream] = useState<string>('all');
+  const [selectedSubject, setSelectedSubject] = useState<string>('all');
 
   // Modal / Drawer States
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -43,20 +52,115 @@ export const NotesManagerPage: React.FC = () => {
     };
   });
 
-  // Filter notes
+  // Compute active grades from taxonomy or fallback
+  const rawGrades = taxonomy && taxonomy.classes && taxonomy.classes.length > 0
+    ? taxonomy.classes
+        .filter((c: any) => c.board_id === 'fbise' || !c.board_id)
+        .map((c: any) => ({ id: String(c.grade), label: c.display_name || `${c.grade}th` }))
+    : GRADES.map((g) => ({ id: g.grade, label: g.displayName }));
+
+  const seenGrades = new Set<string>();
+  const activeGrades: { id: string; label: string }[] = rawGrades.filter((g: any) => {
+    if (seenGrades.has(g.id)) return false;
+    seenGrades.add(g.id);
+    return true;
+  });
+  activeGrades.push({ id: 'all', label: 'All FBISE' });
+
+  // Compute active streams for selected grade
+  const activeClass = taxonomy?.classes?.find(
+    (c: any) => String(c.grade) === String(selectedGrade) && (c.board_id === selectedBoard || !c.board_id)
+  );
+  const dbStreams = activeClass && taxonomy?.streams
+    ? taxonomy.streams.filter((s: any) => s.class_id === activeClass.id)
+    : [];
+
+  const activeStreams: { id: string; name: string }[] = dbStreams.length > 0
+    ? dbStreams.map((s: any) => ({ id: s.id, name: s.name }))
+    : getStreamsForGrade(selectedGrade).map((s) => ({ id: s.name, name: s.name }));
+
+  // Scope offerings for Subject dropdown by selected Board, Grade, and Stream
+  const scopedOfferings = offerings.filter((offering) => {
+    const offGrade = String(
+      offering.grade || (offering as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.grade || ''
+    );
+    if (selectedGrade && selectedGrade !== 'all' && offGrade !== String(selectedGrade)) {
+      return false;
+    }
+
+    const offBoard = offering.board || (offering as any).class?.board_id || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.board_id || 'fbise';
+    if (selectedBoard && selectedBoard !== 'all' && offBoard !== selectedBoard) {
+      return false;
+    }
+
+    if (selectedStream && selectedStream !== 'all') {
+      const activeStreamObj = activeStreams.find((s: any) => s.id === selectedStream || s.name === selectedStream);
+      const streamName = activeStreamObj?.name || (typeof selectedStream === 'string' ? selectedStream : '');
+      if (streamName && selectedGrade && selectedGrade !== 'all') {
+        const streamSubjects = getSubjectsForStream(String(selectedGrade), streamName) || [];
+        const offeringSubject = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || '';
+        if (
+          offering.stream_id === selectedStream ||
+          (typeof offering.stream === 'string' && offering.stream === streamName) ||
+          (typeof offering.stream === 'object' && offering.stream?.name === streamName) ||
+          streamSubjects.includes(offeringSubject)
+        ) {
+          return true;
+        }
+        return false;
+      }
+      return (
+        offering.stream_id === selectedStream ||
+        (typeof offering.stream === 'string' && offering.stream === selectedStream) ||
+        !offering.stream_id
+      );
+    }
+
+    return true;
+  });
+
+  // Keep selectedSubject in sync when scopedOfferings change
+  useEffect(() => {
+    if (selectedSubject !== 'all' && !scopedOfferings.some((o) => o.id === selectedSubject)) {
+      setSelectedSubject('all');
+    }
+  }, [selectedGrade, selectedStream, scopedOfferings, selectedSubject]);
+
+  // Filter notes based on search term, format type, and 4-layer taxonomy selection
   const filteredNotes = enrichedNotes.filter((note) => {
     const matchesSearch =
       note.chapter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (note.offering?.subject && note.offering.subject.toLowerCase().includes(searchTerm.toLowerCase()));
+      (note.offering?.subject_name && note.offering.subject_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (typeof note.offering?.subject === 'string' && note.offering.subject.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesSubject = subjectFilter === 'all' || note.offering_id === subjectFilter;
     const matchesType = typeFilter === 'all' || note.file_type === typeFilter;
 
-    return matchesSearch && matchesSubject && matchesType;
+    // Taxonomy 4-Layer Match
+    if (selectedSubject && selectedSubject !== 'all') {
+      if (note.offering_id !== selectedSubject) return false;
+    } else {
+      if (!scopedOfferings.some((o) => o.id === note.offering_id)) return false;
+    }
+
+    return matchesSearch && matchesType;
   });
 
-  // Action handlers
+  const resetFilters = () => {
+    setSelectedBoard('fbise');
+    setSelectedGrade('10');
+    setSelectedStream('all');
+    setSelectedSubject('all');
+    setTypeFilter('all');
+    setSearchTerm('');
+  };
+
+  const handleGradeChange = (gId: string) => {
+    setSelectedGrade(gId);
+    setSelectedStream('all');
+    setSelectedSubject('all');
+  };
+
   const handleUploadTrigger = () => {
     setDrawerOpen(true);
   };
@@ -66,6 +170,7 @@ export const NotesManagerPage: React.FC = () => {
     chapter_name: string;
     title: string;
     file_url: string;
+    file_path: string;
     file_type: 'pdf' | 'image';
   }) => {
     const created = await insertNote({
@@ -73,8 +178,9 @@ export const NotesManagerPage: React.FC = () => {
       chapter_name: formData.chapter_name,
       title: formData.title,
       file_url: formData.file_url,
+      file_path: formData.file_path,
       file_type: formData.file_type,
-      uploaded_by: profile?.id || 'mock-admin-id',
+      uploaded_by: profile?.id || '',
     }).catch(console.error);
     if (created) {
       setNotes((prev) => [created, ...prev]);
@@ -100,9 +206,6 @@ export const NotesManagerPage: React.FC = () => {
     setViewerOpen(true);
   };
 
-  // Get unique offerings from mock list to populate subject filter
-  const uniqueOfferings = offerings;
-
   return (
     <AdminShell>
       {/* Header */}
@@ -120,7 +223,90 @@ export const NotesManagerPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Control bar */}
+      {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
+      <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+        <div className="flex overflow-x-auto gap-6 border-transparent">
+          <button
+            onClick={() => setSelectedBoard('fbise')}
+            className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+              selectedBoard === 'fbise'
+                ? 'border-[#F4C430] text-[#111111]'
+                : 'border-transparent text-[#737373] hover:text-[#111111]'
+            }`}
+          >
+            FBISE
+          </button>
+        </div>
+
+        {/* Secondary controls (Reset) */}
+        <div className="flex items-center gap-3 pb-2 sm:pb-0">
+          {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
+            <button
+              onClick={resetFilters}
+              className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5"
+            >
+              <RotateCcw size={10} />
+              Reset Filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Grade Sub-row filter - Class-wise Cohort */}
+      <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-[#FAFAFA] px-4 border-b border-[#E5E5E5]">
+        <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Cohort Grade:</span>
+        {activeGrades.map((g: any) => (
+          <button
+            key={g.id}
+            onClick={() => handleGradeChange(g.id)}
+            className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+              selectedGrade === g.id
+                ? 'bg-[#111111] border-[#111111] text-white shadow-sm'
+                : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+            }`}
+          >
+            {g.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Stream Sub-row filter if grade is selected */}
+      {selectedGrade !== 'all' && activeStreams.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 py-2 bg-[#F9F9F9] px-4 border-b border-[#E5E5E5] transition-all duration-250 animate-in slide-in-from-top-1">
+          <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream Cohort:</span>
+          <button
+            onClick={() => {
+              setSelectedStream('all');
+              setSelectedSubject('all');
+            }}
+            className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+              selectedStream === 'all'
+                ? 'bg-[#F4C430] border-[#F4C430] text-[#111111] shadow-sm'
+                : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+            }`}
+          >
+            All Stream Schedules
+          </button>
+          {activeStreams.map((s: any) => (
+            <button
+              key={s.id || s.name}
+              onClick={() => {
+                setSelectedStream(s.id || s.name);
+                setSelectedSubject('all');
+              }}
+              className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                selectedStream === (s.id || s.name) || selectedStream === s.name
+                  ? 'bg-[#111111] border-[#111111] text-white shadow-sm'
+                  : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+              }`}
+            >
+              {s.name} Stream
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Control bar with Subject & Format dropdowns + Search */}
       <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Search */}
         <div className="relative w-full md:max-w-xs">
@@ -136,19 +322,27 @@ export const NotesManagerPage: React.FC = () => {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+          {/* Layer 4: Subject Dropdown scoped to Grade+Stream */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#737373]">Subject:</span>
+            <span className="text-xs font-bold text-[#737373] flex items-center gap-1">
+              <Filter size={12} />
+              <span>Subject:</span>
+            </span>
             <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer"
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+              className="input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer font-bold text-[#111111]"
             >
-              <option value="all">All Subjects</option>
-              {uniqueOfferings.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.subject} ({o.grade} {o.board.toUpperCase()})
-                </option>
-              ))}
+              <option value="all">All Scoped Subjects ({scopedOfferings.length})</option>
+              {scopedOfferings.map((o) => {
+                const subjName = o.subject_name || (typeof o.subject === 'string' ? o.subject : o.subject?.name) || 'Class';
+                const gr = o.grade || (o as any).class?.grade || '10';
+                return (
+                  <option key={o.id} value={o.id}>
+                    {subjName} ({gr}th FBISE)
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -157,7 +351,7 @@ export const NotesManagerPage: React.FC = () => {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as any)}
-              className="input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer"
+              className="input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer font-bold text-[#111111]"
             >
               <option value="all">All Formats</option>
               <option value="pdf">PDF Docs</option>
@@ -172,7 +366,9 @@ export const NotesManagerPage: React.FC = () => {
         <div className="card text-center py-20">
           <BookOpen size={32} className="mx-auto text-[#A3A3A3] mb-3 animate-pulse" />
           <h3 className="text-sm font-bold text-[#111111]">No documents found</h3>
-          <p className="text-xs text-[#737373] mt-1">Try resetting the filter settings or uploading new notes for students.</p>
+          <p className="text-xs text-[#737373] mt-1">
+            Try resetting the filter settings (Board → Grade → Stream → Subject) or uploading new notes for students.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -197,6 +393,9 @@ export const NotesManagerPage: React.FC = () => {
           offerings={offerings}
           onUpload={handleUploadSave}
           onCancel={() => setDrawerOpen(false)}
+          initialGrade={selectedGrade !== 'all' ? selectedGrade : undefined}
+          initialStream={selectedStream !== 'all' ? selectedStream : undefined}
+          initialOfferingId={selectedSubject !== 'all' ? selectedSubject : undefined}
         />
       </AdminDrawer>
 
