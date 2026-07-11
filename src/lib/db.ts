@@ -1002,10 +1002,9 @@ export async function toggleRosterAccess(
   if (!data || data.length === 0) {
     const { data: profile } = (await supabase.from('profiles').select('*').eq('id', rosterId).single()) as any;
     if (profile) {
-      const fallbackEmail = `${(profile.full_name || 'user').toLowerCase().replace(/\s+/g, '.')}.${profile.id.slice(0, 4)}@scholario.app`;
       await (supabase as any).from('roster').upsert({
         id: profile.id,
-        email: fallbackEmail,
+        email: profile.email || '',
         full_name: profile.full_name || 'Unnamed Account',
         role: profile.role || 'student',
         class_ids: profile.class_id ? [profile.class_id] : [],
@@ -1024,7 +1023,7 @@ export async function toggleFeeSuspension(
   if (!feeSuspended) {
     updateData.awaiting_termination = false;
   }
-  const { data, error } = await (supabase as any)
+  const { error } = await (supabase as any)
     .from('roster')
     .update(updateData)
     .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
@@ -1034,7 +1033,7 @@ export async function toggleFeeSuspension(
 }
 
 export async function requestAccountTermination(rosterId: string): Promise<void> {
-  const { data, error } = await (supabase as any)
+  const { error } = await (supabase as any)
     .from('roster')
     .update({ awaiting_termination: true })
     .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
