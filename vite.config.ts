@@ -24,6 +24,7 @@ export default defineConfig({
   build: {
     // Cloudflare Pages — output to dist/
     outDir: 'dist',
+    emptyOutDir: true,
     // Code-split by route (lazy imports handled automatically)
     rollupOptions: {
       output: {
