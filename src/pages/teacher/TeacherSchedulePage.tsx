@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Video, MapPin, Clock, CheckCircle2 } from 'lucide-react';
+import { Video, MapPin, Clock, CheckCircle2, Zap } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StatusPill from '../../components/ui/StatusPill';
 import { getSlotsForTeacher } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot } from '../../types';
+import {
+  getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
+  formatTime12h, calcDuration
+} from '../../lib/scheduleUtils';
 
 const DAYS_OF_WEEK = [
   { label: 'Monday', index: 0 },
@@ -22,35 +27,44 @@ export const TeacherSchedulePage: React.FC = () => {
   const { profile } = useAuth();
   const teacherId = profile?.id || 't1';
 
-  // Determine today's day to default select (Sunday maps to Monday)
-  const getTodayIndex = () => {
-    const rawDay = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-    if (rawDay === 0) return 0; // Sun -> Mon
-    return rawDay - 1; // Mon=0, Tue=1, ..., Sat=5
-  };
+  // PKT-aware next-class banner state (re-ticks every 60s)
+  const [pktnow, setPktnow] = useState(getPKTNow);
+  useEffect(() => {
+    const id = setInterval(() => setPktnow(getPKTNow()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
+  // Active tab defaults to today in PKT
   const getInitialDay = () => {
     const urlDay = searchParams.get('day');
     if (urlDay !== null) {
       const parsed = parseInt(urlDay, 10);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 5) {
-        return parsed;
-      }
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 5) return parsed;
     }
-    return 0; // Default to Monday
+    const todayIdx = getPKTNow().dayIndex;
+    return todayIdx <= 5 ? todayIdx : 0;
   };
 
   const [activeDay, setActiveDay] = useState<number>(getInitialDay());
   const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchSlots = () => {
     setLoading(true);
     getSlotsForTeacher(teacherId)
       .then(setScheduleSlots)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchSlots();
   }, [teacherId]);
+
+  useRealtimeTable({
+    table: 'class_slots',
+    onAny: fetchSlots
+  });
 
   // Synchronize day focus if URL query parameters change
   useEffect(() => {
@@ -68,64 +82,11 @@ export const TeacherSchedulePage: React.FC = () => {
     .filter(slot => slot.day_of_week === activeDay)
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
-  // Next class calculation for banner
-  const [timeLeft, setTimeLeft] = useState<string>('');
-  const currentDayIndex = getTodayIndex();
-  const nextUpcomingSlot = scheduleSlots
-    .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
-    .sort((a, b) => {
-      if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-      return (a.start_time || '').localeCompare(b.start_time || '');
-    })[0] || scheduleSlots[0];
+  // PKT-aware next-class banner state (re-ticks every 60s; must come after scheduleSlots)
+  const bannerState = classWidgetState(scheduleSlots, pktnow);
 
-  useEffect(() => {
-    if (!nextUpcomingSlot || !nextUpcomingSlot.start_time) return;
-
-    const updateCountdown = () => {
-      const now = new Date();
-      const target = new Date();
-
-      let targetDay = nextUpcomingSlot.day_of_week ?? 0;
-      let currentDay = (now.getDay() + 6) % 7;
-
-      let daysToAdd = targetDay - currentDay;
-      const safeStartTime = nextUpcomingSlot.start_time || '16:00:00';
-      if (daysToAdd < 0 || (daysToAdd === 0 && safeStartTime < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
-        daysToAdd += 7;
-      }
-
-      target.setDate(now.getDate() + daysToAdd);
-      const [hours = 16, minutes = 0] = safeStartTime.split(':').map(Number);
-      target.setHours(hours, minutes, 0, 0);
-
-      const diffMs = target.getTime() - now.getTime();
-      if (diffMs <= 0) {
-        setTimeLeft('Starting now');
-        return;
-      }
-
-      const diffMins = Math.floor(diffMs / 60000);
-      const h = Math.floor(diffMins / 60);
-      const m = diffMins % 60;
-
-      if (h > 0) {
-        setTimeLeft(`${h}h ${m}m`);
-      } else {
-        setTimeLeft(`${m}m`);
-      }
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 60000);
-    return () => clearInterval(interval);
-  }, [nextUpcomingSlot]);
-
-  const formatTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
-  };
+  // Use formatTime12h from scheduleUtils
+  const formatTime = formatTime12h;
 
   const getSubjectColor = (sub: string) => {
     switch (sub.toLowerCase()) {
@@ -153,26 +114,54 @@ export const TeacherSchedulePage: React.FC = () => {
       ) : (
         <>
 
-      {/* Next Class Banner Alert */}
-      {nextUpcomingSlot && (
+      {/* Next Class Banner — 4-state smart display */}
+      {bannerState.type !== 'end-of-day' && (
         <div className="bg-[#FFFDF0] border border-[#F4C43033] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#F4C430] flex items-center justify-center shrink-0">
-              <Video size={16} className="text-[#111111]" />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+              bannerState.type === 'ongoing' ? 'bg-emerald-500' : 'bg-[#F4C430]'
+            }`}>
+              {bannerState.type === 'ongoing'
+                ? <Zap size={16} className="text-white" />
+                : <Video size={16} className="text-[#111111]" />}
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#111111]">
-                Next Lecture Session: {nextUpcomingSlot.custom_title || nextUpcomingSlot.offering?.subject_name || nextUpcomingSlot.offering?.subject || 'Class'}
-              </h3>
-              <p className="text-xs text-[#737373] mt-0.5 font-medium">
-                Class {nextUpcomingSlot.offering?.grade} (FBISE) ·{' '}
-                {nextUpcomingSlot.room_or_link || 'Room Link'}
-              </p>
+              {bannerState.type === 'ongoing' ? (
+                <>
+                  <h3 className="text-sm font-bold text-[#111111]">
+                    In Session: {getSlotSubject(bannerState.activeSlot)}
+                  </h3>
+                  <p className="text-xs text-emerald-600 mt-0.5 font-bold">
+                    {Math.floor(bannerState.minsRemaining / 60) > 0
+                      ? `${Math.floor(bannerState.minsRemaining / 60)}h ${bannerState.minsRemaining % 60}m remaining`
+                      : `${bannerState.minsRemaining}m remaining`}
+                    {bannerState.nextSlot && (
+                      <span className="text-[#737373] font-medium ml-2">
+                        · Up next: {getSlotSubject(bannerState.nextSlot)} at {formatTime12h(bannerState.nextSlot.start_time)}
+                      </span>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-sm font-bold text-[#111111]">
+                    Next Lecture Session: {getSlotSubject(bannerState.nextSlot)}
+                  </h3>
+                  <p className="text-xs text-[#737373] mt-0.5 font-medium">
+                    Class {bannerState.nextSlot.offering?.grade} (FBISE) ·{' '}
+                    {(bannerState.nextSlot.room_or_link && (bannerState.nextSlot.room_or_link.includes('http') || bannerState.nextSlot.room_or_link.includes('zoom'))) ? 'Online Link Available' : 'TBD'}
+                  </p>
+                </>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-[#111111] text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 w-fit self-end md:self-auto">
-            <Clock size={13} className="text-[#F4C430]" />
-            Starts in {timeLeft}
+          <div className={`flex items-center gap-2 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 w-fit self-end md:self-auto ${
+            bannerState.type === 'ongoing' ? 'bg-emerald-600' : 'bg-[#111111]'
+          }`}>
+            <Clock size={13} className={bannerState.type === 'ongoing' ? 'text-white' : 'text-[#F4C430]'} />
+            {bannerState.type === 'ongoing'
+              ? 'Live Now'
+              : `Starts ${formatCountdown(bannerState.minsUntil)}`}
           </div>
         </div>
       )}
@@ -226,7 +215,9 @@ export const TeacherSchedulePage: React.FC = () => {
                     <div className={`text-sm font-extrabold text-[#111111] ${isCancelled ? 'line-through' : ''}`}>
                       {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
                     </div>
-                    <span className="text-[10px] text-[#A3A3A3] font-bold">90 min duration</span>
+                    <span className="text-[10px] text-[#A3A3A3] font-bold">
+                      {calcDuration(slot.start_time, slot.end_time) || '90m'} duration
+                    </span>
                   </div>
                 </div>
 
@@ -242,14 +233,17 @@ export const TeacherSchedulePage: React.FC = () => {
 
                 {/* Location & Status */}
                 <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end">
-                  {slot.room_or_link && (
-                    <div className="flex items-center gap-1.5 text-xs text-[#525252] font-semibold bg-[#F5F5F5] px-2.5 py-1 rounded-lg border border-[#E5E5E5]">
-                      {isOnline ? (
-                        <Video size={13} className="text-[#3b82f6]" />
-                      ) : (
-                        <MapPin size={13} className="text-[#737373]" />
-                      )}
-                      <span className="truncate max-w-[120px]">{slot.room_or_link}</span>
+                  {isOnline ? (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-blue-50 border-blue-100 text-blue-600">
+                      <Video size={13} className="text-blue-500" />
+                      <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
+                        Join Class
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
+                      <MapPin size={13} className="text-[#737373]" />
+                      <span className="truncate max-w-[120px]">TBD</span>
                     </div>
                   )}
                   

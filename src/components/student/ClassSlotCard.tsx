@@ -1,6 +1,7 @@
 import React from 'react';
 import { Video, MapPin, Clock } from 'lucide-react';
 import StatusPill from '../ui/StatusPill';
+import { calcDuration, formatTime12h } from '../../lib/scheduleUtils';
 interface ClassSlotCardProps {
   slot: any;
 }
@@ -11,14 +12,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
   const subject = typeof rawSubj === 'string' ? rawSubj : (rawSubj?.name || 'Class');
   const teacherName = slot.offering?.teacher?.full_name || 'Staff';
 
-  // Format time range nicely
-  const formatTime = (timeStr?: string) => {
-    if (!timeStr || typeof timeStr !== 'string') return '';
-    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
-  };
+  // Duration computed from raw time strings — no Date objects, no TZ distortion
+  const duration = calcDuration(slot.start_time, slot.end_time);
 
   // Color mappings
   const getSubjectColor = (sub: string) => {
@@ -49,9 +44,11 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
         </div>
         <div>
           <div className={`text-sm font-extrabold text-[#111111] ${isCancelled ? 'line-through' : ''}`}>
-            {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+            {formatTime12h(slot.start_time)} – {formatTime12h(slot.end_time)}
           </div>
-          <span className="text-[10px] text-[#A3A3A3] font-bold">90 min duration</span>
+          {duration && (
+            <span className="text-[10px] text-[#A3A3A3] font-bold">{duration}</span>
+          )}
         </div>
       </div>
 
@@ -65,14 +62,17 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
 
       {/* Location / Join links */}
       <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end">
-        {slot.room_or_link && (
-          <div className="flex items-center gap-1.5 text-xs text-[#525252] font-semibold bg-[#F5F5F5] px-2.5 py-1 rounded-lg border border-[#E5E5E5]">
-            {isOnline ? (
-              <Video size={13} className="text-[#3b82f6]" />
-            ) : (
-              <MapPin size={13} className="text-[#737373]" />
-            )}
-            <span className="truncate max-w-[120px]">{slot.room_or_link}</span>
+        {isOnline ? (
+          <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-blue-50 border-blue-100 text-blue-600">
+            <Video size={13} className="text-blue-500" />
+            <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
+              Join Class
+            </a>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
+            <MapPin size={13} className="text-[#737373]" />
+            <span className="truncate max-w-[120px]">TBD</span>
           </div>
         )}
         

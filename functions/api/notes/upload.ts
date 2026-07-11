@@ -13,15 +13,20 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   }
   const { supabase, token } = auth;
 
-  // Verify caller's identity via auth token
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !userData?.user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token' }), {
+  // Decode userId from JWT locally — avoids a network round-trip to Supabase auth API.
+  // RLS on the INSERT will reject the request if the token is invalid anyway.
+  let userId: string;
+  try {
+    const payloadBase64 = token.split('.')[1];
+    const payload = JSON.parse(atob(payloadBase64));
+    userId = payload.sub;
+    if (!userId) throw new Error('No sub claim');
+  } catch {
+    return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token payload' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  const userId = userData.user.id;
 
   let formData: any;
   try {
@@ -50,6 +55,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
   const storageKey = `teacher_notes/${fileName}`;
 
+  // Pre-generate a UUID so we can set the correct file_url in a single atomic insert
+  const noteId = crypto.randomUUID();
+  const viewUrl = `/api/notes/view/${noteId}`;
+
   const arrayBuffer = await file.arrayBuffer();
 
   // 1. Upload bytes to R2
@@ -67,13 +76,14 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     });
   }
 
-  // 2. Insert notes row via authenticated Supabase client so RLS is enforced
+  // 2. Single atomic insert — correct file_url from the start, no UPDATE needed
   const payload = {
+    id: noteId,
     offering_id,
     chapter_name,
     title,
     file_path: storageKey,
-    file_url: `/api/notes/view/placeholder`,
+    file_url: viewUrl,
     file_type,
     uploaded_by: userId,
   };
@@ -97,11 +107,6 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       headers: { 'Content-Type': 'application/json' },
     });
   }
-
-  // Update file_url with the actual ID
-  const viewUrl = `/api/notes/view/${noteRow.id}`;
-  await supabase.from('notes').update({ file_url: viewUrl }).eq('id', noteRow.id);
-  noteRow.file_url = viewUrl;
 
   return new Response(JSON.stringify(noteRow), {
     status: 200,

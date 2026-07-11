@@ -3,12 +3,12 @@ import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, Book
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { getTaxonomy, completeStudentOnboarding, resolveGradeFeeConfig } from '../../lib/db';
+import { getTaxonomy, completeStudentOnboarding, resolveGradeFeeConfig, requestAccountTermination } from '../../lib/db';
 import Logo from '../../components/ui/Logo';
 import { BOARD, getDefaultPrice } from '../../lib/taxonomy';
 
 export const UnregisteredPage: React.FC = () => {
-  const { signOut, user, profile, refreshProfile, suspended } = useAuth();
+  const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
   const navigate = useNavigate();
 
   const [taxonomy, setTaxonomy] = useState<any>(null);
@@ -22,6 +22,7 @@ export const UnregisteredPage: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [terminationStep, setTerminationStep] = useState<'idle' | 'confirm' | 'goodbye'>('idle');
 
   // Fetch taxonomy and set initial classes
   useEffect(() => {
@@ -70,6 +71,19 @@ export const UnregisteredPage: React.FC = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/login', { replace: true });
+  };
+
+  const handleTerminateAccount = async () => {
+    if (!user) return;
+    try {
+      setSaving(true);
+      await requestAccountTermination(user.id);
+      setTerminationStep('goodbye');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to request account termination.');
+      setSaving(false);
+    }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -185,7 +199,110 @@ export const UnregisteredPage: React.FC = () => {
 
         {/* Card */}
         <div className="bg-white rounded-3xl border border-[#E5E5E5] p-6 sm:p-8 shadow-sm space-y-6">
-          {suspended ? (
+          {isBillingSuspended ? (
+            <div className="space-y-6 text-center">
+              {terminationStep === 'idle' && (
+                <>
+                  <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <DollarSign size={32} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h1 className="text-xl font-extrabold text-[#111111] tracking-tight">
+                      Monthly Billing Lockout
+                    </h1>
+                    <p className="text-sm text-[#737373] leading-relaxed">
+                      The account associated with <span className="font-bold text-[#111111]">{user?.email || 'your email'}</span> has been temporarily locked due to unpaid tuition dues.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-4 border-t border-[#F5F5F5]">
+                    <button
+                      onClick={() => proceedToPaymentCheckout && proceedToPaymentCheckout()}
+                      className="btn bg-[#F4C430] hover:bg-[#eab308] text-[#111111] w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01]"
+                    >
+                      Proceed to Payment Details
+                      <ArrowRight size={16} />
+                    </button>
+                    
+                    <button
+                      onClick={() => setTerminationStep('confirm')}
+                      className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-red-600 hover:bg-red-50 font-semibold rounded-xl transition-colors"
+                    >
+                      Request Enrollment Termination
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {terminationStep === 'confirm' && (
+                <>
+                  <div className="mx-auto w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                    <ShieldAlert size={32} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h1 className="text-xl font-extrabold text-[#111111] tracking-tight">
+                      Confirm Account Termination
+                    </h1>
+                    <p className="text-sm text-[#737373] leading-relaxed">
+                      Are you sure you want to terminate your enrollment? All active dashboard access, grade logs, class schedule tokens, and course notes will be scheduled for permanent removal.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-red-50/50 border border-red-200/50 text-left text-xs text-red-900 leading-relaxed font-medium">
+                    ⚠️ <strong>Data Loss Notice:</strong> This action initiates a secure, administrative termination queue. Once confirmed, you will be signed out and unable to enter the portal.
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-4 border-t border-[#F5F5F5]">
+                    <button
+                      onClick={handleTerminateAccount}
+                      disabled={saving}
+                      className="btn bg-red-600 hover:bg-red-700 text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01] disabled:opacity-50"
+                    >
+                      {saving ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
+                      Yes, Terminate My Account
+                    </button>
+                    
+                    <button
+                      onClick={() => setTerminationStep('idle')}
+                      disabled={saving}
+                      className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#737373] hover:text-[#111111] font-semibold rounded-xl transition-colors"
+                    >
+                      Cancel and Go Back
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {terminationStep === 'goodbye' && (
+                <>
+                  <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <CheckCircle2 size={32} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h1 className="text-xl font-extrabold text-[#111111] tracking-tight">
+                      Request Submitted Successfully
+                    </h1>
+                    <p className="text-sm text-[#737373] leading-relaxed">
+                      Thank you for studying with Scholario. Your account termination request has been registered and sent to our administration team for processing.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-4 border-t border-[#F5F5F5]">
+                    <button
+                      onClick={handleSignOut}
+                      className="btn bg-[#111111] hover:bg-[#262626] text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01]"
+                    >
+                      Exit Platform
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : suspended ? (
             <div className="space-y-6 text-center">
               <div className="mx-auto w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
                 <ShieldAlert size={32} />

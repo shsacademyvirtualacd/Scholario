@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
+  appType: 'spa', // Explicitly enable Single Page Application history fallback routing
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -18,6 +19,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Note: Vite's appType='spa' handles history fallback for paths like /student or /teacher out-of-the-box
   },
   build: {
     // Cloudflare Pages — output to dist/

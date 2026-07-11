@@ -8,6 +8,7 @@ import SlotForm from '../../components/admin/schedule/SlotForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, getTaxonomy, createAnnouncement } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/taxonomy';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
 const BOARDS = [
@@ -25,6 +26,9 @@ export const ScheduleManagerPage: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [slotToCancel, setSlotToCancel] = useState<string | null>(null);
+  const [notifyCancel, setNotifyCancel] = useState(true);
 
   // Filters - default to Grade 10 class-wise view for better usability
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
@@ -56,6 +60,14 @@ export const ScheduleManagerPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useRealtimeTable({
+    table: 'class_slots',
+    onAny: async () => {
+      const s = await getAllSlots();
+      setSlots(s);
+    }
+  });
 
   // Enrich raw slots with offering and teacher details for rendering
   const enrichedSlots = slots.map((slot) => {
@@ -121,7 +133,6 @@ export const ScheduleManagerPage: React.FC = () => {
     day_of_week: number;
     start_time: string;
     end_time: string;
-    room_or_link: string;
     publish_to_news: boolean;
     notify_affected?: boolean;
   }) => {
@@ -137,7 +148,6 @@ export const ScheduleManagerPage: React.FC = () => {
         day_of_week: formData.day_of_week as any,
         start_time: formData.start_time,
         end_time: formData.end_time,
-        room_or_link: formData.room_or_link,
       });
 
       // Reload slots
@@ -155,8 +165,8 @@ export const ScheduleManagerPage: React.FC = () => {
         const targetStreamId = formData.stream_id && formData.stream_id !== 'all' ? formData.stream_id : (offering?.stream_id || null);
 
         await createAnnouncement({
-          title: `${isEditMode ? 'Rescheduled' : 'New Class Scheduled'}: ${subject}`,
-          body: `The timetable schedule for ${subject} has been updated. A class slot has been registered on ${dayName} at ${timeStr} (${formData.room_or_link}).`,
+          title: 'Schedule Update',
+          body: `${subject} on ${dayName} at ${timeStr} has been ${isEditMode ? 'rescheduled' : 'scheduled'}.`,
           severity: 'crucial',
           scope: 'class',
           class_id: targetClassId || null,
@@ -173,35 +183,49 @@ export const ScheduleManagerPage: React.FC = () => {
     setSelectedSlot(null);
   };
 
-  // Toggle cancellation status of class
   const handleToggleCancel = async (slotId: string, currentStatus: boolean) => {
+    if (!currentStatus) {
+      setSlotToCancel(slotId);
+      setNotifyCancel(true);
+      setCancelModalOpen(true);
+      return;
+    }
+
     const slot = slots.find((s) => s.id === slotId);
     if (!slot) return;
 
     try {
-      const updatedStatus = !currentStatus;
       await upsertSlot({
         ...slot,
-        is_cancelled: updatedStatus,
+        is_cancelled: false,
       });
+      await loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
+  const handleConfirmCancel = async () => {
+    if (!slotToCancel) return;
+    const slot = slots.find((s) => s.id === slotToCancel);
+    if (!slot) return;
+
+    try {
+      await upsertSlot({ ...slot, is_cancelled: true });
       await loadData();
 
-      // Automatically publish to news if slot is being marked as cancelled
-      if (updatedStatus) {
+      if (notifyCancel) {
         const offering = offerings.find((o) => o.id === slot.offering_id);
         const subject = slot.custom_title || (offering ? (offering.subject_name || offering.subject?.name || 'Class') : 'Class');
-        const board = 'FBISE';
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayName = dayNames[slot.day_of_week];
         const timeStr = slot.start_time.slice(0, 5);
 
         const targetClassId = slot.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
-        const targetGrade = offering?.grade || (offering as any)?.class?.grade || taxonomy?.classes?.find((c: any) => c.id === targetClassId)?.grade || (selectedGrade !== 'all' ? selectedGrade : '10');
 
         await createAnnouncement({
-          title: `⚠️ Class Cancelled: ${board} Gr. ${targetGrade || '10'} ${subject}`,
-          body: `The scheduled session for ${subject} on ${dayName} at ${timeStr} has been CANCELLED by the admin. Please plan your study slots accordingly.`,
+          title: 'Class Cancellation',
+          body: `${subject} on ${dayName} at ${timeStr} has been cancelled.`,
           severity: 'crucial',
           scope: 'class',
           class_id: targetClassId || null,
@@ -212,6 +236,9 @@ export const ScheduleManagerPage: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setCancelModalOpen(false);
+      setSlotToCancel(null);
     }
   };
 
@@ -243,7 +270,6 @@ export const ScheduleManagerPage: React.FC = () => {
       day_of_week: dayOfWeekIndex as any,
       start_time: '16:00:00',
       end_time: '17:30:00',
-      room_or_link: '',
     };
     setSelectedSlot(newSlotTemplate as any);
   };
@@ -506,6 +532,33 @@ export const ScheduleManagerPage: React.FC = () => {
         confirmLabel="Delete Slot"
         danger
       />
+
+      {/* Cancel Confirmation Modal */}
+      <ConfirmModal
+        open={cancelModalOpen}
+        onClose={() => {
+          setCancelModalOpen(false);
+          setSlotToCancel(null);
+        }}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Class Session?"
+        description="Are you sure you want to cancel this class session? It will appear as cancelled on student timetables."
+        confirmLabel="Cancel Class"
+        danger
+      >
+        <div className="flex items-center gap-2.5 mt-2">
+          <input
+            type="checkbox"
+            id="notifyCancelCheck"
+            checked={notifyCancel}
+            onChange={(e) => setNotifyCancel(e.target.checked)}
+            className="w-4.5 h-4.5 text-[#ef4444] border-gray-300 rounded focus:ring-[#ef4444] cursor-pointer"
+          />
+          <label htmlFor="notifyCancelCheck" className="text-xs font-bold text-[#111111] cursor-pointer selection:bg-transparent">
+            Notify affected students via announcement
+          </label>
+        </div>
+      </ConfirmModal>
     </AdminShell>
   );
 };

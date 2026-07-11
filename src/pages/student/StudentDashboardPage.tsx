@@ -2,14 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookMarked, CheckCircle2, ChevronRight, ArrowRight, GraduationCap,
-  Clock, Play, Pause, RotateCcw
+  Clock, Play, Pause, RotateCcw, Zap, Link as LinkIcon
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getAttendanceForStudent, computeAttendanceStreak } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot, Note, Attendance } from '../../types';
+import {
+  getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
+  formatTime12h, calcDuration
+} from '../../lib/scheduleUtils';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
 type TimerMode = 'focus' | 'break';
@@ -136,107 +141,133 @@ const PomodoroTimer: React.FC = () => {
   );
 };
 
+// ─── Live Link Join Button for Student ────────────────────────────
+const StudentLiveLink: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
+  const hasLink = slot.room_or_link && (slot.room_or_link.startsWith('http') || slot.room_or_link.includes('zoom') || slot.room_or_link.includes('meet'));
+  if (!hasLink) return null;
+  
+  return (
+    <a 
+      href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`}
+      target="_blank" 
+      rel="noreferrer" 
+      className="mt-2 flex items-center justify-center gap-1.5 w-full bg-[#111111] hover:bg-black text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-sm"
+    >
+      <LinkIcon size={12} /> Join Live Class
+    </a>
+  );
+};
+
 // ─── Live Next Class Countdown Widget ─────────────────────────────
 const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
-  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [pktnow, setPktnow] = useState(getPKTNow);
 
-  const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
-
-  // Sort slots by day and time to find upcoming ones
-  const upcomingSlots = slots
-    .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
-    .sort((a, b) => {
-      if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-      return (a.start_time || '').localeCompare(b.start_time || '');
-    });
-
-  const nextSlot = upcomingSlots[0] || slots[0]; // Fallback to first class next week if none today/later this week
-
+  // Re-evaluate every 60 seconds against PKT clock
   useEffect(() => {
-    if (!nextSlot) return;
+    const id = setInterval(() => setPktnow(getPKTNow()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
-    const startTimeStr = nextSlot.start_time || '09:00:00';
+  const state = classWidgetState(slots, pktnow);
 
-    const updateCountdown = () => {
-      const now = new Date();
-      const target = new Date();
-
-      // Calculate days to add to get to the class's day of week
-      let targetDay = nextSlot.day_of_week ?? 0;
-      let currentDay = (now.getDay() + 6) % 7;
-
-      let daysToAdd = targetDay - currentDay;
-      if (daysToAdd < 0 || (daysToAdd === 0 && startTimeStr < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
-        daysToAdd += 7; // Next week
-      }
-
-      target.setDate(now.getDate() + daysToAdd);
-
-      const [hours = 9, minutes = 0] = startTimeStr.split(':').map(Number);
-      target.setHours(hours, minutes, 0, 0);
-
-      const diffMs = target.getTime() - now.getTime();
-      if (diffMs <= 0) {
-        setTimeLeft('Starting now');
-        return;
-      }
-
-      const diffMins = Math.floor(diffMs / 60000);
-      const h = Math.floor(diffMins / 60);
-      const m = diffMins % 60;
-
-      if (h > 0) {
-        setTimeLeft(`in ${h}h ${m}m`);
-      } else {
-        setTimeLeft(`in ${m}m`);
-      }
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 60000);
-    return () => clearInterval(interval);
-  }, [nextSlot]);
-
-  if (!nextSlot) {
+  // ── State B: end-of-day with no next class scheduled at all ────────
+  if (state.type === 'end-of-day' && !state.nextSlot) {
     return (
-      <div className="stat-card flex flex-col gap-2">
-        <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
-        <div className="text-sm font-medium text-[#737373]">No classes scheduled</div>
+      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
+          <span className="badge badge-gold text-[10px] font-bold">End of Day</span>
+        </div>
+        <div>
+          <div className="text-base font-extrabold text-[#111111] truncate">No classes scheduled</div>
+          <div className="text-xs text-[#737373] font-medium mt-0.5">See you next session! 🌙</div>
+        </div>
+        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+          <Clock size={13} className="text-[#A3A3A3] shrink-0" />
+          <span className="text-xs text-[#A3A3A3] font-semibold">TBA</span>
+        </div>
       </div>
     );
   }
 
-  const formatClassTime = (timeStr?: string) => {
-    if (!timeStr) return 'TBA';
-    const parts = timeStr.split(':').map(Number);
-    const hours = parts[0] || 0;
-    const minutes = parts[1] || 0;
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
-  };
+  // ── State A: class is ongoing ───────────────────────────────────────
+  if (state.type === 'ongoing') {
+    const subject = getSlotSubject(state.activeSlot);
+    const remH = Math.floor(state.minsRemaining / 60);
+    const remM = state.minsRemaining % 60;
+    const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
+    return (
+      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Now In Session</span>
+          <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
+        </div>
+        <div>
+          <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
+          <div className="text-xs text-emerald-600 font-bold mt-0.5">{remLabel}</div>
+          {state.nextSlot && (
+            <div className="text-[10px] text-[#A3A3A3] font-medium mt-1 truncate">
+              Up next: {getSlotSubject(state.nextSlot)} · {formatTime12h(state.nextSlot.start_time)}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+          <Zap size={13} className="text-emerald-500 shrink-0" />
+          <span className="text-xs font-bold text-[#111111]">{formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}</span>
+        </div>
+        <StudentLiveLink slot={state.activeSlot} />
+      </div>
+    );
+  }
 
-  const rawTitle = nextSlot.custom_title || (nextSlot.offering as any)?.subject_name || nextSlot.offering?.subject || 'Class';
-  const nextTitle = typeof rawTitle === 'string' ? rawTitle : ((rawTitle as any)?.name || 'Class');
+  // ── States B/C/D with an upcoming class ─────────────────────────────
+  const nextSlot = state.nextSlot!;
+  const minsUntil = state.minsUntil ?? 0;
+  const subject = getSlotSubject(nextSlot);
+  
+  let badgeLabel = '';
+  let isPulsing = false;
+
+  if (state.type === 'end-of-day') {
+    badgeLabel = 'No classes for today';
+  } else {
+    badgeLabel = formatCountdown(minsUntil);
+    if (state.type === 'morning-buffer') {
+      isPulsing = true;
+    }
+  }
+
+  const formatClassTimeLabel = (slot: ClassSlot) => {
+    if (slot.day_of_week == null) return formatTime12h(slot.start_time);
+    let daysAhead = slot.day_of_week - pktnow.dayIndex;
+    if (daysAhead < 0) daysAhead += 7;
+
+    const timeStr = formatTime12h(slot.start_time);
+    if (daysAhead === 0) return timeStr;
+
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return `${days[slot.day_of_week]} at ${timeStr}`;
+  };
 
   return (
     <div className="stat-card flex flex-col justify-between min-h-[140px]">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
-        <span className="badge badge-gold text-[10px] font-bold">{timeLeft}</span>
+        <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
       </div>
       <div>
-        <div className="text-base font-extrabold text-[#111111] truncate">{nextTitle}</div>
+        <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
         <div className="text-xs text-[#737373] font-medium truncate mt-0.5">{nextSlot.offering?.teacher?.full_name}</div>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
         <Clock size={13} className="text-[#F4C430] shrink-0" />
-        <span className="text-xs font-bold text-[#111111]">{formatClassTime(nextSlot.start_time)}</span>
+        <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
         <span className="text-xs text-[#A3A3A3]">·</span>
         <span className="text-xs font-semibold text-[#737373] capitalize">
           FBISE · Gr. {nextSlot.offering?.grade || '10'}
         </span>
       </div>
+      <StudentLiveLink slot={nextSlot} />
     </div>
   );
 };
@@ -317,11 +348,37 @@ const StudentDashboardPage: React.FC = () => {
     };
   }, [studentId]);
 
+  // ── Realtime Updates ──────────────────────────────────────────────
+  const fetchSlots = async () => {
+    if (!studentId) return;
+    const slots = await getSlotsForStudent(studentId);
+    setScheduleSlots(slots);
+    pageCache.set('schedule_slots', slots, studentId);
+  };
+  
+  const fetchNotes = async () => {
+    if (!studentId || offerings.length === 0) return;
+    const ids = offerings.map(o => o.id);
+    const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
+    setStudentNotes(n);
+    pageCache.set('student_notes', n, studentId);
+  };
+
+  useRealtimeTable({
+    table: 'class_slots',
+    onAny: fetchSlots
+  });
+
+  useRealtimeTable({
+    table: 'notes',
+    onAny: fetchNotes
+  });
+
   const { currentStreak, personalBest, last7Days } = computeAttendanceStreak(attendanceRecords);
   const recentNotes = studentNotes.slice(0, 3);
 
-  // Get Today's classes
-  const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
+  // Get Today's classes — PKT-aware day index
+  const currentDayIndex = getPKTNow().dayIndex;
   const todayClasses = scheduleSlots
     .filter(slot => slot.day_of_week === currentDayIndex)
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
@@ -336,13 +393,7 @@ const StudentDashboardPage: React.FC = () => {
     }
   };
 
-  const formatClassTime = (timeStr?: string) => {
-    if (!timeStr || typeof timeStr !== 'string') return '';
-    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
-  };
+  const formatClassTime = formatTime12h;
 
   return (
     <StudentShell>
@@ -456,7 +507,7 @@ const StudentDashboardPage: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm text-[#111111]">{clsSubj}</div>
                       <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
-                        {cls.offering?.teacher?.full_name || 'Staff'} · 90 min
+                        {cls.offering?.teacher?.full_name || 'Staff'} · {calcDuration(cls.start_time, cls.end_time) || '90m'}
                       </div>
                     </div>
                     <div className="text-right shrink-0">

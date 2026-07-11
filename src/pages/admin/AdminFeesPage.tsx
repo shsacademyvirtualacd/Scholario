@@ -9,6 +9,7 @@ import {
   getUniversalFeeConfig, saveUniversalFeeConfig, 
   getPendingFeeStatuses, updateFeeStatus 
 } from '../../lib/db';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 export const AdminFeesPage: React.FC = () => {
   // Tabs
@@ -67,6 +68,19 @@ export const AdminFeesPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Keep pending list live: refresh whenever any fee_statuses row changes
+  useRealtimeTable({
+    table: 'fee_statuses',
+    onInsert: async () => {
+      const fresh = await getPendingFeeStatuses().catch(() => []);
+      setPendingList(fresh);
+    },
+    onUpdate: async () => {
+      const fresh = await getPendingFeeStatuses().catch(() => []);
+      setPendingList(fresh);
+    },
+  });
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();

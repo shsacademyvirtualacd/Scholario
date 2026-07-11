@@ -10,6 +10,7 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  children?: React.ReactNode;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -21,6 +22,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   danger = false,
+  children,
 }) => {
   // Lock body scroll when open
   useEffect(() => {
@@ -79,6 +81,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <div className="flex-1">
             <h3 className="text-base font-bold text-[#111111]">{title}</h3>
             <p className="text-sm text-[#737373] mt-2 font-medium leading-relaxed">{description}</p>
+            {children && (
+              <div className="mt-4">
+                {children}
+              </div>
+            )}
           </div>
         </div>
 

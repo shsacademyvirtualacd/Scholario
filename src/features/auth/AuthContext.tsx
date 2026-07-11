@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import type { Profile } from '../../types';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 interface AuthContextValue {
@@ -13,14 +14,20 @@ interface AuthContextValue {
   rosterRejected: boolean;
   /** True if the user's roster entry has been suspended */
   suspended: boolean;
+  /** True if the user's roster entry is suspended specifically for unpaid monthly fees */
+  isBillingSuspended?: boolean;
   /** True for a student whose profile exists but onboarding (stream) is not done */
   needsOnboarding: boolean;
   /** Active fee status for students ('unpaid', 'pending', 'paid') */
   feeStatus: 'unpaid' | 'pending' | 'paid' | null;
+  /** Human readable auth error */
+  authError: string | null;
   /** Initiates Google OAuth flow (redirect-based). */
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** Bypasses billing suspension lock to allow user into checkout */
+  proceedToPaymentCheckout?: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -36,10 +43,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Transient flag: set when a real Google sign-in is rejected due to missing roster entry.
   const [rosterRejected, setRosterRejected] = useState(false);
   const [suspended, setSuspended] = useState(false);
+  const [isBillingSuspended, setIsBillingSuspended] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Guard against provisionProfile running twice for the same user ID
   const processingRef = useRef<Set<string>>(new Set());
   const profileRef = useRef<Profile | null>(null);
+  const cachedProfileRef = useRef<Profile | null>(null);
+
+  const proceedToPaymentCheckout = () => {
+    if (cachedProfileRef.current) {
+      setProfile(cachedProfileRef.current);
+      setFeeStatus('unpaid'); // Trap them at checkout
+      setIsBillingSuspended(false);
+    }
+  };
 
   useEffect(() => {
     profileRef.current = profile;
@@ -62,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       console.error('[Auth] fetchProfile error:', error.message, error.code);
+      setAuthError('Unable to load your profile data. Please try again later.');
       return null;
     }
     return data ?? null;
@@ -101,12 +120,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Check roster verification
         const { data: rosterEntry } = await (supabase as any)
           .from('roster')
-          .select('suspended')
+          .select('suspended, fee_suspended')
           .eq('email', email)
           .maybeSingle();
 
         if (!rosterEntry) {
           console.warn('[Auth] ❌ User profile exists, but email is NOT in roster:', email);
+          setRosterRejected(true);
+          setProfile(null);
+          setFeeStatus(null);
+          setLoading(false);
+          return;
+        }
+
+        if (rosterEntry.fee_suspended) {
+          console.warn('[Auth] ❌ Billing access suspended for:', email);
+          setIsBillingSuspended(true);
+          cachedProfileRef.current = existing;
           setRosterRejected(true);
           setProfile(null);
           setFeeStatus(null);
@@ -125,6 +155,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         console.log('[Auth] ✅ Existing profile found — role:', existing.role);
+        setSuspended(false);
+        setIsBillingSuspended(false);
+        setRosterRejected(false);
         setProfile(existing);
         if (existing.role === 'student') {
           const { data: feeData } = await (supabase as any)
@@ -143,12 +176,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[Auth] Step 2: No profile found. Roster lookup for', email);
       const { data: rosterEntry, error: rosterError } = await (supabase as any)
         .from('roster')
-        .select('role, full_name, class_ids, profile_id, suspended')
+        .select('role, full_name, class_ids, profile_id, suspended, fee_suspended')
         .eq('email', email)
         .maybeSingle();
 
       if (rosterError) {
         console.error('[Auth] ❌ Roster lookup FAILED:', rosterError.message, rosterError);
+        setAuthError('Failed to verify institutional roster. Please contact support.');
         // Treat as rejected — safer to show unregistered than crash
         setRosterRejected(true);
         await supabase.auth.signOut();
@@ -161,6 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // ── Step 3: Email not in roster → deny ──────────────────────────────
       if (!rosterEntry) {
         console.warn('[Auth] ❌ Email NOT found in roster:', email);
+        setAuthError('Your email is not listed on the institutional roster. Contact administration.');
         setRosterRejected(true);
         // Do NOT call signOut here so the user can fill the registration form
         setProfile(null);
@@ -169,8 +204,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      if (rosterEntry.fee_suspended) {
+        console.warn('[Auth] ❌ Billing access suspended (first login) for:', email);
+        setAuthError('Your access is temporarily restricted due to pending fees.');
+        setIsBillingSuspended(true);
+        setRosterRejected(true);
+        setProfile(null);
+        setFeeStatus(null);
+        setLoading(false);
+        return;
+      }
+
       if (rosterEntry.suspended) {
         console.warn('[Auth] ❌ Access has been suspended (first login) for:', email);
+        setAuthError('Your account has been suspended. Please contact administration.');
         setSuspended(true);
         setRosterRejected(true);
         setProfile(null);
@@ -180,6 +227,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       console.log('[Auth] ✅ Roster entry found:', JSON.stringify(rosterEntry));
+      setSuspended(false);
+      setIsBillingSuspended(false);
+      setRosterRejected(false);
 
       // ── Step 4: First login — create profile ─────────────────────────────
       const role: 'admin' | 'teacher' | 'student' = rosterEntry.role;
@@ -216,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Still link roster below
           } else {
             console.error('[Auth] ❌ Could not fetch profile after duplicate error');
+            setAuthError('Error loading created profile. Please sign in again.');
             setRosterRejected(true);
             await supabase.auth.signOut();
             setSession(null);
@@ -225,6 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } else {
           console.error('[Auth] ❌ Profile INSERT FAILED:', insertError.message, insertError);
+          setAuthError('Failed to create your profile. Please contact support.');
           setRosterRejected(true);
           await supabase.auth.signOut();
           setSession(null);
@@ -333,20 +385,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (updated.role === 'admin') {
         setProfile(updated);
         setFeeStatus('paid');
+        setSuspended(false);
+        setRosterRejected(false);
         return;
       }
 
       // Check roster status
       const { data: rosterEntry } = await (supabase as any)
         .from('roster')
-        .select('suspended')
+        .select('suspended, fee_suspended')
         .eq('email', emailAddress)
         .maybeSingle();
 
-      if (!rosterEntry || rosterEntry.suspended) {
+      if (!rosterEntry || rosterEntry.suspended || rosterEntry.fee_suspended) {
         console.warn('[Auth] refreshProfile — User not in roster or suspended.');
         if (rosterEntry?.suspended) {
           setSuspended(true);
+        }
+        if (rosterEntry?.fee_suspended) {
+          setIsBillingSuspended(true);
+          cachedProfileRef.current = updated;
         }
         setProfile(null);
         setFeeStatus(null);
@@ -354,6 +412,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      setSuspended(false);
+      setIsBillingSuspended(false);
+      setRosterRejected(false);
       setProfile(updated);
       if (updated.role === 'student') {
         const { data: feeData } = await (supabase as any)
@@ -384,6 +445,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       console.error('[Auth] Google OAuth error:', error.message);
+      setAuthError('Google sign-in failed. Please try again.');
       throw error;
     }
   };
@@ -395,10 +457,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  // ── Realtime global roster watch for suspensions AND deletions ──────────────
+  useRealtimeTable({
+    table: 'roster',
+    filter: user?.email ? `email=eq.${user.email}` : undefined,
+    onUpdate: (payload) => {
+      const newRoster = payload.new as any;
+      if (newRoster.suspended) {
+        console.warn('[Auth] Realtime: user suspended by admin.');
+        setSuspended(true);
+        setRosterRejected(true);
+        setProfile(null);
+        setFeeStatus(null);
+      } else if (newRoster.fee_suspended) {
+        console.warn('[Auth] Realtime: user fee suspended by admin.');
+        setIsBillingSuspended(true);
+        setRosterRejected(true);
+        cachedProfileRef.current = profileRef.current;
+        setProfile(null);
+        setFeeStatus(null);
+      } else {
+        console.log('[Auth] Realtime: user restored by admin.');
+        setSuspended(false);
+        setIsBillingSuspended(false);
+        setRosterRejected(false);
+        refreshProfile();
+      }
+    },
+    onDelete: (_payload) => {
+      // Admin has deleted this user's roster entry — eject them immediately.
+      console.warn('[Auth] Realtime: roster row deleted by admin. Signing out immediately.');
+      setSuspended(false);
+      setIsBillingSuspended(false);
+      setRosterRejected(true);
+      setProfile(null);
+      setFeeStatus(null);
+      supabase.auth.signOut();
+    }
+  });
+
+  // ── Realtime fee_statuses watch — admin approval pushes to student live ──────
+  useRealtimeTable({
+    table: 'fee_statuses',
+    filter: user?.id ? `student_id=eq.${user.id}` : undefined,
+    onUpdate: (payload) => {
+      const newStatus = (payload.new as any)?.status as 'unpaid' | 'pending' | 'paid' | undefined;
+      if (!newStatus) return;
+      console.log('[Auth] Realtime: fee_statuses updated →', newStatus);
+      setFeeStatus(newStatus);
+      // If just approved (paid), unblock any billing suspension and refresh profile
+      if (newStatus === 'paid') {
+        setIsBillingSuspended(false);
+        setRosterRejected(false);
+        refreshProfile();
+      }
+    }
+  });
+
   return (
     <AuthContext.Provider value={{
-      session, user, profile, loading, rosterRejected, suspended, needsOnboarding, feeStatus,
-      signInWithGoogle, signOut, refreshProfile
+      session,
+      user,
+      profile,
+      loading,
+      rosterRejected,
+      suspended,
+      isBillingSuspended,
+      needsOnboarding,
+      feeStatus,
+      authError,
+      signInWithGoogle,
+      signOut,
+      refreshProfile,
+      proceedToPaymentCheckout
     }}>
       {children}
     </AuthContext.Provider>

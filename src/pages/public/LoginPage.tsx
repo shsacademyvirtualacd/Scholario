@@ -5,7 +5,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import Logo from '../../components/ui/Logo';
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, profile, session, loading: authLoading, needsOnboarding } = useAuth();
+  const { signInWithGoogle, profile, session, loading: authLoading, needsOnboarding, authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
@@ -69,9 +69,9 @@ const LoginPage: React.FC = () => {
           </div>
 
           {/* Error */}
-          {error && (
+          {(error || authError) && (
             <div className="mb-5 px-4 py-3 rounded-lg bg-[#FEF2F2] border border-[#ef444433] text-sm text-[#991b1b]">
-              {error}
+              {error || authError}
             </div>
           )}
 

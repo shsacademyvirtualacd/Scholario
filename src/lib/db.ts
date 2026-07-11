@@ -220,10 +220,10 @@ export async function completeStudentOnboarding(
     if (enrollError) throw new Error(`[db:completeStudentOnboarding] Enrollment failed: ${enrollError.message}`);
   }
 
-  // 5. Ensure fee_status row exists (upsert to avoid conflict)
+  // 5. Ensure fee_status row exists (upsert to force clean slate and overwrite lingering data)
   const { error: feeError } = await (supabase as any)
     .from('fee_statuses')
-    .upsert({ student_id: studentId, status: 'unpaid' }, { onConflict: 'student_id', ignoreDuplicates: true });
+    .upsert({ student_id: studentId, status: 'unpaid' }, { onConflict: 'student_id' });
 
   if (feeError) {
     console.warn('[db:completeStudentOnboarding] fee_statuses upsert warning:', feeError.message);
@@ -757,12 +757,23 @@ export async function insertNote(payload: Omit<Note, 'id' | 'created_at'>): Prom
 
 /** Teacher/Admin: delete a note */
 export async function deleteNote(noteId: string): Promise<void> {
-  const { data: note } = (await supabase.from('notes').select('file_path').eq('id', noteId).maybeSingle()) as any;
-  if (note?.file_path) {
-    await supabase.storage.from('notes').remove([note.file_path]).catch(() => {});
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const response = await fetch(`/api/notes/del/${noteId}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let errMsg = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed.error) errMsg = parsed.error;
+    } catch {}
+    throw new Error(`Delete failed: ${errMsg}`);
   }
-  const { error } = await (supabase as any).from('notes').delete().eq('id', noteId);
-  if (error) throw error;
 }
 
 // =============================================================================
@@ -968,6 +979,34 @@ export async function toggleRosterAccess(
     }
   }
 }
+
+export async function toggleFeeSuspension(
+  rosterId: string,
+  feeSuspended: boolean
+): Promise<void> {
+  const updateData: any = { fee_suspended: feeSuspended };
+  if (!feeSuspended) {
+    updateData.awaiting_termination = false;
+  }
+  const { data, error } = await (supabase as any)
+    .from('roster')
+    .update(updateData)
+    .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
+    .select();
+
+  if (error && error.code !== 'PGRST116') throw error;
+}
+
+export async function requestAccountTermination(rosterId: string): Promise<void> {
+  const { data, error } = await (supabase as any)
+    .from('roster')
+    .update({ awaiting_termination: true })
+    .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
+    .select();
+
+  if (error && error.code !== 'PGRST116') throw error;
+}
+
 
 export async function deleteRosterEntry(rosterId: string): Promise<void> {
   // Check if target is protected admin before anything else
@@ -1363,15 +1402,18 @@ export async function getTaxonomy(): Promise<{
 }> {
   const [b, c, s, sub, ss] = await Promise.all([
     supabase.from('boards').select('*').order('name'),
-    supabase.from('classes').select('*, board:boards(*)').order('display_name'),
+    supabase.from('classes').select('*, board:boards(*)'),
     supabase.from('streams').select('*, class:classes(*)').order('name'),
     supabase.from('subjects').select('*').order('name'),
     supabase.from('stream_subjects').select('*'),
   ]);
 
+  const classesData = c.data || [];
+  classesData.sort((a: any, b: any) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
+
   return {
     boards: b.data || [],
-    classes: c.data || [],
+    classes: classesData,
     streams: s.data || [],
     subjects: sub.data || [],
     streamSubjects: ss.data || [],

@@ -179,6 +179,8 @@ export interface RosterEntry {
   class_ids: string[];
   profile_id: string | null;
   suspended?: boolean;
+  fee_suspended?: boolean;
+  awaiting_termination?: boolean;
   created_at: string;
 }
 

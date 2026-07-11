@@ -11,6 +11,7 @@ import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { pageCache } from '../../lib/pageCache';
 import type { Note } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 export const NotesPage: React.FC = () => {
   const { profile } = useAuth();
@@ -66,6 +67,17 @@ export const NotesPage: React.FC = () => {
       mounted = false;
     };
   }, [studentId]);
+
+  useRealtimeTable({
+    table: 'notes',
+    onAny: async () => {
+      if (!studentId || offerings.length === 0) return;
+      const ids = offerings.map(o => o.id);
+      const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
+      setNotes(n);
+      pageCache.set('student_notes', n, studentId);
+    }
+  });
 
   // Synchronize search query from URL search parameters
   useEffect(() => {

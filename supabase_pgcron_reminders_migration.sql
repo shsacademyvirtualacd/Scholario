@@ -79,7 +79,7 @@ BEGIN
     WHERE cs.day_of_week = app_dow
       AND cs.is_cancelled = false
       AND cs.offering_id IS NOT NULL
-      AND cs.start_time - karachi_time BETWEEN interval '9 minutes' AND interval '10 minutes'
+      AND cs.start_time - karachi_time BETWEEN interval '14 minutes' AND interval '15 minutes'
       AND NOT EXISTS (
         SELECT 1 FROM class_reminder_log crl
         WHERE crl.slot_id = cs.id AND crl.reminder_date = karachi_date
@@ -94,12 +94,8 @@ BEGIN
     SELECT
       e.student_id,
       'class_reminder',
-      '🔔 ' || subject_label || ' starts at ' || time_label,
-      'Your ' || subject_label || ' class is starting in ~10 minutes at ' || time_label
-        || CASE WHEN slot_row.room_or_link IS NOT NULL
-             THEN ' (' || slot_row.room_or_link || ')'
-             ELSE '' END
-        || '. Be ready!',
+      'Class Starting Soon',
+      subject_label || ' is starting in 15 minutes.',
       'normal',
       false
     FROM enrollments e
@@ -111,12 +107,8 @@ BEGIN
       VALUES (
         slot_row.teacher_id,
         'class_reminder',
-        '🔔 ' || subject_label || ' starts at ' || time_label,
-        'Your ' || subject_label || ' class is starting in ~10 minutes at ' || time_label
-          || CASE WHEN slot_row.room_or_link IS NOT NULL
-               THEN ' (' || slot_row.room_or_link || ')'
-               ELSE '' END
-          || '.',
+        'Class Starting Soon',
+        subject_label || ' is starting in 15 minutes.',
         'normal',
         false
       );

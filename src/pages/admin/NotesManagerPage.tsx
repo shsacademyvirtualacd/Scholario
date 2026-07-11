@@ -8,12 +8,13 @@ import NoteUploadForm from '../../components/admin/notes/NoteUploadForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import NoteViewerModal from '../../components/student/NoteViewerModal';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getAllNotes, insertNote, deleteNote, getAllOfferings, getTaxonomy } from '../../lib/db';
+import { getAllNotes, deleteNote, getAllOfferings, getTaxonomy } from '../../lib/db';
 import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../lib/taxonomy';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { Note, ClassOffering } from '../../types';
 
 export const NotesManagerPage: React.FC = () => {
-  const { profile } = useAuth();
+  useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [taxonomy, setTaxonomy] = useState<any>(null);
@@ -25,12 +26,20 @@ export const NotesManagerPage: React.FC = () => {
     getAllOfferings().then(setOfferings).catch(console.error);
   }, []);
 
+  useRealtimeTable({
+    table: 'notes',
+    onAny: async () => {
+      const n = await getAllNotes();
+      setNotes(n);
+    }
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'pdf' | 'image'>('all');
 
   // 4-Layer Taxonomy Filters (Board → Grade → Stream → Subject)
-  const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
-  const [selectedGrade, setSelectedGrade] = useState<string>('10');
+  const [selectedBoard, setSelectedBoard] = useState<string>('all');
+  const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
 
@@ -41,6 +50,8 @@ export const NotesManagerPage: React.FC = () => {
   
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [uploadToast, setUploadToast] = useState<string | null>(null);
 
   // Enrich raw notes with class offering and teacher details
   const enrichedNotes = notes.map((note) => {
@@ -139,7 +150,7 @@ export const NotesManagerPage: React.FC = () => {
     // Taxonomy 4-Layer Match
     if (selectedSubject && selectedSubject !== 'all') {
       if (note.offering_id !== selectedSubject) return false;
-    } else {
+    } else if (selectedBoard !== 'all' || selectedGrade !== 'all' || selectedStream !== 'all') {
       if (!scopedOfferings.some((o) => o.id === note.offering_id)) return false;
     }
 
@@ -147,8 +158,8 @@ export const NotesManagerPage: React.FC = () => {
   });
 
   const resetFilters = () => {
-    setSelectedBoard('fbise');
-    setSelectedGrade('10');
+    setSelectedBoard('all');
+    setSelectedGrade('all');
     setSelectedStream('all');
     setSelectedSubject('all');
     setTypeFilter('all');
@@ -165,27 +176,15 @@ export const NotesManagerPage: React.FC = () => {
     setDrawerOpen(true);
   };
 
-  const handleUploadSave = async (formData: {
-    offering_id: string;
-    chapter_name: string;
-    title: string;
-    file_url: string;
-    file_path: string;
-    file_type: 'pdf' | 'image';
-  }) => {
-    const created = await insertNote({
-      offering_id: formData.offering_id,
-      chapter_name: formData.chapter_name,
-      title: formData.title,
-      file_url: formData.file_url,
-      file_path: formData.file_path,
-      file_type: formData.file_type,
-      uploaded_by: profile?.id || '',
-    }).catch(console.error);
-    if (created) {
-      setNotes((prev) => [created, ...prev]);
+  const handleUploadSave = async (formData: any) => {
+    // The upload API already inserted the row — formData IS the created note row.
+    // Just prepend it to local state and close the drawer.
+    if (formData?.id) {
+      setNotes((prev) => [formData as Note, ...prev]);
     }
     setDrawerOpen(false);
+    setUploadToast(`"${formData?.title || 'Note'}" uploaded successfully`);
+    setTimeout(() => setUploadToast(null), 4000);
   };
 
   const handleDeleteTrigger = (noteId: string) => {
@@ -194,10 +193,20 @@ export const NotesManagerPage: React.FC = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (noteToDelete) {
-      await deleteNote(noteToDelete).catch(console.error);
-      setNotes((prev) => prev.filter((n) => n.id !== noteToDelete));
-      setNoteToDelete(null);
+    if (!noteToDelete) return;
+    const targetId = noteToDelete;
+    setDeleteModalOpen(false);
+    setNoteToDelete(null);
+    setDeletingId(targetId);
+    try {
+      await deleteNote(targetId);
+      setNotes((prev) => prev.filter((n) => n.id !== targetId));
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      setDeletingId(null);
+      alert(err.message || 'Failed to delete note.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -208,6 +217,13 @@ export const NotesManagerPage: React.FC = () => {
 
   return (
     <AdminShell>
+      {/* Upload success toast */}
+      {uploadToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#111111] text-white text-xs font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-bottom-4 duration-300">
+          <span className="text-green-400">✓</span>
+          {uploadToast}
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <SectionHeader
@@ -227,6 +243,16 @@ export const NotesManagerPage: React.FC = () => {
       <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div className="flex overflow-x-auto gap-6 border-transparent">
           <button
+            onClick={() => setSelectedBoard('all')}
+            className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+              selectedBoard === 'all'
+                ? 'border-[#F4C430] text-[#111111]'
+                : 'border-transparent text-[#737373] hover:text-[#111111]'
+            }`}
+          >
+            All Boards
+          </button>
+          <button
             onClick={() => setSelectedBoard('fbise')}
             className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
               selectedBoard === 'fbise'
@@ -240,7 +266,7 @@ export const NotesManagerPage: React.FC = () => {
 
         {/* Secondary controls (Reset) */}
         <div className="flex items-center gap-3 pb-2 sm:pb-0">
-          {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
+          {(selectedBoard !== 'all' || selectedGrade !== 'all' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
             <button
               onClick={resetFilters}
               className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5"
@@ -378,6 +404,7 @@ export const NotesManagerPage: React.FC = () => {
               note={note}
               onView={handleViewNote}
               onDelete={handleDeleteTrigger}
+              deleting={deletingId === note.id}
             />
           ))}
         </div>
@@ -391,6 +418,7 @@ export const NotesManagerPage: React.FC = () => {
       >
         <NoteUploadForm
           offerings={offerings}
+          taxonomy={taxonomy}
           onUpload={handleUploadSave}
           onCancel={() => setDrawerOpen(false)}
           initialGrade={selectedGrade !== 'all' ? selectedGrade : undefined}

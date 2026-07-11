@@ -2,16 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Users, Shield, Trash2, Edit, 
   Clock, X, UserCheck, Lock, Unlock, Phone, GraduationCap, 
-  BookOpen, Copy, Check, UserPlus, Save
+  BookOpen, Copy, Check, UserPlus, Save, ShieldAlert, DollarSign
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import { 
   getAllRoster, addRosterEntry, updateRosterEntry, 
-  deleteRosterEntry, getAllOfferings, toggleRosterAccess
+  deleteRosterEntry, getAllOfferings, toggleRosterAccess, toggleFeeSuspension, updateFeeStatus
 } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { RosterEntry, ClassOffering } from '../../types';
 
 export const RosterManagerPage: React.FC = () => {
@@ -21,6 +22,7 @@ export const RosterManagerPage: React.FC = () => {
   const [classesMap, setClassesMap] = useState<Record<string, any>>({});
   const [streamsMap, setStreamsMap] = useState<Record<string, any>>({});
   const [teachersMap, setTeachersMap] = useState<Record<string, any>>({});
+  const [feeMap, setFeeMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
   // Tab section
@@ -28,7 +30,7 @@ export const RosterManagerPage: React.FC = () => {
 
   // Filters/Search
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'pending'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'pending_account' | 'pending_payment'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form Drawer states
@@ -50,11 +52,12 @@ export const RosterManagerPage: React.FC = () => {
 
   const fetchEnrichmentData = async () => {
     try {
-      const [profilesRes, classesRes, streamsRes, teachersRes] = await Promise.all([
+      const [profilesRes, classesRes, streamsRes, teachersRes, feesRes] = await Promise.all([
         supabase.from('profiles').select('*'),
         supabase.from('classes').select('*'),
         supabase.from('streams').select('*'),
-        supabase.from('teachers').select('*')
+        supabase.from('teachers').select('*'),
+        supabase.from('fee_statuses').select('*')
       ]);
 
       const pMap: Record<string, any> = {};
@@ -75,6 +78,12 @@ export const RosterManagerPage: React.FC = () => {
         if (t.email) tMap[t.email.toLowerCase()] = t;
       });
       setTeachersMap(tMap);
+
+      const fMap: Record<string, any> = {};
+      (feesRes.data as any[] || []).forEach(f => {
+        if (f.student_id) fMap[f.student_id] = f;
+      });
+      setFeeMap(fMap);
     } catch (e) {
       console.error('Failed to fetch enrichment maps:', e);
     }
@@ -103,6 +112,21 @@ export const RosterManagerPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useRealtimeTable({
+    table: 'roster',
+    onAny: async () => {
+      const rosterData = await getAllRoster().catch(() => []);
+      setRoster(rosterData);
+    }
+  });
+
+  // Keep feeMap live: re-fetch enrichment data whenever any student's fee status changes
+  useRealtimeTable({
+    table: 'fee_statuses',
+    onInsert: async () => { await fetchEnrichmentData(); },
+    onUpdate: async () => { await fetchEnrichmentData(); },
+  });
 
   const openAddStudent = () => {
     setSelectedEntry(null);
@@ -195,6 +219,21 @@ export const RosterManagerPage: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'Failed to update access status.');
+    }
+  };
+
+  const handleToggleFeeAccess = async (entry: RosterEntry) => {
+    try {
+      const nextFeeSuspendedState = !entry.fee_suspended;
+      await toggleFeeSuspension(entry.id, nextFeeSuspendedState);
+      setRoster(prev => prev.map(r => r.id === entry.id ? { 
+        ...r, 
+        fee_suspended: nextFeeSuspendedState,
+        awaiting_termination: nextFeeSuspendedState ? r.awaiting_termination : false
+      } : r));
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to update billing access status.');
     }
   };
 
@@ -292,31 +331,39 @@ export const RosterManagerPage: React.FC = () => {
 
       if (!matchesSearch) return false;
 
-      const hasProfile = Boolean(
-        entry.profile_id ||
-        profilesMap[entry.id] ||
-        (entry.email && Object.values(profilesMap).some((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()))
-      );
+      const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) || 
+        profilesMap[entry.id] || 
+        (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+
+      const hasProfile = Boolean(matchedProfile || entry.profile_id);
+      const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
       const isSuspended = entry.suspended === true;
-      const isActive = hasProfile && !isSuspended;
-      const isPending = !hasProfile && !isSuspended;
+      
+      const profileIdForFee = matchedProfile?.id || entry.profile_id;
+      const feeStatusObj = profileIdForFee ? feeMap[profileIdForFee] : null;
+      const feeStatus = feeStatusObj?.status || 'unpaid';
+      
+      const isStudent = effectiveRole === 'student';
+      const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
+      const isPendingPayment = isStudent ? (!isPendingAccount && feeStatus !== 'paid') : false;
+      const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
 
       if (statusFilter === 'active' && !isActive) return false;
       if (statusFilter === 'suspended' && !isSuspended) return false;
-      if (statusFilter === 'pending' && !isPending) return false;
+      if (statusFilter === 'pending_account' && !isPendingAccount) return false;
+      if (statusFilter === 'pending_payment' && !isPendingPayment) return false;
 
       return true;
     });
-  }, [roster, activeSection, searchTerm, statusFilter, profilesMap]);
+  }, [roster, activeSection, searchTerm, statusFilter, profilesMap, feeMap]);
 
   const adminCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'admin').length, [roster, profilesMap]);
   const studentCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'student').length, [roster, profilesMap]);
   const teacherCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'teacher').length, [roster, profilesMap]);
 
   const sortedOfferings = useMemo(() => [...offerings].sort((a, b) => {
-    const gradeOrder: Record<string, number> = { '9': 1, '10': 2, '11': 3, '12': 4 };
-    const aGrade = gradeOrder[a.grade as keyof typeof gradeOrder] || 99;
-    const bGrade = gradeOrder[b.grade as keyof typeof gradeOrder] || 99;
+    const aGrade = parseInt(String(a.grade || '99'), 10);
+    const bGrade = parseInt(String(b.grade || '99'), 10);
     if (aGrade !== bGrade) return aGrade - bGrade;
     return (a.subject_name || '').localeCompare(b.subject_name || '');
   }), [offerings]);
@@ -461,9 +508,10 @@ export const RosterManagerPage: React.FC = () => {
             className="input py-2 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-semibold text-[#111111] cursor-pointer"
           >
             <option value="all">All Statuses</option>
-            <option value="active">Active (Signed In)</option>
+            <option value="active">Active (Paid & Verified)</option>
             <option value="suspended">Suspended Accounts</option>
-            <option value="pending">Pending Onboarding</option>
+            <option value="pending_account">Pending Registration</option>
+            <option value="pending_payment">Pending Payment</option>
           </select>
         </div>
       </div>
@@ -506,13 +554,18 @@ export const RosterManagerPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-[#F0F0F0]">
                 {filteredRoster.map((entry) => {
-                  const hasProfile = Boolean(
-                    entry.profile_id ||
+                  const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
                     profilesMap[entry.id] ||
-                    (entry.email && Object.values(profilesMap).some((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()))
-                  );
+                    (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+                  const hasProfile = Boolean(matchedProfile || entry.profile_id);
+                  const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
                   const isSuspended = entry.suspended === true;
-                  const isActive = hasProfile && !isSuspended;
+                  const profileIdForFee = matchedProfile?.id || entry.profile_id;
+                  const feeStatusVal = profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : 'unpaid';
+                  const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student';
+                  const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
+                  const isPendingPayment = isStudent ? (!isPendingAccount && feeStatusVal !== 'paid') : false;
+                  const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
                   const idShort = (entry.id || entry.profile_id || '').slice(0, 8);
 
                   return (
@@ -580,6 +633,20 @@ export const RosterManagerPage: React.FC = () => {
                       )}
 
                       <td className="p-4 text-xs">
+                        {entry.awaiting_termination && (
+                          <div className="mb-1.5">
+                            <span className="inline-flex items-center gap-1.5 font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
+                              <ShieldAlert size={11} /> Termination Requested
+                            </span>
+                          </div>
+                        )}
+                        {entry.fee_suspended && (
+                          <div className="mb-1.5">
+                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
+                              <DollarSign size={11} /> Billing Locked
+                            </span>
+                          </div>
+                        )}
                         {isSuspended ? (
                           <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
                             <Lock size={11} /> Suspended
@@ -588,9 +655,17 @@ export const RosterManagerPage: React.FC = () => {
                           <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
                             <UserCheck size={11} /> Active
                           </span>
+                        ) : feeStatusVal === 'pending' ? (
+                          <span className="inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
+                            <Clock size={11} /> Awaiting Verification
+                          </span>
+                        ) : isPendingPayment ? (
+                          <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
+                            <DollarSign size={11} /> Pending Payment
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
-                            <Clock size={11} /> Pre-provisioned
+                            <Clock size={11} /> Pending Registration
                           </span>
                         )}
                       </td>
@@ -631,6 +706,47 @@ export const RosterManagerPage: React.FC = () => {
                                 </>
                               )}
                             </button>
+
+                            {activeSection === 'students' && (
+                              <>
+                                {feeStatusVal === 'pending' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!profileIdForFee) return;
+                                      try {
+                                        await updateFeeStatus(profileIdForFee, 'paid', 'Payment approved by administrator from Roster Manager.');
+                                        await fetchEnrichmentData();
+                                      } catch (err: any) {
+                                        console.error('Approve payment error:', err);
+                                      }
+                                    }}
+                                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
+                                    title="Student has submitted proof — approve and mark as paid"
+                                  >
+                                    <Check size={13} /> Approve Payment
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleToggleFeeAccess(entry)}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
+                                    entry.fee_suspended 
+                                      ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                  }`}
+                                  title={entry.fee_suspended ? "Remove Billing Lock" : "Apply Billing Lock"}
+                                >
+                                  {entry.fee_suspended ? (
+                                    <>
+                                      <Unlock size={13} /> Unlock Billing
+                                    </>
+                                  ) : (
+                                    <>
+                                      <DollarSign size={13} /> Lock Billing
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            )}
 
                             <button
                               onClick={() => triggerDelete(entry)}

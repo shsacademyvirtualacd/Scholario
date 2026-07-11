@@ -1,34 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen, CheckCircle2 } from 'lucide-react';
 import type { ClassOffering } from '../../../types';
-import { uploadNoteFileToR2, getTaxonomy } from '../../../lib/db';
+import { getTaxonomy } from '../../../lib/db';
+import { supabase } from '../../../lib/supabase';
 import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../../lib/taxonomy';
 
 interface NoteUploadFormProps {
   offerings: ClassOffering[];
-  onUpload: (data: {
-    offering_id: string;
-    chapter_name: string;
-    title: string;
-    file_url: string;
-    file_path: string;
-    file_type: 'pdf' | 'image';
-  }) => Promise<void> | void;
+  taxonomy?: any; // passed from parent to avoid duplicate fetch
+  onUpload: (data: any) => Promise<void> | void;
   onCancel: () => void;
   initialGrade?: string;
   initialStream?: string;
   initialOfferingId?: string;
 }
 
+/** Upload via XHR so we can track real byte-progress */
+function xhrUpload(
+  file: File,
+  payload: { offering_id: string; chapter_name: string; title: string; file_type: 'pdf' | 'image' },
+  token: string,
+  onProgress: (pct: number) => void
+): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('offering_id', payload.offering_id);
+    fd.append('chapter_name', payload.chapter_name);
+    fd.append('title', payload.title);
+    fd.append('file_type', payload.file_type);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/notes/upload');
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) onProgress(Math.round((ev.loaded / ev.total) * 100));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid JSON response from server.'));
+        }
+      } else {
+        let msg = xhr.responseText;
+        try {
+          const p = JSON.parse(xhr.responseText);
+          if (p.error) msg = p.error;
+        } catch {}
+        reject(new Error(`Upload failed (${xhr.status}): ${msg}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.send(fd);
+  });
+}
+
 export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
   offerings,
+  taxonomy: taxonomyProp,
   onUpload,
   onCancel,
   initialGrade,
   initialStream,
   initialOfferingId,
 }) => {
-  const [taxonomy, setTaxonomy] = useState<any>(null);
+  const [taxonomy, setTaxonomy] = useState<any>(taxonomyProp || null);
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>(
     initialGrade && initialGrade !== 'all' ? initialGrade : (offerings[0]?.grade || (offerings[0] as any)?.class?.grade || '10')
@@ -44,11 +85,24 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number>(0);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    getTaxonomy().then(setTaxonomy).catch(console.error);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
   }, []);
+
+  // Only fetch taxonomy if parent didn't provide it
+  useEffect(() => {
+    if (!taxonomyProp) {
+      getTaxonomy().then(setTaxonomy).catch(console.error);
+    } else {
+      setTaxonomy(taxonomyProp);
+    }
+  }, [taxonomyProp]);
 
   // Compute active grades
   const rawGrades = taxonomy && taxonomy.classes && taxonomy.classes.length > 0
@@ -81,14 +135,10 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
     const offGrade = String(
       offering.grade || (offering as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.grade || ''
     );
-    if (selectedGrade && selectedGrade !== 'all' && offGrade !== String(selectedGrade)) {
-      return false;
-    }
+    if (selectedGrade && selectedGrade !== 'all' && offGrade !== String(selectedGrade)) return false;
 
     const offBoard = offering.board || (offering as any).class?.board_id || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.board_id || 'fbise';
-    if (selectedBoard && selectedBoard !== 'all' && offBoard !== selectedBoard) {
-      return false;
-    }
+    if (selectedBoard && selectedBoard !== 'all' && offBoard !== selectedBoard) return false;
 
     if (selectedStream && selectedStream !== 'all') {
       const activeStreamObj = activeStreams.find((s: any) => s.id === selectedStream || s.name === selectedStream);
@@ -96,15 +146,12 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
       if (streamName && selectedGrade && selectedGrade !== 'all') {
         const streamSubjects = getSubjectsForStream(String(selectedGrade), streamName) || [];
         const offeringSubject = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || '';
-        if (
+        return (
           offering.stream_id === selectedStream ||
           (typeof offering.stream === 'string' && offering.stream === streamName) ||
           (typeof offering.stream === 'object' && offering.stream?.name === streamName) ||
           streamSubjects.includes(offeringSubject)
-        ) {
-          return true;
-        }
-        return false;
+        );
       }
       return (
         offering.stream_id === selectedStream ||
@@ -136,43 +183,41 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
     e.preventDefault();
     setError(null);
 
-    if (!offeringId) {
-      setError('Please select a subject offering.');
-      return;
-    }
-    if (!chapterName.trim()) {
-      setError('Please enter a chapter name or topic heading.');
-      return;
-    }
-    if (!title.trim()) {
-      setError('Please enter a note title.');
-      return;
-    }
-    if (!selectedFile) {
-      setError('Please select a PDF or image file to upload.');
-      return;
-    }
+    if (!offeringId) { setError('Please select a subject offering.'); return; }
+    if (!chapterName.trim()) { setError('Please enter a chapter name or topic heading.'); return; }
+    if (!title.trim()) { setError('Please enter a note title.'); return; }
+    if (!selectedFile) { setError('Please select a PDF or image file to upload.'); return; }
 
     try {
       setLoading(true);
-      setError(null);
+      setUploadPct(0);
+      setDone(false);
 
       const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
       const fileType: 'pdf' | 'image' = isPdf ? 'pdf' : 'image';
 
-      const createdNote = await uploadNoteFileToR2(selectedFile, {
-        offering_id: offeringId,
-        chapter_name: chapterName.trim(),
-        title: title.trim(),
-        file_type: fileType,
-      });
+      // Use the existing singleton — no extra network round-trip
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
 
-      await onUpload(createdNote as any);
+      const createdNote = await xhrUpload(
+        selectedFile,
+        { offering_id: offeringId, chapter_name: chapterName.trim(), title: title.trim(), file_type: fileType },
+        token,
+        (pct) => { if (mountedRef.current) setUploadPct(pct); }
+      );
+
+      if (!mountedRef.current) return; // drawer was closed mid-upload
+      setUploadPct(100);
+      setDone(true);
+
+      await onUpload(createdNote);
     } catch (err: any) {
       console.error('Admin upload error:', err);
-      setError(err.message || 'Failed to upload document file.');
-    } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setError(err.message || 'Failed to upload document file.');
+        setLoading(false);
+      }
     }
   };
 
@@ -191,6 +236,33 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
         </div>
       )}
 
+      {/* Upload Progress Bar (shown during upload) */}
+      {loading && (
+        <div className="rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-[#111111]">
+            <span className="flex items-center gap-2">
+              {done
+                ? <CheckCircle2 size={14} className="text-green-500" />
+                : <Loader2 size={14} className="animate-spin text-amber-500" />
+              }
+              {done ? 'Upload complete — saving record...' : `Uploading file... ${uploadPct}%`}
+            </span>
+            <span className="text-[#A3A3A3]">{uploadPct}%</span>
+          </div>
+          <div className="h-1.5 bg-[#E5E5E5] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#F4C430] rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${uploadPct}%` }}
+            />
+          </div>
+          {selectedFile && (
+            <p className="text-[10px] text-[#A3A3A3] font-semibold truncate">
+              {selectedFile.name} &nbsp;·&nbsp; {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── Layer 1: Board Selector (FBISE only one active) ── */}
       <div className="border-b border-[#E5E5E5] pb-2">
         <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wide block mb-1.5">
@@ -200,6 +272,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
           <button
             type="button"
             onClick={() => setSelectedBoard('fbise')}
+            disabled={loading}
             className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
               selectedBoard === 'fbise'
                 ? 'border-[#F4C430] text-[#111111]'
@@ -222,6 +295,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
               key={g.id}
               type="button"
               onClick={() => handleGradeChange(g.id)}
+              disabled={loading}
               className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                 selectedGrade === g.id
                   ? 'bg-[#111111] border-[#111111] text-white shadow-sm'
@@ -234,7 +308,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
         </div>
       </div>
 
-      {/* ── Layer 3: Stream Pills (only shown for grades that have streams) ── */}
+      {/* ── Layer 3: Stream Pills ── */}
       {activeStreams.length > 0 && (
         <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
           <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wide block">
@@ -243,10 +317,8 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => {
-                setSelectedStream('all');
-                setOfferingId('');
-              }}
+              onClick={() => { setSelectedStream('all'); setOfferingId(''); }}
+              disabled={loading}
               className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                 selectedStream === 'all'
                   ? 'bg-[#F4C430] border-[#F4C430] text-[#111111] shadow-sm'
@@ -259,10 +331,8 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
               <button
                 key={s.id || s.name}
                 type="button"
-                onClick={() => {
-                  setSelectedStream(s.id || s.name);
-                  setOfferingId('');
-                }}
+                onClick={() => { setSelectedStream(s.id || s.name); setOfferingId(''); }}
+                disabled={loading}
                 className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                   selectedStream === (s.id || s.name) || selectedStream === s.name
                     ? 'bg-[#111111] border-[#111111] text-white shadow-sm'
@@ -276,7 +346,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
         </div>
       )}
 
-      {/* ── Layer 4: Subject Dropdown (scoped to selected Grade + Stream) ── */}
+      {/* ── Layer 4: Subject Dropdown ── */}
       <div className="space-y-1.5 pt-1 border-b border-[#E5E5E5] pb-4">
         <label className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wide block">
           4. Subject & Class Offering <span className="text-red-500">*</span>
@@ -306,7 +376,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
         </select>
       </div>
 
-      {/* ── Scoped Upload Form Fields (shown when all 4 layers are selected) ── */}
+      {/* ── Upload Form Fields (shown when offering is selected) ── */}
       {!offeringId ? (
         <div className="p-6 bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-2xl text-center my-4">
           <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2">
@@ -372,7 +442,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
                     {selectedFile.name}
                   </div>
                   <div className="text-[10px] font-semibold text-[#737373]">
-                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Click or drag to change
+                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB · Click or drag to change
                   </div>
                 </div>
               ) : (
@@ -399,7 +469,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors"
+          className="px-4 py-2 text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
@@ -409,7 +479,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
           className="px-5 py-2 bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2 transition-all"
         >
           {loading && <Loader2 size={14} className="animate-spin" />}
-          <span>{loading ? 'Uploading & Saving...' : 'Upload Note'}</span>
+          <span>{loading ? (done ? 'Saving...' : `Uploading ${uploadPct}%`) : 'Upload Note'}</span>
         </button>
       </div>
     </form>

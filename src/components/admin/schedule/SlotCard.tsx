@@ -118,14 +118,17 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       </div>
 
       {/* Location / Link */}
-      {slot.room_or_link && (
-        <div className="flex items-center gap-1 text-[9px] text-[#525252] font-bold bg-[#F5F5F5] px-1.5 py-0.5 rounded border border-[#E5E5E5] self-start max-w-full">
-          {isOnline ? (
-            <Video size={9} className="text-[#3b82f6] shrink-0" />
-          ) : (
-            <MapPin size={9} className="text-[#737373] shrink-0" />
-          )}
-          <span className="truncate max-w-[120px]">{slot.room_or_link}</span>
+      {isOnline ? (
+        <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border self-end mt-4 bg-blue-50 border-blue-100 text-blue-600">
+          <Video size={13} className="text-blue-500" />
+          <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
+            Join Class
+          </a>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border self-end mt-4 bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
+          <MapPin size={13} className="text-[#737373]" />
+          <span className="truncate max-w-[120px]">TBD</span>
         </div>
       )}
     </div>

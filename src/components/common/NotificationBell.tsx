@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Calendar, BookMarked, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
+import { supabase } from '../../lib/supabase';
 import {
   NotificationRow,
   getNotificationsForUser,
@@ -10,6 +12,7 @@ import {
 
 export const NotificationBell: React.FC = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +32,37 @@ export const NotificationBell: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
+
+    if (!profile?.id) return;
+
+    const channel = supabase
+      .channel(`realtime-notifications-${profile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('[NotificationBell] Realtime payload received:', payload);
+          if (payload.eventType === 'INSERT') {
+            setNotifications(prev => [payload.new as NotificationRow, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setNotifications(prev =>
+              prev.map(n => (n.id === payload.new.id ? (payload.new as NotificationRow) : n))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setNotifications(prev => prev.filter(n => n.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [profile?.id]);
 
   useEffect(() => {
@@ -51,6 +85,20 @@ export const NotificationBell: React.FC = () => {
       }
     } catch (err) {
       console.error('[NotificationBell] Failed to mark read:', err);
+    }
+  };
+
+  const handleNotificationClick = (notif: NotificationRow) => {
+    if (!notif.is_read) {
+      toggleRead(notif.id);
+    }
+    setNotifOpen(false);
+
+    const role = profile?.role || 'student';
+    if (notif.title === 'Schedule Update' || notif.title === 'Class Cancellation' || notif.type === 'announcement') {
+      navigate(`/${role}/announcements`);
+    } else if (notif.type === 'class_reminder') {
+      navigate(`/${role}/schedule`);
     }
   };
 
@@ -123,7 +171,7 @@ export const NotificationBell: React.FC = () => {
                   return (
                     <div
                       key={notif.id}
-                      onClick={() => toggleRead(notif.id)}
+                      onClick={() => handleNotificationClick(notif)}
                       className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors ${
                         notif.is_read
                           ? 'bg-white hover:bg-[#FAFAFA]'

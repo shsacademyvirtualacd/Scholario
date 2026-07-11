@@ -132,14 +132,17 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
                     </div>
                   </div>
 
-                  {slot.room_or_link && (
-                    <div className="flex items-center gap-1.5 text-[9px] text-[#525252] font-extrabold bg-[#F5F5F5] px-2 py-0.5 rounded border border-[#E5E5E5] self-center truncate max-w-[120px]">
-                      {isOnline ? (
-                        <Video size={9} className="text-[#3b82f6]" />
-                      ) : (
-                        <MapPin size={9} className="text-[#737373]" />
-                      )}
-                      <span className="truncate">{slot.room_or_link}</span>
+                  {isOnline ? (
+                    <div className="flex items-center gap-1.5 text-[9px] font-extrabold px-2 py-0.5 rounded border self-center truncate max-w-[120px] bg-blue-50 border-blue-100 text-blue-600">
+                      <Video size={9} className="text-blue-500" />
+                      <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate hover:underline">
+                        Join Class
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-[9px] font-extrabold px-2 py-0.5 rounded border self-center truncate max-w-[120px] bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
+                      <MapPin size={9} className="text-[#737373]" />
+                      <span className="truncate">TBD</span>
                     </div>
                   )}
                 </div>

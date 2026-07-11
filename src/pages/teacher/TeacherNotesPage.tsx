@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, BookOpen, RotateCcw, Filter } from 'lucide-react';
+import { Search, BookOpen, RotateCcw, Filter } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { AdminNoteCard } from '../../components/admin/notes/AdminNoteCard';
-import AdminDrawer from '../../components/admin/AdminDrawer';
-import { TeacherNoteUploadForm } from '../../components/teacher/TeacherNoteUploadForm';
 import NoteViewerModal from '../../components/student/NoteViewerModal';
-import { getOfferingsForTeacher, getNotesForOfferings, insertNote, getTaxonomy } from '../../lib/db';
+import { getOfferingsForTeacher, getNotesForOfferings, getTaxonomy } from '../../lib/db';
 import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../lib/taxonomy';
 import type { Note, ClassOffering } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 export const TeacherNotesPage: React.FC = () => {
   const { profile } = useAuth();
@@ -20,6 +19,13 @@ export const TeacherNotesPage: React.FC = () => {
   const [taxonomy, setTaxonomy] = useState<any>(null);
 
   // ── Load teacher's offerings, notes, and taxonomy ──────────────────────
+  const fetchNotes = async () => {
+    if (teacherOfferings.length === 0) return;
+    const ids = teacherOfferings.map((o) => o.id);
+    const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
+    setNotes(n);
+  };
+
   useEffect(() => {
     getTaxonomy().then(setTaxonomy).catch(console.error);
 
@@ -31,6 +37,11 @@ export const TeacherNotesPage: React.FC = () => {
     }).catch(console.error);
   }, [teacherId]);
 
+  useRealtimeTable({
+    table: 'notes',
+    onAny: fetchNotes
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'pdf' | 'image'>('all');
 
@@ -41,7 +52,6 @@ export const TeacherNotesPage: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
 
   // Modal / Drawer States
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
@@ -167,33 +177,7 @@ export const TeacherNotesPage: React.FC = () => {
     setSelectedSubject('all');
   };
 
-  const handleUploadSave = async (formData: {
-    offering_id: string;
-    chapter_name: string;
-    title: string;
-    file_url: string;
-    file_path: string;
-    file_type: 'pdf' | 'image';
-  }) => {
-    let created: Note | null = null;
-    if ((formData as any).id && (formData as any).created_at) {
-      created = formData as unknown as Note;
-    } else {
-      created = await insertNote({
-        offering_id: formData.offering_id,
-        chapter_name: formData.chapter_name,
-        title: formData.title,
-        file_url: formData.file_url,
-        file_path: formData.file_path,
-        file_type: formData.file_type,
-        uploaded_by: teacherId,
-      }).catch(console.error) || null;
-    }
-    if (created) {
-      setNotes((prev) => [created!, ...prev]);
-    }
-    setDrawerOpen(false);
-  };
+
 
   const handleViewNote = (note: Note) => {
     setSelectedNote(note);
@@ -206,15 +190,8 @@ export const TeacherNotesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <SectionHeader
           title="Notes Manager"
-          description="Upload revision resources, past papers, chapter notes, and textbook reference images for your classes."
+          description="View revision resources, past papers, chapter notes, and textbook reference images for your classes."
         />
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-sm shrink-0 self-start sm:self-center"
-        >
-          <Plus size={14} />
-          Upload Notes
-        </button>
       </div>
 
       {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
@@ -361,7 +338,7 @@ export const TeacherNotesPage: React.FC = () => {
           <BookOpen size={32} className="mx-auto text-[#A3A3A3] mb-3 animate-pulse" />
           <h3 className="text-sm font-bold text-[#111111]">No documents found</h3>
           <p className="text-xs text-[#737373] mt-1">
-            Try resetting the filter settings (Board → Grade → Stream → Subject) or uploading new notes for your students.
+            Try resetting the filter settings (Board → Grade → Stream → Subject) or check back later.
           </p>
         </div>
       ) : (
@@ -376,21 +353,7 @@ export const TeacherNotesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Upload Drawer */}
-      <AdminDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title="Upload Academic Reference Note"
-      >
-        <TeacherNoteUploadForm
-          offerings={teacherOfferings}
-          onUpload={handleUploadSave}
-          onCancel={() => setDrawerOpen(false)}
-          initialGrade={selectedGrade !== 'all' ? selectedGrade : undefined}
-          initialStream={selectedStream !== 'all' ? selectedStream : undefined}
-          initialOfferingId={selectedSubject !== 'all' ? selectedSubject : undefined}
-        />
-      </AdminDrawer>
+
 
       {/* Note Viewer Popover */}
       {viewerOpen && selectedNote && (

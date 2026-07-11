@@ -15,7 +15,6 @@ interface SlotFormProps {
     day_of_week: number;
     start_time: string;
     end_time: string;
-    room_or_link: string;
     publish_to_news: boolean;
     notify_affected?: boolean;
   }) => void;
@@ -48,7 +47,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   const [dayOfWeek, setDayOfWeek] = useState<number>(0);
   const [startTime, setStartTime] = useState('16:00');
   const [endTime, setEndTime] = useState('16:30');
-  const [roomOrLink, setRoomOrLink] = useState('Room 101');
   const [notifyAffected, setNotifyAffected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,7 +68,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       setDayOfWeek(slot.day_of_week ?? 0);
       setStartTime(slot.start_time ? slot.start_time.slice(0, 5) : '16:00');
       setEndTime(slot.end_time ? slot.end_time.slice(0, 5) : '16:30');
-      setRoomOrLink(slot.room_or_link || 'Room 101');
     } else {
       // Defaults for new slot
       setSelectedClassId(defaultClassId || '');
@@ -81,7 +78,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       setDayOfWeek(slot && slot.day_of_week !== undefined ? slot.day_of_week : 0);
       setStartTime(slot && slot.start_time ? slot.start_time.slice(0, 5) : '16:00');
       setEndTime(slot && slot.end_time ? slot.end_time.slice(0, 5) : '16:30');
-      setRoomOrLink(slot && slot.room_or_link ? slot.room_or_link : 'Room 101');
     }
     setNotifyAffected(false);
     setError(null);
@@ -152,10 +148,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       setError('Start time must be before end time.');
       return;
     }
-    if (!roomOrLink.trim()) {
-      setError('Please specify a room or Zoom link.');
-      return;
-    }
 
     const fullStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
     const fullEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
@@ -168,7 +160,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       day_of_week: dayOfWeek,
       start_time: fullStartTime,
       end_time: fullEndTime,
-      room_or_link: roomOrLink.trim(),
       publish_to_news: notifyAffected,
       notify_affected: notifyAffected,
     });
@@ -389,18 +380,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
             />
           </div>
         </div>
-      </div>
-
-      {/* Location / Room */}
-      <div className="space-y-1 pt-1">
-        <label className="text-xs font-bold text-[#262626] block">Room or Online Link</label>
-        <input
-          type="text"
-          placeholder="e.g. Room 101, Zoom URL"
-          value={roomOrLink}
-          onChange={(e) => setRoomOrLink(e.target.value)}
-          className="input py-2.5 text-sm w-full bg-white border-[#E5E5E5] rounded-xl font-medium"
-        />
       </div>
 
       {/* Actions with alongside Notify Checkbox */}

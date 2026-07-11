@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus
+  BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
+  Link as LinkIcon, Edit2, Check, X
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -13,106 +15,194 @@ import {
   getSlotsForTeacher,
 } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassOffering, ClassSlot, Profile } from '../../types';
+import {
+  getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
+  formatTime12h, calcDuration
+} from '../../lib/scheduleUtils';
 
-// ─── Live Next Class Countdown Widget for Teacher ──────────────────
-const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
-  const [timeLeft, setTimeLeft] = useState<string>('');
+// ─── Live Link Editor for Teacher ────────────────────────────────────
+const LiveLinkEditor: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [linkVal, setLinkVal] = useState(slot.room_or_link || '');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('class_slots').update({ room_or_link: linkVal }).eq('id', slot.id);
+      if (error) throw error;
+      slot.room_or_link = linkVal; // optimistically update local state
+    } catch (err) {
+      console.error('Failed to save link:', err);
+    } finally {
+      setIsSaving(false);
+      setIsEditing(false);
+    }
+  };
 
-  // Sort slots by day and time to find upcoming ones
-  const upcomingSlots = slots
-    .filter(slot => slot.day_of_week >= currentDayIndex && !slot.is_cancelled)
-    .sort((a, b) => {
-      if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-      return (a.start_time || '').localeCompare(b.start_time || '');
-    });
-
-  const nextSlot = upcomingSlots[0] || slots[0];
-
-  useEffect(() => {
-    if (!nextSlot || !nextSlot.start_time) return;
-
-    const updateCountdown = () => {
-      const now = new Date();
-      const target = new Date();
-
-      const startTimeStr = nextSlot.start_time || '09:00:00';
-      let targetDay = nextSlot.day_of_week ?? 0;
-      let currentDay = (now.getDay() + 6) % 7;
-
-      let daysToAdd = targetDay - currentDay;
-      if (daysToAdd < 0 || (daysToAdd === 0 && startTimeStr < `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`)) {
-        daysToAdd += 7;
-      }
-
-      target.setDate(now.getDate() + daysToAdd);
-
-      const [hours = 9, minutes = 0] = startTimeStr.split(':').map(Number);
-      target.setHours(hours, minutes, 0, 0);
-
-      const diffMs = target.getTime() - now.getTime();
-      if (diffMs <= 0) {
-        setTimeLeft('Starting now');
-        return;
-      }
-
-      const diffMins = Math.floor(diffMs / 60000);
-      const h = Math.floor(diffMins / 60);
-      const m = diffMins % 60;
-
-      if (h > 0) {
-        setTimeLeft(`in ${h}h ${m}m`);
-      } else {
-        setTimeLeft(`in ${m}m`);
-      }
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 60000);
-    return () => clearInterval(interval);
-  }, [nextSlot]);
-
-  if (!nextSlot) {
+  if (isEditing) {
     return (
-      <div className="stat-card flex flex-col gap-2">
-        <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
-        <div className="text-sm font-medium text-[#737373]">No classes scheduled</div>
+      <div className="flex items-center gap-2 mt-2 w-full">
+        <input 
+          type="text" 
+          placeholder="https://zoom.us/j/..."
+          value={linkVal}
+          onChange={e => setLinkVal(e.target.value)}
+          className="flex-1 text-xs px-2 py-1 border border-[#E5E5E5] rounded focus:outline-none focus:border-[#F4C430]"
+          autoFocus
+          onKeyDown={e => e.key === 'Enter' && handleSave()}
+        />
+        <button onClick={handleSave} disabled={isSaving} className="p-1 bg-[#F4C430] text-[#111111] rounded hover:bg-[#E5B520]">
+          <Check size={12} />
+        </button>
+        <button onClick={() => { setIsEditing(false); setLinkVal(slot.room_or_link || ''); }} className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+          <X size={12} />
+        </button>
       </div>
     );
   }
 
-  const formatClassTime = (timeStr?: string) => {
-    if (!timeStr || typeof timeStr !== 'string') return 'TBA';
-    const parts = timeStr.split(':').map(Number);
-    const hours = parts[0] || 0;
-    const minutes = parts[1] || 0;
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  const hasLink = slot.room_or_link && slot.room_or_link.trim().length > 0;
+  
+  if (hasLink) {
+    return (
+      <div className="flex items-center justify-between w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded px-2 py-1.5">
+        <div className="flex items-center gap-1.5 truncate">
+          <LinkIcon size={12} className="text-blue-500 shrink-0" />
+          <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`} target="_blank" rel="noreferrer" className="text-[10px] font-semibold text-blue-600 hover:underline truncate">
+            {slot.room_or_link}
+          </a>
+        </div>
+        <button onClick={() => setIsEditing(true)} className="flex items-center gap-1 text-[10px] text-[#737373] hover:text-[#111111] font-semibold shrink-0 ml-2">
+          ✏️ Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-[10px] text-[#737373] hover:text-[#111111] font-semibold border border-dashed border-[#D4D4D4] px-2 py-1.5 rounded transition-colors w-full justify-center bg-[#FAFAFA] hover:bg-[#F5F5F5] mt-2">
+      🔗 Add Live Class Link (Zoom/Meet)
+    </button>
+  );
+};
+
+// ─── Live Next Class Countdown Widget for Teacher ──────────────────
+const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
+  const [pktnow, setPktnow] = useState(getPKTNow);
+
+  useEffect(() => {
+    const id = setInterval(() => setPktnow(getPKTNow()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const state = classWidgetState(slots, pktnow);
+
+  // ── State B: end-of-day with no next class scheduled at all ────────
+  if (state.type === 'end-of-day' && !state.nextSlot) {
+    return (
+      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
+          <span className="badge badge-gold text-[10px] font-bold">End of Day</span>
+        </div>
+        <div>
+          <div className="text-base font-extrabold text-[#111111] truncate">No classes scheduled</div>
+          <div className="text-xs text-[#737373] font-medium mt-0.5">Enjoy your break! 🌙</div>
+        </div>
+        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+          <Clock size={13} className="text-[#A3A3A3] shrink-0" />
+          <span className="text-xs text-[#A3A3A3] font-semibold">TBA</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── State A: class is ongoing ──────────────────────────────────────
+  if (state.type === 'ongoing') {
+    const subject = getSlotSubject(state.activeSlot);
+    const remH = Math.floor(state.minsRemaining / 60);
+    const remM = state.minsRemaining % 60;
+    const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
+    return (
+      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Now In Session</span>
+          <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
+        </div>
+        <div>
+          <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
+          <div className="text-xs text-emerald-600 font-bold mt-0.5">{remLabel}</div>
+          {state.nextSlot && (
+            <div className="text-[10px] text-[#A3A3A3] font-medium mt-1 truncate">
+              Up next: {getSlotSubject(state.nextSlot)} · {formatTime12h(state.nextSlot.start_time)}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+          <Zap size={13} className="text-emerald-500 shrink-0" />
+          <span className="text-xs font-bold text-[#111111]">{formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}</span>
+          {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time) && (
+            <span className="text-[10px] text-[#A3A3A3]">· {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time)}</span>
+          )}
+        </div>
+        <LiveLinkEditor slot={state.activeSlot} />
+      </div>
+    );
+  }
+
+  // ── States B/C/D with an upcoming class ─────────────────────────────
+  const nextSlot = state.nextSlot!;
+  const minsUntil = state.minsUntil ?? 0;
+  const subject = getSlotSubject(nextSlot);
+  
+  let badgeLabel = '';
+  let isPulsing = false;
+
+  if (state.type === 'end-of-day') {
+    badgeLabel = 'No classes for today';
+  } else {
+    badgeLabel = formatCountdown(minsUntil);
+    if (state.type === 'morning-buffer') {
+      isPulsing = true;
+    }
+  }
+
+  const formatClassTimeLabel = (slot: ClassSlot) => {
+    if (slot.day_of_week == null) return formatTime12h(slot.start_time);
+    let daysAhead = slot.day_of_week - pktnow.dayIndex;
+    if (daysAhead < 0) daysAhead += 7;
+
+    const timeStr = formatTime12h(slot.start_time);
+    if (daysAhead === 0) return timeStr;
+
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return `${days[slot.day_of_week]} at ${timeStr}`;
   };
 
   return (
     <div className="stat-card flex flex-col justify-between min-h-[140px]">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
-        <span className="badge badge-gold text-[10px] font-bold">{timeLeft}</span>
+        <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
       </div>
       <div>
-        <div className="text-base font-extrabold text-[#111111] truncate">{nextSlot.custom_title || nextSlot.offering?.subject_name || nextSlot.offering?.subject || 'Class'}</div>
+        <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
         <div className="text-xs text-[#737373] font-medium truncate mt-0.5">
           Class {nextSlot.offering?.grade} · FBISE
         </div>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
         <Clock size={13} className="text-[#F4C430] shrink-0" />
-        <span className="text-xs font-bold text-[#111111]">{formatClassTime(nextSlot.start_time)}</span>
+        <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
         <span className="text-xs text-[#A3A3A3]">·</span>
         <span className="text-xs font-semibold text-[#737373] truncate max-w-[100px]">
-          {nextSlot.room_or_link || 'TBD'}
+          {(nextSlot.room_or_link && (nextSlot.room_or_link.includes('http') || nextSlot.room_or_link.includes('zoom') || nextSlot.room_or_link.includes('meet'))) ? 'Online' : 'TBD'}
         </span>
       </div>
+      <LiveLinkEditor slot={nextSlot} />
     </div>
   );
 };
@@ -178,7 +268,27 @@ export const TeacherDashboardPage: React.FC = () => {
     };
   }, [teacherId]);
 
-  const currentDayIndex = (new Date().getDay() + 6) % 7; // 0=Mon ... 6=Sun
+  useRealtimeTable({
+    table: 'class_slots',
+    onAny: async () => {
+      if (!teacherId) return;
+      const slots = await getSlotsForTeacher(teacherId);
+      setAllSlots(slots);
+      pageCache.set('teacher_slots', slots, teacherId);
+    }
+  });
+
+  useRealtimeTable({
+    table: 'enrollments',
+    onAny: async () => {
+      if (!teacherId || !selectedOfferingId) return;
+      const studs = await getStudentsInOffering(selectedOfferingId);
+      setRosterStudents(studs);
+      pageCache.set(`teacher_roster_${selectedOfferingId}`, studs, teacherId);
+    }
+  });
+
+  const currentDayIndex = getPKTNow().dayIndex; // PKT-aware, Monday-first
   const todayClasses = allSlots
     .filter(slot => slot.day_of_week === currentDayIndex)
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
@@ -222,13 +332,7 @@ export const TeacherDashboardPage: React.FC = () => {
     }
   };
 
-  const formatClassTime = (timeStr?: string) => {
-    if (!timeStr || typeof timeStr !== 'string') return '';
-    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
-  };
+  const formatClassTime = formatTime12h;
 
   return (
     <TeacherShell>

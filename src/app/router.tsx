@@ -10,6 +10,7 @@ import RegisterPage from '../pages/public/RegisterPage';
 import LoginPage from '../pages/public/LoginPage';
 import ForgotPasswordPage from '../pages/public/ForgotPasswordPage';
 import UnregisteredPage from '../pages/public/UnregisteredPage';
+import NotFoundPage from '../pages/public/NotFoundPage';
 
 // ─── Marketing page (eager — entry point) ───
 import LandingShell from '../pages/public/LandingShell';
@@ -198,7 +199,7 @@ const AppRouter: React.FC = () => (
           />
 
           {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </AuthProvider>

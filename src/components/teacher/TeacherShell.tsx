@@ -24,7 +24,6 @@ const NAV_ITEMS = [
   { icon: BookMarked,      label: 'Notes Manager', path: '/teacher/notes' },
   { icon: Calendar,        label: 'Schedule',   path: '/teacher/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/teacher/announcements' },
-  { icon: User,            label: 'Profile',    path: '/teacher/profile' },
 ];
 
 export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
@@ -139,9 +138,12 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
 
           <div className="flex items-center gap-2">
             <NotificationBell />
-            <div className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-[#F4C430]">
+            <button
+              onClick={() => handleNav('/teacher/profile')}
+              className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-[#F4C430] hover:scale-105 transition-transform"
+            >
               {(profile?.full_name?.[0] ?? 'T').toUpperCase()}
-            </div>
+            </button>
           </div>
         </header>
 
