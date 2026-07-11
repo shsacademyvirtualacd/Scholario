@@ -44,7 +44,7 @@ export const AttendanceGrid: React.FC<AttendanceGridProps> = ({
         <thead>
           <tr>
             <th>Student Name</th>
-            <th>Academic Stream</th>
+            <th className="hidden sm:table-cell">Academic Stream</th>
             <th className="text-center">Overall Attendance</th>
             <th className="text-right pr-6">Record Session Presence</th>
           </tr>
@@ -74,7 +74,7 @@ export const AttendanceGrid: React.FC<AttendanceGridProps> = ({
                   </div>
                 </td>
 
-                <td>
+                <td className="hidden sm:table-cell">
                   <span className="text-xs font-semibold text-[#525252]">{getStreamLabel(student.stream || undefined)}</span>
                 </td>
 

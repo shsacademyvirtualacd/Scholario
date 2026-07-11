@@ -14,7 +14,7 @@ export const AboutAndContactSection: React.FC<AboutAndContactSectionProps> = ({
     <section className="py-24 bg-gradient-to-b from-white to-[#FAFAFA] border-t border-[#F5F5F5] relative overflow-hidden">
       {/* Decorative background glow */}
       <div 
-        className="absolute bottom-0 right-0 w-[400px] h-[400px] pointer-events-none"
+        className="absolute bottom-0 right-0 w-full max-w-sm sm:max-w-[400px] h-[400px] pointer-events-none"
         style={{
           background: 'radial-gradient(circle, rgba(244,196,48,0.03) 0%, transparent 70%)',
         }}

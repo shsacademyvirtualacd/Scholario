@@ -208,7 +208,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
             </button>
             
             {/* Universal Search Container */}
-            <div className="relative hidden sm:block">
+            <div className="relative w-full max-w-[150px] xs:max-w-xs sm:max-w-md transition-all duration-200">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
               <input
                 type="text"
@@ -216,7 +216,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                className="input pl-9 py-2 text-sm w-64 bg-[#FAFAFA] border-[#F0F0F0]"
+                className="input pl-9 py-2 text-sm w-full bg-[#FAFAFA] border-[#F0F0F0]"
               />
 
               {/* Search Results Dropdown Popover */}

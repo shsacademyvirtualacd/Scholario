@@ -151,7 +151,7 @@ export const PriceManagerPage: React.FC = () => {
                             value={priceValue}
                             onChange={(e) => handlePriceChange(g.id, e.target.value)}
                             placeholder="Not set"
-                            className="input py-2 text-sm w-36 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-bold font-mono text-right"
+                            className="input py-2.5 sm:py-2 text-sm w-36 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-bold font-mono text-right"
                             required
                           />
                           <span className="text-xs text-[#737373]">/term</span>

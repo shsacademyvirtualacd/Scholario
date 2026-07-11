@@ -7,7 +7,7 @@ import Logo from '../ui/Logo';
 const DashboardPreview: React.FC = () => {
   return (
     <div
-      className="relative w-full rounded-2xl overflow-hidden shadow-2xl border border-[#E5E5E5]"
+      className="relative w-full rounded-2xl overflow-hidden shadow-2xl border border-[#E5E5E5] hidden md:block"
       style={{
         background: '#FAFAFA',
         aspectRatio: '16/10',

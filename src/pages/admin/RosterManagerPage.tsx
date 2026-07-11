@@ -532,14 +532,14 @@ export const RosterManagerPage: React.FC = () => {
               <thead>
                 <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA]">
                   {activeSection === 'students' && (
-                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">ID</th>
+                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden md:table-cell">ID</th>
                   )}
                   <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Name & Email</th>
                   {activeSection === 'students' && (
                     <>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Phone</th>
+                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden lg:table-cell">Phone</th>
                       <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Class (Grade)</th>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Stream</th>
+                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden sm:table-cell">Stream</th>
                     </>
                   )}
                   {activeSection === 'teachers' && (
@@ -571,7 +571,7 @@ export const RosterManagerPage: React.FC = () => {
                   return (
                     <tr key={entry.id} className="hover:bg-[#FAFAFA]/70 transition-colors">
                       {activeSection === 'students' && (
-                        <td className="p-4 text-xs font-mono font-bold text-[#525252]">
+                        <td className="p-4 text-xs font-mono font-bold text-[#525252] hidden md:table-cell">
                           <div className="flex items-center gap-1.5 group">
                             <span>#{idShort}</span>
                             <button
@@ -599,7 +599,7 @@ export const RosterManagerPage: React.FC = () => {
 
                       {activeSection === 'students' && (
                         <>
-                          <td className="p-4 text-xs font-semibold text-[#404040]">
+                          <td className="p-4 text-xs font-semibold text-[#404040] hidden lg:table-cell">
                             <div className="flex items-center gap-1.5">
                               <Phone size={13} className="text-[#A3A3A3] shrink-0" />
                               <span>{getPhone(entry)}</span>
@@ -610,7 +610,7 @@ export const RosterManagerPage: React.FC = () => {
                               {getClassGrade(entry)}
                             </span>
                           </td>
-                          <td className="p-4 text-xs font-bold text-[#404040]">
+                          <td className="p-4 text-xs font-bold text-[#404040] hidden sm:table-cell">
                             <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px]">
                               {getStream(entry)}
                             </span>
@@ -815,7 +815,7 @@ export const RosterManagerPage: React.FC = () => {
                       placeholder="e.g. student@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="input w-full text-xs py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
+                      className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
                     />
                     <span className="text-[10px] text-[#737373] font-medium block mt-1">
                       Must match exact email user selects during Google Sign-In.
@@ -832,7 +832,7 @@ export const RosterManagerPage: React.FC = () => {
                       placeholder="e.g. Ahmed Khan"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="input w-full text-xs py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
+                      className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
                     />
                   </div>
                 </>
@@ -880,14 +880,14 @@ export const RosterManagerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="btn flex-1 py-2.5 border border-[#E5E5E5] text-[#404040] font-bold text-xs rounded-xl hover:bg-[#FAFAFA]"
+                  className="btn flex-1 py-3 sm:py-2.5 border border-[#E5E5E5] text-[#404040] font-bold text-xs rounded-xl hover:bg-[#FAFAFA]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSaving}
-                  className="btn flex-1 py-2.5 bg-[#111111] hover:bg-[#262626] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                  className="btn flex-1 py-3 sm:py-2.5 bg-[#111111] hover:bg-[#262626] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
                 >
                   {formSaving ? <Clock size={14} className="animate-spin" /> : <Save size={14} />}
                   {drawerMode === 'edit' ? 'Save Assignments' : 'Provision Account'}
