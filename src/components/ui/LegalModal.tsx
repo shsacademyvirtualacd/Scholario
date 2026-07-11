@@ -91,7 +91,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
       />
 
       {/* Modal Card Container */}
-      <div className="relative bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative z-10 bg-white text-[#111111] w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="px-6 py-5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">

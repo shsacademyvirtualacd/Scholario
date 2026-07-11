@@ -63,6 +63,7 @@ export const TeacherSchedulePage: React.FC = () => {
 
   useRealtimeTable({
     table: 'class_slots',
+    debounceMs: 2000,
     onAny: fetchSlots
   });
 

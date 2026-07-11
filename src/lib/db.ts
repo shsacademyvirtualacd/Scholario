@@ -367,9 +367,27 @@ export async function getSlotsForStudent(studentId: string): Promise<ClassSlot[]
   const studentStreamId = profData?.stream_id || profData?.stream_obj?.id || null;
   const studentStreamName = typeof profData?.stream === 'string' && profData.stream ? profData.stream : (profData?.stream_obj?.name || allStreams.find((s: any) => s.id === studentStreamId)?.name || (enrolledOfferings[0] as any)?.stream || '');
 
-  const { data, error } = await supabase
+  // OPTIMIZATION: Push filters down to the database level
+  let query = supabase
     .from('class_slots')
-    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
+    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))');
+
+  let orFilters = [];
+  if (ids.length > 0) {
+    orFilters.push(`offering_id.in.(${ids.join(',')})`);
+  }
+  if (classId) {
+    orFilters.push(`class_id.eq.${classId}`);
+  }
+  
+  if (orFilters.length > 0) {
+    query = query.or(orFilters.join(','));
+  } else {
+    // If no enrollments and no class, they have no slots.
+    return [];
+  }
+
+  const { data, error } = await query
     .order('day_of_week')
     .order('start_time');
 
@@ -507,7 +525,10 @@ export async function getEnrollmentsForStudent(studentId: string): Promise<Enrol
 export async function getAllAttendance(): Promise<Attendance[]> {
   const { data, error } = await supabase
     .from('attendance')
-    .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))');
+    .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))')
+    // Safety limit — use paginated admin queries for full exports.
+    // Fetching the entire attendance table without bounds is an OOM risk.
+    .limit(500);
   const rows = throwOnError(data, error, 'getAllAttendance');
   return rows.map((r: any) => {
     if (r.slot) {
@@ -533,7 +554,10 @@ export async function getAttendanceForStudent(studentId: string): Promise<Attend
     .from('attendance')
     .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))')
     .eq('student_id', studentId)
-    .order('session_date', { ascending: false });
+    .order('session_date', { ascending: false })
+    // 300 records ≈ 5 subjects × ~60 sessions per year, well above a full academic year.
+    // Prevents unbounded growth from silently degrading dashboard load times.
+    .limit(300);
   const rows = throwOnError(data, error, 'getAttendanceForStudent');
   return rows.map((r: any) => {
     if (r.slot) {
@@ -1120,8 +1144,13 @@ export async function deleteRosterEntry(rosterId: string): Promise<void> {
 // FEE SYSTEM FUNCTIONS
 // =============================================================================
 
+let cachedUniversalFeeConfig: any = null;
+const cachedFeeConfigs = new Map<string, any>();
+
 export async function getFeeConfig(classId: string): Promise<any | null> {
   if (!classId) return null;
+  if (cachedFeeConfigs.has(classId)) return cachedFeeConfigs.get(classId);
+
   const { data, error } = await (supabase as any)
     .from('fee_configs')
     .select('*')
@@ -1135,10 +1164,14 @@ export async function getFeeConfig(classId: string): Promise<any | null> {
   if (row && typeof row.payment_instructions === 'string' && row.payment_instructions.includes('033353292094')) {
     row.payment_instructions = row.payment_instructions.replace(/033353292094/g, '03335292094');
   }
+  
+  cachedFeeConfigs.set(classId, row);
   return row;
 }
 
 export async function getUniversalFeeConfig(): Promise<any | null> {
+  if (cachedUniversalFeeConfig) return cachedUniversalFeeConfig;
+
   const { data, error } = await (supabase as any)
     .from('fee_configs')
     .select('*')
@@ -1152,6 +1185,8 @@ export async function getUniversalFeeConfig(): Promise<any | null> {
   if (row && typeof row.payment_instructions === 'string' && row.payment_instructions.includes('033353292094')) {
     row.payment_instructions = row.payment_instructions.replace(/033353292094/g, '03335292094');
   }
+  
+  cachedUniversalFeeConfig = row;
   return row;
 }
 
@@ -1218,6 +1253,9 @@ export async function saveFeeConfig(
       updated_at: new Date().toISOString()
     }, { onConflict: 'class_id' });
   if (error) throw error;
+  
+  cachedFeeConfigs.delete(classId);
+  cachedUniversalFeeConfig = null;
 }
 
 export async function saveUniversalFeeConfig(
@@ -1254,6 +1292,9 @@ export async function saveUniversalFeeConfig(
       });
     if (error) throw error;
   }
+  
+  cachedUniversalFeeConfig = null;
+  cachedFeeConfigs.clear();
 }
 
 export async function getFeeStatus(studentId: string): Promise<any | null> {
@@ -1426,7 +1467,12 @@ export async function syncPricingToFeeConfigs(
     .upsert(payload, { onConflict: 'class_id' });
 
   if (upsertError) throw upsertError;
+  
+  cachedFeeConfigs.delete(classId);
+  cachedUniversalFeeConfig = null;
 }
+
+let cachedTaxonomy: any = null;
 
 export async function getTaxonomy(): Promise<{
   boards: BoardEntry[];
@@ -1435,6 +1481,8 @@ export async function getTaxonomy(): Promise<{
   subjects: SubjectEntry[];
   streamSubjects: { stream_id: string; subject_id: string }[];
 }> {
+  if (cachedTaxonomy) return cachedTaxonomy;
+
   const [b, c, s, sub, ss] = await Promise.all([
     supabase.from('boards').select('*').order('name'),
     supabase.from('classes').select('*, board:boards(*)'),
@@ -1446,13 +1494,14 @@ export async function getTaxonomy(): Promise<{
   const classesData = c.data || [];
   classesData.sort((a: any, b: any) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
 
-  return {
+  cachedTaxonomy = {
     boards: b.data || [],
     classes: classesData,
     streams: s.data || [],
     subjects: sub.data || [],
     streamSubjects: ss.data || [],
   };
+  return cachedTaxonomy;
 }
 
 // =============================================================================
@@ -1617,7 +1666,10 @@ export async function getNotificationsForUser(userId: string): Promise<Notificat
     .from('notifications')
     .select('*')
     .eq('recipient_id', userId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    // Cap at 50 — a reasonable inbox size. Notification tables grow quickly;
+    // fetching all historical records would slow down every page load.
+    .limit(50);
   const rows = throwOnError(data, error, 'getNotificationsForUser');
   
   return (rows as unknown as NotificationRow[]).sort((a, b) => {

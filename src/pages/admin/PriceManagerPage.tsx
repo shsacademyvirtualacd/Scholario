@@ -51,11 +51,12 @@ export const PriceManagerPage: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      // Sync strictly by exact class ID (UUID from classes table) to fee_configs
-      const syncPromises = Object.entries(prices).map(([classId, price]) =>
-        syncPricingToFeeConfigs(classId, price)
-      );
-      await Promise.all(syncPromises);
+      // Sync strictly by exact class ID (UUID from classes table) to fee_configs.
+      // Sequential writes (for...of) rather than concurrent Promise.all to avoid
+      // opening multiple simultaneous DB connections for what is a rare admin action.
+      for (const [classId, price] of Object.entries(prices)) {
+        await syncPricingToFeeConfigs(classId, price);
+      }
 
       triggerNotification('success', 'Pricing configurations saved and synced to live database!');
     } catch (err: any) {

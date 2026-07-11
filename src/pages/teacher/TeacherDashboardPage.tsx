@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
-  Link as LinkIcon, Edit2, Check, X
+  Link as LinkIcon, Check, X
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import TeacherShell from '../../components/teacher/TeacherShell';
@@ -31,7 +31,7 @@ const LiveLinkEditor: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase.from('class_slots').update({ room_or_link: linkVal }).eq('id', slot.id);
+      const { error } = await (supabase as any).from('class_slots').update({ room_or_link: linkVal }).eq('id', slot.id);
       if (error) throw error;
       slot.room_or_link = linkVal; // optimistically update local state
     } catch (err) {
@@ -270,6 +270,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
   useRealtimeTable({
     table: 'class_slots',
+    debounceMs: 2000,
     onAny: async () => {
       if (!teacherId) return;
       const slots = await getSlotsForTeacher(teacherId);
@@ -280,6 +281,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
   useRealtimeTable({
     table: 'enrollments',
+    debounceMs: 2000,
     onAny: async () => {
       if (!teacherId || !selectedOfferingId) return;
       const studs = await getStudentsInOffering(selectedOfferingId);

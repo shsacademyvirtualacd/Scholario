@@ -148,10 +148,36 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         </header>
 
         {/* Page body */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 pb-24 lg:pb-6 space-y-6 max-w-7xl mx-auto w-full">
           {children}
         </main>
       </div>
+
+      {/* ── Mobile Bottom Navigation ── */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E5E5] z-40 flex items-center justify-around px-2 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        {NAV_ITEMS.map(({ icon: Icon, label, path }) => {
+          const isActive = isPathActive(path);
+          return (
+            <button
+              key={path}
+              onClick={() => handleNav(path)}
+              className={`flex flex-col items-center justify-center w-full py-3 gap-1 ${
+                isActive ? 'text-[#111111]' : 'text-[#A3A3A3] hover:text-[#737373]'
+              }`}
+            >
+              <div className={`relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
+                isActive ? 'bg-[#F4C430] bg-opacity-20 text-[#D97706]' : 'bg-transparent'
+              }`}>
+                <Icon size={18} className={isActive ? 'text-[#D97706]' : ''} />
+              </div>
+              <span className={`text-[10px] font-bold ${isActive ? 'text-[#111111]' : 'font-semibold'}`}>
+                {label.split(' ')[0]} {/* Shorten label for bottom nav if needed */}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
     </div>
   );
 };

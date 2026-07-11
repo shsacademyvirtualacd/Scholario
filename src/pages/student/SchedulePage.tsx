@@ -67,6 +67,7 @@ export const SchedulePage: React.FC = () => {
 
   useRealtimeTable({
     table: 'class_slots',
+    debounceMs: 2000,
     onAny: async () => {
       if (!studentId) return;
       const freshSlots = await getSlotsForStudent(studentId);

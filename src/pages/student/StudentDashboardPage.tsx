@@ -366,11 +366,13 @@ const StudentDashboardPage: React.FC = () => {
 
   useRealtimeTable({
     table: 'class_slots',
+    debounceMs: 2000,
     onAny: fetchSlots
   });
 
   useRealtimeTable({
     table: 'notes',
+    debounceMs: 2000,
     onAny: fetchNotes
   });
 

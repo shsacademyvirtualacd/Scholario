@@ -3,6 +3,7 @@ import { Mail, Phone, MapPin } from 'lucide-react';
 import { LegalModal } from '../ui/LegalModal';
 import { AboutModal } from '../ui/AboutModal';
 import { ContactModal } from '../ui/ContactModal';
+import Logo from '../ui/Logo';
 
 const SocialIcon: React.FC<{ name: string }> = ({ name }) => {
   const icons: Record<string, React.ReactNode> = {
@@ -97,30 +98,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-2.5 mb-5">
-              {/* Inline logo for dark bg */}
-              <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="12" y="14" width="76" height="10" rx="3" fill="#ffffff" />
-                <polygon points="50,4 88,24 50,24 12,24" fill="#ffffff" />
-                <rect x="86" y="24" width="3" height="14" rx="1.5" fill="#ffffff" />
-                <circle cx="87.5" cy="39" r="3" fill="#ffffff" />
-                <path d="M22 86 Q22 78 30 76 L50 72 L70 76 Q78 78 78 86 L78 92 L22 92 Z" fill="#ffffff" />
-                <path d="M50 72 L50 92" stroke="#111111" strokeWidth="2" />
-                <path d="M62 38 C62 33 57 29 50 29 C43 29 38 33 38 38 C38 43 43 47 50 47 L50 53 C43 53 38 57 38 62 C38 67 43 71 50 71 C57 71 62 67 62 62" stroke="#F4C430" strokeWidth="4" fill="none" strokeLinecap="round" />
-                <circle cx="50" cy="29" r="4" fill="#F4C430" />
-                <circle cx="38" cy="50" r="3" fill="#F4C430" />
-                <circle cx="62" cy="50" r="3" fill="#F4C430" />
-                <circle cx="50" cy="71" r="4" fill="#F4C430" />
-              </svg>
-              <div className="flex flex-col leading-none">
-                <span className="text-lg font-extrabold tracking-tight text-white" style={{ letterSpacing: '-0.03em' }}>
-                  Scholario
-                </span>
-                <span className="text-[9px] font-semibold tracking-[0.18em] uppercase text-[#525252] mt-0.5">
-                  Learn&nbsp;·&nbsp;Grow&nbsp;·&nbsp;Achieve
-                </span>
-              </div>
-            </div>
+            <Logo size="sm" variant="full" darkMode className="mb-5" />
             <p className="text-[#737373] text-sm leading-relaxed mb-6 max-w-xs">
               Pakistan's premier Learning Management System, built for modern educators and ambitious learners.
             </p>
@@ -171,10 +149,15 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             © 2025 Scholario. All rights reserved. Made with ❤️ in Pakistan.
           </div>
           <div className="flex items-center gap-2">
-            {['twitter', 'linkedin', 'instagram', 'youtube'].map((name) => (
+            {[
+              { name: 'instagram', url: 'https://www.instagram.com/shs_academy?igsh=MXR2c2NuZDFwd3RsMQ==' },
+              { name: 'youtube', url: 'https://youtube.com/@shsacademy-w5x?si=5pBN6W4zd1wRgUhw' }
+            ].map(({ name, url }) => (
               <a
                 key={name}
-                href="#"
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-[#525252] hover:text-white hover:bg-[#262626] transition-all duration-200"
               >
                 <SocialIcon name={name} />

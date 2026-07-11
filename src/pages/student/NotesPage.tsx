@@ -70,6 +70,7 @@ export const NotesPage: React.FC = () => {
 
   useRealtimeTable({
     table: 'notes',
+    debounceMs: 2000,
     onAny: async () => {
       if (!studentId || offerings.length === 0) return;
       const ids = offerings.map(o => o.id);

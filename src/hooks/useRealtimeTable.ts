@@ -4,29 +4,38 @@ import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
-interface UseRealtimeTableProps<T> {
+interface UseRealtimeTableProps {
   table: string;
   schema?: string;
   event?: EventType;
   filter?: string;
+  /**
+   * If set, callbacks are debounced: the handler will only fire once per
+   * `debounceMs` milliseconds regardless of how many events arrive.
+   * Recommended value: 2000ms for high-traffic tables (class_slots, notes)
+   * to prevent thundering-herd query spikes across concurrent clients.
+   */
+  debounceMs?: number;
   onInsert?: (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => void;
   onUpdate?: (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => void;
   onDelete?: (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => void;
   onAny?: (payload: RealtimePostgresChangesPayload<{ [key: string]: any }>) => void;
 }
 
-export function useRealtimeTable<T = any>({
+export function useRealtimeTable({
   table,
   schema = 'public',
   event = '*',
   filter,
+  debounceMs = 0,
   onInsert,
   onUpdate,
   onDelete,
   onAny
-}: UseRealtimeTableProps<T>) {
+}: UseRealtimeTableProps) {
   // Use refs to avoid stale closure issues without forcing channel resubscription
   const callbacksRef = useRef({ onInsert, onUpdate, onDelete, onAny });
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     callbacksRef.current = { onInsert, onUpdate, onDelete, onAny };
@@ -48,16 +57,26 @@ export function useRealtimeTable<T = any>({
         },
         (payload) => {
           console.log(`[Realtime] ${table} event:`, payload);
-          const { onAny: cbAny, onInsert: cbInsert, onUpdate: cbUpdate, onDelete: cbDelete } = callbacksRef.current;
           
-          if (cbAny) cbAny(payload);
-          
-          if (payload.eventType === 'INSERT' && cbInsert) {
-            cbInsert(payload);
-          } else if (payload.eventType === 'UPDATE' && cbUpdate) {
-            cbUpdate(payload);
-          } else if (payload.eventType === 'DELETE' && cbDelete) {
-            cbDelete(payload);
+          const executeCallbacks = () => {
+            const { onAny: cbAny, onInsert: cbInsert, onUpdate: cbUpdate, onDelete: cbDelete } = callbacksRef.current;
+            
+            if (cbAny) cbAny(payload);
+            
+            if (payload.eventType === 'INSERT' && cbInsert) {
+              cbInsert(payload);
+            } else if (payload.eventType === 'UPDATE' && cbUpdate) {
+              cbUpdate(payload);
+            } else if (payload.eventType === 'DELETE' && cbDelete) {
+              cbDelete(payload);
+            }
+          };
+
+          if (debounceMs > 0) {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            timeoutRef.current = setTimeout(executeCallbacks, debounceMs);
+          } else {
+            executeCallbacks();
           }
         }
       )
@@ -68,8 +87,8 @@ export function useRealtimeTable<T = any>({
       });
 
     return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       supabase.removeChannel(channel);
     };
-  }, [table, schema, event, filter]);
+  }, [table, schema, event, filter, debounceMs]);
 }
-

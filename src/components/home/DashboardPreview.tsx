@@ -2,6 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard, BookOpen, Calendar, Bell, Search, Clock, Play, RotateCcw
 } from 'lucide-react';
+import Logo from '../ui/Logo';
 
 const DashboardPreview: React.FC = () => {
   return (
@@ -35,26 +36,7 @@ const DashboardPreview: React.FC = () => {
         <div className="w-[200px] shrink-0 bg-[#111111] flex flex-col py-5 px-4" style={{ minWidth: 200 }}>
           
           {/* Logo */}
-          <div className="flex items-center gap-2.5 mb-8">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#F4C430' }}>
-              <svg width="18" height="18" viewBox="0 0 100 100" fill="none">
-                <polygon points="50,8 90,28 50,28 10,28" fill="#111111" />
-                <path d="M22 86 Q22 78 30 76 L50 72 L70 76 Q78 78 78 86 L78 92 L22 92 Z" fill="#111111" />
-                <path d="M50 72 L50 92" stroke="#F4C430" strokeWidth="2" />
-                <path
-                  d="M62 38 C62 33 57 29 50 29 C43 29 38 33 38 38 C38 43 43 47 50 47 L50 53 C43 53 38 57 38 62 C38 67 43 71 50 71 C57 71 62 67 62 62"
-                  stroke="#111111"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-white text-[13px] font-extrabold tracking-tight">Scholario</span>
-              <span className="text-[7.5px] text-[#525252] font-semibold tracking-wider mt-0.5">LEARN · GROW · ACHIEVE</span>
-            </div>
-          </div>
+          <Logo size="sm" variant="full" darkMode className="mb-8" />
 
           {/* Navigation Links */}
           <nav className="flex flex-col gap-1.5 flex-1">

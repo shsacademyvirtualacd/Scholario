@@ -51,6 +51,14 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     });
   }
 
+  const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB hard ceiling per upload
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return new Response(
+      JSON.stringify({ error: `File too large. Maximum allowed size is 20 MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)} MB.` }),
+      { status: 413, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   const ext = file.name ? file.name.split('.').pop() || 'pdf' : 'pdf';
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
   const storageKey = `teacher_notes/${fileName}`;

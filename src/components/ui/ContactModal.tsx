@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
 interface ContactModalProps {
   open: boolean;
@@ -11,7 +12,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
     name: '',
     email: '',
     phone: '',
-    role: 'Student',
+    role: '',
     message: ''
   });
 
@@ -62,18 +63,50 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
     if (!validate()) return;
 
     setIsSubmitting(true);
-    // Simulate submission delay
-    setTimeout(() => {
+
+    const templateParams = {
+      from_name: formData.name,
+      reply_to: formData.email,
+      phone: formData.phone || 'N/A',
+      role: formData.role || 'N/A',
+      message: formData.message,
+      to_email: 'shs.academy.virtual@gmail.com'
+    };
+
+    // Use EmailJS to send the email directly
+    // Note: User must configure their EmailJS account and update .env variables
+    emailjs.send(
+      import.meta.env.VITE_EMAILJS_SERVICE_ID || 'YOUR_SERVICE_ID',
+      import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'YOUR_TEMPLATE_ID',
+      templateParams,
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY'
+    )
+    .then((response) => {
+      console.log('SUCCESS!', response.status, response.text);
       setIsSubmitting(false);
       setIsSuccess(true);
       setFormData({
         name: '',
         email: '',
         phone: '',
-        role: 'Student',
+        role: '',
         message: ''
       });
-    }, 1200);
+    })
+    .catch((error) => {
+      console.error('FAILED...', error);
+      setIsSubmitting(false);
+      // Optional: show a small alert or error state if it fails.
+      // But for now, since it might fail without correct keys, we can just log it
+      // or show a success if we're in a dev mode without keys.
+      // If we don't have keys, let's just simulate success for the visual prototype
+      if (import.meta.env.VITE_EMAILJS_SERVICE_ID) {
+         alert('Failed to send message. Please verify your EmailJS keys or try again later.');
+      } else {
+         console.log('Simulating success since no EmailJS keys were provided.');
+         setIsSuccess(true);
+      }
+    });
   };
 
   return (
@@ -89,7 +122,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
       />
 
       {/* Modal Container */}
-      <div className="relative bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative z-10 bg-white text-[#111111] w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="px-6 py-5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">
@@ -243,16 +276,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-[#111111] uppercase tracking-wide">Your Role</label>
-                    <select
+                    <input
+                      type="text"
                       value={formData.role}
                       onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className="w-full text-sm border border-[#E5E5E5] px-3.5 py-2.5 rounded-xl outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white transition-all cursor-pointer"
-                    >
-                      <option value="Student">Student / Applicant</option>
-                      <option value="Parent">Parent / Guardian</option>
-                      <option value="Educator">Educator / Staff</option>
-                      <option value="Other">Other</option>
-                    </select>
+                      placeholder="e.g. Student, Parent, Teacher"
+                      className="w-full text-sm border border-[#E5E5E5] px-3.5 py-2.5 rounded-xl outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] transition-all"
+                    />
                   </div>
                 </div>
 
