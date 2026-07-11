@@ -696,7 +696,7 @@ export async function uploadNoteFile(_file: File, _folderPath: string = 'uploads
 }
 
 /** Securely download a note via fetch-then-blob calling Cloudflare R2 /api/notes/dl endpoint */
-export async function downloadNoteBlob(note: any): Promise<void> {
+export async function downloadNoteBlob(note: any, onProgress?: (progress: number) => void): Promise<void> {
   if (!note.id) {
     throw new Error('Note ID is required for download.');
   }
@@ -710,7 +710,43 @@ export async function downloadNoteBlob(note: any): Promise<void> {
   });
 
   if (!response.ok) throw new Error(`Download fetch failed with status ${response.status}`);
-  const blob = await response.blob();
+  
+  const contentLength = response.headers.get('Content-Length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+  
+  if (!response.body) {
+    // Fallback if ReadableStream is not supported
+    const blob = await response.blob();
+    if (onProgress) onProgress(100);
+    triggerDownload(blob, note);
+    return;
+  }
+  
+  const reader = response.body.getReader();
+  const chunks: any[] = [];
+  let receivedLength = 0;
+  
+  while(true) {
+    const {done, value} = await reader.read();
+    
+    if (done) {
+      break;
+    }
+    
+    if (value) {
+      chunks.push(value);
+      receivedLength += value.length;
+      if (total && onProgress) {
+         onProgress(Math.round((receivedLength / total) * 100));
+      }
+    }
+  }
+  
+  const blob = new Blob(chunks, { type: response.headers.get('Content-Type') || 'application/pdf' });
+  triggerDownload(blob, note);
+}
+
+function triggerDownload(blob: Blob, note: any) {
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = objectUrl;

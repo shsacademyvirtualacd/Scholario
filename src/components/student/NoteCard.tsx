@@ -10,6 +10,7 @@ interface NoteCardProps {
 
 export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
   const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const subject = note.offering?.subject || 'General';
   const fileType = note.file_type || 'pdf';
   const isPdf = fileType.toLowerCase() === 'pdf';
@@ -20,12 +21,14 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
     if (downloading) return;
     try {
       setDownloading(true);
-      await downloadNoteBlob(note);
+      setProgress(0);
+      await downloadNoteBlob(note, (p) => setProgress(p));
     } catch (err) {
       console.error('Download failed:', err);
       alert('Failed to download note file.');
     } finally {
       setDownloading(false);
+      setProgress(0);
     }
   };
 
@@ -88,10 +91,17 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
           <button
             onClick={handleDownload}
             disabled={downloading}
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1"
             title="Download file"
           >
-            {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            {downloading ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                {progress > 0 && <span className="text-[10px] font-bold">{progress}%</span>}
+              </>
+            ) : (
+              <Download size={14} />
+            )}
           </button>
         </div>
       </div>

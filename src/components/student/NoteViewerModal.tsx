@@ -15,6 +15,7 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
   const [authToken, setAuthToken] = useState<string>('');
   const [loadingUrl, setLoadingUrl] = useState<boolean>(false);
   const [downloading, setDownloading] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
 
   useEffect(() => {
     let mounted = true;
@@ -50,12 +51,14 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
     if (downloading) return;
     try {
       setDownloading(true);
-      await downloadNoteBlob({ ...note, file_url: activeUrl });
+      setProgress(0);
+      await downloadNoteBlob({ ...note, file_url: activeUrl }, (p) => setProgress(p));
     } catch (err) {
       console.error('Download error:', err);
       alert('Failed to download note file. Please try again.');
     } finally {
       setDownloading(false);
+      setProgress(0);
     }
   };
 
@@ -93,8 +96,17 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
               disabled={downloading || (!activeUrl && !note.file_path)}
               className="p-1.5 rounded-lg border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
             >
-              {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {downloading ? 'Downloading...' : 'Download'}
+              {downloading ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  {progress > 0 ? `${progress}%` : 'Downloading...'}
+                </>
+              ) : (
+                <>
+                  <Download size={12} />
+                  Download
+                </>
+              )}
             </button>
 
             <button

@@ -17,6 +17,7 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
   deleting = false,
 }) => {
   const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const subject =
     (typeof note.offering?.subject === 'string'
       ? note.offering.subject
@@ -32,12 +33,14 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
     if (downloading) return;
     try {
       setDownloading(true);
-      await downloadNoteBlob(note);
+      setProgress(0);
+      await downloadNoteBlob(note, (p) => setProgress(p));
     } catch (err) {
       console.error('Download failed:', err);
       alert('Failed to download note file.');
     } finally {
       setDownloading(false);
+      setProgress(0);
     }
   };
 
@@ -108,10 +111,17 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
           <button
             onClick={handleDownload}
             disabled={downloading || deleting}
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1"
             title="Download document"
           >
-            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {downloading ? (
+              <>
+                <Loader2 size={13} className="animate-spin" />
+                {progress > 0 && <span className="text-[10px] font-bold">{progress}%</span>}
+              </>
+            ) : (
+              <Download size={13} />
+            )}
           </button>
           {onDelete && (
             <button
