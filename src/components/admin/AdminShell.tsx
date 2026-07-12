@@ -148,13 +148,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
-            <div className="relative w-full max-w-[120px] xs:max-w-xs sm:max-w-md transition-all duration-200 min-w-0">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
-              <input
-                placeholder="Search students, teachers…"
-                className="input pl-9 py-2 text-sm w-full bg-[#FAFAFA] border-[#F0F0F0]"
-              />
-            </div>
+
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
