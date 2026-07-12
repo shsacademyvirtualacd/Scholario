@@ -253,15 +253,15 @@ async function main() {
   await run('create roster: select own',
     `CREATE POLICY "roster: select own" ON public.roster FOR SELECT
      USING (
-       email = (auth.jwt()->>'email')
+       email = LOWER(auth.jwt()->>'email')
        OR EXISTS (SELECT 1 FROM public.profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin')
      )`);
 
   await run('drop roster: self link', `DROP POLICY IF EXISTS "roster: self link" ON public.roster`);
   await run('create roster: self link',
     `CREATE POLICY "roster: self link" ON public.roster FOR UPDATE
-     USING (email = (auth.jwt()->>'email'))
-     WITH CHECK (email = (auth.jwt()->>'email'))`);
+     USING (email = LOWER(auth.jwt()->>'email'))
+     WITH CHECK (email = LOWER(auth.jwt()->>'email'))`);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PHASE 8: RLS policies — enrollments (student self-enroll for onboarding)

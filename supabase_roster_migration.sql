@@ -27,15 +27,15 @@ CREATE POLICY "roster: admin all"
 DROP POLICY IF EXISTS "roster: select own" ON public.roster;
 CREATE POLICY "roster: select own"
   ON public.roster FOR SELECT
-  USING (email = auth.jwt()->>'email' OR public.is_admin());
+  USING (email = LOWER(auth.jwt()->>'email') OR public.is_admin());
 
 -- Allow users to link their auth uid to their own roster entry on first login
 -- (provisionProfile() does: .update({ profile_id: userId }).eq('email', email))
 DROP POLICY IF EXISTS "roster: self link" ON public.roster;
 CREATE POLICY "roster: self link"
   ON public.roster FOR UPDATE
-  USING (email = auth.jwt()->>'email')
-  WITH CHECK (email = auth.jwt()->>'email');
+  USING (email = LOWER(auth.jwt()->>'email'))
+  WITH CHECK (email = LOWER(auth.jwt()->>'email'));
 
 
 -- Ensure we drop all old signatures first to avoid overloaded duplicates

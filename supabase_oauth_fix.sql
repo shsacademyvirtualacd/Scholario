@@ -40,8 +40,8 @@ DROP POLICY IF EXISTS "roster: self link" ON public.roster;
 
 CREATE POLICY "roster: self link"
   ON public.roster FOR UPDATE
-  USING (email = auth.jwt()->>'email')
-  WITH CHECK (email = auth.jwt()->>'email');
+  USING (email = LOWER(auth.jwt()->>'email'))
+  WITH CHECK (email = LOWER(auth.jwt()->>'email'));
 
 
 -- 3. Add admins

@@ -176,14 +176,14 @@ CREATE POLICY "roster: admin all" ON public.roster FOR ALL
 DROP POLICY IF EXISTS "roster: select own" ON public.roster;
 CREATE POLICY "roster: select own" ON public.roster FOR SELECT
   USING (
-    email = (auth.jwt()->>'email')
+    email = LOWER(auth.jwt()->>'email')
     OR EXISTS (SELECT 1 FROM public.profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin')
   );
 
 DROP POLICY IF EXISTS "roster: self link" ON public.roster;
 CREATE POLICY "roster: self link" ON public.roster FOR UPDATE
-  USING (email = (auth.jwt()->>'email'))
-  WITH CHECK (email = (auth.jwt()->>'email'));
+  USING (email = LOWER(auth.jwt()->>'email'))
+  WITH CHECK (email = LOWER(auth.jwt()->>'email'));
 
 DROP POLICY IF EXISTS "roster: self insert" ON public.roster;
 CREATE POLICY "roster: self insert" ON public.roster FOR INSERT
