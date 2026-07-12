@@ -38,7 +38,7 @@ const NAV_ITEMS: NavItem[] = [
 const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, feeStatus } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -153,13 +153,17 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
           {NAV_ITEMS.map(({ icon: Icon, label, path, disabled }) => {
-            const isActive = !disabled && (activeNav === path || (path !== '/student' && activeNav.startsWith(path)));
+            const isBlocked = feeStatus !== 'paid' && path !== '/student/checkout';
+            const isActive = !disabled && !isBlocked && (activeNav === path || (path !== '/student' && activeNav.startsWith(path)));
             return (
               <button
                 key={path}
-                onClick={() => !disabled && handleNav(path)}
-                disabled={disabled}
-                className={`sidebar-link w-full ${isActive ? 'active' : ''} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                onClick={() => !disabled && !isBlocked && handleNav(path)}
+                disabled={disabled || isBlocked}
+                title={isBlocked ? "Unlocks after payment verification" : undefined}
+                className={`sidebar-link w-full ${isActive ? 'active' : ''} ${
+                  disabled || isBlocked ? 'opacity-40 cursor-not-allowed' : 'interactive'
+                }`}
               >
                 <Icon size={17} className={`sidebar-icon shrink-0 ${isActive ? '' : 'text-[#525252]'}`} />
                 <span>{label}</span>
@@ -293,8 +297,12 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           <div className="flex items-center gap-2 shrink-0">
             <NotificationBell />
             <button
-              onClick={() => navigate('/student/profile')}
-              className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-white hover:scale-105 transition-transform"
+              onClick={() => feeStatus === 'paid' && navigate('/student/profile')}
+              disabled={feeStatus !== 'paid'}
+              title={feeStatus !== 'paid' ? "Unlocks after payment verification" : undefined}
+              className={`w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-white ${
+                feeStatus !== 'paid' ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 transition-transform interactive'
+              }`}
             >
               {(profile?.full_name?.[0] ?? 'S').toUpperCase()}
             </button>
