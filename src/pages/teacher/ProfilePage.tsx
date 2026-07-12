@@ -66,9 +66,9 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
-    const phoneRegex = /^\+?[0-9\s-]{10,15}$/;
-    if (phone && !phoneRegex.test(phone)) {
-      setError('Please enter a valid phone number.');
+    const phoneTrim = phone.trim();
+    if (phoneTrim && !/^03\d{9}$/.test(phoneTrim)) {
+      setError('Please enter a valid 11-digit phone number starting with 03 (e.g. 03001234567).');
       return;
     }
 
@@ -179,11 +179,11 @@ export const ProfilePage: React.FC = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-[#737373] uppercase tracking-wide mb-1.5">Phone Number</label>
                   <input
-                    type="text"
+                    type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="input text-xs"
-                    placeholder="+92 300 1234567"
+                    placeholder="e.g. 03001234567"
                   />
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-2">

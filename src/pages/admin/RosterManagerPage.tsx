@@ -43,6 +43,7 @@ export const RosterManagerPage: React.FC = () => {
   // Form Fields
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
@@ -134,6 +135,7 @@ export const RosterManagerPage: React.FC = () => {
     setSelectedEntry(null);
     setEmail('');
     setFullName('');
+    setPhone('');
     setSelectedClass('');
     setFormError(null);
     setDrawerMode('add_student');
@@ -144,6 +146,7 @@ export const RosterManagerPage: React.FC = () => {
     setSelectedEntry(null);
     setEmail('');
     setFullName('');
+    setPhone('');
     setSelectedClasses([]);
     setFormError(null);
     setDrawerMode('add_teacher');
@@ -154,6 +157,7 @@ export const RosterManagerPage: React.FC = () => {
     setSelectedEntry(entry);
     setEmail(entry.email);
     setFullName(entry.full_name);
+    setPhone('');
     setFormError(null);
     setDrawerMode('edit');
     if (entry.role === 'student') {
@@ -170,6 +174,7 @@ export const RosterManagerPage: React.FC = () => {
 
     const emailTrim = email.trim().toLowerCase();
     const nameTrim = fullName.trim();
+    const phoneTrim = phone.trim();
 
     if (!emailTrim || !nameTrim) {
       setFormError('Please fill out all required fields.');
@@ -179,6 +184,13 @@ export const RosterManagerPage: React.FC = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
       setFormError('Please enter a valid email address.');
       return;
+    }
+
+    if (drawerMode === 'add_teacher' && phoneTrim) {
+      if (!/^03\d{9}$/.test(phoneTrim)) {
+        setFormError('Please enter a valid 11-digit phone number starting with 03 (e.g. 03001234567).');
+        return;
+      }
     }
 
     setFormSaving(true);
@@ -201,7 +213,7 @@ export const RosterManagerPage: React.FC = () => {
           return;
         }
 
-        const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave);
+        const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave, phoneTrim || undefined);
         setRoster(prev => [newEntry, ...prev]);
         setDrawerOpen(false);
         await fetchEnrichmentData();
@@ -730,6 +742,12 @@ export const RosterManagerPage: React.FC = () => {
                           )}
                         </div>
                         <div className="text-[#737373] text-[11px] font-medium mt-0.5">{entry.email}</div>
+                        {activeSection === 'teachers' && (
+                          <div className="text-[#737373] text-[11px] font-medium mt-0.5 flex items-center gap-1">
+                            <Phone size={10} className="text-[#A3A3A3] shrink-0" />
+                            {profilesMap[entry.profile_id]?.phone || entry.phone || 'Not provided'}
+                          </div>
+                        )}
                       </td>
 
                       {activeSection === 'students' && (
@@ -970,6 +988,21 @@ export const RosterManagerPage: React.FC = () => {
                       className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
                     />
                   </div>
+
+                  {drawerMode === 'add_teacher' && (
+                    <div>
+                      <label className="label text-xs font-bold text-[#404040] mb-1.5 block uppercase tracking-wider">
+                        Phone Number <span className="text-[#A3A3A3] font-normal lowercase">(Optional)</span>
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="e.g. 03001234567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
+                      />
+                    </div>
+                  )}
                 </>
               )}
 

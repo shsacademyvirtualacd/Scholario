@@ -975,13 +975,15 @@ export async function addRosterEntry(
   email: string,
   fullName: string,
   role: 'student' | 'teacher',
-  classIds: string[]
+  classIds: string[],
+  phone?: string
 ): Promise<RosterEntry> {
   const { data, error } = await (supabase as any).rpc('add_to_roster', {
     p_email: email,
     p_full_name: fullName,
     p_role: role,
-    p_class_ids: classIds
+    p_class_ids: classIds,
+    p_phone: phone || null
   });
 
   if (error) throw error;
