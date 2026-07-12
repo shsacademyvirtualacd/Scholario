@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Sparkles, Heart, Eye, Target } from 'lucide-react';
 
 interface AboutModalProps {
@@ -32,7 +33,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10" 
       role="dialog" 
@@ -169,6 +170,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

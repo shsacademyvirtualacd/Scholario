@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Shield, Scale, Calendar, Mail, Phone } from 'lucide-react';
 
 interface LegalModalProps {
@@ -78,7 +79,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
     }
   };
 
-  return (
+  return createPortal(
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10" 
       role="dialog" 
@@ -675,6 +676,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 
@@ -109,7 +110,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
     });
   };
 
-  return (
+  return createPortal(
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10" 
       role="dialog" 
@@ -324,6 +325,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
