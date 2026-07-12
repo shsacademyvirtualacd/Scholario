@@ -928,7 +928,7 @@ export async function getAllRoster(): Promise<RosterEntry[]> {
     } else {
       const newEntry: RosterEntry = {
         id: p.id,
-        email: emailKey || `${(p.full_name || 'user').toLowerCase().replace(/\s+/g, '.')}.${p.id.slice(0, 4)}@scholario.app`,
+        email: emailKey || 'Not yet signed in',
         full_name: p.full_name || 'Unnamed Account',
         role: p.role || 'student',
         class_ids: p.class_id ? [p.class_id] : [],
@@ -954,7 +954,7 @@ export async function getAllRoster(): Promise<RosterEntry[]> {
     } else {
       const newEntry: RosterEntry = {
         id: t.id,
-        email: emailKey || `teacher.${t.id.slice(0, 4)}@scholario.app`,
+        email: emailKey || 'Not yet signed in',
         full_name: t.full_name || 'Teacher',
         role: 'teacher',
         class_ids: [],

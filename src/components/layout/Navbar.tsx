@@ -47,13 +47,13 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
           <div className="hidden md:flex justify-end items-center gap-3">
             <Link
               to="/login"
-              className="btn btn-ghost btn-sm"
+              className="btn btn-ghost btn-sm interactive"
             >
               Sign In
             </Link>
             <Link
               to="/register"
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm interactive"
             >
               Sign Up
             </Link>
@@ -62,7 +62,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
           {/* Mobile Toggle */}
           <div className="flex md:hidden justify-end">
             <button
-              className="p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors"
+              className="p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors interactive"
               onClick={() => setMobileOpen(!mobileOpen)}
               style={{ outline: 'none' }}
             >
@@ -80,14 +80,14 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
             <Link
               to="/login"
               onClick={() => setMobileOpen(false)}
-              className="btn btn-ghost btn-md w-full flex items-center justify-center"
+              className="btn btn-ghost btn-md w-full flex items-center justify-center interactive"
             >
               Sign In
             </Link>
             <Link
               to="/register"
               onClick={() => setMobileOpen(false)}
-              className="btn btn-primary btn-md w-full flex items-center justify-center"
+              className="btn btn-primary btn-md w-full flex items-center justify-center interactive"
             >
               Sign Up
             </Link>

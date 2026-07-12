@@ -187,7 +187,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
           <button
             onClick={signOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400"
+            className="sidebar-link w-full text-[#737373] hover:text-red-400 interactive"
           >
             <LogOut size={17} className="shrink-0" />
             <span>Sign Out</span>
@@ -196,19 +196,19 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
       </aside>
 
       {/* ── Main content ── */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden page-transition">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full overflow-x-hidden">
+          <div className="flex items-center gap-3 min-w-0">
             <button
-              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111]"
+              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111] shrink-0 interactive"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               <Menu size={20} />
             </button>
             
             {/* Universal Search Container */}
-            <div className="relative w-full max-w-[150px] xs:max-w-xs sm:max-w-md transition-all duration-200">
+            <div className="relative w-full max-w-[120px] xs:max-w-xs sm:max-w-md transition-all duration-200 min-w-0">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
               <input
                 type="text"
@@ -290,51 +290,22 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            {/* Notification Bell Dropdown Container */}
+          <div className="flex items-center gap-2 shrink-0">
             <NotificationBell />
-
             <button
-              onClick={() => handleNav('/student/profile')}
-              className="w-9 h-9 rounded-lg bg-[#F4C430] flex items-center justify-center text-sm font-bold text-[#111111] hover:scale-105 transition-transform"
+              onClick={() => navigate('/student/profile')}
+              className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-white hover:scale-105 transition-transform"
             >
               {(profile?.full_name?.[0] ?? 'S').toUpperCase()}
             </button>
           </div>
         </header>
 
-        {/* Page body */}
-        <main className="flex-1 p-4 sm:p-6 pb-24 lg:pb-6 space-y-6 max-w-7xl mx-auto w-full">
+        {/* Content area */}
+        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden bg-[#FAFAFA] max-w-full">
           {children}
         </main>
       </div>
-
-      {/* ── Mobile Bottom Navigation ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E5E5] z-40 flex items-center justify-around px-2 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        {NAV_ITEMS.map(({ icon: Icon, label, path, disabled }) => {
-          const isActive = !disabled && (activeNav === path || (path !== '/student' && activeNav.startsWith(path)));
-          return (
-            <button
-              key={path}
-              onClick={() => !disabled && navigate(path)}
-              disabled={disabled}
-              className={`flex flex-col items-center justify-center w-full py-3 gap-1 ${
-                isActive ? 'text-[#111111]' : 'text-[#A3A3A3] hover:text-[#737373]'
-              } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-            >
-              <div className={`relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-                isActive ? 'bg-[#F4C430] bg-opacity-20 text-[#D97706]' : 'bg-transparent'
-              }`}>
-                <Icon size={18} className={isActive ? 'text-[#D97706]' : ''} />
-              </div>
-              <span className={`text-[10px] font-bold ${isActive ? 'text-[#111111]' : 'font-semibold'}`}>
-                {label.split(' ')[0]} {/* Shorten label for bottom nav if needed */}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
-
     </div>
   );
 };

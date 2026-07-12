@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Calendar, BookMarked, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useMobile } from '../../hooks/useMobile';
 import { supabase } from '../../lib/supabase';
 import {
   NotificationRow,
@@ -13,6 +14,7 @@ import {
 export const NotificationBell: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useMobile();
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -139,7 +141,7 @@ export const NotificationBell: React.FC = () => {
       >
         <Bell size={16} />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ef4444] border-2 border-white rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ef4444] border-2 border-white rounded-full notif-pulse" />
         )}
       </button>
 
@@ -148,13 +150,13 @@ export const NotificationBell: React.FC = () => {
           {/* Click-out backdrop */}
           <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
           {/* Popover panel */}
-          <div className="absolute right-0 mt-2 w-80 bg-white border border-[#E5E5E5] rounded-2xl shadow-xl z-40 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
+          <div className={`${isMobile ? 'fixed left-2 right-2 top-16 w-auto' : 'absolute right-0 mt-2 w-80'} bg-white border border-[#E5E5E5] rounded-2xl shadow-xl z-40 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200`}>
             <div className="p-3.5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">
               <span className="text-[10px] font-black text-[#111111] uppercase tracking-wider">Notifications</span>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-[10px] font-bold text-[#737373] hover:text-[#111111] transition-colors"
+                  className="text-[10px] font-bold text-[#737373] hover:text-[#111111] transition-colors interactive"
                 >
                   Mark all as read
                 </button>

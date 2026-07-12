@@ -12,10 +12,12 @@ import { pageCache } from '../../lib/pageCache';
 import type { Note } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { useMobile } from '../../hooks/useMobile';
 
 export const NotesPage: React.FC = () => {
   const { profile } = useAuth();
   const [searchParams] = useSearchParams();
+  const isMobile = useMobile();
   const studentId = profile?.id || '';
   
   const cachedNotes = studentId ? pageCache.get<Note[]>('student_notes', studentId) : null;
@@ -148,7 +150,7 @@ export const NotesPage: React.FC = () => {
         </div>
         
         {/* Subject Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 self-center">
+        <div className={`py-0.5 self-center ${isMobile ? 'flex flex-wrap gap-2 justify-center' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'}`}>
           {subjects.map(subject => (
             <button
               key={subject}
@@ -205,7 +207,7 @@ export const NotesPage: React.FC = () => {
                   setSearchTerm('');
                   setActiveSubject('All');
                 }}
-                className="btn btn-ghost border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold"
+                className="btn btn-ghost border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold interactive"
               >
                 Clear all filters
               </button>

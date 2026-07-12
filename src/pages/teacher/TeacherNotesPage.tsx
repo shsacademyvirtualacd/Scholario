@@ -9,9 +9,11 @@ import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../lib/taxo
 import type { Note, ClassOffering } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { useMobile } from '../../hooks/useMobile';
 
 export const TeacherNotesPage: React.FC = () => {
   const { profile } = useAuth();
+  const isMobile = useMobile();
   const teacherId = profile?.id || 't1';
 
   const [teacherOfferings, setTeacherOfferings] = useState<ClassOffering[]>([]);
@@ -214,7 +216,7 @@ export const TeacherNotesPage: React.FC = () => {
           {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
             <button
               onClick={resetFilters}
-              className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5"
+              className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
             >
               <RotateCcw size={10} />
               Reset Filters
@@ -278,7 +280,7 @@ export const TeacherNotesPage: React.FC = () => {
       )}
 
       {/* Control bar with Subject & Format dropdowns + Search */}
-      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className={`card bg-white border border-[#E5E5E5] p-4 flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between gap-4'}`}>
         {/* Search */}
         <div className="relative w-full md:max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
@@ -292,7 +294,7 @@ export const TeacherNotesPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+        <div className={`flex flex-wrap items-center gap-3 w-full ${isMobile ? 'justify-between' : 'justify-end'}`}>
           {/* Layer 4: Subject Dropdown scoped to Grade+Stream */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-[#737373] flex items-center gap-1">
@@ -334,7 +336,7 @@ export const TeacherNotesPage: React.FC = () => {
 
       {/* Grid of Notes */}
       {filteredNotes.length === 0 ? (
-        <div className="card text-center py-20 bg-white border border-[#E5E5E5] rounded-2xl">
+        <div className="card text-center py-20 bg-white border border-[#E5E5E5] rounded-2xl interactive">
           <BookOpen size={32} className="mx-auto text-[#A3A3A3] mb-3 animate-pulse" />
           <h3 className="text-sm font-bold text-[#111111]">No documents found</h3>
           <p className="text-xs text-[#737373] mt-1">
@@ -342,7 +344,7 @@ export const TeacherNotesPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-2 lg:grid-cols-3 gap-4'}>
           {filteredNotes.map((note) => (
             <AdminNoteCard
               key={note.id}

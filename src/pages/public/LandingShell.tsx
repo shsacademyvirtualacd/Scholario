@@ -20,7 +20,7 @@ const LandingShell: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white page-transition">
       <Navbar onNavigate={handleNavigate} />
       <HomePage onNavigate={handleNavigate} />
       <Footer onNavigate={handleNavigate} />

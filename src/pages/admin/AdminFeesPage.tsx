@@ -10,8 +10,10 @@ import {
   getPendingFeeStatuses, updateFeeStatus 
 } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { useMobile } from '../../hooks/useMobile';
 
 export const AdminFeesPage: React.FC = () => {
+  const isMobile = useMobile();
   // Tabs
   const [activeTab, setActiveTab] = useState<'pending' | 'configs'>('pending');
 
@@ -155,13 +157,21 @@ export const AdminFeesPage: React.FC = () => {
         )}
 
         {/* Tab Controls */}
-        <div className="flex items-center gap-1 border-b border-[#E5E5E5] pb-px">
+        <div className={`flex border-b border-[#E5E5E5] pb-px ${isMobile ? 'flex-col gap-0' : 'items-center gap-1'}`}>
           <button
             onClick={() => setActiveTab('pending')}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all duration-200 flex items-center gap-2 ${
-              activeTab === 'pending'
-                ? 'border-[#F4C430] text-[#111111]'
-                : 'border-transparent text-[#737373] hover:text-[#262626]'
+            className={`flex items-center gap-2 transition-all duration-200 ${
+              isMobile
+                ? `px-4 py-3 text-xs font-bold border-b-2 w-full ${
+                    activeTab === 'pending'
+                      ? 'border-[#F4C430] text-[#111111] bg-amber-50/30'
+                      : 'border-transparent text-[#737373]'
+                  }`
+                : `px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 ${
+                    activeTab === 'pending'
+                      ? 'border-[#F4C430] text-[#111111]'
+                      : 'border-transparent text-[#737373] hover:text-[#262626]'
+                  }`
             }`}
           >
             <Clock size={14} />
@@ -169,10 +179,18 @@ export const AdminFeesPage: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('configs')}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all duration-200 flex items-center gap-2 ${
-              activeTab === 'configs'
-                ? 'border-[#F4C430] text-[#111111]'
-                : 'border-transparent text-[#737373] hover:text-[#262626]'
+            className={`flex items-center gap-2 transition-all duration-200 ${
+              isMobile
+                ? `px-4 py-3 text-xs font-bold border-b-2 w-full ${
+                    activeTab === 'configs'
+                      ? 'border-[#F4C430] text-[#111111] bg-amber-50/30'
+                      : 'border-transparent text-[#737373]'
+                  }`
+                : `px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 ${
+                    activeTab === 'configs'
+                      ? 'border-[#F4C430] text-[#111111]'
+                      : 'border-transparent text-[#737373] hover:text-[#262626]'
+                  }`
             }`}
           >
             <Settings size={14} />
@@ -181,7 +199,7 @@ export const AdminFeesPage: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="card py-20 flex flex-col items-center justify-center gap-3">
+          <div className="card py-20 flex flex-col items-center justify-center gap-3 interactive">
             <div className="w-8 h-8 rounded-full border-2 border-[#E5E5E5] border-t-[#F4C430] animate-spin" />
             <span className="text-xs text-[#737373] font-medium">Loading modules...</span>
           </div>
@@ -191,7 +209,7 @@ export const AdminFeesPage: React.FC = () => {
             {activeTab === 'pending' && (
               <div className="space-y-4">
                 {/* Search Bar */}
-                <div className="card bg-white border border-[#E5E5E5] p-4">
+                <div className="card bg-white border border-[#E5E5E5] p-4 interactive">
                   <div className="relative w-full sm:max-w-xs">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
                     <input
@@ -206,7 +224,7 @@ export const AdminFeesPage: React.FC = () => {
 
                 {/* List */}
                 {filteredPending.length === 0 ? (
-                  <div className="card text-center py-16">
+                  <div className="card text-center py-16 interactive">
                     <ShieldCheck size={32} className="mx-auto text-emerald-500 mb-3" />
                     <h3 className="text-sm font-bold text-[#111111]">All caught up!</h3>
                     <p className="text-xs text-[#737373] mt-1">There are no student fee payments awaiting verification.</p>
@@ -214,7 +232,7 @@ export const AdminFeesPage: React.FC = () => {
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
                     {filteredPending.map((item) => (
-                      <div key={item.student_id} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                      <div key={item.student_id} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 flex flex-col gap-4">
                         {/* Student Meta */}
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -233,21 +251,18 @@ export const AdminFeesPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Audit Input & Verify Button */}
-                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 w-full md:w-auto">
-                          <div className="w-full sm:w-64">
-                            <input
-                              type="text"
-                              placeholder="Optional audit log comment..."
-                              value={auditNotes[item.student_id] || ''}
-                              onChange={(e) => handleAuditNoteChange(item.student_id, e.target.value)}
-                              className="input py-2 text-xs bg-[#FAFAFA] w-full"
-                            />
-                          </div>
-                          
+                        {/* Audit Input & Verify Button — stack on mobile */}
+                        <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-row items-center'}`}>
+                          <input
+                            type="text"
+                            placeholder="Optional audit log comment..."
+                            value={auditNotes[item.student_id] || ''}
+                            onChange={(e) => handleAuditNoteChange(item.student_id, e.target.value)}
+                            className="input py-2 text-xs bg-[#FAFAFA] w-full"
+                          />
                           <button
                             onClick={() => handleApprovePayment(item.student_id)}
-                            className="btn btn-gold flex items-center justify-center gap-1.5 px-5 py-2 text-xs font-bold shrink-0 self-stretch sm:self-auto"
+                            className={`btn btn-gold flex items-center justify-center gap-1.5 py-2 text-xs font-bold shrink-0 ${isMobile ? 'w-full px-4' : 'px-5'}`}
                           >
                             <Check size={14} />
                             Approve & Mark Paid
@@ -314,7 +329,7 @@ export const AdminFeesPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="btn btn-gold flex items-center justify-center gap-1.5 px-6 py-2.5 text-xs font-bold"
+                      className="btn btn-gold flex items-center justify-center gap-1.5 px-6 py-2.5 text-xs font-bold interactive"
                     >
                       {saving ? (
                         <div className="w-4 h-4 rounded-full border border-current border-t-transparent animate-spin" />

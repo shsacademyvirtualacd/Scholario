@@ -4,8 +4,10 @@ import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { syncPricingToFeeConfigs, getTaxonomy, getFeeConfig } from '../../lib/db';
 import { BOARD } from '../../lib/taxonomy';
+import { useMobile } from '../../hooks/useMobile';
 
 export const PriceManagerPage: React.FC = () => {
+  const isMobile = useMobile();
   const [taxonomy, setTaxonomy] = useState<any>(null);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
@@ -105,7 +107,7 @@ export const PriceManagerPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Instructions */}
           <div className="lg:col-span-1">
-            <div className="card card-elevated sticky top-24 space-y-4">
+            <div className="card card-elevated sticky top-24 space-y-4 interactive">
               <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
                 <Coins size={18} className="text-[#F4C430]" />
                 <h2 className="font-bold text-[#111111] text-base">FBISE Pricing</h2>
@@ -143,18 +145,18 @@ export const PriceManagerPage: React.FC = () => {
                               : 'Status: Price not yet set in database'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#737373]">PKR</span>
+                        <div className={`flex items-center gap-3 ${isMobile ? 'w-full bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0] mt-2' : ''}`}>
+                          <span className="text-xs font-black text-[#A3A3A3] uppercase tracking-wider">PKR</span>
                           <input
                             type="number"
                             min="0"
                             value={priceValue}
                             onChange={(e) => handlePriceChange(g.id, e.target.value)}
                             placeholder="Not set"
-                            className="input py-2.5 sm:py-2 text-sm w-36 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-bold font-mono text-right"
+                            className={`input py-2.5 text-sm bg-white border-[#E5E5E5] rounded-xl font-bold font-mono ${isMobile ? 'flex-1 text-left' : 'w-36 sm:py-2 text-right'}`}
                             required
                           />
-                          <span className="text-xs text-[#737373]">/term</span>
+                          <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">/term</span>
                         </div>
                       </div>
                     );
@@ -165,7 +167,7 @@ export const PriceManagerPage: React.FC = () => {
                   <button 
                     type="submit" 
                     disabled={saving}
-                    className="btn btn-gold flex items-center justify-center gap-2 px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`btn btn-gold flex items-center justify-center gap-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed font-bold ${isMobile ? 'w-full text-sm rounded-xl' : 'px-8 rounded-xl'}`}
                   >
                     {saving ? (
                       <>

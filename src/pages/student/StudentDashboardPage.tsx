@@ -10,6 +10,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getAttendanceForStudent, computeAttendanceStreak } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, Note, Attendance } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
@@ -72,7 +73,7 @@ const PomodoroTimer: React.FC = () => {
     : ((BREAK_SECS - seconds) / BREAK_SECS) * 100;
 
   return (
-    <div className="stat-card flex flex-col gap-3 min-w-[220px]">
+    <div className="stat-card flex flex-col gap-3 min-w-[220px] interactive">
       {/* Mode tabs */}
       <div className="flex items-center gap-1 bg-[#F5F5F5] rounded-lg p-1">
         {(['focus', 'break'] as TimerMode[]).map((m) => (
@@ -116,7 +117,7 @@ const PomodoroTimer: React.FC = () => {
       <div className="flex items-center justify-center gap-3">
         <button
           onClick={reset}
-          className="w-8 h-8 rounded-full border border-[#E5E5E5] flex items-center justify-center text-[#737373] hover:bg-[#F5F5F5] transition-colors"
+          className="w-8 h-8 rounded-full border border-[#E5E5E5] flex items-center justify-center text-[#737373] hover:bg-[#F5F5F5] transition-colors interactive"
         >
           <RotateCcw size={13} />
         </button>
@@ -173,7 +174,7 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
   // ── State B: end-of-day with no next class scheduled at all ────────
   if (state.type === 'end-of-day' && !state.nextSlot) {
     return (
-      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+      <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
           <span className="badge badge-gold text-[10px] font-bold">End of Day</span>
@@ -197,7 +198,7 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
     const remM = state.minsRemaining % 60;
     const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
     return (
-      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+      <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Now In Session</span>
           <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
@@ -250,7 +251,7 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
   };
 
   return (
-    <div className="stat-card flex flex-col justify-between min-h-[140px]">
+    <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
         <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
@@ -276,6 +277,7 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
 const StudentDashboardPage: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useMobile();
 
   const studentId = profile?.id || '';
 
@@ -423,10 +425,10 @@ const StudentDashboardPage: React.FC = () => {
       </div>
 
       {/* ── Top strip: Streak · Classes Left · Next Class · Pomodoro ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className={`${isMobile ? 'flex flex-col gap-4' : 'grid sm:grid-cols-2 xl:grid-cols-4 gap-4'}`}>
         
         {/* Streak */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
             <span className="text-xl fire-anim">🔥</span>
@@ -450,7 +452,7 @@ const StudentDashboardPage: React.FC = () => {
           </div>
         </div>
         {/* Academic Program */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide block">Academic Program</span>
             <div className="w-7 h-7 rounded-lg bg-amber-50 text-[#F4C430] flex items-center justify-center">
@@ -475,10 +477,10 @@ const StudentDashboardPage: React.FC = () => {
       </div>
 
       {/* ── Today's Classes + Recent Notes ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className={`${isMobile ? 'flex flex-col gap-5' : 'grid lg:grid-cols-2 gap-5'}`}>
         
         {/* Today's Classes */}
-        <div className="card card-elevated">
+        <div className="card card-elevated interactive">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-[#111111]">Today's Classes</h2>
             <button
@@ -526,7 +528,7 @@ const StudentDashboardPage: React.FC = () => {
         </div>
 
         {/* Recent Notes */}
-        <div className="card card-elevated flex flex-col justify-between">
+        <div className="card card-elevated flex flex-col justify-between interactive">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-[#111111]">Recent Notes</h2>
@@ -575,7 +577,7 @@ const StudentDashboardPage: React.FC = () => {
           </div>
           <button
             onClick={() => navigate('/student/notes')}
-            className="btn btn-ghost btn-sm w-full mt-4 border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold"
+            className="btn btn-ghost btn-sm w-full mt-4 border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold interactive"
           >
             View all notes
           </button>

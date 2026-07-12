@@ -33,7 +33,7 @@ const AdminFeesPage = lazy(() => import('../pages/admin/AdminFeesPage'));
 // ─── Student sub-pages (lazy) ────────────────
 const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
 const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
-// const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
+const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
 const ProfilePage    = lazy(() => import('../pages/student/ProfilePage'));
 const StudentAnnouncementsPage = lazy(() => import('../pages/student/StudentAnnouncementsPage'));
 
@@ -42,7 +42,7 @@ const ScheduleManagerPage  = lazy(() => import('../pages/admin/ScheduleManagerPa
 const TeachersPage         = lazy(() => import('../pages/admin/TeachersPage'));
 const StudentsAdminPage    = lazy(() => import('../pages/admin/StudentsAdminPage'));
 const NotesManagerPage     = lazy(() => import('../pages/admin/NotesManagerPage'));
-// const AttendanceAdminPage  = lazy(() => import('../pages/admin/AttendanceAdminPage'));
+const AttendanceAdminPage  = lazy(() => import('../pages/admin/AttendanceAdminPage'));
 const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
 const AdminProfilePage     = lazy(() => import('../pages/admin/ProfilePage'));
 const PriceManagerPage     = lazy(() => import('../pages/admin/PriceManagerPage'));
@@ -105,12 +105,10 @@ const AppRouter: React.FC = () => (
             path="/student/schedule"
             element={<ProtectedRoute requiredRole="student"><SchedulePage /></ProtectedRoute>}
           />
-          {/*
           <Route
             path="/student/attendance"
             element={<ProtectedRoute requiredRole="student"><AttendancePage /></ProtectedRoute>}
           />
-          */}
           <Route
             path="/student/profile"
             element={<ProtectedRoute requiredRole="student"><ProfilePage /></ProtectedRoute>}
@@ -153,12 +151,10 @@ const AppRouter: React.FC = () => (
             path="/admin/notes"
             element={<ProtectedRoute requiredRole="admin"><NotesManagerPage /></ProtectedRoute>}
           />
-          {/*
           <Route
             path="/admin/attendance/:classId"
             element={<ProtectedRoute requiredRole="admin"><AttendanceAdminPage /></ProtectedRoute>}
           />
-          */}
           <Route
             path="/admin/announcements"
             element={<ProtectedRoute requiredRole="admin"><AdminAnnouncementsPage /></ProtectedRoute>}

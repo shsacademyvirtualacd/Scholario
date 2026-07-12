@@ -3,6 +3,7 @@ import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen } 
 import type { ClassOffering } from '../../types';
 import { uploadNoteFileToR2, getTaxonomy } from '../../lib/db';
 import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../lib/taxonomy';
+import { useMobile } from '../../hooks/useMobile';
 
 interface TeacherNoteUploadFormProps {
   offerings: ClassOffering[];
@@ -28,6 +29,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
   initialStream,
   initialOfferingId,
 }) => {
+  const isMobile = useMobile();
   const [taxonomy, setTaxonomy] = useState<any>(null);
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>(
@@ -194,7 +196,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
         <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wide block mb-1.5">
           1. Board Curriculum:
         </span>
-        <div className="flex gap-4">
+        <div className={isMobile ? 'flex flex-col gap-2' : 'flex gap-4'}>
           <button
             type="button"
             onClick={() => setSelectedBoard('fbise')}
@@ -214,7 +216,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
         <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wide block">
           2. Cohort Grade:
         </span>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className={isMobile ? 'flex flex-col gap-2' : 'flex flex-wrap items-center gap-1.5'}>
           {activeGrades.map((g: any) => (
             <button
               key={g.id}
@@ -238,7 +240,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
           <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wide block">
             3. Stream Cohort:
           </span>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className={isMobile ? 'flex flex-col gap-2' : 'flex flex-wrap items-center gap-1.5'}>
             <button
               type="button"
               onClick={() => {
@@ -397,14 +399,14 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors"
+          className="px-4 py-2 text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors interactive"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading || !selectedFile || !offeringId}
-          className="px-5 py-2 bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2 transition-all"
+          className="px-5 py-2 bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2 transition-all interactive"
         >
           {loading && <Loader2 size={14} className="animate-spin" />}
           <span>{loading ? 'Uploading & Saving...' : 'Upload Note'}</span>

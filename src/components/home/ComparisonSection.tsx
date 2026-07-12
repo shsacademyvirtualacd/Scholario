@@ -36,8 +36,8 @@ const ComparisonSection: React.FC = () => {
         </div>
 
         {/* Table */}
-        <div className="table-container overflow-hidden">
-          <table className="w-full">
+        <div className="w-full overflow-x-auto border border-[#E5E5E5] rounded-2xl shadow-sm bg-white">
+          <table className="w-full min-w-[700px] border-collapse">
             <thead>
               <tr>
                 <th className="py-5 px-6 text-left text-xs font-bold uppercase tracking-widest text-[#A3A3A3] bg-[#FAFAFA] w-1/3">

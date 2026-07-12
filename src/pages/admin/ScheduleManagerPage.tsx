@@ -9,6 +9,7 @@ import ConfirmModal from '../../components/admin/ConfirmModal';
 import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, getTaxonomy, createAnnouncement } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
 const BOARDS = [
@@ -16,6 +17,7 @@ const BOARDS = [
 ];
 
 export const ScheduleManagerPage: React.FC = () => {
+  const isMobile = useMobile();
   const [slots, setSlots] = useState<ClassSlot[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -371,7 +373,7 @@ export const ScheduleManagerPage: React.FC = () => {
         />
         <button
           onClick={() => handleAddTrigger(0)}
-          className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-sm shrink-0 self-start sm:self-center"
+          className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-sm shrink-0 self-start sm:self-center interactive"
         >
           <Plus size={14} />
           Schedule Class
@@ -388,103 +390,200 @@ export const ScheduleManagerPage: React.FC = () => {
         </div>
       )}
 
-      {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
-      <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-        <div className="flex overflow-x-auto gap-6 border-transparent">
-          {BOARDS.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => handleBoardChange(b.id)}
-              className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
-                selectedBoard === b.id
-                  ? 'border-[#F4C430] text-[#111111]'
-                  : 'border-transparent text-[#737373] hover:text-[#111111]'
-              }`}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Secondary filters (Teacher) */}
-        <div className="flex items-center gap-3 pb-2 sm:pb-0">
-          <div className="flex items-center gap-1 text-[11px] font-bold text-[#737373]">
-            <Filter size={12} />
-            <span>Instructor:</span>
+      {/* ── Filter Bar ── */}
+      {isMobile ? (
+        /* Mobile: stacked compact filter card */
+        <div className="bg-white border border-[#E5E5E5] rounded-2xl shadow-sm overflow-hidden">
+          {/* Board row */}
+          <div className="flex items-center gap-3 px-4 pt-3 pb-2 border-b border-[#F0F0F0]">
+            <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Board:</span>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {BOARDS.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => handleBoardChange(b.id)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
+                    selectedBoard === b.id
+                      ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
+                      : 'bg-[#FAFAFA] border-[#E5E5E5] text-[#737373]'
+                  }`}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <select
-            value={teacherFilter}
-            onChange={(e) => setTeacherFilter(e.target.value)}
-            className="input py-1 px-2.5 text-[10px] bg-white border-[#E5E5E5] rounded-md cursor-pointer"
-          >
-            <option value="all">All Tutors</option>
-            {teachers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.full_name}
-              </option>
-            ))}
-          </select>
 
-          {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || teacherFilter !== 'all') && (
-            <button
-              onClick={resetFilters}
-              className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5"
-            >
-              <RotateCcw size={10} />
-              Reset
-            </button>
+          {/* Grade row */}
+          {activeGrades.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-[#F0F0F0] overflow-x-auto no-scrollbar">
+              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Grade:</span>
+              {activeGrades.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => handleGradeChange(g.id)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
+                    selectedGrade === g.id
+                      ? 'bg-[#111111] border-[#111111] text-white'
+                      : 'bg-white border-[#E5E5E5] text-[#525252]'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
           )}
-        </div>
-      </div>
 
-      {/* Grade Sub-row filter - Extremely user-friendly and class-wise */}
-      {activeGrades.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-[#FAFAFA] px-4 border-b border-[#E5E5E5]">
-          <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Cohort Grade:</span>
-          {activeGrades.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => handleGradeChange(g.id)}
-              className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                selectedGrade === g.id
-                  ? 'bg-[#111111] border-[#111111] text-white'
-                  : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-      )}
+          {/* Stream row (conditionally shown) */}
+          {selectedGrade !== 'all' && activeStreams.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-[#F0F0F0] overflow-x-auto no-scrollbar bg-[#FAFAFA]">
+              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Stream:</span>
+              <button
+                onClick={() => setSelectedStream('all')}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
+                  selectedStream === 'all'
+                    ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
+                    : 'bg-white border-[#E5E5E5] text-[#525252]'
+                }`}
+              >
+                All
+              </button>
+              {activeStreams.map((s: any) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedStream(s.id)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
+                    selectedStream === s.id
+                      ? 'bg-[#111111] border-[#111111] text-white'
+                      : 'bg-white border-[#E5E5E5] text-[#525252]'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
 
-      {/* Stream Sub-row filter if grade is selected */}
-      {selectedGrade !== 'all' && activeStreams.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 py-2 bg-[#F9F9F9] px-4 border-b border-[#E5E5E5] transition-all duration-250 animate-in slide-in-from-top-1">
-          <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream Cohort:</span>
-          <button
-            onClick={() => setSelectedStream('all')}
-            className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-              selectedStream === 'all'
-                ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
-                : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
-            }`}
-          >
-            All Stream Schedules
-          </button>
-          {activeStreams.map((s: any) => (
-            <button
-              key={s.id}
-              onClick={() => setSelectedStream(s.id)}
-              className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                selectedStream === s.id
-                  ? 'bg-[#111111] border-[#111111] text-white'
-                  : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
-              }`}
+          {/* Instructor + Reset row */}
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <Filter size={11} className="text-[#A3A3A3] shrink-0" />
+            <span className="text-[10px] font-bold text-[#737373] shrink-0">Instructor:</span>
+            <select
+              value={teacherFilter}
+              onChange={(e) => setTeacherFilter(e.target.value)}
+              className="input flex-1 py-1.5 px-2.5 text-[11px] bg-white border-[#E5E5E5] rounded-lg cursor-pointer"
             >
-              {s.name} Stream
-            </button>
-          ))}
+              <option value="all">All Tutors</option>
+              {teachers.map((t) => (
+                <option key={t.id} value={t.id}>{t.full_name}</option>
+              ))}
+            </select>
+            {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || teacherFilter !== 'all') && (
+              <button
+                onClick={resetFilters}
+                className="flex items-center gap-0.5 text-[10px] font-black text-amber-600 hover:text-[#111111] shrink-0 interactive"
+              >
+                <RotateCcw size={10} />
+                Reset
+              </button>
+            )}
+          </div>
         </div>
+      ) : (
+        /* Desktop: original tab + filter bar layout */
+        <>
+          <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+            <div className="flex overflow-x-auto gap-6 border-transparent">
+              {BOARDS.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => handleBoardChange(b.id)}
+                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+                    selectedBoard === b.id
+                      ? 'border-[#F4C430] text-[#111111]'
+                      : 'border-transparent text-[#737373] hover:text-[#111111]'
+                  }`}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3 pb-2 sm:pb-0">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[#737373]">
+                <Filter size={12} />
+                <span>Instructor:</span>
+              </div>
+              <select
+                value={teacherFilter}
+                onChange={(e) => setTeacherFilter(e.target.value)}
+                className="input py-1 px-2.5 text-[10px] bg-white border-[#E5E5E5] rounded-md cursor-pointer"
+              >
+                <option value="all">All Tutors</option>
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>{t.full_name}</option>
+                ))}
+              </select>
+              {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || teacherFilter !== 'all') && (
+                <button
+                  onClick={resetFilters}
+                  className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
+                >
+                  <RotateCcw size={10} />
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {activeGrades.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-[#FAFAFA] px-4 border-b border-[#E5E5E5]">
+              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Cohort Grade:</span>
+              {activeGrades.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => handleGradeChange(g.id)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                    selectedGrade === g.id
+                      ? 'bg-[#111111] border-[#111111] text-white'
+                      : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selectedGrade !== 'all' && activeStreams.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 py-2 bg-[#F9F9F9] px-4 border-b border-[#E5E5E5] transition-all duration-250 animate-in slide-in-from-top-1">
+              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream Cohort:</span>
+              <button
+                onClick={() => setSelectedStream('all')}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                  selectedStream === 'all'
+                    ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
+                    : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                }`}
+              >
+                All Stream Schedules
+              </button>
+              {activeStreams.map((s: any) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedStream(s.id)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                    selectedStream === s.id
+                      ? 'bg-[#111111] border-[#111111] text-white'
+                      : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                  }`}
+                >
+                  {s.name} Stream
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Timetable Weekly Columns */}

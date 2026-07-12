@@ -3,6 +3,7 @@ import { X, ExternalLink, Download, Loader2 } from 'lucide-react';
 import type { Note } from '../../types';
 import { downloadNoteBlob } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
+import { useMobile } from '../../hooks/useMobile';
 import PdfViewer from '../ui/PdfViewer';
 
 interface NoteViewerModalProps {
@@ -11,6 +12,7 @@ interface NoteViewerModalProps {
 }
 
 export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose }) => {
+  const isMobile = useMobile();
   const [activeUrl, setActiveUrl] = useState<string>('');
   const [authToken, setAuthToken] = useState<string>('');
   const [loadingUrl, setLoadingUrl] = useState<boolean>(false);
@@ -63,9 +65,11 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm">
       {/* Modal Container */}
-      <div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl border border-[#E5E5E5] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className={`bg-white w-full flex flex-col shadow-2xl border border-[#E5E5E5] overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${
+        isMobile ? 'h-full rounded-none' : 'max-w-4xl h-[85vh] rounded-2xl'
+      }`}>
         
         {/* Header */}
         <div className="h-14 border-b border-[#E5E5E5] px-4 md:px-6 flex items-center justify-between bg-[#FAFAFA] shrink-0">
@@ -82,36 +86,36 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
                 className="p-1.5 rounded-lg border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] transition-colors flex items-center gap-1 text-[11px] font-bold"
               >
                 <ExternalLink size={12} />
-                Open Tab
+                {!isMobile && 'Open Tab'}
               </a>
             ) : (
               <span className="p-1.5 rounded-lg border border-[#E5E5E5] text-[#A3A3A3] text-[11px] font-bold flex items-center gap-1 opacity-50">
                 <ExternalLink size={12} />
-                Open Tab
+                {!isMobile && 'Open Tab'}
               </span>
             )}
 
             <button
               onClick={handleDownload}
               disabled={downloading || (!activeUrl && !note.file_path)}
-              className="p-1.5 rounded-lg border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+              className="p-1.5 rounded-lg border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer interactive"
             >
               {downloading ? (
                 <>
                   <Loader2 size={12} className="animate-spin" />
-                  {progress > 0 ? `${progress}%` : 'Downloading...'}
+                  {!isMobile && (progress > 0 ? `${progress}%` : 'Downloading...')}
                 </>
               ) : (
                 <>
                   <Download size={12} />
-                  Download
+                  {!isMobile && 'Download'}
                 </>
               )}
             </button>
 
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg hover:bg-[#E5E5E5] flex items-center justify-center text-[#525252] hover:text-[#111111] transition-colors"
+              className="w-8 h-8 rounded-lg hover:bg-[#E5E5E5] flex items-center justify-center text-[#525252] hover:text-[#111111] transition-colors interactive"
             >
               <X size={18} />
             </button>

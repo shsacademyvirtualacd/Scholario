@@ -3,9 +3,11 @@ import { Megaphone, Calendar, ShieldAlert } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { getAnnouncements } from '../../lib/db';
+import { useMobile } from '../../hooks/useMobile';
 import type { Announcement } from '../../types';
 
 export const TeacherAnnouncementsPage: React.FC = () => {
+  const isMobile = useMobile();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +22,7 @@ export const TeacherAnnouncementsPage: React.FC = () => {
   return (
     <TeacherShell>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className={`flex ${isMobile ? 'flex-col gap-4' : 'flex-row items-center justify-between gap-4'}`}>
           <SectionHeader
             title="School & Class Announcements"
             subtitle="Read institutional updates, alerts, and notices scoped to your assigned classes."
@@ -53,7 +55,7 @@ export const TeacherAnnouncementsPage: React.FC = () => {
               {announcements.map((ann) => (
                 <div
                   key={ann.id}
-                  className={`p-5 rounded-xl border transition-all flex items-start gap-4 ${
+                  className={`p-5 rounded-xl border transition-all flex ${isMobile ? 'flex-col gap-3' : 'items-start gap-4'} ${
                     ann.severity === 'crucial'
                       ? 'bg-[#FEF2F2]/40 border-[#FECACA] shadow-2xs'
                       : 'bg-white border-[#E5E5E5] hover:border-[#D4D4D4]'

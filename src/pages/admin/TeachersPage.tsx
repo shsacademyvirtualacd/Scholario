@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, GraduationCap, Sparkles } from 'lucide-react';
+import { Search, Filter, GraduationCap, Sparkles, Eye } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import TeacherTable from '../../components/admin/teachers/TeacherTable';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import TeacherDetailPanel from '../../components/admin/teachers/TeacherDetailPanel';
 import { getAllTeachers, getAllOfferings, getAllSlots, getAllEnrollments } from '../../lib/db';
+import { useMobile } from '../../hooks/useMobile';
 import type { Teacher, ClassOffering, ClassSlot, Enrollment } from '../../types';
 
 export const TeachersPage: React.FC = () => {
+  const isMobile = useMobile();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [slots, setSlots] = useState<ClassSlot[]>([]);
@@ -54,6 +56,26 @@ export const TeachersPage: React.FC = () => {
     setDrawerOpen(true);
   };
 
+  const getWorkload = (teacherId: string) => {
+    const teacherOfferings = offerings.filter((o) => o.teacher_id === teacherId);
+    const offeringIds = teacherOfferings.map((o) => o.id);
+    const classesCount = slots.filter((s) => offeringIds.includes(s.offering_id || '')).length;
+    const studentCount = enrollments.filter((e) => offeringIds.includes(e.offering_id || '')).length;
+    
+    // Unique streams count
+    const streams = Array.from(new Set(teacherOfferings.map((o) => o.subject))).join(', ') || 'N/A';
+    return { classesCount, studentCount, streams };
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <AdminShell>
       {/* Page Header */}
@@ -70,7 +92,7 @@ export const TeachersPage: React.FC = () => {
       {/* Analytics Counter Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Total Card */}
-        <div className="stat-card">
+        <div className="stat-card interactive">
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
               <GraduationCap size={15} />
@@ -82,7 +104,7 @@ export const TeachersPage: React.FC = () => {
         </div>
 
         {/* Active Card */}
-        <div className="stat-card">
+        <div className="stat-card interactive">
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <GraduationCap size={15} />
@@ -94,7 +116,7 @@ export const TeachersPage: React.FC = () => {
         </div>
 
         {/* Inactive Card */}
-        <div className="stat-card">
+        <div className="stat-card interactive">
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
               <GraduationCap size={15} />
@@ -107,7 +129,7 @@ export const TeachersPage: React.FC = () => {
       </div>
 
       {/* Roster Controls */}
-      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 interactive">
         {/* Search */}
         <div className="relative w-full sm:max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
@@ -138,12 +160,63 @@ export const TeachersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Teacher Table */}
+      {/* Teacher Table or Card List */}
       {filteredTeachers.length === 0 ? (
-        <div className="card text-center py-16">
+        <div className="card text-center py-16 interactive">
           <Sparkles size={28} className="mx-auto text-[#A3A3A3] mb-3 animate-pulse" />
           <h3 className="text-sm font-bold text-[#111111]">No matching teachers found</h3>
           <p className="text-xs text-[#737373] mt-1">Try resetting your status filters or typing a different query name.</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-4">
+          {filteredTeachers.map((teacher) => {
+            const workload = getWorkload(teacher.id);
+            return (
+              <div key={teacher.id} className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-[#FFF9E6] text-[#F4C430] border border-[#FDE68A] flex items-center justify-center text-xs font-bold shrink-0">
+                      {getInitials(teacher.full_name)}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-semibold text-[#111111] block leading-tight truncate">{teacher.full_name}</span>
+                      <span className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mt-0.5 block">
+                        Joined {teacher.joining_date || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleViewDetails(teacher)}
+                    className="p-2 bg-[#FAFAFA] hover:bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-zinc-600 transition-colors"
+                  >
+                    <Eye size={14} />
+                  </button>
+                </div>
+                <div className="text-xs text-[#525252] border-t border-[#F5F5F5] pt-3 space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-[#A3A3A3]">Email:</span>
+                    <span>{teacher.email || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A3A3A3]">Phone:</span>
+                    <span>{teacher.phone || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A3A3A3]">Subjects Assigned:</span>
+                    <span className="font-semibold max-w-[150px] truncate" title={workload.streams}>{workload.streams}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A3A3A3]">Classes / Wk:</span>
+                    <span className="font-bold text-[#111111]">{workload.classesCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A3A3A3]">Enrolled Students:</span>
+                    <span className="font-bold text-[#111111]">{workload.studentCount}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <TeacherTable
@@ -155,16 +228,20 @@ export const TeachersPage: React.FC = () => {
         />
       )}
 
-      {/* Slider Drawer */}
+      {/* Slide-over Detail / Form Drawer */}
       <AdminDrawer
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
           setSelectedTeacher(null);
         }}
-        title="Teacher Profile Details"
+        title="Teacher Profile & Workload"
       >
-        {selectedTeacher && <TeacherDetailPanel teacher={selectedTeacher} />}
+        {selectedTeacher && (
+          <TeacherDetailPanel
+            teacher={selectedTeacher}
+          />
+        )}
       </AdminDrawer>
     </AdminShell>
   );

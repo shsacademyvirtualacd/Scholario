@@ -64,13 +64,13 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendan
         <div className="flex items-center gap-1">
           <button
             onClick={prevMonth}
-            className="w-8 h-8 rounded-lg border border-[#E5E5E5] hover:bg-[#F5F5F5] flex items-center justify-center text-[#525252] transition-colors"
+            className="w-8 h-8 rounded-lg border border-[#E5E5E5] hover:bg-[#F5F5F5] flex items-center justify-center text-[#525252] transition-colors interactive"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={nextMonth}
-            className="w-8 h-8 rounded-lg border border-[#E5E5E5] hover:bg-[#F5F5F5] flex items-center justify-center text-[#525252] transition-colors"
+            className="w-8 h-8 rounded-lg border border-[#E5E5E5] hover:bg-[#F5F5F5] flex items-center justify-center text-[#525252] transition-colors interactive"
           >
             <ChevronRight size={16} />
           </button>

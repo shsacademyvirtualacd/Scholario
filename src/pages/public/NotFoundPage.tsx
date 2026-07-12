@@ -24,12 +24,12 @@ const NotFoundPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-center items-center p-6">
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-center items-center p-6 page-transition">
       <div className="absolute top-8 left-8">
         <Logo size="md" variant="full" />
       </div>
 
-      <div className="w-full max-w-md bg-white border border-[#E5E5E5] rounded-xl p-10 shadow-sm text-center">
+      <div className="w-full max-w-md bg-white border border-[#E5E5E5] rounded-xl p-10 shadow-sm text-center card interactive">
         <div className="w-16 h-16 rounded-full bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center mx-auto mb-6">
           <FileQuestion size={32} className="text-[#A3A3A3]" />
         </div>
@@ -43,7 +43,7 @@ const NotFoundPage: React.FC = () => {
 
         <button
           onClick={handleReturn}
-          className="w-full py-3.5 px-4 bg-[#111111] hover:bg-[#262626] text-white rounded-xl font-semibold text-sm transition-colors active:scale-[0.98]"
+          className="w-full py-3.5 px-4 bg-[#111111] hover:bg-[#262626] text-white rounded-xl font-semibold text-sm transition-colors active:scale-[0.98] interactive"
         >
           {session ? 'Return to Dashboard' : 'Back to Login'}
         </button>

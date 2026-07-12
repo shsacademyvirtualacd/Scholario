@@ -313,6 +313,60 @@
     to { opacity: 1; }
   }
 
+  @media (prefers-reduced-motion: no-preference) {
+    .interactive {
+      transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+      will-change: transform, box-shadow;
+    }
+    
+    /* Ignore elements disabled via attribute or class */
+    .interactive:not(:disabled):not(.disabled):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+      z-index: 10;
+    }
+    
+    .interactive:not(:disabled):not(.disabled):active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .list-fade-in > * {
+      opacity: 0;
+      animation: listFadeInItem 300ms ease forwards;
+    }
+    
+    .list-fade-in > *:nth-child(1) { animation-delay: 40ms; }
+    .list-fade-in > *:nth-child(2) { animation-delay: 80ms; }
+    .list-fade-in > *:nth-child(3) { animation-delay: 120ms; }
+    .list-fade-in > *:nth-child(4) { animation-delay: 160ms; }
+    .list-fade-in > *:nth-child(5) { animation-delay: 200ms; }
+    .list-fade-in > *:nth-child(n+6) { animation-delay: 240ms; }
+
+    @keyframes listFadeInItem {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-transition {
+      animation: pageTransitionFade 150ms ease-out forwards;
+    }
+    
+    @keyframes pageTransitionFade {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .notif-pulse {
+      animation: notifPulseAnim 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    @keyframes notifPulseAnim {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.15); }
+    }
+  }
+
   /* ========================
      SKELETON LOADERS
   ======================== */

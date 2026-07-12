@@ -12,6 +12,7 @@ import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, calcDuration
 } from '../../lib/scheduleUtils';
+import { useMobile } from '../../hooks/useMobile';
 
 const DAYS_OF_WEEK = [
   { label: 'Monday', index: 0 },
@@ -25,6 +26,7 @@ const DAYS_OF_WEEK = [
 export const TeacherSchedulePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { profile } = useAuth();
+  const isMobile = useMobile();
   const teacherId = profile?.id || 't1';
 
   // PKT-aware next-class banner state (re-ticks every 60s)
@@ -117,7 +119,7 @@ export const TeacherSchedulePage: React.FC = () => {
 
       {/* Next Class Banner — 4-state smart display */}
       {bannerState.type !== 'end-of-day' && (
-        <div className="bg-[#FFFDF0] border border-[#F4C43033] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm mb-6">
+        <div className={`bg-[#FFFDF0] border border-[#F4C43033] rounded-2xl p-4 flex ${isMobile ? 'flex-col gap-4' : 'flex-row items-center justify-between gap-4'} shadow-sm mb-6`}>
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
               bannerState.type === 'ongoing' ? 'bg-emerald-500' : 'bg-[#F4C430]'
@@ -168,7 +170,7 @@ export const TeacherSchedulePage: React.FC = () => {
       )}
 
       {/* Day Selector Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 bg-white p-2 border border-[#E5E5E5] rounded-xl shadow-sm mb-6">
+      <div className={`${isMobile ? 'grid grid-cols-3 gap-2' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'} py-0.5 bg-white p-2 border border-[#E5E5E5] rounded-xl shadow-sm mb-6`}>
         {DAYS_OF_WEEK.map((day) => (
           <button
             key={day.index}
@@ -187,7 +189,7 @@ export const TeacherSchedulePage: React.FC = () => {
       {/* Slots List */}
       <div className="space-y-4">
         {filteredSlots.length === 0 ? (
-          <div className="card text-center py-20 bg-white border border-[#E5E5E5] rounded-2xl flex flex-col items-center justify-center">
+          <div className="card text-center py-20 bg-white border border-[#E5E5E5] rounded-2xl flex flex-col items-center justify-center interactive">
             <CheckCircle2 size={32} className="text-[#D4D4D4] mb-2 animate-bounce" />
             <h3 className="text-sm font-bold text-[#111111]">No classes scheduled</h3>
             <p className="text-xs text-[#737373] mt-1">You have no scheduled lectures for this day.</p>
@@ -202,7 +204,7 @@ export const TeacherSchedulePage: React.FC = () => {
             return (
               <div
                 key={slot.id}
-                className={`bg-white border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-sm ${
+                className={`bg-white border rounded-xl p-4 flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between gap-4'} transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-sm ${
                   isCancelled ? 'opacity-60 bg-gray-50' : ''
                 }`}
                 style={{ borderLeft: isCancelled ? '4px solid #D4D4D4' : `4px solid ${subjectColor}` }}

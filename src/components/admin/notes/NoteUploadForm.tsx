@@ -469,14 +469,14 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors disabled:opacity-50"
+          className="px-4 py-2 text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors disabled:opacity-50 interactive"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading || !selectedFile || !offeringId}
-          className="px-5 py-2 bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2 transition-all"
+          className="px-5 py-2 bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2 transition-all interactive"
         >
           {loading && <Loader2 size={14} className="animate-spin" />}
           <span>{loading ? (done ? 'Saving...' : `Uploading ${uploadPct}%`) : 'Upload Note'}</span>

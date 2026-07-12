@@ -85,7 +85,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button 
               onClick={() => onNavigate && onNavigate('login')}
-              className="btn btn-gold btn-lg"
+              className="btn btn-gold btn-lg interactive"
             >
               Get Started
             </button>
@@ -102,18 +102,22 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <p className="text-[#737373] text-sm leading-relaxed mb-6 max-w-xs">
               Pakistan's premier Learning Management System, built for modern educators and ambitious learners.
             </p>
-            <div className="space-y-2 text-sm text-[#737373]">
+            <div className="space-y-2.5 text-sm text-[#737373]">
               <div className="flex items-center gap-2.5">
-                <MapPin size={14} className="shrink-0" style={{ color: '#F4C430' }} />
-                Rawalpindi, Punjab, Pakistan
+                <MapPin size={14} className="shrink-0 text-[#F4C430]" />
+                <span>Rawalpindi, Punjab, Pakistan</span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Mail size={14} className="shrink-0" style={{ color: '#F4C430' }} />
-                shs.academy.virtual@gmail.com
+                <Mail size={14} className="shrink-0 text-[#F4C430]" />
+                <a href="mailto:shs.academy.virtual@gmail.com" className="hover:text-white transition-colors break-all">
+                  shs.academy.virtual@gmail.com
+                </a>
               </div>
               <div className="flex items-center gap-2.5">
-                <Phone size={14} className="shrink-0" style={{ color: '#F4C430' }} />
-                +92 305 8969050
+                <Phone size={14} className="shrink-0 text-[#F4C430]" />
+                <a href="tel:+9230586969050" className="hover:text-white transition-colors">
+                  +92 305 86969050
+                </a>
               </div>
             </div>
           </div>

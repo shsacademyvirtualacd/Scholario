@@ -5,10 +5,12 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, getTaxonomy } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useMobile } from '../../hooks/useMobile';
 import type { Announcement, ClassEntry, StreamEntry } from '../../types';
 
 export const AdminAnnouncementsPage: React.FC = () => {
   const { profile } = useAuth();
+  const isMobile = useMobile();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassEntry[]>([]);
@@ -171,7 +173,7 @@ export const AdminAnnouncementsPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Create Announcement Form */}
           <div className="lg:col-span-1">
-            <div className="card card-elevated sticky top-24">
+            <div className={`card card-elevated ${isMobile ? '' : 'sticky top-24'}`}>
               <div className="flex items-center gap-2 mb-4 border-b border-[#F5F5F5] pb-3">
                 <Sparkles size={18} className="text-[#F4C430]" />
                 <h2 className="font-bold text-[#111111] text-base">New Announcement</h2>
@@ -319,7 +321,7 @@ export const AdminAnnouncementsPage: React.FC = () => {
                   />
                 </div>
 
-                <button type="submit" disabled={submitting} className="btn btn-gold w-full mt-2 font-extrabold">
+                <button type="submit" disabled={submitting} className="btn btn-gold w-full mt-2 font-extrabold interactive">
                   <Plus size={16} />
                   {submitting ? 'Publishing...' : 'Publish Update'}
                 </button>
@@ -410,7 +412,7 @@ export const AdminAnnouncementsPage: React.FC = () => {
 
                       <button
                         onClick={() => handleDeleteTrigger(ann.id)}
-                        className="p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                        className={`p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all shrink-0 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                         title="Remove Announcement"
                       >
                         <Trash2 size={15} />

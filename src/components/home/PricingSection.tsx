@@ -161,7 +161,7 @@ const PricingSection: React.FC = () => {
 
               <a
                 href="/register"
-                className="btn btn-gold btn-md w-full flex items-center justify-center gap-1"
+                className="btn btn-gold btn-md w-full flex items-center justify-center gap-1 interactive"
               >
                 Get Started
                 <ArrowRight size={14} />

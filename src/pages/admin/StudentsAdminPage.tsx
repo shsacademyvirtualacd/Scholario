@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Users, Sparkles } from 'lucide-react';
+import { Search, Filter, Users, Sparkles, Eye } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StudentTable from '../../components/admin/students/StudentTable';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import StudentDetailPanel from '../../components/admin/students/StudentDetailPanel';
 import { getAllStudents, getAllEnrollments, getAllOfferings } from '../../lib/db';
+import { useMobile } from '../../hooks/useMobile';
 import type { Profile, Enrollment, ClassOffering } from '../../types';
 
 export const StudentsAdminPage: React.FC = () => {
+  const isMobile = useMobile();
   const [students, setStudents] = useState<Profile[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
@@ -45,6 +47,38 @@ export const StudentsAdminPage: React.FC = () => {
     setDrawerOpen(true);
   };
 
+  const getStats = (studentId: string) => {
+    const studentEnrollments = enrollments.filter((e) => e.student_id === studentId);
+    const classesCount = studentEnrollments.length;
+    
+    let boardAndGrade = 'No active classes';
+    if (studentEnrollments.length > 0) {
+      const primaryOffering = offerings.find(o => o.id === studentEnrollments[0].offering_id);
+      if (primaryOffering) {
+        boardAndGrade = `Grade ${primaryOffering.grade} · FBISE`;
+      }
+    }
+    return { classesCount, boardAndGrade };
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getStreamColor = (stream?: string | null) => {
+    switch (stream) {
+      case 'pre-medical': return 'badge-gold bg-amber-50 text-amber-700 border-amber-200';
+      case 'pre-engineering': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'ics': return 'bg-purple-50 text-purple-700 border-purple-200';
+      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+  };
+
   return (
     <AdminShell>
       {/* Page Header */}
@@ -61,7 +95,7 @@ export const StudentsAdminPage: React.FC = () => {
       {/* Analytics Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Total Card */}
-        <div className="stat-card">
+        <div className="stat-card interactive">
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
               <Users size={15} />
@@ -73,7 +107,7 @@ export const StudentsAdminPage: React.FC = () => {
         </div>
 
         {/* Avg Attendance Card */}
-        <div className="stat-card relative opacity-40 select-none">
+        <div className="stat-card relative opacity-40 select-none interactive">
           <span className="absolute top-2 right-2 text-[8px] bg-zinc-200 text-zinc-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
             Soon
           </span>
@@ -88,7 +122,7 @@ export const StudentsAdminPage: React.FC = () => {
         </div>
 
         {/* Attendance Warnings Card */}
-        <div className="stat-card relative opacity-40 select-none">
+        <div className="stat-card relative opacity-40 select-none interactive">
           <span className="absolute top-2 right-2 text-[8px] bg-zinc-200 text-zinc-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
             Soon
           </span>
@@ -104,7 +138,7 @@ export const StudentsAdminPage: React.FC = () => {
       </div>
 
       {/* Roster Controls */}
-      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col sm:flex-row items-center justify-between gap-4 interactive">
         {/* Search */}
         <div className="relative w-full sm:max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
@@ -136,12 +170,55 @@ export const StudentsAdminPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Students Table */}
+      {/* Students Table or Card List */}
       {filteredStudents.length === 0 ? (
-        <div className="card text-center py-16">
+        <div className="card text-center py-16 interactive">
           <Sparkles size={28} className="mx-auto text-[#A3A3A3] mb-3 animate-pulse" />
           <h3 className="text-sm font-bold text-[#111111]">No matching students found</h3>
           <p className="text-xs text-[#737373] mt-1">Try tweaking your search keywords or choosing a different stream filter.</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-4">
+          {filteredStudents.map((student) => {
+            const stats = getStats(student.id);
+            const streamLabel = student.stream
+              ? student.stream.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+              : 'General';
+
+            return (
+              <div key={student.id} className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center text-xs font-bold text-[#111111] shrink-0">
+                      {getInitials(student.full_name)}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-semibold text-[#111111] block leading-tight truncate">{student.full_name}</span>
+                      <span className="text-[10px] text-[#737373] mt-0.5 block">{student.phone || 'No Phone'}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleViewTrigger(student)}
+                    className="p-2 bg-[#FAFAFA] hover:bg-[#F5F5F5] border border-[#E5E5E5] rounded-xl text-zinc-600 transition-colors"
+                  >
+                    <Eye size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 border-t border-[#F5F5F5] pt-3 text-xs">
+                  <div>
+                    <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Stream</span>
+                    <span className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${getStreamColor(student.stream)}`}>
+                      {streamLabel}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Class</span>
+                    <span className="font-semibold text-[#525252] mt-1 block">{stats.boardAndGrade}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <StudentTable

@@ -65,7 +65,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors"
+          className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors interactive"
         >
           <X size={16} />
         </button>
@@ -93,7 +93,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="flex items-center justify-end gap-3 mt-6">
           <button
             onClick={onClose}
-            className="btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5]"
+            className="btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] interactive"
           >
             {cancelLabel}
           </button>

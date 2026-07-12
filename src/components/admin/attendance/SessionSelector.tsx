@@ -27,7 +27,7 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
   };
 
   return (
-    <div className="card bg-white border border-[#E5E5E5] p-5 flex flex-col md:flex-row items-stretch md:items-center gap-4 shadow-sm">
+    <div className="card bg-white border border-[#E5E5E5] p-5 flex flex-col md:flex-row items-stretch md:items-center gap-4 shadow-sm interactive">
       
       {/* Slot Selector Dropdown */}
       <div className="flex-1 space-y-1">

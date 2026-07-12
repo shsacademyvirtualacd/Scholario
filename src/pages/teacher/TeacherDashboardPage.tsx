@@ -21,6 +21,7 @@ import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, calcDuration
 } from '../../lib/scheduleUtils';
+import { useMobile } from '../../hooks/useMobile';
 
 // ─── Live Link Editor for Teacher ────────────────────────────────────
 const LiveLinkEditor: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
@@ -54,7 +55,7 @@ const LiveLinkEditor: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
           autoFocus
           onKeyDown={e => e.key === 'Enter' && handleSave()}
         />
-        <button onClick={handleSave} disabled={isSaving} className="p-1 bg-[#F4C430] text-[#111111] rounded hover:bg-[#E5B520]">
+        <button onClick={handleSave} disabled={isSaving} className="p-1 bg-[#F4C430] text-[#111111] rounded hover:bg-[#E5B520] interactive">
           <Check size={12} />
         </button>
         <button onClick={() => { setIsEditing(false); setLinkVal(slot.room_or_link || ''); }} className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
@@ -103,7 +104,7 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
   // ── State B: end-of-day with no next class scheduled at all ────────
   if (state.type === 'end-of-day' && !state.nextSlot) {
     return (
-      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+      <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
           <span className="badge badge-gold text-[10px] font-bold">End of Day</span>
@@ -127,7 +128,7 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
     const remM = state.minsRemaining % 60;
     const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
     return (
-      <div className="stat-card flex flex-col justify-between min-h-[140px]">
+      <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Now In Session</span>
           <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
@@ -183,7 +184,7 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
   };
 
   return (
-    <div className="stat-card flex flex-col justify-between min-h-[140px]">
+    <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
         <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
@@ -210,6 +211,7 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
 export const TeacherDashboardPage: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useMobile();
 
   const teacherId = profile?.id || 't1';
 
@@ -351,9 +353,9 @@ export const TeacherDashboardPage: React.FC = () => {
       </div>
 
       {/* ── Metrics Strip ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-2 xl:grid-cols-4 gap-4'}>
         {/* Classes Assigned */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Assigned Classes</span>
             <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -371,7 +373,7 @@ export const TeacherDashboardPage: React.FC = () => {
         </div>
 
         {/* Total Students */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Enrolled Students</span>
             <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -392,7 +394,7 @@ export const TeacherDashboardPage: React.FC = () => {
         <TeacherNextClassWidget slots={allSlots} />
 
         {/* Classes Today */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px]">
+        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Classes Today</span>
             <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center animate-pulse">
@@ -411,10 +413,10 @@ export const TeacherDashboardPage: React.FC = () => {
       </div>
 
       {/* ── Today's Timetable + Class Roster Section ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={isMobile ? 'flex flex-col gap-6' : 'grid grid-cols-3 gap-6'}>
         
         {/* Today's Lectures */}
-        <div className="card card-elevated lg:col-span-1">
+        <div className="card card-elevated lg:col-span-1 interactive">
           <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-2">
             <h2 className="text-sm font-bold text-[#111111]">Today's Schedule</h2>
             <button
@@ -461,8 +463,8 @@ export const TeacherDashboardPage: React.FC = () => {
         </div>
 
         {/* Class Rosters */}
-        <div className="card card-elevated lg:col-span-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-[#F5F5F5]">
+        <div className={`card card-elevated ${isMobile ? '' : 'col-span-2'}`}>
+          <div className={`flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between gap-3'} mb-4 pb-2 border-b border-[#F5F5F5]`}>
             <div>
               <h2 className="text-sm font-bold text-[#111111]">Class Rosters</h2>
               <p className="text-[10px] text-[#737373] font-medium mt-0.5">Secure, admin-assigned class student lists.</p>

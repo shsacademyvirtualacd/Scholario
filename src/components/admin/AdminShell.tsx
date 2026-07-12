@@ -129,7 +129,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           </button>
           <button
             onClick={signOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2"
+            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2 interactive"
           >
             <LogOut size={17} className="shrink-0" />
             <span>Sign Out</span>
@@ -138,17 +138,17 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       </aside>
 
       {/* Main container */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden page-transition">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full overflow-x-hidden">
+          <div className="flex items-center gap-3 min-w-0">
             <button
-              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111]"
+              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111] shrink-0 interactive"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
-            <div className="relative w-full max-w-[150px] xs:max-w-xs sm:max-w-md transition-all duration-200">
+            <div className="relative w-full max-w-[120px] xs:max-w-xs sm:max-w-md transition-all duration-200 min-w-0">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
               <input
                 placeholder="Search students, teachers…"
@@ -157,7 +157,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <NotificationBell />
             <button
               onClick={() => navigate('/admin/profile')}
@@ -168,8 +168,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           </div>
         </header>
 
-        {/* Page body */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full">
+        {/* Content area */}
+        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden bg-[#FAFAFA] max-w-full">
           {children}
         </main>
       </div>

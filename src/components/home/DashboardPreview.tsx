@@ -1,13 +1,75 @@
 import React from 'react';
 import {
-  LayoutDashboard, BookOpen, Calendar, Bell, Search, Clock, Play, RotateCcw
+  LayoutDashboard, BookOpen, Calendar, Bell, Search, Clock, Play, RotateCcw, Menu
 } from 'lucide-react';
 import Logo from '../ui/Logo';
+import { useMobile } from '../../hooks/useMobile';
 
 const DashboardPreview: React.FC = () => {
+  const isMobile = useMobile();
+  if (isMobile) {
+    return (
+      <div 
+        className="relative w-full max-w-[320px] mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl border-[8px] border-[#111111] bg-[#FAFAFA]" 
+        style={{ aspectRatio: '9/19', fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+      >
+        {/* Dynamic Island / Notch area */}
+        <div className="absolute top-0 inset-x-0 h-5 flex justify-center z-20">
+           <div className="w-24 h-4 bg-[#111111] rounded-b-xl" />
+        </div>
+        
+        {/* Mobile Header */}
+        <div className="bg-[#111111] text-white px-5 pt-8 pb-4 flex items-center justify-between relative z-10">
+           <Logo size="sm" variant="icon" darkMode />
+           <div className="w-8 h-8 rounded-lg bg-[#262626] flex items-center justify-center">
+             <Menu size={14} className="text-white" />
+           </div>
+        </div>
+        
+        {/* Mobile Content */}
+        <div className="p-4 space-y-4">
+           <div>
+             <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Good Morning</div>
+             <div className="text-lg font-extrabold text-[#111111] leading-tight">Ahmed Khan</div>
+           </div>
+           
+           <div className="bg-white rounded-2xl border border-[#E5E5E5] p-4 shadow-sm">
+             <div className="flex items-center justify-between mb-3 border-b border-[#F0F0F0] pb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#F4C430]">Up Next</span>
+                <span className="text-[10px] font-bold text-[#A3A3A3] flex items-center gap-1"><Clock size={10} /> 10:00 AM</span>
+             </div>
+             <div className="flex gap-3 items-center">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-xl shrink-0">🧪</div>
+                <div>
+                   <div className="text-sm font-bold text-[#111111] leading-tight">Chemistry</div>
+                   <div className="text-[11px] text-[#737373] mt-0.5 font-medium">Ch 4: Organic Basics</div>
+                </div>
+             </div>
+             <button className="w-full mt-4 bg-[#111111] text-white text-[11px] font-bold py-2.5 rounded-xl shadow-sm hover:scale-[1.02] transition-transform interactive">
+               Join Live Class
+             </button>
+           </div>
+
+           <div className="bg-white rounded-2xl border border-[#E5E5E5] p-4 shadow-sm">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#111111] mb-2">Recent Notes</div>
+              <div className="flex items-center gap-2.5 min-w-0 bg-[#FAFAFA] p-2 rounded-xl">
+                 <div className="w-8 h-8 rounded-lg bg-[#FFFBF0] flex items-center justify-center shrink-0 border border-[#FDF3C8]">
+                   <span className="text-xs">📔</span>
+                 </div>
+                 <div className="min-w-0 flex-1">
+                   <div className="text-[10px] font-bold text-[#111111] truncate">Algebraic Expressions</div>
+                   <div className="text-[9px] text-[#737373] mt-0.5 truncate">Mathematics</div>
+                 </div>
+              </div>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="relative w-full rounded-2xl overflow-hidden shadow-2xl border border-[#E5E5E5] hidden md:block"
+      className="relative w-full rounded-2xl overflow-hidden shadow-2xl border border-[#E5E5E5]"
       style={{
         background: '#FAFAFA',
         aspectRatio: '16/10',

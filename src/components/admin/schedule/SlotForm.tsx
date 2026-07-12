@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useMobile } from '../../../hooks/useMobile';
 import type { ClassSlot, ClassOffering } from '../../../types';
 
 interface SlotFormProps {
@@ -39,6 +40,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   onSave,
   onCancel,
 }) => {
+  const isMobile = useMobile();
   const [slotMode, setSlotMode] = useState<'offering' | 'custom'>('offering');
   const [offeringId, setOfferingId] = useState('');
   const [customTitle, setCustomTitle] = useState('');
@@ -179,7 +181,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
         <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
           <span>1. Select Target Class & Stream</span>
         </div>
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className={`grid gap-3.5 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
           <div className="space-y-1">
             <label className="text-xs font-bold text-[#262626] block">Class / Cohort Grade</label>
             <select
@@ -332,7 +334,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           <label className="text-[10px] font-extrabold text-blue-900 block uppercase tracking-wider">
             ⚡ FBISE Period Presets (4:00 PM – 6:50 PM)
           </label>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className={`grid gap-1.5 ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
             {[
               { label: 'Period 1 (4:00 - 4:30 PM)', start: '16:00', end: '16:30' },
               { label: 'Period 2 (4:30 - 5:00 PM)', start: '16:30', end: '17:00' },
@@ -383,7 +385,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       </div>
 
       {/* Actions with alongside Notify Checkbox */}
-      <div className="flex items-center justify-between pt-4 border-t border-[#F5F5F5] mt-6 gap-3 flex-wrap">
+      <div className={`flex pt-4 border-t border-[#F5F5F5] mt-6 gap-3 ${isMobile ? 'flex-col' : 'flex-row items-center justify-between flex-wrap'}`}>
         <div className="flex items-center gap-2.5">
           <input
             type="checkbox"
@@ -397,17 +399,17 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           </label>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${isMobile ? 'flex-col w-full' : ''}`}>
           <button
             type="button"
             onClick={onCancel}
-            className="btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] rounded-xl"
+            className={`btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] rounded-xl ${isMobile ? 'w-full border border-[#E5E5E5]' : ''}`}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="btn bg-[#111111] hover:bg-[#262626] text-white text-sm font-semibold px-5 py-2 rounded-xl shadow-sm"
+            className={`btn bg-[#111111] hover:bg-[#262626] text-white text-sm font-semibold px-5 py-2 rounded-xl shadow-sm ${isMobile ? 'w-full py-3' : ''}`}
           >
             {slot ? 'Save Changes' : 'Add Class Slot'}
           </button>

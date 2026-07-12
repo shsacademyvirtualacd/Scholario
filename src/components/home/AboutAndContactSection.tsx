@@ -43,7 +43,7 @@ export const AboutAndContactSection: React.FC<AboutAndContactSectionProps> = ({
             <div>
               <button
                 onClick={onOpenAbout}
-                className="btn btn-gold btn-md group inline-flex items-center gap-2"
+                className="btn btn-gold btn-md group inline-flex items-center gap-2 interactive"
               >
                 <span>Read Our Full Story</span>
                 <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform duration-200" />
@@ -93,7 +93,7 @@ export const AboutAndContactSection: React.FC<AboutAndContactSectionProps> = ({
             <div className="pt-8 mt-6 border-t border-[#262626]">
               <button
                 onClick={onOpenContact}
-                className="w-full btn btn-gold btn-md bg-[#F4C430] text-[#111111] hover:bg-[#D4A017]"
+                className="w-full btn btn-gold btn-md bg-[#F4C430] text-[#111111] hover:bg-[#D4A017] interactive"
               >
                 Send Us a Message
               </button>

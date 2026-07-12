@@ -5,10 +5,12 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getEnrollmentsForStudent, getFeeStatus } from '../../lib/db';
 import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { useMobile } from '../../hooks/useMobile';
 import type { Enrollment } from '../../types';
 
 export const ProfilePage: React.FC = () => {
   const { profile, refreshProfile } = useAuth();
+  const isMobile = useMobile();
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
@@ -95,7 +97,7 @@ export const ProfilePage: React.FC = () => {
       />
 
       {loadingData ? (
-        <div className="card py-16 flex flex-col items-center justify-center gap-3">
+        <div className="card py-16 flex flex-col items-center justify-center gap-3 interactive">
           <div className="w-8 h-8 rounded-full border-2 border-[#E5E5E5] border-t-[#F4C430] animate-spin" />
           <span className="text-xs text-[#737373] font-medium">Loading profile details...</span>
         </div>
@@ -166,7 +168,7 @@ export const ProfilePage: React.FC = () => {
 
               {isEditing ? (
                 <form onSubmit={handleSave} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-2 gap-4'}>
                     <div>
                       <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wide">Full Name</label>
                       <input
@@ -196,20 +198,20 @@ export const ProfilePage: React.FC = () => {
                         setPhone(profile?.phone || '');
                         setError(null);
                       }}
-                      className="btn btn-ghost border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold text-xs px-3 py-1.5"
+                      className="btn btn-ghost border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold text-xs px-3 py-1.5 interactive"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="btn btn-primary font-bold text-xs bg-[#111111] hover:bg-black text-white px-3 py-1.5"
+                      className="btn btn-primary font-bold text-xs bg-[#111111] hover:bg-black text-white px-3 py-1.5 interactive"
                     >
                       Save Changes
                     </button>
                   </div>
                 </form>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 py-2">
+                <div className={`py-2 ${isMobile ? 'flex flex-col gap-5' : 'grid grid-cols-2 gap-5'}`}>
                   <div>
                     <span className="text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wide block">Full Name</span>
                     <span className="text-sm font-bold text-[#111111] mt-1 block">{fullName}</span>
@@ -226,7 +228,7 @@ export const ProfilePage: React.FC = () => {
             <div className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-sm">
               <h3 className="text-sm font-bold text-[#111111] mb-4 border-b border-[#F5F5F5] pb-3">Course Registration</h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 py-2">
+              <div className={`py-2 ${isMobile ? 'flex flex-col gap-5' : 'grid grid-cols-3 gap-5'}`}>
                 <div className="flex gap-2.5">
                   <Award size={18} className="text-[#F4C430] shrink-0 mt-0.5" />
                   <div>

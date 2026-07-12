@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FileText, Image as ImageIcon, Eye, Download, Trash2, Loader2 } from 'lucide-react';
 import type { Note } from '../../../types';
 import { downloadNoteBlob } from '../../../lib/db';
+import { useMobile } from '../../../hooks/useMobile';
 
 interface AdminNoteCardProps {
   note: Note;
@@ -16,6 +17,7 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
   onDelete,
   deleting = false,
 }) => {
+  const isMobile = useMobile();
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const subject =
@@ -100,37 +102,37 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
       {/* Footer Actions */}
       <div className="flex items-center justify-between pt-3 mt-4 border-t border-[#F5F5F5]">
         <span className="text-[10px] text-[#A3A3A3] font-semibold">{formatDate(note.created_at)}</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => onView(note)}
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] transition-colors"
+            className={`${isMobile ? 'p-2.5' : 'p-1.5'} rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] transition-colors`}
             title="Preview note"
           >
-            <Eye size={13} />
+            <Eye size={isMobile ? 16 : 13} />
           </button>
           <button
             onClick={handleDownload}
             disabled={downloading || deleting}
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1"
+            className={`${isMobile ? 'p-2.5' : 'p-1.5'} rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1`}
             title="Download document"
           >
             {downloading ? (
               <>
-                <Loader2 size={13} className="animate-spin" />
+                <Loader2 size={isMobile ? 16 : 13} className="animate-spin" />
                 {progress > 0 && <span className="text-[10px] font-bold">{progress}%</span>}
               </>
             ) : (
-              <Download size={13} />
+              <Download size={isMobile ? 16 : 13} />
             )}
           </button>
           {onDelete && (
             <button
               onClick={() => onDelete(note.id)}
               disabled={deleting}
-              className="p-1.5 rounded-lg hover:bg-red-50 text-[#737373] hover:text-red-500 disabled:opacity-50 transition-colors"
+              className={`${isMobile ? 'p-2.5' : 'p-1.5'} rounded-lg hover:bg-red-50 text-[#737373] hover:text-red-500 disabled:opacity-50 transition-colors`}
               title="Delete note"
             >
-              {deleting ? <Loader2 size={13} className="animate-spin text-red-400" /> : <Trash2 size={13} />}
+              {deleting ? <Loader2 size={isMobile ? 16 : 13} className="animate-spin text-red-400" /> : <Trash2 size={isMobile ? 16 : 13} />}
             </button>
           )}
         </div>

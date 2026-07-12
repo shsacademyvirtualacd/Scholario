@@ -57,7 +57,7 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
             <h2 className="text-base font-bold text-[#111111]">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors"
+              className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors interactive"
             >
               <X size={18} />
             </button>

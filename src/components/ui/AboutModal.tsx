@@ -65,7 +65,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-[#E5E5E5] text-[#737373] hover:text-[#111111] transition-all duration-200"
+            className="p-2 rounded-xl hover:bg-[#E5E5E5] text-[#737373] hover:text-[#111111] transition-all duration-200 interactive"
           >
             <X size={20} />
           </button>

@@ -13,10 +13,12 @@ import {
   getAllEnrollments
 } from '../../lib/db';
 import type { Teacher, ClassOffering, ClassSlot, Enrollment } from '../../types';
+import { useMobile } from '../../hooks/useMobile';
 
 // ─── Main ────────────────────────────────────────────────────────
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const isMobile = useMobile();
 
   const [counts, setCounts] = useState({ students: 0, teachers: 0, offerings: 0 });
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -175,7 +177,7 @@ const AdminDashboardPage: React.FC = () => {
   return (
     <AdminShell>
       {/* Heading */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-[#111111] tracking-tight">
             Admin Dashboard
@@ -185,7 +187,7 @@ const AdminDashboardPage: React.FC = () => {
           </p>
         </div>
         {loading && (
-          <span className="text-xs text-[#737373] font-bold flex items-center gap-1.5 bg-[#FAFAFA] border border-[#E5E5E5] px-3 py-1.5 rounded-xl">
+          <span className="text-xs text-[#737373] font-bold flex items-center gap-1.5 bg-[#FAFAFA] border border-[#E5E5E5] px-3 py-1.5 rounded-xl self-start sm:self-center">
             <span className="w-3.5 h-3.5 border-2 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block" />
             Syncing database...
           </span>
@@ -197,29 +199,31 @@ const AdminDashboardPage: React.FC = () => {
         {stats.map((stat) => {
           const isAttendance = stat.label === 'Attendance Rate';
           return (
-            <div key={stat.label} className={`stat-card relative ${isAttendance ? 'opacity-40 select-none' : ''}`}>
+            <div key={stat.label} className={`bg-white border border-[#E5E5E5] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between ${isAttendance ? 'opacity-40 select-none' : ''}`}>
               {isAttendance && (
-                <span className="absolute top-2 right-2 text-[9px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded uppercase tracking-wider scale-95 origin-top-right">
+                <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider scale-95 origin-top-right">
                   Soon
                 </span>
               )}
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center justify-between mb-3">
                 <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{ background: stat.bg }}
                 >
-                  <stat.icon size={17} style={{ color: stat.color }} />
+                  <stat.icon size={15} style={{ color: stat.color }} />
                 </div>
                 {!isAttendance && (
-                  <span className={`flex items-center gap-0.5 text-xs font-semibold ${stat.positive ? 'text-[#22c55e]' : 'text-[#ef4444]'}`}>
-                    <ArrowUpRight size={12} style={{ transform: stat.positive ? 'none' : 'rotate(90deg)' }} />
+                  <span className={`flex items-center gap-0.5 text-[10px] font-bold ${stat.positive ? 'text-[#22c55e]' : 'text-[#ef4444]'}`}>
+                    <ArrowUpRight size={10} style={{ transform: stat.positive ? 'none' : 'rotate(90deg)' }} />
                     {stat.change}
                   </span>
                 )}
               </div>
-              <div className="stat-value">{isAttendance ? '—' : stat.value}</div>
-              <div className="stat-label">{stat.label}</div>
-              <div className="text-[11px] text-[#A3A3A3] mt-0.5">{isAttendance ? 'Feature coming soon' : stat.changeLabel}</div>
+              <div>
+                <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] leading-none">{isAttendance ? '—' : stat.value}</div>
+                <div className="text-[10px] font-bold text-[#737373] mt-2 uppercase tracking-wider">{stat.label}</div>
+                <div className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">{isAttendance ? 'Coming soon' : stat.changeLabel}</div>
+              </div>
             </div>
           );
         })}
@@ -229,7 +233,7 @@ const AdminDashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Today's upcoming classes */}
-        <div className="card card-elevated">
+        <div className="card card-elevated interactive">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-[#111111]">Today's Classes</h2>
             <button
@@ -246,15 +250,15 @@ const AdminDashboardPage: React.FC = () => {
               </div>
             ) : (
               upcomingClasses.map((cls, i) => (
-                <div key={i} className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all">
-                  <div className="w-1 h-12 rounded-full shrink-0" style={{ background: cls.color }} />
+                <div key={i} className="flex items-center gap-3.5 p-3 rounded-xl border border-[#F0F0F0] bg-white shadow-sm hover:border-[#E5E5E5] transition-all">
+                  <div className="w-1 h-10 rounded-full shrink-0" style={{ background: cls.color }} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-[#111111]">{cls.subject}</div>
-                    <div className="text-xs text-[#737373] mt-0.5">{cls.teacher} · {cls.board}</div>
+                    <div className="font-bold text-xs text-[#111111] truncate">{cls.subject}</div>
+                    <div className="text-[10px] text-[#737373] mt-0.5 truncate">{cls.teacher} · {cls.board}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-bold text-[#111111]">{cls.time}</div>
-                    <div className="text-xs text-[#A3A3A3] mt-0.5">{cls.students} students</div>
+                    <div className="text-xs font-black text-[#111111] bg-[#FAFAFA] border border-[#E5E5E5] px-2 py-0.5 rounded-md font-mono">{cls.time}</div>
+                    <div className="text-[9px] text-[#A3A3A3] font-bold mt-1">{cls.students} enrolled</div>
                   </div>
                 </div>
               ))
@@ -263,7 +267,7 @@ const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Low attendance alerts */}
-        <div className="card card-elevated relative overflow-hidden">
+        <div className="card card-elevated relative overflow-hidden interactive">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance</h2>
             <span className="text-[9px] bg-zinc-200 text-zinc-600 font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider">
@@ -286,66 +290,105 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* ── Teachers overview ── */}
-      <div className="card card-elevated">
+      <div className="card card-elevated interactive">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-bold text-[#111111]">Teacher Workload</h2>
           <button
             onClick={() => navigate('/admin/teachers')}
-            className="btn btn-ghost btn-sm"
+            className="btn btn-ghost btn-sm interactive"
           >
             Manage teachers <ChevronRight size={14} />
           </button>
         </div>
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Teacher</th>
-                <th>Subject</th>
-                <th>Board</th>
-                <th>Grade(s)</th>
-                <th>Students</th>
-                <th>Classes/wk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teacherWorkload.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-xs text-[#A3A3A3] font-bold text-center py-6">
-                    No teachers registered in the database.
-                  </td>
-                </tr>
-              ) : (
-                teacherWorkload.map((t, i) => (
-                  <tr key={i}>
-                    <td>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-[#F4C430] flex items-center justify-center text-xs font-bold text-[#111111] shrink-0">
-                          {t.avatar}
-                        </div>
-                        <span className="font-medium text-[#111111]">{t.name}</span>
-                      </div>
-                    </td>
-                    <td>{t.subject}</td>
-                    <td><span className="badge badge-gray">{t.board}</span></td>
-                    <td className="text-[#525252]">{t.grade}</td>
-                    <td>
-                      <span className="font-semibold text-[#111111]">{t.students}</span>
-                    </td>
-                    <td>
+        {isMobile ? (
+          <div className="space-y-4">
+            {teacherWorkload.length === 0 ? (
+              <div className="text-xs text-[#A3A3A3] font-bold text-center py-6 border border-[#E5E5E5] rounded-xl bg-[#FAFAFA]">
+                No teachers registered.
+              </div>
+            ) : (
+              teacherWorkload.map((t, i) => (
+                <div key={i} className="bg-white border border-[#E5E5E5] rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#F4C430] flex items-center justify-center text-sm font-bold text-[#111111] shrink-0">
+                      {t.avatar}
+                    </div>
+                    <div>
+                      <div className="font-bold text-[#111111] leading-tight">{t.name}</div>
+                      <div className="text-[11px] text-[#737373] mt-0.5">{t.subject} · Gr. {t.grade}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 border-t border-[#F5F5F5] pt-3">
+                    <div>
+                      <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Students</div>
+                      <div className="text-sm font-black text-[#111111]">{t.students}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Classes/wk</div>
                       <div className="flex items-center gap-2">
-                        <div className="progress-bar w-16">
+                        <span className="text-sm font-black text-[#111111]">{t.classesPerWeek}</span>
+                        <div className="progress-bar w-12 shrink-0">
                           <div className="progress-fill" style={{ width: `${Math.min((t.classesPerWeek / 10) * 100, 100)}%` }} />
                         </div>
-                        <span className="text-xs text-[#737373]">{t.classesPerWeek}</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Teacher</th>
+                  <th>Subject</th>
+                  <th>Board</th>
+                  <th>Grade(s)</th>
+                  <th>Students</th>
+                  <th>Classes/wk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teacherWorkload.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-xs text-[#A3A3A3] font-bold text-center py-6">
+                      No teachers registered in the database.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  teacherWorkload.map((t, i) => (
+                    <tr key={i}>
+                      <td>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-[#F4C430] flex items-center justify-center text-xs font-bold text-[#111111] shrink-0">
+                            {t.avatar}
+                          </div>
+                          <span className="font-medium text-[#111111]">{t.name}</span>
+                        </div>
+                      </td>
+                      <td>{t.subject}</td>
+                      <td><span className="badge badge-gray">{t.board}</span></td>
+                      <td className="text-[#525252]">{t.grade}</td>
+                      <td>
+                        <span className="font-semibold text-[#111111]">{t.students}</span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="progress-bar w-16">
+                            <div className="progress-fill" style={{ width: `${Math.min((t.classesPerWeek / 10) * 100, 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-[#737373]">{t.classesPerWeek}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </AdminShell>
   );

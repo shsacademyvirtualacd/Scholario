@@ -123,7 +123,7 @@ const TeachersSection: React.FC = () => {
 
                 {/* View Profile - appears on hover */}
                 <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <button className="btn btn-ghost btn-sm w-full text-xs">
+                  <button className="btn btn-ghost btn-sm w-full text-xs interactive">
                     View Profile <ArrowRight size={12} />
                   </button>
                 </div>

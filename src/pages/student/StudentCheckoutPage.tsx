@@ -10,10 +10,12 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { getFeeStatus, updateFeeStatus, getFeeAuditLogs, getEnrollmentsForStudent, resolveGradeFeeConfig } from '../../lib/db';
 import { BOARD } from '../../lib/taxonomy';
+import { useMobile } from '../../hooks/useMobile';
 
 export const StudentCheckoutPage: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useMobile();
   
   // States
   const [loading, setLoading] = useState(true);
@@ -180,7 +182,7 @@ export const StudentCheckoutPage: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="card py-16 flex flex-col items-center justify-center gap-3">
+          <div className="card py-16 flex flex-col items-center justify-center gap-3 interactive">
             <div className="w-8 h-8 rounded-full border-2 border-[#E5E5E5] border-t-[#F4C430] animate-spin" />
             <span className="text-xs text-[#737373] font-medium">Loading checkout and fee details...</span>
           </div>
@@ -188,8 +190,8 @@ export const StudentCheckoutPage: React.FC = () => {
           <div className="space-y-6">
             {/* Status Banner */}
             {feeStatus?.status === 'pending' && (
-              <div className="bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-start sm:items-center gap-4">
+              <div className={`bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-6 flex ${isMobile ? 'flex-col items-start' : 'flex-row items-center'} justify-between gap-4 shadow-sm`}>
+                <div className={`flex ${isMobile ? 'items-start' : 'items-center'} gap-4`}>
                   <div className="w-12 h-12 rounded-2xl bg-[#F4C430]/20 flex items-center justify-center text-[#92700A] shrink-0 mt-0.5 sm:mt-0">
                     <Clock size={24} className="animate-spin" style={{ animationDuration: '6s' }} />
                   </div>
@@ -207,7 +209,7 @@ export const StudentCheckoutPage: React.FC = () => {
                     href={buildWhatsAppLink()}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn btn-ghost text-xs border border-[#FDE68A] bg-white px-3.5 py-2 font-bold text-[#92700A] hover:bg-[#FFFBF0] flex items-center gap-1.5"
+                    className="btn btn-ghost text-xs border border-[#FDE68A] bg-white px-3.5 py-2 font-bold text-[#92700A] hover:bg-[#FFFBF0] flex items-center gap-1.5 interactive"
                   >
                     <Share2 size={13} />
                     Message Admin
@@ -217,7 +219,7 @@ export const StudentCheckoutPage: React.FC = () => {
             )}
 
             {feeStatus?.status === 'paid' && (
-              <div className="bg-[#F0FDF4] border border-[#bbf7d0] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className={`bg-[#F0FDF4] border border-[#bbf7d0] rounded-2xl p-6 flex ${isMobile ? 'flex-col items-start' : 'flex-row items-center'} justify-between gap-4 shadow-sm`}>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-700 shrink-0">
                     <CheckCircle2 size={24} />
@@ -233,7 +235,7 @@ export const StudentCheckoutPage: React.FC = () => {
                 </div>
                 <button
                   onClick={() => navigate('/student')}
-                  className="btn bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm"
+                  className="btn bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm interactive"
                 >
                   <GraduationCap size={15} />
                   Enter Classroom Dashboard
@@ -242,9 +244,9 @@ export const StudentCheckoutPage: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className={isMobile ? 'flex flex-col gap-6' : 'grid grid-cols-3 gap-6'}>
               {/* Left: Invoice & Instructions */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className={isMobile ? '' : 'col-span-2 space-y-6'}>
                 {/* Fee Dues Summary */}
                 <div className="bg-white border border-[#E5E5E5] rounded-2xl p-6 space-y-5">
                   <div className="flex items-center justify-between border-b border-[#F5F5F5] pb-4">
@@ -299,7 +301,7 @@ export const StudentCheckoutPage: React.FC = () => {
                     </h3>
                     <button
                       onClick={handleCopyInstructions}
-                      className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#737373] border border-[#E5E5E5] hover:bg-[#FAFAFA] px-2.5 py-1.5 rounded-lg transition-colors"
+                      className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#737373] border border-[#E5E5E5] hover:bg-[#FAFAFA] px-2.5 py-1.5 rounded-lg transition-colors interactive"
                     >
                       {copiedText ? <Check size={12} className="text-emerald-600" /> : <Clipboard size={12} />}
                       {copiedText ? 'Copied to Clipboard' : 'Copy Transfer Details'}
@@ -330,7 +332,7 @@ export const StudentCheckoutPage: React.FC = () => {
                       href={buildWhatsAppLink()}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn bg-[#25D366] hover:bg-[#20ba5a] text-white w-full flex items-center justify-center gap-2 py-3 font-bold rounded-xl transition-all shadow-sm hover:shadow text-xs"
+                      className="btn bg-[#25D366] hover:bg-[#20ba5a] text-white w-full flex items-center justify-center gap-2 py-3 font-bold rounded-xl transition-all shadow-sm hover:shadow text-xs interactive"
                     >
                       <Share2 size={16} />
                       Open WhatsApp & Send Proof

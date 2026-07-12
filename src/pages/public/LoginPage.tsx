@@ -49,7 +49,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex">
+    <div className="min-h-screen bg-[#FAFAFA] flex page-transition">
       {/* ─── Left panel — sign-in ─── */}
       <div className="flex-1 flex flex-col justify-center items-center px-6 py-12">
         <div className="w-full max-w-[400px]">
@@ -81,7 +81,7 @@ const LoginPage: React.FC = () => {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={loading || authLoading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] hover:shadow-md active:scale-[0.98] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] hover:shadow-md active:scale-[0.98] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed interactive"
           >
             {loading ? (
               <>

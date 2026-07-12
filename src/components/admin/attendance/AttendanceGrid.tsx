@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import type { Profile, AttendanceStatus, Attendance } from '../../../types';
 import StatusToggle from './StatusToggle';
+import { useMobile } from '../../../hooks/useMobile';
 
 interface AttendanceGridProps {
   students: Profile[];
@@ -16,6 +17,8 @@ export const AttendanceGrid: React.FC<AttendanceGridProps> = ({
   onStatusChange,
   allAttendance = [],
 }) => {
+  const isMobile = useMobile();
+
   // Compute overall attendance % helper
   const getOverallAttendancePct = (studentId: string) => {
     const records = allAttendance.filter((a) => a.student_id === studentId);
@@ -37,6 +40,58 @@ export const AttendanceGrid: React.FC<AttendanceGridProps> = ({
     if (!stream) return 'General';
     return stream.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {students.map((student) => {
+          const overallPct = getOverallAttendancePct(student.id);
+          const activeStatus = attendanceState[student.id] || null;
+          const isWarning = overallPct < 70;
+
+          return (
+            <div
+              key={student.id}
+              className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col gap-3 ${
+                isWarning ? 'border-amber-200 bg-amber-50/20' : 'border-[#E5E5E5]'
+              }`}
+            >
+              {/* Name row */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center text-sm font-bold text-[#111111] shrink-0">
+                  {getInitials(student.full_name)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-[#111111] block leading-tight truncate">{student.full_name}</span>
+                  <span className="text-[11px] text-[#737373] font-medium">{getStreamLabel(student.stream || undefined)}</span>
+                  {isWarning && (
+                    <span className="text-[9px] font-black text-amber-600 flex items-center gap-0.5 mt-0.5 uppercase tracking-wide">
+                      <AlertCircle size={8} /> Low Attendance
+                    </span>
+                  )}
+                </div>
+                {/* Overall % badge */}
+                <span className={`text-sm font-extrabold shrink-0 ${
+                  overallPct >= 80 ? 'text-[#22c55e]' : overallPct >= 70 ? 'text-amber-600' : 'text-red-500'
+                }`}>
+                  {overallPct}%
+                </span>
+              </div>
+
+              {/* StatusToggle full-width */}
+              <div className="border-t border-[#F5F5F5] pt-3">
+                <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider block mb-2">Mark Attendance</span>
+                <StatusToggle
+                  value={activeStatus}
+                  onChange={(status) => onStatusChange(student.id, status)}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="table-container bg-white border border-[#E5E5E5] rounded-2xl overflow-hidden shadow-sm">

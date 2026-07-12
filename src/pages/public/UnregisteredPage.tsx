@@ -6,10 +6,12 @@ import { supabase } from '../../lib/supabase';
 import { getTaxonomy, completeStudentOnboarding, resolveGradeFeeConfig, requestAccountTermination } from '../../lib/db';
 import Logo from '../../components/ui/Logo';
 import { BOARD, getDefaultPrice } from '../../lib/taxonomy';
+import { useMobile } from '../../hooks/useMobile';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useMobile();
 
   const [taxonomy, setTaxonomy] = useState<any>(null);
 
@@ -190,7 +192,7 @@ export const UnregisteredPage: React.FC = () => {
   const selectedClassObj = taxonomy.classes.find((c: any) => c.id === selectedClassId);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-center items-center px-4 py-12">
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col page-transition justify-center items-center px-4 py-12">
       <div className="w-full max-w-[620px]">
         {/* Logo */}
         <div className="mb-8 flex justify-center">
@@ -219,15 +221,15 @@ export const UnregisteredPage: React.FC = () => {
                   <div className="flex flex-col gap-3 pt-4 border-t border-[#F5F5F5]">
                     <button
                       onClick={() => proceedToPaymentCheckout && proceedToPaymentCheckout()}
-                      className="btn bg-[#F4C430] hover:bg-[#eab308] text-[#111111] w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01]"
+                      className="btn bg-[#F4C430] hover:bg-[#eab308] text-[#111111] w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01] interactive"
                     >
                       Proceed to Payment Details
                       <ArrowRight size={16} />
                     </button>
-                    
+
                     <button
                       onClick={() => setTerminationStep('confirm')}
-                      className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-red-600 hover:bg-red-50 font-semibold rounded-xl transition-colors"
+                      className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-red-600 hover:bg-red-50 font-semibold rounded-xl transition-colors interactive"
                     >
                       Request Enrollment Termination
                     </button>
@@ -258,16 +260,16 @@ export const UnregisteredPage: React.FC = () => {
                     <button
                       onClick={handleTerminateAccount}
                       disabled={saving}
-                      className="btn bg-red-600 hover:bg-red-700 text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01] disabled:opacity-50"
+                      className="btn bg-red-600 hover:bg-red-700 text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01] disabled:opacity-50 interactive"
                     >
                       {saving ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
                       Yes, Terminate My Account
                     </button>
-                    
+
                     <button
                       onClick={() => setTerminationStep('idle')}
                       disabled={saving}
-                      className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#737373] hover:text-[#111111] font-semibold rounded-xl transition-colors"
+                      className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#737373] hover:text-[#111111] font-semibold rounded-xl transition-colors interactive"
                     >
                       Cancel and Go Back
                     </button>
@@ -293,7 +295,7 @@ export const UnregisteredPage: React.FC = () => {
                   <div className="flex flex-col gap-3 pt-4 border-t border-[#F5F5F5]">
                     <button
                       onClick={handleSignOut}
-                      className="btn bg-[#111111] hover:bg-[#262626] text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01]"
+                      className="btn bg-[#111111] hover:bg-[#262626] text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01] interactive"
                     >
                       Exit Platform
                       <ArrowRight size={16} />
@@ -326,7 +328,7 @@ export const UnregisteredPage: React.FC = () => {
               <div className="pt-2 border-t border-[#F5F5F5]">
                 <button
                   onClick={handleSignOut}
-                  className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#737373] hover:text-[#111111] font-semibold"
+                  className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#737373] hover:text-[#111111] font-semibold interactive"
                 >
                   <LogOut size={14} />
                   Sign Out & Switch Account
@@ -365,7 +367,7 @@ export const UnregisteredPage: React.FC = () => {
                     <span>Step 1: Personal Information</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-3'}>
                     <div>
                       <label className="label text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wide mb-1 block">Full Name</label>
                       <input
@@ -408,17 +410,16 @@ export const UnregisteredPage: React.FC = () => {
                     <span>Step 2: Select Academic Grade</span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className={isMobile ? 'flex flex-col gap-2.5' : 'grid grid-cols-4 gap-2.5'}>
                     {classesForBoard.map((c: any) => (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => setSelectedClassId(c.id)}
-                        className={`p-3.5 rounded-2xl border-2 text-center transition-all duration-200 ${
-                          selectedClassId === c.id
+                        className={`p-3.5 rounded-2xl border-2 text-center transition-all duration-200 ${selectedClassId === c.id
                             ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm font-black text-[#111111]'
                             : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4] font-bold text-[#737373]'
-                        }`}
+                          }`}
                       >
                         <div className="text-base tracking-tight">{c.display_name}</div>
                         <div className="text-[10px] text-[#A3A3A3] mt-0.5">Grade {c.grade}</div>
@@ -438,13 +439,13 @@ export const UnregisteredPage: React.FC = () => {
                       <span className="text-[10px] text-[#A3A3A3] font-medium">Select one</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-3'}>
                       {streamsForClass.map((s: any) => {
                         const streamSubjects = taxonomy.streamSubjects
                           ? taxonomy.streamSubjects
-                              .filter((ss: any) => ss.stream_id === s.id)
-                              .map((ss: any) => taxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
-                              .filter(Boolean)
+                            .filter((ss: any) => ss.stream_id === s.id)
+                            .map((ss: any) => taxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+                            .filter(Boolean)
                           : [];
 
                         return (
@@ -452,11 +453,10 @@ export const UnregisteredPage: React.FC = () => {
                             key={s.id}
                             type="button"
                             onClick={() => setSelectedStreamId(s.id)}
-                            className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between ${
-                              selectedStreamId === s.id
+                            className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between ${selectedStreamId === s.id
                                 ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
                                 : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
-                            }`}
+                              }`}
                           >
                             <div>
                               <div className="flex items-center justify-between mb-2">
@@ -485,7 +485,7 @@ export const UnregisteredPage: React.FC = () => {
 
                 {/* Section 4: Live Tuition Fee Summary */}
                 {selectedClassId && selectedStreamId && (
-                  <div className="bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+                  <div className={`bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-4 flex ${isMobile ? 'flex-col items-start' : 'flex-row items-center'} justify-between gap-3 animate-in fade-in duration-300`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-[#F4C430]/20 flex items-center justify-center text-[#92700A] shrink-0">
                         <DollarSign size={20} />
@@ -508,7 +508,6 @@ export const UnregisteredPage: React.FC = () => {
                     <div className="text-left sm:text-right text-[10px] text-amber-900 font-semibold leading-snug">
                       {livePrice !== null && livePrice > 0 ? (
                         <>
-                          Pulled live from Admin pricing.<br />
                           Includes full access upon payment authorization.
                         </>
                       ) : (
@@ -525,25 +524,25 @@ export const UnregisteredPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={saving || !selectedClassId || !selectedStreamId}
-                    className="btn btn-primary w-full flex items-center justify-center gap-2 py-3.5 font-extrabold text-sm shadow-md transition-all disabled:opacity-50"
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 py-3.5 font-extrabold text-sm shadow-md transition-all disabled:opacity-50 interactive"
                   >
                     {saving ? (
                       <>
-                        <Loader2 size={16} className="animate-spin" />
-                        Creating Student Profile & Package…
+                        <Loader2 size={16} className="animate-spin shrink-0" />
+                        <span className="truncate">Creating Student Profile & Package…</span>
                       </>
                     ) : (
                       <>
-                        <GraduationCap size={16} />
-                        Complete Registration & Proceed to Checkout
-                        <ArrowRight size={16} />
+                        <GraduationCap size={16} className="shrink-0" />
+                        <span className="truncate">{isMobile ? 'Complete Registration' : 'Complete Registration & Proceed to Checkout'}</span>
+                        <ArrowRight size={16} className="shrink-0" />
                       </>
                     )}
                   </button>
                   <button
                     type="button"
                     onClick={handleSignOut}
-                    className="btn btn-ghost w-full py-2 text-xs text-[#737373] hover:text-[#111111] font-semibold"
+                    className="btn btn-ghost w-full py-2 text-xs text-[#737373] hover:text-[#111111] font-semibold interactive"
                   >
                     Sign Out
                   </button>

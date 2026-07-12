@@ -45,7 +45,7 @@ const NewsSection: React.FC = () => {
               Scholario
             </h2>
           </div>
-          <button className="btn btn-ghost btn-md self-start md:self-auto">
+          <button className="btn btn-ghost btn-md self-start md:self-auto interactive">
             View All Posts <ArrowRight size={16} />
           </button>
         </div>

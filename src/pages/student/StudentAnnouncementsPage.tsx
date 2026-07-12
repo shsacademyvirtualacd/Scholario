@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Megaphone, Calendar, Filter, Search, ShieldAlert } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import { getAnnouncements } from '../../lib/db';
+import { useMobile } from '../../hooks/useMobile';
 import type { Announcement } from '../../types';
 
 export const StudentAnnouncementsPage: React.FC = () => {
+  const isMobile = useMobile();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,7 +123,7 @@ export const StudentAnnouncementsPage: React.FC = () => {
                   setSearchTerm('');
                   setSeverityFilter('all');
                 }}
-                className="btn btn-secondary text-xs mt-4"
+                className="btn btn-secondary text-xs mt-4 interactive"
               >
                 Reset Filters
               </button>
@@ -131,7 +133,7 @@ export const StudentAnnouncementsPage: React.FC = () => {
               {filteredAnnouncements.map((ann) => (
                 <div
                   key={ann.id}
-                  className={`p-5 rounded-2xl border transition-all flex items-start gap-4 ${
+                  className={`p-5 rounded-2xl border transition-all flex ${isMobile ? 'flex-col gap-3' : 'items-start gap-4'} ${
                     ann.severity === 'crucial'
                       ? 'bg-[#FEF2F2]/50 border-[#FECACA] shadow-xs'
                       : 'bg-white border-[#E5E5E5] hover:border-[#D4D4D4]'

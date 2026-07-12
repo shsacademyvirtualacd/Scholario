@@ -69,7 +69,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
               className={`accordion-item ${openIndex === i ? 'border-[#D4D4D4] shadow-sm' : ''}`}
             >
               <button
-                className="accordion-trigger"
+                className="accordion-trigger interactive"
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
               >
                 <span className="pr-4">{faq.q}</span>
@@ -102,7 +102,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
           <div className="flex justify-center">
             <a 
               href="mailto:shs.academy.virtual@gmail.com"
-              className="btn btn-primary btn-md"
+              className="btn btn-primary btn-md interactive"
             >
               shs.academy.virtual@gmail.com
             </a>

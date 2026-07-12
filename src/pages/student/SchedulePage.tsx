@@ -14,6 +14,7 @@ import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h
 } from '../../lib/scheduleUtils';
+import { useMobile } from '../../hooks/useMobile';
 
 const DAYS_OF_WEEK = [
   { label: 'Monday', index: 0 },
@@ -27,6 +28,7 @@ const DAYS_OF_WEEK = [
 export const SchedulePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { profile } = useAuth();
+  const isMobile = useMobile();
   const studentId = profile?.id;
   
   const cachedSlots = studentId ? pageCache.get<ClassSlot[]>('schedule_slots', studentId) : null;
@@ -179,7 +181,9 @@ export const SchedulePage: React.FC = () => {
       )}
 
       {/* Weekday Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 bg-white p-2 border border-[#E5E5E5] rounded-xl shadow-sm mb-6">
+      <div className={`py-1 bg-white p-2 border border-[#E5E5E5] rounded-xl shadow-sm mb-6 ${
+        isMobile ? 'grid grid-cols-3 gap-2' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'
+      }`}>
         {DAYS_OF_WEEK.map(day => (
           <button
             key={day.index}

@@ -11,10 +11,12 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { getAllNotes, deleteNote, getAllOfferings, getTaxonomy } from '../../lib/db';
 import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { useMobile } from '../../hooks/useMobile';
 import type { Note, ClassOffering } from '../../types';
 
 export const NotesManagerPage: React.FC = () => {
   useAuth();
+  const isMobile = useMobile();
   const [notes, setNotes] = useState<Note[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [taxonomy, setTaxonomy] = useState<any>(null);
@@ -232,7 +234,7 @@ export const NotesManagerPage: React.FC = () => {
         />
         <button
           onClick={handleUploadTrigger}
-          className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-sm shrink-0 self-start sm:self-center"
+          className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-sm shrink-0 self-start sm:self-center interactive"
         >
           <Plus size={14} />
           Upload Notes
@@ -269,7 +271,7 @@ export const NotesManagerPage: React.FC = () => {
           {(selectedBoard !== 'all' || selectedGrade !== 'all' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
             <button
               onClick={resetFilters}
-              className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5"
+              className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
             >
               <RotateCcw size={10} />
               Reset Filters
@@ -333,9 +335,9 @@ export const NotesManagerPage: React.FC = () => {
       )}
 
       {/* Control bar with Subject & Format dropdowns + Search */}
-      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col gap-3 interactive">
         {/* Search */}
-        <div className="relative w-full md:max-w-xs">
+        <div className="relative w-full">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
           <input
             type="text"
@@ -346,18 +348,18 @@ export const NotesManagerPage: React.FC = () => {
           />
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          {/* Layer 4: Subject Dropdown scoped to Grade+Stream */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#737373] flex items-center gap-1">
+        {/* Filters row — stacked on mobile, inline on md+ */}
+        <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-wrap items-center'}`}>
+          {/* Layer 4: Subject Dropdown */}
+          <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
+            <span className="text-xs font-bold text-[#737373] flex items-center gap-1 shrink-0">
               <Filter size={12} />
               <span>Subject:</span>
             </span>
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer font-bold text-[#111111]"
+              className={`input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer font-bold text-[#111111] ${isMobile ? 'flex-1' : ''}`}
             >
               <option value="all">All Scoped Subjects ({scopedOfferings.length})</option>
               {scopedOfferings.map((o) => {
@@ -372,12 +374,12 @@ export const NotesManagerPage: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#737373]">Format:</span>
+          <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
+            <span className="text-xs font-bold text-[#737373] shrink-0">Format:</span>
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as any)}
-              className="input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer font-bold text-[#111111]"
+              className={`input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer font-bold text-[#111111] ${isMobile ? 'flex-1' : ''}`}
             >
               <option value="all">All Formats</option>
               <option value="pdf">PDF Docs</option>
@@ -389,7 +391,7 @@ export const NotesManagerPage: React.FC = () => {
 
       {/* Grid of Notes */}
       {filteredNotes.length === 0 ? (
-        <div className="card text-center py-20">
+        <div className="card text-center py-20 interactive">
           <BookOpen size={32} className="mx-auto text-[#A3A3A3] mb-3 animate-pulse" />
           <h3 className="text-sm font-bold text-[#111111]">No documents found</h3>
           <p className="text-xs text-[#737373] mt-1">

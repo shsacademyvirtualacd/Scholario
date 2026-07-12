@@ -23,31 +23,31 @@ const UIShowcaseSection: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Buttons */}
-          <div className="card card-elevated p-7">
+          <div className="card card-elevated p-7 interactive">
             <h3 className="text-sm font-bold text-[#111111] uppercase tracking-widest mb-6">
               Buttons
             </h3>
             <div className="space-y-4">
               <div className="flex flex-wrap gap-3 items-center">
-                <button className="btn btn-primary btn-lg">Primary Large</button>
-                <button className="btn btn-primary btn-md">Primary</button>
-                <button className="btn btn-primary btn-sm">Primary Small</button>
+                <button className="btn btn-primary btn-lg interactive">Primary Large</button>
+                <button className="btn btn-primary btn-md interactive">Primary</button>
+                <button className="btn btn-primary btn-sm interactive">Primary Small</button>
               </div>
               <div className="flex flex-wrap gap-3 items-center">
-                <button className="btn btn-gold btn-lg">Gold Large</button>
-                <button className="btn btn-gold btn-md">Gold</button>
-                <button className="btn btn-gold btn-sm">Gold Small</button>
+                <button className="btn btn-gold btn-lg interactive">Gold Large</button>
+                <button className="btn btn-gold btn-md interactive">Gold</button>
+                <button className="btn btn-gold btn-sm interactive">Gold Small</button>
               </div>
               <div className="flex flex-wrap gap-3 items-center">
-                <button className="btn btn-ghost btn-lg">Ghost Large</button>
-                <button className="btn btn-ghost btn-md">Ghost</button>
-                <button className="btn btn-outline btn-md">Outline</button>
+                <button className="btn btn-ghost btn-lg interactive">Ghost Large</button>
+                <button className="btn btn-ghost btn-md interactive">Ghost</button>
+                <button className="btn btn-outline btn-md interactive">Outline</button>
               </div>
             </div>
           </div>
 
           {/* Badges & Tags */}
-          <div className="card card-elevated p-7">
+          <div className="card card-elevated p-7 interactive">
             <h3 className="text-sm font-bold text-[#111111] uppercase tracking-widest mb-6">
               Badges & Status
             </h3>
@@ -84,7 +84,7 @@ const UIShowcaseSection: React.FC = () => {
           </div>
 
           {/* Inputs */}
-          <div className="card card-elevated p-7">
+          <div className="card card-elevated p-7 interactive">
             <h3 className="text-sm font-bold text-[#111111] uppercase tracking-widest mb-6">
               Form Inputs
             </h3>
@@ -133,7 +133,7 @@ const UIShowcaseSection: React.FC = () => {
           </div>
 
           {/* Cards & Alerts */}
-          <div className="card card-elevated p-7">
+          <div className="card card-elevated p-7 interactive">
             <h3 className="text-sm font-bold text-[#111111] uppercase tracking-widest mb-6">
               Alerts & Feedback
             </h3>
@@ -182,7 +182,7 @@ const UIShowcaseSection: React.FC = () => {
           </div>
 
           {/* Progress & Stats */}
-          <div className="card card-elevated p-7">
+          <div className="card card-elevated p-7 interactive">
             <h3 className="text-sm font-bold text-[#111111] uppercase tracking-widest mb-6">
               Progress Indicators
             </h3>
@@ -210,7 +210,7 @@ const UIShowcaseSection: React.FC = () => {
           </div>
 
           {/* Empty State & Course Card */}
-          <div className="card card-elevated p-7 space-y-5">
+          <div className="card card-elevated p-7 space-y-5 interactive">
             <h3 className="text-sm font-bold text-[#111111] uppercase tracking-widest">
               Cards & Empty States
             </h3>
@@ -245,7 +245,7 @@ const UIShowcaseSection: React.FC = () => {
                 <div className="empty-state-description">
                   Complete a course to earn your first verified certificate.
                 </div>
-                <button className="btn btn-gold btn-sm mt-2">
+                <button className="btn btn-gold btn-sm mt-2 interactive">
                   Browse Courses
                 </button>
               </div>

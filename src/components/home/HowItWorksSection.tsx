@@ -114,7 +114,7 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onNavigate }) => 
             </div>
             <button 
               onClick={() => onNavigate && onNavigate('register')}
-              className="btn btn-primary btn-md shrink-0"
+              className="btn btn-primary btn-md shrink-0 interactive"
             >
               Create Account →
             </button>

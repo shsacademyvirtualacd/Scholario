@@ -91,7 +91,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
           <button
             onClick={handleDownload}
             disabled={downloading}
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1"
+            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1 interactive"
             title="Download file"
           >
             {downloading ? (

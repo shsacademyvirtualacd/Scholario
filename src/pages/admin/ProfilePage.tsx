@@ -4,8 +4,10 @@ import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getDashboardCounts } from '../../lib/db';
+import { useMobile } from '../../hooks/useMobile';
 
 export const ProfilePage: React.FC = () => {
+  const isMobile = useMobile();
   const { profile, user, refreshProfile } = useAuth();
   const [counts, setCounts] = useState({ students: 0, teachers: 0, offerings: 0, announcements: 0 });
   
@@ -86,8 +88,8 @@ export const ProfilePage: React.FC = () => {
           <div className="absolute top-0 inset-x-0 h-2 bg-[#F4C430]" />
           
           {/* Avatar container */}
-          <div className="relative w-24 h-24 mx-auto mt-4 mb-4 group cursor-pointer">
-            <div className="w-full h-full rounded-2xl bg-[#F4C430] flex items-center justify-center text-3xl font-black text-[#111111] shadow-md border-2 border-white">
+          <div className={`relative mx-auto mt-4 mb-4 group cursor-pointer ${isMobile ? 'w-28 h-28' : 'w-24 h-24'}`}>
+            <div className={`w-full h-full rounded-2xl bg-[#F4C430] flex items-center justify-center font-black text-[#111111] shadow-md border-2 border-white ${isMobile ? 'text-4xl' : 'text-3xl'}`}>
               {fullName[0]?.toUpperCase() || 'A'}
             </div>
             <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
@@ -121,7 +123,7 @@ export const ProfilePage: React.FC = () => {
               {!isEditing && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="btn btn-ghost btn-xs text-[#737373] hover:text-[#111111]"
+                  className="btn btn-ghost btn-xs text-[#737373] hover:text-[#111111] interactive"
                 >
                   <Edit3 size={12} className="inline mr-1" /> Edit
                 </button>
@@ -174,7 +176,7 @@ export const ProfilePage: React.FC = () => {
                   <p className="text-[10px] text-[#A3A3A3] mt-1">To change login credentials, contact system administrators.</p>
                 </div>
 
-                <div className="flex gap-2 justify-end pt-2 border-t border-[#F5F5F5]">
+                <div className={`flex gap-2 pt-3 border-t border-[#F5F5F5] ${isMobile ? 'flex-col-reverse mt-2' : 'justify-end mt-4'}`}>
                   <button
                     type="button"
                     onClick={() => {
@@ -183,11 +185,11 @@ export const ProfilePage: React.FC = () => {
                       setIsEditing(false);
                       setError(null);
                     }}
-                    className="btn btn-ghost btn-sm"
+                    className={`btn btn-ghost font-bold ${isMobile ? 'py-3 w-full border border-[#E5E5E5] bg-[#FAFAFA]' : 'btn-sm'}`}
                   >
                     <X size={14} className="inline mr-1" /> Cancel
                   </button>
-                  <button type="submit" className="btn btn-gold btn-sm">
+                  <button type="submit" className={`btn btn-gold font-bold ${isMobile ? 'py-3 w-full text-sm' : 'btn-sm'}`}>
                     <Check size={14} className="inline mr-1" /> Save Changes
                   </button>
                 </div>

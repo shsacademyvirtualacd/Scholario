@@ -4,10 +4,12 @@ import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getOfferingsForTeacher, updateProfile } from '../../lib/db';
+import { useMobile } from '../../hooks/useMobile';
 import type { ClassOffering } from '../../types';
 
 export const ProfilePage: React.FC = () => {
   const { profile, user, refreshProfile } = useAuth();
+  const isMobile = useMobile();
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
@@ -95,9 +97,9 @@ export const ProfilePage: React.FC = () => {
       />
 
       {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mt-6">
+      <div className={isMobile ? 'flex flex-col gap-6 items-start mt-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mt-6'}>
         {/* Left Side: Avatar Card */}
-        <div className="lg:col-span-1 bg-white border border-[#E5E5E5] rounded-2xl p-6 text-center shadow-sm relative overflow-hidden">
+        <div className={`bg-white border border-[#E5E5E5] rounded-2xl p-6 text-center shadow-sm relative overflow-hidden ${isMobile ? 'w-full' : 'lg:col-span-1'}`}>
           <div className="absolute top-0 inset-x-0 h-2 bg-[#F4C430]" />
           
           {/* Avatar container */}
@@ -132,7 +134,7 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Right Side: Info sections */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`${isMobile ? 'w-full' : 'lg:col-span-2'} space-y-6`}>
           {/* Personal Information edit card */}
           <div className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-3">
@@ -193,20 +195,20 @@ export const ProfilePage: React.FC = () => {
                       setPhone(profile?.phone || '');
                       setError(null);
                     }}
-                    className="btn border border-[#E5E5E5] hover:bg-[#FAFAFA] text-xs font-bold px-4 py-2"
+                    className="btn border border-[#E5E5E5] hover:bg-[#FAFAFA] text-xs font-bold px-4 py-2 interactive"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="btn btn-gold text-xs font-bold px-4 py-2"
+                    className="btn btn-gold text-xs font-bold px-4 py-2 interactive"
                   >
                     Save Changes
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold">
+              <div className={isMobile ? 'flex flex-col gap-4 text-xs font-semibold' : 'grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold'}>
                 <div className="bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
                   <span className="block text-[10px] text-[#A3A3A3] uppercase tracking-wide mb-0.5">Full Name</span>
                   <span className="text-[#262626]">{fullName}</span>
@@ -234,7 +236,7 @@ export const ProfilePage: React.FC = () => {
             ) : classes.length === 0 ? (
               <p className="text-xs text-[#737373] italic">No active class offerings assigned to you yet.</p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
                 {classes.map((cls) => (
                   <div key={cls.id} className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl flex items-center justify-between">
                     <div>

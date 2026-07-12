@@ -14,8 +14,10 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { RosterEntry, ClassOffering } from '../../types';
+import { useMobile } from '../../hooks/useMobile';
 
 export const RosterManagerPage: React.FC = () => {
+  const isMobile = useMobile();
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [profilesMap, setProfilesMap] = useState<Record<string, any>>({});
@@ -376,10 +378,10 @@ export const RosterManagerPage: React.FC = () => {
       />
 
       {/* ── Statistics Overview Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div 
           onClick={() => setActiveSection('admins')}
-          className={`stat-card cursor-pointer transition-all border-2 ${activeSection === 'admins' ? 'border-red-500 bg-red-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-red-300'}`}
+          className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'admins' ? 'border-red-500 bg-red-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-red-300'}`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
@@ -393,7 +395,7 @@ export const RosterManagerPage: React.FC = () => {
 
         <div 
           onClick={() => setActiveSection('students')}
-          className={`stat-card cursor-pointer transition-all border-2 ${activeSection === 'students' ? 'border-indigo-500 bg-indigo-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-indigo-300'}`}
+          className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'students' ? 'border-indigo-500 bg-indigo-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-indigo-300'}`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -407,7 +409,7 @@ export const RosterManagerPage: React.FC = () => {
 
         <div 
           onClick={() => setActiveSection('teachers')}
-          className={`stat-card cursor-pointer transition-all border-2 ${activeSection === 'teachers' ? 'border-purple-500 bg-purple-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-purple-300'}`}
+          className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'teachers' ? 'border-purple-500 bg-purple-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-purple-300'}`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
@@ -419,7 +421,7 @@ export const RosterManagerPage: React.FC = () => {
           <div className="stat-label font-bold text-xs">Teachers</div>
         </div>
 
-        <div className="stat-card bg-white border border-[#E5E5E5]">
+        <div className="stat-card bg-white border border-[#E5E5E5] p-4 flex flex-col justify-between interactive">
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
               <Users size={16} />
@@ -427,16 +429,16 @@ export const RosterManagerPage: React.FC = () => {
             <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Platform</span>
           </div>
           <div className="stat-value text-emerald-600 text-2xl font-black">{roster.length}</div>
-          <div className="stat-label font-bold text-xs">Total Roster Entries</div>
+          <div className="stat-label font-bold text-xs">Total Roster</div>
         </div>
       </div>
 
       {/* ── Section Navigation Tabs ── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E5E5E5] pb-4 mb-6">
-        <div className="flex items-center gap-2 bg-[#FAFAFA] p-1 rounded-2xl border border-[#E5E5E5]">
+        <div className="flex items-center gap-2 bg-[#FAFAFA] p-1 rounded-2xl border border-[#E5E5E5] max-w-full overflow-x-auto no-scrollbar whitespace-nowrap">
           <button
             onClick={() => setActiveSection('admins')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
               activeSection === 'admins'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'text-[#737373] hover:text-[#111111] hover:bg-white'
@@ -446,7 +448,7 @@ export const RosterManagerPage: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveSection('students')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
               activeSection === 'students'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-[#737373] hover:text-[#111111] hover:bg-white'
@@ -456,7 +458,7 @@ export const RosterManagerPage: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveSection('teachers')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
               activeSection === 'teachers'
                 ? 'bg-purple-600 text-white shadow-sm'
                 : 'text-[#737373] hover:text-[#111111] hover:bg-white'
@@ -471,7 +473,7 @@ export const RosterManagerPage: React.FC = () => {
           {activeSection === 'students' && (
             <button
               onClick={openAddStudent}
-              className="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
+              className="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all w-full sm:w-auto interactive"
             >
               <UserPlus size={14} /> Provision Student
             </button>
@@ -479,7 +481,7 @@ export const RosterManagerPage: React.FC = () => {
           {activeSection === 'teachers' && (
             <button
               onClick={openAddTeacher}
-              className="btn bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
+              className="btn bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all w-full sm:w-auto interactive"
             >
               <UserPlus size={14} /> Provision Teacher
             </button>
@@ -488,7 +490,7 @@ export const RosterManagerPage: React.FC = () => {
       </div>
 
       {/* ── Search & Filters Bar ── */}
-      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6 rounded-2xl shadow-sm">
+      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6 rounded-2xl shadow-sm interactive">
         <div className="relative w-full md:w-80">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
           <input
@@ -500,12 +502,12 @@ export const RosterManagerPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-          <span className="text-xs font-bold text-[#737373] uppercase tracking-wider">Status Filter:</span>
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#F5F5F5] pt-3 md:pt-0">
+          <span className="text-xs font-bold text-[#737373] uppercase tracking-wider">Status:</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="input py-2 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-semibold text-[#111111] cursor-pointer"
+            className="input py-2 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-semibold text-[#111111] cursor-pointer flex-1 md:flex-none"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active (Paid & Verified)</option>
@@ -517,7 +519,7 @@ export const RosterManagerPage: React.FC = () => {
       </div>
 
       {/* ── Table Section Display ── */}
-      <div className="card bg-white border border-[#E5E5E5] rounded-2xl overflow-hidden shadow-sm">
+      <div className={isMobile ? "" : "card bg-white border border-[#E5E5E5] rounded-2xl overflow-hidden shadow-sm"}>
         {loading ? (
           <div className="flex items-center justify-center p-16 text-[#737373] text-xs font-bold">
             <Clock size={16} className="animate-spin mr-2 text-[#111111]" /> Syncing {activeSection} directory...
@@ -525,6 +527,139 @@ export const RosterManagerPage: React.FC = () => {
         ) : filteredRoster.length === 0 ? (
           <div className="text-center p-16 text-[#737373] text-xs font-medium">
             No {activeSection} found matching current filter or search parameters.
+          </div>
+        ) : isMobile ? (
+          <div className="space-y-4 p-1 bg-transparent">
+            {filteredRoster.map((entry) => {
+              const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
+                profilesMap[entry.id] ||
+                (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+              const hasProfile = Boolean(matchedProfile || entry.profile_id);
+              const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
+              const isSuspended = entry.suspended === true;
+              const profileIdForFee = matchedProfile?.id || entry.profile_id;
+              const feeStatusVal = profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : 'unpaid';
+              const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student';
+              const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
+              const isPendingPayment = isStudent ? (!isPendingAccount && feeStatusVal !== 'paid') : false;
+              const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
+              const idShort = (entry.id || entry.profile_id || '').slice(0, 8);
+
+              return (
+                <div key={entry.id} className="bg-white rounded-2xl border border-[#E5E5E5] p-3 shadow-sm flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-extrabold text-[#111111] text-sm flex items-center gap-1.5 flex-wrap">
+                        <span className="truncate">{entry.full_name}</span>
+                        {entry.role === 'admin' && (
+                          <span className="bg-red-100 text-red-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-red-200 shrink-0">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[#737373] text-[11px] font-medium mt-0.5 truncate">{entry.email}</div>
+                    </div>
+                    {/* Access Status Badge */}
+                    <div className="shrink-0">
+                      {isSuspended ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                          <Lock size={10} /> Suspended
+                        </span>
+                      ) : isActive ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                          <UserCheck size={10} /> Active
+                        </span>
+                      ) : feeStatusVal === 'pending' ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                          <Clock size={10} /> Verifying
+                        </span>
+                      ) : isPendingPayment ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                          <DollarSign size={10} /> Unpaid
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                          <Clock size={10} /> Pending
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {activeSection === 'students' && (
+                    <div className="grid grid-cols-2 gap-3 text-xs bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
+                      <div>
+                        <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Phone</div>
+                        <div className="font-semibold text-[#404040]">{getPhone(entry)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Class</div>
+                        <div className="font-semibold text-[#111111]">{getClassGrade(entry)}</div>
+                      </div>
+                      <div className="col-span-2 flex items-center justify-between mt-1">
+                        <div>
+                          <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Stream</div>
+                          <div className="font-semibold text-[#404040]">{getStream(entry)}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">ID</div>
+                          <div className="font-mono font-bold text-[#525252] flex items-center gap-1">
+                            #{idShort}
+                            <button onClick={() => copyToClipboard(entry.id)} className="text-zinc-400 hover:text-zinc-700 transition-colors">
+                              {copiedId === entry.id ? <Check size={10} className="text-emerald-600" /> : <Copy size={10} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeSection === 'teachers' && (
+                    <div className="text-xs text-[#525252] bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
+                      {formatClasses(entry)}
+                    </div>
+                  )}
+
+                  {activeSection !== 'admins' && (
+                    <div className="flex gap-2 pt-2 border-t border-[#F0F0F0]">
+                      <button
+                        onClick={() => handleToggleAccess(entry)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
+                          isSuspended 
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
+                        }`}
+                      >
+                        {isSuspended ? <><Unlock size={12} /> Restore</> : <><Lock size={12} /> Suspend</>}
+                      </button>
+                      {activeSection === 'teachers' && (
+                        <button
+                          onClick={() => openEdit(entry)}
+                          className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-xl text-zinc-700 font-bold inline-flex items-center justify-center"
+                        >
+                          <Edit size={12} />
+                        </button>
+                      )}
+                      {activeSection === 'students' && feeStatusVal === 'pending' && (
+                        <button
+                          onClick={async () => {
+                            if (!profileIdForFee) return;
+                            try {
+                              await updateFeeStatus(profileIdForFee, 'paid', 'Approved via mobile roster.');
+                              await fetchEnrichmentData();
+                            } catch (err: any) {
+                              console.error('Approve payment error:', err);
+                            }
+                          }}
+                          className="px-4 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center"
+                        >
+                          <Check size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -880,14 +1015,14 @@ export const RosterManagerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="btn flex-1 py-3 sm:py-2.5 border border-[#E5E5E5] text-[#404040] font-bold text-xs rounded-xl hover:bg-[#FAFAFA]"
+                  className="btn flex-1 py-3 sm:py-2.5 border border-[#E5E5E5] text-[#404040] font-bold text-xs rounded-xl hover:bg-[#FAFAFA] interactive"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSaving}
-                  className="btn flex-1 py-3 sm:py-2.5 bg-[#111111] hover:bg-[#262626] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                  className="btn flex-1 py-3 sm:py-2.5 bg-[#111111] hover:bg-[#262626] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 interactive"
                 >
                   {formSaving ? <Clock size={14} className="animate-spin" /> : <Save size={14} />}
                   {drawerMode === 'edit' ? 'Save Assignments' : 'Provision Account'}

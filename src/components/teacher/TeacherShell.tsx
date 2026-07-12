@@ -108,7 +108,7 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
           </div>
           <button
             onClick={signOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2"
+            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2 interactive"
           >
             <LogOut size={17} className="shrink-0" />
             <span>Sign Out</span>
@@ -117,12 +117,12 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
       </aside>
 
       {/* Main container */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden page-transition">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0">
+        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full overflow-x-hidden">
           <div className="flex items-center gap-3">
             <button
-              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111]"
+              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111] interactive"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -148,35 +148,12 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         </header>
 
         {/* Page body */}
-        <main className="flex-1 p-4 sm:p-6 pb-24 lg:pb-6 space-y-6 max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden">
           {children}
         </main>
       </div>
 
-      {/* ── Mobile Bottom Navigation ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E5E5] z-40 flex items-center justify-around px-2 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        {NAV_ITEMS.map(({ icon: Icon, label, path }) => {
-          const isActive = isPathActive(path);
-          return (
-            <button
-              key={path}
-              onClick={() => handleNav(path)}
-              className={`flex flex-col items-center justify-center w-full py-3 gap-1 ${
-                isActive ? 'text-[#111111]' : 'text-[#A3A3A3] hover:text-[#737373]'
-              }`}
-            >
-              <div className={`relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-                isActive ? 'bg-[#F4C430] bg-opacity-20 text-[#D97706]' : 'bg-transparent'
-              }`}>
-                <Icon size={18} className={isActive ? 'text-[#D97706]' : ''} />
-              </div>
-              <span className={`text-[10px] font-bold ${isActive ? 'text-[#111111]' : 'font-semibold'}`}>
-                {label.split(' ')[0]} {/* Shorten label for bottom nav if needed */}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+
 
     </div>
   );
