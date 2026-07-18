@@ -281,11 +281,14 @@ export async function getAllOfferings(): Promise<ClassOffering[]> {
 }
 
 /** Teacher: get only offerings assigned to this teacher */
-export async function getOfferingsForTeacher(teacherId: string): Promise<ClassOffering[]> {
-  const { data, error } = await supabase
+export async function getOfferingsForTeacher(teacherId?: string): Promise<ClassOffering[]> {
+  let query = supabase
     .from('class_offerings')
-    .select('*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)')
-    .eq('teacher_id', teacherId);
+    .select('*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)');
+  if (teacherId) {
+    query = query.eq('teacher_id', teacherId);
+  }
+  const { data, error } = await query;
   const rows = throwOnError(data, error, 'getOfferingsForTeacher');
   return rows.map(mapOffering).sort((a: any, b: any) => (a.subject_name || a.subject?.name || '').localeCompare(b.subject_name || b.subject?.name || ''));
 }
@@ -330,14 +333,17 @@ export async function getAllSlots(): Promise<ClassSlot[]> {
   }));
 }
 
-/** Teacher: get slots for this teacher's offerings only */
-export async function getSlotsForTeacher(teacherId: string): Promise<ClassSlot[]> {
-  const { data, error } = await supabase
+/** Teacher: get slots for this teacher's assigned offerings */
+export async function getSlotsForTeacher(teacherId?: string): Promise<ClassSlot[]> {
+  let query = supabase
     .from('class_slots')
     .select('*, offering:class_offerings!inner(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
-    .eq('offering.teacher_id', teacherId)
     .order('day_of_week')
     .order('start_time');
+  if (teacherId) {
+    query = query.eq('offering.teacher_id', teacherId);
+  }
+  const { data, error } = await query;
   const rows = throwOnError(data, error, 'getSlotsForTeacher');
   return rows.map((r: any) => ({
     ...r,
@@ -978,6 +984,9 @@ export async function addRosterEntry(
   classIds: string[],
   phone?: string
 ): Promise<RosterEntry> {
+  if (role === 'student') {
+    throw new Error('Pre-provisioning of students is not allowed.');
+  }
   const { data, error } = await (supabase as any).rpc('add_to_roster', {
     p_email: email,
     p_full_name: fullName,

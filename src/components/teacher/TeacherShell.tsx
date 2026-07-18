@@ -117,9 +117,9 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
       </aside>
 
       {/* Main container */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden page-transition">
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full overflow-x-hidden">
+        <header className="sticky top-0 z-50 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
           <div className="flex items-center gap-3">
             <button
               className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111] interactive"
@@ -142,7 +142,7 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         </header>
 
         {/* Page body */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden">
+        <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden page-transition">
           {children}
         </main>
       </div>

@@ -72,7 +72,6 @@ export const TeacherTable: React.FC<TeacherTableProps> = ({
                 <td>
                   <div className="text-xs font-medium text-[#525252]">
                     <div>{teacher.email || 'No email address registered'}</div>
-                    <div className="text-[#A3A3A3] text-[10px] mt-0.5">{teacher.phone || 'No phone number registered'}</div>
                   </div>
                 </td>
                 <td>

@@ -197,10 +197,7 @@ export const TeachersPage: React.FC = () => {
                     <span className="text-[#A3A3A3]">Email:</span>
                     <span>{teacher.email || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#A3A3A3]">Phone:</span>
-                    <span>{teacher.phone || 'N/A'}</span>
-                  </div>
+
                   <div className="flex justify-between">
                     <span className="text-[#A3A3A3]">Subjects Assigned:</span>
                     <span className="font-semibold max-w-[150px] truncate" title={workload.streams}>{workload.streams}</span>

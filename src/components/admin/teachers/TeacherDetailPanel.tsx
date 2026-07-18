@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Phone, Mail, Clock, MapPin, Video } from 'lucide-react';
+import { Calendar, Mail, Clock, MapPin, Video } from 'lucide-react';
 import type { Teacher, ClassOffering, ClassSlot } from '../../../types';
 import { getOfferingsForTeacher, getSlotsForTeacher, getStudentsForTeacher } from '../../../lib/db';
 
@@ -80,10 +80,6 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
           <div className="flex items-center gap-2">
             <Mail size={13} className="text-[#A3A3A3] shrink-0" />
             <span className="truncate">{teacher.email || 'No email address registered'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Phone size={13} className="text-[#A3A3A3] shrink-0" />
-            <span>{teacher.phone || 'No phone number registered'}</span>
           </div>
         </div>
       </div>

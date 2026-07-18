@@ -19,29 +19,54 @@ export const TeacherNotesPage: React.FC = () => {
   const [teacherOfferings, setTeacherOfferings] = useState<ClassOffering[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [taxonomy, setTaxonomy] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // ── Load teacher's offerings, notes, and taxonomy ──────────────────────
   const fetchNotes = async () => {
     if (teacherOfferings.length === 0) return;
     const ids = teacherOfferings.map((o) => o.id);
-    const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
-    setNotes(n);
+    try {
+      const n = await getNotesForOfferings(ids);
+      setNotes(n);
+    } catch (err: any) {
+      console.error('[TeacherNotesPage] fetchNotes error:', err);
+      setFetchError(err?.message || 'Failed to load notes. Please try refreshing.');
+    }
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      await getTaxonomy().then(setTaxonomy);
+      const offs = await getOfferingsForTeacher(teacherId);
+      setTeacherOfferings(offs);
+      const ids = offs.map((o) => o.id);
+      const n = await getNotesForOfferings(ids);
+      setNotes(n);
+    } catch (err: any) {
+      console.error('[TeacherNotesPage] loadData error:', err);
+      setFetchError(err?.message || 'Failed to load notes data. Please try refreshing.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    getTaxonomy().then(setTaxonomy).catch(console.error);
-
-    getOfferingsForTeacher(teacherId).then(async (offs) => {
-      setTeacherOfferings(offs);
-      const ids = offs.map((o) => o.id);
-      const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
-      setNotes(n);
-    }).catch(console.error);
-  }, [teacherId]);
+    loadData();
+  }, []);
 
   useRealtimeTable({
     table: 'notes',
     onAny: fetchNotes
+  });
+
+  // Refetch offerings + notes when admin assigns/deassigns teacher classes
+  useRealtimeTable({
+    table: 'class_offerings',
+    debounceMs: 1500,
+    onAny: loadData
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,7 +74,7 @@ export const TeacherNotesPage: React.FC = () => {
 
   // 4-Layer Taxonomy Filters (Board → Grade → Stream → Subject)
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
-  const [selectedGrade, setSelectedGrade] = useState<string>('10');
+  const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
 
@@ -70,12 +95,17 @@ export const TeacherNotesPage: React.FC = () => {
     };
   });
 
-  // Compute active grades from taxonomy or fallback
-  const rawGrades = taxonomy && taxonomy.classes && taxonomy.classes.length > 0
-    ? taxonomy.classes
-        .filter((c: any) => c.board_id === 'fbise' || !c.board_id)
-        .map((c: any) => ({ id: String(c.grade), label: c.display_name || `${c.grade}th` }))
-    : GRADES.map((g) => ({ id: g.grade, label: g.displayName }));
+  // Compute active grades from the teacher's actual assigned offerings
+  const rawGrades = teacherOfferings.map((offering) => {
+    const offGrade = String(
+      offering.grade || (offering as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.grade || ''
+    );
+    const classObj = taxonomy?.classes?.find((c: any) => String(c.grade) === offGrade);
+    return {
+      id: offGrade,
+      label: classObj?.display_name || (offGrade ? `${offGrade}th` : '')
+    };
+  }).filter(g => g.id !== '');
 
   const seenGrades = new Set<string>();
   const activeGrades: { id: string; label: string }[] = rawGrades.filter((g: any) => {
@@ -83,7 +113,7 @@ export const TeacherNotesPage: React.FC = () => {
     seenGrades.add(g.id);
     return true;
   });
-  activeGrades.push({ id: 'all', label: 'All FBISE' });
+  activeGrades.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
 
   // Compute active streams for selected grade
   const activeClass = taxonomy?.classes?.find(
@@ -93,9 +123,23 @@ export const TeacherNotesPage: React.FC = () => {
     ? taxonomy.streams.filter((s: any) => s.class_id === activeClass.id)
     : [];
 
+  const teacherStreamsForSelectedGrade = teacherOfferings
+    .filter((o) => {
+      const offGrade = String(
+        o.grade || (o as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (o as any).class_id)?.grade || ''
+      );
+      return selectedGrade === 'all' || offGrade === String(selectedGrade);
+    })
+    .map((o) => o.stream)
+    .filter(Boolean);
+
   const activeStreams: { id: string; name: string }[] = dbStreams.length > 0
-    ? dbStreams.map((s: any) => ({ id: s.id, name: s.name }))
-    : getStreamsForGrade(selectedGrade).map((s) => ({ id: s.name, name: s.name }));
+    ? dbStreams
+        .map((s: any) => ({ id: s.id, name: s.name }))
+        .filter((s: any) => teacherStreamsForSelectedGrade.includes(s.name))
+    : getStreamsForGrade(selectedGrade)
+        .map((s) => ({ id: s.name, name: s.name }))
+        .filter((s: any) => teacherStreamsForSelectedGrade.includes(s.name));
 
   // Scope offerings for Subject dropdown by selected Board, Grade, and Stream
   const scopedOfferings = teacherOfferings.filter((offering) => {
@@ -144,6 +188,16 @@ export const TeacherNotesPage: React.FC = () => {
     }
   }, [selectedGrade, selectedStream, scopedOfferings, selectedSubject]);
 
+  // Auto-select first active grade if current grade is 'all' or not in activeGrades
+  useEffect(() => {
+    if (activeGrades.length > 0) {
+      const isValid = activeGrades.some((g) => g.id === selectedGrade);
+      if (!isValid) {
+        setSelectedGrade(activeGrades[0].id);
+      }
+    }
+  }, [activeGrades, selectedGrade]);
+
   // Filter notes based on search term, format type, and 4-layer taxonomy selection
   const filteredNotes = enrichedNotes.filter((note) => {
     const matchesSearch =
@@ -166,7 +220,7 @@ export const TeacherNotesPage: React.FC = () => {
 
   const resetFilters = () => {
     setSelectedBoard('fbise');
-    setSelectedGrade('10');
+    setSelectedGrade(activeGrades[0]?.id || 'all');
     setSelectedStream('all');
     setSelectedSubject('all');
     setTypeFilter('all');
@@ -196,7 +250,30 @@ export const TeacherNotesPage: React.FC = () => {
         />
       </div>
 
-      {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
+      {/* Loading / Error states */}
+      {loading ? (
+        <div className="py-16 text-center">
+          <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
+          <p className="text-xs text-[#737373] font-bold">Loading notes...</p>
+        </div>
+      ) : fetchError ? (
+        <div className="py-16 text-center">
+          <div className="inline-flex items-center gap-2 bg-[#FEF2F2] border border-[#fecaca] text-[#dc2626] text-xs font-semibold px-4 py-3 rounded-xl">
+            <span>⚠</span>
+            <span>{fetchError}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="mt-4 block mx-auto text-xs font-bold text-[#737373] hover:text-[#111111] underline underline-offset-2 transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+
+      {/* Only render main UI once loaded without error */}
+      {!loading && !fetchError && (
+      <>{/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
       <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div className="flex overflow-x-auto gap-6 border-transparent">
           <button
@@ -213,7 +290,7 @@ export const TeacherNotesPage: React.FC = () => {
 
         {/* Secondary controls (Reset) */}
         <div className="flex items-center gap-3 pb-2 sm:pb-0">
-          {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
+          {(selectedBoard !== 'fbise' || selectedGrade !== (activeGrades[0]?.id || 'all') || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
             <button
               onClick={resetFilters}
               className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
@@ -357,7 +434,8 @@ export const TeacherNotesPage: React.FC = () => {
 
 
 
-      {/* Note Viewer Popover */}
+      {/* Note Viewer Popover — always rendered outside the conditional UI block */}
+      </> )}
       {viewerOpen && selectedNote && (
         <NoteViewerModal
           note={selectedNote}

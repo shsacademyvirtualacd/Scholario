@@ -10,10 +10,10 @@ const jwt = `${header}.${payload}.${signature}`;
 
 async function test() {
   const formData = new FormData();
-  
+
   const fileContent = fs.readFileSync('real.pdf');
   const file = new File([fileContent], 'real.pdf', { type: 'application/pdf' });
-  
+
   formData.append('file', file);
   formData.append('offering_id', 'some-id');
   formData.append('chapter_name', 'Test Chapter');

@@ -164,8 +164,8 @@ BEGIN
   -- teachers.id (PK — re-key by INSERT new + DELETE old)
   -- 🔥 FIX: Move before class_offerings UPDATE to prevent FK violation 🔥
   IF EXISTS (SELECT 1 FROM public.teachers WHERE id = v_old_id) THEN
-    INSERT INTO public.teachers (id, full_name, email, is_active, joining_date, avatar_url, phone, created_at)
-    SELECT v_new_id, full_name, email, is_active, joining_date, avatar_url, phone, created_at
+    INSERT INTO public.teachers (id, full_name, email, is_active, joining_date, avatar_url, created_at)
+    SELECT v_new_id, full_name, email, is_active, joining_date, avatar_url, created_at
     FROM public.teachers WHERE id = v_old_id
     ON CONFLICT (id) DO UPDATE SET
       full_name = EXCLUDED.full_name,

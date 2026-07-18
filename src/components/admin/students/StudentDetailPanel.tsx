@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Mail } from 'lucide-react';
+import { Phone, Mail, Calendar } from 'lucide-react';
 import type { Profile, Enrollment, ClassOffering, Teacher, RosterEntry } from '../../../types';
 import { getEnrollmentsForStudent, getAllOfferings, getAllTeachers, getAllRoster } from '../../../lib/db';
 
@@ -90,6 +90,10 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
           <div className="flex items-center gap-2">
             <Mail size={13} className="text-[#A3A3A3] shrink-0" />
             <span>{emailDisplay}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar size={13} className="text-[#A3A3A3] shrink-0" />
+            <span>Registered: {rosterEntry?.created_at ? new Date(rosterEntry.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</span>
           </div>
         </div>
       </div>

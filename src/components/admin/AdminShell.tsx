@@ -111,9 +111,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
 
         {/* Profile + Sign Out */}
         <div className="p-3 border-t border-[#1F1F1F] space-y-0.5">
-          <button
-            onClick={() => navigate('/admin/profile')}
-            className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A] text-white text-left hover:bg-[#222222] transition-colors cursor-pointer"
+          <div
+            className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A] text-white text-left transition-colors"
           >
             <div className="w-8 h-8 rounded-lg bg-[#F4C430] text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
               {(profile?.full_name?.[0] ?? 'A').toUpperCase()}
@@ -126,7 +125,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                 Admin Staff
               </p>
             </div>
-          </button>
+          </div>
           <button
             onClick={signOut}
             className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2 interactive"
@@ -138,9 +137,9 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       </aside>
 
       {/* Main container */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden page-transition">
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full overflow-x-hidden">
+        <header className="sticky top-0 z-50 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111] shrink-0 interactive"
@@ -163,7 +162,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         </header>
 
         {/* Content area */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden bg-[#FAFAFA] max-w-full">
+        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden bg-[#FAFAFA] max-w-full page-transition">
           {children}
         </main>
       </div>

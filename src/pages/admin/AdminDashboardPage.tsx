@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, ChevronRight, ArrowUpRight,
-  GraduationCap, Percent, BookOpen
+  GraduationCap, Percent, Megaphone
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import {
@@ -20,7 +20,7 @@ const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMobile();
 
-  const [counts, setCounts] = useState({ students: 0, teachers: 0, offerings: 0 });
+  const [counts, setCounts] = useState({ students: 0, teachers: 0, offerings: 0, announcements: 0 });
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [slots, setSlots] = useState<ClassSlot[]>([]);
@@ -71,12 +71,12 @@ const AdminDashboardPage: React.FC = () => {
       bg: '#FFFBF0',
     },
     {
-      label: 'Active Courses',
-      value: counts.offerings.toString(),
+      label: 'Recent Announcements',
+      value: counts.announcements.toString(),
       change: '+0',
-      changeLabel: 'new this semester',
+      changeLabel: 'total published',
       positive: true,
-      icon: BookOpen,
+      icon: Megaphone,
       color: '#a855f7',
       bg: '#FAF5FF',
     },
@@ -212,12 +212,6 @@ const AdminDashboardPage: React.FC = () => {
                 >
                   <stat.icon size={15} style={{ color: stat.color }} />
                 </div>
-                {!isAttendance && (
-                  <span className={`flex items-center gap-0.5 text-[10px] font-bold ${stat.positive ? 'text-[#22c55e]' : 'text-[#ef4444]'}`}>
-                    <ArrowUpRight size={10} style={{ transform: stat.positive ? 'none' : 'rotate(90deg)' }} />
-                    {stat.change}
-                  </span>
-                )}
               </div>
               <div>
                 <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] leading-none">{isAttendance ? '—' : stat.value}</div>

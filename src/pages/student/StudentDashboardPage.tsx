@@ -428,27 +428,29 @@ const StudentDashboardPage: React.FC = () => {
       <div className={`${isMobile ? 'flex flex-col gap-4' : 'grid sm:grid-cols-2 xl:grid-cols-4 gap-4'}`}>
         
         {/* Streak */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive relative opacity-40 select-none">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
-            <span className="text-xl fire-anim">🔥</span>
+            <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+              Soon
+            </span>
           </div>
           <div>
-            <div className="stat-value">{currentStreak}</div>
-            <div className="stat-label">days in a row</div>
+            <div className="stat-value">—</div>
+            <div className="stat-label">coming soon</div>
           </div>
           <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
             <div className="flex gap-0.5 flex-1 max-w-[120px]">
-              {last7Days.map((attended, i) => (
+              {[false, false, false, false, false, false, false].map((attended, i) => (
                 <div
                   key={i}
                   className="flex-1 h-1.5 rounded-full transition-all duration-300"
-                  style={{ background: attended ? '#F4C430' : '#F0F0F0' }}
-                  title={attended ? 'Attended' : 'Absent/No Class'}
+                  style={{ background: '#F0F0F0' }}
+                  title="Coming Soon"
                 />
               ))}
             </div>
-            <span className="text-[10px] text-[#A3A3A3] font-bold">PB: {personalBest}d</span>
+            <span className="text-[10px] text-[#A3A3A3] font-bold">PB: —</span>
           </div>
         </div>
         {/* Academic Program */}

@@ -23,7 +23,6 @@ export const RosterManagerPage: React.FC = () => {
   const [profilesMap, setProfilesMap] = useState<Record<string, any>>({});
   const [classesMap, setClassesMap] = useState<Record<string, any>>({});
   const [streamsMap, setStreamsMap] = useState<Record<string, any>>({});
-  const [teachersMap, setTeachersMap] = useState<Record<string, any>>({});
   const [feeMap, setFeeMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +36,7 @@ export const RosterManagerPage: React.FC = () => {
 
   // Form Drawer states
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<'add_student' | 'add_teacher' | 'edit'>('add_student');
+  const [drawerMode, setDrawerMode] = useState<'add_teacher' | 'edit'>('add_teacher');
   const [selectedEntry, setSelectedEntry] = useState<RosterEntry | null>(null);
 
   // Form Fields
@@ -55,11 +54,10 @@ export const RosterManagerPage: React.FC = () => {
 
   const fetchEnrichmentData = async () => {
     try {
-      const [profilesRes, classesRes, streamsRes, teachersRes, feesRes] = await Promise.all([
+      const [profilesRes, classesRes, streamsRes, feesRes] = await Promise.all([
         supabase.from('profiles').select('*'),
         supabase.from('classes').select('*'),
         supabase.from('streams').select('*'),
-        supabase.from('teachers').select('*'),
         supabase.from('fee_statuses').select('*')
       ]);
 
@@ -74,13 +72,6 @@ export const RosterManagerPage: React.FC = () => {
       const sMap: Record<string, any> = {};
       (streamsRes.data as any[] || []).forEach(s => { sMap[s.id] = s; });
       setStreamsMap(sMap);
-
-      const tMap: Record<string, any> = {};
-      (teachersRes.data as any[] || []).forEach(t => { 
-        if (t.id) tMap[t.id] = t;
-        if (t.email) tMap[t.email.toLowerCase()] = t;
-      });
-      setTeachersMap(tMap);
 
       const fMap: Record<string, any> = {};
       (feesRes.data as any[] || []).forEach(f => {
@@ -131,16 +122,6 @@ export const RosterManagerPage: React.FC = () => {
     onUpdate: async () => { await fetchEnrichmentData(); },
   });
 
-  const openAddStudent = () => {
-    setSelectedEntry(null);
-    setEmail('');
-    setFullName('');
-    setPhone('');
-    setSelectedClass('');
-    setFormError(null);
-    setDrawerMode('add_student');
-    setDrawerOpen(true);
-  };
 
   const openAddTeacher = () => {
     setSelectedEntry(null);
@@ -186,12 +167,7 @@ export const RosterManagerPage: React.FC = () => {
       return;
     }
 
-    if (drawerMode === 'add_teacher' && phoneTrim) {
-      if (!/^03\d{9}$/.test(phoneTrim)) {
-        setFormError('Please enter a valid 11-digit phone number starting with 03 (e.g. 03001234567).');
-        return;
-      }
-    }
+
 
     setFormSaving(true);
 
@@ -202,10 +178,12 @@ export const RosterManagerPage: React.FC = () => {
         await updateRosterEntry(selectedEntry.id, classesToSave);
         
         setRoster(prev => prev.map(r => r.id === selectedEntry.id ? { ...r, class_ids: classesToSave } : r));
+        const offeringsData = await getAllOfferings().catch(() => []);
+        setOfferings(offeringsData);
         setDrawerOpen(false);
       } else {
-        const role = drawerMode === 'add_student' ? 'student' : 'teacher';
-        const classesToSave = role === 'student' ? [] : selectedClasses;
+        const role = 'teacher';
+        const classesToSave = selectedClasses;
 
         if (roster.some(r => r.email.toLowerCase() === emailTrim)) {
           setFormError('Email is already registered in the roster.');
@@ -215,6 +193,8 @@ export const RosterManagerPage: React.FC = () => {
 
         const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave, phoneTrim || undefined);
         setRoster(prev => [newEntry, ...prev]);
+        const offeringsData = await getAllOfferings().catch(() => []);
+        setOfferings(offeringsData);
         setDrawerOpen(false);
         await fetchEnrichmentData();
       }
@@ -265,6 +245,11 @@ export const RosterManagerPage: React.FC = () => {
       try {
         await deleteRosterEntry(entryToDelete.id);
         setRoster(prev => prev.filter(r => r.id !== entryToDelete.id && r.profile_id !== entryToDelete.id));
+        
+        // Re-fetch class offerings so that any classes previously assigned to the deleted teacher show as 'Unassigned' in the UI
+        const offeringsData = await getAllOfferings().catch(() => []);
+        setOfferings(offeringsData);
+
         setDeleteModalOpen(false);
         setEntryToDelete(null);
       } catch (err: any) {
@@ -288,9 +273,9 @@ export const RosterManagerPage: React.FC = () => {
 
   // Helper getters for enrichment
   const getPhone = (entry: RosterEntry) => {
+    if (entry.role === 'teacher') return '—';
     const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null);
-    const t = teachersMap[entry.id] || (entry.email ? teachersMap[entry.email.toLowerCase()] : null);
-    return p?.phone || t?.phone || '—';
+    return p?.phone || '—';
   };
 
   const getClassGrade = (entry: RosterEntry) => {
@@ -482,14 +467,6 @@ export const RosterManagerPage: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          {activeSection === 'students' && (
-            <button
-              onClick={openAddStudent}
-              className="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all w-full sm:w-auto interactive"
-            >
-              <UserPlus size={14} /> Provision Student
-            </button>
-          )}
           {activeSection === 'teachers' && (
             <button
               onClick={openAddTeacher}
@@ -742,12 +719,7 @@ export const RosterManagerPage: React.FC = () => {
                           )}
                         </div>
                         <div className="text-[#737373] text-[11px] font-medium mt-0.5">{entry.email}</div>
-                        {activeSection === 'teachers' && (
-                          <div className="text-[#737373] text-[11px] font-medium mt-0.5 flex items-center gap-1">
-                            <Phone size={10} className="text-[#A3A3A3] shrink-0" />
-                            {profilesMap[entry.profile_id]?.phone || entry.phone || 'Not provided'}
-                          </div>
-                        )}
+
                       </td>
 
                       {activeSection === 'students' && (
@@ -932,7 +904,6 @@ export const RosterManagerPage: React.FC = () => {
             <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between bg-[#FAFAFA]">
               <div>
                 <h3 className="text-base font-black text-[#111111]">
-                  {drawerMode === 'add_student' && 'Provision New Student'}
                   {drawerMode === 'add_teacher' && 'Provision New Teacher'}
                   {drawerMode === 'edit' && `Edit Classes — ${selectedEntry?.full_name}`}
                 </h3>
@@ -989,20 +960,6 @@ export const RosterManagerPage: React.FC = () => {
                     />
                   </div>
 
-                  {drawerMode === 'add_teacher' && (
-                    <div>
-                      <label className="label text-xs font-bold text-[#404040] mb-1.5 block uppercase tracking-wider">
-                        Phone Number <span className="text-[#A3A3A3] font-normal lowercase">(Optional)</span>
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="e.g. 03001234567"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
-                      />
-                    </div>
-                  )}
                 </>
               )}
 

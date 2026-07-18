@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, Camera, Edit3, Check, AlertCircle, BookOpen, Calendar } from 'lucide-react';
+import { Mail, Camera, Check, AlertCircle, BookOpen, Calendar } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getOfferingsForTeacher, updateProfile } from '../../lib/db';
+import { getOfferingsForTeacher } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
 import type { ClassOffering } from '../../types';
 
@@ -11,10 +11,8 @@ export const ProfilePage: React.FC = () => {
   const { profile, user, refreshProfile } = useAuth();
   const isMobile = useMobile();
   
-  // Local edit states
-  const [isEditing, setIsEditing] = useState(false);
+  // Local info states
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
   const [email, setEmail] = useState('');
   const [joiningDate, setJoiningDate] = useState<string>('');
   
@@ -29,7 +27,6 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
-      setPhone(profile.phone || '');
       
       // Fetch teacher classes
       setLoadingClasses(true);
@@ -56,37 +53,7 @@ export const ProfilePage: React.FC = () => {
     }
   }, [profile, user]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(false);
 
-    if (!fullName.trim()) {
-      setError('Full Name is required.');
-      return;
-    }
-
-    const phoneTrim = phone.trim();
-    if (phoneTrim && !/^03\d{9}$/.test(phoneTrim)) {
-      setError('Please enter a valid 11-digit phone number starting with 03 (e.g. 03001234567).');
-      return;
-    }
-
-    try {
-      if (profile?.id) {
-        await updateProfile(profile.id, {
-          full_name: fullName.trim(),
-          phone: phone.trim() || null
-        });
-        await refreshProfile();
-        setIsEditing(false);
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to save details.');
-    }
-  };
 
   return (
     <TeacherShell>
@@ -123,10 +90,6 @@ export const ProfilePage: React.FC = () => {
               <span className="truncate">{email}</span>
             </div>
             <div className="flex items-center gap-3">
-              <Phone size={15} className="text-[#A3A3A3] shrink-0" />
-              <span>{phone || 'No phone number'}</span>
-            </div>
-            <div className="flex items-center gap-3">
               <Calendar size={15} className="text-[#A3A3A3] shrink-0" />
               <span>Joined: {joiningDate ? new Date(joiningDate).toLocaleDateString() : 'N/A'}</span>
             </div>
@@ -135,90 +98,18 @@ export const ProfilePage: React.FC = () => {
 
         {/* Right Side: Info sections */}
         <div className={`${isMobile ? 'w-full' : 'lg:col-span-2'} space-y-6`}>
-          {/* Personal Information edit card */}
+          {/* Personal Information card */}
           <div className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-3">
               <h3 className="text-sm font-bold text-[#111111]">Personal Details</h3>
-              {!isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-[#737373] hover:text-[#111111] transition-colors"
-                >
-                  <Edit3 size={13} />
-                  Edit details
-                </button>
-              )}
             </div>
 
-            {error && (
-              <div className="mb-4 p-3 rounded-xl bg-[#FEF2F2] border border-[#fecaca] text-xs text-[#dc2626] flex items-center gap-2">
-                <AlertCircle size={14} />
-                <span className="font-semibold">{error}</span>
+            <div className="flex text-xs font-semibold">
+              <div className="bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0] flex-1">
+                <span className="block text-[10px] text-[#A3A3A3] uppercase tracking-wide mb-0.5">Full Name</span>
+                <span className="text-[#262626]">{fullName}</span>
               </div>
-            )}
-
-            {success && (
-              <div className="mb-4 p-3 rounded-xl bg-[#F0FDF4] border border-[#bbf7d0] text-xs text-[#16a34a] flex items-center gap-2">
-                <Check size={14} />
-                <span className="font-semibold">Profile details updated successfully!</span>
-              </div>
-            )}
-
-            {isEditing ? (
-              <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-[#737373] uppercase tracking-wide mb-1.5">Full Name</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="input text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-[#737373] uppercase tracking-wide mb-1.5">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="input text-xs"
-                    placeholder="e.g. 03001234567"
-                  />
-                </div>
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setFullName(profile?.full_name || '');
-                      setPhone(profile?.phone || '');
-                      setError(null);
-                    }}
-                    className="btn border border-[#E5E5E5] hover:bg-[#FAFAFA] text-xs font-bold px-4 py-2 interactive"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-gold text-xs font-bold px-4 py-2 interactive"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className={isMobile ? 'flex flex-col gap-4 text-xs font-semibold' : 'grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold'}>
-                <div className="bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
-                  <span className="block text-[10px] text-[#A3A3A3] uppercase tracking-wide mb-0.5">Full Name</span>
-                  <span className="text-[#262626]">{fullName}</span>
-                </div>
-                <div className="bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
-                  <span className="block text-[10px] text-[#A3A3A3] uppercase tracking-wide mb-0.5">Phone Number</span>
-                  <span className="text-[#262626]">{phone || 'Not provided'}</span>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Assigned Classes */}

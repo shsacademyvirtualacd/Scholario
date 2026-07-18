@@ -292,6 +292,26 @@ export const TeacherDashboardPage: React.FC = () => {
     }
   });
 
+  // Refetch everything when admin assigns/deassigns teacher classes
+  useRealtimeTable({
+    table: 'class_offerings',
+    debounceMs: 1500,
+    onAny: async () => {
+      if (!teacherId) return;
+      const [offs, studs, slots] = await Promise.all([
+        getOfferingsForTeacher(teacherId),
+        getStudentsForTeacher(teacherId),
+        getSlotsForTeacher(teacherId),
+      ]);
+      setOfferings(offs);
+      pageCache.set('teacher_offerings', offs, teacherId);
+      setStudents(studs);
+      pageCache.set('teacher_students', studs, teacherId);
+      setAllSlots(slots);
+      pageCache.set('teacher_slots', slots, teacherId);
+    }
+  });
+
   const currentDayIndex = getPKTNow().dayIndex; // PKT-aware, Monday-first
   const todayClasses = allSlots
     .filter(slot => slot.day_of_week === currentDayIndex)

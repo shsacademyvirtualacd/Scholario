@@ -2,6 +2,7 @@ import { onRequestPost as uploadHandler } from '../functions/api/notes/upload';
 import { onRequestGet as viewHandler } from '../functions/api/notes/view/[noteId]';
 import { onRequestGet as dlHandler } from '../functions/api/notes/dl/[noteId]';
 import { onRequestDelete as delHandler } from '../functions/api/notes/del/[noteId]';
+import { onRequestGet as auditR2Handler } from '../functions/api/admin/audit-r2';
 
 export interface Env {
   NOTES_BUCKET: any;
@@ -15,6 +16,22 @@ export interface Env {
 export default {
   async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
     const url = new URL(request.url);
+
+    // Handle Audit R2 Route
+    if (url.pathname === '/api/admin/audit-r2' && request.method === 'GET') {
+      try {
+        return await auditR2Handler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil.bind(ctx),
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
 
     // Handle Upload Route
     if (url.pathname === '/api/notes/upload' && request.method === 'POST') {

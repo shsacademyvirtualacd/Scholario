@@ -60,7 +60,6 @@ export interface Teacher {
   id: string;
   full_name: string;
   avatar_url: string | null;
-  phone: string | null;
   email: string | null;
   joining_date: string | null;
   is_active: boolean;

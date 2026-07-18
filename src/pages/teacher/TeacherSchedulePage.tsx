@@ -50,12 +50,17 @@ export const TeacherSchedulePage: React.FC = () => {
   const [activeDay, setActiveDay] = useState<number>(getInitialDay());
   const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchSlots = () => {
     setLoading(true);
+    setFetchError(null);
     getSlotsForTeacher(teacherId)
       .then(setScheduleSlots)
-      .catch(console.error)
+      .catch((err: any) => {
+        console.error('[TeacherSchedulePage] fetchSlots error:', err);
+        setFetchError(err?.message || 'Failed to load schedule. Please try refreshing.');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -66,6 +71,13 @@ export const TeacherSchedulePage: React.FC = () => {
   useRealtimeTable({
     table: 'class_slots',
     debounceMs: 2000,
+    onAny: fetchSlots
+  });
+
+  // Refetch slots when admin assigns/deassigns teacher classes
+  useRealtimeTable({
+    table: 'class_offerings',
+    debounceMs: 1500,
     onAny: fetchSlots
   });
 
@@ -113,6 +125,19 @@ export const TeacherSchedulePage: React.FC = () => {
         <div className="py-24 text-center">
           <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
           <p className="text-xs text-[#737373] font-bold">Loading schedule...</p>
+        </div>
+      ) : fetchError ? (
+        <div className="py-16 text-center">
+          <div className="inline-flex items-center gap-2 bg-[#FEF2F2] border border-[#fecaca] text-[#dc2626] text-xs font-semibold px-4 py-3 rounded-xl">
+            <span>⚠</span>
+            <span>{fetchError}</span>
+          </div>
+          <button
+            onClick={fetchSlots}
+            className="mt-4 block mx-auto text-xs font-bold text-[#737373] hover:text-[#111111] underline underline-offset-2 transition-colors"
+          >
+            Try again
+          </button>
         </div>
       ) : (
         <>

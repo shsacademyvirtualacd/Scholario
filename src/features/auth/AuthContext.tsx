@@ -117,10 +117,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // Check roster verification
+        // Check roster verification + ensure profile_id is linked to real auth.uid
         const { data: rosterEntry } = await (supabase as any)
           .from('roster')
-          .select('suspended, fee_suspended')
+          .select('id, suspended, fee_suspended, profile_id')
           .eq('email', email)
           .maybeSingle();
 
@@ -152,6 +152,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setFeeStatus(null);
           setLoading(false);
           return;
+        }
+
+        // ── Defense-in-depth: Re-link roster.profile_id if it is stale ───
+        // Handles the case where a placeholder profile was created during
+        // pre-provisioning (via add_to_roster) but the teacher/student has
+        // now logged in with their real auth.uid(). We must update roster so
+        // handle_roster_profile_link() (or equivalent queries) resolve correctly.
+        if (rosterEntry.profile_id !== userId) {
+          console.warn('[Auth] ⚠️ roster.profile_id mismatch — relinking to real uid:', userId);
+          const { error: relinkError } = await (supabase as any)
+            .from('roster')
+            .update({ profile_id: userId })
+            .eq('id', rosterEntry.id);
+          if (relinkError) {
+            console.warn('[Auth] ⚠️ Roster relink failed (non-fatal):', relinkError.message);
+          } else {
+            console.log('[Auth] ✅ Roster relinked to real auth.uid');
+          }
         }
 
         console.log('[Auth] ✅ Existing profile found — role:', existing.role);

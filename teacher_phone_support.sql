@@ -57,8 +57,8 @@ BEGIN
     END LOOP;
   -- If it's a teacher, pre-provision them in the teachers table and assign class offerings
   ELSIF p_role = 'teacher' THEN
-    INSERT INTO public.teachers (id, full_name, email, is_active, joining_date, phone)
-    VALUES (v_profile_id, p_full_name, LOWER(p_email), TRUE, CURRENT_DATE, p_phone);
+    INSERT INTO public.teachers (id, full_name, email, is_active, joining_date)
+    VALUES (v_profile_id, p_full_name, LOWER(p_email), TRUE, CURRENT_DATE);
 
     FOREACH v_class_id IN ARRAY v_class_ids
     LOOP
@@ -81,8 +81,7 @@ AS $$
 BEGIN
   IF NEW.role = 'teacher' THEN
     UPDATE public.teachers
-    SET full_name = NEW.full_name,
-        phone = NEW.phone
+    SET full_name = NEW.full_name
     WHERE id = NEW.id;
   END IF;
   RETURN NEW;
@@ -93,6 +92,6 @@ $$;
 DROP TRIGGER IF EXISTS trg_sync_teacher_profile ON public.profiles;
 
 CREATE TRIGGER trg_sync_teacher_profile
-AFTER UPDATE OF full_name, phone ON public.profiles
+AFTER UPDATE OF full_name ON public.profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.sync_teacher_profile();
