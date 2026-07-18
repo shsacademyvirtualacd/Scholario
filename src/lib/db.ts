@@ -116,6 +116,11 @@ export async function updateProfile(
  * Student onboarding: save grade + board + stream, then create enrollments
  * for all class_offerings that match that grade+board combo.
  * Also initialises the student's fee_status row if it doesn't exist.
+ *
+ * This calls a SECURITY DEFINER RPC on the database to bypass RLS.
+ * Without the RPC, RLS blocks new students from reading class_offerings
+ * (since they have no enrollments yet) and from writing to enrollments
+ * (admin-only write policy), creating a deadlock.
  */
 export async function completeStudentOnboarding(
   studentId: string,
@@ -125,108 +130,16 @@ export async function completeStudentOnboarding(
   _selectedSubjectIds: string[],
   fullName?: string
 ): Promise<void> {
-  // FBISE: query stream_subjects mapping to find which subjects the student should be enrolled in
-  let offeringIds: string[] = [];
-  if (streamId) {
-    const { data: streamSubjs, error: mappingError } = await (supabase as any)
-      .from('stream_subjects')
-      .select('subject_id')
-      .eq('stream_id', streamId);
-    if (mappingError) throw mappingError;
-    const subjectIds = (streamSubjs || []).map((ss: any) => ss.subject_id);
+  const { error } = await (supabase as any).rpc('complete_student_onboarding', {
+    p_student_id: studentId,
+    p_board_id: boardId,
+    p_class_id: classId,
+    p_stream_id: streamId || null,
+    p_full_name: fullName || 'Student',
+  });
 
-    const { data: offerings, error: offeringError } = await (supabase as any)
-      .from('class_offerings')
-      .select('id')
-      .eq('class_id', classId)
-      .in('subject_id', subjectIds);
-    if (offeringError) throw offeringError;
-    offeringIds = (offerings || []).map((o: any) => o.id);
-  }
-
-  // 2. Update or insert the profile FIRST to guarantee FK compliance on enrollments
-  let streamText = 'General';
-  if (streamId) {
-    const { data: streamRow } = await (supabase as any)
-      .from('streams')
-      .select('name')
-      .eq('id', streamId)
-      .maybeSingle();
-    streamText = streamRow?.name || '';
-  }
-
-  // Look up existing profile fields if available
-  const { data: existingProfile } = await (supabase as any)
-    .from('profiles')
-    .select('role, full_name, avatar_url, phone')
-    .eq('id', studentId)
-    .maybeSingle();
-
-  const profilePayload = {
-    id: studentId,
-    role: existingProfile?.role || 'student',
-    full_name: fullName || existingProfile?.full_name || 'Student',
-    avatar_url: existingProfile?.avatar_url || null,
-    phone: existingProfile?.phone || null,
-    board_id: boardId,
-    class_id: classId,
-    stream_id: streamId,
-    stream: streamText,
-    onboarding_complete: true
-  };
-
-  const { error: profileError } = await (supabase as any)
-    .from('profiles')
-    .upsert(profilePayload, { onConflict: 'id' });
-
-  if (profileError) {
-    throw new Error(`[db:completeStudentOnboarding] Profile upsert failed: ${profileError.message}`);
-  }
-
-  // Explicitly verify and confirm the profile row is readable in DB before proceeding to enrollments
-  let profileConfirmed = false;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const { data: checkData, error: checkErr } = await (supabase as any)
-      .from('profiles')
-      .select('id')
-      .eq('id', studentId)
-      .maybeSingle();
-    if (checkData && checkData.id === studentId && !checkErr) {
-      profileConfirmed = true;
-      break;
-    }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-
-  if (!profileConfirmed) {
-    throw new Error("[db:completeStudentOnboarding] Profile row could not be verified in database after upsert. Cannot proceed to enrollment insert without violating FK constraint.");
-  }
-
-  // 3. Remove any existing enrollments (clean slate)
-  await (supabase as any).from('enrollments').delete().eq('student_id', studentId);
-
-  // 4. Create new enrollments for the matching offerings
-  if (offeringIds.length > 0) {
-    const enrollmentRows = offeringIds.map((oid) => ({
-      student_id: studentId,
-      offering_id: oid,
-      total_classes: 48,
-    }));
-
-    const { error: enrollError } = await (supabase as any)
-      .from('enrollments')
-      .insert(enrollmentRows);
-
-    if (enrollError) throw new Error(`[db:completeStudentOnboarding] Enrollment failed: ${enrollError.message}`);
-  }
-
-  // 5. Ensure fee_status row exists (upsert to force clean slate and overwrite lingering data)
-  const { error: feeError } = await (supabase as any)
-    .from('fee_statuses')
-    .upsert({ student_id: studentId, status: 'unpaid' }, { onConflict: 'student_id' });
-
-  if (feeError) {
-    console.warn('[db:completeStudentOnboarding] fee_statuses upsert warning:', feeError.message);
+  if (error) {
+    throw new Error(`[db:completeStudentOnboarding] Onboarding RPC failed: ${error.message}`);
   }
 }
 
