@@ -6,6 +6,7 @@ import { resolveGradeFeeConfig } from '../../lib/db';
 const PricingSection: React.FC = () => {
   const [selectedGradeValue, setSelectedGradeValue] = useState('10');
   const [displayPrice, setDisplayPrice] = useState(2499);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   const activeGradesList = GRADES.map((g) => {
     // Collect unique subjects across streams
@@ -15,7 +16,7 @@ const PricingSection: React.FC = () => {
       value: g.grade,
       label: `Class ${g.displayName}`,
       subjects: Array.from(allSubjs),
-      basePrice: getDefaultPrice(g.grade),
+      basePrice: livePrices[g.grade] || getDefaultPrice(g.grade),
     };
   });
 
@@ -23,19 +24,30 @@ const PricingSection: React.FC = () => {
   const activeGrade = activeGradesList.find((g) => g.value === selectedGradeValue) || activeGradesList[0];
 
   useEffect(() => {
-    resolveGradeFeeConfig(selectedGradeValue)
-      .then((cfg) => {
-        if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
-          setDisplayPrice(cfg.amount);
-        } else {
-          setDisplayPrice(activeGrade?.basePrice || 2499);
+    const loadAllPrices = async () => {
+      const resolved: Record<string, number> = {};
+      for (const g of GRADES) {
+        try {
+          const cfg = await resolveGradeFeeConfig(g.grade);
+          if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
+            resolved[g.grade] = cfg.amount;
+          }
+        } catch (err) {
+          console.warn(`[PricingSection] Failed to load price for grade ${g.grade}:`, err);
         }
-      })
-      .catch((err) => {
-        console.error('[PricingSection] fee resolve error:', err);
-        setDisplayPrice(activeGrade?.basePrice || 2499);
-      });
-  }, [selectedGradeValue, activeGrade]);
+      }
+      setLivePrices(resolved);
+    };
+    loadAllPrices();
+  }, []);
+
+  useEffect(() => {
+    if (livePrices[selectedGradeValue]) {
+      setDisplayPrice(livePrices[selectedGradeValue]);
+    } else {
+      setDisplayPrice(activeGrade?.basePrice || 2499);
+    }
+  }, [selectedGradeValue, livePrices, activeGrade]);
 
   return (
     <section className="py-28 bg-white">

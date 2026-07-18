@@ -19,7 +19,7 @@ ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('
 -- ─── PHASE 2: Fee tables (create before any policies reference them) ─────────
 CREATE TABLE IF NOT EXISTS public.fee_configs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id uuid UNIQUE REFERENCES public.class_offerings(id) ON DELETE CASCADE,
+  class_id uuid UNIQUE REFERENCES public.classes(id) ON DELETE CASCADE,
   amount numeric NOT NULL CHECK (amount >= 0),
   payment_instructions text NOT NULL,
   whatsapp_number text NOT NULL,

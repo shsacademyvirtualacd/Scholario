@@ -308,49 +308,7 @@ export const ScheduleManagerPage: React.FC = () => {
       ]
     : [];
 
-  // Compute offerings specifically for the Add/Edit drawer context based on active grade & stream tabs
-  const targetGrade = (selectedSlot && selectedSlot.id)
-    ? (selectedSlot.offering?.grade || taxonomy?.classes?.find((c: any) => c.id === selectedSlot.class_id)?.grade || selectedGrade)
-    : selectedGrade;
 
-  const targetStreamId = (selectedSlot && selectedSlot.id)
-    ? (selectedSlot.offering?.stream_id || selectedSlot.stream_id || selectedStream)
-    : selectedStream;
-
-  const filteredOfferingsForDrawer = offerings.filter((offering) => {
-    // Always include currently selected slot's offering when editing so it is never hidden
-    if (selectedSlot && selectedSlot.id && offering.id === selectedSlot.offering_id) {
-      return true;
-    }
-
-    // Filter by grade if targetGrade is specified and not 'all'
-    const offeringGrade = offering.grade || taxonomy?.classes?.find((c: any) => c.id === offering.class_id)?.grade;
-    if (targetGrade && targetGrade !== 'all' && String(offeringGrade) !== String(targetGrade)) {
-      return false;
-    }
-
-    // Filter by board if selectedBoard is not 'all'
-    const offeringBoard = offering.board || taxonomy?.classes?.find((c: any) => c.id === offering.class_id)?.board_id;
-    if (selectedBoard !== 'all' && offeringBoard !== selectedBoard) {
-      return false;
-    }
-
-    // Filter by stream if targetStreamId is specified and not 'all'
-    if (targetStreamId && targetStreamId !== 'all') {
-      const activeStreamObj = activeStreams.find((s: any) => s.id === targetStreamId) || taxonomy?.streams?.find((s: any) => s.id === targetStreamId);
-      if (activeStreamObj && targetGrade) {
-        const streamSubjects = getSubjectsForStream(targetGrade, activeStreamObj.name) || [];
-        const offeringSubject = offering.subject_name || offering.subject?.name;
-        if (offering.stream_id === targetStreamId || (streamSubjects && streamSubjects.includes(offeringSubject))) {
-          return true;
-        }
-        return false;
-      }
-      return offering.stream_id === targetStreamId || !offering.stream_id;
-    }
-
-    return true;
-  });
 
   if (loading) {
     return (
@@ -606,7 +564,7 @@ export const ScheduleManagerPage: React.FC = () => {
       >
         <SlotForm
           slot={selectedSlot}
-          offerings={filteredOfferingsForDrawer}
+          offerings={offerings}
           taxonomy={taxonomy}
           defaultClassId={activeClass?.id || ''}
           defaultStreamId={selectedStream !== 'all' ? selectedStream : ''}

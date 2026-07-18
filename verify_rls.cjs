@@ -43,9 +43,32 @@ async function verify() {
     student: '3e63e067-2804-4e70-9ae3-0412d2b9eea9'
   };
 
-  async function testAs(userId, name, queries) {
+  // Find any class offering to use for tests
+  const classOfferingRes = await client.query('SELECT id FROM public.class_offerings LIMIT 1');
+  const testOfferingId = classOfferingRes.rows[0]?.id || '11111111-1111-1111-1111-111111111111';
+
+  async function testAs(userId, role, name, queries) {
     console.log(`\n--- Testing as ${name} (${userId}) ---`);
     await client.query('BEGIN');
+
+    // Dynamically provision profile and roster entries to ensure clean database state for RLS checks
+    if (role === 'student') {
+      await client.query(`INSERT INTO public.profiles (id, role, full_name) VALUES ('${userId}', 'student', 'Test Student') ON CONFLICT (id) DO NOTHING`);
+      await client.query(`INSERT INTO public.roster (email, full_name, role, class_ids, profile_id) VALUES ('student@test.com', 'Test Student', 'student', '{}'::uuid[], '${userId}') ON CONFLICT (email) DO NOTHING`);
+      if (testOfferingId !== '11111111-1111-1111-1111-111111111111') {
+        await client.query(`INSERT INTO public.enrollments (student_id, offering_id) VALUES ('${userId}', '${testOfferingId}') ON CONFLICT DO NOTHING`);
+      }
+    } else if (role === 'teacher') {
+      await client.query(`INSERT INTO public.profiles (id, role, full_name) VALUES ('${userId}', 'teacher', 'Test Teacher') ON CONFLICT (id) DO NOTHING`);
+      await client.query(`INSERT INTO public.teachers (id, full_name, email) VALUES ('${userId}', 'Test Teacher', 'teacher@test.com') ON CONFLICT (id) DO NOTHING`);
+      await client.query(`INSERT INTO public.roster (email, full_name, role, class_ids, profile_id) VALUES ('teacher@test.com', 'Test Teacher', 'teacher', '{}'::uuid[], '${userId}') ON CONFLICT (email) DO NOTHING`);
+      if (testOfferingId !== '11111111-1111-1111-1111-111111111111') {
+        await client.query(`UPDATE public.class_offerings SET teacher_id = '${userId}' WHERE id = '${testOfferingId}'`);
+      }
+    } else if (role === 'admin') {
+      await client.query(`INSERT INTO public.profiles (id, role, full_name) VALUES ('${userId}', 'admin', 'Test Admin') ON CONFLICT (id) DO NOTHING`);
+    }
+
     await client.query(`SET LOCAL role = 'authenticated'`);
     await client.query(`SET LOCAL request.jwt.claims = '{"sub": "${userId}", "role": "authenticated"}'`);
     
@@ -64,35 +87,27 @@ async function verify() {
     await client.query('ROLLBACK');
   }
 
-  // Find a class offering for the teacher to test note upload
-  const teacherOfferingRes = await client.query(`SELECT id FROM public.class_offerings WHERE teacher_id = '${users.teacher}' LIMIT 1`);
-  const teacherOfferingId = teacherOfferingRes.rows[0]?.id || '11111111-1111-1111-1111-111111111111';
-
-  await testAs(users.student, 'Student', [
+  await testAs(users.student, 'student', 'Student', [
     { name: 'Read classes', sql: 'SELECT id FROM public.classes LIMIT 1' },
     { name: 'Read notes', sql: 'SELECT id FROM public.notes LIMIT 1' },
-    { name: 'Update profile role (escalation)', sql: `UPDATE public.profiles SET role = 'admin' WHERE id = '${users.student}'`, expectError: false }
-    // Wait, update might succeed if we don't have expectError:true, let's check if rows affected is 0
+    { name: 'Update profile role (escalation)', sql: `UPDATE public.profiles SET role = 'admin' WHERE id = '${users.student}'`, expectError: true }
   ]);
 
-  await testAs(users.teacher, 'Teacher', [
+  await testAs(users.teacher, 'teacher', 'Teacher', [
     { name: 'Read classes', sql: 'SELECT id FROM public.classes LIMIT 1' },
-    { name: 'Insert Note for own class', sql: `INSERT INTO public.notes (id, offering_id, title, file_path, chapter_name, uploaded_by) VALUES (gen_random_uuid(), '${teacherOfferingId}', 'Test Note', 'content', 'Chapter 1', '${users.teacher}') RETURNING id` },
-    { name: 'Insert Note for random class (should fail or return 0 rows if using DO update, but standard insert with RLS check violation throws)', sql: `INSERT INTO public.notes (id, offering_id, title, file_path, chapter_name, uploaded_by) VALUES (gen_random_uuid(), '22222222-2222-2222-2222-222222222222', 'Hax', 'Hax', 'Chapter 1', '${users.teacher}')`, expectError: true },
+    { name: 'Insert Note for own class', sql: `INSERT INTO public.notes (id, offering_id, title, file_path, file_url, file_type, chapter_name, uploaded_by) VALUES (gen_random_uuid(), '${testOfferingId}', 'Test Note', 'content', 'http://test.com/note', 'pdf', 'Chapter 1', '${users.teacher}') RETURNING id` },
+    { name: 'Insert Note for random class (should fail or return 0 rows if using DO update, but standard insert with RLS check violation throws)', sql: `INSERT INTO public.notes (id, offering_id, title, file_path, file_url, file_type, chapter_name, uploaded_by) VALUES (gen_random_uuid(), '22222222-2222-2222-2222-222222222222', 'Hax', 'Hax', 'http://test.com/hax', 'pdf', 'Chapter 1', '${users.teacher}')`, expectError: true },
     { name: 'Update profile role', sql: `UPDATE public.profiles SET role = 'admin' WHERE id = '${users.teacher}' RETURNING id`, expectError: true }
   ]);
 
-  await testAs(users.admin, 'Admin', [
+  await testAs(users.admin, 'admin', 'Admin', [
     { name: 'Read classes', sql: 'SELECT id FROM public.classes LIMIT 1' },
-    { name: 'Insert classes', sql: `INSERT INTO public.classes (id, name, level) VALUES (gen_random_uuid(), 'Admin Class', 'A') RETURNING id` }
+    { name: 'Insert classes', sql: `INSERT INTO public.classes (id, board_id, grade, display_name) VALUES (gen_random_uuid(), 'fbise', '13', '13th Class') RETURNING id` }
   ]);
 
-  // Actually checking role escalation: RLS policy on profiles usually blocks update to role, or we check if rows affected = 0.
-  // So we run a separate test for the role update to strictly verify it returns 0 rows modified or throws.
-
   console.log('\n--- Checking Privilege Escalation Results ---');
-  // Re-run the update as student and check row count
   await client.query('BEGIN');
+  await client.query(`INSERT INTO public.profiles (id, role, full_name) VALUES ('${users.student}', 'student', 'Test Student') ON CONFLICT (id) DO NOTHING`);
   await client.query(`SET LOCAL role = 'authenticated'`);
   await client.query(`SET LOCAL request.jwt.claims = '{"sub": "${users.student}", "role": "authenticated"}'`);
   let escalationBlocked = false;
@@ -100,7 +115,7 @@ async function verify() {
     const escRes = await client.query(`UPDATE public.profiles SET role = 'admin' WHERE id = '${users.student}' RETURNING id`);
     if (escRes.rowCount === 0) escalationBlocked = true;
   } catch (err) {
-    if (err.message.includes('Privilege escalation blocked')) {
+    if (err.message.includes('Privilege escalation blocked') || err.message.includes('escalation')) {
       escalationBlocked = true;
     }
   }
