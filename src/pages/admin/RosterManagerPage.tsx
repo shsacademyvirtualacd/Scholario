@@ -192,7 +192,11 @@ export const RosterManagerPage: React.FC = () => {
         }
 
         const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave, phoneTrim || undefined);
-        setRoster(prev => [newEntry, ...prev]);
+        setRoster(prev => {
+          const exists = prev.some(r => r.id === newEntry.id || r.email.toLowerCase() === newEntry.email.toLowerCase());
+          if (exists) return prev;
+          return [newEntry, ...prev];
+        });
         const offeringsData = await getAllOfferings().catch(() => []);
         setOfferings(offeringsData);
         setDrawerOpen(false);
