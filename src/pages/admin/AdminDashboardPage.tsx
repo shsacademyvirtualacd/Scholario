@@ -156,23 +156,52 @@ const AdminDashboardPage: React.FC = () => {
     return fullName;
   };
 
-  // Build upcoming classes dynamically
-  const upcomingClasses = slots.filter(s => !s.is_cancelled).map(slot => {
-    const offering = offerings.find(o => o.id === slot.offering_id);
-    const teacher = offering ? teachers.find(t => t.id === offering.teacher_id) : null;
-    const enrollmentsCount = enrollments.filter(e => e.offering_id === slot.offering_id).length;
-    
-    const boardLabel = 'FBISE';
-
-    return {
-      subject: offering ? `${offering.subject_name} Gr.${offering.grade}` : 'N/A',
-      teacher: teacher ? getShortName(teacher.full_name) : 'N/A',
-      time: formatTime12h(slot.start_time),
-      board: boardLabel,
-      students: enrollmentsCount,
-      color: (offering && offering.subject_name) ? (subjectColors[offering.subject_name] || '#a855f7') : '#737373',
+  /**
+   * Returns the current day-of-week index using the SAME convention stored in
+   * class_slots.day_of_week: 0 = Monday, 1 = Tuesday, 2 = Wednesday,
+   * 3 = Thursday, 4 = Friday, 5 = Saturday, 6 = Sunday.
+   *
+   * NOTE: JS Date.getDay() uses 0 = Sunday, which is a different convention.
+   * We use Intl.DateTimeFormat in Asia/Karachi (PKT) to get the real local
+   * weekday string, then map it explicitly — no silent magic-number arithmetic.
+   */
+  const getCurrentDayIndex = (): number => {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Karachi',
+      weekday: 'short',
+    });
+    const weekdayStr = fmt.format(new Date()).toLowerCase().slice(0, 3);
+    // Explicit map — must stay in sync with class_slots.day_of_week convention
+    const weekdayMap: Record<string, number> = {
+      mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6,
     };
-  }).slice(0, 3);
+    return weekdayMap[weekdayStr] ?? 0;
+  };
+
+  const currentDayIndex = getCurrentDayIndex();
+
+  // Build today's classes: filter by current day first, then map, then take first 3.
+  // getAllSlots() already orders by (day_of_week, start_time) so start_time order
+  // is preserved through filter — no extra sort needed.
+  const upcomingClasses = slots
+    .filter(s => !s.is_cancelled && s.day_of_week === currentDayIndex)
+    .map(slot => {
+      const offering = offerings.find(o => o.id === slot.offering_id);
+      const teacher = offering ? teachers.find(t => t.id === offering.teacher_id) : null;
+      const enrollmentsCount = enrollments.filter(e => e.offering_id === slot.offering_id).length;
+
+      const boardLabel = 'FBISE';
+
+      return {
+        subject: offering ? `${offering.subject_name} Gr.${offering.grade}` : 'N/A',
+        teacher: teacher ? getShortName(teacher.full_name) : 'N/A',
+        time: formatTime12h(slot.start_time),
+        board: boardLabel,
+        students: enrollmentsCount,
+        color: (offering && offering.subject_name) ? (subjectColors[offering.subject_name] || '#a855f7') : '#737373',
+      };
+    })
+    .slice(0, 3);
 
   return (
     <AdminShell>
