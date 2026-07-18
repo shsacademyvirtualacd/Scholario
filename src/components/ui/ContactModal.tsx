@@ -80,7 +80,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
       import.meta.env.VITE_EMAILJS_SERVICE_ID || 'YOUR_SERVICE_ID',
       import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'YOUR_TEMPLATE_ID',
       templateParams,
-      import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY'
+      {
+        publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY'
+      }
     )
     .then((response) => {
       console.log('SUCCESS!', response.status, response.text);
