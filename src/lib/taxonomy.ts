@@ -23,10 +23,10 @@ export const GRADES: GradeDef[] = [
   {
     grade: '9',
     displayName: '9th',
-    commonSubjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics'],
+    commonSubjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Islamiat'],
     streams: [
-      { name: 'Biology', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Biology'] },
-      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Computer Science'] },
+      { name: 'Biology', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Biology', 'Islamiat'] },
+      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Computer Science', 'Islamiat'] },
     ],
   },
   {
@@ -41,11 +41,11 @@ export const GRADES: GradeDef[] = [
   {
     grade: '11',
     displayName: '11th',
-    commonSubjects: ['English', 'Urdu'],
+    commonSubjects: ['English', 'Urdu', 'Islamiat'],
     streams: [
-      { name: 'Pre-Medical', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology'] },
-      { name: 'Pre-Engineering', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics'] },
-      { name: 'ICS', subjects: ['English', 'Urdu', 'Computer Science', 'Mathematics', 'Physics'] },
+      { name: 'Pre-Medical', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Islamiat'] },
+      { name: 'Pre-Engineering', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Islamiat'] },
+      { name: 'ICS', subjects: ['English', 'Urdu', 'Computer Science', 'Mathematics', 'Physics', 'Islamiat'] },
     ],
   },
   {

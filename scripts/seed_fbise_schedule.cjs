@@ -58,6 +58,36 @@ const G11 = {
   URDU: '003f2867-6f2e-162f-603e-3aecaba5bfe8'
 };
 
+// Islamiat Offering IDs (resolved dynamically at runtime from the database)
+let G9_ISL = null;
+let G11_ISL = null;
+
+async function resolveIslamiatOfferings() {
+  // Grade 9 Islamiat offering
+  const { data: g9Data } = await supabase
+    .from('class_offerings')
+    .select('id, subject:subjects!inner(name), class:classes!inner(grade, board_id)')
+    .eq('class.board_id', 'fbise')
+    .eq('class.grade', '9')
+    .eq('subject.name', 'Islamiat')
+    .maybeSingle();
+  if (g9Data) G9_ISL = g9Data.id;
+  else console.warn('⚠️  Grade 9 Islamiat offering not found — slots will use custom_title fallback');
+
+  // Grade 11 Islamiat offering
+  const { data: g11Data } = await supabase
+    .from('class_offerings')
+    .select('id, subject:subjects!inner(name), class:classes!inner(grade, board_id)')
+    .eq('class.board_id', 'fbise')
+    .eq('class.grade', '11')
+    .eq('subject.name', 'Islamiat')
+    .maybeSingle();
+  if (g11Data) G11_ISL = g11Data.id;
+  else console.warn('⚠️  Grade 11 Islamiat offering not found — slots will use custom_title fallback');
+
+  console.log(`Islamiat offerings resolved: G9=${G9_ISL || 'N/A'}, G11=${G11_ISL || 'N/A'}`);
+}
+
 const slotsToInsert = [];
 
 function addSlot(day, start, end, offeringId, classId, customTitle = null, streamId = null, room = 'Room 101') {
@@ -74,62 +104,74 @@ function addSlot(day, start, end, offeringId, classId, customTitle = null, strea
   });
 }
 
-// ─── CLASS 9 SCHEDULE (Mon=0 to Fri=4) ──────────────────────────────────
-[0, 1, 2, 3, 4].forEach(day => {
-  addSlot(day, '16:00:00', '16:30:00', G9.CHEM, CLASS_9);
-  addSlot(day, '17:00:00', '17:30:00', G9.MATH, CLASS_9);
-  addSlot(day, '17:30:00', '18:00:00', G9.PHY, CLASS_9);
-});
+function buildSlots() {
+  slotsToInsert.length = 0; // clear any previous entries
 
-addSlot(0, '16:30:00', '17:00:00', G9.BIO, CLASS_9);
-addSlot(3, '16:30:00', '17:00:00', G9.BIO, CLASS_9);
-[1, 2, 4].forEach(day => addSlot(day, '16:30:00', '17:00:00', null, CLASS_9, 'Islamiat (Sir Huzaifa)'));
+  // ─── CLASS 9 SCHEDULE (Mon=0 to Fri=4) ──────────────────────────────────
+  [0, 1, 2, 3, 4].forEach(day => {
+    addSlot(day, '16:00:00', '16:30:00', G9.CHEM, CLASS_9);
+    addSlot(day, '17:00:00', '17:30:00', G9.MATH, CLASS_9);
+    addSlot(day, '17:30:00', '18:00:00', G9.PHY, CLASS_9);
+  });
 
-[0, 2, 3].forEach(day => addSlot(day, '18:00:00', '18:25:00', G9.ENG, CLASS_9));
-[1, 4].forEach(day => addSlot(day, '18:00:00', '18:25:00', G9.URDU, CLASS_9));
+  addSlot(0, '16:30:00', '17:00:00', G9.BIO, CLASS_9);
+  addSlot(3, '16:30:00', '17:00:00', G9.BIO, CLASS_9);
+  [1, 2, 4].forEach(day => addSlot(day, '16:30:00', '17:00:00', G9_ISL, CLASS_9, G9_ISL ? null : 'Islamiat (Sir Huzaifa)'));
 
-[0, 3].forEach(day => addSlot(day, '18:25:00', '18:50:00', G9.URDU, CLASS_9));
-[1, 2, 4].forEach(day => addSlot(day, '18:25:00', '18:50:00', G9.BIO, CLASS_9));
+  [0, 2, 3].forEach(day => addSlot(day, '18:00:00', '18:25:00', G9.ENG, CLASS_9));
+  [1, 4].forEach(day => addSlot(day, '18:00:00', '18:25:00', G9.URDU, CLASS_9));
 
-// ─── CLASS 10 SCHEDULE (Mon=0 to Fri=4) ─────────────────────────────────
-[0, 1, 2, 3, 4].forEach(day => {
-  addSlot(day, '16:00:00', '16:30:00', G10.BIO, CLASS_10);
-  addSlot(day, '16:30:00', '17:00:00', G10.CHEM, CLASS_10);
-  addSlot(day, '17:00:00', '17:30:00', G10.PHY, CLASS_10);
-  addSlot(day, '17:30:00', '18:00:00', G10.MATH, CLASS_10);
-});
+  [0, 3].forEach(day => addSlot(day, '18:25:00', '18:50:00', G9.URDU, CLASS_9));
+  [1, 2, 4].forEach(day => addSlot(day, '18:25:00', '18:50:00', G9.BIO, CLASS_9));
 
-[0, 3].forEach(day => addSlot(day, '18:00:00', '18:25:00', G10.URDU, CLASS_10));
-[1, 4].forEach(day => addSlot(day, '18:00:00', '18:25:00', null, CLASS_10, 'Islamiat (Miss Falak)'));
-addSlot(2, '18:00:00', '18:25:00', G10.ENG, CLASS_10);
+  // ─── CLASS 10 SCHEDULE (Mon=0 to Fri=4) ─────────────────────────────────
+  [0, 1, 2, 3, 4].forEach(day => {
+    addSlot(day, '16:00:00', '16:30:00', G10.BIO, CLASS_10);
+    addSlot(day, '16:30:00', '17:00:00', G10.CHEM, CLASS_10);
+    addSlot(day, '17:00:00', '17:30:00', G10.PHY, CLASS_10);
+    addSlot(day, '17:30:00', '18:00:00', G10.MATH, CLASS_10);
+  });
 
-[0, 3].forEach(day => addSlot(day, '18:25:00', '18:50:00', G10.ENG, CLASS_10));
-[1, 4].forEach(day => addSlot(day, '18:25:00', '18:50:00', G10.URDU, CLASS_10));
-addSlot(2, '18:25:00', '18:50:00', null, CLASS_10, 'Islamiat (Miss Falak)');
+  [0, 3].forEach(day => addSlot(day, '18:00:00', '18:25:00', G10.URDU, CLASS_10));
+  [1, 4].forEach(day => addSlot(day, '18:00:00', '18:25:00', null, CLASS_10, 'Islamiat (Miss Falak)'));
+  addSlot(2, '18:00:00', '18:25:00', G10.ENG, CLASS_10);
 
-// ─── CLASS 11 SCHEDULE (Mon=0 to Fri=4) ─────────────────────────────────
-[0, 1, 2, 3, 4].forEach(day => {
-  addSlot(day, '16:30:00', '17:00:00', G11.PHY, CLASS_11);
-  addSlot(day, '17:30:00', '18:00:00', G11.CHEM, CLASS_11);
-  addSlot(day, '18:00:00', '18:25:00', G11.BIO, CLASS_11, null, PREMED_11, 'Room 101');
-  addSlot(day, '18:00:00', '18:25:00', G11.MATH, CLASS_11, null, PREENG_11, 'Room 102');
-});
+  [0, 3].forEach(day => addSlot(day, '18:25:00', '18:50:00', G10.ENG, CLASS_10));
+  [1, 4].forEach(day => addSlot(day, '18:25:00', '18:50:00', G10.URDU, CLASS_10));
+  addSlot(2, '18:25:00', '18:50:00', null, CLASS_10, 'Islamiat (Miss Falak)');
 
-[0, 2, 3].forEach(day => addSlot(day, '16:00:00', '16:30:00', G11.ENG, CLASS_11));
-[1, 4].forEach(day => addSlot(day, '16:00:00', '16:30:00', G11.URDU, CLASS_11));
+  // ─── CLASS 11 SCHEDULE (Mon=0 to Fri=4) ─────────────────────────────────
+  [0, 1, 2, 3, 4].forEach(day => {
+    addSlot(day, '16:30:00', '17:00:00', G11.PHY, CLASS_11);
+    addSlot(day, '17:30:00', '18:00:00', G11.CHEM, CLASS_11);
+    addSlot(day, '18:00:00', '18:25:00', G11.BIO, CLASS_11, null, PREMED_11, 'Room 101');
+    addSlot(day, '18:00:00', '18:25:00', G11.MATH, CLASS_11, null, PREENG_11, 'Room 102');
+  });
 
-[0, 2, 3].forEach(day => addSlot(day, '17:00:00', '17:30:00', G11.URDU, CLASS_11));
-[1, 4].forEach(day => addSlot(day, '17:00:00', '17:30:00', null, CLASS_11, 'Islamiat (Miss Falak)'));
+  [0, 2, 3].forEach(day => addSlot(day, '16:00:00', '16:30:00', G11.ENG, CLASS_11));
+  [1, 4].forEach(day => addSlot(day, '16:00:00', '16:30:00', G11.URDU, CLASS_11));
 
-[0, 2, 3].forEach(day => addSlot(day, '18:25:00', '18:50:00', null, CLASS_11, 'Islamiat (Miss Falak)'));
-[1, 4].forEach(day => addSlot(day, '18:25:00', '18:50:00', G11.ENG, CLASS_11));
+  [0, 2, 3].forEach(day => addSlot(day, '17:00:00', '17:30:00', G11.URDU, CLASS_11));
+  [1, 4].forEach(day => addSlot(day, '17:00:00', '17:30:00', G11_ISL, CLASS_11, G11_ISL ? null : 'Islamiat (Miss Falak)'));
+
+  [0, 2, 3].forEach(day => addSlot(day, '18:25:00', '18:50:00', G11_ISL, CLASS_11, G11_ISL ? null : 'Islamiat (Miss Falak)'));
+  [1, 4].forEach(day => addSlot(day, '18:25:00', '18:50:00', G11.ENG, CLASS_11));
+}
 
 async function seedSchedule() {
+  // Resolve Islamiat offering IDs before building slots
+  await resolveIslamiatOfferings();
+
+  // Build slots array (must happen after resolveIslamiatOfferings sets G9_ISL / G11_ISL)
+  buildSlots();
+
   console.log('Clearing existing slots for Class 9, 10, 11...');
   const { error: delErr } = await supabase.from('class_slots').delete().in('class_id', [CLASS_9, CLASS_10, CLASS_11]);
   if (delErr) console.error('Error deleting class_slots:', delErr.message);
 
   const allOffs = [...Object.values(G9), ...Object.values(G10), ...Object.values(G11)];
+  if (G9_ISL) allOffs.push(G9_ISL);
+  if (G11_ISL) allOffs.push(G11_ISL);
   const { error: delOffErr } = await supabase.from('class_slots').delete().in('offering_id', allOffs);
   if (delOffErr) console.error('Error deleting class_slots by offering:', delOffErr.message);
 
