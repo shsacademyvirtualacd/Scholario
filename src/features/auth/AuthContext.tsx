@@ -249,42 +249,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsBillingSuspended(false);
       setRosterRejected(false);
 
-      // ── Step 4: First login — create profile ─────────────────────────────
+      // ── Step 4: First login — create/claim profile ───────────────────────
       const role: 'admin' | 'teacher' | 'student' = rosterEntry.role;
       const fullName: string =
         rosterEntry.full_name ||
         newSession.user.user_metadata?.full_name ||
         email;
 
-      console.log('[Auth] Step 4: Creating new profile — role:', role, ', name:', fullName);
+      if (role !== 'student') {
+        console.log('[Auth] Step 4: Claiming/promoting pre-provisioned roster profile for role:', role);
+        const { data: claimedProfile, error: claimError } = await (supabase as any)
+          .rpc('claim_my_roster_profile');
 
-      // For students: onboarding_complete = false (they must pick grade/board/stream)
-      // For admins/teachers: onboarding_complete = true (no onboarding needed)
-      const profilePayload: Record<string, unknown> = {
-        id: userId,
-        role,
-        full_name: fullName,
-        avatar_url: newSession.user.user_metadata?.avatar_url ?? null,
-        phone: null,
-        onboarding_complete: role !== 'student',
-      };
+        if (claimError) {
+          console.error('[Auth] ❌ claim_my_roster_profile RPC FAILED:', claimError.message, claimError);
+          setAuthError('Failed to link institutional account. Please contact support.');
+          setRosterRejected(true);
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          return;
+        }
 
-      const { error: insertError } = await (supabase as any)
-        .from('profiles')
-        .insert(profilePayload);
+        console.log('[Auth] ✅ Profile claimed/promoted successfully via RPC:', JSON.stringify(claimedProfile));
+      } else {
+        console.log('[Auth] Step 4: Creating new student profile — name:', fullName);
 
-      if (insertError) {
-        // If it's a duplicate key error, the DB trigger already created the profile.
-        // Try to fetch it instead of giving up.
-        if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
-          console.warn('[Auth] ⚠️ Profile INSERT duplicate — DB trigger already created it. Fetching...');
-          const retried = await fetchProfile(userId);
-          if (retried) {
-            setProfile(retried);
-            // Still link roster below
+        // For students: onboarding_complete = false (they must pick grade/board/stream)
+        const profilePayload: Record<string, unknown> = {
+          id: userId,
+          role,
+          full_name: fullName,
+          avatar_url: newSession.user.user_metadata?.avatar_url ?? null,
+          phone: null,
+          onboarding_complete: false,
+        };
+
+        const { error: insertError } = await (supabase as any)
+          .from('profiles')
+          .insert(profilePayload);
+
+        if (insertError) {
+          // If it's a duplicate key error, the DB trigger already created the profile.
+          // Try to fetch it instead of giving up.
+          if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
+            console.warn('[Auth] ⚠️ Profile INSERT duplicate — DB trigger already created it. Fetching...');
+            const retried = await fetchProfile(userId);
+            if (retried) {
+              setProfile(retried);
+              // Still link roster below
+            } else {
+              console.error('[Auth] ❌ Could not fetch profile after duplicate error');
+              setAuthError('Error loading created profile. Please sign in again.');
+              setRosterRejected(true);
+              await supabase.auth.signOut();
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              return;
+            }
           } else {
-            console.error('[Auth] ❌ Could not fetch profile after duplicate error');
-            setAuthError('Error loading created profile. Please sign in again.');
+            console.error('[Auth] ❌ Profile INSERT FAILED:', insertError.message, insertError);
+            setAuthError('Failed to create your profile. Please contact support.');
             setRosterRejected(true);
             await supabase.auth.signOut();
             setSession(null);
@@ -293,30 +320,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         } else {
-          console.error('[Auth] ❌ Profile INSERT FAILED:', insertError.message, insertError);
-          setAuthError('Failed to create your profile. Please contact support.');
-          setRosterRejected(true);
-          await supabase.auth.signOut();
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          return;
+          console.log('[Auth] ✅ Student profile created successfully');
         }
-      } else {
-        console.log('[Auth] ✅ Profile created successfully');
-      }
 
-      // ── Step 5: Link auth uid → roster entry ────────────────────────────
-      console.log('[Auth] Step 5: Linking profile_id to roster entry');
-      const { error: rosterLinkError } = await (supabase as any)
-        .from('roster')
-        .update({ profile_id: userId })
-        .eq('email', email);
+        // ── Step 5: Link auth uid → roster entry ────────────────────────────
+        console.log('[Auth] Step 5: Linking profile_id to roster entry');
+        const { error: rosterLinkError } = await (supabase as any)
+          .from('roster')
+          .update({ profile_id: userId })
+          .eq('email', email);
 
-      if (rosterLinkError) {
-        console.warn('[Auth] ⚠️ Roster link update failed (non-fatal):', rosterLinkError.message);
-      } else {
-        console.log('[Auth] ✅ Roster entry linked');
+        if (rosterLinkError) {
+          console.warn('[Auth] ⚠️ Roster link update failed (non-fatal):', rosterLinkError.message);
+        } else {
+          console.log('[Auth] ✅ Roster entry linked');
+        }
       }
 
       // ── Step 6: Fetch the final profile ─────────────────────────────────
