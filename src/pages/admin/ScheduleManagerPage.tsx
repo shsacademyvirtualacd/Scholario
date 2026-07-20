@@ -7,7 +7,7 @@ import AdminDrawer from '../../components/admin/AdminDrawer';
 import SlotForm from '../../components/admin/schedule/SlotForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, getTaxonomy, createAnnouncement } from '../../lib/db';
-import { getSubjectsForStream } from '../../lib/taxonomy';
+import { getSubjectsForStream } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, ClassOffering, Teacher } from '../../types';
@@ -35,7 +35,7 @@ export const ScheduleManagerPage: React.FC = () => {
   // Filters - default to Grade 10 class-wise view for better usability
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>('10');
-  const [selectedStream, setSelectedStream] = useState<string>('all');
+  const [selectedStream, setSelectedStream] = useState<string>('');
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [showPublishBanner, setShowPublishBanner] = useState(false);
 
@@ -62,6 +62,20 @@ export const ScheduleManagerPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Auto-select the first available stream whenever taxonomy loads or the grade changes.
+  // This replaces the old manual setSelectedStream('all') calls and ensures the filter
+  // is never left in an ambiguous empty state.
+  useEffect(() => {
+    if (!taxonomy) return;
+    const cls = taxonomy.classes.find(
+      (c: any) => c.grade === selectedGrade && c.board_id === selectedBoard
+    );
+    const streams = cls
+      ? taxonomy.streams.filter((s: any) => s.class_id === cls.id)
+      : [];
+    setSelectedStream(streams.length > 0 ? streams[0].id : '');
+  }, [taxonomy, selectedGrade, selectedBoard]);
 
   useRealtimeTable({
     table: 'class_slots',
@@ -102,7 +116,7 @@ export const ScheduleManagerPage: React.FC = () => {
 
     // 4. Stream match
     let streamMatch = true;
-    if (selectedStream !== 'all') {
+    if (selectedStream && selectedStream !== '') {
       if (slot.offering_id && slot.offering) {
         // Match explicit stream_id first
         if (slot.offering.stream_id === selectedStream) {
@@ -284,28 +298,24 @@ export const ScheduleManagerPage: React.FC = () => {
   const resetFilters = () => {
     setSelectedBoard('fbise');
     setSelectedGrade('10');
-    setSelectedStream('all');
+    // selectedStream is reset automatically by the auto-select useEffect
     setTeacherFilter('all');
   };
 
   const handleBoardChange = (boardId: string) => {
     setSelectedBoard(boardId);
-    setSelectedGrade('all'); // Show all grades for that board initially
-    setSelectedStream('all');
+    setSelectedGrade('10'); // Default to grade 10; stream auto-selected by effect
   };
 
   const handleGradeChange = (gradeId: string) => {
     setSelectedGrade(gradeId);
-    setSelectedStream('all'); // Reset stream when grade changes
+    // selectedStream is reset automatically by the auto-select useEffect
   };
 
   const activeGrades = taxonomy
-    ? [
-        ...taxonomy.classes
-          .filter((c: any) => c.board_id === 'fbise')
-          .map((c: any) => ({ id: c.grade, label: c.display_name })),
-        { id: 'all', label: 'All FBISE' }
-      ]
+    ? taxonomy.classes
+        .filter((c: any) => c.board_id === 'fbise')
+        .map((c: any) => ({ id: c.grade, label: c.display_name }))
     : [];
 
 
@@ -376,7 +386,7 @@ export const ScheduleManagerPage: React.FC = () => {
           {activeGrades.length > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 border-b border-[#F0F0F0] overflow-x-auto no-scrollbar">
               <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Grade:</span>
-              {activeGrades.map((g) => (
+              {activeGrades.map((g: any) => (
                 <button
                   key={g.id}
                   onClick={() => handleGradeChange(g.id)}
@@ -392,20 +402,10 @@ export const ScheduleManagerPage: React.FC = () => {
             </div>
           )}
 
-          {/* Stream row (conditionally shown) */}
-          {selectedGrade !== 'all' && activeStreams.length > 0 && (
+          {/* Stream row */}
+          {activeStreams.length > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 border-b border-[#F0F0F0] overflow-x-auto no-scrollbar bg-[#FAFAFA]">
               <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Stream:</span>
-              <button
-                onClick={() => setSelectedStream('all')}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
-                  selectedStream === 'all'
-                    ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
-                    : 'bg-white border-[#E5E5E5] text-[#525252]'
-                }`}
-              >
-                All
-              </button>
               {activeStreams.map((s: any) => (
                 <button
                   key={s.id}
@@ -436,7 +436,7 @@ export const ScheduleManagerPage: React.FC = () => {
                 <option key={t.id} value={t.id}>{t.full_name}</option>
               ))}
             </select>
-            {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || teacherFilter !== 'all') && (
+            {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all') && (
               <button
                 onClick={resetFilters}
                 className="flex items-center gap-0.5 text-[10px] font-black text-amber-600 hover:text-[#111111] shrink-0 interactive"
@@ -482,7 +482,7 @@ export const ScheduleManagerPage: React.FC = () => {
                   <option key={t.id} value={t.id}>{t.full_name}</option>
                 ))}
               </select>
-              {(selectedBoard !== 'fbise' || selectedGrade !== '10' || selectedStream !== 'all' || teacherFilter !== 'all') && (
+              {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all') && (
                 <button
                   onClick={resetFilters}
                   className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
@@ -497,7 +497,7 @@ export const ScheduleManagerPage: React.FC = () => {
           {activeGrades.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-[#FAFAFA] px-4 border-b border-[#E5E5E5]">
               <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Cohort Grade:</span>
-              {activeGrades.map((g) => (
+              {activeGrades.map((g: any) => (
                 <button
                   key={g.id}
                   onClick={() => handleGradeChange(g.id)}
@@ -513,19 +513,9 @@ export const ScheduleManagerPage: React.FC = () => {
             </div>
           )}
 
-          {selectedGrade !== 'all' && activeStreams.length > 0 && (
+          {activeStreams.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 py-2 bg-[#F9F9F9] px-4 border-b border-[#E5E5E5] transition-all duration-250 animate-in slide-in-from-top-1">
-              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream Cohort:</span>
-              <button
-                onClick={() => setSelectedStream('all')}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                  selectedStream === 'all'
-                    ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
-                    : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
-                }`}
-              >
-                All Stream Schedules
-              </button>
+              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream:</span>
               {activeStreams.map((s: any) => (
                 <button
                   key={s.id}
@@ -536,7 +526,7 @@ export const ScheduleManagerPage: React.FC = () => {
                       : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
                   }`}
                 >
-                  {s.name} Stream
+                  {s.name}
                 </button>
               ))}
             </div>
@@ -567,7 +557,7 @@ export const ScheduleManagerPage: React.FC = () => {
           offerings={offerings}
           taxonomy={taxonomy}
           defaultClassId={activeClass?.id || ''}
-          defaultStreamId={selectedStream !== 'all' ? selectedStream : ''}
+          defaultStreamId={selectedStream || ''}
           onSave={handleSaveSlot}
           onCancel={() => {
             setDrawerOpen(false);

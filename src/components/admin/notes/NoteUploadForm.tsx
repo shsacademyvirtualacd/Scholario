@@ -3,7 +3,8 @@ import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen, C
 import type { ClassOffering } from '../../../types';
 import { getTaxonomy } from '../../../lib/db';
 import { supabase } from '../../../lib/supabase';
-import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../../lib/taxonomy';
+import { getSubjectsForStream } from '../../../lib/db';
+import { getStreamsForGrade, GRADES } from '../../../lib/taxonomy';
 
 interface NoteUploadFormProps {
   offerings: ClassOffering[];

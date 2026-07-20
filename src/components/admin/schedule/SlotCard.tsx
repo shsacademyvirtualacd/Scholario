@@ -1,14 +1,15 @@
 import React from 'react';
-import { Clock, MapPin, Video, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import type { ClassSlot } from '../../../types';
 
 interface SlotCardProps {
   slot: ClassSlot & {
     offering?: {
-      board: string;
-      grade: string;
+      board?: string;
+      grade?: string;
       subject_name?: string;
       subject?: string;
+      stream_id?: string | null;
       teacher?: { full_name: string };
     };
   };
@@ -26,113 +27,126 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const isCancelled = slot.is_cancelled;
   const subject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class';
   const teacherName = slot.offering?.teacher?.full_name || 'Staff';
-  const board = 'FBISE';
-  const grade = slot.offering?.grade || '10';
 
-  const formatTime = (timeStr?: string) => {
-    if (!timeStr || typeof timeStr !== 'string') return '';
-    const [hours = 16, minutes = 0] = timeStr.split(':').map(Number);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
-  };
+  // Core vs Elective distinction: null stream_id means core (shared across streams)
+  const isCore = !slot.stream_id && !slot.offering?.stream_id;
 
-  const getSubjectColor = (sub: string) => {
+  const getSubjectStyle = (sub: string) => {
     switch (sub.toLowerCase()) {
-      case 'mathematics': return '#F4C430';
-      case 'physics': return '#3b82f6';
-      case 'chemistry': return '#10b981';
-      case 'biology': return '#ec4899';
-      case 'computer science': return '#8b5cf6';
-      default: return '#737373';
+      case 'mathematics':
+      case 'math':
+        return { color: '#B48200', bg: '#FFFBF0', border: '#F4C430' };
+      case 'physics':
+        return { color: '#1d4ed8', bg: '#EFF6FF', border: '#3b82f6' };
+      case 'chemistry':
+        return { color: '#047857', bg: '#ECFDF5', border: '#10b981' };
+      case 'biology':
+        return { color: '#be185d', bg: '#FDF2F8', border: '#ec4899' };
+      case 'computer science':
+      case 'computer':
+        return { color: '#6d28d9', bg: '#F5F3FF', border: '#8b5cf6' };
+      case 'english':
+        return { color: '#0e7490', bg: '#ECFEFF', border: '#06b6d4' };
+      case 'urdu':
+        return { color: '#c2410c', bg: '#FFF7ED', border: '#f97316' };
+      case 'islamiat':
+        return { color: '#4338ca', bg: '#EEF2FF', border: '#6366f1' };
+      default:
+        return { color: '#475569', bg: '#F8FAFC', border: '#94a3b8' };
     }
   };
 
-  const subjectColor = getSubjectColor(subject);
-  const isOnline = slot.room_or_link?.toLowerCase().includes('http') || slot.room_or_link?.toLowerCase().includes('zoom');
+  const style = getSubjectStyle(subject);
 
   return (
     <div
-      className={`bg-white border rounded-xl p-3 flex flex-col gap-2 transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-md hover:scale-[1.01] relative overflow-hidden group ${
-        isCancelled ? 'opacity-60 bg-gray-50/50' : ''
+      className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left ${
+        isCancelled ? 'opacity-50 bg-gray-100/70 border-gray-300' : ''
       }`}
-      style={{ borderLeft: `3px solid ${isCancelled ? '#D4D4D4' : subjectColor}` }}
+      style={{
+        backgroundColor: isCancelled ? undefined : style.bg,
+        borderColor: isCancelled ? undefined : `${style.border}40`,
+        borderLeft: `3.5px solid ${isCancelled ? '#9ca3af' : style.border}`,
+      }}
     >
-      {/* Subject & Actions Header */}
-      <div className="flex items-center justify-between gap-1">
-        <h4 className={`text-xs font-black text-[#111111] truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`} title={subject}>
-          {subject}
-        </h4>
-        
-        {/* Hover action icons */}
-        <div className="flex items-center gap-0.5 shrink-0 bg-[#FAFAFA] border border-[#E5E5E5] rounded-md p-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => onToggleCancel(slot.id, isCancelled)}
-            title={isCancelled ? 'Mark Active' : 'Mark Cancelled'}
-            className={`p-0.5 rounded text-[#737373] transition-colors ${
-              isCancelled ? 'hover:text-[#22c55e] hover:bg-emerald-50' : 'hover:text-amber-500 hover:bg-amber-50'
+      {/* Subject + Core/Elective Indicator Header */}
+      <div>
+        <div className="flex items-start justify-between gap-1 pr-6">
+          <span
+            className={`text-xs font-black tracking-tight leading-snug truncate ${
+              isCancelled ? 'line-through text-gray-500' : ''
             }`}
+            style={{ color: isCancelled ? undefined : style.color }}
+            title={subject}
           >
-            {isCancelled ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
-          </button>
-          <button
-            onClick={() => onEdit(slot)}
-            title="Edit"
-            className="p-0.5 rounded text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5] transition-colors"
-          >
-            <Edit2 size={11} />
-          </button>
-          <button
-            onClick={() => onDelete(slot.id)}
-            title="Delete"
-            className="p-0.5 rounded text-[#737373] hover:text-red-500 hover:bg-red-50 transition-colors"
-          >
-            <Trash2 size={11} />
-          </button>
+            {subject}
+          </span>
+        </div>
+
+        {/* Teacher Name */}
+        <div className="text-[10px] font-bold text-[#525252] truncate mt-0.5" title={teacherName}>
+          {teacherName}
         </div>
       </div>
 
-      {/* Grade and Board Badge */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide">
-          {board} Gr. {grade}
+      {/* Footer: Core/Elective badge & Cancelled status */}
+      <div className="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-black/5">
+        <span
+          className={`text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded shrink-0 ${
+            isCore
+              ? 'bg-slate-200/80 text-slate-700'
+              : 'bg-purple-100 text-purple-800 border border-purple-200/60'
+          }`}
+          title={isCore ? 'Core subject (shared across streams)' : 'Stream elective subject'}
+        >
+          {isCore ? '• Core' : '◆ Elective'}
         </span>
+
         {isCancelled && (
-          <span className="text-[8px] font-extrabold px-1 rounded bg-red-100 text-red-700 border border-red-200 uppercase scale-90">
+          <span className="text-[8px] font-black uppercase text-red-600 bg-red-100 px-1 rounded">
             Cancelled
           </span>
         )}
       </div>
 
-      {/* Time & Teacher row */}
-      <div className="space-y-1 text-[10px] font-semibold text-[#525252]">
-        <div className="flex items-center gap-1">
-          <Clock size={10} className="text-[#A3A3A3] shrink-0" />
-          <span className={isCancelled ? 'line-through text-[#A3A3A3]' : ''}>
-            {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-          </span>
-        </div>
-        <div className="text-[#737373] truncate pl-3.5">
-          {teacherName}
-        </div>
+      {/* Hover Action Overlay */}
+      <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-md p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCancel(slot.id, isCancelled);
+          }}
+          title={isCancelled ? 'Mark Active' : 'Mark Cancelled'}
+          className={`p-1 rounded text-gray-500 transition-colors ${
+            isCancelled ? 'hover:text-emerald-600 hover:bg-emerald-50' : 'hover:text-amber-600 hover:bg-amber-50'
+          }`}
+        >
+          {isCancelled ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(slot);
+          }}
+          title="Edit slot"
+          className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+        >
+          <Edit2 size={11} />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(slot.id);
+          }}
+          title="Delete slot"
+          className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <Trash2 size={11} />
+        </button>
       </div>
-
-      {/* Location / Link */}
-      {isOnline ? (
-        <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border self-end mt-4 bg-blue-50 border-blue-100 text-blue-600">
-          <Video size={13} className="text-blue-500" />
-          <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
-            Join Class
-          </a>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border self-end mt-4 bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
-          <MapPin size={13} className="text-[#737373]" />
-          <span className="truncate max-w-[120px]">TBD</span>
-        </div>
-      )}
     </div>
   );
 };
 
 export default SlotCard;
+

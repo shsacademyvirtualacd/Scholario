@@ -23,19 +23,19 @@ export const GRADES: GradeDef[] = [
   {
     grade: '9',
     displayName: '9th',
-    commonSubjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Islamiat'],
+    commonSubjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Islamiat'],
     streams: [
-      { name: 'Biology', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Biology', 'Islamiat'] },
-      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Computer Science', 'Islamiat'] },
+      { name: 'Biology', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Biology', 'Islamiat'] },
+      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Computer Science', 'Islamiat'] },
     ],
   },
   {
     grade: '10',
     displayName: '10th',
-    commonSubjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics'],
+    commonSubjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics'],
     streams: [
-      { name: 'Biology', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Biology'] },
-      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Math', 'Chemistry', 'Physics', 'Computer'] },
+      { name: 'Biology', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Biology'] },
+      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Computer'] },
     ],
   },
   {
@@ -83,17 +83,34 @@ export function getStreamsForGrade(grade: string): StreamDef[] {
   return GRADES.find((g) => g.grade === grade)?.streams ?? [];
 }
 
-/** Get subjects for a specific grade + stream combo */
+/**
+ * @deprecated Import getSubjectsForStream from 'src/lib/db' instead.
+ * That version reads authoritative subject names directly from the DB via
+ * cachedTaxonomy (stream_subjects → subjects join), eliminating static-string
+ * drift. This stub is kept only so that getEnrolledSubjectsForStudent (which
+ * calls it internally) continues to build until it is separately migrated.
+ */
 export function getSubjectsForStream(grade: string, streamName: string): string[] {
+  if (typeof console !== 'undefined') {
+    console.warn(
+      '[taxonomy] getSubjectsForStream called from taxonomy.ts (static shadow data). ' +
+      'Import from db.ts for the DB-backed version.'
+    );
+  }
   const g = GRADES.find((gr) => gr.grade === grade);
   if (!g) return [];
   if (!streamName) return g.commonSubjects || [];
-  
+
   const norm = streamName.trim().toLowerCase();
-  const s = g.streams.find((st) => st.name.toLowerCase() === norm || norm.includes(st.name.toLowerCase()) || st.name.toLowerCase().includes(norm));
+  const s = g.streams.find(
+    (st) =>
+      st.name.toLowerCase() === norm ||
+      norm.includes(st.name.toLowerCase()) ||
+      st.name.toLowerCase().includes(norm)
+  );
   if (s) return s.subjects;
-  
-  // Fallback to first stream or common subjects if stream not recognized precisely
+
+  // Fallback to first stream or common subjects if stream not recognized
   return g.streams[0]?.subjects ?? g.commonSubjects ?? [];
 }
 

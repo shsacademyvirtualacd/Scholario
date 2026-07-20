@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen } from 'lucide-react';
 import type { ClassOffering } from '../../types';
 import { uploadNoteFileToR2, getTaxonomy } from '../../lib/db';
-import { getStreamsForGrade, getSubjectsForStream, GRADES } from '../../lib/taxonomy';
+import { getSubjectsForStream } from '../../lib/db';
+import { getStreamsForGrade, GRADES } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 
 interface TeacherNoteUploadFormProps {

@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { supabase } from './supabase';
-import { getSubjectsForStream } from './taxonomy';
+// getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
   Profile, Teacher, ClassOffering, ClassSlot,
   Enrollment, Attendance, Note, RosterEntry,
@@ -1426,6 +1426,60 @@ export async function getTaxonomy(): Promise<{
     streamSubjects: ss.data || [],
   };
   return cachedTaxonomy;
+}
+
+/**
+ * DB-backed replacement for the old taxonomy.ts getSubjectsForStream.
+ *
+ * Reads synchronously from cachedTaxonomy, which is populated by getTaxonomy()
+ * on page load. All pages that use stream filtering already call getTaxonomy()
+ * on mount, so the cache is always warm by the time this runs.
+ *
+ * Returns string[] of subject names that exactly match the DB subjects.name
+ * column — no more static string drift.
+ *
+ * If cache is not yet warm (page called this before awaiting getTaxonomy()),
+ * returns [] and logs a warning.
+ */
+export function getSubjectsForStream(grade: string, streamName: string): string[] {
+  if (!cachedTaxonomy) {
+    console.error('[db:getSubjectsForStream] Called before getTaxonomy() resolved. Return [].');
+    return [];
+  }
+
+  const gradeClass = cachedTaxonomy.classes.find((c: any) => String(c.grade) === String(grade));
+  if (!gradeClass) return [];
+
+  if (!streamName) {
+    // "All Streams" — return every subject across all streams for this grade, deduplicated
+    const gradeStreamIds = new Set(
+      cachedTaxonomy.streams
+        .filter((s: any) => s.class_id === gradeClass.id)
+        .map((s: any) => s.id)
+    );
+    const subjects = cachedTaxonomy.streamSubjects
+      .filter((ss: any) => gradeStreamIds.has(ss.stream_id))
+      .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+      .filter(Boolean) as string[];
+    return Array.from(new Set(subjects)).sort();
+  }
+
+  const norm = streamName.trim().toLowerCase();
+  const stream = cachedTaxonomy.streams.find(
+    (s: any) =>
+      s.class_id === gradeClass.id &&
+      (
+        s.name.toLowerCase() === norm ||
+        norm.includes(s.name.toLowerCase()) ||
+        s.name.toLowerCase().includes(norm)
+      )
+  );
+  if (!stream) return [];
+
+  return cachedTaxonomy.streamSubjects
+    .filter((ss: any) => ss.stream_id === stream.id)
+    .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+    .filter(Boolean) as string[];
 }
 
 // =============================================================================
