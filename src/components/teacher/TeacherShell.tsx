@@ -143,6 +143,14 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
 
         {/* Page body */}
         <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden page-transition">
+          {/* Development Banner */}
+          <div className="bg-[#FFF9E6] border border-[#FFE0B2] text-[#B78103] px-4 py-3 rounded-xl flex items-center gap-3 text-xs sm:text-sm font-medium">
+            <span className="flex h-2 w-2 relative shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#B78103] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#B78103]"></span>
+            </span>
+            <span>Scholario is under development. In case of any issues, contact +92 322 2314436 on WhatsApp.</span>
+          </div>
           {children}
         </main>
       </div>
