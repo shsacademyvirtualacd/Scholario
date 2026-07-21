@@ -1548,11 +1548,11 @@ export async function createAnnouncement(payload: {
     const recipientIds = new Set<string>();
 
     if (payload.scope === 'system' || !payload.scope) {
-      // scope='system': one row per profile of role Student, Teacher, and Admin
+      // scope='system': one row per profile of role Student and Teacher
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id')
-        .in('role', ['student', 'teacher', 'admin']);
+        .in('role', ['student', 'teacher']);
       
       if (profiles) {
         profiles.forEach((p: any) => recipientIds.add(p.id));

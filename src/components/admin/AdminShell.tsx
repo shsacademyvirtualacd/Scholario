@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
-import { NotificationBell } from '../common/NotificationBell';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -167,7 +166,6 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <NotificationBell />
             <button
               onClick={() => navigate('/admin/profile')}
               className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-[#F4C430] hover:scale-105 transition-transform"
