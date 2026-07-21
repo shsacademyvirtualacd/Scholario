@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy } from 'lucide-react';
 import { useMobile } from '../../../hooks/useMobile';
 import type { ClassSlot, ClassOffering } from '../../../types';
 
@@ -20,6 +20,7 @@ interface SlotFormProps {
     publish_to_news: boolean;
     notify_affected?: boolean;
   }) => Promise<void> | void;
+  onDuplicate?: () => void;
   onCancel: () => void;
 }
 
@@ -39,6 +40,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   defaultClassId = '',
   defaultStreamId = '',
   onSave,
+  onDuplicate,
   onCancel,
 }) => {
   const isMobile = useMobile();
@@ -409,6 +411,17 @@ export const SlotForm: React.FC<SlotFormProps> = ({
         </div>
 
         <div className={`flex items-center gap-3 ${isMobile ? 'flex-col w-full' : ''}`}>
+          {slot && (slot as any).id && onDuplicate && (
+            <button
+              type="button"
+              onClick={onDuplicate}
+              disabled={isSaving}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 flex items-center justify-center gap-1.5 transition-all shadow-sm interactive ${isMobile ? 'w-full' : ''}`}
+            >
+              <Copy size={13} />
+              <span>Duplicate to another day</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onCancel}
@@ -423,7 +436,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
             className={`btn bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white text-sm font-semibold px-5 py-2 rounded-xl shadow-sm flex items-center justify-center gap-1.5 ${isMobile ? 'w-full py-3' : ''}`}
           >
             {isSaving && <Loader2 size={14} className="animate-spin shrink-0" />}
-            {slot ? 'Save Changes' : 'Add Class Slot'}
+            {slot && (slot as any).id ? 'Save Changes' : 'Add Class Slot'}
           </button>
         </div>
       </div>

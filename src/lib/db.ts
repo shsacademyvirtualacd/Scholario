@@ -376,6 +376,13 @@ export async function deleteSlot(slotId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Admin: delete multiple class slots in bulk */
+export async function deleteSlots(slotIds: string[]): Promise<void> {
+  if (slotIds.length === 0) return;
+  const { error } = await (supabase as any).from('class_slots').delete().in('id', slotIds);
+  if (error) throw error;
+}
+
 // =============================================================================
 // ENROLLMENTS
 // =============================================================================

@@ -9,13 +9,16 @@ interface WeeklyGridProps {
   onEdit: (slot: any) => void;
   onDelete: (slotId: string) => void;
   onToggleCancel: (slotId: string, currentStatus: boolean) => void;
+  selectionMode?: boolean;
+  selectedSlotIds?: string[];
+  onToggleSelectSlot?: (slotId: string) => void;
 }
 
 const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SHORT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Standard default FBISE periods if no slots are available
-const DEFAULT_PERIODS = [
+// Fixed canonical FBISE period schedule
+const CANONICAL_PERIODS = [
   { start_time: '16:00:00', end_time: '16:30:00' },
   { start_time: '16:30:00', end_time: '17:00:00' },
   { start_time: '17:00:00', end_time: '17:30:00' },
@@ -30,6 +33,9 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
   onEdit,
   onDelete,
   onToggleCancel,
+  selectionMode = false,
+  selectedSlotIds = [],
+  onToggleSelectSlot,
 }) => {
   const isMobile = useMobile();
   const [activeDay, setActiveDay] = useState(0);
@@ -42,32 +48,29 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
     return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
   };
 
-  // Derive unique period time slots from current slots, sorted chronologically
-  const extractPeriods = () => {
-    const map = new Map<string, { start_time: string; end_time: string }>();
+  // Return canonical periods plus any non-standard custom start times appended at the end
+  const getPeriods = () => {
+    const periodList = [...CANONICAL_PERIODS];
+    const existingTimes = new Set(periodList.map((p) => p.start_time));
 
     slots.forEach((s) => {
-      const key = `${s.start_time || '16:00:00'}-${s.end_time || '17:00:00'}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          start_time: s.start_time || '16:00:00',
-          end_time: s.end_time || '17:00:00',
+      if (s.start_time && !existingTimes.has(s.start_time)) {
+        existingTimes.add(s.start_time);
+        periodList.push({
+          start_time: s.start_time,
+          end_time: s.end_time || s.start_time,
         });
       }
     });
 
-    const uniquePeriods = Array.from(map.values()).sort((a, b) =>
-      a.start_time.localeCompare(b.start_time)
-    );
-
-    return uniquePeriods.length > 0 ? uniquePeriods : DEFAULT_PERIODS;
+    return periodList;
   };
 
-  const periods = extractPeriods();
+  const periods = getPeriods();
 
-  // Find matching slot for a specific period & day
-  const getSlotForPeriodAndDay = (startTime: string, dayIndex: number) => {
-    return slots.find(
+  // Return ALL matching slots for a specific period & day
+  const getSlotsForPeriodAndDay = (startTime: string, dayIndex: number) => {
+    return slots.filter(
       (s) => s.day_of_week === dayIndex && s.start_time === startTime
     );
   };
@@ -123,7 +126,7 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
 
           <div className="space-y-3">
             {periods.map((period, pIdx) => {
-              const matchedSlot = getSlotForPeriodAndDay(period.start_time, activeDay);
+              const matchedSlots = getSlotsForPeriodAndDay(period.start_time, activeDay);
               return (
                 <div key={pIdx} className="flex gap-3 items-stretch">
                   <div className="w-24 shrink-0 text-left pt-2 border-r border-gray-100 pr-2">
@@ -136,13 +139,21 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                   </div>
 
                   <div className="flex-1">
-                    {matchedSlot ? (
-                      <SlotCard
-                        slot={matchedSlot}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                        onToggleCancel={onToggleCancel}
-                      />
+                    {matchedSlots.length > 0 ? (
+                      <div className="space-y-2">
+                        {matchedSlots.map((slot) => (
+                          <SlotCard
+                            key={slot.id}
+                            slot={slot}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onToggleCancel={onToggleCancel}
+                            selectionMode={selectionMode}
+                            isSelected={selectedSlotIds.includes(slot.id)}
+                            onToggleSelect={onToggleSelectSlot}
+                          />
+                        ))}
+                      </div>
                     ) : (
                       <div
                         onClick={() => onAddSlot && onAddSlot(activeDay)}
@@ -200,20 +211,28 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
 
                 {/* Day Columns for this period */}
                 {SHORT_DAYS.map((_, dayIdx) => {
-                  const matchedSlot = getSlotForPeriodAndDay(period.start_time, dayIdx);
+                  const matchedSlots = getSlotsForPeriodAndDay(period.start_time, dayIdx);
 
                   return (
                     <td
                       key={dayIdx}
                       className="p-2 border-r border-[#F0F0F0] last:border-r-0 align-top transition-colors relative group/cell min-w-[130px]"
                     >
-                      {matchedSlot ? (
-                        <SlotCard
-                          slot={matchedSlot}
-                          onEdit={onEdit}
-                          onDelete={onDelete}
-                          onToggleCancel={onToggleCancel}
-                        />
+                      {matchedSlots.length > 0 ? (
+                        <div className="space-y-2">
+                          {matchedSlots.map((slot) => (
+                            <SlotCard
+                              key={slot.id}
+                              slot={slot}
+                              onEdit={onEdit}
+                              onDelete={onDelete}
+                              onToggleCancel={onToggleCancel}
+                              selectionMode={selectionMode}
+                              isSelected={selectedSlotIds.includes(slot.id)}
+                              onToggleSelect={onToggleSelectSlot}
+                            />
+                          ))}
+                        </div>
                       ) : (
                         <div
                           onClick={() => onAddSlot && onAddSlot(dayIdx)}

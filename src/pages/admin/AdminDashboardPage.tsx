@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, ChevronRight, ArrowUpRight,
+  Users, ChevronRight,
   GraduationCap, Percent, Megaphone
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';

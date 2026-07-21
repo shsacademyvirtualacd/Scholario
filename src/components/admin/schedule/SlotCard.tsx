@@ -16,6 +16,9 @@ interface SlotCardProps {
   onEdit: (slot: any) => void;
   onDelete: (slotId: string) => void;
   onToggleCancel: (slotId: string, currentStatus: boolean) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (slotId: string) => void;
 }
 
 export const SlotCard: React.FC<SlotCardProps> = ({
@@ -23,6 +26,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   onEdit,
   onDelete,
   onToggleCancel,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelect,
 }) => {
   const isCancelled = slot.is_cancelled;
   const subject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class';
@@ -60,15 +66,38 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   return (
     <div
+      onClick={(e) => {
+        if (selectionMode && onToggleSelect) {
+          e.stopPropagation();
+          onToggleSelect(slot.id);
+        }
+      }}
       className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left ${
-        isCancelled ? 'opacity-50 bg-gray-100/70 border-gray-300' : ''
+        selectionMode ? 'cursor-pointer select-none' : ''
+      } ${
+        isSelected
+          ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/80 shadow-md'
+          : isCancelled ? 'opacity-50 bg-gray-100/70 border-gray-300' : ''
       }`}
       style={{
-        backgroundColor: isCancelled ? undefined : style.bg,
-        borderColor: isCancelled ? undefined : `${style.border}40`,
-        borderLeft: `3.5px solid ${isCancelled ? '#9ca3af' : style.border}`,
+        backgroundColor: isSelected ? undefined : (isCancelled ? undefined : style.bg),
+        borderColor: isSelected ? undefined : (isCancelled ? undefined : `${style.border}40`),
+        borderLeft: `3.5px solid ${isSelected ? '#2563eb' : (isCancelled ? '#9ca3af' : style.border)}`,
       }}
     >
+      {/* Checkbox indicator in Selection Mode */}
+      {selectionMode && (
+        <div className="absolute top-2 right-2 z-20">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect && onToggleSelect(slot.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+          />
+        </div>
+      )}
+
       {/* Subject + Core/Elective Indicator Header */}
       <div>
         <div className="flex items-start justify-between gap-1 pr-6">
@@ -110,40 +139,42 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       </div>
 
       {/* Hover Action Overlay */}
-      <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-md p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleCancel(slot.id, isCancelled);
-          }}
-          title={isCancelled ? 'Mark Active' : 'Mark Cancelled'}
-          className={`p-1 rounded text-gray-500 transition-colors ${
-            isCancelled ? 'hover:text-emerald-600 hover:bg-emerald-50' : 'hover:text-amber-600 hover:bg-amber-50'
-          }`}
-        >
-          {isCancelled ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(slot);
-          }}
-          title="Edit slot"
-          className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-        >
-          <Edit2 size={11} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(slot.id);
-          }}
-          title="Delete slot"
-          className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-        >
-          <Trash2 size={11} />
-        </button>
-      </div>
+      {!selectionMode && (
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-md p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCancel(slot.id, isCancelled);
+            }}
+            title={isCancelled ? 'Mark Active' : 'Mark Cancelled'}
+            className={`p-1 rounded text-gray-500 transition-colors ${
+              isCancelled ? 'hover:text-emerald-600 hover:bg-emerald-50' : 'hover:text-amber-600 hover:bg-amber-50'
+            }`}
+          >
+            {isCancelled ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(slot);
+            }}
+            title="Edit slot"
+            className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          >
+            <Edit2 size={11} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(slot.id);
+            }}
+            title="Delete slot"
+            className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 size={11} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
