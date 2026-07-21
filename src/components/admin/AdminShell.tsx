@@ -8,7 +8,6 @@ import {
   BookMarked,
   LogOut,
   Bell,
-  Search,
   Menu,
   X,
   DollarSign,
