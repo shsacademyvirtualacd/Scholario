@@ -65,11 +65,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
           style={{ animationDelay: '80ms' }}
         >
           <h1 className="text-5xl md:text-6xl lg:text-[72px] font-extrabold tracking-tight text-[#111111] leading-[1.03] mb-6">
-            A better way to learn,
-            <br />
-            built for{' '}
+            The Official Virtual Academy Portal for{' '}
             <span className="relative inline-block">
-              <span style={{ color: '#F4C430' }}>one school</span>
+              <span style={{ color: '#F4C430' }}>SHS Academy</span>
               <svg
                 className="absolute w-full"
                 style={{ bottom: '-6px', left: 0 }}
@@ -86,11 +84,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   opacity="0.7"
                 />
               </svg>
-            </span>{' '}
-            that actually cares
+            </span>
           </h1>
           <p className="text-xl md:text-2xl text-[#737373] font-normal leading-relaxed max-w-3xl mx-auto">
-            Scholario gives SHS Academy students one clean place for notes, classes, and everything they need to study — without the clutter.
+            Built exclusively for SHS Academy students — live FBISE 9th–12th classes, subject note vaults, and daily timetables in one private learning hub.
           </p>
         </div>
 

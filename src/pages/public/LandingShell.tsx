@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import HomePage from '../HomePage';
+import JsonLdSchema from '../../components/seo/JsonLdSchema';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -21,6 +22,7 @@ const LandingShell: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white page-transition">
+      <JsonLdSchema includeCourses includeFaq />
       <Navbar onNavigate={handleNavigate} />
       <HomePage onNavigate={handleNavigate} />
       <Footer onNavigate={handleNavigate} />
