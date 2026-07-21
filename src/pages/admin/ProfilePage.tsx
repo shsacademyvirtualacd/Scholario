@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Mail, Phone, Camera, Edit3, Check, X, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, Camera, Edit3, Check, X, ShieldCheck, Loader2 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getDashboardCounts } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
+import { toast } from 'sonner';
 
 export const ProfilePage: React.FC = () => {
   const isMobile = useMobile();
@@ -13,6 +14,7 @@ export const ProfilePage: React.FC = () => {
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -49,6 +51,7 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
+    setSaving(true);
     try {
       if (profile?.id) {
         await updateProfile(profile.id, {
@@ -58,10 +61,14 @@ export const ProfilePage: React.FC = () => {
         await refreshProfile();
         setIsEditing(false);
         setSuccess(true);
+        toast.success('Profile updated successfully.');
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to save details.');
+      setError(err.message || 'Failed to update profile.');
+      toast.error(err.message || 'Failed to update profile.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -179,18 +186,23 @@ export const ProfilePage: React.FC = () => {
                 <div className={`flex gap-2 pt-3 border-t border-[#F5F5F5] ${isMobile ? 'flex-col-reverse mt-2' : 'justify-end mt-4'}`}>
                   <button
                     type="button"
+                    disabled={saving}
                     onClick={() => {
                       setFullName(profile?.full_name || 'Ahmad Khan');
                       setPhone(profile?.phone || '+92 321 987 6543');
                       setIsEditing(false);
                       setError(null);
                     }}
-                    className={`btn btn-ghost font-bold ${isMobile ? 'py-3 w-full border border-[#E5E5E5] bg-[#FAFAFA]' : 'btn-sm'}`}
+                    className={`btn btn-ghost font-bold disabled:opacity-50 ${isMobile ? 'py-3 w-full border border-[#E5E5E5] bg-[#FAFAFA]' : 'btn-sm'}`}
                   >
                     <X size={14} className="inline mr-1" /> Cancel
                   </button>
-                  <button type="submit" className={`btn btn-gold font-bold ${isMobile ? 'py-3 w-full text-sm' : 'btn-sm'}`}>
-                    <Check size={14} className="inline mr-1" /> Save Changes
+                  <button 
+                    type="submit" 
+                    disabled={saving}
+                    className={`btn btn-gold font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 ${isMobile ? 'py-3 w-full text-sm' : 'btn-sm'}`}
+                  >
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} className="inline" />} Save Changes
                   </button>
                 </div>
               </form>

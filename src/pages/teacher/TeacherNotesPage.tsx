@@ -11,16 +11,21 @@ import type { Note, ClassOffering } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
+import { pageCache } from '../../lib/pageCache';
 
 export const TeacherNotesPage: React.FC = () => {
   const { profile } = useAuth();
   const isMobile = useMobile();
   const teacherId = profile?.id || 't1';
 
-  const [teacherOfferings, setTeacherOfferings] = useState<ClassOffering[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [taxonomy, setTaxonomy] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedOfferings = teacherId ? pageCache.get<ClassOffering[]>('teacher_offerings', teacherId) : null;
+  const cachedNotes = teacherId ? pageCache.get<Note[]>('teacher_notes', teacherId) : null;
+  const cachedTaxonomy = teacherId ? pageCache.get<any>('teacher_taxonomy', teacherId) : null;
+
+  const [teacherOfferings, setTeacherOfferings] = useState<ClassOffering[]>(cachedOfferings || []);
+  const [notes, setNotes] = useState<Note[]>(cachedNotes || []);
+  const [taxonomy, setTaxonomy] = useState<any>(cachedTaxonomy || null);
+  const [loading, setLoading] = useState(!cachedNotes || cachedNotes.length === 0);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // ── Load teacher's offerings, notes, and taxonomy ──────────────────────
@@ -30,6 +35,7 @@ export const TeacherNotesPage: React.FC = () => {
     try {
       const n = await getNotesForOfferings(ids);
       setNotes(n);
+      if (teacherId) pageCache.set('teacher_notes', n, teacherId);
     } catch (err: any) {
       console.error('[TeacherNotesPage] fetchNotes error:', err);
       setFetchError(err?.message || 'Failed to load notes. Please try refreshing.');
@@ -37,15 +43,23 @@ export const TeacherNotesPage: React.FC = () => {
   };
 
   const loadData = async () => {
-    setLoading(true);
+    if (notes.length === 0) {
+      setLoading(true);
+    }
     setFetchError(null);
     try {
-      await getTaxonomy().then(setTaxonomy);
+      const tax = await getTaxonomy();
+      setTaxonomy(tax);
+      if (teacherId) pageCache.set('teacher_taxonomy', tax, teacherId);
+
       const offs = await getOfferingsForTeacher(teacherId);
       setTeacherOfferings(offs);
+      if (teacherId) pageCache.set('teacher_offerings', offs, teacherId);
+
       const ids = offs.map((o) => o.id);
       const n = await getNotesForOfferings(ids);
       setNotes(n);
+      if (teacherId) pageCache.set('teacher_notes', n, teacherId);
     } catch (err: any) {
       console.error('[TeacherNotesPage] loadData error:', err);
       setFetchError(err?.message || 'Failed to load notes data. Please try refreshing.');
@@ -251,14 +265,8 @@ export const TeacherNotesPage: React.FC = () => {
         />
       </div>
 
-      {/* Loading / Error states */}
-      {loading ? (
-        <div className="py-16 text-center">
-          <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
-          <p className="text-xs text-[#737373] font-bold">Loading notes...</p>
-        </div>
-      ) : fetchError ? (
-        <div className="py-16 text-center">
+      {fetchError && (
+        <div className="py-6 text-center">
           <div className="inline-flex items-center gap-2 bg-[#FEF2F2] border border-[#fecaca] text-[#dc2626] text-xs font-semibold px-4 py-3 rounded-xl">
             <span>⚠</span>
             <span>{fetchError}</span>
@@ -270,11 +278,8 @@ export const TeacherNotesPage: React.FC = () => {
             Try again
           </button>
         </div>
-      ) : null}
-
-      {/* Only render main UI once loaded without error */}
-      {!loading && !fetchError && (
-      <>{/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
+      )}
+      {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
       <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div className="flex overflow-x-auto gap-6 border-transparent">
           <button
@@ -413,7 +418,29 @@ export const TeacherNotesPage: React.FC = () => {
       </div>
 
       {/* Grid of Notes */}
-      {filteredNotes.length === 0 ? (
+      {loading && filteredNotes.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-white rounded-xl border border-[#E5E5E5] p-5 shadow-xs flex flex-col justify-between h-44">
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <div className="h-5 bg-gray-100 rounded w-20" />
+                  <div className="h-5 bg-gray-100 rounded-full w-12" />
+                </div>
+                <div className="h-4 bg-gray-100 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-full" />
+              </div>
+              <div className="flex justify-between pt-3 border-t border-[#F5F5F5]">
+                <div className="h-3 bg-gray-100 rounded w-16" />
+                <div className="flex gap-2">
+                  <div className="w-7 h-7 bg-gray-100 rounded-lg" />
+                  <div className="w-7 h-7 bg-gray-100 rounded-lg" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredNotes.length === 0 ? (
         <div className="card text-center py-20 bg-white border border-[#E5E5E5] rounded-2xl interactive">
           <BookOpen size={32} className="mx-auto text-[#A3A3A3] mb-3 animate-pulse" />
           <h3 className="text-sm font-bold text-[#111111]">No documents found</h3>
@@ -436,7 +463,6 @@ export const TeacherNotesPage: React.FC = () => {
 
 
       {/* Note Viewer Popover — always rendered outside the conditional UI block */}
-      </> )}
       {viewerOpen && selectedNote && (
         <NoteViewerModal
           note={selectedNote}

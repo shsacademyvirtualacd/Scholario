@@ -223,6 +223,7 @@ export const TeacherDashboardPage: React.FC = () => {
   const [offerings, setOfferings] = useState<ClassOffering[]>(cachedOfferings || []);
   const [students, setStudents] = useState<Profile[]>(cachedStudents || []);
   const [allSlots, setAllSlots] = useState<ClassSlot[]>(cachedSlots || []);
+  const [loading, setLoading] = useState(!cachedOfferings || cachedOfferings.length === 0);
 
   useEffect(() => {
     let mounted = true;
@@ -263,7 +264,9 @@ export const TeacherDashboardPage: React.FC = () => {
       if (offs.length > 0 && !selectedOfferingId) {
         setSelectedOfferingId(offs[0].id);
       }
-    }).catch(console.error);
+    }).catch(console.error).finally(() => {
+      if (mounted) setLoading(false);
+    });
 
     return () => {
       mounted = false;
@@ -374,62 +377,83 @@ export const TeacherDashboardPage: React.FC = () => {
 
       {/* ── Metrics Strip ── */}
       <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-2 xl:grid-cols-4 gap-4'}>
-        {/* Classes Assigned */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Assigned Classes</span>
-            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              <BookOpen size={14} />
+        {loading ? (
+          [1, 2, 3, 4].map((n) => (
+            <div key={n} className="stat-card flex flex-col justify-between min-h-[140px] animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="h-3 bg-gray-100 rounded w-24" />
+                <div className="w-7 h-7 rounded-lg bg-gray-100" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-7 bg-gray-100 rounded w-12" />
+                <div className="h-3 bg-gray-100 rounded w-36" />
+              </div>
+              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
+                <div className="h-2.5 bg-gray-100 rounded w-24" />
+                <div className="h-2.5 bg-gray-100 rounded w-10" />
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="stat-value">{offerings.length}</div>
-            <div className="stat-label">Subject groups assigned</div>
-          </div>
-          <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
-            <span>Scoped to Teacher Roster</span>
-            <span className="text-[#111111]">Active</span>
-          </div>
-        </div>
-
-        {/* Total Students */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Enrolled Students</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Users size={14} />
+          ))
+        ) : (
+          <>
+            {/* Classes Assigned */}
+            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Assigned Classes</span>
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <BookOpen size={14} />
+                </div>
+              </div>
+              <div>
+                <div className="stat-value">{offerings.length}</div>
+                <div className="stat-label">Subject groups assigned</div>
+              </div>
+              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
+                <span>Scoped to Teacher Roster</span>
+                <span className="text-[#111111]">Active</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="stat-value">{students.length}</div>
-            <div className="stat-label">Unique students in your classes</div>
-          </div>
-          <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
-            <span>Enrolled Students Roster</span>
-            <span className="text-emerald-600">Secure</span>
-          </div>
-        </div>
 
-        {/* Next ClassCountdown Widget */}
-        <TeacherNextClassWidget slots={allSlots} />
-
-        {/* Classes Today */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Classes Today</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center animate-pulse">
-              <Calendar size={14} />
+            {/* Total Students */}
+            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Enrolled Students</span>
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Users size={14} />
+                </div>
+              </div>
+              <div>
+                <div className="stat-value">{students.length}</div>
+                <div className="stat-label">Unique students in your classes</div>
+              </div>
+              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
+                <span>Enrolled Students Roster</span>
+                <span className="text-emerald-600">Secure</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="stat-value">{todayClasses.length}</div>
-            <div className="stat-label">Lectures scheduled today</div>
-          </div>
-          <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
-            <span>Mon - Sat timetable</span>
-            <span className="text-[#111111]">Daily</span>
-          </div>
-        </div>
+
+            {/* Next ClassCountdown Widget */}
+            <TeacherNextClassWidget slots={allSlots} />
+
+            {/* Classes Today */}
+            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Classes Today</span>
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center animate-pulse">
+                  <Calendar size={14} />
+                </div>
+              </div>
+              <div>
+                <div className="stat-value">{todayClasses.length}</div>
+                <div className="stat-label">Lectures scheduled today</div>
+              </div>
+              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
+                <span>Mon - Sat timetable</span>
+                <span className="text-[#111111]">Daily</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Today's Timetable + Class Roster Section ── */}
@@ -448,15 +472,27 @@ export const TeacherDashboardPage: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {todayClasses.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
-                <CheckCircle2 size={32} className="text-[#D4D4D4] mb-2" />
-                <p className="text-xs text-[#737373] font-semibold">No classes scheduled today.</p>
-                <p className="text-[10px] text-[#A3A3A3] mt-0.5">Enjoy your break!</p>
+            {loading ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2].map((n) => (
+                  <div key={n} className="flex items-center gap-3 p-3 rounded-xl border border-[#F0F0F0] bg-white">
+                    <div className="w-1.5 h-10 bg-gray-100 rounded-full shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="h-4 bg-gray-100 rounded w-20" />
+                      <div className="h-3 bg-gray-100 rounded w-28" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : todayClasses.length === 0 ? (
+              <div className="py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
+                <CheckCircle2 size={30} className="mx-auto text-[#D4D4D4] mb-2" />
+                <h3 className="font-bold text-[#111111] text-xs">No Lectures Today</h3>
+                <p className="text-[10px] text-[#737373] mt-1">You have no scheduled lectures for this day.</p>
               </div>
             ) : (
               todayClasses.map((cls) => {
-                const color = getSubjectColor(cls.custom_title || cls.offering?.subject || '');
+                const color = getSubjectColor(cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class');
                 return (
                   <div
                     key={cls.id}
@@ -506,7 +542,40 @@ export const TeacherDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {rosterStudents.length === 0 ? (
+          {loading ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#F0F0F0]">
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student Name</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Stream / Group</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Contact Phone</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#FAFAFA]">
+                  {[1, 2, 3].map((n) => (
+                    <tr key={n} className="animate-pulse">
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-gray-100 shrink-0" />
+                          <div className="space-y-1.5 flex-1">
+                            <div className="h-3 bg-gray-100 rounded w-24" />
+                            <div className="h-2.5 bg-gray-100 rounded w-16" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3">
+                        <div className="h-3 bg-gray-100 rounded w-16" />
+                      </td>
+                      <td className="py-3">
+                        <div className="h-3 bg-gray-100 rounded w-20" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : rosterStudents.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 rounded-full bg-[#F5F5F5] flex items-center justify-center text-[#A3A3A3] mb-3">
                 <UserPlus size={20} />

@@ -12,6 +12,7 @@ import {
   deleteRosterEntry, getAllOfferings, toggleRosterAccess, toggleFeeSuspension, updateFeeStatus
 } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
+import { toast } from 'sonner';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { RosterEntry, ClassOffering } from '../../types';
 import { useMobile } from '../../hooks/useMobile';
@@ -47,6 +48,7 @@ export const RosterManagerPage: React.FC = () => {
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSaving, setFormSaving] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Record<string, boolean>>({});
 
   // Delete Modal States
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -180,6 +182,7 @@ export const RosterManagerPage: React.FC = () => {
         setRoster(prev => prev.map(r => r.id === selectedEntry.id ? { ...r, class_ids: classesToSave } : r));
         const offeringsData = await getAllOfferings().catch(() => []);
         setOfferings(offeringsData);
+        toast.success('Roster entry updated successfully.');
         setDrawerOpen(false);
       } else {
         const role = 'teacher';
@@ -199,28 +202,36 @@ export const RosterManagerPage: React.FC = () => {
         });
         const offeringsData = await getAllOfferings().catch(() => []);
         setOfferings(offeringsData);
+        toast.success('Teacher added to roster successfully.');
         setDrawerOpen(false);
         await fetchEnrichmentData();
       }
     } catch (err: any) {
       setFormError(err.message || 'An error occurred while saving.');
+      toast.error(err.message || 'Failed to save roster entry.');
     } finally {
       setFormSaving(false);
     }
   };
 
   const handleToggleAccess = async (entry: RosterEntry) => {
+    setProcessingIds(prev => ({ ...prev, [entry.id]: true }));
     try {
       const nextSuspendedState = !entry.suspended;
       await toggleRosterAccess(entry.id, nextSuspendedState);
       setRoster(prev => prev.map(r => r.id === entry.id ? { ...r, suspended: nextSuspendedState } : r));
+      toast.success(nextSuspendedState ? 'Roster access suspended.' : 'Roster access restored.');
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'Failed to update access status.');
+      toast.error(err.message || 'Failed to update roster access.');
+    } finally {
+      setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
     }
   };
 
   const handleToggleFeeAccess = async (entry: RosterEntry) => {
+    setProcessingIds(prev => ({ ...prev, [entry.id]: true }));
     try {
       const nextFeeSuspendedState = !entry.fee_suspended;
       await toggleFeeSuspension(entry.id, nextFeeSuspendedState);
@@ -229,9 +240,28 @@ export const RosterManagerPage: React.FC = () => {
         fee_suspended: nextFeeSuspendedState,
         awaiting_termination: nextFeeSuspendedState ? r.awaiting_termination : false
       } : r));
+      toast.success(nextFeeSuspendedState ? 'Billing lock applied.' : 'Billing lock removed.');
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'Failed to update billing access status.');
+      toast.error(err.message || 'Failed to update billing access.');
+    } finally {
+      setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
+    }
+  };
+
+  const handleApprovePayment = async (profileId: string, entryId: string) => {
+    setProcessingIds(prev => ({ ...prev, [entryId]: true }));
+    try {
+      await updateFeeStatus(profileId, 'paid', 'Payment approved by administrator from Roster Manager.');
+      await fetchEnrichmentData();
+      toast.success('Payment approved successfully.');
+    } catch (err: any) {
+      console.error('Approve payment error:', err);
+      alert(err.message || 'Failed to approve payment.');
+      toast.error(err.message || 'Failed to approve payment.');
+    } finally {
+      setProcessingIds(prev => ({ ...prev, [entryId]: false }));
     }
   };
 
@@ -254,11 +284,12 @@ export const RosterManagerPage: React.FC = () => {
         const offeringsData = await getAllOfferings().catch(() => []);
         setOfferings(offeringsData);
 
-        setDeleteModalOpen(false);
-        setEntryToDelete(null);
+        toast.success('Roster entry deleted successfully.');
       } catch (err: any) {
         console.error(err);
         alert(err.message || 'Failed to remove account from system.');
+        toast.error(err.message || 'Failed to delete roster entry.');
+        throw err;
       }
     }
   };
@@ -615,14 +646,21 @@ export const RosterManagerPage: React.FC = () => {
                   {activeSection !== 'admins' && (
                     <div className="flex gap-2 pt-2 border-t border-[#F0F0F0]">
                       <button
+                        disabled={processingIds[entry.id]}
                         onClick={() => handleToggleAccess(entry)}
                         className={`flex-1 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
                           isSuspended 
                             ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
                             : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
-                        }`}
+                        } disabled:opacity-50`}
                       >
-                        {isSuspended ? <><Unlock size={12} /> Restore</> : <><Lock size={12} /> Suspend</>}
+                        {processingIds[entry.id] ? (
+                          <Clock size={12} className="animate-spin" />
+                        ) : isSuspended ? (
+                          <><Unlock size={12} /> Restore</>
+                        ) : (
+                          <><Lock size={12} /> Suspend</>
+                        )}
                       </button>
                       {activeSection === 'teachers' && (
                         <button
@@ -634,18 +672,11 @@ export const RosterManagerPage: React.FC = () => {
                       )}
                       {activeSection === 'students' && feeStatusVal === 'pending' && (
                         <button
-                          onClick={async () => {
-                            if (!profileIdForFee) return;
-                            try {
-                              await updateFeeStatus(profileIdForFee, 'paid', 'Approved via mobile roster.');
-                              await fetchEnrichmentData();
-                            } catch (err: any) {
-                              console.error('Approve payment error:', err);
-                            }
-                          }}
-                          className="px-4 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center"
+                          onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
+                          disabled={processingIds[entry.id]}
+                          className="px-4 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center disabled:opacity-50"
                         >
-                          <Check size={12} />
+                          {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <Check size={12} />}
                         </button>
                       )}
                     </div>
@@ -818,14 +849,17 @@ export const RosterManagerPage: React.FC = () => {
 
                             <button
                               onClick={() => handleToggleAccess(entry)}
+                              disabled={processingIds[entry.id]}
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
                                 isSuspended 
                                   ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
                                   : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
-                              }`}
+                              } disabled:opacity-50`}
                               title={isSuspended ? "Restore access (Reversible)" : "Suspend access (Reversible — blocks access while preserving records)"}
                             >
-                              {isSuspended ? (
+                              {processingIds[entry.id] ? (
+                                <Clock size={13} className="animate-spin" />
+                              ) : isSuspended ? (
                                 <>
                                   <Unlock size={13} /> Restore
                                 </>
@@ -840,31 +874,27 @@ export const RosterManagerPage: React.FC = () => {
                               <>
                                 {feeStatusVal === 'pending' && (
                                   <button
-                                    onClick={async () => {
-                                      if (!profileIdForFee) return;
-                                      try {
-                                        await updateFeeStatus(profileIdForFee, 'paid', 'Payment approved by administrator from Roster Manager.');
-                                        await fetchEnrichmentData();
-                                      } catch (err: any) {
-                                        console.error('Approve payment error:', err);
-                                      }
-                                    }}
-                                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
+                                    onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
+                                    disabled={processingIds[entry.id]}
+                                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all disabled:opacity-50"
                                     title="Student has submitted proof — approve and mark as paid"
                                   >
-                                    <Check size={13} /> Approve Payment
+                                    {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <Check size={13} />} Approve Payment
                                   </button>
                                 )}
                                 <button
                                   onClick={() => handleToggleFeeAccess(entry)}
+                                  disabled={processingIds[entry.id]}
                                   className={`px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
                                     entry.fee_suspended 
                                       ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
                                       : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                  }`}
+                                  } disabled:opacity-50`}
                                   title={entry.fee_suspended ? "Remove Billing Lock" : "Apply Billing Lock"}
                                 >
-                                  {entry.fee_suspended ? (
+                                  {processingIds[entry.id] ? (
+                                    <Clock size={13} className="animate-spin" />
+                                  ) : entry.fee_suspended ? (
                                     <>
                                       <Unlock size={13} /> Unlock Billing
                                     </>

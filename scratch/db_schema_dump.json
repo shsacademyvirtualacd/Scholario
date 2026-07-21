@@ -1,0 +1,1968 @@
+{
+  "columns": [
+    {
+      "table_name": "announcements",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "title",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "body",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "severity",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'normal'::text"
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "scope",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'system'::text"
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "class_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "stream_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "created_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "announcements",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "attendance",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "attendance",
+      "column_name": "student_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "attendance",
+      "column_name": "slot_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "attendance",
+      "column_name": "session_date",
+      "data_type": "date",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "attendance",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "attendance",
+      "column_name": "marked_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    },
+    {
+      "table_name": "boards",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "boards",
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_offerings",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "class_offerings",
+      "column_name": "teacher_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "class_offerings",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    },
+    {
+      "table_name": "class_offerings",
+      "column_name": "class_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_offerings",
+      "column_name": "subject_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_offerings",
+      "column_name": "stream_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "class_reminder_log",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "class_reminder_log",
+      "column_name": "slot_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_reminder_log",
+      "column_name": "reminder_date",
+      "data_type": "date",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_reminder_log",
+      "column_name": "sent_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "offering_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "day_of_week",
+      "data_type": "smallint",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "start_time",
+      "data_type": "time without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "end_time",
+      "data_type": "time without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "room_or_link",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "is_cancelled",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "custom_title",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "class_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "class_slots",
+      "column_name": "stream_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "class_subjects",
+      "column_name": "class_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "class_subjects",
+      "column_name": "subject_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "classes",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "classes",
+      "column_name": "board_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "classes",
+      "column_name": "grade",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "classes",
+      "column_name": "display_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "enrollments",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "enrollments",
+      "column_name": "student_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "enrollments",
+      "column_name": "offering_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "enrollments",
+      "column_name": "total_classes",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "enrollments",
+      "column_name": "enrolled_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    },
+    {
+      "table_name": "fee_audit_trail",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "fee_audit_trail",
+      "column_name": "student_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_audit_trail",
+      "column_name": "status_from",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_audit_trail",
+      "column_name": "status_to",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_audit_trail",
+      "column_name": "changed_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_audit_trail",
+      "column_name": "changed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "fee_audit_trail",
+      "column_name": "notes",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_configs",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "fee_configs",
+      "column_name": "class_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_configs",
+      "column_name": "amount",
+      "data_type": "numeric",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_configs",
+      "column_name": "payment_instructions",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_configs",
+      "column_name": "whatsapp_number",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_configs",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "fee_configs",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "fee_statuses",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "fee_statuses",
+      "column_name": "student_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "fee_statuses",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'unpaid'::text"
+    },
+    {
+      "table_name": "fee_statuses",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "notes",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "notes",
+      "column_name": "offering_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notes",
+      "column_name": "chapter_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notes",
+      "column_name": "title",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notes",
+      "column_name": "file_url",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notes",
+      "column_name": "file_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notes",
+      "column_name": "uploaded_by",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notes",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    },
+    {
+      "table_name": "notes",
+      "column_name": "file_path",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "recipient_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "announcement_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'announcement'::text"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "title",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "message",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "severity",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'normal'::text"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "is_read",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "role",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "full_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "avatar_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "phone",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "stream",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "onboarding_complete",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "board_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "class_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "stream_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "roster",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "roster",
+      "column_name": "email",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "roster",
+      "column_name": "full_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "roster",
+      "column_name": "role",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "roster",
+      "column_name": "class_ids",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "column_default": "'{}'::uuid[]"
+    },
+    {
+      "table_name": "roster",
+      "column_name": "profile_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "roster",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "roster",
+      "column_name": "suspended",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "roster",
+      "column_name": "fee_suspended",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "roster",
+      "column_name": "awaiting_termination",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "stream_subjects",
+      "column_name": "stream_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "stream_subjects",
+      "column_name": "subject_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "streams",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "streams",
+      "column_name": "class_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "streams",
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "study_sessions",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "study_sessions",
+      "column_name": "student_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "study_sessions",
+      "column_name": "session_date",
+      "data_type": "date",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "study_sessions",
+      "column_name": "pomodoro_count",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "study_sessions",
+      "column_name": "duration_mins",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "study_sessions",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    },
+    {
+      "table_name": "subjects",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "subjects",
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "teachers",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "teachers",
+      "column_name": "full_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "teachers",
+      "column_name": "avatar_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "teachers",
+      "column_name": "email",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "teachers",
+      "column_name": "joining_date",
+      "data_type": "date",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "teachers",
+      "column_name": "is_active",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "column_default": "true"
+    },
+    {
+      "table_name": "teachers",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())"
+    }
+  ],
+  "rls_status": [
+    {
+      "tablename": "streams",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "subjects",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "class_slots",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "profiles",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "teachers",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "notes",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "attendance",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "enrollments",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "class_subjects",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "study_sessions",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "stream_subjects",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "notifications",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "class_reminder_log",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "class_offerings",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "roster",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "fee_configs",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "fee_audit_trail",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "announcements",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "fee_statuses",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "boards",
+      "rowsecurity": true
+    },
+    {
+      "tablename": "classes",
+      "rowsecurity": true
+    }
+  ],
+  "policies": [
+    {
+      "schemaname": "public",
+      "tablename": "teachers",
+      "policyname": "teachers: own read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "boards",
+      "policyname": "boards: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "boards",
+      "policyname": "boards: insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "boards",
+      "policyname": "boards: update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "boards",
+      "policyname": "boards: delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "attendance",
+      "policyname": "attendance: student read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((student_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM (class_slots cs\n     JOIN class_offerings co ON ((co.id = cs.offering_id)))\n  WHERE ((cs.id = attendance.slot_id) AND (co.teacher_id = auth.uid())))) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "attendance",
+      "policyname": "attendance: admin+teacher write",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(is_admin() OR (EXISTS ( SELECT 1\n   FROM (class_slots cs\n     JOIN class_offerings co ON ((co.id = cs.offering_id)))\n  WHERE ((cs.id = attendance.slot_id) AND (co.teacher_id = auth.uid())))))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "attendance",
+      "policyname": "attendance: admin+teacher update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(is_admin() OR (EXISTS ( SELECT 1\n   FROM (class_slots cs\n     JOIN class_offerings co ON ((co.id = cs.offering_id)))\n  WHERE ((cs.id = attendance.slot_id) AND (co.teacher_id = auth.uid())))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "attendance",
+      "policyname": "attendance: admin delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "classes",
+      "policyname": "classes: insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "classes",
+      "policyname": "classes: update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "classes",
+      "policyname": "classes: delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "subjects",
+      "policyname": "subjects: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "subjects",
+      "policyname": "subjects: insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "subjects",
+      "policyname": "subjects: update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "subjects",
+      "policyname": "subjects: delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "streams",
+      "policyname": "streams: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "streams",
+      "policyname": "streams: insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "streams",
+      "policyname": "streams: update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "streams",
+      "policyname": "streams: delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_subjects",
+      "policyname": "class_subjects: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_subjects",
+      "policyname": "class_subjects: insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_subjects",
+      "policyname": "class_subjects: update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_subjects",
+      "policyname": "class_subjects: delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "stream_subjects",
+      "policyname": "stream_subjects: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.role() = 'authenticated'::text)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "stream_subjects",
+      "policyname": "stream_subjects: insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "stream_subjects",
+      "policyname": "stream_subjects: update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "stream_subjects",
+      "policyname": "stream_subjects: delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_reminder_log",
+      "policyname": "class_reminder_log: admin all",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notes",
+      "policyname": "notes: insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((offering_id = ANY (my_teacher_offering_ids())) OR is_admin())"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "policyname": "enrollments: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((student_id = auth.uid()) OR (offering_id = ANY (my_teacher_offering_ids())) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "policyname": "enrollments: admin write",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "policyname": "enrollments: student self enroll",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(student_id = auth.uid())"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "enrollments",
+      "policyname": "enrollments: student self delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "(student_id = auth.uid())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "teachers",
+      "policyname": "teachers: admin write",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_offerings",
+      "policyname": "offerings: admin write",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_slots",
+      "policyname": "slots: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((offering_id = ANY (my_enrolled_offering_ids())) OR (offering_id = ANY (my_teacher_offering_ids())) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_slots",
+      "policyname": "slots: admin write",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notes",
+      "policyname": "notes: update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "((offering_id = ANY (my_teacher_offering_ids())) OR is_admin())",
+      "with_check": "((offering_id = ANY (my_teacher_offering_ids())) OR is_admin())"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "roster",
+      "policyname": "roster: select own",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((email = lower((auth.jwt() ->> 'email'::text))) OR (EXISTS ( SELECT 1\n   FROM profiles p2\n  WHERE ((p2.id = auth.uid()) AND (p2.role = 'admin'::text)))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "roster",
+      "policyname": "roster: self link",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(email = lower((auth.jwt() ->> 'email'::text)))",
+      "with_check": "(email = lower((auth.jwt() ->> 'email'::text)))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "roster",
+      "policyname": "roster: admin all",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_offerings",
+      "policyname": "offerings: student read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((id = ANY (my_enrolled_offering_ids())) OR (id = ANY (my_teacher_offering_ids())) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "study_sessions",
+      "policyname": "study_sessions: own",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "(student_id = auth.uid())",
+      "with_check": "(student_id = auth.uid())"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "study_sessions",
+      "policyname": "study_sessions: admin read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_configs",
+      "policyname": "fee_configs: admin all",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_statuses",
+      "policyname": "fee_statuses: admin all",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_statuses",
+      "policyname": "fee_statuses: student read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((student_id = auth.uid()) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_statuses",
+      "policyname": "fee_statuses: student insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(student_id = auth.uid())"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_statuses",
+      "policyname": "fee_statuses: student update pending",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(student_id = auth.uid())",
+      "with_check": "((student_id = auth.uid()) AND (status = 'pending'::text))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_audit_trail",
+      "policyname": "fee_audit_trail: admin all",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_audit_trail",
+      "policyname": "fee_audit_trail: student read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((student_id = auth.uid()) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles: own read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((id = auth.uid()) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles: own update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "((id = auth.uid()) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles: admin insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles: self provision",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(id = auth.uid())"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "profiles",
+      "policyname": "profiles: admin delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "roster",
+      "policyname": "roster: self insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((email = lower((auth.jwt() ->> 'email'::text))) AND (role = 'student'::text))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "class_slots",
+      "policyname": "slots: teacher update own",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(offering_id = ANY (my_teacher_offering_ids()))",
+      "with_check": "(offering_id = ANY (my_teacher_offering_ids()))"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "classes",
+      "policyname": "classes: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "fee_configs",
+      "policyname": "fee_configs: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notes",
+      "policyname": "notes: read",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((offering_id = ANY (my_enrolled_offering_ids())) OR (offering_id = ANY (my_teacher_offering_ids())) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "announcements",
+      "policyname": "announcements: admin insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "announcements",
+      "policyname": "announcements: admin select",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "announcements",
+      "policyname": "announcements: admin delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "announcements",
+      "policyname": "announcements: admin update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "announcements",
+      "policyname": "announcements: teacher select",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'teacher'::text)))) AND ((scope = 'system'::text) OR ((scope = 'class'::text) AND (class_id = ANY (my_teacher_class_ids())))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "announcements",
+      "policyname": "announcements: student select",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "((EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'student'::text)))) AND ((scope = 'system'::text) OR ((scope = 'class'::text) AND (class_id = ( SELECT profiles.class_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND ((stream_id IS NULL) OR (stream_id = ( SELECT profiles.stream_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid())))))))",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notifications",
+      "policyname": "notifications: own select",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = recipient_id)",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notifications",
+      "policyname": "notifications: own update",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(auth.uid() = recipient_id)",
+      "with_check": "(auth.uid() = recipient_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notifications",
+      "policyname": "notifications: admin insert",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "is_admin()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notifications",
+      "policyname": "notifications: own delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "((auth.uid() = recipient_id) OR is_admin())",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "notes",
+      "policyname": "notes: delete",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "with_check": null
+    }
+  ],
+  "foreign_keys": [
+    {
+      "from_table": "class_slots",
+      "from_column": "offering_id",
+      "to_table": "class_offerings",
+      "to_column": "id"
+    },
+    {
+      "from_table": "enrollments",
+      "from_column": "student_id",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "enrollments",
+      "from_column": "offering_id",
+      "to_table": "class_offerings",
+      "to_column": "id"
+    },
+    {
+      "from_table": "attendance",
+      "from_column": "student_id",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "attendance",
+      "from_column": "slot_id",
+      "to_table": "class_slots",
+      "to_column": "id"
+    },
+    {
+      "from_table": "notes",
+      "from_column": "offering_id",
+      "to_table": "class_offerings",
+      "to_column": "id"
+    },
+    {
+      "from_table": "notes",
+      "from_column": "uploaded_by",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "study_sessions",
+      "from_column": "student_id",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "fee_statuses",
+      "from_column": "student_id",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "fee_audit_trail",
+      "from_column": "student_id",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "fee_audit_trail",
+      "from_column": "changed_by",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "classes",
+      "from_column": "board_id",
+      "to_table": "boards",
+      "to_column": "id"
+    },
+    {
+      "from_table": "streams",
+      "from_column": "class_id",
+      "to_table": "classes",
+      "to_column": "id"
+    },
+    {
+      "from_table": "stream_subjects",
+      "from_column": "stream_id",
+      "to_table": "streams",
+      "to_column": "id"
+    },
+    {
+      "from_table": "stream_subjects",
+      "from_column": "subject_id",
+      "to_table": "subjects",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_subjects",
+      "from_column": "class_id",
+      "to_table": "classes",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_subjects",
+      "from_column": "subject_id",
+      "to_table": "subjects",
+      "to_column": "id"
+    },
+    {
+      "from_table": "profiles",
+      "from_column": "board_id",
+      "to_table": "boards",
+      "to_column": "id"
+    },
+    {
+      "from_table": "profiles",
+      "from_column": "class_id",
+      "to_table": "classes",
+      "to_column": "id"
+    },
+    {
+      "from_table": "profiles",
+      "from_column": "stream_id",
+      "to_table": "streams",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_offerings",
+      "from_column": "class_id",
+      "to_table": "classes",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_offerings",
+      "from_column": "subject_id",
+      "to_table": "subjects",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_offerings",
+      "from_column": "stream_id",
+      "to_table": "streams",
+      "to_column": "id"
+    },
+    {
+      "from_table": "fee_configs",
+      "from_column": "class_id",
+      "to_table": "classes",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_slots",
+      "from_column": "class_id",
+      "to_table": "classes",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_slots",
+      "from_column": "stream_id",
+      "to_table": "streams",
+      "to_column": "id"
+    },
+    {
+      "from_table": "announcements",
+      "from_column": "class_id",
+      "to_table": "classes",
+      "to_column": "id"
+    },
+    {
+      "from_table": "announcements",
+      "from_column": "stream_id",
+      "to_table": "streams",
+      "to_column": "id"
+    },
+    {
+      "from_table": "announcements",
+      "from_column": "created_by",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "notifications",
+      "from_column": "recipient_id",
+      "to_table": "profiles",
+      "to_column": "id"
+    },
+    {
+      "from_table": "notifications",
+      "from_column": "announcement_id",
+      "to_table": "announcements",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_reminder_log",
+      "from_column": "slot_id",
+      "to_table": "class_slots",
+      "to_column": "id"
+    },
+    {
+      "from_table": "class_offerings",
+      "from_column": "teacher_id",
+      "to_table": "teachers",
+      "to_column": "id"
+    }
+  ],
+  "triggers": [
+    {
+      "trigger_name": "on_fee_status_updated",
+      "event_manipulation": "UPDATE",
+      "event_object_table": "fee_statuses",
+      "action_statement": "EXECUTE FUNCTION log_fee_status_change()",
+      "action_timing": "AFTER"
+    },
+    {
+      "trigger_name": "trg_roster_profile_link",
+      "event_manipulation": "UPDATE",
+      "event_object_table": "roster",
+      "action_statement": "EXECUTE FUNCTION handle_roster_profile_link()",
+      "action_timing": "BEFORE"
+    },
+    {
+      "trigger_name": "trg_sync_teacher_profile",
+      "event_manipulation": "UPDATE",
+      "event_object_table": "profiles",
+      "action_statement": "EXECUTE FUNCTION sync_teacher_profile()",
+      "action_timing": "AFTER"
+    },
+    {
+      "trigger_name": "tr_prevent_role_escalation",
+      "event_manipulation": "UPDATE",
+      "event_object_table": "profiles",
+      "action_statement": "EXECUTE FUNCTION prevent_role_escalation()",
+      "action_timing": "BEFORE"
+    }
+  ],
+  "functions": [
+    {
+      "routine_name": "log_fee_status_change",
+      "definition": "CREATE OR REPLACE FUNCTION public.log_fee_status_change()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nBEGIN\r\n  IF OLD.status IS DISTINCT FROM NEW.status THEN\r\n    INSERT INTO public.fee_audit_trail (student_id, status_from, status_to, changed_by, notes)\r\n    VALUES (\r\n      NEW.student_id, OLD.status, NEW.status, auth.uid(),\r\n      'Status updated from ' || OLD.status || ' to ' || NEW.status\r\n    );\r\n  END IF;\r\n  RETURN NEW;\r\nEND; $function$\n"
+    },
+    {
+      "routine_name": "send_class_reminders",
+      "definition": "CREATE OR REPLACE FUNCTION public.send_class_reminders()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  karachi_now    timestamp;\n  karachi_date   date;\n  karachi_time   time;\n  app_dow        integer;\n  slot_row       RECORD;\n  subject_label  text;\n  time_label     text;\n  day_label      text;\n  day_names      text[] := ARRAY['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];\nBEGIN\n  -- All comparisons in Asia/Karachi\n  karachi_now  := now() AT TIME ZONE 'Asia/Karachi';\n  karachi_date := karachi_now::date;\n  karachi_time := karachi_now::time;\n\n  -- Convert Postgres DOW (0=Sun) to app convention (0=Mon)\n  app_dow := (EXTRACT(DOW FROM karachi_now)::integer + 6) % 7;\n\n  -- Find class_slots where:\n  --   1. day_of_week matches today (app convention)\n  --   2. start_time is between 9 and 10 minutes from now (Karachi time)\n  --   3. slot is not cancelled\n  --   4. slot has an offering (needed to find students/teacher)\n  --   5. No existing dedup log row for this (slot_id, today)\n  FOR slot_row IN\n    SELECT\n      cs.id         AS slot_id,\n      cs.offering_id,\n      cs.start_time,\n      cs.custom_title,\n      co.teacher_id,\n      s.name        AS subject_name,\n      cs.room_or_link\n    FROM class_slots cs\n    JOIN class_offerings co ON cs.offering_id = co.id\n    LEFT JOIN subjects s ON co.subject_id = s.id\n    WHERE cs.day_of_week = app_dow\n      AND cs.is_cancelled = false\n      AND cs.offering_id IS NOT NULL\n      AND cs.start_time - karachi_time BETWEEN interval '9 minutes' AND interval '10 minutes'\n      AND NOT EXISTS (\n        SELECT 1 FROM class_reminder_log crl\n        WHERE crl.slot_id = cs.id AND crl.reminder_date = karachi_date\n      )\n  LOOP\n    subject_label := COALESCE(slot_row.custom_title, slot_row.subject_name, 'Class');\n    time_label    := to_char(slot_row.start_time, 'HH12:MI AM');\n    day_label     := day_names[app_dow + 1]; -- arrays are 1-indexed\n\n    -- Insert notification for every enrolled student for this offering\n    INSERT INTO notifications (recipient_id, type, title, message, severity, is_read)\n    SELECT\n      e.student_id,\n      'class_reminder',\n      '🔔 ' || subject_label || ' starts at ' || time_label,\n      'Your ' || subject_label || ' class is starting in ~10 minutes at ' || time_label\n        || CASE WHEN slot_row.room_or_link IS NOT NULL\n             THEN ' (' || slot_row.room_or_link || ')'\n             ELSE '' END\n        || '. Be ready!',\n      'normal',\n      false\n    FROM enrollments e\n    WHERE e.offering_id = slot_row.offering_id;\n\n    -- Insert notification for the assigned teacher (if exists)\n    IF slot_row.teacher_id IS NOT NULL THEN\n      INSERT INTO notifications (recipient_id, type, title, message, severity, is_read)\n      VALUES (\n        slot_row.teacher_id,\n        'class_reminder',\n        '🔔 ' || subject_label || ' starts at ' || time_label,\n        'Your ' || subject_label || ' class is starting in ~10 minutes at ' || time_label\n          || CASE WHEN slot_row.room_or_link IS NOT NULL\n               THEN ' (' || slot_row.room_or_link || ')'\n               ELSE '' END\n          || '.',\n        'normal',\n        false\n      );\n    END IF;\n\n    -- Log to dedup table so this slot is never re-processed today\n    INSERT INTO class_reminder_log (slot_id, reminder_date)\n    VALUES (slot_row.slot_id, karachi_date);\n  END LOOP;\nEND;\n$function$\n"
+    },
+    {
+      "routine_name": "is_admin",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_admin()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$\r\n  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');\r\n$function$\n"
+    },
+    {
+      "routine_name": "my_enrolled_offering_ids",
+      "definition": "CREATE OR REPLACE FUNCTION public.my_enrolled_offering_ids()\n RETURNS uuid[]\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$\r\n  SELECT ARRAY(SELECT offering_id FROM public.enrollments WHERE student_id = auth.uid());\r\n$function$\n"
+    },
+    {
+      "routine_name": "get_my_role",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_my_role()\n RETURNS text\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$\r\n  SELECT role FROM public.profiles WHERE id = auth.uid();\r\n$function$\n"
+    },
+    {
+      "routine_name": "my_teacher_offering_ids",
+      "definition": "CREATE OR REPLACE FUNCTION public.my_teacher_offering_ids()\n RETURNS uuid[]\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$\n  SELECT ARRAY(\n    SELECT id FROM public.class_offerings \n    WHERE teacher_id = auth.uid() \n       OR teacher_id IN (\n         SELECT t.id FROM public.teachers t\n         JOIN public.roster r ON lower(t.email) = lower(r.email)\n         WHERE r.profile_id = auth.uid()\n       )\n       OR teacher_id IN (\n         SELECT t.id FROM public.teachers t\n         JOIN auth.users u ON lower(t.email) = lower(u.email)\n         WHERE u.id = auth.uid()\n       )\n  );\n$function$\n"
+    },
+    {
+      "routine_name": "update_roster_entry",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_roster_entry(p_roster_id uuid, p_class_ids jsonb)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\nDECLARE\n  v_role text;\n  v_email text;\n  v_teacher_id uuid;\n  v_class_id uuid;\n  v_profile_id uuid;\n  v_class_ids uuid[];\nBEGIN\n  IF NOT public.is_admin() THEN\n    RAISE EXCEPTION 'Access denied: Admin role required.';\n  END IF;\n\n  -- Get roster details\n  SELECT role, email, profile_id INTO v_role, v_email, v_profile_id\n  FROM public.roster\n  WHERE id = p_roster_id;\n\n  IF NOT FOUND THEN\n    RAISE EXCEPTION 'Roster entry not found.';\n  END IF;\n\n  -- Convert jsonb array to uuid[]\n  v_class_ids := ARRAY(SELECT jsonb_array_elements_text(p_class_ids)::uuid);\n\n  -- Update class_ids in roster\n  UPDATE public.roster\n  SET class_ids = v_class_ids\n  WHERE id = p_roster_id;\n\n  -- Apply live updates to current mappings\n  IF v_role = 'student' THEN\n    -- If already logged in (has profile), update/recreate their enrollments\n    IF v_profile_id IS NOT NULL THEN\n      -- Delete old enrollments\n      DELETE FROM public.enrollments\n      WHERE student_id = v_profile_id;\n\n      -- Create new enrollments\n      FOREACH v_class_id IN ARRAY v_class_ids\n      LOOP\n        INSERT INTO public.enrollments (student_id, offering_id, total_classes)\n        VALUES (v_profile_id, v_class_id, 48);\n      END LOOP;\n    END IF;\n  ELSIF v_role = 'teacher' THEN\n    -- Find teacher ID (could be auth ID if logged in, or generated ID if pending)\n    SELECT id INTO v_teacher_id\n    FROM public.teachers\n    WHERE email = v_email\n    LIMIT 1;\n\n    IF v_teacher_id IS NOT NULL THEN\n      -- Clear teacher assignment from offerings previously owned by this teacher\n      UPDATE public.class_offerings\n      SET teacher_id = NULL\n      WHERE teacher_id = v_teacher_id;\n\n      -- Assign new offerings\n      FOREACH v_class_id IN ARRAY v_class_ids\n      LOOP\n        UPDATE public.class_offerings\n        SET teacher_id = v_teacher_id\n        WHERE id = v_class_id;\n      END LOOP;\n    END IF;\n  END IF;\nEND;\n$function$\n"
+    },
+    {
+      "routine_name": "my_teacher_class_ids",
+      "definition": "CREATE OR REPLACE FUNCTION public.my_teacher_class_ids()\n RETURNS uuid[]\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$\n  SELECT ARRAY(\n    SELECT class_id FROM public.class_offerings WHERE teacher_id = auth.uid()\n    UNION\n    SELECT (unnest(class_ids))::uuid FROM public.roster WHERE profile_id = auth.uid()\n  );\n$function$\n"
+    },
+    {
+      "routine_name": "delete_from_roster",
+      "definition": "CREATE OR REPLACE FUNCTION public.delete_from_roster(p_roster_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nDECLARE\r\n  v_role text;\r\n  v_email text;\r\n  v_profile_id uuid;\r\n  v_teacher_id uuid;\r\nBEGIN\r\n  -- Security check: only admins can call delete\r\n  IF NOT public.is_admin() THEN\r\n    RAISE EXCEPTION 'Access denied: Admin role required.';\r\n  END IF;\r\n\r\n  -- 1. Check if record exists in roster table\r\n  SELECT role, email, profile_id INTO v_role, v_email, v_profile_id\r\n  FROM public.roster\r\n  WHERE id = p_roster_id;\r\n\r\n  -- 2. If not in roster, check if p_roster_id is directly a profile_id\r\n  IF NOT FOUND THEN\r\n    SELECT role, id INTO v_role, v_profile_id\r\n    FROM public.profiles\r\n    WHERE id = p_roster_id;\r\n    \r\n    IF NOT FOUND THEN\r\n      RAISE EXCEPTION 'Account entry not found.';\r\n    END IF;\r\n  END IF;\r\n\r\n  -- Enforce admin delete prevention (Protected Accounts)\r\n  IF v_role = 'admin' THEN\r\n    RAISE EXCEPTION 'Access denied: Protected administrator accounts cannot be removed.';\r\n  END IF;\r\n\r\n  -- Try resolving profile_id via auth.users if currently null\r\n  IF v_profile_id IS NULL AND v_email IS NOT NULL THEN\r\n    SELECT id INTO v_profile_id\r\n    FROM public.profiles\r\n    WHERE id IN (SELECT id FROM auth.users WHERE LOWER(email) = LOWER(v_email))\r\n    LIMIT 1;\r\n  END IF;\r\n\r\n  -- ── STUDENT CASCADING CLEANUP ──\r\n  IF v_role = 'student' THEN\r\n    IF v_profile_id IS NOT NULL THEN\r\n      -- Clean fee audit and status records first\r\n      DELETE FROM public.fee_audit_trail WHERE student_id = v_profile_id OR changed_by = v_profile_id;\r\n      DELETE FROM public.fee_statuses WHERE student_id = v_profile_id;\r\n      \r\n      -- Clean operational learning records\r\n      DELETE FROM public.enrollments WHERE student_id = v_profile_id;\r\n      DELETE FROM public.attendance WHERE student_id = v_profile_id;\r\n      DELETE FROM public.study_sessions WHERE student_id = v_profile_id;\r\n      DELETE FROM public.notes WHERE uploaded_by = v_profile_id;\r\n      \r\n      -- Delete profile and auth user\r\n      DELETE FROM public.profiles WHERE id = v_profile_id;\r\n      DELETE FROM auth.users WHERE id = v_profile_id;\r\n    END IF;\r\n    IF v_email IS NOT NULL THEN\r\n      DELETE FROM auth.users WHERE LOWER(email) = LOWER(v_email);\r\n    END IF;\r\n\r\n  -- ── TEACHER CASCADING CLEANUP ──\r\n  ELSIF v_role = 'teacher' THEN\r\n    SELECT id INTO v_teacher_id FROM public.teachers WHERE LOWER(email) = LOWER(v_email) OR id = p_roster_id OR id = v_profile_id LIMIT 1;\r\n    IF v_teacher_id IS NOT NULL THEN\r\n      -- Unlink schedule class offerings so timetable schedule stays intact\r\n      UPDATE public.class_offerings SET teacher_id = NULL WHERE teacher_id = v_teacher_id;\r\n      DELETE FROM public.teachers WHERE id = v_teacher_id;\r\n    END IF;\r\n    IF v_profile_id IS NOT NULL THEN\r\n      DELETE FROM public.notes WHERE uploaded_by = v_profile_id;\r\n      DELETE FROM public.profiles WHERE id = v_profile_id;\r\n      DELETE FROM auth.users WHERE id = v_profile_id;\r\n    END IF;\r\n    IF v_email IS NOT NULL THEN\r\n      DELETE FROM auth.users WHERE LOWER(email) = LOWER(v_email);\r\n    END IF;\r\n  END IF;\r\n\r\n  -- 3. Remove roster record itself\r\n  DELETE FROM public.roster WHERE id = p_roster_id OR profile_id = v_profile_id OR (v_email IS NOT NULL AND LOWER(email) = LOWER(v_email));\r\nEND;\r\n$function$\n"
+    },
+    {
+      "routine_name": "sync_teacher_profile",
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_teacher_profile()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nBEGIN\r\n  IF NEW.role = 'teacher' THEN\r\n    UPDATE public.teachers\r\n    SET full_name = NEW.full_name\r\n    WHERE id = NEW.id;\r\n  END IF;\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+    },
+    {
+      "routine_name": "prevent_role_escalation",
+      "definition": "CREATE OR REPLACE FUNCTION public.prevent_role_escalation()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\nBEGIN\n  -- Privilege escalation guard\n  IF NOT public.is_admin() AND NEW.role IS DISTINCT FROM OLD.role THEN\n    RAISE EXCEPTION 'Privilege escalation blocked: only admins can change roles.';\n  END IF;\n\n  -- Reset onboarding_complete when the user's role transitions TO student FROM any other role\n  IF NEW.role = 'student' AND OLD.role IS DISTINCT FROM NEW.role THEN\n    NEW.onboarding_complete := false;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    {
+      "routine_name": "add_to_roster",
+      "definition": "CREATE OR REPLACE FUNCTION public.add_to_roster(p_email text, p_full_name text, p_role text, p_class_ids jsonb, p_phone text DEFAULT NULL::text)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\n      DECLARE\n        v_roster_id uuid;\n        v_profile_id uuid;\n        v_class_id uuid;\n        v_class_ids uuid[];\n      BEGIN\n        -- Server-side Admin security check\n        IF NOT public.is_admin() THEN\n          RAISE EXCEPTION 'Access denied: Admin role required.';\n        END IF;\n\n        -- Validate role\n        IF p_role = 'student' THEN\n          RAISE EXCEPTION 'Pre-provisioning of students is not allowed.';\n        END IF;\n\n        IF p_role NOT IN ('student', 'teacher') THEN\n          RAISE EXCEPTION 'Invalid role. Must be student or teacher.';\n        END IF;\n\n        -- Validate email uniqueness in roster\n        IF EXISTS (SELECT 1 FROM public.roster WHERE email = LOWER(p_email)) THEN\n          RAISE EXCEPTION 'Email is already registered in the roster.';\n        END IF;\n\n        -- Validate email uniqueness in profiles\n        IF EXISTS (SELECT 1 FROM public.profiles p JOIN auth.users u ON p.id = u.id WHERE u.email = LOWER(p_email)) THEN\n          RAISE EXCEPTION 'A user profile with this email already exists.';\n        END IF;\n\n        -- Convert jsonb array to uuid[]\n        v_class_ids := ARRAY(SELECT jsonb_array_elements_text(p_class_ids)::uuid);\n\n        -- Generate profile ID upfront\n        v_profile_id := gen_random_uuid();\n\n        -- Insert profile\n        INSERT INTO public.profiles (id, role, full_name, phone)\n        VALUES (v_profile_id, p_role, p_full_name, p_phone);\n\n        -- Insert into roster linking the profile\n        INSERT INTO public.roster (email, full_name, role, class_ids, profile_id)\n        VALUES (LOWER(p_email), p_full_name, p_role, v_class_ids, v_profile_id)\n        RETURNING id INTO v_roster_id;\n\n        -- If it's a student, enroll them in classes\n        IF p_role = 'student' THEN\n          FOREACH v_class_id IN ARRAY v_class_ids\n          LOOP\n            INSERT INTO public.enrollments (student_id, offering_id, total_classes)\n            VALUES (v_profile_id, v_class_id, 48);\n          END LOOP;\n        -- If it's a teacher, pre-provision them in the teachers table and assign class offerings\n        ELSIF p_role = 'teacher' THEN\n          INSERT INTO public.teachers (id, full_name, email, is_active, joining_date)\n          VALUES (v_profile_id, p_full_name, LOWER(p_email), TRUE, CURRENT_DATE);\n\n          FOREACH v_class_id IN ARRAY v_class_ids\n          LOOP\n            UPDATE public.class_offerings\n            SET teacher_id = v_profile_id\n            WHERE id = v_class_id;\n          END LOOP;\n        END IF;\n\n        RETURN v_roster_id;\n      END;\n      $function$\n"
+    },
+    {
+      "routine_name": "handle_roster_profile_link",
+      "definition": "CREATE OR REPLACE FUNCTION public.handle_roster_profile_link()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nDECLARE\r\n  v_old_id uuid;\r\n  v_new_id uuid;\r\n  v_total integer := 0;\r\n  v_rows integer;\r\nBEGIN\r\n  v_old_id := OLD.profile_id;\r\n  v_new_id := NEW.profile_id;\r\n\r\n  -- Guard: Only proceed if profile_id has transitioned from a placeholder/different ID\r\n  IF v_old_id IS NULL OR v_new_id IS NULL OR v_old_id = v_new_id THEN\r\n    RETURN NEW;\r\n  END IF;\r\n\r\n  RAISE NOTICE '[handle_roster_profile_link] Migrating % → % for %', v_old_id, v_new_id, NEW.email;\r\n\r\n  -- ── Migrate every known FK column referencing profiles(id) ──\r\n\r\n  -- enrollments.student_id\r\n  UPDATE public.enrollments SET student_id = v_new_id WHERE student_id = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- attendance.student_id\r\n  UPDATE public.attendance SET student_id = v_new_id WHERE student_id = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- study_sessions.student_id\r\n  UPDATE public.study_sessions SET student_id = v_new_id WHERE student_id = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- notes.uploaded_by\r\n  UPDATE public.notes SET uploaded_by = v_new_id WHERE uploaded_by = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- fee_statuses.student_id (UNIQUE constraint — remove conflict first)\r\n  IF EXISTS (SELECT 1 FROM public.fee_statuses WHERE student_id = v_old_id) THEN\r\n    DELETE FROM public.fee_statuses WHERE student_id = v_new_id;\r\n    UPDATE public.fee_statuses SET student_id = v_new_id WHERE student_id = v_old_id;\r\n    GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n    v_total := v_total + v_rows;\r\n  END IF;\r\n\r\n  -- fee_audit_trail.student_id\r\n  UPDATE public.fee_audit_trail SET student_id = v_new_id WHERE student_id = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- fee_audit_trail.changed_by\r\n  UPDATE public.fee_audit_trail SET changed_by = v_new_id WHERE changed_by = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- announcements.created_by\r\n  UPDATE public.announcements SET created_by = v_new_id WHERE created_by = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- notifications.recipient_id\r\n  UPDATE public.notifications SET recipient_id = v_new_id WHERE recipient_id = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- teachers.id (PK — re-key by INSERT new + DELETE old)\r\n  -- Crucially, we OMIT the phone column since public.teachers has no phone column\r\n  IF EXISTS (SELECT 1 FROM public.teachers WHERE id = v_old_id) THEN\r\n    INSERT INTO public.teachers (id, full_name, email, is_active, joining_date, avatar_url, created_at)\r\n    SELECT v_new_id, full_name, email, is_active, joining_date, avatar_url, created_at\r\n    FROM public.teachers WHERE id = v_old_id\r\n    ON CONFLICT (id) DO UPDATE SET\r\n      full_name = EXCLUDED.full_name,\r\n      email = EXCLUDED.email,\r\n      is_active = EXCLUDED.is_active;\r\n    GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n    v_total := v_total + v_rows;\r\n  END IF;\r\n\r\n  -- class_offerings.teacher_id\r\n  UPDATE public.class_offerings SET teacher_id = v_new_id WHERE teacher_id = v_old_id;\r\n  GET DIAGNOSTICS v_rows = ROW_COUNT;\r\n  v_total := v_total + v_rows;\r\n\r\n  -- Now safe to delete old teacher row since class_offerings no longer references it\r\n  IF EXISTS (SELECT 1 FROM public.teachers WHERE id = v_old_id) THEN\r\n    DELETE FROM public.teachers WHERE id = v_old_id;\r\n  END IF;\r\n\r\n  -- Delete the orphaned old placeholder profile\r\n  DELETE FROM public.profiles WHERE id = v_old_id;\r\n\r\n  RAISE NOTICE '[handle_roster_profile_link] ✅ Migrated % FK rows, deleted orphan %', v_total, v_old_id;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+    }
+  ],
+  "cron_jobs": [
+    {
+      "jobid": "1",
+      "schedule": "* * * * *",
+      "command": "SELECT public.send_class_reminders()",
+      "nodename": "localhost",
+      "nodeport": 5432,
+      "database": "postgres",
+      "username": "postgres",
+      "active": true
+    }
+  ],
+  "storage_buckets": [
+    {
+      "id": "notes",
+      "name": "notes",
+      "public": false
+    }
+  ],
+  "storage_policies": [
+    {
+      "policyname": "notes_bucket_read",
+      "tablename": "objects",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(bucket_id = 'notes'::text)",
+      "with_check": null
+    },
+    {
+      "policyname": "notes_bucket_insert",
+      "tablename": "objects",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(bucket_id = 'notes'::text)"
+    },
+    {
+      "policyname": "notes_bucket_update",
+      "tablename": "objects",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(bucket_id = 'notes'::text)",
+      "with_check": "(bucket_id = 'notes'::text)"
+    },
+    {
+      "policyname": "notes_bucket_delete",
+      "tablename": "objects",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "(bucket_id = 'notes'::text)",
+      "with_check": null
+    }
+  ]
+}

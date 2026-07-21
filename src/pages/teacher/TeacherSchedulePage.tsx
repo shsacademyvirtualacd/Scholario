@@ -122,9 +122,26 @@ export const TeacherSchedulePage: React.FC = () => {
       />
 
       {loading ? (
-        <div className="py-24 text-center">
-          <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
-          <p className="text-xs text-[#737373] font-bold">Loading schedule...</p>
+        <div className="space-y-4 animate-pulse">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-white border rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-[#E5E5E5] border-l-4 border-l-gray-200">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 shrink-0" />
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-100 rounded w-24" />
+                  <div className="h-3 bg-gray-100 rounded w-16" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5] space-y-2">
+                <div className="h-5 bg-gray-100 rounded w-32" />
+                <div className="h-3 bg-gray-100 rounded w-20" />
+              </div>
+              <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end">
+                <div className="h-7 bg-gray-100 rounded-lg w-20" />
+                <div className="h-7 bg-gray-100 rounded-lg w-16" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : fetchError ? (
         <div className="py-16 text-center">

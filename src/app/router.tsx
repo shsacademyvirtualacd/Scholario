@@ -1,10 +1,14 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider } from '../features/auth/AuthContext';
 import ProtectedRoute from '../components/app/ProtectedRoute';
 import { useAuth } from '../features/auth/AuthContext';
 import OnboardingPage from '../pages/student/OnboardingPage';
 import RegisterPage from '../pages/public/RegisterPage';
+import { TopLoadingBar } from '../components/common/TopLoadingBar';
+import { incrementSuspense, decrementSuspense } from '../utils/requestTracker';
+import { OfflineBanner } from '../components/common/OfflineBanner';
 
 // ─── Public pages (eager loaded — small) ────
 import LoginPage from '../pages/public/LoginPage';
@@ -49,14 +53,21 @@ const PriceManagerPage     = lazy(() => import('../pages/admin/PriceManagerPage'
 const RosterManagerPage    = lazy(() => import('../pages/admin/RosterManagerPage'));
 
 // ─── Page loader ────────────────────────────
-const PageLoader: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-10 h-10 rounded-full border-2 border-[#E5E5E5] border-t-[#F4C430] animate-spin" />
-      <span className="text-sm text-[#737373] font-medium">Loading…</span>
+const PageLoader: React.FC = () => {
+  useEffect(() => {
+    incrementSuspense();
+    return () => decrementSuspense();
+  }, []);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-[#E5E5E5] border-t-[#F4C430] animate-spin" />
+        <span className="text-sm text-[#737373] font-medium">Loading…</span>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Root redirect ──────────────────────────────────────────────────────────
 // Logic:
@@ -82,6 +93,9 @@ const RootRedirect: React.FC = () => {
 // ─── Router ──────────────────────────────────
 const AppRouter: React.FC = () => (
   <BrowserRouter>
+    <OfflineBanner />
+    <TopLoadingBar />
+    <Toaster position="top-right" richColors closeButton />
     <AuthProvider>
       <Suspense fallback={<PageLoader />}>
         <Routes>

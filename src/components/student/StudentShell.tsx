@@ -9,7 +9,8 @@ import {
   Search,
   Menu,
   Clock,
-  CreditCard
+  CreditCard,
+  Loader2
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -43,6 +44,16 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   const location = useLocation();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   // Universal Search States
   const [searchQuery, setSearchQuery] = useState('');
@@ -190,11 +201,16 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           </div>
 
           <button
-            onClick={signOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400 interactive"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="sidebar-link w-full text-[#737373] hover:text-red-400 disabled:opacity-50 inline-flex items-center gap-1.5 interactive"
           >
-            <LogOut size={17} className="shrink-0" />
-            <span>Sign Out</span>
+            {isSigningOut ? (
+              <Loader2 size={17} className="animate-spin shrink-0" />
+            ) : (
+              <LogOut size={17} className="shrink-0" />
+            )}
+            <span>{isSigningOut ? 'Signing Out...' : 'Sign Out'}</span>
           </button>
         </div>
       </aside>

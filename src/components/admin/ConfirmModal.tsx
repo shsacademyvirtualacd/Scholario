@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertTriangle, X, Loader2 } from 'lucide-react';
 
 interface ConfirmModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   description: string;
   confirmLabel?: string;
@@ -24,6 +24,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   danger = false,
   children,
 }) => {
+  const [isPending, setIsPending] = useState(false);
   // Lock body scroll when open
   useEffect(() => {
     if (open) {
@@ -65,7 +66,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors interactive"
+          disabled={isPending}
+          className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors disabled:opacity-50 interactive"
         >
           <X size={16} />
         </button>
@@ -93,21 +95,31 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="flex items-center justify-end gap-3 mt-6">
           <button
             onClick={onClose}
-            className="btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] interactive"
+            disabled={isPending}
+            className="btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] disabled:opacity-50 interactive"
           >
             {cancelLabel}
           </button>
           <button
-            onClick={() => {
-              onConfirm();
-              onClose();
+            disabled={isPending}
+            onClick={async () => {
+              setIsPending(true);
+              try {
+                await onConfirm();
+                onClose();
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setIsPending(false);
+              }
             }}
-            className={`btn text-sm font-semibold px-4 py-2 rounded-xl text-white ${
+            className={`btn text-sm font-semibold px-4 py-2 rounded-xl text-white flex items-center gap-1.5 ${
               danger
                 ? 'bg-[#ef4444] hover:bg-[#dc2626] shadow-sm shadow-red-100'
                 : 'bg-[#111111] hover:bg-[#262626]'
-            }`}
+            } disabled:opacity-50`}
           >
+            {isPending && <Loader2 size={14} className="animate-spin shrink-0" />}
             {confirmLabel}
           </button>
         </div>

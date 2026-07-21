@@ -9,6 +9,7 @@ import ConfirmModal from '../../components/admin/ConfirmModal';
 import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, getTaxonomy, createAnnouncement } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
@@ -191,8 +192,10 @@ export const ScheduleManagerPage: React.FC = () => {
         setShowPublishBanner(true);
         setTimeout(() => setShowPublishBanner(false), 4000);
       }
-    } catch (err) {
+      toast.success(isEditMode ? 'Class slot rescheduled.' : 'Class slot scheduled successfully.');
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'Failed to save class slot.');
     }
 
     setDrawerOpen(false);
@@ -216,8 +219,10 @@ export const ScheduleManagerPage: React.FC = () => {
         is_cancelled: false,
       });
       await loadData();
-    } catch (err) {
+      toast.success('Class slot restored.');
+    } catch (err: any) {
       console.error(err);
+      toast.error('Failed to restore class slot.');
     }
   };
 
@@ -250,10 +255,12 @@ export const ScheduleManagerPage: React.FC = () => {
         setShowPublishBanner(true);
         setTimeout(() => setShowPublishBanner(false), 4000);
       }
-    } catch (err) {
+      toast.success('Class slot marked as cancelled.');
+    } catch (err: any) {
       console.error(err);
+      toast.error('Failed to cancel class slot.');
+      throw err;
     } finally {
-      setCancelModalOpen(false);
       setSlotToCancel(null);
     }
   };
@@ -269,11 +276,14 @@ export const ScheduleManagerPage: React.FC = () => {
       try {
         await deleteSlot(slotToDelete);
         await loadData();
-      } catch (err) {
+        toast.success('Class slot deleted.');
+      } catch (err: any) {
         console.error(err);
+        toast.error('Failed to delete class slot.');
+        throw err;
+      } finally {
+        setSlotToDelete(null);
       }
-      setSlotToDelete(null);
-      setDeleteModalOpen(false);
     }
   };
 

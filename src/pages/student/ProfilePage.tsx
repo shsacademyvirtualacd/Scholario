@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, Mail, Award, Book, Edit3, Check, X, Camera } from 'lucide-react';
+import { User, Phone, Mail, Award, Book, Edit3, Check, X, Camera, Loader2 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getEnrollmentsForStudent, getFeeStatus } from '../../lib/db';
 import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
+import { toast } from 'sonner';
 import type { Enrollment } from '../../types';
 
 export const ProfilePage: React.FC = () => {
@@ -14,6 +15,7 @@ export const ProfilePage: React.FC = () => {
   
   // Local edit states
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -61,6 +63,7 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
+    setSaving(true);
     try {
       if (profile?.id) {
         await updateProfile(profile.id, {
@@ -70,10 +73,14 @@ export const ProfilePage: React.FC = () => {
         await refreshProfile();
         setIsEditing(false);
         setSuccess(true);
+        toast.success('Profile updated successfully.');
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to save details.');
+      toast.error(err.message || 'Failed to update profile.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -192,20 +199,23 @@ export const ProfilePage: React.FC = () => {
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       type="button"
+                      disabled={saving}
                       onClick={() => {
                         setIsEditing(false);
                         setFullName(profile?.full_name || '');
                         setPhone(profile?.phone || '');
                         setError(null);
                       }}
-                      className="btn btn-ghost border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold text-xs px-3 py-1.5 interactive"
+                      className="btn btn-ghost border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold text-xs px-3 py-1.5 disabled:opacity-50 interactive"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="btn btn-primary font-bold text-xs bg-[#111111] hover:bg-black text-white px-3 py-1.5 interactive"
+                      disabled={saving}
+                      className="btn btn-primary font-bold text-xs bg-[#111111] hover:bg-black text-white px-3 py-1.5 disabled:opacity-50 flex items-center justify-center gap-1.5 interactive"
                     >
+                      {saving && <Loader2 size={12} className="animate-spin" />}
                       Save Changes
                     </button>
                   </div>

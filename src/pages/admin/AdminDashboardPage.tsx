@@ -225,31 +225,44 @@ const AdminDashboardPage: React.FC = () => {
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const isAttendance = stat.label === 'Attendance Rate';
-          return (
-            <div key={stat.label} className={`bg-white border border-[#E5E5E5] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between ${isAttendance ? 'opacity-40 select-none' : ''}`}>
-              {isAttendance && (
-                <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider scale-95 origin-top-right">
-                  Soon
-                </span>
-              )}
-              <div className="flex items-center justify-between mb-3">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: stat.bg }}
-                >
-                  <stat.icon size={15} style={{ color: stat.color }} />
-                </div>
-              </div>
-              <div>
-                <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] leading-none">{isAttendance ? '—' : stat.value}</div>
-                <div className="text-[10px] font-bold text-[#737373] mt-2 uppercase tracking-wider">{stat.label}</div>
-                <div className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">{isAttendance ? 'Coming soon' : stat.changeLabel}</div>
+        {loading ? (
+          [1, 2, 3, 4].map((n) => (
+            <div key={n} className="bg-white border border-[#E5E5E5] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between h-[132px] animate-pulse">
+              <div className="w-8 h-8 rounded-lg bg-gray-100 mb-3 shrink-0" />
+              <div className="space-y-2">
+                <div className="h-6 bg-gray-100 rounded w-16" />
+                <div className="h-3 bg-gray-100 rounded w-24" />
+                <div className="h-2 bg-gray-100 rounded w-20" />
               </div>
             </div>
-          );
-        })}
+          ))
+        ) : (
+          stats.map((stat) => {
+            const isAttendance = stat.label === 'Attendance Rate';
+            return (
+              <div key={stat.label} className={`bg-white border border-[#E5E5E5] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between ${isAttendance ? 'opacity-40 select-none' : ''}`}>
+                {isAttendance && (
+                  <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider scale-95 origin-top-right">
+                    Soon
+                  </span>
+                )}
+                <div className="flex items-center justify-between mb-3">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: stat.bg }}
+                  >
+                    <stat.icon size={15} style={{ color: stat.color }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] leading-none">{isAttendance ? '—' : stat.value}</div>
+                  <div className="text-[10px] font-bold text-[#737373] mt-2 uppercase tracking-wider">{stat.label}</div>
+                  <div className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">{isAttendance ? 'Coming soon' : stat.changeLabel}</div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* ── Today's classes + Low attendance ── */}
@@ -267,7 +280,23 @@ const AdminDashboardPage: React.FC = () => {
             </button>
           </div>
           <div className="space-y-3">
-            {upcomingClasses.length === 0 ? (
+            {loading ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="flex items-center gap-3.5 p-3 rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
+                    <div className="w-1 h-10 rounded-full bg-gray-100 shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="h-3.5 bg-gray-100 rounded w-24" />
+                      <div className="h-3 bg-gray-100 rounded w-32" />
+                    </div>
+                    <div className="text-right shrink-0 space-y-1">
+                      <div className="h-5 bg-gray-100 rounded w-16" />
+                      <div className="h-2.5 bg-gray-100 rounded w-12 ml-auto" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : upcomingClasses.length === 0 ? (
               <div className="text-xs text-[#A3A3A3] font-bold text-center py-8">
                 No classes scheduled for today.
               </div>

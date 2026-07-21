@@ -602,35 +602,52 @@ export async function uploadNoteFileToR2(
     chapter_name: string;
     title: string;
     file_type: 'pdf' | 'image';
-  }
+  },
+  onProgress?: (pct: number) => void
 ): Promise<any> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || '';
 
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('offering_id', payload.offering_id);
-  formData.append('chapter_name', payload.chapter_name);
-  formData.append('title', payload.title);
-  formData.append('file_type', payload.file_type);
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('offering_id', payload.offering_id);
+    formData.append('chapter_name', payload.chapter_name);
+    formData.append('title', payload.title);
+    formData.append('file_type', payload.file_type);
 
-  const response = await fetch('/api/notes/upload', {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/notes/upload');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable && onProgress) {
+        onProgress(Math.round((ev.loaded / ev.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid JSON response from server.'));
+        }
+      } else {
+        let errMsg = xhr.responseText;
+        try {
+          const parsed = JSON.parse(xhr.responseText);
+          if (parsed.error) errMsg = parsed.error;
+        } catch {}
+        reject(new Error(`Upload failed (${xhr.status}): ${errMsg}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.send(formData);
   });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    let errMsg = errText;
-    try {
-      const parsed = JSON.parse(errText);
-      if (parsed.error) errMsg = parsed.error;
-    } catch {}
-    throw new Error(`Upload failed (${response.status}): ${errMsg}`);
-  }
-
-  return await response.json();
 }
 
 /** Legacy signature stub kept to prevent breaking unknown imports — points to Cloudflare R2 API */

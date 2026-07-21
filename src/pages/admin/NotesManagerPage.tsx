@@ -13,6 +13,7 @@ import { getSubjectsForStream } from '../../lib/db';
 import { getStreamsForGrade, GRADES } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
+import { toast } from 'sonner';
 import type { Note, ClassOffering } from '../../types';
 
 export const NotesManagerPage: React.FC = () => {
@@ -198,16 +199,16 @@ export const NotesManagerPage: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!noteToDelete) return;
     const targetId = noteToDelete;
-    setDeleteModalOpen(false);
-    setNoteToDelete(null);
     setDeletingId(targetId);
     try {
       await deleteNote(targetId);
       setNotes((prev) => prev.filter((n) => n.id !== targetId));
+      toast.success('Note deleted successfully.');
     } catch (err: any) {
       console.error('Delete error:', err);
-      setDeletingId(null);
       alert(err.message || 'Failed to delete note.');
+      toast.error(err.message || 'Failed to delete note.');
+      throw err;
     } finally {
       setDeletingId(null);
     }

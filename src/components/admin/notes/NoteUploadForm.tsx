@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen, CheckCircle2 } from 'lucide-react';
 import type { ClassOffering } from '../../../types';
-import { getTaxonomy } from '../../../lib/db';
+import { getTaxonomy, uploadNoteFileToR2 } from '../../../lib/db';
 import { supabase } from '../../../lib/supabase';
 import { getSubjectsForStream } from '../../../lib/db';
+import { toast } from 'sonner';
 import { getStreamsForGrade, GRADES } from '../../../lib/taxonomy';
 
 interface NoteUploadFormProps {
@@ -16,50 +17,7 @@ interface NoteUploadFormProps {
   initialOfferingId?: string;
 }
 
-/** Upload via XHR so we can track real byte-progress */
-function xhrUpload(
-  file: File,
-  payload: { offering_id: string; chapter_name: string; title: string; file_type: 'pdf' | 'image' },
-  token: string,
-  onProgress: (pct: number) => void
-): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('offering_id', payload.offering_id);
-    fd.append('chapter_name', payload.chapter_name);
-    fd.append('title', payload.title);
-    fd.append('file_type', payload.file_type);
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/notes/upload');
-    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) onProgress(Math.round((ev.loaded / ev.total) * 100));
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText));
-        } catch {
-          reject(new Error('Invalid JSON response from server.'));
-        }
-      } else {
-        let msg = xhr.responseText;
-        try {
-          const p = JSON.parse(xhr.responseText);
-          if (p.error) msg = p.error;
-        } catch {}
-        reject(new Error(`Upload failed (${xhr.status}): ${msg}`));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Network error during upload.'));
-    xhr.send(fd);
-  });
-}
 
 export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
   offerings,
@@ -197,26 +155,23 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
       const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
       const fileType: 'pdf' | 'image' = isPdf ? 'pdf' : 'image';
 
-      // Use the existing singleton — no extra network round-trip
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || '';
-
-      const createdNote = await xhrUpload(
+      const createdNote = await uploadNoteFileToR2(
         selectedFile,
         { offering_id: offeringId, chapter_name: chapterName.trim(), title: title.trim(), file_type: fileType },
-        token,
         (pct) => { if (mountedRef.current) setUploadPct(pct); }
       );
 
       if (!mountedRef.current) return; // drawer was closed mid-upload
       setUploadPct(100);
       setDone(true);
+      toast.success(`"${title.trim()}" uploaded successfully.`);
 
       await onUpload(createdNote);
     } catch (err: any) {
       console.error('Admin upload error:', err);
       if (mountedRef.current) {
         setError(err.message || 'Failed to upload document file.');
+        toast.error(err.message || 'Failed to upload document file.');
         setLoading(false);
       }
     }

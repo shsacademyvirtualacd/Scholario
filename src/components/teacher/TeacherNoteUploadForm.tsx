@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen } from 'lucide-react';
+import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { ClassOffering } from '../../types';
 import { uploadNoteFileToR2, getTaxonomy } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
@@ -47,6 +48,8 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number>(0);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -156,22 +159,36 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
 
     try {
       setLoading(true);
+      setUploadPct(0);
+      setDone(false);
       setError(null);
 
       const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
       const fileType: 'pdf' | 'image' = isPdf ? 'pdf' : 'image';
 
-      const createdNote = await uploadNoteFileToR2(selectedFile, {
-        offering_id: offeringId,
-        chapter_name: chapterName.trim(),
-        title: title.trim(),
-        file_type: fileType,
-      });
+      const createdNote = await uploadNoteFileToR2(
+        selectedFile,
+        {
+          offering_id: offeringId,
+          chapter_name: chapterName.trim(),
+          title: title.trim(),
+          file_type: fileType,
+        },
+        (pct) => {
+          setUploadPct(pct);
+        }
+      );
 
+      setUploadPct(100);
+      setDone(true);
       await onUpload(createdNote as any);
+      toast.success(`"${title.trim()}" uploaded successfully.`);
     } catch (err: any) {
       console.error('Upload error:', err);
       setError(err.message || 'Failed to upload note file. Please check your network or storage permissions.');
+      toast.error(err.message || 'Failed to upload note file.');
+      setUploadPct(0);
+      setDone(false);
     } finally {
       setLoading(false);
     }
@@ -189,6 +206,33 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
         <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-red-700">
           <AlertCircle size={16} className="shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Upload Progress Bar (shown during upload) */}
+      {loading && (
+        <div className="rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-[#111111]">
+            <span className="flex items-center gap-2">
+              {done
+                ? <CheckCircle2 size={14} className="text-green-500" />
+                : <Loader2 size={14} className="animate-spin text-amber-500" />
+              }
+              {done ? 'Upload complete — saving record...' : `Uploading file... ${uploadPct}%`}
+            </span>
+            <span className="text-[#A3A3A3]">{uploadPct}%</span>
+          </div>
+          <div className="h-1.5 bg-[#E5E5E5] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#F4C430] rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${uploadPct}%` }}
+            />
+          </div>
+          {selectedFile && (
+            <p className="text-[10px] text-[#A3A3A3] font-semibold truncate">
+              {selectedFile.name} &nbsp;·&nbsp; {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+            </p>
+          )}
         </div>
       )}
 

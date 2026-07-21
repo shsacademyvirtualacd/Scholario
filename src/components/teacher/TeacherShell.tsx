@@ -9,7 +9,8 @@ import {
   Menu,
   Search,
   X,
-  User
+  User,
+  Loader2
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -31,6 +32,16 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   const activeNav = location.pathname;
 
@@ -107,11 +118,16 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
             </div>
           </div>
           <button
-            onClick={signOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2 interactive"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2 disabled:opacity-50 inline-flex items-center gap-1.5 interactive"
           >
-            <LogOut size={17} className="shrink-0" />
-            <span>Sign Out</span>
+            {isSigningOut ? (
+              <Loader2 size={17} className="animate-spin shrink-0" />
+            ) : (
+              <LogOut size={17} className="shrink-0" />
+            )}
+            <span>{isSigningOut ? 'Signing Out...' : 'Sign Out'}</span>
           </button>
         </div>
       </aside>

@@ -1,0 +1,643 @@
+[
+  {
+    "filename": "supabase_fee_migration.sql",
+    "size": 5828,
+    "mtime": "2026-07-07T14:48:05.522Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Fee Status & Automated Roster Provisioning Migration\n-- ═══════════════════════════════════════════════════════════════════════════\n\n-- 1. Create Fee Configuration Table",
+    "creates": [
+      "CREATE Fee Configuration",
+      "CREATE TABLE IF",
+      "CREATE Fee Status",
+      "CREATE Fee Audit",
+      "CREATE POLICY",
+      "CREATE OR REPLACE",
+      "CREATE TRIGGER on_fee_status_updated",
+      "CREATE profile"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [],
+    "inserts": [
+      "INSERT INTO public",
+      "INSERT profile INSERT",
+      "INSERT ON auth"
+    ]
+  },
+  {
+    "filename": "supabase_rls_migration.sql",
+    "size": 15724,
+    "mtime": "2026-07-07T19:16:14.918Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — RLS Policies + Performance Indexes\n-- Run this in Supabase → SQL Editor (once, as a migration)\n--\n-- Assumptions:",
+    "creates": [
+      "CREATE OR REPLACE",
+      "CREATE INDEX IF",
+      "CREATE POLICY",
+      "CREATE their own"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP POLICY IF",
+      "DROP CONSTRAINT IF"
+    ],
+    "inserts": [
+      "INSERT WITH CHECK"
+    ]
+  },
+  {
+    "filename": "supabase_roster_delete_fix.sql",
+    "size": 2491,
+    "mtime": "2026-07-08T11:55:15.748Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Roster Deletion Guard Patch\n-- ═══════════════════════════════════════════════════════════════════════════\n-- \n-- Run this script in Supabase → SQL Editor to enforce that Admin roles",
+    "creates": [
+      "CREATE OR REPLACE"
+    ],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_rls_hotfix.sql",
+    "size": 2940,
+    "mtime": "2026-07-08T16:44:32.562Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- URGENT HOTFIX — Run this in Supabase SQL Editor right now\n-- Fixes: infinite RLS recursion on profiles table causing fetchProfile()\n-- to silently return null for all users, breaking OAuth sign-in\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [
+      "CREATE POLICY"
+    ],
+    "alters": [],
+    "drops": [
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT WITH CHECK"
+    ]
+  },
+  {
+    "filename": "supabase_signup_rls.sql",
+    "size": 1182,
+    "mtime": "2026-07-08T16:59:33.414Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- SIGNUP RLS POLICY HOTFIX — Run this in Supabase SQL Editor\n-- Allows newly signed-in student users to insert their own roster entry\n-- during the registration/sign-up flow.\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [
+      "CREATE POLICY"
+    ],
+    "alters": [],
+    "drops": [
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT their own",
+      "INSERT a roster",
+      "INSERT WITH CHECK"
+    ]
+  },
+  {
+    "filename": "supabase_link_roster_profiles.sql",
+    "size": 746,
+    "mtime": "2026-07-08T19:43:28.837Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Roster Profile Link Hotfix\n-- ═══════════════════════════════════════════════════════════════════════════\n\n-- Link existing roster entries where profile_id is NULL by matching emails",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_seed.sql",
+    "size": 4021,
+    "mtime": "2026-07-09T08:09:07.239Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Core Class Offerings Seed (FBISE Only)\n-- ═══════════════════════════════════════════════════════════════════════════\n-- \n-- Provisions base class offerings for FBISE for Grades 9-12 and all taxonomy subjects,",
+    "creates": [],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP CONSTRAINT IF"
+    ],
+    "inserts": [
+      "INSERT the FBISE",
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "supabase_taxonomy_migration.sql",
+    "size": 8376,
+    "mtime": "2026-07-09T08:09:26.036Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Normalized Class Taxonomy Alignment Migration (FBISE Only)\n-- ═══════════════════════════════════════════════════════════════════════════\n\n-- 1. Create reference tables",
+    "creates": [
+      "CREATE reference tables",
+      "CREATE TABLE IF"
+    ],
+    "alters": [
+      "ALTER TABLE public",
+      "ALTER COLUMN class_id",
+      "ALTER COLUMN subject_id"
+    ],
+    "drops": [
+      "DROP legacy class_subjects",
+      "DROP TABLE IF",
+      "DROP old columns",
+      "DROP COLUMN IF"
+    ],
+    "inserts": [
+      "INSERT INTO public",
+      "INSERT any missing"
+    ]
+  },
+  {
+    "filename": "supabase_cleanup_test_student.sql",
+    "size": 2902,
+    "mtime": "2026-07-09T09:02:18.222Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- COMPLETE USER PURGE SCRIPT — Run this in Supabase SQL Editor\n-- Completely purges all traces of 'emberraynf2@gmail.com' across all tables:\n-- auth.users, profiles, roster, enrollments, fee_statuses, fee_audit_trail,\n-- attendance, study_sessions, and notes.",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_fix_fee_configs_fkey.sql",
+    "size": 2343,
+    "mtime": "2026-07-09T09:46:58.772Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Fix fee_configs Foreign Key, RLS & Purge Legacy Classes\n-- Run this script in your Supabase SQL Editor\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [
+      "CREATE POLICY"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP CONSTRAINT IF",
+      "DROP POLICY IF"
+    ],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_delete_emberraynf2.sql",
+    "size": 2467,
+    "mtime": "2026-07-09T09:54:24.006Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Completely Remove Student \"emberraynf2@gmail.com\"\n-- Run this script in your Supabase SQL Editor\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_cleanup_user_by_email.sql",
+    "size": 2359,
+    "mtime": "2026-07-09T09:54:32.697Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- GENERIC USER CLEANUP SCRIPT — Run this in Supabase SQL Editor\n-- Completely removes a user/student by email from auth.users, profiles, roster,\n-- enrollments, fee_statuses, fee_audit_trail, attendance, and study_sessions.\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_fix_payment_instructions.sql",
+    "size": 1629,
+    "mtime": "2026-07-09T10:21:17.501Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Fix Payment Instructions & Ensure Universal Fee Config\n-- Run this script in your Supabase SQL Editor\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": [
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "supabase_roster_three_sections_and_cleanup.sql",
+    "size": 8017,
+    "mtime": "2026-07-09T10:37:39.029Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Roster 3-Section Split, De-duplication & Cascading Delete Patch\n-- ═══════════════════════════════════════════════════════════════════════════\n-- Run this script in the Supabase → SQL Editor to enforce:\n-- 1. De-duplication of admin accounts and adding a UNIQUE constraint on email.",
+    "creates": [
+      "CREATE OR REPLACE"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "storage_objects_notes_policies.sql",
+    "size": 1325,
+    "mtime": "2026-07-10T06:56:25.120Z",
+    "header": "-- =============================================================================\n-- SCHOLARIO — SUPABASE STORAGE OBJECTS RLS POLICIES FOR 'notes' BUCKET\n-- =============================================================================\n\n-- Drop any existing notes policies on storage.objects to avoid conflicts or duplicates",
+    "creates": [
+      "CREATE POLICY notes_bucket_read",
+      "CREATE POLICY notes_bucket_insert",
+      "CREATE POLICY notes_bucket_update",
+      "CREATE POLICY notes_bucket_delete"
+    ],
+    "alters": [],
+    "drops": [
+      "DROP any existing",
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT policy",
+      "INSERT WITH CHECK"
+    ]
+  },
+  {
+    "filename": "supabase_notes_storage_and_rls.sql",
+    "size": 3672,
+    "mtime": "2026-07-10T06:57:35.206Z",
+    "header": "-- =============================================================================\n-- SCHOLARIO — NOTES FEATURE STORAGE & RLS MIGRATION\n-- =============================================================================\n\n-- 1. Ensure notes table has file_path column",
+    "creates": [
+      "CREATE OR REPLACE",
+      "CREATE POLICY",
+      "CREATE POLICY notes_bucket_read",
+      "CREATE POLICY notes_bucket_insert",
+      "CREATE POLICY notes_bucket_update",
+      "CREATE POLICY notes_bucket_delete"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP insecure public",
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT policy",
+      "INSERT a note",
+      "INSERT notes for",
+      "INSERT WITH CHECK",
+      "INSERT INTO storage"
+    ]
+  },
+  {
+    "filename": "supabase_announcements_migration.sql",
+    "size": 4104,
+    "mtime": "2026-07-10T08:22:09.471Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Announcements Table & RLS Policies\n-- ═══════════════════════════════════════════════════════════════════════════\n\n-- 1. Helper: get class IDs assigned to a teacher (via offerings and roster)",
+    "creates": [
+      "CREATE OR REPLACE",
+      "CREATE TABLE IF",
+      "CREATE INDEX IF",
+      "CREATE POLICY"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP existing policies",
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT WITH CHECK"
+    ]
+  },
+  {
+    "filename": "supabase_notifications_migration.sql",
+    "size": 2523,
+    "mtime": "2026-07-10T11:39:03.150Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Notifications Table & RLS Policies\n-- ═══════════════════════════════════════════════════════════════════════════\n\n-- 1. Notifications Table",
+    "creates": [
+      "CREATE TABLE IF",
+      "CREATE INDEX IF",
+      "CREATE POLICY"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP existing policies",
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT WITH CHECK"
+    ]
+  },
+  {
+    "filename": "supabase_pgcron_reminders_migration.sql",
+    "size": 5395,
+    "mtime": "2026-07-10T17:11:17.891Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — pg_cron + Class Reminder Infrastructure\n-- ═══════════════════════════════════════════════════════════════════════════\n\n-- ─── Step 1: Enable pg_cron extension ─────────────────────────────────────",
+    "creates": [
+      "CREATE EXTENSION IF",
+      "CREATE TABLE IF",
+      "CREATE OR REPLACE"
+    ],
+    "alters": [],
+    "drops": [],
+    "inserts": [
+      "INSERT notification for",
+      "INSERT INTO notifications",
+      "INSERT INTO class_reminder_log"
+    ]
+  },
+  {
+    "filename": "supabase_fee_suspension_migration.sql",
+    "size": 243,
+    "mtime": "2026-07-11T06:49:47.380Z",
+    "header": "-- ─── Add Monthly Billing Suspension and Account Termination Columns ───\nALTER TABLE public.roster\nADD COLUMN IF NOT EXISTS fee_suspended boolean DEFAULT false,\nADD COLUMN IF NOT EXISTS awaiting_termination boolean DEFAULT false;",
+    "creates": [],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_cleanup_rooms.sql",
+    "size": 252,
+    "mtime": "2026-07-11T08:53:19.409Z",
+    "header": "-- Cleanup script to remove generic \"Room 101\", \"Room 102\", etc.\n-- This ensures the UI properly falls back to \"TBD\" or \"Join Class\" button when teachers add a link.\n\nUPDATE public.class_slots\nSET room_or_link = NULL",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_production_rls_hotfix.sql",
+    "size": 4962,
+    "mtime": "2026-07-11T15:06:59.006Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Production RLS Hotfix\n-- Run this in Supabase → SQL Editor BEFORE going live.\n--\n-- Fixes two security/functionality gaps found in pre-deployment review:",
+    "creates": [
+      "CREATE POLICY"
+    ],
+    "alters": [],
+    "drops": [
+      "DROP the existing",
+      "DROP POLICY IF"
+    ],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_security_fix_rls.sql",
+    "size": 5302,
+    "mtime": "2026-07-12T06:25:52.053Z",
+    "header": "-- 1. Drop blanket policies\nDROP POLICY IF EXISTS \"Allow public read/write access\" ON public.attendance;\nDROP POLICY IF EXISTS \"Allow public read/write access\" ON public.class_offerings;\nDROP POLICY IF EXISTS \"Allow public read/write access\" ON public.class_slots;\nDROP POLICY IF EXISTS \"Allow public read/write access\" ON public.enrollments;",
+    "creates": [
+      "CREATE POLICY"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP blanket policies",
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT WITH CHECK"
+    ]
+  },
+  {
+    "filename": "supabase_cleanup_site_owner.sql",
+    "size": 1399,
+    "mtime": "2026-07-12T07:41:20.153Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Completely Remove Admin \"shs.academy.virtual@gmail.com\" / \"Site Owner\"\n-- ═══════════════════════════════════════════════════════════════════════════\n\nDO $$",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_complete_fix.sql",
+    "size": 17991,
+    "mtime": "2026-07-12T08:09:52.145Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — MASTER MIGRATION (run this single file in Supabase SQL Editor)\n-- All statements are in dependency order. Safe to re-run.\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [
+      "CREATE before any",
+      "CREATE TABLE IF",
+      "CREATE OR REPLACE",
+      "CREATE POLICY",
+      "CREATE TRIGGER on_fee_status_updated",
+      "CREATE INDEX IF"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP CONSTRAINT IF",
+      "DROP POLICY IF",
+      "DROP TRIGGER IF",
+      "DROP the conflicting"
+    ],
+    "inserts": [
+      "INSERT real admin",
+      "INSERT INTO public",
+      "INSERT WITH CHECK",
+      "INSERT the same"
+    ]
+  },
+  {
+    "filename": "supabase_roster_migration.sql",
+    "size": 8517,
+    "mtime": "2026-07-12T08:09:59.211Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Roster Provisioning Migration\n-- ═══════════════════════════════════════════════════════════════════════════\n\n-- 1. Create the unified roster table",
+    "creates": [
+      "CREATE the unified",
+      "CREATE TABLE IF",
+      "CREATE POLICY",
+      "CREATE OR REPLACE",
+      "CREATE new enrollments"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP POLICY IF",
+      "DROP all old",
+      "DROP FUNCTION IF"
+    ],
+    "inserts": [
+      "INSERT profile INSERT",
+      "INSERT into roster",
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "supabase_oauth_fix.sql",
+    "size": 4932,
+    "mtime": "2026-07-12T08:10:07.327Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — OAuth Self-Provisioning Fix\n-- ═══════════════════════════════════════════════════════════════════════════\n-- \n-- ROOT CAUSE: The profiles table only has an INSERT policy for admins.",
+    "creates": [
+      "CREATE their own",
+      "CREATE POLICY"
+    ],
+    "alters": [
+      "ALTER TABLE public",
+      "ALTER TABLEs"
+    ],
+    "drops": [
+      "DROP POLICY IF"
+    ],
+    "inserts": [
+      "INSERT policy for",
+      "INSERT from provisionProfile",
+      "INSERT their OWN",
+      "INSERT a row",
+      "INSERT WITH CHECK",
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "verify_fix.sql",
+    "size": 776,
+    "mtime": "2026-07-12T08:39:04.619Z",
+    "header": "-- 1. Confirm both teachers' roster rows point to real profile ids\nSELECT id, profile_id FROM public.roster WHERE profile_id IN ('fab93f7f-8499-4f97-921b-b7a8b21a644d', '9df8c0c8-8b3a-4c24-8816-6827a1ea404b');\n\n-- Confirm class_offerings point to new real teacher_ids\nSELECT id, teacher_id FROM public.class_offerings WHERE teacher_id IN ('fab93f7f-8499-4f97-921b-b7a8b21a644d', '9df8c0c8-8b3a-4c24-8816-6827a1ea404b');",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "test_trigger.sql",
+    "size": 2554,
+    "mtime": "2026-07-12T08:41:11.795Z",
+    "header": "DO $$\nDECLARE\n  v_old_profile_id uuid := gen_random_uuid();\n  v_new_profile_id uuid := gen_random_uuid();\n  v_roster_id uuid;",
+    "creates": [
+      "CREATE dummy subject",
+      "CREATE old placeholder",
+      "CREATE new real",
+      "CREATE teacher row",
+      "CREATE class offering",
+      "CREATE roster entry"
+    ],
+    "alters": [],
+    "drops": [],
+    "inserts": [
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "verify_teacher_phone.sql",
+    "size": 2273,
+    "mtime": "2026-07-12T08:51:54.715Z",
+    "header": "DO $$\nDECLARE\n  v_roster_id uuid;\n  v_teacher_profile_id uuid;\n  v_test_email text := '__phone_test_teacher__@test.internal';",
+    "creates": [],
+    "alters": [],
+    "drops": [],
+    "inserts": [
+      "INSERT real profile",
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "fix_teacher_visibility_rls.sql",
+    "size": 3496,
+    "mtime": "2026-07-17T17:46:36.691Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Fix Teacher Class Visibility Bug\n-- Run in: Supabase → SQL Editor\n--\n-- Root Cause: A legacy SELECT policy \"offerings: read\" on class_offerings",
+    "creates": [
+      "CREATE POLICY"
+    ],
+    "alters": [
+      "ALTER TABLE public"
+    ],
+    "drops": [
+      "DROP ALL legacy",
+      "DROP POLICY IF",
+      "DROP the current"
+    ],
+    "inserts": []
+  },
+  {
+    "filename": "fix_roster_trigger_phone.sql",
+    "size": 4909,
+    "mtime": "2026-07-17T19:20:01.072Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Fix Roster Profile Link Mismatch (Missing teachers.phone Column)\n-- Run in: Supabase → SQL Editor\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [
+      "CREATE OR REPLACE"
+    ],
+    "alters": [],
+    "drops": [],
+    "inserts": [
+      "INSERT new",
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "supabase_roster_profile_migration_fix.sql",
+    "size": 23438,
+    "mtime": "2026-07-17T19:20:23.106Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Roster Profile Migration Fix\n-- ═══════════════════════════════════════════════════════════════════════════\n-- Fixes the profile-linking bug where pre-provisioned placeholder profiles\n-- aren't properly migrated when a real Google sign-in replaces them.",
+    "creates": [
+      "CREATE OR REPLACE",
+      "CREATE the trigger",
+      "CREATE TRIGGER trg_roster_profile_link",
+      "CREATE old placeholder",
+      "CREATE new real",
+      "CREATE roster entry",
+      "CREATE test enrollment",
+      "CREATE test notification"
+    ],
+    "alters": [],
+    "drops": [
+      "DROP old triggers",
+      "DROP TRIGGER IF",
+      "DROP FUNCTION IF"
+    ],
+    "inserts": [
+      "INSERT INTO public",
+      "INSERT new",
+      "INSERT new teacher"
+    ]
+  },
+  {
+    "filename": "urgent_fix.sql",
+    "size": 8246,
+    "mtime": "2026-07-17T19:20:35.849Z",
+    "header": "BEGIN;\n\nDO $$\nDECLARE\n  v_rows int;",
+    "creates": [
+      "CREATE OR REPLACE"
+    ],
+    "alters": [],
+    "drops": [],
+    "inserts": [
+      "INSERT INTO public",
+      "INSERT new"
+    ]
+  },
+  {
+    "filename": "teacher_phone_support.sql",
+    "size": 3089,
+    "mtime": "2026-07-17T19:20:53.379Z",
+    "header": "-- Drop the old add_to_roster function to allow signature change\nDROP FUNCTION IF EXISTS public.add_to_roster(text, text, text, jsonb);\n\n-- Create updated add_to_roster with p_phone parameter\nCREATE OR REPLACE FUNCTION public.add_to_roster(p_email text, p_full_name text, p_role text, p_class_ids jsonb, p_phone text DEFAULT NULL)",
+    "creates": [
+      "CREATE updated add_to_roster",
+      "CREATE OR REPLACE",
+      "CREATE Trigger function",
+      "CREATE Trigger on",
+      "CREATE TRIGGER trg_sync_teacher_profile"
+    ],
+    "alters": [],
+    "drops": [
+      "DROP the old",
+      "DROP FUNCTION IF",
+      "DROP TRIGGER IF"
+    ],
+    "inserts": [
+      "INSERT profile INSERT",
+      "INSERT into roster",
+      "INSERT INTO public"
+    ]
+  },
+  {
+    "filename": "supabase_role_switch_onboarding_fix.sql",
+    "size": 1250,
+    "mtime": "2026-07-18T09:14:20.010Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Reset onboarding_complete on Role Switch to Student\n-- Run in: Supabase → SQL Editor or database migration script\n-- ═══════════════════════════════════════════════════════════════════════════",
+    "creates": [
+      "CREATE OR REPLACE"
+    ],
+    "alters": [],
+    "drops": [],
+    "inserts": []
+  },
+  {
+    "filename": "supabase_teacher_slot_update_policy.sql",
+    "size": 1208,
+    "mtime": "2026-07-18T10:25:58.781Z",
+    "header": "-- ═══════════════════════════════════════════════════════════════════════════\n-- Scholario — Allow teachers to UPDATE their own class slots\n-- (specifically for room_or_link / meeting link editing)\n--\n-- This adds a row-level UPDATE policy scoped to slots whose offering_id",
+    "creates": [
+      "CREATE POLICY"
+    ],
+    "alters": [],
+    "drops": [
+      "DROP POLICY IF"
+    ],
+    "inserts": []
+  }
+]

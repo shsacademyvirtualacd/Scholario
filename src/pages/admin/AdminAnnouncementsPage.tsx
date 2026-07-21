@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Megaphone, Calendar, AlertTriangle, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Plus, Trash2, Megaphone, Calendar, AlertTriangle, Sparkles, CheckCircle2, ShieldAlert, Loader2 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ConfirmModal from '../../components/admin/ConfirmModal';
+import { toast } from 'sonner';
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, getTaxonomy } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useMobile } from '../../hooks/useMobile';
@@ -116,9 +117,11 @@ export const AdminAnnouncementsPage: React.FC = () => {
       setSelectedStreamId(null);
 
       triggerNotification('success', 'Announcement published successfully!');
+      toast.success('Announcement published successfully.');
     } catch (err: any) {
       console.error('[AdminAnnouncements] Create failed:', err);
       triggerNotification('error', err.message || 'Failed to publish announcement.');
+      toast.error(err.message || 'Failed to publish announcement.');
     } finally {
       setSubmitting(false);
     }
@@ -135,12 +138,14 @@ export const AdminAnnouncementsPage: React.FC = () => {
       await deleteAnnouncement(selectedId);
       setAnnouncements((prev) => prev.filter((a) => a.id !== selectedId));
       triggerNotification('success', 'Announcement deleted successfully.');
+      toast.success('Announcement deleted successfully.');
     } catch (err: any) {
       console.error('[AdminAnnouncements] Delete failed:', err);
       triggerNotification('error', err.message || 'Failed to delete announcement.');
+      toast.error(err.message || 'Failed to delete announcement.');
+      throw err;
     } finally {
       setSelectedId(null);
-      setDeleteModalOpen(false);
     }
   };
 
@@ -321,9 +326,9 @@ export const AdminAnnouncementsPage: React.FC = () => {
                   />
                 </div>
 
-                <button type="submit" disabled={submitting} className="btn btn-gold w-full mt-2 font-extrabold interactive">
-                  <Plus size={16} />
-                  {submitting ? 'Publishing...' : 'Publish Update'}
+                <button type="submit" disabled={submitting} className="btn btn-gold w-full mt-2 font-extrabold flex items-center justify-center gap-1.5 interactive">
+                  {submitting ? <Loader2 size={16} className="animate-spin shrink-0" /> : <Plus size={16} />}
+                  <span>{submitting ? 'Publishing...' : 'Publish Update'}</span>
                 </button>
               </form>
             </div>

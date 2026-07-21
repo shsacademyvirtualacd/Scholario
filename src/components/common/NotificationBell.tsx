@@ -4,6 +4,7 @@ import { Bell, Calendar, BookMarked, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useMobile } from '../../hooks/useMobile';
 import { supabase } from '../../lib/supabase';
+import { toast } from 'sonner';
 import {
   NotificationRow,
   getNotificationsForUser,
@@ -18,6 +19,7 @@ export const NotificationBell: React.FC = () => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [bellPulsing, setBellPulsing] = useState(false);
 
   const fetchNotifications = async () => {
     if (!profile?.id) return;
@@ -51,6 +53,9 @@ export const NotificationBell: React.FC = () => {
           console.log('[NotificationBell] Realtime payload received:', payload);
           if (payload.eventType === 'INSERT') {
             setNotifications(prev => [payload.new as NotificationRow, ...prev]);
+            if ((payload.new as any).type === 'announcement') {
+              setBellPulsing(true);
+            }
           } else if (payload.eventType === 'UPDATE') {
             setNotifications(prev =>
               prev.map(n => (n.id === payload.new.id ? (payload.new as NotificationRow) : n))
@@ -68,6 +73,13 @@ export const NotificationBell: React.FC = () => {
   }, [profile?.id]);
 
   useEffect(() => {
+    if (bellPulsing) {
+      const timer = setTimeout(() => setBellPulsing(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [bellPulsing]);
+
+  useEffect(() => {
     if (notifOpen) {
       fetchNotifications();
     }
@@ -77,16 +89,22 @@ export const NotificationBell: React.FC = () => {
 
   const toggleRead = async (id: string) => {
     const target = notifications.find(n => n.id === id);
-    if (!target) return;
+    if (!target || target.is_read) return;
+
+    // Optimistic Update: Set is_read to true immediately
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
+    );
+
     try {
-      if (!target.is_read) {
-        await markNotificationRead(id);
-        setNotifications(prev =>
-          prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
-        );
-      }
+      await markNotificationRead(id);
     } catch (err) {
       console.error('[NotificationBell] Failed to mark read:', err);
+      toast.error('Failed to update notification status.');
+      // Rollback: Revert is_read back to false
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, is_read: false } : n))
+      );
     }
   };
 
@@ -106,11 +124,18 @@ export const NotificationBell: React.FC = () => {
 
   const markAllAsRead = async () => {
     if (!profile?.id) return;
+    const backupNotifications = [...notifications];
+
+    // Optimistic Update: Mark all as read immediately
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+
     try {
       await markAllNotificationsRead(profile.id);
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (err) {
       console.error('[NotificationBell] Failed to mark all read:', err);
+      toast.error('Failed to mark all notifications as read.');
+      // Rollback to previous state
+      setNotifications(backupNotifications);
     }
   };
 
@@ -131,15 +156,18 @@ export const NotificationBell: React.FC = () => {
   return (
     <div className="relative">
       <button
-        onClick={() => setNotifOpen(!notifOpen)}
+        onClick={() => {
+          setNotifOpen(!notifOpen);
+          setBellPulsing(false);
+        }}
         className={`relative w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
           notifOpen
             ? 'bg-[#111111] border-[#111111] text-[#F4C430]'
             : 'border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111]'
-        }`}
+        } ${bellPulsing ? 'animate-pulse ring-2 ring-[#F4C430] border-transparent bg-amber-50/50' : ''}`}
         title="Notifications"
       >
-        <Bell size={16} />
+        <Bell size={16} className={bellPulsing ? 'text-[#F4C430]' : ''} />
         {unreadCount > 0 && (
           <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ef4444] border-2 border-white rounded-full notif-pulse" />
         )}

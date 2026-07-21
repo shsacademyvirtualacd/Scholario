@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useMobile } from '../../../hooks/useMobile';
 import type { ClassSlot, ClassOffering } from '../../../types';
 
@@ -18,7 +19,7 @@ interface SlotFormProps {
     end_time: string;
     publish_to_news: boolean;
     notify_affected?: boolean;
-  }) => void;
+  }) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -51,6 +52,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   const [endTime, setEndTime] = useState('16:30');
   const [notifyAffected, setNotifyAffected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (slot && slot.id) {
@@ -126,7 +128,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     setEndTime(end);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -154,17 +156,24 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     const fullStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
     const fullEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
 
-    onSave({
-      offering_id: slotMode === 'offering' ? offeringId : null,
-      custom_title: slotMode === 'custom' ? customTitle.trim() : null,
-      class_id: selectedClassId || null,
-      stream_id: selectedStreamId && selectedStreamId !== 'all' ? selectedStreamId : null,
-      day_of_week: dayOfWeek,
-      start_time: fullStartTime,
-      end_time: fullEndTime,
-      publish_to_news: notifyAffected,
-      notify_affected: notifyAffected,
-    });
+    setIsSaving(true);
+    try {
+      await onSave({
+        offering_id: slotMode === 'offering' ? offeringId : null,
+        custom_title: slotMode === 'custom' ? customTitle.trim() : null,
+        class_id: selectedClassId || null,
+        stream_id: selectedStreamId && selectedStreamId !== 'all' ? selectedStreamId : null,
+        day_of_week: dayOfWeek,
+        start_time: fullStartTime,
+        end_time: fullEndTime,
+        publish_to_news: notifyAffected,
+        notify_affected: notifyAffected,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to save class slot.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -403,14 +412,17 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className={`btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] rounded-xl ${isMobile ? 'w-full border border-[#E5E5E5]' : ''}`}
+            disabled={isSaving}
+            className={`btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] rounded-xl disabled:opacity-50 ${isMobile ? 'w-full border border-[#E5E5E5]' : ''}`}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className={`btn bg-[#111111] hover:bg-[#262626] text-white text-sm font-semibold px-5 py-2 rounded-xl shadow-sm ${isMobile ? 'w-full py-3' : ''}`}
+            disabled={isSaving}
+            className={`btn bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white text-sm font-semibold px-5 py-2 rounded-xl shadow-sm flex items-center justify-center gap-1.5 ${isMobile ? 'w-full py-3' : ''}`}
           >
+            {isSaving && <Loader2 size={14} className="animate-spin shrink-0" />}
             {slot ? 'Save Changes' : 'Add Class Slot'}
           </button>
         </div>

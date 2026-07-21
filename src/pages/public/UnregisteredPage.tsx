@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { getTaxonomy, completeStudentOnboarding, resolveGradeFeeConfig, requestAccountTermination } from '../../lib/db';
 import Logo from '../../components/ui/Logo';
 import { BOARD, getDefaultPrice } from '../../lib/taxonomy';
+import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 
 export const UnregisteredPage: React.FC = () => {
@@ -23,6 +24,7 @@ export const UnregisteredPage: React.FC = () => {
   const [livePrice, setLivePrice] = useState<number | null>(null);
 
   const [saving, setSaving] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [terminationStep, setTerminationStep] = useState<'idle' | 'confirm' | 'goodbye'>('idle');
 
@@ -71,8 +73,13 @@ export const UnregisteredPage: React.FC = () => {
   }, [profile, navigate]);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/login', { replace: true });
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      navigate('/login', { replace: true });
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   const handleTerminateAccount = async () => {
@@ -167,10 +174,12 @@ export const UnregisteredPage: React.FC = () => {
 
       // 5. Route directly to checkout
       navigate('/student/checkout', { replace: true });
+      toast.success('Registration completed successfully.');
 
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to complete registration.');
+      toast.error(err.message || 'Failed to complete registration.');
     } finally {
       setSaving(false);
     }
@@ -294,9 +303,11 @@ export const UnregisteredPage: React.FC = () => {
 
                   <div className="flex flex-col gap-3 pt-4 border-t border-[#F5F5F5]">
                     <button
+                      disabled={isSigningOut}
                       onClick={handleSignOut}
-                      className="btn bg-[#111111] hover:bg-[#262626] text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01] interactive"
+                      className="btn bg-[#111111] hover:bg-[#262626] disabled:opacity-50 text-white w-full flex items-center justify-center gap-2 py-3 font-extrabold rounded-xl shadow-sm text-sm transition-all hover:scale-[1.01] interactive"
                     >
+                      {isSigningOut && <Loader2 size={16} className="animate-spin shrink-0" />}
                       Exit Platform
                       <ArrowRight size={16} />
                     </button>
@@ -327,11 +338,16 @@ export const UnregisteredPage: React.FC = () => {
 
               <div className="pt-2 border-t border-[#F5F5F5]">
                 <button
+                  disabled={isSigningOut}
                   onClick={handleSignOut}
-                  className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#737373] hover:text-[#111111] font-semibold interactive"
+                  className="btn btn-ghost w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#737373] hover:text-[#111111] font-semibold disabled:opacity-50 interactive"
                 >
-                  <LogOut size={14} />
-                  Sign Out & Switch Account
+                  {isSigningOut ? (
+                    <Loader2 size={14} className="animate-spin shrink-0" />
+                  ) : (
+                    <LogOut size={14} className="shrink-0" />
+                  )}
+                  <span>{isSigningOut ? 'Signing Out...' : 'Sign Out & Switch Account'}</span>
                 </button>
               </div>
             </div>
@@ -541,9 +557,11 @@ export const UnregisteredPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
+                    disabled={isSigningOut}
                     onClick={handleSignOut}
-                    className="btn btn-ghost w-full py-2 text-xs text-[#737373] hover:text-[#111111] font-semibold interactive"
+                    className="btn btn-ghost w-full py-2 text-xs text-[#737373] hover:text-[#111111] font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5 interactive"
                   >
+                    {isSigningOut && <Loader2 size={12} className="animate-spin shrink-0" />}
                     Sign Out
                   </button>
                 </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, Clock, Search, Check,
-  AlertCircle, Sparkles, Save
+  AlertCircle, Sparkles, Save, Loader2
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -29,6 +29,7 @@ export const AdminFeesPage: React.FC = () => {
   // Config Form States
   const [instructions, setInstructions] = useState<string>('');
   const [whatsappNum, setWhatsappNum] = useState<string>('03222314436');
+  const [approvingIds, setApprovingIds] = useState<Record<string, boolean>>({});
 
   // Search filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,6 +100,7 @@ export const AdminFeesPage: React.FC = () => {
   };
 
   const handleApprovePayment = async (studentId: string) => {
+    setApprovingIds(prev => ({ ...prev, [studentId]: true }));
     try {
       setError(null);
       const note = auditNotes[studentId]?.trim() || 'Payment verified manually by Administrator via WhatsApp screenshot reference.';
@@ -114,6 +116,8 @@ export const AdminFeesPage: React.FC = () => {
       });
     } catch (err: any) {
       setError(err.message || 'Failed to verify payment.');
+    } finally {
+      setApprovingIds(prev => ({ ...prev, [studentId]: false }));
     }
   };
 
@@ -262,9 +266,14 @@ export const AdminFeesPage: React.FC = () => {
                           />
                           <button
                             onClick={() => handleApprovePayment(item.student_id)}
-                            className={`btn btn-gold flex items-center justify-center gap-1.5 py-2 text-xs font-bold shrink-0 ${isMobile ? 'w-full px-4' : 'px-5'}`}
+                            disabled={approvingIds[item.student_id]}
+                            className={`btn btn-gold flex items-center justify-center gap-1.5 py-2 text-xs font-bold shrink-0 disabled:opacity-50 ${isMobile ? 'w-full px-4' : 'px-5'}`}
                           >
-                            <Check size={14} />
+                            {approvingIds[item.student_id] ? (
+                              <Loader2 size={14} className="animate-spin shrink-0" />
+                            ) : (
+                              <Check size={14} />
+                            )}
                             Approve & Mark Paid
                           </button>
                         </div>

@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import type { Profile } from '../../types';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { toast } from 'sonner';
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 interface AuthContextValue {
@@ -264,6 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (claimError) {
           console.error('[Auth] ❌ claim_my_roster_profile RPC FAILED:', claimError.message, claimError);
           setAuthError('Failed to link institutional account. Please contact support.');
+          toast.error('Failed to claim pre-provisioned roster profile.');
           setRosterRejected(true);
           await supabase.auth.signOut();
           setSession(null);
@@ -273,6 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         console.log('[Auth] ✅ Profile claimed/promoted successfully via RPC:', JSON.stringify(claimedProfile));
+        toast.success(`Account claimed successfully as ${role}!`);
       } else {
         console.log('[Auth] Step 4: Creating new student profile — name:', fullName);
 

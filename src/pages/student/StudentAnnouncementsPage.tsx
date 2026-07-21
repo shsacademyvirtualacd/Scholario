@@ -3,19 +3,26 @@ import { Megaphone, Calendar, Filter, Search, ShieldAlert } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import { getAnnouncements } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
+import { pageCache } from '../../lib/pageCache';
 import type { Announcement } from '../../types';
 
 export const StudentAnnouncementsPage: React.FC = () => {
   const isMobile = useMobile();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedAnn = pageCache.get<Announcement[]>('student_announcements');
+  const [announcements, setAnnouncements] = useState<Announcement[]>(cachedAnn || []);
+  const [loading, setLoading] = useState(!cachedAnn || cachedAnn.length === 0);
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | 'crucial' | 'normal'>('all');
 
   useEffect(() => {
-    setLoading(true);
+    if (announcements.length === 0) {
+      setLoading(true);
+    }
     getAnnouncements()
-      .then((data) => setAnnouncements(data))
+      .then((data) => {
+        setAnnouncements(data);
+        pageCache.set('student_announcements', data);
+      })
       .catch((err) => console.error('[StudentAnnouncements] Fetch error:', err))
       .finally(() => setLoading(false));
   }, []);
@@ -99,10 +106,23 @@ export const StudentAnnouncementsPage: React.FC = () => {
 
         {/* Announcements List */}
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6 shadow-2xs">
-          {loading ? (
-            <div className="py-16 flex flex-col items-center justify-center">
-              <div className="w-8 h-8 border-2 border-[#E5E5E5] border-t-[#F4C430] rounded-full animate-spin mb-3" />
-              <span className="text-xs text-[#737373] font-bold">Loading notices...</span>
+          {loading && announcements.length === 0 ? (
+            <div className="space-y-4 animate-pulse">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="p-5 rounded-2xl border border-[#E5E5E5] flex flex-col md:flex-row items-start gap-4 bg-white">
+                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 shrink-0 w-12 h-12" />
+                  <div className="flex-1 min-w-0 space-y-3 w-full">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="h-5 bg-gray-100 rounded w-1/3" />
+                      <div className="h-5 bg-gray-100 rounded-full w-20" />
+                      <div className="h-5 bg-gray-100 rounded-full w-28" />
+                    </div>
+                    <div className="h-4 bg-gray-100 rounded w-full" />
+                    <div className="h-4 bg-gray-100 rounded w-5/6" />
+                    <div className="h-3 bg-gray-100 rounded w-24 pt-1" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : announcements.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center text-center">

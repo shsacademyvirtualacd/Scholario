@@ -291,6 +291,7 @@ const StudentDashboardPage: React.FC = () => {
   const [studentNotes, setStudentNotes] = useState<Note[]>(cachedNotes || []);
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(cachedAttendance || []);
   const [offerings, setOfferings] = useState<any[]>(cachedOfferings || []);
+  const [loading, setLoading] = useState(!cachedOfferings || cachedOfferings.length === 0);
 
   useEffect(() => {
     if (!studentId) return;
@@ -308,42 +309,44 @@ const StudentDashboardPage: React.FC = () => {
     if (initOffs && offerings.length === 0 && mounted) setOfferings(initOffs);
 
     // Background fetch + diff update
-    getSlotsForStudent(studentId).then((slots) => {
-      if (!mounted) return;
-      const currentSlots = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
-      if (!currentSlots || JSON.stringify(currentSlots) !== JSON.stringify(slots)) {
-        setScheduleSlots(slots);
-        pageCache.set('schedule_slots', slots, studentId);
-      }
-    }).catch(console.error);
+    Promise.all([
+      getSlotsForStudent(studentId).then((slots) => {
+        if (!mounted) return;
+        const currentSlots = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
+        if (!currentSlots || JSON.stringify(currentSlots) !== JSON.stringify(slots)) {
+          setScheduleSlots(slots);
+          pageCache.set('schedule_slots', slots, studentId);
+        }
+      }),
+      getAttendanceForStudent(studentId).then((att) => {
+        if (!mounted) return;
+        const currentAtt = pageCache.get<Attendance[]>('student_attendance', studentId);
+        if (!currentAtt || JSON.stringify(currentAtt) !== JSON.stringify(att)) {
+          setAttendanceRecords(att);
+          pageCache.set('student_attendance', att, studentId);
+        }
+      }),
+      getOfferingsForStudent(studentId).then(async (offs) => {
+        if (!mounted) return;
+        const currentOffs = pageCache.get<any[]>('student_offerings', studentId);
+        if (!currentOffs || JSON.stringify(currentOffs) !== JSON.stringify(offs)) {
+          setOfferings(offs);
+          pageCache.set('student_offerings', offs, studentId);
+        }
 
-    getAttendanceForStudent(studentId).then((att) => {
-      if (!mounted) return;
-      const currentAtt = pageCache.get<Attendance[]>('student_attendance', studentId);
-      if (!currentAtt || JSON.stringify(currentAtt) !== JSON.stringify(att)) {
-        setAttendanceRecords(att);
-        pageCache.set('student_attendance', att, studentId);
-      }
-    }).catch(console.error);
-
-    getOfferingsForStudent(studentId).then(async (offs) => {
-      if (!mounted) return;
-      const currentOffs = pageCache.get<any[]>('student_offerings', studentId);
-      if (!currentOffs || JSON.stringify(currentOffs) !== JSON.stringify(offs)) {
-        setOfferings(offs);
-        pageCache.set('student_offerings', offs, studentId);
-      }
-
-      const ids = offs.map(o => o.id);
-      const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
-      if (!mounted) return;
-      
-      const currentNotes = pageCache.get<Note[]>('student_notes', studentId);
-      if (!currentNotes || JSON.stringify(currentNotes) !== JSON.stringify(n)) {
-        setStudentNotes(n);
-        pageCache.set('student_notes', n, studentId);
-      }
-    }).catch(console.error);
+        const ids = offs.map(o => o.id);
+        const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
+        if (!mounted) return;
+        
+        const currentNotes = pageCache.get<Note[]>('student_notes', studentId);
+        if (!currentNotes || JSON.stringify(currentNotes) !== JSON.stringify(n)) {
+          setStudentNotes(n);
+          pageCache.set('student_notes', n, studentId);
+        }
+      })
+    ]).catch(console.error).finally(() => {
+      if (mounted) setLoading(false);
+    });
 
     return () => {
       mounted = false;
@@ -426,56 +429,76 @@ const StudentDashboardPage: React.FC = () => {
 
       {/* ── Top strip: Streak · Classes Left · Next Class · Pomodoro ── */}
       <div className={`${isMobile ? 'flex flex-col gap-4' : 'grid sm:grid-cols-2 xl:grid-cols-4 gap-4'}`}>
-        
-        {/* Streak */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive relative opacity-40 select-none">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
-            <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-              Soon
-            </span>
-          </div>
-          <div>
-            <div className="stat-value">—</div>
-            <div className="stat-label">coming soon</div>
-          </div>
-          <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
-            <div className="flex gap-0.5 flex-1 max-w-[120px]">
-              {[false, false, false, false, false, false, false].map((attended, i) => (
-                <div
-                  key={i}
-                  className="flex-1 h-1.5 rounded-full transition-all duration-300"
-                  style={{ background: '#F0F0F0' }}
-                  title="Coming Soon"
-                />
-              ))}
+        {loading ? (
+          [1, 2, 3, 4].map((n) => (
+            <div key={n} className="stat-card flex flex-col justify-between min-h-[140px] animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="h-3 bg-gray-100 rounded w-24" />
+                <div className="w-7 h-7 rounded-lg bg-gray-100" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-7 bg-gray-100 rounded w-12" />
+                <div className="h-3 bg-gray-100 rounded w-36" />
+              </div>
+              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
+                <div className="h-2.5 bg-gray-100 rounded w-24" />
+                <div className="h-2.5 bg-gray-100 rounded w-10" />
+              </div>
             </div>
-            <span className="text-[10px] text-[#A3A3A3] font-bold">PB: —</span>
-          </div>
-        </div>
-        {/* Academic Program */}
-        <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide block">Academic Program</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 text-[#F4C430] flex items-center justify-center">
-              <GraduationCap size={14} />
+          ))
+        ) : (
+          <>
+            {/* Streak */}
+            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive relative opacity-40 select-none">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
+                <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                  Soon
+                </span>
+              </div>
+              <div>
+                <div className="stat-value">—</div>
+                <div className="stat-label">coming soon</div>
+              </div>
+              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
+                <div className="flex gap-0.5 flex-1 max-w-[120px]">
+                  {[false, false, false, false, false, false, false].map((attended, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 h-1.5 rounded-full transition-all duration-300"
+                      style={{ background: '#F0F0F0' }}
+                      title="Coming Soon"
+                    />
+                  ))}
+                </div>
+                <span className="text-[10px] text-[#A3A3A3] font-bold">PB: —</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="stat-value text-lg leading-tight truncate">{profile?.class?.display_name || offerings[0]?.class?.display_name || 'Grade Setup'}</div>
-            <div className="stat-label truncate mt-0.5">{profile?.class?.board?.name || offerings[0]?.class?.board?.name || 'FBISE'}</div>
-          </div>
-          <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
-            <span className="truncate">{profile?.stream_obj?.name || profile?.stream || offerings[0]?.stream || 'General'} Stream</span>
-            <span className="text-emerald-600 shrink-0">Enrolled</span>
-          </div>
-        </div>
+            {/* Academic Program */}
+            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide block">Academic Program</span>
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-[#F4C430] flex items-center justify-center">
+                  <GraduationCap size={14} />
+                </div>
+              </div>
+              <div>
+                <div className="stat-value text-lg leading-tight truncate">{profile?.class?.display_name || offerings[0]?.class?.display_name || 'Grade Setup'}</div>
+                <div className="stat-label truncate mt-0.5">{profile?.class?.board?.name || offerings[0]?.class?.board?.name || 'FBISE'}</div>
+              </div>
+              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
+                <span className="truncate">{profile?.stream_obj?.name || profile?.stream || offerings[0]?.stream || 'General'} Stream</span>
+                <span className="text-emerald-600 shrink-0">Enrolled</span>
+              </div>
+            </div>
 
-        {/* Next Class Countdown */}
-        <NextClassWidget slots={scheduleSlots} />
+            {/* Next Class Countdown */}
+            <NextClassWidget slots={scheduleSlots} />
 
-        {/* Pomodoro Timer */}
-        <PomodoroTimer />
+            {/* Pomodoro Timer */}
+            <PomodoroTimer />
+          </>
+        )}
       </div>
 
       {/* ── Today's Classes + Recent Notes ── */}
@@ -493,7 +516,20 @@ const StudentDashboardPage: React.FC = () => {
             </button>
           </div>
           <div className="space-y-3">
-            {todayClasses.length === 0 ? (
+            {loading ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2].map((n) => (
+                  <div key={n} className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] bg-white">
+                    <div className="w-1.5 h-12 bg-gray-100 rounded-full shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="h-4 bg-gray-100 rounded w-24" />
+                      <div className="h-3 bg-gray-100 rounded w-32" />
+                    </div>
+                    <div className="h-4 bg-gray-100 rounded w-16 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            ) : todayClasses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
                 <CheckCircle2 size={32} className="text-[#D4D4D4] mb-2" />
                 <p className="text-xs text-[#737373] font-semibold">No classes scheduled for today.</p>
@@ -542,7 +578,19 @@ const StudentDashboardPage: React.FC = () => {
               </button>
             </div>
             <div className="space-y-2">
-              {recentNotes.length === 0 ? (
+              {loading ? (
+                <div className="space-y-2 animate-pulse">
+                  {[1, 2].map((n) => (
+                    <div key={n} className="flex items-center gap-3 p-3 rounded-xl border border-transparent bg-white">
+                      <div className="w-9 h-9 rounded-lg bg-gray-100 shrink-0" />
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="h-4 bg-gray-100 rounded w-32" />
+                        <div className="h-3 bg-gray-100 rounded w-24" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : recentNotes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
                   <BookMarked size={32} className="text-[#D4D4D4] mb-2" />
                   <p className="text-xs text-[#737373] font-semibold">No notes uploaded yet.</p>
