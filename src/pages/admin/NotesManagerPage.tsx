@@ -42,7 +42,7 @@ export const NotesManagerPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<'all' | 'pdf' | 'image'>('all');
 
   // 4-Layer Taxonomy Filters (Board → Grade → Stream → Subject)
-  const [selectedBoard, setSelectedBoard] = useState<string>('all');
+  const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
@@ -154,7 +154,7 @@ export const NotesManagerPage: React.FC = () => {
     // Taxonomy 4-Layer Match
     if (selectedSubject && selectedSubject !== 'all') {
       if (note.offering_id !== selectedSubject) return false;
-    } else if (selectedBoard !== 'all' || selectedGrade !== 'all' || selectedStream !== 'all') {
+    } else if (selectedBoard !== 'fbise' || selectedGrade !== 'all' || selectedStream !== 'all') {
       if (!scopedOfferings.some((o) => o.id === note.offering_id)) return false;
     }
 
@@ -162,7 +162,7 @@ export const NotesManagerPage: React.FC = () => {
   });
 
   const resetFilters = () => {
-    setSelectedBoard('all');
+    setSelectedBoard('fbise');
     setSelectedGrade('all');
     setSelectedStream('all');
     setSelectedSubject('all');
@@ -245,32 +245,13 @@ export const NotesManagerPage: React.FC = () => {
 
       {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
       <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-        <div className="flex overflow-x-auto gap-6 border-transparent">
-          <button
-            onClick={() => setSelectedBoard('all')}
-            className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
-              selectedBoard === 'all'
-                ? 'border-[#F4C430] text-[#111111]'
-                : 'border-transparent text-[#737373] hover:text-[#111111]'
-            }`}
-          >
-            All Boards
-          </button>
-          <button
-            onClick={() => setSelectedBoard('fbise')}
-            className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
-              selectedBoard === 'fbise'
-                ? 'border-[#F4C430] text-[#111111]'
-                : 'border-transparent text-[#737373] hover:text-[#111111]'
-            }`}
-          >
-            FBISE
-          </button>
+        <div className="flex overflow-x-auto gap-6 border-transparent text-xs font-bold text-[#737373] pb-3">
+          Board: FBISE (Pakistan)
         </div>
 
         {/* Secondary controls (Reset) */}
         <div className="flex items-center gap-3 pb-2 sm:pb-0">
-          {(selectedBoard !== 'all' || selectedGrade !== 'all' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
+          {(selectedBoard !== 'fbise' || selectedGrade !== 'all' || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
             <button
               onClick={resetFilters}
               className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
