@@ -82,7 +82,7 @@ export const TopLoadingBar: React.FC = () => {
       setVisible(false);
       setProgress(0);
       setState('idle');
-    }, 400); // 400ms duration for fade out
+    }, 800); // 800ms duration for fade out
 
     return () => clearTimeout(fadeTimer);
   }, [state]);
@@ -91,14 +91,14 @@ export const TopLoadingBar: React.FC = () => {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[9999] h-1 bg-[#F5F5F5] transition-all pointer-events-none"
+      className="fixed top-0 left-0 right-0 z-[9999] h-[2px] bg-neutral-200/30 transition-all pointer-events-none"
       style={{
         opacity: state === 'completing' && progress === 100 ? 0 : 1,
-        transition: state === 'completing' ? 'opacity 0.4s ease-in-out' : 'none',
+        transition: state === 'completing' ? 'opacity 0.8s ease-in-out' : 'none',
       }}
     >
       <div
-        className="h-full bg-gradient-to-r from-amber-400 via-[#F4C430] to-yellow-600 shadow-[0_1px_10px_rgba(244,196,48,0.8)] transition-all duration-300 ease-out"
+        className="h-full bg-[#D4B246]/90 transition-all duration-300 ease-out"
         style={{
           width: `${progress}%`,
         }}
