@@ -132,7 +132,11 @@ export const NotificationBell: React.FC = () => {
     try {
       await markAllNotificationsRead(profile.id);
     } catch (err) {
-      console.error('[NotificationBell] Failed to mark all read:', err);
+      console.error('[NotificationBell] Failed to mark all read:', {
+        userId: profile.id,
+        timestamp: new Date().toISOString(),
+        err
+      });
       toast.error('Failed to mark all notifications as read.');
       // Rollback to previous state
       setNotifications(backupNotifications);

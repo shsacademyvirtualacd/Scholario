@@ -13,6 +13,7 @@ export const StudentAnnouncementsPage: React.FC = () => {
   const [loading, setLoading] = useState(!cachedAnn || cachedAnn.length === 0);
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | 'crucial' | 'normal'>('all');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   useEffect(() => {
     if (announcements.length === 0) {
@@ -27,13 +28,19 @@ export const StudentAnnouncementsPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Filter based on search term and severity selector
-  const filteredAnnouncements = announcements.filter((ann) => {
-    if (severityFilter !== 'all' && ann.severity !== severityFilter) return false;
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    return ann.title.toLowerCase().includes(term) || ann.body.toLowerCase().includes(term);
-  });
+  // Filter based on search term and severity selector, and sort by date
+  const filteredAnnouncements = announcements
+    .filter((ann) => {
+      if (severityFilter !== 'all' && ann.severity !== severityFilter) return false;
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      return ann.title.toLowerCase().includes(term) || ann.body.toLowerCase().includes(term);
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.created_at).getTime();
+      const timeB = new Date(b.created_at).getTime();
+      return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    });
 
   return (
     <StudentShell>
@@ -67,40 +74,54 @@ export const StudentAnnouncementsPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            <span className="text-[11px] font-bold text-[#737373] flex items-center gap-1 shrink-0">
-              <Filter size={12} /> Severity:
-            </span>
-            <button
-              onClick={() => setSeverityFilter('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
-                severityFilter === 'all'
-                  ? 'bg-[#111111] text-white border-[#111111]'
-                  : 'bg-[#FAFAFA] text-[#737373] border-[#E5E5E5] hover:bg-[#F5F5F5]'
-              }`}
-            >
-              All ({announcements.length})
-            </button>
-            <button
-              onClick={() => setSeverityFilter('crucial')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1 ${
-                severityFilter === 'crucial'
-                  ? 'bg-[#DC2626] text-white border-[#DC2626]'
-                  : 'bg-[#FEF2F2] text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]'
-              }`}
-            >
-              🔴 Crucial
-            </button>
-            <button
-              onClick={() => setSeverityFilter('normal')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1 ${
-                severityFilter === 'normal'
-                  ? 'bg-[#16A34A] text-white border-[#16A34A]'
-                  : 'bg-[#FAFAFA] text-[#737373] border-[#E5E5E5] hover:bg-[#F5F5F5]'
-              }`}
-            >
-              🟢 Normal
-            </button>
+          <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-[#737373] flex items-center gap-1 shrink-0">
+                <Filter size={12} /> Severity:
+              </span>
+              <button
+                onClick={() => setSeverityFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
+                  severityFilter === 'all'
+                    ? 'bg-[#111111] text-white border-[#111111]'
+                    : 'bg-[#FAFAFA] text-[#737373] border-[#E5E5E5] hover:bg-[#F5F5F5]'
+                }`}
+              >
+                All ({announcements.length})
+              </button>
+              <button
+                onClick={() => setSeverityFilter('crucial')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1 ${
+                  severityFilter === 'crucial'
+                    ? 'bg-[#DC2626] text-white border-[#DC2626]'
+                    : 'bg-[#FEF2F2] text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]'
+                }`}
+              >
+                🔴 Crucial
+              </button>
+              <button
+                onClick={() => setSeverityFilter('normal')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1 ${
+                  severityFilter === 'normal'
+                    ? 'bg-[#16A34A] text-white border-[#16A34A]'
+                    : 'bg-[#FAFAFA] text-[#737373] border-[#E5E5E5] hover:bg-[#F5F5F5]'
+                }`}
+              >
+                🟢 Normal
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs font-bold shrink-0 border-l border-[#E5E5E5] pl-3">
+              <span className="text-[#737373]">Sort:</span>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'desc' | 'asc')}
+                className="bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111] rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer hover:bg-[#F5F5F5]"
+              >
+                <option value="desc">Newest first</option>
+                <option value="asc">Oldest first</option>
+              </select>
+            </div>
           </div>
         </div>
 

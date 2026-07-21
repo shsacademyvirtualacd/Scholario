@@ -1510,21 +1510,13 @@ export function getSubjectsForStream(grade: string, streamName: string): string[
 // ANNOUNCEMENTS
 // =============================================================================
 
-function sortAnnouncements(list: Announcement[]): Announcement[] {
-  return list.sort((a, b) => {
-    if (a.severity === 'crucial' && b.severity !== 'crucial') return -1;
-    if (a.severity !== 'crucial' && b.severity === 'crucial') return 1;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-}
-
 export async function getAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase
     .from('announcements')
     .select('*, class:classes(*, board:boards(*)), stream:streams(*), creator:profiles(*)')
     .order('created_at', { ascending: false });
   const rows = throwOnError(data, error, 'getAnnouncements');
-  return sortAnnouncements(rows as unknown as Announcement[]);
+  return rows as unknown as Announcement[];
 }
 
 export async function createAnnouncement(payload: {
@@ -1673,26 +1665,29 @@ export async function getNotificationsForUser(userId: string): Promise<Notificat
     // fetching all historical records would slow down every page load.
     .limit(50);
   const rows = throwOnError(data, error, 'getNotificationsForUser');
-  
-  return (rows as unknown as NotificationRow[]).sort((a, b) => {
-    if (a.severity === 'crucial' && b.severity !== 'crucial') return -1;
-    if (a.severity !== 'crucial' && b.severity === 'crucial') return 1;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+  return rows as unknown as NotificationRow[];
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  const { error } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from('notifications')
     .update({ is_read: true })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(`mark-read affected 0 rows for notification ${id}`);
+  }
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  const { error } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from('notifications')
     .update({ is_read: true })
-    .eq('recipient_id', userId);
+    .eq('recipient_id', userId)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(`mark-all-read affected 0 rows for user ${userId} — possible RLS/session mismatch`);
+  }
 }

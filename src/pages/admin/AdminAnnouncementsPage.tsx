@@ -14,6 +14,7 @@ export const AdminAnnouncementsPage: React.FC = () => {
   const isMobile = useMobile();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [classes, setClasses] = useState<ClassEntry[]>([]);
   const [streams, setStreams] = useState<StreamEntry[]>([]);
 
@@ -99,15 +100,8 @@ export const AdminAnnouncementsPage: React.FC = () => {
         created_by: profile?.id || null,
       });
 
-      // Refetch or update state
-      setAnnouncements((prev) => {
-        const list = [newAnn, ...prev];
-        return list.sort((a, b) => {
-          if (a.severity === 'crucial' && b.severity !== 'crucial') return -1;
-          if (a.severity !== 'crucial' && b.severity === 'crucial') return 1;
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-      });
+      // Update state with plain prepend for descending list
+      setAnnouncements((prev) => [newAnn, ...prev]);
 
       // Reset Form
       setTitle('');
@@ -148,6 +142,12 @@ export const AdminAnnouncementsPage: React.FC = () => {
       setSelectedId(null);
     }
   };
+
+  const sortedAnnouncements = [...announcements].sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+  });
 
   const availableStreams = streams.filter((s) => s.class_id === selectedClassId);
 
@@ -337,9 +337,22 @@ export const AdminAnnouncementsPage: React.FC = () => {
           {/* List of active announcements */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-white rounded-2xl border border-[#E5E5E5] p-5">
-              <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-3">
-                <h2 className="font-bold text-[#111111] text-base">Active Broadcasts</h2>
-                <span className="badge badge-gray text-xs">{announcements.length} updates</span>
+              <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-bold text-[#111111] text-base">Active Broadcasts</h2>
+                  <span className="badge badge-gray text-xs">{announcements.length} updates</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-bold">
+                  <span className="text-[#737373]">Sort:</span>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as 'desc' | 'asc')}
+                    className="bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111] rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer hover:bg-[#F5F5F5]"
+                  >
+                    <option value="desc">Newest first</option>
+                    <option value="asc">Oldest first</option>
+                  </select>
+                </div>
               </div>
 
               {loading ? (
@@ -357,7 +370,7 @@ export const AdminAnnouncementsPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {announcements.map((ann) => (
+                  {sortedAnnouncements.map((ann) => (
                     <div
                       key={ann.id}
                       className={`p-4 rounded-xl border transition-all flex items-start gap-4 group ${

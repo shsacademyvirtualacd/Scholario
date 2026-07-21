@@ -12,6 +12,7 @@ export const TeacherAnnouncementsPage: React.FC = () => {
   const cachedAnn = pageCache.get<Announcement[]>('teacher_announcements');
   const [announcements, setAnnouncements] = useState<Announcement[]>(cachedAnn || []);
   const [loading, setLoading] = useState(!cachedAnn || cachedAnn.length === 0);
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   useEffect(() => {
     if (announcements.length === 0) {
@@ -26,6 +27,12 @@ export const TeacherAnnouncementsPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const sortedAnnouncements = [...announcements].sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+  });
+
   return (
     <TeacherShell>
       <div className="space-y-6">
@@ -37,9 +44,22 @@ export const TeacherAnnouncementsPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6 shadow-2xs">
-          <div className="flex items-center justify-between mb-6 border-b border-[#F5F5F5] pb-4">
-            <h2 className="font-bold text-[#111111] text-base">All Visible Broadcasts</h2>
-            <span className="badge badge-gray text-xs font-bold">{announcements.length} updates</span>
+          <div className="flex items-center justify-between mb-6 border-b border-[#F5F5F5] pb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-[#111111] text-base">All Visible Broadcasts</h2>
+              <span className="badge badge-gray text-xs font-bold">{announcements.length} updates</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-bold">
+              <span className="text-[#737373]">Sort:</span>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'desc' | 'asc')}
+                className="bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111] rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer hover:bg-[#F5F5F5]"
+              >
+                <option value="desc">Newest first</option>
+                <option value="asc">Oldest first</option>
+              </select>
+            </div>
           </div>
 
           {loading && announcements.length === 0 ? (
@@ -72,7 +92,7 @@ export const TeacherAnnouncementsPage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {announcements.map((ann) => (
+              {sortedAnnouncements.map((ann) => (
                 <div
                   key={ann.id}
                   className={`p-5 rounded-xl border transition-all flex ${isMobile ? 'flex-col gap-3' : 'items-start gap-4'} ${
