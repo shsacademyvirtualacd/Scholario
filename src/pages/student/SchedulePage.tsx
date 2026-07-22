@@ -12,7 +12,7 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h
+  formatTime12h, getLinkAvailabilityStatus
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -163,7 +163,13 @@ export const SchedulePage: React.FC = () => {
                   </h3>
                   <p className="text-xs text-[#737373] mt-0.5 font-medium">
                     with {bannerState.nextSlot.offering?.teacher?.full_name || 'Staff'} ·{' '}
-                    {(bannerState.nextSlot.room_or_link && (bannerState.nextSlot.room_or_link.includes('http') || bannerState.nextSlot.room_or_link.includes('zoom'))) ? 'Online Link Available' : 'TBD'}
+                    {(() => {
+                      const status = getLinkAvailabilityStatus(bannerState.nextSlot, pktnow);
+                      if (status.isAvailable) return 'Online Link Active';
+                      if (status.status === 'locked') return 'Link Unlocks 10m Before Class';
+                      if (bannerState.nextSlot.room_or_link) return 'Online Link Scheduled';
+                      return 'TBD';
+                    })()}
                   </p>
                 </>
               )}

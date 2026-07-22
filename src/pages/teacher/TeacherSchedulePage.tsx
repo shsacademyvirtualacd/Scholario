@@ -10,7 +10,7 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration
+  formatTime12h, calcDuration, getLinkAvailabilityStatus
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -279,11 +279,21 @@ export const TeacherSchedulePage: React.FC = () => {
                 {/* Location & Status */}
                 <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end">
                   {isOnline ? (
-                    <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-blue-50 border-blue-100 text-blue-600">
-                      <Video size={13} className="text-blue-500" />
-                      <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
-                        Join Class
-                      </a>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-blue-50 border-blue-100 text-blue-600">
+                        <Video size={13} className="text-blue-500" />
+                        <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
+                          Launch Link
+                        </a>
+                      </div>
+                      <span className="text-[9px] text-[#737373] font-medium">
+                        {(() => {
+                          const status = getLinkAvailabilityStatus(slot, pktnow);
+                          return status.isAvailable
+                            ? '🟢 Student link active'
+                            : '🔒 Student link unlocks 10m before class';
+                        })()}
+                      </span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">

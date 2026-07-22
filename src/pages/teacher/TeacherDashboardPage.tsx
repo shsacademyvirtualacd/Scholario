@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
-  Link as LinkIcon, Check, X
+  Link as LinkIcon, Check, X, Lock
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import TeacherShell from '../../components/teacher/TeacherShell';
@@ -19,7 +19,7 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassOffering, ClassSlot, Profile } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration
+  formatTime12h, calcDuration, getLinkAvailabilityStatus
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -45,40 +45,59 @@ const LiveLinkEditor: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-2 mt-2 w-full">
-        <input 
-          type="text" 
-          placeholder="https://zoom.us/j/..."
-          value={linkVal}
-          onChange={e => setLinkVal(e.target.value)}
-          className="flex-1 text-xs px-2 py-1 border border-[#E5E5E5] rounded focus:outline-none focus:border-[#F4C430]"
-          autoFocus
-          onKeyDown={e => e.key === 'Enter' && handleSave()}
-        />
-        <button onClick={handleSave} disabled={isSaving} className="p-1 bg-[#F4C430] text-[#111111] rounded hover:bg-[#E5B520] interactive">
-          <Check size={12} />
-        </button>
-        <button onClick={() => { setIsEditing(false); setLinkVal(slot.room_or_link || ''); }} className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-          <X size={12} />
-        </button>
+      <div className="flex flex-col gap-1 mt-2 w-full">
+        <div className="flex items-center gap-2 w-full">
+          <input 
+            type="text" 
+            placeholder="https://zoom.us/j/..."
+            value={linkVal}
+            onChange={e => setLinkVal(e.target.value)}
+            className="flex-1 text-xs px-2 py-1 border border-[#E5E5E5] rounded focus:outline-none focus:border-[#F4C430]"
+            autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleSave()}
+          />
+          <button onClick={handleSave} disabled={isSaving} className="p-1 bg-[#F4C430] text-[#111111] rounded hover:bg-[#E5B520] interactive">
+            <Check size={12} />
+          </button>
+          <button onClick={() => { setIsEditing(false); setLinkVal(slot.room_or_link || ''); }} className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+            <X size={12} />
+          </button>
+        </div>
+        <span className="text-[10px] text-[#737373] italic">
+          ℹ️ Link will automatically become accessible to students 10 minutes before class.
+        </span>
       </div>
     );
   }
 
   const hasLink = slot.room_or_link && slot.room_or_link.trim().length > 0;
+  const status = getLinkAvailabilityStatus(slot, getPKTNow());
   
   if (hasLink) {
     return (
-      <div className="flex items-center justify-between w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded px-2 py-1.5">
-        <div className="flex items-center gap-1.5 truncate">
-          <LinkIcon size={12} className="text-blue-500 shrink-0" />
-          <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`} target="_blank" rel="noreferrer" className="text-[10px] font-semibold text-blue-600 hover:underline truncate">
-            {slot.room_or_link}
-          </a>
+      <div className="flex flex-col gap-1 w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded p-2">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-1.5 truncate">
+            <LinkIcon size={12} className="text-blue-500 shrink-0" />
+            <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`} target="_blank" rel="noreferrer" className="text-[10px] font-semibold text-blue-600 hover:underline truncate">
+              {slot.room_or_link}
+            </a>
+          </div>
+          <button onClick={() => setIsEditing(true)} className="flex items-center gap-1 text-[10px] text-[#737373] hover:text-[#111111] font-semibold shrink-0 ml-2">
+            ✏️ Edit
+          </button>
         </div>
-        <button onClick={() => setIsEditing(true)} className="flex items-center gap-1 text-[10px] text-[#737373] hover:text-[#111111] font-semibold shrink-0 ml-2">
-          ✏️ Edit
-        </button>
+        <div className="flex items-center gap-1 text-[9px] font-semibold">
+          {status.isAvailable ? (
+            <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              🟢 Accessible to students now
+            </span>
+          ) : (
+            <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+              <Lock size={9} /> Accessible to students 10m before class
+            </span>
+          )}
+        </div>
       </div>
     );
   }

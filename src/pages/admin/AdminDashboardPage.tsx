@@ -128,81 +128,6 @@ const AdminDashboardPage: React.FC = () => {
     };
   });
 
-  const subjectColors: Record<string, string> = {
-    'Mathematics': '#F4C430',
-    'Physics': '#3b82f6',
-    'Chemistry': '#22c55e',
-    'Biology': '#ef4444',
-    'Computer Science': '#a855f7',
-    'Accounting': '#f97316',
-    'Economics': '#06b6d4',
-    'English': '#ec4899',
-  };
-
-  const formatTime12h = (timeStr: string) => {
-    if (!timeStr) return '';
-    const [hoursStr, minutesStr] = timeStr.split(':');
-    const hours = parseInt(hoursStr, 10);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutesStr} ${ampm}`;
-  };
-
-  const getShortName = (fullName: string) => {
-    const parts = fullName.split(' ');
-    if (parts.length >= 2) {
-      return `${parts[0]} ${parts[1]}`;
-    }
-    return fullName;
-  };
-
-  /**
-   * Returns the current day-of-week index using the SAME convention stored in
-   * class_slots.day_of_week: 0 = Monday, 1 = Tuesday, 2 = Wednesday,
-   * 3 = Thursday, 4 = Friday, 5 = Saturday, 6 = Sunday.
-   *
-   * NOTE: JS Date.getDay() uses 0 = Sunday, which is a different convention.
-   * We use Intl.DateTimeFormat in Asia/Karachi (PKT) to get the real local
-   * weekday string, then map it explicitly — no silent magic-number arithmetic.
-   */
-  const getCurrentDayIndex = (): number => {
-    const fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Karachi',
-      weekday: 'short',
-    });
-    const weekdayStr = fmt.format(new Date()).toLowerCase().slice(0, 3);
-    // Explicit map — must stay in sync with class_slots.day_of_week convention
-    const weekdayMap: Record<string, number> = {
-      mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6,
-    };
-    return weekdayMap[weekdayStr] ?? 0;
-  };
-
-  const currentDayIndex = getCurrentDayIndex();
-
-  // Build today's classes: filter by current day first, then map, then take first 3.
-  // getAllSlots() already orders by (day_of_week, start_time) so start_time order
-  // is preserved through filter — no extra sort needed.
-  const upcomingClasses = slots
-    .filter(s => !s.is_cancelled && s.day_of_week === currentDayIndex)
-    .map(slot => {
-      const offering = offerings.find(o => o.id === slot.offering_id);
-      const teacher = offering ? teachers.find(t => t.id === offering.teacher_id) : null;
-      const enrollmentsCount = enrollments.filter(e => e.offering_id === slot.offering_id).length;
-
-      const boardLabel = 'FBISE';
-
-      return {
-        subject: offering ? `${offering.subject_name} Gr.${offering.grade}` : 'N/A',
-        teacher: teacher ? getShortName(teacher.full_name) : 'N/A',
-        time: formatTime12h(slot.start_time),
-        board: boardLabel,
-        students: enrollmentsCount,
-        color: (offering && offering.subject_name) ? (subjectColors[offering.subject_name] || '#a855f7') : '#737373',
-      };
-    })
-    .slice(0, 3);
-
   return (
     <AdminShell>
       {/* Heading */}
@@ -265,78 +190,24 @@ const AdminDashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Today's classes + Low attendance ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        {/* Today's upcoming classes */}
-        <div className="card card-elevated interactive">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-[#111111]">Today's Classes</h2>
-            <button
-              onClick={() => navigate('/admin/schedule')}
-              className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
-            >
-              Manage schedule <ChevronRight size={12} />
-            </button>
-          </div>
-          <div className="space-y-3">
-            {loading ? (
-              <div className="space-y-3 animate-pulse">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="flex items-center gap-3.5 p-3 rounded-xl border border-[#F0F0F0] bg-white shadow-sm">
-                    <div className="w-1 h-10 rounded-full bg-gray-100 shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <div className="h-3.5 bg-gray-100 rounded w-24" />
-                      <div className="h-3 bg-gray-100 rounded w-32" />
-                    </div>
-                    <div className="text-right shrink-0 space-y-1">
-                      <div className="h-5 bg-gray-100 rounded w-16" />
-                      <div className="h-2.5 bg-gray-100 rounded w-12 ml-auto" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : upcomingClasses.length === 0 ? (
-              <div className="text-xs text-[#A3A3A3] font-bold text-center py-8">
-                No classes scheduled for today.
-              </div>
-            ) : (
-              upcomingClasses.map((cls, i) => (
-                <div key={i} className="flex items-center gap-3.5 p-3 rounded-xl border border-[#F0F0F0] bg-white shadow-sm hover:border-[#E5E5E5] transition-all">
-                  <div className="w-1 h-10 rounded-full shrink-0" style={{ background: cls.color }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-xs text-[#111111] truncate">{cls.subject}</div>
-                    <div className="text-[10px] text-[#737373] mt-0.5 truncate">{cls.teacher} · {cls.board}</div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-black text-[#111111] bg-[#FAFAFA] border border-[#E5E5E5] px-2 py-0.5 rounded-md font-mono">{cls.time}</div>
-                    <div className="text-[9px] text-[#A3A3A3] font-bold mt-1">{cls.students} enrolled</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+      {/* ── Low attendance ── */}
+      <div className="card card-elevated relative overflow-hidden interactive">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance</h2>
+          <span className="text-[9px] bg-zinc-200 text-zinc-600 font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider">
+            Coming Soon
+          </span>
         </div>
-
-        {/* Low attendance alerts */}
-        <div className="card card-elevated relative overflow-hidden interactive">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance</h2>
-            <span className="text-[9px] bg-zinc-200 text-zinc-600 font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider">
-              Coming Soon
-            </span>
-          </div>
-          <div className="space-y-3 opacity-40 pointer-events-none select-none">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420]">
-              <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
-                AH
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-[#111111]">Ali Hassan</div>
-                <div className="text-xs text-[#737373]">Mathematics · 5/8 classes</div>
-              </div>
-              <span className="text-sm font-bold text-[#ef4444]">62%</span>
+        <div className="space-y-3 opacity-40 pointer-events-none select-none">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420]">
+            <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
+              AH
             </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-[#111111]">Ali Hassan</div>
+              <div className="text-xs text-[#737373]">Mathematics · 5/8 classes</div>
+            </div>
+            <span className="text-sm font-bold text-[#ef4444]">62%</span>
           </div>
         </div>
       </div>

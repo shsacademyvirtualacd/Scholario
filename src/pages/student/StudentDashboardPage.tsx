@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookMarked, CheckCircle2, ChevronRight, ArrowRight, GraduationCap,
-  Clock, Play, Pause, RotateCcw, Zap, Link as LinkIcon
+  Clock, Play, Pause, RotateCcw, Zap, Lock, Video
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
@@ -14,7 +14,7 @@ import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, Note, Attendance } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration
+  formatTime12h, calcDuration, getLinkAvailabilityStatus
 } from '../../lib/scheduleUtils';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
@@ -28,17 +28,16 @@ const PomodoroTimer: React.FC = () => {
   const [seconds, setSeconds] = useState(FOCUS_SECS);
   const [running, setRunning] = useState(false);
   const [sessions, setSessions] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (running) {
-      intervalRef.current = setInterval(() => {
-        setSeconds((s) => {
-          if (s <= 1) {
-            clearInterval(intervalRef.current!);
-            setRunning(false);
+      timerRef.current = setInterval(() => {
+        setSeconds(prev => {
+          if (prev <= 1) {
             if (mode === 'focus') {
-              setSessions((n) => n + 1);
+              setSessions(s => s + 1);
               setMode('break');
               return BREAK_SECS;
             } else {
@@ -46,13 +45,15 @@ const PomodoroTimer: React.FC = () => {
               return FOCUS_SECS;
             }
           }
-          return s - 1;
+          return prev - 1;
         });
       }, 1000);
     } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
     }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [running, mode]);
 
   const reset = () => {
@@ -144,19 +145,63 @@ const PomodoroTimer: React.FC = () => {
 
 // ─── Live Link Join Button for Student ────────────────────────────
 const StudentLiveLink: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
-  const hasLink = slot.room_or_link && (slot.room_or_link.startsWith('http') || slot.room_or_link.includes('zoom') || slot.room_or_link.includes('meet'));
-  if (!hasLink) return null;
-  
-  return (
-    <a 
-      href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`}
-      target="_blank" 
-      rel="noreferrer" 
-      className="mt-2 flex items-center justify-center gap-1.5 w-full bg-[#111111] hover:bg-black text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-sm"
-    >
-      <LinkIcon size={12} /> Join Live Class
-    </a>
-  );
+  const [pktnow, setPktnow] = useState(getPKTNow);
+
+  // Dynamic 10-second timer tick so the link unlocks in real time
+  useEffect(() => {
+    const timer = setInterval(() => setPktnow(getPKTNow()), 10_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
+  const hasRawLink = Boolean(slot?.room_or_link && slot.room_or_link.trim().length > 0);
+
+  if (!hasRawLink && linkStatus.status === 'no_link') return null;
+
+  if (linkStatus.isAvailable) {
+    return (
+      <a 
+        href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`}
+        target="_blank" 
+        rel="noreferrer" 
+        className="mt-2 flex items-center justify-center gap-1.5 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-xs"
+      >
+        <Video size={13} /> Join Live Class
+      </a>
+    );
+  }
+
+  if (linkStatus.status === 'locked') {
+    return (
+      <div 
+        className="mt-2 flex items-center justify-center gap-1.5 w-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold py-1.5 px-2 rounded-md"
+        title="Class link will become accessible 10 minutes before class start time"
+      >
+        <Lock size={12} className="text-amber-600 shrink-0" />
+        <span className="truncate">{linkStatus.message}</span>
+      </div>
+    );
+  }
+
+  if (linkStatus.status === 'ended') {
+    return (
+      <div className="mt-2 flex items-center justify-center gap-1.5 w-full bg-gray-100 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
+        <Clock size={12} className="text-gray-400 shrink-0" />
+        <span>Class Session Ended</span>
+      </div>
+    );
+  }
+
+  if (hasRawLink) {
+    return (
+      <div className="mt-2 flex items-center justify-center gap-1.5 w-full bg-gray-50 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
+        <Lock size={12} className="text-gray-400 shrink-0" />
+        <span>Unlocks 10m Before Class</span>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 // ─── Live Next Class Countdown Widget ─────────────────────────────
@@ -381,7 +426,6 @@ const StudentDashboardPage: React.FC = () => {
     onAny: fetchNotes
   });
 
-  const { currentStreak, personalBest, last7Days } = computeAttendanceStreak(attendanceRecords);
   const recentNotes = studentNotes.slice(0, 3);
 
   // Get Today's classes — PKT-aware day index
@@ -462,7 +506,7 @@ const StudentDashboardPage: React.FC = () => {
               </div>
               <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
                 <div className="flex gap-0.5 flex-1 max-w-[120px]">
-                  {[false, false, false, false, false, false, false].map((attended, i) => (
+                  {[false, false, false, false, false, false, false].map((_, i) => (
                     <div
                       key={i}
                       className="flex-1 h-1.5 rounded-full transition-all duration-300"

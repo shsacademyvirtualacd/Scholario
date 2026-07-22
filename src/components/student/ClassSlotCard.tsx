@@ -1,12 +1,23 @@
-import React from 'react';
-import { Video, MapPin, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Video, MapPin, Clock, Lock } from 'lucide-react';
 import StatusPill from '../ui/StatusPill';
-import { calcDuration, formatTime12h } from '../../lib/scheduleUtils';
+import { calcDuration, formatTime12h, getPKTNow, getLinkAvailabilityStatus } from '../../lib/scheduleUtils';
+
 interface ClassSlotCardProps {
   slot: any;
 }
 
 export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
+  const [pktnow, setPktnow] = useState(getPKTNow);
+
+  // Ticker to re-evaluate link availability every 10 seconds in real time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPktnow(getPKTNow());
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const isCancelled = slot.is_cancelled;
   const rawSubj = slot.custom_title || (slot.offering as any)?.subject_name || slot.offering?.subject || 'Class';
   const subject = typeof rawSubj === 'string' ? rawSubj : (rawSubj?.name || 'Class');
@@ -27,8 +38,9 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
 
   const subjectColor = getSubjectColor(subject);
 
-  // Parse if it is online (Zoom) or offline (Room)
-  const isOnline = slot.room_or_link?.toLowerCase().includes('http') || slot.room_or_link?.toLowerCase().includes('zoom');
+  // 10-minute timing restriction status
+  const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
+  const hasRawLink = Boolean(slot.room_or_link && slot.room_or_link.trim().length > 0);
 
   return (
     <div
@@ -60,14 +72,32 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
         <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">{teacherName}</p>
       </div>
 
-      {/* Location / Join links */}
+      {/* Location / Join links with 10m timing restriction */}
       <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end">
-        {isOnline ? (
-          <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-blue-50 border-blue-100 text-blue-600">
-            <Video size={13} className="text-blue-500" />
-            <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
-              Join Class
-            </a>
+        {linkStatus.isAvailable ? (
+          <a
+            href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs hover:scale-105"
+          >
+            <Video size={13} className="text-white" />
+            <span>Join Class</span>
+          </a>
+        ) : linkStatus.status === 'locked' ? (
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border bg-amber-50 border-amber-200 text-amber-700" title="Link opens 10 minutes before class start time">
+            <Lock size={12} className="text-amber-600 shrink-0" />
+            <span className="truncate max-w-[140px]">{linkStatus.message}</span>
+          </div>
+        ) : linkStatus.status === 'ended' ? (
+          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-100 border-gray-200 text-gray-500">
+            <Clock size={12} className="text-gray-400 shrink-0" />
+            <span>Session Ended</span>
+          </div>
+        ) : hasRawLink ? (
+          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500" title="Link accessible 10 minutes before class">
+            <Lock size={12} className="text-gray-400 shrink-0" />
+            <span>Unlocks 10m before</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
@@ -84,3 +114,4 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
 };
 
 export default ClassSlotCard;
+
