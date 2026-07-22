@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, AlertCircle, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface PdfViewerProps {
   fileUrl: string;
@@ -14,6 +14,9 @@ declare global {
 
 export const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, authHeaders }) => {
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState<number>(0);
+  const [loadedBytes, setLoadedBytes] = useState<number>(0);
+  const [totalBytes, setTotalBytes] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,6 +27,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, authHeaders }) =>
   // Load PDF.js from CDN dynamically if not present
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
 
     const loadPdfJs = async () => {
       if (window.pdfjsLib) return window.pdfjsLib;
@@ -48,27 +52,111 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, authHeaders }) =>
       if (!fileUrl) return;
       setLoading(true);
       setError(null);
+      setLoadProgress(0);
+      setLoadedBytes(0);
+      setTotalBytes(0);
+
       try {
         const lib = await loadPdfJs();
         if (!mounted) return;
-        
-        // Use rangeChunkSize to support progressive range/chunk loading
-        const loadingTask = lib.getDocument({
-          url: fileUrl,
-          httpHeaders: authHeaders,
-          rangeChunkSize: 65536,
-          disableAutoFetch: false,
-          disableStream: false
-        });
-        
+
+        let arrayBuffer: ArrayBuffer | null = null;
+
+        try {
+          const response = await fetch(fileUrl, {
+            headers: authHeaders,
+            signal: controller.signal,
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+
+          const contentLengthHeader = response.headers.get('Content-Length') || response.headers.get('content-length');
+          const total = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
+          if (total > 0 && mounted) {
+            setTotalBytes(total);
+          }
+
+          if (response.body) {
+            const reader = response.body.getReader();
+            let loaded = 0;
+            const chunks: Uint8Array[] = [];
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (!mounted) {
+                reader.cancel();
+                return;
+              }
+
+              if (value) {
+                chunks.push(value);
+                loaded += value.length;
+                if (mounted) {
+                  setLoadedBytes(loaded);
+                  if (total > 0) {
+                    const pct = Math.min(99, Math.round((loaded / total) * 100));
+                    setLoadProgress(pct);
+                  }
+                }
+              }
+            }
+
+            const concatenated = new Uint8Array(loaded);
+            let offset = 0;
+            for (const chunk of chunks) {
+              concatenated.set(chunk, offset);
+              offset += chunk.length;
+            }
+            arrayBuffer = concatenated.buffer;
+          } else {
+            const blob = await response.blob();
+            arrayBuffer = await blob.arrayBuffer();
+          }
+        } catch (fetchErr: any) {
+          if (fetchErr.name === 'AbortError') return;
+          console.warn('Direct stream fetch failed, falling back to PDF.js default loader:', fetchErr);
+        }
+
+        if (!mounted) return;
+
+        let loadingTask: any;
+        if (arrayBuffer) {
+          if (mounted) setLoadProgress(100);
+          loadingTask = lib.getDocument({ data: arrayBuffer });
+        } else {
+          loadingTask = lib.getDocument({
+            url: fileUrl,
+            httpHeaders: authHeaders,
+            rangeChunkSize: 65536,
+            disableAutoFetch: false,
+            disableStream: false
+          });
+
+          loadingTask.onProgress = (progressData: { loaded: number; total: number }) => {
+            if (!mounted) return;
+            if (progressData && progressData.total > 0) {
+              const pct = Math.min(100, Math.round((progressData.loaded / progressData.total) * 100));
+              setLoadProgress(pct);
+              setTotalBytes(progressData.total);
+              setLoadedBytes(progressData.loaded);
+            } else if (progressData && progressData.loaded > 0) {
+              setLoadedBytes(progressData.loaded);
+            }
+          };
+        }
+
         const doc = await loadingTask.promise;
         if (!mounted) return;
-        
+
         setPdfDoc(doc);
         setTotalPages(doc.numPages);
         setCurrentPage(1);
         setLoading(false);
       } catch (err: any) {
+        if (err?.name === 'AbortError') return;
         if (mounted) {
           console.error('Error loading PDF document:', err);
           setError(err?.message || 'Failed to load PDF document.');
@@ -81,6 +169,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, authHeaders }) =>
 
     return () => {
       mounted = false;
+      controller.abort();
     };
   }, [fileUrl]);
 
@@ -128,10 +217,44 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, authHeaders }) =>
   }, [pdfDoc, currentPage, scale, totalPages]);
 
   if (loading) {
+    const formattedLoaded = (loadedBytes / (1024 * 1024)).toFixed(2);
+    const formattedTotal = totalBytes > 0 ? (totalBytes / (1024 * 1024)).toFixed(2) : null;
+
     return (
       <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white rounded-xl border border-[#E5E5E5] min-h-[400px]">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
-        <p className="text-sm font-semibold text-[#525252]">Loading document progressively...</p>
+        {/* Animated loader ring with centered percentage */}
+        <div className="relative flex items-center justify-center mb-4">
+          <div className="w-20 h-20 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-base font-black text-[#111111] font-mono">
+              {loadProgress > 0 ? `${loadProgress}%` : '0%'}
+            </span>
+          </div>
+        </div>
+
+        {/* Status text */}
+        <h4 className="text-sm font-extrabold text-[#111111] mb-1">
+          Loading Document
+        </h4>
+        
+        {/* Progress bar container */}
+        <div className="w-full max-w-xs bg-gray-100 rounded-full h-2.5 overflow-hidden my-3 border border-[#E5E5E5]">
+          <div
+            className="bg-emerald-600 h-full rounded-full transition-all duration-200 ease-out"
+            style={{ width: `${Math.max(5, loadProgress)}%` }}
+          />
+        </div>
+
+        {/* Detailed bytes info */}
+        <p className="text-xs font-semibold text-[#737373]">
+          {formattedTotal ? (
+            `${formattedLoaded} MB of ${formattedTotal} MB (${loadProgress}%)`
+          ) : loadedBytes > 0 ? (
+            `${formattedLoaded} MB loaded`
+          ) : (
+            'Preparing document...'
+          )}
+        </p>
       </div>
     );
   }
