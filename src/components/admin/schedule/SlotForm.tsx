@@ -75,9 +75,10 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       setStartTime(slot.start_time ? slot.start_time.slice(0, 5) : '16:00');
       setEndTime(slot.end_time ? slot.end_time.slice(0, 5) : '16:30');
     } else {
-      // Defaults for new slot
+      // Defaults for new slot — leave stream blank so ALL offerings for the class are visible.
+      // The admin picks an offering first; stream then auto-fills from that offering's stream_id.
       setSelectedClassId(defaultClassId || '');
-      setSelectedStreamId(defaultStreamId || '');
+      setSelectedStreamId('');
       setSlotMode('offering');
       setOfferingId('');
       setCustomTitle('Break');
@@ -89,17 +90,29 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     setError(null);
   }, [slot, offerings, defaultClassId, defaultStreamId]);
 
-  // Filter offerings based on chosen class and stream
+  // When admin picks an offering, auto-fill the stream from that offering's stream_id.
+  // This ensures the saved slot is correctly tagged to the right stream (e.g. Chemistry → Pre-Medical).
+  useEffect(() => {
+    if (slotMode !== 'offering' || !offeringId) return;
+    const offering = offerings.find(o => o.id === offeringId);
+    if (offering?.stream_id) {
+      setSelectedStreamId(offering.stream_id);
+    }
+  }, [offeringId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Filter offerings based on chosen class and stream.
+  // When stream is blank (''), show all offerings for the class so nothing is hidden.
+  // When a stream IS selected, only exclude offerings that explicitly belong to a DIFFERENT stream;
+  // offerings with no stream_id are common subjects visible in all streams.
   const filteredOfferings = offerings.filter(o => {
     if (selectedClassId && o.class_id !== selectedClassId && (o as any)?.class?.id !== selectedClassId) {
       return false;
     }
     if (selectedStreamId && selectedStreamId !== 'all' && selectedStreamId !== '') {
       const offStreamId = o.stream_id || (o as any)?.stream?.id;
-      const offStreamName = typeof o.stream === 'string' ? o.stream : ((o as any)?.stream?.name || (o as any)?.stream_name || '');
-      const chosenStream = taxonomy?.streams?.find((s: any) => s.id === selectedStreamId)?.name || '';
+      // Only exclude offerings that have an explicit different stream_id.
+      // Offerings with no stream_id are common (e.g. English, Urdu) and always pass.
       if (offStreamId && offStreamId !== selectedStreamId) return false;
-      if (chosenStream && offStreamName && !offStreamName.toLowerCase().includes(chosenStream.toLowerCase())) return false;
     }
     return true;
   });
