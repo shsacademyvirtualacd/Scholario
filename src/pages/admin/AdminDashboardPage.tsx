@@ -216,54 +216,6 @@ const AdminDashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Low attendance Watchlist ── */}
-      <div className="card card-elevated relative overflow-hidden interactive">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5]">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance Watchlist (&lt;75%)</h2>
-            {attendanceStats.lowAttendanceStudents.length > 0 && (
-              <span className="text-[9px] bg-rose-100 text-rose-700 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                {attendanceStats.lowAttendanceStudents.length} At Risk
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => navigate('/admin/attendance')}
-            className="text-xs font-bold text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
-          >
-            Manage attendance <ChevronRight size={13} />
-          </button>
-        </div>
-
-        {attendanceStats.lowAttendanceStudents.length === 0 ? (
-          <div className="py-6 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl flex items-center justify-center gap-2">
-            <ShieldCheck size={18} className="text-emerald-600" />
-            <span className="font-semibold text-[#111111]">All eligible students (10+ recorded sessions) meet or exceed the 75% attendance threshold.</span>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {attendanceStats.lowAttendanceStudents.slice(0, 3).map((item, idx) => (
-              <div
-                key={idx}
-                onClick={() => navigate('/admin/attendance')}
-                className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
-                  {item.student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-[#111111]">{item.student.full_name}</div>
-                  <div className="text-[10px] text-[#737373]">{item.subject} · {item.attended}/{item.total} classes attended</div>
-                </div>
-                <span className="text-xs font-black text-[#ef4444] bg-white px-2 py-1 rounded-md border border-rose-200">
-                  {item.rate}%
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* ── Teachers overview ── */}
       <div className="card card-elevated interactive">
         <div className="flex items-center justify-between mb-5">
@@ -362,6 +314,54 @@ const AdminDashboardPage: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Low attendance Watchlist ── */}
+      <div className="card card-elevated relative overflow-hidden interactive">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5]">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance Watchlist (&lt;75%)</h2>
+            {attendanceStats.lowAttendanceStudents.length > 0 && (
+              <span className="text-[9px] bg-rose-100 text-rose-700 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {attendanceStats.lowAttendanceStudents.length} At Risk
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => navigate('/admin/attendance')}
+            className="text-xs font-bold text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
+          >
+            Manage attendance <ChevronRight size={13} />
+          </button>
+        </div>
+
+        {attendanceStats.lowAttendanceStudents.length === 0 ? (
+          <div className="py-6 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl flex items-center justify-center gap-2">
+            <ShieldCheck size={18} className="text-emerald-600" />
+            <span className="font-semibold text-[#111111]">All eligible students (10+ recorded sessions) meet or exceed the 75% attendance threshold.</span>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {attendanceStats.lowAttendanceStudents.slice(0, 3).map((item, idx) => (
+              <div
+                key={idx}
+                onClick={() => navigate('/admin/attendance')}
+                className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                  {item.student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-[#111111]">{item.student.full_name}</div>
+                  <div className="text-[10px] text-[#737373]">{item.subject} · {item.attended}/{item.total} classes attended</div>
+                </div>
+                <span className="text-xs font-black text-[#ef4444] bg-white px-2 py-1 rounded-md border border-rose-200">
+                  {item.rate}%
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </div>
