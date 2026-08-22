@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Users, Shield, Trash2, Edit, 
-  Clock, X, UserCheck, Lock, Unlock, Phone, GraduationCap, 
-  BookOpen, Copy, Check, UserPlus, Save, ShieldAlert, DollarSign
+  Clock, X, UserCheck, UserX, Lock, Unlock, Phone, GraduationCap, 
+  BookOpen, Copy, Check, UserPlus, Save, ShieldAlert, DollarSign,
+  CheckCircle2, AlertCircle
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -25,6 +26,8 @@ export const RosterManagerPage: React.FC = () => {
   const [classesMap, setClassesMap] = useState<Record<string, any>>({});
   const [streamsMap, setStreamsMap] = useState<Record<string, any>>({});
   const [feeMap, setFeeMap] = useState<Record<string, any>>({});
+  const [classesList, setClassesList] = useState<any[]>([]);
+  const [streamsList, setStreamsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Tab section
@@ -35,7 +38,7 @@ export const RosterManagerPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'pending_account' | 'pending_payment'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Form Drawer states
+  // Form Drawer states (Add/Edit Teacher)
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<'add_teacher' | 'edit'>('add_teacher');
   const [selectedEntry, setSelectedEntry] = useState<RosterEntry | null>(null);
@@ -50,6 +53,17 @@ export const RosterManagerPage: React.FC = () => {
   const [formSaving, setFormSaving] = useState(false);
   const [processingIds, setProcessingIds] = useState<Record<string, boolean>>({});
 
+  // Edit Student Profile Modal States
+  const [editStudentModalOpen, setEditStudentModalOpen] = useState(false);
+  const [editStudentEntry, setEditStudentEntry] = useState<RosterEntry | null>(null);
+  const [editStudentName, setEditStudentName] = useState('');
+  const [editStudentEmail, setEditStudentEmail] = useState('');
+  const [editStudentBoard, setEditStudentBoard] = useState<'fbise' | 'sindh'>('fbise');
+  const [editStudentClass, setEditStudentClass] = useState('');
+  const [editStudentStreamId, setEditStudentStreamId] = useState('');
+  const [editStudentError, setEditStudentError] = useState<string | null>(null);
+  const [editStudentSaving, setEditStudentSaving] = useState(false);
+
   // Delete Modal States
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<RosterEntry | null>(null);
@@ -63,16 +77,22 @@ export const RosterManagerPage: React.FC = () => {
         supabase.from('fee_statuses').select('*')
       ]);
 
+      const cList = (classesRes.data as any[] || []);
+      const sList = (streamsRes.data as any[] || []);
+
+      setClassesList(cList);
+      setStreamsList(sList);
+
       const pMap: Record<string, any> = {};
       (profilesRes.data as any[] || []).forEach(p => { pMap[p.id] = p; });
       setProfilesMap(pMap);
 
       const cMap: Record<string, any> = {};
-      (classesRes.data as any[] || []).forEach(c => { cMap[c.id] = c; });
+      cList.forEach(c => { cMap[c.id] = c; });
       setClassesMap(cMap);
 
       const sMap: Record<string, any> = {};
-      (streamsRes.data as any[] || []).forEach(s => { sMap[s.id] = s; });
+      sList.forEach(s => { sMap[s.id] = s; });
       setStreamsMap(sMap);
 
       const fMap: Record<string, any> = {};
@@ -115,6 +135,11 @@ export const RosterManagerPage: React.FC = () => {
       const rosterData = await getAllRoster().catch(() => []);
       setRoster(rosterData);
     }
+  });
+
+  useRealtimeTable({
+    table: 'profiles',
+    onAny: async () => { await fetchEnrichmentData(); },
   });
 
   // Keep feeMap live: re-fetch enrichment data whenever any student's fee status changes
@@ -325,16 +350,23 @@ export const RosterManagerPage: React.FC = () => {
   // Helper getters for enrichment
   const getPhone = (entry: RosterEntry) => {
     if (entry.role === 'teacher') return '—';
-    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null);
+    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null) || (entry.email ? Object.values(profilesMap).find((prof: any) => (prof.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
     return p?.phone || '—';
   };
 
   const getClassGrade = (entry: RosterEntry) => {
-    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null);
+    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null) || (entry.email ? Object.values(profilesMap).find((prof: any) => (prof.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
     if (p?.class_id && classesMap[p.class_id]) {
-      return classesMap[p.class_id].display_name;
+      const cls = classesMap[p.class_id];
+      const bName = cls.board_id === 'sindh' ? 'Sindh' : 'FBISE';
+      return `${cls.display_name} (${bName})`;
     }
     if (entry.class_ids?.length > 0) {
+      if (classesMap[entry.class_ids[0]]) {
+        const cls = classesMap[entry.class_ids[0]];
+        const bName = cls.board_id === 'sindh' ? 'Sindh' : 'FBISE';
+        return `${cls.display_name} (${bName})`;
+      }
       const firstOff = offerings.find(o => o.id === entry.class_ids[0]);
       if (firstOff) return `Grade ${firstOff.grade} (${firstOff.subject_name})`;
     }
@@ -342,7 +374,7 @@ export const RosterManagerPage: React.FC = () => {
   };
 
   const getStream = (entry: RosterEntry) => {
-    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null);
+    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null) || (entry.email ? Object.values(profilesMap).find((prof: any) => (prof.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
     if (p?.stream_id && streamsMap[p.stream_id]) {
       return streamsMap[p.stream_id].name;
     }
@@ -365,6 +397,232 @@ export const RosterManagerPage: React.FC = () => {
         </span>
       );
     }).filter(Boolean);
+  };
+
+  // Student Edit and Access Actions
+  const openEditStudent = (entry: RosterEntry) => {
+    const p = (entry.profile_id && profilesMap[entry.profile_id]) ||
+      profilesMap[entry.id] ||
+      (entry.email ? Object.values(profilesMap).find((prof: any) => (prof.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+
+    setEditStudentEntry(entry);
+    setEditStudentName(p?.full_name || entry.full_name || '');
+    setEditStudentEmail(entry.email || p?.email || '');
+
+    const rawBoard = (p?.board_id || p?.board || 'fbise').toLowerCase();
+    const boardVal: 'fbise' | 'sindh' = rawBoard === 'sindh' ? 'sindh' : 'fbise';
+    setEditStudentBoard(boardVal);
+
+    const boardClasses = classesList.filter(c => (c.board_id || '').toLowerCase() === boardVal);
+    let classId = p?.class_id || (entry.class_ids && entry.class_ids[0]) || '';
+    if (!boardClasses.some(c => c.id === classId)) {
+      classId = boardClasses[0]?.id || '';
+    }
+    setEditStudentClass(classId);
+
+    const classStreams = streamsList.filter(s => s.class_id === classId);
+    let streamId = p?.stream_id || '';
+    if (!classStreams.some(s => s.id === streamId)) {
+      streamId = classStreams[0]?.id || '';
+    }
+    setEditStudentStreamId(streamId);
+
+    setEditStudentError(null);
+    setEditStudentModalOpen(true);
+  };
+
+  const handleBoardChangeInModal = (newBoard: 'fbise' | 'sindh') => {
+    setEditStudentBoard(newBoard);
+    const newClasses = classesList
+      .filter(c => (c.board_id || '').toLowerCase() === newBoard)
+      .sort((a, b) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
+
+    const currentClassObj = classesList.find(c => c.id === editStudentClass);
+    const matchedGradeClass = newClasses.find(c => c.grade === currentClassObj?.grade) || newClasses[0];
+
+    const targetClassId = matchedGradeClass?.id || '';
+    setEditStudentClass(targetClassId);
+
+    const newStreams = streamsList.filter(s => s.class_id === targetClassId);
+    const currentStreamObj = streamsList.find(s => s.id === editStudentStreamId);
+    const matchedStream = newStreams.find(s => s.name === currentStreamObj?.name) || newStreams[0];
+    setEditStudentStreamId(matchedStream ? matchedStream.id : '');
+  };
+
+  const handleClassChangeInModal = (newClassId: string) => {
+    setEditStudentClass(newClassId);
+    const newStreams = streamsList.filter(s => s.class_id === newClassId);
+    const currentStreamObj = streamsList.find(s => s.id === editStudentStreamId);
+    const matchedStream = newStreams.find(s => s.name === currentStreamObj?.name) || newStreams[0];
+    setEditStudentStreamId(matchedStream ? matchedStream.id : '');
+  };
+
+  const handleSaveStudentProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editStudentEntry) return;
+    setEditStudentError(null);
+
+    const nameTrim = editStudentName.trim();
+    const emailTrim = editStudentEmail.trim().toLowerCase();
+
+    if (!nameTrim || !emailTrim) {
+      setEditStudentError('Please fill out all required profile fields.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      setEditStudentError('Please enter a valid email address.');
+      return;
+    }
+    if (!editStudentClass) {
+      setEditStudentError('Please select a grade/class level.');
+      return;
+    }
+
+    setEditStudentSaving(true);
+    try {
+      const matchedProfile = (editStudentEntry.profile_id && profilesMap[editStudentEntry.profile_id]) ||
+        profilesMap[editStudentEntry.id] ||
+        (editStudentEntry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (editStudentEntry.email || '').toLowerCase()) : null);
+
+      const studentProfileId = matchedProfile?.id || editStudentEntry.profile_id || editStudentEntry.id;
+      const selectedStreamObj = streamsList.find(s => s.id === editStudentStreamId);
+      const streamName = selectedStreamObj?.name || (editStudentStreamId ? 'Selected Stream' : 'General');
+
+      // 1. Update/Upsert Profile in profiles table
+      const profilePayload: any = {
+        full_name: nameTrim,
+        board_id: editStudentBoard,
+        class_id: editStudentClass,
+        stream_id: editStudentStreamId || null,
+        stream: streamName,
+        onboarding_complete: true,
+        role: 'student'
+      };
+
+      if (matchedProfile) {
+        const { error: profErr } = await (supabase as any)
+          .from('profiles')
+          .update(profilePayload)
+          .eq('id', studentProfileId);
+        if (profErr) throw profErr;
+      } else {
+        const { error: profInsErr } = await (supabase as any)
+          .from('profiles')
+          .upsert({ id: studentProfileId, ...profilePayload }, { onConflict: 'id' });
+        if (profInsErr) throw profInsErr;
+      }
+
+      // 2. Update roster table entry
+      await (supabase as any)
+        .from('roster')
+        .update({
+          full_name: nameTrim,
+          email: emailTrim,
+          class_ids: [editStudentClass],
+          profile_id: studentProfileId
+        })
+        .or(`id.eq.${editStudentEntry.id},profile_id.eq.${studentProfileId},email.eq.${editStudentEntry.email.toLowerCase()}`);
+
+      // 3. Clear existing enrollments & re-enroll in the matching offerings
+      try {
+        await (supabase as any).from('enrollments').delete().eq('student_id', studentProfileId);
+
+        let subjectIds: string[] = [];
+        if (editStudentStreamId) {
+          const { data: ssData } = await (supabase as any)
+            .from('stream_subjects')
+            .select('subject_id')
+            .eq('stream_id', editStudentStreamId);
+          subjectIds = (ssData || []).map((ss: any) => ss.subject_id);
+        }
+
+        let targetOfferings = offerings.filter(o => o.class_id === editStudentClass);
+        if (targetOfferings.length === 0) {
+          const { data: offData } = await (supabase as any)
+            .from('class_offerings')
+            .select('id, subject_id')
+            .eq('class_id', editStudentClass);
+          targetOfferings = offData || [];
+        }
+
+        if (subjectIds.length > 0) {
+          targetOfferings = targetOfferings.filter((o: any) => subjectIds.includes(o.subject_id));
+        }
+
+        if (targetOfferings.length > 0) {
+          const enrollInserts = targetOfferings.map((o: any) => ({
+            student_id: studentProfileId,
+            offering_id: o.id,
+            total_classes: 48
+          }));
+          await (supabase as any).from('enrollments').insert(enrollInserts);
+        }
+      } catch (enrErr) {
+        console.warn('Enrollment re-sync error (non-fatal):', enrErr);
+      }
+
+      // 4. Ensure fee_statuses row exists
+      try {
+        const { data: existingFee } = await (supabase as any)
+          .from('fee_statuses')
+          .select('id')
+          .eq('student_id', studentProfileId)
+          .maybeSingle();
+        if (!existingFee) {
+          await (supabase as any).from('fee_statuses').insert({ student_id: studentProfileId, status: 'unpaid' });
+        }
+      } catch (feeErr) {
+        console.warn('Fee status initialization warning:', feeErr);
+      }
+
+      toast.success(`Profile for ${nameTrim} updated successfully.`);
+      setEditStudentModalOpen(false);
+      await Promise.all([loadData(), fetchEnrichmentData()]);
+    } catch (err: any) {
+      console.error('Save student profile error:', err);
+      setEditStudentError(err.message || 'Failed to update student profile.');
+      toast.error(err.message || 'Failed to update student profile.');
+    } finally {
+      setEditStudentSaving(false);
+    }
+  };
+
+  const handleToggleStudentAccess = async (entry: RosterEntry, grant: boolean) => {
+    setProcessingIds(prev => ({ ...prev, [entry.id]: true }));
+    try {
+      const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
+        profilesMap[entry.id] ||
+        (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+      const targetStudentId = matchedProfile?.id || entry.profile_id || entry.id;
+
+      // Ensure profile row exists in profiles so fee_statuses foreign key doesn't fail
+      if (!matchedProfile) {
+        await (supabase as any).from('profiles').upsert({
+          id: targetStudentId,
+          role: 'student',
+          full_name: entry.full_name || 'Student',
+          onboarding_complete: true,
+        }, { onConflict: 'id' });
+      }
+
+      const nextStatus = grant ? 'paid' : 'unpaid';
+      await updateFeeStatus(targetStudentId, nextStatus, grant ? 'Access granted by administrator from Roster' : 'Access revoked by administrator from Roster');
+
+      // If grant is true and billing was locked, also unlock billing automatically
+      if (grant && entry.fee_suspended) {
+        await toggleFeeSuspension(entry.id, false);
+        setRoster(prev => prev.map(r => r.id === entry.id ? { ...r, fee_suspended: false } : r));
+      }
+
+      await fetchEnrichmentData();
+      toast.success(grant ? `Access granted to ${entry.full_name}.` : `Access revoked for ${entry.full_name}.`);
+    } catch (err: any) {
+      console.error('Toggle student access error:', err);
+      alert(err.message || 'Failed to update access status.');
+      toast.error(err.message || 'Failed to update student access.');
+    } finally {
+      setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
+    }
   };
 
   // Filter & Section breakdown
@@ -446,6 +704,17 @@ export const RosterManagerPage: React.FC = () => {
         return (a.subject_name || '').localeCompare(b.subject_name || '');
       });
   }, [offerings]);
+
+  const availableClassesForEdit = useMemo(() => {
+    return classesList
+      .filter(c => (c.board_id || '').toLowerCase() === editStudentBoard)
+      .sort((a, b) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
+  }, [classesList, editStudentBoard]);
+
+  const availableStreamsForEdit = useMemo(() => {
+    if (!editStudentClass) return [];
+    return streamsList.filter(s => s.class_id === editStudentClass);
+  }, [streamsList, editStudentClass]);
 
   return (
     <AdminShell>
@@ -689,11 +958,43 @@ export const RosterManagerPage: React.FC = () => {
                   )}
 
                   {activeSection !== 'admins' && (
-                    <div className="flex gap-2 pt-2 border-t border-[#F0F0F0]">
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-[#F0F0F0]">
+                      {activeSection === 'students' && (
+                        <>
+                          {feeStatusVal === 'paid' ? (
+                            <button
+                              disabled={processingIds[entry.id]}
+                              onClick={() => handleToggleStudentAccess(entry, false)}
+                              className="flex-1 min-w-[120px] py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-rose-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                              title="Manually revoke course access"
+                            >
+                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <UserX size={12} />} Revoke Access
+                            </button>
+                          ) : (
+                            <button
+                              disabled={processingIds[entry.id]}
+                              onClick={() => handleToggleStudentAccess(entry, true)}
+                              className="flex-1 min-w-[120px] py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                              title="Manually grant course access"
+                            >
+                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <UserCheck size={12} />} Grant Access
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => openEditStudent(entry)}
+                            className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all"
+                            title="Edit student profile"
+                          >
+                            <Edit size={12} /> Edit
+                          </button>
+                        </>
+                      )}
+
                       <button
                         disabled={processingIds[entry.id]}
                         onClick={() => handleToggleAccess(entry)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
+                        className={`flex-1 min-w-[90px] py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
                           isSuspended 
                             ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
                             : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
@@ -707,6 +1008,21 @@ export const RosterManagerPage: React.FC = () => {
                           <><Lock size={12} /> Suspend</>
                         )}
                       </button>
+
+                      {activeSection === 'students' && (
+                        <button
+                          disabled={processingIds[entry.id]}
+                          onClick={() => handleToggleFeeAccess(entry)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1 transition-all ${
+                            entry.fee_suspended
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          } disabled:opacity-50`}
+                        >
+                          {entry.fee_suspended ? <Unlock size={12} /> : <DollarSign size={12} />}
+                        </button>
+                      )}
+
                       {activeSection === 'teachers' && (
                         <button
                           onClick={() => openEdit(entry)}
@@ -715,15 +1031,23 @@ export const RosterManagerPage: React.FC = () => {
                           <Edit size={12} />
                         </button>
                       )}
+
                       {activeSection === 'students' && feeStatusVal === 'pending' && (
                         <button
                           onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
                           disabled={processingIds[entry.id]}
-                          className="px-4 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center disabled:opacity-50"
+                          className="px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center disabled:opacity-50"
                         >
                           {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <Check size={12} />}
                         </button>
                       )}
+
+                      <button
+                        onClick={() => triggerDelete(entry)}
+                        className="px-3 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 font-bold text-xs inline-flex items-center justify-center"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -917,6 +1241,34 @@ export const RosterManagerPage: React.FC = () => {
 
                             {activeSection === 'students' && (
                               <>
+                                {feeStatusVal === 'paid' ? (
+                                  <button
+                                    onClick={() => handleToggleStudentAccess(entry, false)}
+                                    disabled={processingIds[entry.id]}
+                                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-rose-700 hover:text-rose-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all disabled:opacity-50"
+                                    title="Manually revoke course access"
+                                  >
+                                    {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <UserX size={13} />} Revoke Access
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleToggleStudentAccess(entry, true)}
+                                    disabled={processingIds[entry.id]}
+                                    className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 hover:text-emerald-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all disabled:opacity-50"
+                                    title="Manually grant course access"
+                                  >
+                                    {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <UserCheck size={13} />} Grant Access
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => openEditStudent(entry)}
+                                  className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 hover:text-zinc-900 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
+                                  title="Edit student profile details"
+                                >
+                                  <Edit size={13} /> Edit
+                                </button>
+
                                 {feeStatusVal === 'pending' && (
                                   <button
                                     onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
@@ -1287,6 +1639,197 @@ export const RosterManagerPage: React.FC = () => {
                 >
                   {formSaving ? <Clock size={14} className="animate-spin" /> : <Save size={14} />}
                   {drawerMode === 'edit' ? 'Save Assignments' : 'Provision Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT STUDENT PROFILE MODAL ── */}
+      {editStudentModalOpen && editStudentEntry && (
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col my-8">
+            {/* Header */}
+            <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/70">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                  <GraduationCap size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900">Edit Student Profile</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">Update profile information, board, class grade, and stream</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditStudentModalOpen(false)}
+                className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-xl transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveStudentProfile} className="p-6 space-y-5">
+              {editStudentError && (
+                <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>{editStudentError}</span>
+                </div>
+              )}
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editStudentName}
+                  onChange={(e) => setEditStudentName(e.target.value)}
+                  className="input w-full py-2.5 px-3.5 text-xs bg-zinc-50 border-zinc-200 rounded-xl font-medium focus:bg-white focus:border-purple-500"
+                  placeholder="e.g. Ayesha Khan"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={editStudentEmail}
+                  onChange={(e) => setEditStudentEmail(e.target.value)}
+                  className="input w-full py-2.5 px-3.5 text-xs bg-zinc-50 border-zinc-200 rounded-xl font-medium focus:bg-white focus:border-purple-500"
+                  placeholder="student@example.com"
+                />
+              </div>
+
+              {/* Board Selection (Federal / Sindh) */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                  Academic Board <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleBoardChangeInModal('fbise')}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      editStudentBoard === 'fbise'
+                        ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-900">Federal Board</span>
+                      {editStudentBoard === 'fbise' && (
+                        <CheckCircle2 size={14} className="text-purple-600 shrink-0" />
+                      )}
+                    </div>
+                    <span className="text-[11px] text-zinc-500 block mt-0.5">FBISE Curriculum</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleBoardChangeInModal('sindh')}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      editStudentBoard === 'sindh'
+                        ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-900">Sindh Board</span>
+                      {editStudentBoard === 'sindh' && (
+                        <CheckCircle2 size={14} className="text-purple-600 shrink-0" />
+                      )}
+                    </div>
+                    <span className="text-[11px] text-zinc-500 block mt-0.5">BIEK / BSEK Curriculum</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Class / Grade Selection */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                  Class / Grade Level <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {availableClassesForEdit.map((c) => {
+                    const isSelected = editStudentClass === c.id;
+                    return (
+                      <button
+                        type="button"
+                        key={c.id}
+                        onClick={() => handleClassChangeInModal(c.id)}
+                        className={`p-2.5 rounded-xl border text-center transition-all ${
+                          isSelected
+                            ? 'border-purple-600 bg-purple-600 text-white font-bold shadow-sm'
+                            : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 font-semibold'
+                        }`}
+                      >
+                        <div className="text-xs">{c.display_name}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Stream Selection */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                  Academic Stream <span className="text-red-500">*</span>
+                </label>
+                {availableStreamsForEdit.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {availableStreamsForEdit.map((s) => {
+                      const isSelected = editStudentStreamId === s.id;
+                      return (
+                        <button
+                          type="button"
+                          key={s.id}
+                          onClick={() => setEditStudentStreamId(s.id)}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold ring-1 ring-purple-600/30'
+                              : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-medium'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">{s.name}</span>
+                            {isSelected && <Check size={12} className="text-purple-600" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs text-zinc-500">
+                    General Stream (Core curriculum subjects assigned automatically)
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-4 border-t border-zinc-100 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditStudentModalOpen(false)}
+                  className="btn flex-1 py-2.5 border border-zinc-200 text-zinc-700 font-bold text-xs rounded-xl hover:bg-zinc-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editStudentSaving}
+                  className="btn flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 transition-all"
+                >
+                  {editStudentSaving ? <Clock size={14} className="animate-spin" /> : <Save size={14} />}
+                  Save Changes
                 </button>
               </div>
             </form>
