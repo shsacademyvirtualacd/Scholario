@@ -8,7 +8,6 @@ import {
   XCircle,
   TrendingUp,
   RotateCcw,
-  Download,
   Filter,
   Check,
   X,
@@ -30,10 +29,11 @@ import {
   getSlotsForTeacher,
   getStudentsForTeacher,
   getAllStudents,
+  getAllEnrollments,
   getAttendanceForTeacher,
   recordAttendance
 } from '../../lib/db';
-import type { Attendance, AttendanceStatus, ClassOffering, ClassSlot, Profile } from '../../types';
+import type { Attendance, AttendanceStatus, ClassOffering, ClassSlot, Enrollment, Profile } from '../../types';
 
 export const TeacherAttendancePage: React.FC = () => {
   const { profile } = useAuth();
@@ -44,10 +44,12 @@ export const TeacherAttendancePage: React.FC = () => {
   const cachedSlots = teacherId ? pageCache.get<ClassSlot[]>('teacher_slots', teacherId) : null;
   const cachedStudents = teacherId ? pageCache.get<Profile[]>('teacher_students', teacherId) : null;
   const cachedAttendance = teacherId ? pageCache.get<Attendance[]>('teacher_attendance_all', teacherId) : null;
+  const cachedEnrollments = teacherId ? pageCache.get<Enrollment[]>('teacher_enrollments', teacherId) : null;
 
   const [offerings, setOfferings] = useState<ClassOffering[]>(cachedOfferings || []);
   const [slots, setSlots] = useState<ClassSlot[]>(cachedSlots || []);
   const [students, setStudents] = useState<Profile[]>(cachedStudents || []);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(cachedEnrollments || []);
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(cachedAttendance || []);
   const [loading, setLoading] = useState(!cachedAttendance || cachedAttendance.length === 0);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,12 +80,13 @@ export const TeacherAttendancePage: React.FC = () => {
     else if (attendanceRecords.length === 0) setLoading(true);
 
     try {
-      const [teacherOffs, teacherSlots, teacherStuds, allStuds, attList] = await Promise.all([
+      const [teacherOffs, teacherSlots, teacherStuds, allStuds, attList, allEnrs] = await Promise.all([
         getOfferingsForTeacher(teacherId),
         getSlotsForTeacher(teacherId),
         getStudentsForTeacher(teacherId),
         getAllStudents().catch(() => [] as Profile[]),
         getAttendanceForTeacher(teacherId),
+        getAllEnrollments().catch(() => [] as Enrollment[]),
       ]);
 
       // Combine student records so we have maximum profile coverage
@@ -95,12 +98,14 @@ export const TeacherAttendancePage: React.FC = () => {
       setOfferings(teacherOffs);
       setSlots(teacherSlots);
       setStudents(mergedStudents);
+      setEnrollments(allEnrs || []);
       setAttendanceRecords(attList);
 
       if (teacherId) {
         pageCache.set('teacher_offerings', teacherOffs, teacherId);
         pageCache.set('teacher_slots', teacherSlots, teacherId);
         pageCache.set('teacher_students', mergedStudents, teacherId);
+        pageCache.set('teacher_enrollments', allEnrs || [], teacherId);
         pageCache.set('teacher_attendance_all', attList, teacherId);
       }
     } catch (err: any) {
@@ -133,12 +138,19 @@ export const TeacherAttendancePage: React.FC = () => {
     debounceMs: 2000,
     onAny: async () => {
       if (!teacherId) return;
-      const studs = await getStudentsForTeacher(teacherId);
+      const [studs, enrs] = await Promise.all([
+        getStudentsForTeacher(teacherId),
+        getAllEnrollments().catch(() => [] as Enrollment[]),
+      ]);
+      setEnrollments(enrs);
       setStudents(prev => {
         const map = new Map(prev.map(s => [s.id, s]));
         studs.forEach(s => map.set(s.id, s));
         return Array.from(map.values());
       });
+      if (teacherId) {
+        pageCache.set('teacher_enrollments', enrs, teacherId);
+      }
     }
   });
 
@@ -321,47 +333,6 @@ export const TeacherAttendancePage: React.FC = () => {
     });
   };
 
-  // ── Export CSV Handler ────────────────────────────────────────────
-  const handleExportCSV = () => {
-    if (filteredRecords.length === 0) {
-      toast.info('No attendance records to export.');
-      return;
-    }
-
-    const headers = ['Session Date', 'Student Name', 'Student Email', 'Subject / Class', 'Status', 'Marked At', 'Marked By'];
-    const rows = filteredRecords.map(rec => {
-      const student = studentsMap[rec.student_id] || rec.student;
-      const slot = slotsMap[rec.slot_id] || rec.slot;
-      const offering = offeringsMap[slot?.offering_id || ''] || (slot?.offering as any);
-      const subjectName = offering?.subject_name || offering?.subject || rec.subject || 'Class';
-      const className = offering?.class?.name || (offering?.class as any)?.grade ? `Grade ${(offering?.class as any)?.grade}` : '';
-      const fullSubject = `${subjectName} ${className ? `(${className})` : ''}`.trim();
-      const timeStr = rec.marked_at ? new Date(rec.marked_at).toLocaleString() : 'N/A';
-
-      return [
-        rec.session_date,
-        `"${student?.full_name || rec.student_id}"`,
-        `"${(student as any)?.email || ''}"`,
-        `"${fullSubject}"`,
-        rec.status.toUpperCase(),
-        `"${timeStr}"`,
-        rec.marked_by || 'teacher'
-      ];
-    });
-
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    const teacherName = (profile?.full_name || 'Teacher').replace(/\s+/g, '_');
-    link.setAttribute('download', `Attendance_${teacherName}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Attendance records exported successfully.');
-  };
-
   const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
@@ -383,15 +354,6 @@ export const TeacherAttendancePage: React.FC = () => {
           >
             <RotateCcw size={14} className={refreshing ? 'animate-spin text-[#F4C430]' : ''} />
             <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
-          <button
-            onClick={handleExportCSV}
-            disabled={filteredRecords.length === 0}
-            className="btn btn-primary text-xs font-bold py-2 px-3.5 inline-flex items-center gap-1.5 interactive disabled:opacity-50"
-            title="Download CSV report of current filtered attendance"
-          >
-            <Download size={14} />
-            <span>Export CSV</span>
           </button>
         </div>
       </div>
@@ -935,46 +897,78 @@ export const TeacherAttendancePage: React.FC = () => {
             </div>
           ) : (
             offerings.map(off => {
+              // 1. Resolve enrolled students for this offering from real enrollment records and profile matches
+              const directEnrolledIds = new Set(
+                enrollments.filter(e => e.offering_id === off.id).map(e => e.student_id)
+              );
+
+              const classEnrolledIds = new Set<string>();
+              students.forEach(s => {
+                if (s.role !== 'student') return;
+                const matchClassId = s.class_id && off.class_id && s.class_id === off.class_id;
+                const sGrade = s.class?.grade || (s as any).grade;
+                const sBoardId = s.board_id || s.board?.id;
+                const matchBoardGrade = (
+                  sBoardId &&
+                  sGrade &&
+                  off.class?.board_id &&
+                  off.class?.grade &&
+                  sBoardId === off.class.board_id &&
+                  sGrade === off.class.grade &&
+                  (!off.stream_id || s.stream_id === off.stream_id || (s as any).stream === off.stream_id)
+                );
+                if (matchClassId || matchBoardGrade) {
+                  classEnrolledIds.add(s.id);
+                }
+              });
+
+              // Combine all enrolled student IDs
+              const allEnrolledIds = new Set([...directEnrolledIds, ...classEnrolledIds]);
+
+              // Attendance logs belonging to this offering
               const offRecords = attendanceRecords.filter(r => {
                 const slot = slotsMap[r.slot_id] || r.slot;
                 const offId = slot?.offering_id || (slot?.offering as any)?.id || r.class_id;
                 return offId === off.id;
               });
 
+              // Include any student who has an attendance record in this offering
+              offRecords.forEach(r => {
+                if (r.student_id) allEnrolledIds.add(r.student_id);
+              });
+
+              // Individual breakdown for each enrolled student
+              const enrolledStudentList = Array.from(allEnrolledIds).map(stId => {
+                const profileObj = studentsMap[stId] || students.find(s => s.id === stId) || { id: stId, full_name: 'Student ' + stId.slice(0, 6) } as Profile;
+                const stLogs = offRecords.filter(r => r.student_id === stId);
+                const present = stLogs.filter(r => r.status === 'present').length;
+                const late = stLogs.filter(r => r.status === 'late').length;
+                const absent = stLogs.filter(r => r.status === 'absent').length;
+                const total = stLogs.length;
+                const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+
+                return {
+                  id: stId,
+                  student: profileObj,
+                  present,
+                  late,
+                  absent,
+                  total,
+                  rate,
+                  hasLogs: total > 0,
+                };
+              }).sort((a, b) => (a.student?.full_name || '').localeCompare(b.student?.full_name || ''));
+
               const offPresent = offRecords.filter(r => r.status === 'present').length;
               const offLate = offRecords.filter(r => r.status === 'late').length;
               const offAbsent = offRecords.filter(r => r.status === 'absent').length;
               const offTotal = offRecords.length;
-              const offRate = offTotal > 0 ? Math.round(((offPresent + offLate) / offTotal) * 100) : 100;
+              const offRate = offTotal > 0 ? Math.round(((offPresent + offLate) / offTotal) * 100) : 0;
               const isExpanded = expandedOfferingId === off.id;
 
               const subjectTitle = off.subject_name || off.subject?.name || 'Class';
               const gradeName = off.class?.name || (off.class?.grade ? `Grade ${off.class.grade}` : '');
               const boardName = off.class?.board?.name || '';
-
-              // Unique students with attendance in this class
-              const studentAttendanceMap: Record<string, { present: number; late: number; absent: number; total: number }> = {};
-              offRecords.forEach(rec => {
-                if (!studentAttendanceMap[rec.student_id]) {
-                  studentAttendanceMap[rec.student_id] = { present: 0, late: 0, absent: 0, total: 0 };
-                }
-                studentAttendanceMap[rec.student_id].total += 1;
-                if (rec.status === 'present') studentAttendanceMap[rec.student_id].present += 1;
-                else if (rec.status === 'late') studentAttendanceMap[rec.student_id].late += 1;
-                else if (rec.status === 'absent') studentAttendanceMap[rec.student_id].absent += 1;
-              });
-
-              const enrolledStudentList = Object.keys(studentAttendanceMap).map(stId => {
-                const profileObj = studentsMap[stId];
-                const stStats = studentAttendanceMap[stId];
-                const rate = stStats.total > 0 ? Math.round(((stStats.present + stStats.late) / stStats.total) * 100) : 100;
-                return {
-                  id: stId,
-                  student: profileObj,
-                  ...stStats,
-                  rate
-                };
-              });
 
               return (
                 <div key={off.id} className="card card-elevated bg-white border border-[#E5E5E5] rounded-2xl overflow-hidden">
@@ -997,7 +991,7 @@ export const TeacherAttendancePage: React.FC = () => {
                           )}
                         </div>
                         <p className="text-xs text-[#737373] mt-0.5">
-                          {gradeName ? `${gradeName} · ` : ''}{enrolledStudentList.length} enrolled students tracked
+                          {gradeName ? `${gradeName} · ` : ''}{enrolledStudentList.length} {enrolledStudentList.length === 1 ? 'enrolled student tracked' : 'enrolled students tracked'}
                         </p>
                       </div>
                     </div>
@@ -1006,14 +1000,20 @@ export const TeacherAttendancePage: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <span className="text-xs font-bold text-[#111111] block">
-                            {offRate}% Attendance
+                            {offTotal > 0 ? `${offRate}% Attendance` : 'No Logs Recorded'}
                           </span>
                           <span className="text-[10px] text-[#737373] block">
-                            {offPresent} P · {offLate} L · {offAbsent} A ({offTotal} logs)
+                            {offPresent} P · {offLate} L · {offAbsent} A ({offTotal} {offTotal === 1 ? 'log' : 'logs'})
                           </span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-black text-xs">
-                          {offRate}%
+                        <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-black text-xs ${
+                          offTotal === 0
+                            ? 'bg-[#F5F5F5] border-[#E5E5E5] text-[#737373]'
+                            : offRate >= 75
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            : 'bg-rose-50 border-rose-200 text-rose-700'
+                        }`}>
+                          {offTotal > 0 ? `${offRate}%` : '0%'}
                         </div>
                       </div>
 
@@ -1044,7 +1044,7 @@ export const TeacherAttendancePage: React.FC = () => {
 
                       {enrolledStudentList.length === 0 ? (
                         <div className="py-6 text-center text-xs text-[#737373] bg-white rounded-xl border border-[#E5E5E5]">
-                          No student check-in records logged for this class yet.
+                          No students are currently enrolled in this class offering.
                         </div>
                       ) : (
                         <div className="bg-white rounded-xl border border-[#E5E5E5] overflow-hidden">
@@ -1066,30 +1066,40 @@ export const TeacherAttendancePage: React.FC = () => {
                                       {item.student?.full_name || item.id}
                                     </span>
                                     <span className="text-[10px] text-[#737373] block">
-                                      {(item.student as any)?.email || 'Enrolled student'}
+                                      {(item.student as any)?.email || (item.student?.class?.grade ? `Grade ${item.student.class.grade} Student` : (item.student as any)?.grade ? `Grade ${(item.student as any).grade} Student` : 'Enrolled Student')}
                                     </span>
                                   </td>
                                   <td className="py-2.5 px-3 text-xs font-semibold text-emerald-700">
-                                    {item.present + item.late} / {item.total} classes
+                                    {item.total > 0 ? `${item.present + item.late} / ${item.total} classes` : '0 / 0 classes'}
                                   </td>
                                   <td className="py-2.5 px-3 text-xs font-semibold text-rose-700">
-                                    {item.absent} classes
+                                    {item.absent} {item.absent === 1 ? 'class' : 'classes'}
                                   </td>
                                   <td className="py-2.5 px-3">
                                     <div className="flex items-center gap-2">
                                       <div className="w-20 bg-[#F0F0F0] rounded-full h-2 overflow-hidden">
                                         <div
                                           className={`h-full rounded-full ${
-                                            item.rate >= 75 ? 'bg-emerald-500' : 'bg-rose-500'
+                                            !item.hasLogs
+                                              ? 'bg-neutral-300'
+                                              : item.rate >= 75
+                                              ? 'bg-emerald-500'
+                                              : 'bg-rose-500'
                                           }`}
-                                          style={{ width: `${item.rate}%` }}
+                                          style={{ width: item.hasLogs ? `${item.rate}%` : '0%' }}
                                         />
                                       </div>
-                                      <span className="text-xs font-bold text-[#111111]">{item.rate}%</span>
+                                      <span className="text-xs font-bold text-[#111111]">
+                                        {item.hasLogs ? `${item.rate}%` : '—'}
+                                      </span>
                                     </div>
                                   </td>
                                   <td className="py-2.5 px-3 text-right">
-                                    {item.rate < 75 && item.total >= 3 ? (
+                                    {!item.hasLogs ? (
+                                      <span className="text-[10px] font-bold bg-[#F5F5F5] text-[#737373] px-2 py-0.5 rounded-full border border-[#E5E5E5]">
+                                        Enrolled (No Logs)
+                                      </span>
+                                    ) : item.rate < 75 && item.total >= 3 ? (
                                       <span className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
                                         Low Attendance
                                       </span>
