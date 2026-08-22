@@ -4,8 +4,10 @@ import {
   BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
   Link as LinkIcon, Check, X, Lock
 } from 'lucide-react';
+import { toast } from 'sonner';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import StatusPill from '../../components/ui/StatusPill';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   getOfferingsForTeacher,
@@ -504,6 +506,14 @@ export const TeacherDashboardPage: React.FC = () => {
   const [teacherAttendance, setTeacherAttendance] = useState<Attendance[]>([]);
   const [savingAttendanceId, setSavingAttendanceId] = useState<string | null>(null);
 
+  // Locked attendance confirmation modal state
+  const [pendingChange, setPendingChange] = useState<{
+    studentId: string;
+    studentName: string;
+    currentStatus: AttendanceStatus;
+    newStatus: AttendanceStatus;
+  } | null>(null);
+
   useEffect(() => {
     if (!activeOfferingId) {
       setRosterStudents([]);
@@ -617,11 +627,42 @@ export const TeacherDashboardPage: React.FC = () => {
         status: newStatus,
         marked_by: 'teacher'
       });
+      const formatted = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+      toast.success(`Attendance updated to ${formatted}`);
     } catch (err) {
       console.error('Error saving attendance:', err);
+      toast.error('Failed to update attendance');
     } finally {
       setSavingAttendanceId(null);
     }
+  };
+
+  // Safe handler: Single-click when unmarked/pending; Confirmation required when already marked
+  const handleTeacherClickAttendance = (
+    studentId: string,
+    studentName: string,
+    currentStatus: AttendanceStatus | 'unmarked',
+    targetStatus: AttendanceStatus
+  ) => {
+    if (currentStatus === targetStatus) {
+      const formatted = targetStatus.charAt(0).toUpperCase() + targetStatus.slice(1);
+      toast.info(`Attendance is already marked as ${formatted}`);
+      return;
+    }
+
+    // First time marking or resolving pending claim -> Direct single-click action
+    if (currentStatus === 'unmarked' || currentStatus === 'pending') {
+      handleUpdateStudentStatus(studentId, targetStatus);
+      return;
+    }
+
+    // Changing existing recorded attendance -> Locked, require explicit confirmation
+    setPendingChange({
+      studentId,
+      studentName,
+      currentStatus,
+      newStatus: targetStatus
+    });
   };
 
   const handleApproveAllPending = async () => {
@@ -1065,8 +1106,8 @@ export const TeacherDashboardPage: React.FC = () => {
                               </div>
                             ) : stStatus === 'present' ? (
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                  ✓ Present
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200" title="Locked: Status is recorded. Click another status to request change.">
+                                  ✓ Present <Lock size={9} className="text-emerald-600/70 ml-0.5" />
                                 </span>
                                 {markedBy === 'self' || markedBy === 'student' || joinTime ? (
                                   <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50/50 px-1.5 py-0.5 rounded">
@@ -1080,8 +1121,8 @@ export const TeacherDashboardPage: React.FC = () => {
                               </div>
                             ) : stStatus === 'late' ? (
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                  ⏱ Late
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title="Locked: Status is recorded. Click another status to request change.">
+                                  ⏱ Late <Lock size={9} className="text-amber-600/70 ml-0.5" />
                                 </span>
                                 {joinTime && (
                                   <span className="text-[9px] text-amber-600 font-semibold">
@@ -1090,8 +1131,8 @@ export const TeacherDashboardPage: React.FC = () => {
                                 )}
                               </div>
                             ) : stStatus === 'absent' ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                                ✕ Absent
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200" title="Locked: Status is recorded. Click another status to request change.">
+                                ✕ Absent <Lock size={9} className="text-rose-600/70 ml-0.5" />
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
@@ -1105,7 +1146,7 @@ export const TeacherDashboardPage: React.FC = () => {
                           {stStatus === 'pending' ? (
                             <div className="inline-flex items-center gap-1.5 justify-end">
                               <button
-                                onClick={() => handleUpdateStudentStatus(st.id, 'present')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'present')}
                                 disabled={isSaving}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer interactive"
                                 title="Approve attendance claim (Mark Present)"
@@ -1114,7 +1155,7 @@ export const TeacherDashboardPage: React.FC = () => {
                                 <span>Approve</span>
                               </button>
                               <button
-                                onClick={() => handleUpdateStudentStatus(st.id, 'absent')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'absent')}
                                 disabled={isSaving}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer interactive"
                                 title="Reject attendance claim (Mark Absent)"
@@ -1126,38 +1167,56 @@ export const TeacherDashboardPage: React.FC = () => {
                           ) : (
                             <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
                               <button
-                                onClick={() => handleUpdateStudentStatus(st.id, 'present')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'present')}
                                 disabled={isSaving}
-                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'present'
                                     ? 'bg-emerald-600 text-white shadow-xs'
                                     : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
                                 }`}
-                                title="Mark Present"
+                                title={
+                                  stStatus === 'present'
+                                    ? 'Status is recorded as Present (Locked)'
+                                    : stStatus !== 'unmarked'
+                                    ? 'Change status to Present (Requires confirmation)'
+                                    : 'Mark Present'
+                                }
                               >
                                 P
                               </button>
                               <button
-                                onClick={() => handleUpdateStudentStatus(st.id, 'late')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'late')}
                                 disabled={isSaving}
-                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'late'
                                     ? 'bg-amber-500 text-white shadow-xs'
                                     : 'text-[#737373] hover:text-amber-700 hover:bg-white'
                                 }`}
-                                title="Mark Late"
+                                title={
+                                  stStatus === 'late'
+                                    ? 'Status is recorded as Late (Locked)'
+                                    : stStatus !== 'unmarked'
+                                    ? 'Change status to Late (Requires confirmation)'
+                                    : 'Mark Late'
+                                }
                               >
                                 L
                               </button>
                               <button
-                                onClick={() => handleUpdateStudentStatus(st.id, 'absent')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'absent')}
                                 disabled={isSaving}
-                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'absent'
                                     ? 'bg-rose-600 text-white shadow-xs'
                                     : 'text-[#737373] hover:text-rose-700 hover:bg-white'
                                 }`}
-                                title="Mark Absent"
+                                title={
+                                  stStatus === 'absent'
+                                    ? 'Status is recorded as Absent (Locked)'
+                                    : stStatus !== 'unmarked'
+                                    ? 'Change status to Absent (Requires confirmation)'
+                                    : 'Mark Absent'
+                                }
                               >
                                 A
                               </button>
@@ -1175,6 +1234,66 @@ export const TeacherDashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── TEACHER ATTENDANCE CHANGE CONFIRMATION MODAL ── */}
+      <ConfirmModal
+        open={!!pendingChange}
+        onClose={() => setPendingChange(null)}
+        onConfirm={async () => {
+          if (pendingChange) {
+            await handleUpdateStudentStatus(pendingChange.studentId, pendingChange.newStatus);
+            setPendingChange(null);
+          }
+        }}
+        title="Confirm Attendance Modification"
+        description={`Are you sure you want to change this student's attendance record from ${
+          pendingChange?.currentStatus
+            ? pendingChange.currentStatus.charAt(0).toUpperCase() + pendingChange.currentStatus.slice(1)
+            : ''
+        } to ${
+          pendingChange?.newStatus
+            ? pendingChange.newStatus.charAt(0).toUpperCase() + pendingChange.newStatus.slice(1)
+            : ''
+        } for today's session?`}
+        confirmLabel={`Change to ${
+          pendingChange?.newStatus
+            ? pendingChange.newStatus.charAt(0).toUpperCase() + pendingChange.newStatus.slice(1)
+            : 'Confirm'
+        }`}
+        danger={pendingChange?.newStatus === 'absent'}
+      >
+        {pendingChange && (
+          <div className="bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-3.5 flex items-center justify-between text-xs">
+            <div>
+              <div className="font-bold text-[#111111]">{pendingChange.studentName}</div>
+              <div className="text-[10px] text-[#737373] mt-0.5">
+                Today's Session: {todayFormattedDate}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 font-bold">
+              <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold ${
+                pendingChange.currentStatus === 'present'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : pendingChange.currentStatus === 'late'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-rose-100 text-rose-800'
+              }`}>
+                {pendingChange.currentStatus}
+              </span>
+              <span className="text-[#A3A3A3]">→</span>
+              <span className={`px-2.5 py-0.5 rounded-md text-[10px] uppercase font-black ${
+                pendingChange.newStatus === 'present'
+                  ? 'bg-emerald-600 text-white'
+                  : pendingChange.newStatus === 'late'
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-rose-600 text-white'
+              }`}>
+                {pendingChange.newStatus}
+              </span>
+            </div>
+          </div>
+        )}
+      </ConfirmModal>
     </TeacherShell>
   );
 };

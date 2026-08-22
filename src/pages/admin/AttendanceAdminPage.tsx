@@ -5,8 +5,10 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import {
   ClipboardCheck, Search, CheckCircle2,
   Clock, AlertTriangle, ChevronDown, ChevronRight, RefreshCw,
-  GraduationCap, ShieldCheck, X, Users, BookOpen, Layers, UserCheck
+  GraduationCap, ShieldCheck, X, Users, BookOpen, Layers, UserCheck,
+  Lock, Check
 } from 'lucide-react';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import TeacherAttendanceRatingsAdminView from '../../components/admin/TeacherAttendanceRatingsAdminView';
 import {
   getAllTeachers,
@@ -71,6 +73,17 @@ export const AttendanceAdminPage: React.FC = () => {
   const [hideEmptyClasses, setHideEmptyClasses] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'by_teacher' | 'all_records' | 'low_attendance' | 'teacher_ratings'>('by_teacher');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Locked attendance confirmation modal state
+  const [pendingChange, setPendingChange] = useState<{
+    studentId: string;
+    studentName: string;
+    slotId: string;
+    sessionDate: string;
+    currentStatus: AttendanceStatus;
+    newStatus: AttendanceStatus;
+    subjectName?: string;
+  } | null>(null);
 
   // Auto-filter and expand if classId param is provided in route
   useEffect(() => {
@@ -183,12 +196,13 @@ export const AttendanceAdminPage: React.FC = () => {
     }
   };
 
-  // Toggle or record single student attendance
-  const handleAdminToggleAttendance = async (
+  // Execute single student attendance update in database and local state
+  const executeAttendanceUpdate = async (
     studentId: string,
     slotId: string,
     sessionDate: string,
-    newStatus: AttendanceStatus
+    newStatus: AttendanceStatus,
+    studentName?: string
   ) => {
     setUpdatingId(studentId);
 
@@ -217,13 +231,49 @@ export const AttendanceAdminPage: React.FC = () => {
         status: newStatus,
         marked_by: 'admin'
       });
-      toast.success(`Marked student as ${newStatus}`);
+      const formattedStatus = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+      toast.success(`Marked ${studentName || 'student'} as ${formattedStatus}`);
     } catch (err) {
       console.error('Failed to record attendance:', err);
       toast.error('Failed to update attendance');
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  // Safe handler: Single-click when unmarked; Lock and confirmation modal required if already marked
+  const handleAdminClickAttendance = (
+    studentId: string,
+    studentName: string,
+    slotId: string,
+    sessionDate: string,
+    currentStatus: AttendanceStatus | 'unmarked',
+    targetStatus: AttendanceStatus,
+    subjectName?: string
+  ) => {
+    // Already set to target status -> Locked, informative feedback
+    if (currentStatus === targetStatus) {
+      const formatted = targetStatus.charAt(0).toUpperCase() + targetStatus.slice(1);
+      toast.info(`Attendance is already marked as ${formatted}`);
+      return;
+    }
+
+    // First time marking -> Direct single-click marking
+    if (currentStatus === 'unmarked') {
+      executeAttendanceUpdate(studentId, slotId, sessionDate, targetStatus, studentName);
+      return;
+    }
+
+    // Changing existing recorded attendance -> Locked, require explicit confirmation
+    setPendingChange({
+      studentId,
+      studentName,
+      slotId,
+      sessionDate,
+      currentStatus,
+      newStatus: targetStatus,
+      subjectName
+    });
   };
 
   // Batch mark all enrolled students in a slot as Present
@@ -961,16 +1011,16 @@ export const AttendanceAdminPage: React.FC = () => {
                                                             <td className="py-2.5 px-3">
                                                               <div className="flex items-center gap-2 flex-wrap">
                                                                 {status === 'present' ? (
-                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                                                    ✓ Present
+                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200" title="Locked: Status is recorded. Click another status to request change.">
+                                                                    <Check size={10} strokeWidth={3} /> Present <Lock size={9} className="text-emerald-600/70 ml-0.5" />
                                                                   </span>
                                                                 ) : status === 'late' ? (
-                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                                                    ⏱ Late
+                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title="Locked: Status is recorded. Click another status to request change.">
+                                                                    <Clock size={10} /> Late <Lock size={9} className="text-amber-600/70 ml-0.5" />
                                                                   </span>
                                                                 ) : status === 'absent' ? (
-                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                                                                    ✕ Absent
+                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200" title="Locked: Status is recorded. Click another status to request change.">
+                                                                    <X size={10} strokeWidth={3} /> Absent <Lock size={9} className="text-rose-600/70 ml-0.5" />
                                                                   </span>
                                                                 ) : (
                                                                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
@@ -993,38 +1043,59 @@ export const AttendanceAdminPage: React.FC = () => {
                                                             <td className="py-2.5 px-3 text-right">
                                                               <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
                                                                 <button
-                                                                  onClick={() => handleAdminToggleAttendance(st.id, primarySlotId, selectedDate, 'present')}
+                                                                  type="button"
+                                                                  onClick={() => handleAdminClickAttendance(st.id, st.full_name, primarySlotId, selectedDate, status, 'present', offering.subject_name || offering.subject)}
                                                                   disabled={isUpdating}
                                                                   className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
                                                                     status === 'present'
                                                                       ? 'bg-emerald-600 text-white shadow-xs'
                                                                       : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
                                                                   }`}
-                                                                  title="Mark Present"
+                                                                  title={
+                                                                    status === 'present'
+                                                                      ? 'Status is recorded as Present (Locked)'
+                                                                      : status !== 'unmarked'
+                                                                      ? 'Change status to Present (Requires confirmation)'
+                                                                      : 'Mark Present'
+                                                                  }
                                                                 >
                                                                   P
                                                                 </button>
                                                                 <button
-                                                                  onClick={() => handleAdminToggleAttendance(st.id, primarySlotId, selectedDate, 'late')}
+                                                                  type="button"
+                                                                  onClick={() => handleAdminClickAttendance(st.id, st.full_name, primarySlotId, selectedDate, status, 'late', offering.subject_name || offering.subject)}
                                                                   disabled={isUpdating}
                                                                   className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
                                                                     status === 'late'
                                                                       ? 'bg-amber-500 text-white shadow-xs'
                                                                       : 'text-[#737373] hover:text-amber-700 hover:bg-white'
                                                                   }`}
-                                                                  title="Mark Late"
+                                                                  title={
+                                                                    status === 'late'
+                                                                      ? 'Status is recorded as Late (Locked)'
+                                                                      : status !== 'unmarked'
+                                                                      ? 'Change status to Late (Requires confirmation)'
+                                                                      : 'Mark Late'
+                                                                  }
                                                                 >
                                                                   L
                                                                 </button>
                                                                 <button
-                                                                  onClick={() => handleAdminToggleAttendance(st.id, primarySlotId, selectedDate, 'absent')}
+                                                                  type="button"
+                                                                  onClick={() => handleAdminClickAttendance(st.id, st.full_name, primarySlotId, selectedDate, status, 'absent', offering.subject_name || offering.subject)}
                                                                   disabled={isUpdating}
                                                                   className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
                                                                     status === 'absent'
                                                                       ? 'bg-rose-600 text-white shadow-xs'
                                                                       : 'text-[#737373] hover:text-rose-700 hover:bg-white'
                                                                   }`}
-                                                                  title="Mark Absent"
+                                                                  title={
+                                                                    status === 'absent'
+                                                                      ? 'Status is recorded as Absent (Locked)'
+                                                                      : status !== 'unmarked'
+                                                                      ? 'Change status to Absent (Requires confirmation)'
+                                                                      : 'Mark Absent'
+                                                                  }
                                                                 >
                                                                   A
                                                                 </button>
@@ -1122,16 +1193,16 @@ export const AttendanceAdminPage: React.FC = () => {
                           </td>
                           <td className="py-3">
                             {rec.status === 'present' ? (
-                              <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                ✓ Present
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200" title="Locked: Status is recorded. Click another status to request change.">
+                                <Check size={10} strokeWidth={3} /> Present <Lock size={9} className="text-emerald-600/70 ml-0.5" />
                               </span>
                             ) : rec.status === 'late' ? (
-                              <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                ⏱ Late
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title="Locked: Status is recorded. Click another status to request change.">
+                                <Clock size={10} /> Late <Lock size={9} className="text-amber-600/70 ml-0.5" />
                               </span>
                             ) : (
-                              <span className="text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                                ✕ Absent
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200" title="Locked: Status is recorded. Click another status to request change.">
+                                <X size={10} strokeWidth={3} /> Absent <Lock size={9} className="text-rose-600/70 ml-0.5" />
                               </span>
                             )}
                           </td>
@@ -1141,26 +1212,32 @@ export const AttendanceAdminPage: React.FC = () => {
                           <td className="py-3 text-right">
                             <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
                               <button
-                                onClick={() => handleAdminToggleAttendance(rec.student_id, rec.slot_id, rec.session_date, 'present')}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                                  rec.status === 'present' ? 'bg-emerald-600 text-white' : 'text-[#737373]'
+                                type="button"
+                                onClick={() => handleAdminClickAttendance(rec.student_id, student?.full_name || 'Student', rec.slot_id, rec.session_date, rec.status, 'present', offering?.subject_name || offering?.subject)}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                  rec.status === 'present' ? 'bg-emerald-600 text-white shadow-xs' : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
                                 }`}
+                                title={rec.status === 'present' ? 'Status is recorded as Present (Locked)' : 'Change status to Present (Requires confirmation)'}
                               >
                                 P
                               </button>
                               <button
-                                onClick={() => handleAdminToggleAttendance(rec.student_id, rec.slot_id, rec.session_date, 'late')}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                                  rec.status === 'late' ? 'bg-amber-500 text-white' : 'text-[#737373]'
+                                type="button"
+                                onClick={() => handleAdminClickAttendance(rec.student_id, student?.full_name || 'Student', rec.slot_id, rec.session_date, rec.status, 'late', offering?.subject_name || offering?.subject)}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                  rec.status === 'late' ? 'bg-amber-500 text-white shadow-xs' : 'text-[#737373] hover:text-amber-700 hover:bg-white'
                                 }`}
+                                title={rec.status === 'late' ? 'Status is recorded as Late (Locked)' : 'Change status to Late (Requires confirmation)'}
                               >
                                 L
                               </button>
                               <button
-                                onClick={() => handleAdminToggleAttendance(rec.student_id, rec.slot_id, rec.session_date, 'absent')}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                                  rec.status === 'absent' ? 'bg-rose-600 text-white' : 'text-[#737373]'
+                                type="button"
+                                onClick={() => handleAdminClickAttendance(rec.student_id, student?.full_name || 'Student', rec.slot_id, rec.session_date, rec.status, 'absent', offering?.subject_name || offering?.subject)}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                  rec.status === 'absent' ? 'bg-rose-600 text-white shadow-xs' : 'text-[#737373] hover:text-rose-700 hover:bg-white'
                                 }`}
+                                title={rec.status === 'absent' ? 'Status is recorded as Absent (Locked)' : 'Change status to Absent (Requires confirmation)'}
                               >
                                 A
                               </button>
@@ -1269,6 +1346,72 @@ export const AttendanceAdminPage: React.FC = () => {
           onRefresh={fetchData}
         />
       )}
+
+      {/* ── ATTENDANCE CHANGE CONFIRMATION MODAL ── */}
+      <ConfirmModal
+        open={!!pendingChange}
+        onClose={() => setPendingChange(null)}
+        onConfirm={async () => {
+          if (pendingChange) {
+            await executeAttendanceUpdate(
+              pendingChange.studentId,
+              pendingChange.slotId,
+              pendingChange.sessionDate,
+              pendingChange.newStatus,
+              pendingChange.studentName
+            );
+            setPendingChange(null);
+          }
+        }}
+        title="Confirm Attendance Modification"
+        description={`Are you sure you want to change this student's attendance record from ${
+          pendingChange?.currentStatus
+            ? pendingChange.currentStatus.charAt(0).toUpperCase() + pendingChange.currentStatus.slice(1)
+            : ''
+        } to ${
+          pendingChange?.newStatus
+            ? pendingChange.newStatus.charAt(0).toUpperCase() + pendingChange.newStatus.slice(1)
+            : ''
+        }?`}
+        confirmLabel={`Change to ${
+          pendingChange?.newStatus
+            ? pendingChange.newStatus.charAt(0).toUpperCase() + pendingChange.newStatus.slice(1)
+            : 'Confirm'
+        }`}
+        danger={pendingChange?.newStatus === 'absent'}
+      >
+        {pendingChange && (
+          <div className="bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-3.5 flex items-center justify-between text-xs">
+            <div>
+              <div className="font-bold text-[#111111]">{pendingChange.studentName}</div>
+              <div className="text-[10px] text-[#737373] mt-0.5">
+                {pendingChange.subjectName ? `${pendingChange.subjectName} • ` : ''}Date: {pendingChange.sessionDate}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 font-bold">
+              <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold ${
+                pendingChange.currentStatus === 'present'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : pendingChange.currentStatus === 'late'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-rose-100 text-rose-800'
+              }`}>
+                {pendingChange.currentStatus}
+              </span>
+              <span className="text-[#A3A3A3]">→</span>
+              <span className={`px-2.5 py-0.5 rounded-md text-[10px] uppercase font-black ${
+                pendingChange.newStatus === 'present'
+                  ? 'bg-emerald-600 text-white'
+                  : pendingChange.newStatus === 'late'
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-rose-600 text-white'
+              }`}>
+                {pendingChange.newStatus}
+              </span>
+            </div>
+          </div>
+        )}
+      </ConfirmModal>
     </AdminShell>
   );
 };

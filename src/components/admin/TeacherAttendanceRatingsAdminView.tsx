@@ -462,7 +462,7 @@ export const TeacherAttendanceRatingsAdminView: React.FC<TeacherAttendanceRating
       <div className="flex items-start gap-3 p-3.5 bg-amber-50/60 border border-amber-200/80 rounded-xl text-xs text-amber-900">
         <ShieldCheck size={16} className="text-amber-700 shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <span className="font-bold">Confidential Quality Assurance Metric:</span> Student votes for teacher presence are strictly anonymous to teachers and other students. The aggregate presence ratio is computed as <code className="bg-amber-100/80 px-1 py-0.5 rounded font-mono font-bold text-amber-950">(Present Votes / Total Votes Cast) × 100%</code>, counting only students who actively cast a vote for that session.
+          <span className="font-bold">Confidential Quality Assurance:</span> Teacher presence ratings are based on anonymous student votes and stay confidential to protect student identity.
         </div>
       </div>
 
