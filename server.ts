@@ -134,10 +134,22 @@ Key Guidelines:
   app.post('/api/tests/upload', upload.single('file'), async (req, res) => {
     try {
       const file = req.file;
-      const { title, instructions, subject, grade, stream = 'all', total_marks = '100', due_date, teacher_name } = req.body;
+      const {
+        title,
+        instructions,
+        subject,
+        grade,
+        stream = 'all',
+        total_marks = '100',
+        due_date,
+        teacher_id,
+        teacher_name,
+        uploaded_by,
+        uploaded_by_name,
+      } = req.body;
 
-      if (!file || !title || !subject || !grade || !due_date) {
-        return res.status(400).json({ error: 'Missing required parameters (file, title, subject, grade, due_date)' });
+      if (!file || !title || !subject || !grade || !due_date || !teacher_name || !teacher_name.trim()) {
+        return res.status(400).json({ error: 'Missing required parameters (file, title, subject, grade, due_date, teacher_name)' });
       }
 
       const testId = `test_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -151,13 +163,15 @@ Key Guidelines:
 
       const testRecord = {
         id: testId,
-        title,
-        instructions: instructions || null,
+        title: title.trim(),
+        instructions: instructions ? instructions.trim() : null,
         subject,
         grade,
         stream,
-        teacher_id: null,
-        teacher_name: teacher_name || 'Faculty',
+        teacher_id: teacher_id || null,
+        teacher_name: teacher_name.trim(),
+        uploaded_by: uploaded_by || null,
+        uploaded_by_name: uploaded_by_name || null,
         file_url: `/api/tests/view/${testId}`,
         file_path: `tests/${grade}/${stream}/${subject}/${testId}_${file.originalname}`,
         file_type: mimeType.includes('image') ? 'image' : 'pdf',

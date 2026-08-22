@@ -162,6 +162,8 @@ export interface TestPaper {
   offering_id?: string | null;
   teacher_id?: string | null;
   teacher_name?: string | null;
+  uploaded_by?: string | null;
+  uploaded_by_name?: string | null;
   file_url: string;
   file_path?: string;
   file_type: TestFileType;

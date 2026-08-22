@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, FileText, AlertCircle, Loader2, CheckCircle2, Calendar, Award } from 'lucide-react';
+import {
+  X,
+  Upload,
+  FileText,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  Calendar,
+  Award,
+  User,
+} from 'lucide-react';
 import { GRADES, getStreamsForGrade, getSubjectsForStream } from '../../lib/taxonomy';
-import { uploadTestPaperToR2 } from '../../lib/db';
+import { uploadTestPaperToR2, getAllTeachers } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
-import type { TestPaper } from '../../types';
+import type { TestPaper, Teacher } from '../../types';
 
 interface TestUploadModalProps {
   isOpen: boolean;
@@ -20,7 +30,12 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   defaultGrade = '10',
   defaultSubject = '',
 }) => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState<boolean>(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [selectedTeacherName, setSelectedTeacherName] = useState<string>('');
+
   const [grade, setGrade] = useState<string>(defaultGrade);
   const [stream, setStream] = useState<string>('all');
   const [subject, setSubject] = useState<string>(defaultSubject);
@@ -28,7 +43,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   const [instructions, setInstructions] = useState<string>('');
   const [totalMarks, setTotalMarks] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>(() => {
-    // Default 3 days from now at 23:59
+    // Default 3 days from now
     const d = new Date();
     d.setDate(d.getDate() + 3);
     return d.toISOString().split('T')[0];
@@ -38,6 +53,56 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   const [uploading, setUploading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch teachers when modal is opened
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    setLoadingTeachers(true);
+
+    getAllTeachers()
+      .then((data) => {
+        if (!isMounted) return;
+        const activeList = data.filter((t) => t.is_active !== false);
+        const listToUse = activeList.length > 0 ? activeList : data;
+        setTeachers(listToUse);
+
+        // Role-based defaulting:
+        // If current user is a teacher, default to matching teacher or self
+        if (profile?.role === 'teacher') {
+          const userEmail = user?.email || (profile as any)?.email;
+          const matched = listToUse.find(
+            (t) =>
+              (profile.full_name && t.full_name.toLowerCase() === profile.full_name.toLowerCase()) ||
+              (userEmail && t.email && t.email.toLowerCase() === userEmail.toLowerCase()) ||
+              t.id === profile.id
+          );
+
+          if (matched) {
+            setSelectedTeacherId(matched.id);
+            setSelectedTeacherName(matched.full_name);
+          } else {
+            setSelectedTeacherId(profile.id || '');
+            setSelectedTeacherName(profile.full_name || '');
+          }
+        } else {
+          // If admin, leave empty so admin explicitly selects the teacher
+          setSelectedTeacherId('');
+          setSelectedTeacherName('');
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load teachers for test upload modal:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingTeachers(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, profile, user]);
 
   // Available streams for current grade
   const availableStreams = getStreamsForGrade(grade);
@@ -64,6 +129,19 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   }, [grade, stream, availableSubjects]);
 
   if (!isOpen) return null;
+
+  const handleTeacherChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedTeacherId(val);
+    const found = teachers.find((t) => t.id === val);
+    if (found) {
+      setSelectedTeacherName(found.full_name);
+    } else if (val && val === profile?.id) {
+      setSelectedTeacherName(profile.full_name || '');
+    } else if (!val) {
+      setSelectedTeacherName('');
+    }
+  };
 
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -103,6 +181,10 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
       setError('Please select a subject.');
       return;
     }
+    if (!selectedTeacherName.trim()) {
+      setError('Please select the subject teacher for this test paper.');
+      return;
+    }
     if (!dueDate) {
       setError('Please set a valid due date for test submission.');
       return;
@@ -135,7 +217,10 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
           stream,
           total_marks: parsedMarks,
           due_date: dueDate,
-          teacher_name: profile?.full_name || 'Faculty',
+          teacher_id: selectedTeacherId || null,
+          teacher_name: selectedTeacherName.trim(),
+          uploaded_by: profile?.id || null,
+          uploaded_by_name: profile?.full_name || null,
           file_type: fileType,
         },
         (pct) => setProgress(pct)
@@ -148,8 +233,10 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
         subject,
         grade,
         stream,
-        teacher_id: profile?.id || null,
-        teacher_name: profile?.full_name || 'Faculty',
+        teacher_id: selectedTeacherId || null,
+        teacher_name: selectedTeacherName.trim(),
+        uploaded_by: profile?.id || null,
+        uploaded_by_name: profile?.full_name || null,
         file_url: `/api/tests/view/test_${Date.now()}`,
         file_type: fileType,
         file_size_bytes: file.size,
@@ -191,21 +278,21 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-extrabold text-[#111111]">Upload Test Paper</h3>
-              <p className="text-xs text-[#737373]">Publish an assessment paper for students with due date and scoping.</p>
+              <p className="text-xs text-[#737373]">Publish an assessment paper for students with subject teacher assignment.</p>
             </div>
           </div>
           <button
             id="close-test-upload-btn"
             onClick={onClose}
             disabled={uploading}
-            className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5] transition-colors disabled:opacity-40"
+            className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5] transition-colors disabled:opacity-40 cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
             <div className="p-3.5 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl text-xs text-[#991B1B] flex items-start gap-2.5">
               <AlertCircle size={16} className="shrink-0 text-[#DC2626] mt-0.5" />
@@ -258,7 +345,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
             </div>
           </div>
 
-          {/* Subject & Total Marks */}
+          {/* Subject & Subject Teacher (Explicit decoupled teacher selection) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#111111] mb-1.5">
@@ -281,6 +368,44 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                Subject Teacher <span className="text-[#DC2626]">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="test-teacher-select"
+                  value={selectedTeacherId}
+                  onChange={handleTeacherChange}
+                  disabled={uploading || loadingTeachers}
+                  className="w-full h-10 px-3 pl-8 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
+                >
+                  <option value="">
+                    {loadingTeachers ? 'Loading teachers...' : '-- Select Subject Teacher --'}
+                  </option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.full_name}
+                    </option>
+                  ))}
+                  {/* If the current teacher profile isn't in teachers table, allow it */}
+                  {selectedTeacherName &&
+                    !teachers.some((t) => t.id === selectedTeacherId || t.full_name === selectedTeacherName) && (
+                      <option value={selectedTeacherId || 'custom'}>{selectedTeacherName}</option>
+                    )}
+                </select>
+                <User size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#737373] pointer-events-none" />
+              </div>
+              <p className="text-[11px] text-[#737373] mt-1">
+                {profile?.role === 'admin'
+                  ? 'Select the teacher who teaches this course.'
+                  : 'Assigned teacher displayed on student test papers.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Total Marks & Due Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#111111] mb-1.5">
                 Total Marks <span className="text-[#DC2626]">*</span>
               </label>
               <div className="relative">
@@ -295,26 +420,8 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
                   disabled={uploading}
                   className="w-full h-10 px-3 pl-8 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] placeholder:text-[#A3A3A3] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
                 />
-                <Award size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
+                <Award size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#737373]" />
               </div>
-            </div>
-          </div>
-
-          {/* Title and Due Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-[#111111] mb-1.5">
-                Test Title / Chapter <span className="text-[#DC2626]">*</span>
-              </label>
-              <input
-                type="text"
-                id="test-title-input"
-                placeholder="e.g. Chapter 4: Chemical Bonding Test"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                disabled={uploading}
-                className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
-              />
             </div>
 
             <div>
@@ -330,9 +437,25 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
                   disabled={uploading}
                   className="w-full h-10 px-3 pl-8 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
                 />
-                <Calendar size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
+                <Calendar size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#737373]" />
               </div>
             </div>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-bold text-[#111111] mb-1.5">
+              Test Title / Chapter <span className="text-[#DC2626]">*</span>
+            </label>
+            <input
+              type="text"
+              id="test-title-input"
+              placeholder="e.g. Chapter 4: Chemical Bonding Test"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={uploading}
+              className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
+            />
           </div>
 
           {/* Instructions */}
@@ -364,7 +487,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
               }}
               onDragLeave={() => setDragActive(false)}
               onDrop={handleFileDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all ${
+              className={`relative border-2 border-dashed rounded-2xl p-5 text-center transition-all ${
                 dragActive
                   ? 'border-[#111111] bg-[#F5F5F5]'
                   : file
@@ -393,9 +516,9 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="w-10 h-10 rounded-xl bg-[#E5E5E5] text-[#525252] flex items-center justify-center mx-auto">
-                    <Upload size={18} />
+                <div className="space-y-1.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#E5E5E5] text-[#525252] flex items-center justify-center mx-auto">
+                    <Upload size={17} />
                   </div>
                   <p className="text-xs font-bold text-[#111111]">
                     Drag & drop question paper here, or <span className="underline">browse files</span>
@@ -429,15 +552,15 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
               id="cancel-test-upload-btn"
               onClick={onClose}
               disabled={uploading}
-              className="px-4 py-2.5 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#525252] hover:bg-[#F5F5F5] transition-colors disabled:opacity-40"
+              className="px-4 py-2.5 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#525252] hover:bg-[#F5F5F5] transition-colors disabled:opacity-40 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               id="submit-test-upload-btn"
-              disabled={uploading || !file}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-extrabold transition-all shadow-sm disabled:opacity-40 disabled:hover:bg-[#111111]"
+              disabled={uploading || !file || !selectedTeacherName.trim()}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-extrabold transition-all shadow-xs disabled:opacity-40 disabled:hover:bg-[#111111] cursor-pointer"
             >
               {uploading ? (
                 <>

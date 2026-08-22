@@ -251,7 +251,7 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
 
             {submission.teacher_feedback && (
               <div className="pt-2 border-t border-[#DCFCE7] text-xs text-[#1F2937]">
-                <strong className="text-[#15803D]">Faculty Remarks: </strong>
+                <strong className="text-[#15803D]">Teacher's Remark: </strong>
                 <span>{submission.teacher_feedback}</span>
               </div>
             )}

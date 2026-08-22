@@ -1328,7 +1328,10 @@ export async function uploadTestPaperToR2(
     stream: string;
     total_marks: number;
     due_date: string;
-    teacher_name?: string;
+    teacher_id?: string | null;
+    teacher_name: string;
+    uploaded_by?: string | null;
+    uploaded_by_name?: string | null;
     file_type?: 'pdf' | 'image' | 'doc';
   },
   onProgress?: (pct: number) => void
@@ -1346,7 +1349,10 @@ export async function uploadTestPaperToR2(
     formData.append('stream', payload.stream || 'all');
     formData.append('total_marks', String(payload.total_marks || 100));
     formData.append('due_date', payload.due_date);
-    if (payload.teacher_name) formData.append('teacher_name', payload.teacher_name);
+    if (payload.teacher_id) formData.append('teacher_id', payload.teacher_id);
+    formData.append('teacher_name', payload.teacher_name);
+    if (payload.uploaded_by) formData.append('uploaded_by', payload.uploaded_by);
+    if (payload.uploaded_by_name) formData.append('uploaded_by_name', payload.uploaded_by_name);
     formData.append('file_type', payload.file_type || 'pdf');
 
     const xhr = new XMLHttpRequest();

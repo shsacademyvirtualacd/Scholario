@@ -9,6 +9,7 @@ import {
   Search,
   Loader2,
   FileCheck2,
+  User,
 } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
 import { getSubmissionsForTest, gradeTestSubmission, downloadSubmissionBlob } from '../../lib/db';
@@ -194,23 +195,29 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
 
         <h3 className="text-lg font-extrabold text-[#111111] mb-2">{selectedTest.title}</h3>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0] text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0] text-xs">
+          <div>
+            <span className="text-[11px] text-[#737373] block">Teacher</span>
+            <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
+              <User size={12} className="text-[#737373]" /> {selectedTest.teacher_name || 'Faculty'}
+            </span>
+          </div>
           <div>
             <span className="text-[11px] text-[#737373] block">Total Marks</span>
             <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
-              <Award size={12} className="text-[#A3A3A3]" /> {selectedTest.total_marks} Marks
+              <Award size={12} className="text-[#737373]" /> {selectedTest.total_marks} Marks
             </span>
           </div>
           <div>
             <span className="text-[11px] text-[#737373] block">Due Date</span>
             <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
-              <Calendar size={12} className="text-[#A3A3A3]" /> {new Date(selectedTest.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              <Calendar size={12} className="text-[#737373]" /> {new Date(selectedTest.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </span>
           </div>
           <div>
             <span className="text-[11px] text-[#737373] block">Submissions</span>
             <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
-              <Users size={12} className="text-[#A3A3A3]" /> {totalCount} Students
+              <Users size={12} className="text-[#737373]" /> {totalCount} Students
             </span>
           </div>
           <div>
@@ -343,7 +350,7 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
                   {/* Feedback preview if already graded & not currently editing */}
                   {isGraded && !isGradingActive && sub.teacher_feedback && (
                     <div className="mt-3 text-xs bg-[#F0FDF4] p-2.5 rounded-xl border border-[#BBF7D0] text-[#1F2937]">
-                      <strong className="text-[#15803D]">Feedback: </strong>
+                      <strong className="text-[#15803D]">Teacher's Remark: </strong>
                       <span>{sub.teacher_feedback}</span>
                     </div>
                   )}
@@ -372,7 +379,7 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
 
                       <div>
                         <label className="block text-[11px] font-bold text-[#111111] mb-1">
-                          Teacher Feedback / Remarks <span className="text-[#737373] font-normal">(optional)</span>
+                          Teacher's Remark <span className="text-[#737373] font-normal">(optional)</span>
                         </label>
                         <textarea
                           rows={2}

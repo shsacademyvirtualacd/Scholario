@@ -9,9 +9,11 @@ import {
   ChevronRight,
   Loader2,
   CheckCircle2,
+  User,
 } from 'lucide-react';
 import type { TestPaper } from '../../types';
 import { downloadTestBlob, deleteTestPaper } from '../../lib/db';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface TeacherTestCardProps {
   test: TestPaper;
@@ -29,7 +31,7 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
   onDelete,
 }) => {
   const [downloading, setDownloading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,21 +51,14 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`Are you sure you want to delete "${test.title}"? This will also remove all associated student submissions.`)) {
-      return;
-    }
-    setDeleting(true);
-    try {
-      await deleteTestPaper(test.id);
-      onDelete(test.id);
-    } catch (err: any) {
-      console.error('Delete error:', err);
-      alert(err.message || 'Failed to delete test paper.');
-    } finally {
-      setDeleting(false);
-    }
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    await deleteTestPaper(test.id);
+    onDelete(test.id);
   };
 
   const handleView = (e: React.MouseEvent) => {
@@ -105,8 +100,12 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
         {/* Title */}
         <h4 className="text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">{test.title}</h4>
 
-        {/* Marks & Date */}
+        {/* Marks, Teacher & Date */}
         <div className="flex items-center gap-3 text-xs text-[#737373] mb-3 flex-wrap">
+          <span className="flex items-center gap-1">
+            <User size={13} className="text-[#A3A3A3]" />
+            {test.teacher_name || 'Faculty'}
+          </span>
           <span className="flex items-center gap-1 font-semibold text-[#111111]">
             <Award size={13} className="text-[#A3A3A3]" />
             {test.total_marks} Total Marks
@@ -155,18 +154,29 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
           </button>
           <button
             id={`delete-test-btn-${test.id}`}
-            onClick={handleDelete}
-            disabled={deleting}
+            onClick={handleDeleteClick}
             title="Delete Test Paper"
-            className="p-1.5 rounded-lg bg-[#FAFAFA] hover:bg-[#FEE2E2] text-[#DC2626] transition-colors border border-[#E5E5E5] disabled:opacity-40"
+            className="p-1.5 rounded-lg bg-[#FAFAFA] hover:bg-[#FEE2E2] text-[#DC2626] transition-colors border border-[#E5E5E5] cursor-pointer"
           >
-            {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            <Trash2 size={13} />
           </button>
           <div className="text-[#A3A3A3] pl-0.5">
             <ChevronRight size={15} className={isSelected ? 'text-[#111111]' : ''} />
           </div>
         </div>
       </div>
+
+      {/* Custom In-App Delete Confirmation Modal */}
+      <ConfirmModal
+        open={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Test Paper?"
+        description={`Are you sure you want to delete "${test.title}"? This will also permanently remove all associated student submissions.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger={true}
+      />
     </div>
   );
 };

@@ -73,6 +73,7 @@ export const TeacherTestsPage: React.FC = () => {
       !q ||
       t.title.toLowerCase().includes(q) ||
       t.subject.toLowerCase().includes(q) ||
+      (t.teacher_name || '').toLowerCase().includes(q) ||
       (t.instructions || '').toLowerCase().includes(q);
 
     return matchesGrade && matchesSubject && matchesSearch;

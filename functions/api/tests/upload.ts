@@ -44,11 +44,14 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   const stream = (formData.get('stream') as string | null) || 'all';
   const total_marks = parseInt(formData.get('total_marks') as string || '100', 10);
   const due_date = formData.get('due_date') as string | null;
+  const teacher_id = formData.get('teacher_id') as string | null;
   const teacher_name = formData.get('teacher_name') as string | null;
+  const uploaded_by = (formData.get('uploaded_by') as string | null) || userId;
+  const uploaded_by_name = formData.get('uploaded_by_name') as string | null;
   const file_type = (formData.get('file_type') as 'pdf' | 'image' | 'doc' | null) || 'pdf';
 
-  if (!file || !title || !subject || !grade || !due_date) {
-    return new Response(JSON.stringify({ error: 'Missing required test upload parameters (file, title, subject, grade, due_date)' }), {
+  if (!file || !title || !subject || !grade || !due_date || !teacher_name || !teacher_name.trim()) {
+    return new Response(JSON.stringify({ error: 'Missing required test upload parameters (file, title, subject, grade, due_date, teacher_name)' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -105,8 +108,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     subject,
     grade,
     stream,
-    teacher_id: userId,
-    teacher_name: teacher_name || 'Faculty',
+    teacher_id: teacher_id || null,
+    teacher_name: teacher_name.trim(),
+    uploaded_by: uploaded_by || userId,
+    uploaded_by_name: uploaded_by_name || null,
     file_url: viewUrl,
     file_path: storageKey,
     file_type,
