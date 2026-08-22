@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Camera, Check, AlertCircle, BookOpen, Calendar } from 'lucide-react';
+import { Mail, Camera, BookOpen, Calendar } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -8,7 +8,7 @@ import { useMobile } from '../../hooks/useMobile';
 import type { ClassOffering } from '../../types';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, user, refreshProfile } = useAuth();
+  const { profile, user } = useAuth();
   const isMobile = useMobile();
   
   // Local info states
@@ -19,10 +19,6 @@ export const ProfilePage: React.FC = () => {
   // Classes
   const [classes, setClasses] = useState<ClassOffering[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
-
-  // Validation / Feedback states
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     if (profile) {

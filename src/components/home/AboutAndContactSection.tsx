@@ -36,7 +36,7 @@ export const AboutAndContactSection: React.FC<AboutAndContactSectionProps> = ({
                 <span style={{ color: '#D4A017' }}>structured education</span>
               </h2>
               <p className="text-[#525252] text-base md:text-lg leading-relaxed max-w-2xl font-medium">
-                Scholario was built on a simple belief: quality education shouldn't be a privilege reserved for those who can afford expensive infrastructure. Built for SHS Academy, Scholario brings the clarity and structure of a modern institution to every student, without the cost or complexity usually attached to it.
+                Scholario was built on a simple belief: quality education shouldn't be a privilege reserved for those who can afford expensive infrastructure. Built for SHS Virtual Academy, Scholario brings the clarity and structure of a modern institution to every student, without the cost or complexity usually attached to it.
               </p>
             </div>
             

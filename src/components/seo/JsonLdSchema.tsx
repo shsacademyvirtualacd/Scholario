@@ -223,7 +223,7 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
             name: 'What is Scholario?',
             acceptedAnswer: {
               '@type': 'Answer',
-              text: 'Scholario is a modern Learning Management System built exclusively for and operated on behalf of SHS Academy. It serves as a unified portal connecting students, parents, teachers, and administration to streamline the educational experience.',
+              text: 'Scholario is a modern Learning Management System built exclusively for and operated on behalf of SHS Virtual Academy. It serves as a unified portal connecting students, parents, teachers, and administration to streamline the educational experience.',
             },
           },
           {
@@ -231,7 +231,7 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
             name: 'Who is eligible to use Scholario?',
             acceptedAnswer: {
               '@type': 'Answer',
-              text: 'Scholario access is available to enrolled students, parents/guardians, teachers, and staff members affiliated with SHS Academy for FBISE secondary and higher secondary education.',
+              text: 'Scholario access is available to enrolled students, parents/guardians, teachers, and staff members affiliated with SHS Virtual Academy for FBISE secondary and higher secondary education.',
             },
           },
           {
@@ -247,7 +247,7 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
             name: 'How are fee payments tracked and verified?',
             acceptedAnswer: {
               '@type': 'Answer',
-              text: "Scholario uses a secure manual fee verification process. Payers transfer school fees directly to SHS Academy's bank or mobile wallet accounts, then submit the payment reference or receipt photo inside the portal for administrative verification.",
+              text: "Scholario uses a secure manual fee verification process. Payers transfer school fees directly to SHS Virtual Academy's bank or mobile wallet accounts, then submit the payment reference or receipt photo inside the portal for administrative verification.",
             },
           },
           {

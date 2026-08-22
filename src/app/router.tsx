@@ -34,6 +34,11 @@ const TeacherProfilePage = lazy(() => import('../pages/teacher/ProfilePage'));
 const StudentCheckoutPage = lazy(() => import('../pages/student/StudentCheckoutPage'));
 const AdminFeesPage = lazy(() => import('../pages/admin/AdminFeesPage'));
 
+// ─── Sage AI Pages (lazy) ───────────────────
+const StudentSagePage = lazy(() => import('../pages/student/StudentSagePage'));
+const TeacherSagePage = lazy(() => import('../pages/teacher/TeacherSagePage'));
+const AdminSagePage   = lazy(() => import('../pages/admin/AdminSagePage'));
+
 // ─── Student sub-pages (lazy) ────────────────
 const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
 const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
@@ -132,6 +137,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="student"><StudentAnnouncementsPage /></ProtectedRoute>}
           />
           <Route
+            path="/student/sage"
+            element={<ProtectedRoute requiredRole="student"><StudentSagePage /></ProtectedRoute>}
+          />
+          <Route
             path="/student/checkout"
             element={<ProtectedRoute requiredRole="student"><StudentCheckoutPage /></ProtectedRoute>}
           />
@@ -174,6 +183,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="admin"><AdminAnnouncementsPage /></ProtectedRoute>}
           />
           <Route
+            path="/admin/sage"
+            element={<ProtectedRoute requiredRole="admin"><AdminSagePage /></ProtectedRoute>}
+          />
+          <Route
             path="/admin/profile"
             element={<ProtectedRoute requiredRole="admin"><AdminProfilePage /></ProtectedRoute>}
           />
@@ -202,6 +215,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/teacher/announcements"
             element={<ProtectedRoute requiredRole="teacher"><TeacherAnnouncementsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/sage"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherSagePage /></ProtectedRoute>}
           />
           <Route
             path="/teacher/profile"

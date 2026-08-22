@@ -267,7 +267,7 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <div className="mt-5 p-3.5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl text-[10px] font-bold text-[#737373] text-center">
-                Please contact the SHS Academy Administrator if you need to update your registered course or subject combos.
+                Please contact the SHS Virtual Academy Administrator if you need to update your registered course or subject combos.
               </div>
             </div>
 

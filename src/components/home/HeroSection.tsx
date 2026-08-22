@@ -54,7 +54,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
               <Sparkles size={10} />
             </span>
             <span className="text-sm font-medium text-[#525252]">
-              Built for SHS Academy
+              Built for SHS Virtual Academy
             </span>
           </div>
         </div>
@@ -67,7 +67,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
           <h1 className="text-5xl md:text-6xl lg:text-[72px] font-extrabold tracking-tight text-[#111111] leading-[1.03] mb-6">
             The Official Virtual Academy Portal for{' '}
             <span className="relative inline-block">
-              <span style={{ color: '#F4C430' }}>SHS Academy</span>
+              <span style={{ color: '#F4C430' }}>SHS Virtual Academy</span>
               <svg
                 className="absolute w-full"
                 style={{ bottom: '-6px', left: 0 }}
@@ -87,7 +87,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
             </span>
           </h1>
           <p className="text-xl md:text-2xl text-[#737373] font-normal leading-relaxed max-w-3xl mx-auto">
-            Built exclusively for SHS Academy students — live FBISE 9th–12th classes, subject note vaults, and daily timetables in one private learning hub.
+            Built exclusively for SHS Virtual Academy students — live FBISE 9th–12th classes, subject note vaults, and daily timetables in one private learning hub.
           </p>
         </div>
 

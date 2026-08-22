@@ -4,11 +4,11 @@ import { Plus, Minus } from 'lucide-react';
 const faqs = [
   {
     q: 'What is Scholario?',
-    a: 'Scholario is a modern Learning Management System built exclusively for and operated on behalf of SHS Academy. It serves as a unified portal connecting students, parents, teachers, and administration to streamline the educational experience.',
+    a: 'Scholario is a modern Learning Management System built exclusively for and operated on behalf of SHS Virtual Academy. It serves as a unified portal connecting students, parents, teachers, and administration to streamline the educational experience.',
   },
   {
     q: 'Who is eligible to use Scholario?',
-    a: 'Currently, Scholario is a single-institution platform. Access is limited to enrolled students, parents/guardians, teachers, and staff members affiliated with SHS Academy. It is not open to self-registration by the general public.',
+    a: 'Currently, Scholario is a single-institution platform. Access is limited to enrolled students, parents/guardians, teachers, and staff members affiliated with SHS Virtual Academy. It is not open to self-registration by the general public.',
   },
   {
     q: 'How does the Parent Portal work?',
@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: 'How are fee payments tracked and verified?',
-    a: 'Scholario uses a secure manual fee verification process. Payers transfer school fees directly to SHS Academy\'s bank or mobile wallet accounts, then submit the payment reference or receipt photo inside the portal for administrative verification.',
+    a: 'Scholario uses a secure manual fee verification process. Payers transfer school fees directly to SHS Virtual Academy\'s bank or mobile wallet accounts, then submit the payment reference or receipt photo inside the portal for administrative verification.',
   },
   {
     q: 'Are live classes hosted directly on Scholario?',

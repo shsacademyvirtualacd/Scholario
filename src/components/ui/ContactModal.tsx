@@ -76,12 +76,16 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
 
     // Use EmailJS to send the email directly
     // Note: User must configure their EmailJS account and update .env variables
+    const envServiceId = (import.meta as any).env?.VITE_EMAILJS_SERVICE_ID || 'YOUR_SERVICE_ID';
+    const envTemplateId = (import.meta as any).env?.VITE_EMAILJS_TEMPLATE_ID || 'YOUR_TEMPLATE_ID';
+    const envPublicKey = (import.meta as any).env?.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY';
+
     emailjs.send(
-      import.meta.env.VITE_EMAILJS_SERVICE_ID || 'YOUR_SERVICE_ID',
-      import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'YOUR_TEMPLATE_ID',
+      envServiceId,
+      envTemplateId,
       templateParams,
       {
-        publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY'
+        publicKey: envPublicKey
       }
     )
     .then((response) => {
@@ -103,7 +107,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
       // But for now, since it might fail without correct keys, we can just log it
       // or show a success if we're in a dev mode without keys.
       // If we don't have keys, let's just simulate success for the visual prototype
-      if (import.meta.env.VITE_EMAILJS_SERVICE_ID) {
+      if ((import.meta as any).env?.VITE_EMAILJS_SERVICE_ID) {
          alert('Failed to send message. Please verify your EmailJS keys or try again later.');
       } else {
          console.log('Simulating success since no EmailJS keys were provided.');
@@ -205,7 +209,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
             </div>
 
             <div className="pt-6 border-t border-[#E5E5E5] text-xs text-[#A3A3A3] leading-relaxed">
-              SHS Academy technical administration portal. For admissions or fee disputes, please contact the admin office directly.
+              SHS Virtual Academy technical administration portal. For admissions or fee disputes, please contact the admin office directly.
             </div>
           </div>
 
@@ -218,7 +222,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
                 </div>
                 <h3 className="text-xl font-extrabold text-[#111111]">Message Sent!</h3>
                 <p className="text-sm text-[#737373] leading-relaxed">
-                  Thank you for reaching out. A support representative or developer from the SHS Academy team will respond to your query shortly.
+                  Thank you for reaching out. A support representative or developer from the SHS Virtual Academy team will respond to your query shortly.
                 </p>
                 <button
                   onClick={() => setIsSuccess(false)}

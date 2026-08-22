@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen, CheckCircle2 } from 'lucide-react';
 import type { ClassOffering } from '../../../types';
 import { getTaxonomy, uploadNoteFileToR2 } from '../../../lib/db';
-import { supabase } from '../../../lib/supabase';
 import { getSubjectsForStream } from '../../../lib/db';
 import { toast } from 'sonner';
 import { getStreamsForGrade, GRADES } from '../../../lib/taxonomy';

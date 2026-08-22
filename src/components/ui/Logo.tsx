@@ -9,19 +9,23 @@ interface LogoProps {
 
 const Logo: React.FC<LogoProps> = ({ size = 'md', variant = 'full', darkMode = false, className = '' }) => {
   const sizes = {
-    sm: { tile: 32, iconSize: 16, text: 'text-lg', sub: 'text-[8px]' },
-    md: { tile: 40, iconSize: 20, text: 'text-xl', sub: 'text-[9px]' },
-    lg: { tile: 52, iconSize: 26, text: 'text-3xl', sub: 'text-[10px]' },
+    sm: { tile: 32, text: 'text-lg', sub: 'text-[8px]' },
+    md: { tile: 40, text: 'text-xl', sub: 'text-[9px]' },
+    lg: { tile: 52, text: 'text-3xl', sub: 'text-[10px]' },
   };
 
-  const { tile, iconSize, text, sub } = sizes[size];
+  const { tile, text, sub } = sizes[size];
 
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
       {/* Icon tile: new logo */}
       <img
+        id="scholario-logo-img"
         src="/logo.svg"
         alt="Scholario Logo"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = '/favicon.svg';
+        }}
         style={{
           width: tile,
           height: tile,

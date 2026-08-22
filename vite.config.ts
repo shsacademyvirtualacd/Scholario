@@ -17,9 +17,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
-    strictPort: true,
-    // Note: Vite's appType='spa' handles history fallback for paths like /student or /teacher out-of-the-box
+    host: '0.0.0.0',
+    port: 3000,
+    allowedHosts: true,
   },
   build: {
     // Cloudflare Pages — output to dist/

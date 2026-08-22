@@ -135,7 +135,7 @@ const LoginPage: React.FC = () => {
             style={{ background: 'rgba(244,196,48,0.12)', border: '1px solid rgba(244,196,48,0.2)' }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#F4C430]" />
-            <span className="text-xs font-semibold text-[#F4C430]">SHS Academy — Scholario</span>
+            <span className="text-xs font-semibold text-[#F4C430]">SHS Virtual Academy — Scholario</span>
           </div>
           <h2 className="text-4xl font-extrabold text-white tracking-tight leading-tight mb-5">
             Learn smarter,<br />

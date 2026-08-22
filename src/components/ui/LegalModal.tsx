@@ -155,10 +155,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 <section id="intro" className="space-y-4">
                   <h3 className="text-xl font-bold text-[#111111]">1. Introduction</h3>
                   <p className="leading-relaxed">
-                    Scholario ("<strong>Scholario</strong>," "<strong>we</strong>," "<strong>us</strong>," or "<strong>our</strong>") is a Learning Management System built exclusively for and operated on behalf of <strong>SHS Academy</strong> ("the Academy"). This Privacy Policy explains what information we collect from students, parents/guardians, and staff who use Scholario, how we use it, who we share it with, and what rights you have over it.
+                    Scholario ("<strong>Scholario</strong>," "<strong>we</strong>," "<strong>us</strong>," or "<strong>our</strong>") is a Learning Management System built exclusively for and operated on behalf of <strong>SHS Virtual Academy</strong> ("the Academy"). This Privacy Policy explains what information we collect from students, parents/guardians, and staff who use Scholario, how we use it, who we share it with, and what rights you have over it.
                   </p>
                   <p className="leading-relaxed">
-                    Scholario is currently a single-institution platform serving SHS Academy only. It is not a public product and is not available to other schools or the general public at this time.
+                    Scholario is currently a single-institution platform serving SHS Virtual Academy only. It is not a public product and is not available to other schools or the general public at this time.
                   </p>
                   <p className="leading-relaxed">
                     By creating an account or otherwise using Scholario, you (or, if you are a minor, your parent/guardian on your behalf) agree to the practices described in this Policy.
@@ -171,11 +171,11 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 <section id="responsible" className="space-y-4">
                   <h3 className="text-xl font-bold text-[#111111]">2. Who Is Responsible for Your Data</h3>
                   <p className="leading-relaxed">
-                    SHS Academy is the data controller for information processed through Scholario — the Academy determines what data is collected and why, in its capacity as an educational institution. Scholario's development team acts as the technical operator and data processor on the Academy's behalf.
+                    SHS Virtual Academy is the data controller for information processed through Scholario — the Academy determines what data is collected and why, in its capacity as an educational institution. Scholario's development team acts as the technical operator and data processor on the Academy's behalf.
                   </p>
                   <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2 text-sm">
                     <span className="font-bold text-[#111111]">Direct inquiries to:</span>
-                    <p className="text-[#525252]">SHS Academy admin contact email/phone.</p>
+                    <p className="text-[#525252]">SHS Virtual Academy admin contact email/phone.</p>
                   </div>
                 </section>
 
@@ -252,7 +252,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                     Many Scholario users are minors. We treat the protection of student data as a priority:
                   </p>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li>Student accounts are created and managed under SHS Academy's authority, not through open self-registration.</li>
+                    <li>Student accounts are created and managed under SHS Virtual Academy's authority, not through open self-registration.</li>
                     <li>We do not use student data for advertising, and we do not sell or rent student data to any third party, under any circumstance.</li>
                     <li>Data collected from students is limited to what is necessary for education administration — attendance, grades, assignments, fee status, and communication relevant to schooling.</li>
                     <li>Parents/guardians may request access to, correction of, or an explanation of their child's data by contacting the Academy (Section 2).</li>
@@ -325,7 +325,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                   </div>
 
                   <p className="leading-relaxed">
-                    We do not sell personal data to any third party. Data is only shared with the providers above as necessary to operate the platform, and with SHS Academy staff on a need-to-know basis appropriate to their role.
+                    We do not sell personal data to any third party. Data is only shared with the providers above as necessary to operate the platform, and with SHS Virtual Academy staff on a need-to-know basis appropriate to their role.
                   </p>
                   <p className="text-xs text-[#737373] leading-relaxed">
                     <strong>Note on data location:</strong> Supabase and Cloudflare may store or process data on servers located outside Pakistan, depending on the hosting region selected for the project. If this applies, data leaving Pakistan is limited to what's needed for these providers to deliver hosting, database, and CDN services, under their respective data processing agreements.
@@ -420,7 +420,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                   </p>
                   
                   <div className="p-5 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-3">
-                    <p className="font-extrabold text-[#111111]">SHS Academy</p>
+                    <p className="font-extrabold text-[#111111]">SHS Virtual Academy</p>
                     <div className="space-y-2 text-sm text-[#525252]">
                       <div className="flex items-center gap-2">
                         <Mail size={14} className="text-[#D4A017]" />
@@ -435,7 +435,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 </section>
 
                 <div className="mt-10 p-5 rounded-2xl bg-[#FDF3C8]/40 border border-[#FDF3C8] text-xs text-[#D4A017] italic leading-relaxed">
-                  This Privacy Policy is intended to accurately describe Scholario's current data practices as a single-institution platform for SHS Academy. It is a working document drafted for an early-stage product and has not been reviewed by a licensed lawyer. Before Scholario scales beyond SHS Academy, or before payment volume becomes significant, it is strongly recommended that this document be reviewed by legal counsel familiar with Pakistani data protection and education law.
+                  This Privacy Policy is intended to accurately describe Scholario's current data practices as a single-institution platform for SHS Virtual Academy. It is a working document drafted for an early-stage product and has not been reviewed by a licensed lawyer. Before Scholario scales beyond SHS Virtual Academy, or before payment volume becomes significant, it is strongly recommended that this document be reviewed by legal counsel familiar with Pakistani data protection and education law.
                 </div>
 
               </div>
@@ -447,7 +447,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 <section id="acceptance" className="space-y-4">
                   <h3 className="text-xl font-bold text-[#111111]">1. Acceptance of Terms</h3>
                   <p className="leading-relaxed">
-                    These Terms of Conditions ("<strong>Terms</strong>") govern access to and use of Scholario (the "<strong>Platform</strong>"), a Learning Management System built and operated exclusively for <strong>SHS Academy</strong> ("the <strong>Academy</strong>"). By creating an account, logging in, or otherwise using the Platform, you agree to be bound by these Terms. If you are a minor, your parent or legal guardian accepts these Terms on your behalf and is responsible for your compliance with them.
+                    These Terms of Conditions ("<strong>Terms</strong>") govern access to and use of Scholario (the "<strong>Platform</strong>"), a Learning Management System built and operated exclusively for <strong>SHS Virtual Academy</strong> ("the <strong>Academy</strong>"). By creating an account, logging in, or otherwise using the Platform, you agree to be bound by these Terms. If you are a minor, your parent or legal guardian accepts these Terms on your behalf and is responsible for your compliance with them.
                   </p>
                   <p className="leading-relaxed">
                     If you do not agree to these Terms, do not use the Platform.
@@ -460,7 +460,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 <section id="description" className="space-y-4">
                   <h3 className="text-xl font-bold text-[#111111]">2. Description of the Service</h3>
                   <p className="leading-relaxed">
-                    Scholario is a single-tenant platform built solely for SHS Academy — it is not a general-purpose or multi-institution service, and access is limited to individuals affiliated with the Academy (students, parents/guardians, teachers/staff, and administrators).
+                    Scholario is a single-tenant platform built solely for SHS Virtual Academy — it is not a general-purpose or multi-institution service, and access is limited to individuals affiliated with the Academy (students, parents/guardians, teachers/staff, and administrators).
                   </p>
                   <p className="leading-relaxed">
                     The Platform provides:
@@ -484,7 +484,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 <section id="eligibility" className="space-y-4">
                   <h3 className="text-xl font-bold text-[#111111]">3. Eligibility & Accounts</h3>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li>Student and parent/guardian accounts are provisioned in connection with enrollment at SHS Academy; the Platform is not open to public self-registration.</li>
+                    <li>Student and parent/guardian accounts are provisioned in connection with enrollment at SHS Virtual Academy; the Platform is not open to public self-registration.</li>
                     <li>Accounts are accessed via Google OAuth sign-in. You are responsible for maintaining the security of the Google account linked to your Scholario access.</li>
                     <li>You must provide accurate information when setting up or updating your account and promptly inform the Academy of any changes.</li>
                     <li>Parent/guardian accounts are linked to a specific student's record at the Academy's discretion and provide read-only visibility into that student's academic information.</li>
@@ -650,7 +650,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                     For questions about these Terms:
                   </p>
                   <div className="p-5 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-3">
-                    <p className="font-extrabold text-[#111111]">SHS Academy</p>
+                    <p className="font-extrabold text-[#111111]">SHS Virtual Academy</p>
                     <div className="space-y-2 text-sm text-[#525252]">
                       <div className="flex items-center gap-2">
                         <Mail size={14} className="text-[#D4A017]" />
@@ -665,7 +665,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 </section>
 
                 <div className="mt-10 p-5 rounded-2xl bg-[#FDF3C8]/40 border border-[#FDF3C8] text-xs text-[#D4A017] italic leading-relaxed">
-                  These Terms of Conditions are drafted specifically for Scholario's current single-institution, manual-payment stage. They are a working document prepared for an early-stage product and have not been reviewed by a licensed lawyer. Before Scholario scales beyond SHS Academy, integrates a payment gateway, or handles meaningful transaction volume, it is strongly recommended that this document be reviewed by legal counsel familiar with Pakistani contract, consumer protection, and education law.
+                  These Terms of Conditions are drafted specifically for Scholario's current single-institution, manual-payment stage. They are a working document prepared for an early-stage product and have not been reviewed by a licensed lawyer. Before Scholario scales beyond SHS Virtual Academy, integrates a payment gateway, or handles meaningful transaction volume, it is strongly recommended that this document be reviewed by legal counsel familiar with Pakistani contract, consumer protection, and education law.
                 </div>
 
               </div>

@@ -83,7 +83,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
               Our Core Belief
             </span>
             <p className="text-lg md:text-xl font-medium leading-relaxed max-w-2xl">
-              Quality education shouldn't be a privilege reserved for those who can afford expensive infrastructure. Built for SHS Academy, Scholario brings the clarity and structure of a modern institution to every student, without the cost or complexity.
+              Quality education shouldn't be a privilege reserved for those who can afford expensive infrastructure. Built for SHS Virtual Academy, Scholario brings the clarity and structure of a modern institution to every student, without the cost or complexity.
             </p>
           </div>
 
@@ -137,17 +137,17 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
 
           <hr className="border-[#F5F5F5]" />
 
-          {/* Grid: Built for SHS Academy & The Bigger Picture */}
+          {/* Grid: Built for SHS Virtual Academy & The Bigger Picture */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
-            {/* Built for SHS Academy */}
+            {/* Built for SHS Virtual Academy */}
             <div className="p-6 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-3">
               <div className="flex items-center gap-2 text-[#111111]">
                 <Target size={16} className="text-[#D4A017]" />
-                <h4 className="font-bold text-base">Built for SHS Academy</h4>
+                <h4 className="font-bold text-base">Built for SHS Virtual Academy</h4>
               </div>
               <p className="text-xs text-[#525252] leading-relaxed">
-                Scholario is currently built exclusively for SHS Academy, managing daily attendance, schedules, resources, fee logs, grades, and teacher-parent-student chats. Every feature is shaped around the Academy's real needs rather than generic templates.
+                Scholario is currently built exclusively for SHS Virtual Academy, managing daily attendance, schedules, resources, fee logs, grades, and teacher-parent-student chats. Every feature is shaped around the Academy's real needs rather than generic templates.
               </p>
               <p className="text-xs text-[#525252] leading-relaxed">
                 By serving one institution properly first, we establish a robust framework of care that can eventually scale to help more classrooms.

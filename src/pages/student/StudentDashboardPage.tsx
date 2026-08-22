@@ -7,7 +7,7 @@ import {
 import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getAttendanceForStudent, computeAttendanceStreak } from '../../lib/db';
+import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getAttendanceForStudent } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';

@@ -13,6 +13,7 @@ import {
   DollarSign,
   UserCheck,
   Coins,
+  Sparkles,
   Loader2
 } from 'lucide-react';
 import Logo from '../ui/Logo';
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: Users,           label: 'Students',   path: '/admin/students' },
   { icon: BookMarked,      label: 'Notes',      path: '/admin/notes' },
   { icon: Bell,            label: 'Announcements', path: '/admin/announcements' },
+  { icon: Sparkles,        label: 'Sage',       path: '/admin/sage' },
   { icon: DollarSign,      label: 'Prices',     path: '/admin/prices' },
   { icon: Coins,           label: 'Fees',       path: '/admin/fees' },
 ];

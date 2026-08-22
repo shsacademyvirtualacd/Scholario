@@ -7,9 +7,8 @@ import {
   Bell,
   LogOut,
   Menu,
-  Search,
   X,
-  User,
+  Sparkles,
   Loader2
 } from 'lucide-react';
 import Logo from '../ui/Logo';
@@ -25,6 +24,7 @@ const NAV_ITEMS = [
   { icon: BookMarked,      label: 'Notes Manager', path: '/teacher/notes' },
   { icon: Calendar,        label: 'Schedule',   path: '/teacher/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/teacher/announcements' },
+  { icon: Sparkles,        label: 'Sage',       path: '/teacher/sage' },
 ];
 
 export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -6,16 +6,13 @@ import {
   BookMarked,
   LogOut,
   Bell,
-  Search,
   Menu,
-  Clock,
   CreditCard,
+  Sparkles,
   Loader2
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getOfferingsForStudent, getSlotsForStudent, getNotesForOfferings } from '../../lib/db';
-import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { NotificationBell } from '../common/NotificationBell';
 
 interface StudentShellProps {
@@ -34,9 +31,9 @@ const NAV_ITEMS: NavItem[] = [
   { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
   { icon: Calendar,        label: 'Schedule',   path: '/student/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/student/announcements' },
+  { icon: Sparkles,        label: 'Sage',       path: '/student/sage' },
   { icon: CreditCard,      label: 'Fee Checkout', path: '/student/checkout' },
 ];
-const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   const { profile, signOut, feeStatus } = useAuth();
@@ -55,90 +52,12 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
     }
   };
 
-  // Universal Search States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [searchResults, setSearchResults] = useState<{
-    notes: any[];
-    classes: any[];
-  }>({ notes: [], classes: [] });
-
   const activeNav = location.pathname;
-  const [enrolledSubjects, setEnrolledSubjects] = useState<string[]>([]);
-  const [studentSlots, setStudentSlots] = useState<any[]>([]);
-  const [studentNotes, setStudentNotes] = useState<any[]>([]);
-
-  // Fetch enrolled subjects, slots, and notes dynamically
-  useEffect(() => {
-    if (profile?.id) {
-      getOfferingsForStudent(profile.id)
-        .then((offs) => {
-          setEnrolledSubjects(getEnrolledSubjectsForStudent(profile, offs));
-          const ids = offs.map(o => o.id);
-          return getNotesForOfferings(ids);
-        })
-        .then(setStudentNotes)
-        .catch(console.error);
-
-      getSlotsForStudent(profile.id)
-        .then(setStudentSlots)
-        .catch(console.error);
-    }
-  }, [profile?.id]);
-
-  // Handle live universal search querying
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults({ notes: [], classes: [] });
-      return;
-    }
-
-    const query = searchQuery.toLowerCase();
-
-    // 1. Filter notes matching query and enrolled subjects
-    const matchedNotes = studentNotes.filter(note => {
-      const subject = note.offering?.subject;
-      if (!subject || !enrolledSubjects.includes(subject)) return false;
-
-      return (
-        (note.chapter_name || '').toLowerCase().includes(query) ||
-        (note.title || '').toLowerCase().includes(query) ||
-        subject.toLowerCase().includes(query)
-      );
-    }).slice(0, 4);
-
-    // 2. Filter classes matching query and enrolled subjects
-    const matchedClasses = studentSlots.filter(slot => {
-      const subject = slot.custom_title || slot.offering?.subject;
-      if (!subject || (!slot.custom_title && !enrolledSubjects.includes(subject))) return false;
-
-      return (
-        subject.toLowerCase().includes(query) ||
-        (slot.offering?.teacher?.full_name && slot.offering.teacher.full_name.toLowerCase().includes(query)) ||
-        (slot.room_or_link && slot.room_or_link.toLowerCase().includes(query))
-      );
-    }).slice(0, 4);
-
-    setSearchResults({ notes: matchedNotes, classes: matchedClasses });
-  }, [searchQuery, enrolledSubjects, studentNotes, studentSlots]);
-
 
   const handleNav = (path: string) => {
     setSidebarOpen(false);
     navigate(path);
   };
-
-  const handleSearchResultClick = (type: 'note' | 'class', item: any) => {
-    setSearchQuery('');
-    setSearchFocused(false);
-    if (type === 'note') {
-      navigate(`/student/notes?search=${encodeURIComponent(item.chapter_name)}`);
-    } else {
-      navigate(`/student/schedule?day=${item.day_of_week}`);
-    }
-  };
-
-  const hasSearchResults = searchResults.notes.length > 0 || searchResults.classes.length > 0;
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>

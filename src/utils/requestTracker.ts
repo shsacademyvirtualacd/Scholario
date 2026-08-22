@@ -30,27 +30,64 @@ export const decrementSuspense = () => {
 
 export const getPendingCount = () => activeFetches + activeSuspense;
 
-// Intercept window.fetch to track Supabase / data requests
-if (typeof window !== 'undefined') {
-  const originalFetch = window.fetch;
-  window.fetch = async function (...args) {
-    const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request).url;
-    
-    // Track Supabase queries
-    const isTracked = url.includes('.supabase.co');
-    
+export const trackedFetch: typeof fetch = async (...args) => {
+  const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
+  const isTracked = typeof url === 'string' && url.includes('.supabase.co');
+
+  if (isTracked) {
+    activeFetches++;
+    notify();
+  }
+
+  try {
+    const rawFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : fetch;
+    return await rawFetch(...args);
+  } finally {
     if (isTracked) {
-      activeFetches++;
+      activeFetches = Math.max(0, activeFetches - 1);
       notify();
     }
-    
-    try {
-      return await originalFetch.apply(this, args);
-    } finally {
+  }
+};
+
+// Safely attempt to intercept global window.fetch without throwing if window.fetch is a read-only getter
+if (typeof window !== 'undefined') {
+  try {
+    const originalFetch = window.fetch.bind(window);
+    const customFetch: typeof fetch = async (...args) => {
+      const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
+      const isTracked = typeof url === 'string' && url.includes('.supabase.co');
+
       if (isTracked) {
-        activeFetches = Math.max(0, activeFetches - 1);
+        activeFetches++;
         notify();
       }
+
+      try {
+        return await originalFetch(...args);
+      } finally {
+        if (isTracked) {
+          activeFetches = Math.max(0, activeFetches - 1);
+          notify();
+        }
+      }
+    };
+
+    try {
+      window.fetch = customFetch;
+    } catch {
+      try {
+        Object.defineProperty(window, 'fetch', {
+          value: customFetch,
+          writable: true,
+          configurable: true,
+        });
+      } catch {
+        // Fetch is non-configurable and getter-only in this iframe environment; fallback smoothly
+      }
     }
-  };
+  } catch {
+    // Ignore any runtime window environment restrictions
+  }
 }
+

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  BookOpen, Video, LayoutDashboard, FileText, Bell, ClipboardList
+  BookOpen, Video, LayoutDashboard, FileText, Bell, ClipboardList, Sparkles
 } from 'lucide-react';
 
 const features = [
@@ -10,6 +10,7 @@ const features = [
     description: 'Track active courses, student grades, attendance records, and platform health at a glance with clean, dedicated views.',
     tag: 'Analytics',
     highlight: true,
+    fullWidth: false,
   },
   {
     icon: BookOpen,
@@ -17,6 +18,7 @@ const features = [
     description: 'Organize study streams (ICS, Pre-Med, Pre-Eng), upload notes, share documents, and track individual course progress.',
     tag: 'Core',
     highlight: false,
+    fullWidth: false,
   },
   {
     icon: Video,
@@ -24,6 +26,7 @@ const features = [
     description: 'Check daily calendars for scheduled live lectures, interactive sessions, and recorded class links directly from the portal.',
     tag: 'Live',
     highlight: false,
+    fullWidth: false,
   },
   {
     icon: ClipboardList,
@@ -31,6 +34,7 @@ const features = [
     description: 'Seamlessly record and review student attendance. Access attendance rate charts and trace remaining class slots dynamically.',
     tag: 'Management',
     highlight: false,
+    fullWidth: false,
   },
   {
     icon: FileText,
@@ -38,6 +42,7 @@ const features = [
     description: 'Access or share course-specific study resources, worksheets, past papers, syllabus files, and lecture notes instantly.',
     tag: 'Core',
     highlight: false,
+    fullWidth: false,
   },
   {
     icon: Bell,
@@ -45,12 +50,21 @@ const features = [
     description: 'Broadcast and read institution-wide updates filtered by categories, complete with unread notification badges.',
     tag: 'Communication',
     highlight: true,
+    fullWidth: false,
+  },
+  {
+    icon: Sparkles,
+    title: 'Sage',
+    description: 'Meet Sage, your AI study companion — get instant answers to subject questions, summarized notes, and personalized study help, anytime.',
+    tag: 'AI',
+    highlight: false,
+    fullWidth: true,
   },
 ];
 
 const FeaturesSection: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('All');
-  const categories = ['All', 'Core', 'Analytics', 'Live', 'Management', 'Communication'];
+  const categories = ['All', 'Core', 'Analytics', 'Live', 'Management', 'Communication', 'AI'];
 
   return (
     <section className="py-28 bg-white">
@@ -86,7 +100,7 @@ const FeaturesSection: React.FC = () => {
         </div>
 
         {/* Feature Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {features
             .filter((f) => activeCategory === 'All' || f.tag === activeCategory)
             .map((feature, i) => {
@@ -94,7 +108,10 @@ const FeaturesSection: React.FC = () => {
             return (
               <div
                 key={feature.title}
+                id={`feature-card-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}
                 className={`group relative p-6 rounded-2xl border transition-all duration-250 cursor-pointer ${
+                  feature.fullWidth ? 'md:col-span-2' : ''
+                } ${
                   feature.highlight
                     ? 'bg-[#111111] border-[#111111] text-white'
                     : 'bg-white border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-lg hover:-translate-y-1'

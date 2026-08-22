@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  LayoutDashboard, BookOpen, Calendar, Bell, Search, Clock, Play, RotateCcw, Menu
+  LayoutDashboard, BookOpen, Calendar, Bell, Search, Clock, Play, RotateCcw, Menu, Sparkles
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useMobile } from '../../hooks/useMobile';
@@ -120,6 +120,11 @@ const DashboardPreview: React.FC = () => {
             <div className="flex items-center gap-3 px-3 py-2.5 text-[#737373] hover:text-white font-semibold text-[11px] cursor-pointer">
               <Bell size={14} />
               <span>Announcements</span>
+            </div>
+
+            <div className="flex items-center gap-3 px-3 py-2.5 text-[#737373] hover:text-white font-semibold text-[11px] cursor-pointer">
+              <Sparkles size={14} />
+              <span>Sage</span>
             </div>
 
             <div className="flex items-center gap-3 px-3 py-2.5 text-[#404040] font-semibold text-[11px] cursor-default">
