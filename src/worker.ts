@@ -3,6 +3,7 @@ import { onRequestGet as viewHandler } from '../functions/api/notes/view/[noteId
 import { onRequestGet as dlHandler } from '../functions/api/notes/dl/[noteId]';
 import { onRequestDelete as delHandler } from '../functions/api/notes/del/[noteId]';
 import { onRequestGet as auditR2Handler } from '../functions/api/admin/audit-r2';
+import { onRequestPost as sageChatPostHandler, onRequestOptions as sageChatOptionsHandler } from '../functions/api/sage/chat';
 
 export interface Env {
   NOTES_BUCKET: any;
@@ -11,11 +12,46 @@ export interface Env {
   VITE_SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_ANON_KEY?: string;
+  GEMINI_API_KEY?: string;
+  GEMINI_API_KEY_2?: string;
+  GEMINI_API_KEY_3?: string;
+  GEMINI_API_KEY_4?: string;
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
     const url = new URL(request.url);
+
+    // Normalize path by stripping trailing slashes for routing checks
+    const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
+
+    // Handle Sage AI Chat Route
+    if (normalizedPath === '/api/sage/chat') {
+      if (request.method === 'OPTIONS') {
+        return await sageChatOptionsHandler();
+      }
+      if (request.method === 'POST') {
+        try {
+          return await sageChatPostHandler({
+            request,
+            env,
+            params: {},
+            waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+            next: () => Promise.resolve(new Response('')),
+            data: {}
+          } as any);
+        } catch (err: any) {
+          return new Response(JSON.stringify({ error: err.message || 'Internal Sage AI error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     // Handle Audit R2 Route
     if (url.pathname === '/api/admin/audit-r2' && request.method === 'GET') {

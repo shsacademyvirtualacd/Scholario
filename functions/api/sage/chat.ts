@@ -29,6 +29,19 @@ export async function onRequestOptions(): Promise<Response> {
   });
 }
 
+export async function onRequest(context: EventContext<Env, any, any>): Promise<Response> {
+  if (context.request.method === 'OPTIONS') {
+    return onRequestOptions();
+  }
+  if (context.request.method === 'POST') {
+    return onRequestPost(context);
+  }
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: CORS_HEADERS,
+  });
+}
+
 export async function onRequestPost(context: EventContext<Env, any, any>): Promise<Response> {
   const { request, env } = context;
 
