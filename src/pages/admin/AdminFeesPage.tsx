@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, Clock, Search, Check,
-  AlertCircle, Sparkles, Save, Loader2
+  AlertCircle, Sparkles, Save, Loader2, Coins
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { 
   getUniversalFeeConfig, saveUniversalFeeConfig, 
-  getPendingFeeStatuses, updateFeeStatus 
+  getPendingFeeStatuses, updateFeeStatus,
+  getClassesWithFeeConfigs, syncPricingToFeeConfigs,
+  ClassWithFeeConfig
 } from '../../lib/db';
+import { BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -20,11 +23,16 @@ export const AdminFeesPage: React.FC = () => {
   // Loaders & Errors
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingClasses, setSavingClasses] = useState(false);
+  const [savingClassId, setSavingClassId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successNotif, setSuccessNotif] = useState<string | null>(null);
 
   // Data States
   const [pendingList, setPendingList] = useState<any[]>([]);
+  const [classesList, setClassesList] = useState<ClassWithFeeConfig[]>([]);
+  const [selectedBoardFilter, setSelectedBoardFilter] = useState<string>('all');
+  const [classPrices, setClassPrices] = useState<Record<string, number>>({});
 
   // Config Form States
   const [instructions, setInstructions] = useState<string>('');
@@ -39,18 +47,26 @@ export const AdminFeesPage: React.FC = () => {
 
   const showNotification = (message: string) => {
     setSuccessNotif(message);
-    setTimeout(() => setSuccessNotif(null), 3000);
+    setTimeout(() => setSuccessNotif(null), 3500);
   };
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [pendingData, configData] = await Promise.all([
+      const [pendingData, configData, classesData] = await Promise.all([
         getPendingFeeStatuses(),
-        getUniversalFeeConfig()
+        getUniversalFeeConfig(),
+        getClassesWithFeeConfigs()
       ]);
       setPendingList(pendingData);
+      setClassesList(classesData);
+
+      const initialPrices: Record<string, number> = {};
+      classesData.forEach((cls) => {
+        initialPrices[cls.id] = cls.amount || 0;
+      });
+      setClassPrices(initialPrices);
 
       if (configData) {
         setInstructions(configData.payment_instructions);
@@ -84,6 +100,54 @@ export const AdminFeesPage: React.FC = () => {
       setPendingList(fresh);
     },
   });
+
+  const handlePriceChange = (classId: string, value: string) => {
+    const parsed = parseInt(value, 10);
+    setClassPrices((prev) => ({
+      ...prev,
+      [classId]: isNaN(parsed) ? 0 : parsed
+    }));
+  };
+
+  const handleSaveSingleClassFee = async (classId: string) => {
+    setSavingClassId(classId);
+    try {
+      setError(null);
+      const amount = classPrices[classId] || 0;
+      await syncPricingToFeeConfigs(classId, amount);
+      showNotification('Class fee rate updated successfully in database!');
+      const updatedClasses = await getClassesWithFeeConfigs();
+      setClassesList(updatedClasses);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update class fee.');
+    } finally {
+      setSavingClassId(null);
+    }
+  };
+
+  const handleSaveAllClassFees = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingClasses(true);
+    try {
+      setError(null);
+      const targetClasses = selectedBoardFilter === 'all'
+        ? classesList
+        : classesList.filter((c) => c.board_id === selectedBoardFilter);
+
+      for (const cls of targetClasses) {
+        const amount = classPrices[cls.id] || 0;
+        await syncPricingToFeeConfigs(cls.id, amount);
+      }
+
+      showNotification('All class tuition fee rates saved and synced to database!');
+      const updatedClasses = await getClassesWithFeeConfigs();
+      setClassesList(updatedClasses);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save class fees.');
+    } finally {
+      setSavingClasses(false);
+    }
+  };
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +198,10 @@ export const AdminFeesPage: React.FC = () => {
     item.class_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredClasses = selectedBoardFilter === 'all'
+    ? classesList
+    : classesList.filter((c) => c.board_id === selectedBoardFilter);
+
   return (
     <AdminShell>
       <div className="space-y-6">
@@ -141,7 +209,7 @@ export const AdminFeesPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SectionHeader
             title="Institutional Fee Management"
-            description="Manage active student billing and WhatsApp verification. For public-facing marketing rates, use the Syllabus Price Manager."
+            description="Manage active student billing, per-class tuition rates across all boards (FBISE & Sindh Board), and WhatsApp verification."
           />
         </div>
 
@@ -153,6 +221,7 @@ export const AdminFeesPage: React.FC = () => {
           </div>
         )}
 
+        {/* Error Alert */}
         {error && (
           <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#fecaca] text-sm text-[#dc2626] flex items-center gap-2">
             <AlertCircle size={16} />
@@ -198,14 +267,14 @@ export const AdminFeesPage: React.FC = () => {
             }`}
           >
             <Settings size={14} />
-            Fee Configuration
+            Fee Configuration & Rates
           </button>
         </div>
 
         {loading ? (
           <div className="card py-20 flex flex-col items-center justify-center gap-3 interactive">
             <div className="w-8 h-8 rounded-full border-2 border-[#E5E5E5] border-t-[#F4C430] animate-spin" />
-            <span className="text-xs text-[#737373] font-medium">Loading modules...</span>
+            <span className="text-xs text-[#737373] font-medium">Loading fee modules...</span>
           </div>
         ) : (
           <div>
@@ -255,7 +324,7 @@ export const AdminFeesPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Audit Input & Verify Button — stack on mobile */}
+                        {/* Audit Input & Verify Button */}
                         <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-row items-center'}`}>
                           <input
                             type="text"
@@ -286,18 +355,148 @@ export const AdminFeesPage: React.FC = () => {
 
             {/* Tab 2: Configurations */}
             {activeTab === 'configs' && (
-              <div className="max-w-2xl mx-auto">
+              <div className="space-y-8 max-w-4xl mx-auto">
+                {/* Section 1: Per-Class Tuition Rates */}
+                <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#F5F5F5] pb-4">
+                    <div className="flex items-center gap-2">
+                      <Coins size={18} className="text-[#F4C430]" />
+                      <div>
+                        <h2 className="font-extrabold text-[#111111] text-base">
+                          Per-Class Tuition Rates (All Boards & Classes)
+                        </h2>
+                        <p className="text-xs text-[#737373] mt-0.5">
+                          List and edit class tuition amounts across Federal Board (FBISE) and Sindh Board. Classes without database records will automatically insert a new fee configuration row on save.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Board Filter Switcher */}
+                  <div className="flex items-center gap-2 bg-[#F5F5F5] p-1.5 rounded-xl max-w-md">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBoardFilter('all')}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                        selectedBoardFilter === 'all'
+                          ? 'bg-white text-[#111111] shadow-xs'
+                          : 'text-[#737373] hover:text-[#111111]'
+                      }`}
+                    >
+                      All Classes ({classesList.length})
+                    </button>
+                    {BOARDS.map((b) => {
+                      const count = classesList.filter((c) => c.board_id === b.id).length;
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setSelectedBoardFilter(b.id)}
+                          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                            selectedBoardFilter === b.id
+                              ? 'bg-white text-[#111111] shadow-xs'
+                              : 'text-[#737373] hover:text-[#111111]'
+                          }`}
+                        >
+                          {b.name} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Classes Table / Form */}
+                  <form onSubmit={handleSaveAllClassFees} className="space-y-4">
+                    <div className="divide-y divide-[#F5F5F5]">
+                      {filteredClasses.map((cls) => {
+                        const priceVal = classPrices[cls.id] !== undefined ? classPrices[cls.id] : 0;
+                        const isSet = cls.is_set && cls.amount > 0;
+
+                        return (
+                          <div key={cls.id} className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-bold text-[#111111]">Class {cls.display_name}</span>
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
+                                  {cls.board_name}
+                                </span>
+                                {isSet ? (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    DB Rate: PKR {cls.amount.toLocaleString()}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    Unset (PKR 0) — will insert row
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-[#A3A3A3] uppercase">PKR</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={priceVal === 0 ? '' : priceVal}
+                                onChange={(e) => handlePriceChange(cls.id, e.target.value)}
+                                placeholder="0 (Unset)"
+                                className="input py-1.5 text-xs bg-white border-[#E5E5E5] rounded-lg font-bold font-mono w-28 text-right"
+                              />
+                              <span className="text-[10px] font-black text-[#A3A3A3] uppercase">/term</span>
+
+                              <button
+                                type="button"
+                                onClick={() => handleSaveSingleClassFee(cls.id)}
+                                disabled={savingClassId === cls.id || savingClasses}
+                                title="Save this class rate"
+                                className="p-2 rounded-lg bg-slate-100 hover:bg-[#F4C430] text-slate-700 hover:text-black transition-colors disabled:opacity-50"
+                              >
+                                {savingClassId === cls.id ? (
+                                  <Loader2 size={13} className="animate-spin" />
+                                ) : (
+                                  <Check size={13} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-4 border-t border-[#F5F5F5] flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={savingClasses}
+                        className="btn btn-gold flex items-center justify-center gap-1.5 px-6 py-2 text-xs font-bold"
+                      >
+                        {savingClasses ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            Saving Class Rates…
+                          </>
+                        ) : (
+                          <>
+                            <Save size={14} />
+                            Save All Class Rates
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Section 2: Universal Payment Setup */}
                 <form onSubmit={handleSaveConfig} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
                   <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
                     <Sparkles size={16} className="text-[#F4C430]" />
-                    <h2 className="font-extrabold text-[#111111] text-sm">
-                      Universal Payment Setup
-                    </h2>
+                    <div>
+                      <h2 className="font-extrabold text-[#111111] text-base">
+                        Universal Payment Accounts & WhatsApp Verification
+                      </h2>
+                      <p className="text-xs text-[#737373] mt-0.5">
+                        Account numbers and verification instructions sent to students during registration and checkout.
+                      </p>
+                    </div>
                   </div>
-
-                  <p className="text-xs text-[#737373] leading-relaxed">
-                    Set up details that will apply universally across all classes and streams. Tuition fees are managed automatically based on the prices set in the syllabus pricing manager.
-                  </p>
 
                   <div className="space-y-4">
                     {/* WhatsApp Phone */}
@@ -325,7 +524,7 @@ export const AdminFeesPage: React.FC = () => {
                       </label>
                       <textarea
                         required
-                        rows={8}
+                        rows={6}
                         value={instructions}
                         onChange={(e) => setInstructions(e.target.value)}
                         className="input py-2 text-xs font-mono leading-relaxed"

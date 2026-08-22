@@ -2292,6 +2292,73 @@ export async function syncPricingToFeeConfigs(
   cachedUniversalFeeConfig = null;
 }
 
+export interface ClassWithFeeConfig {
+  id: string; // class_id
+  board_id: string;
+  grade: string;
+  display_name: string;
+  board_name: string;
+  fee_config_id: string | null;
+  amount: number;
+  is_set: boolean;
+  payment_instructions?: string;
+  whatsapp_number?: string;
+  updated_at?: string | null;
+}
+
+/**
+ * Lists all classes across all boards joined with their respective fee_configs.
+ * If a class does not yet have a fee_configs row, it returns is_set: false and amount: 0.
+ */
+export async function getClassesWithFeeConfigs(): Promise<ClassWithFeeConfig[]> {
+  const [{ data: classesData, error: clsError }, { data: feeConfigsData, error: fcError }] = await Promise.all([
+    (supabase as any).from('classes').select('*, board:boards(*)'),
+    (supabase as any).from('fee_configs').select('*')
+  ]);
+
+  if (clsError) throw clsError;
+  if (fcError) throw fcError;
+
+  const feeMap = new Map<string, any>();
+  (feeConfigsData || []).forEach((fc: any) => {
+    if (fc.class_id) {
+      feeMap.set(fc.class_id, fc);
+    }
+  });
+
+  const universalConfig = (feeConfigsData || []).find((fc: any) => !fc.class_id) || null;
+
+  const result: ClassWithFeeConfig[] = (classesData || []).map((cls: any) => {
+    const fc = feeMap.get(cls.id);
+    const hasConfig = !!fc;
+    const amount = fc && typeof fc.amount === 'number' ? fc.amount : (fc?.amount ? Number(fc.amount) : 0);
+    const boardName = cls.board?.name || (cls.board_id === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)');
+
+    return {
+      id: cls.id,
+      board_id: cls.board_id,
+      grade: cls.grade,
+      display_name: cls.display_name,
+      board_name: boardName,
+      fee_config_id: fc?.id || null,
+      amount: amount || 0,
+      is_set: hasConfig && fc.amount !== null,
+      payment_instructions: fc?.payment_instructions || universalConfig?.payment_instructions,
+      whatsapp_number: fc?.whatsapp_number || universalConfig?.whatsapp_number,
+      updated_at: fc?.updated_at || null,
+    };
+  });
+
+  result.sort((a, b) => {
+    if (a.board_id !== b.board_id) {
+      return a.board_id === 'fbise' ? -1 : 1;
+    }
+    return parseInt(a.grade, 10) - parseInt(b.grade, 10);
+  });
+
+  return result;
+}
+
 let cachedTaxonomy: any = null;
 
 export async function getTaxonomy(): Promise<{
