@@ -73,15 +73,31 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const response = await client.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents,
-        config: {
-          systemInstruction,
-        },
-      });
+      const targetModel = 'gemini-2.5-flash';
+      let response: any;
+      try {
+        response = await client.models.generateContent({
+          model: targetModel,
+          contents,
+          config: {
+            systemInstruction,
+          },
+        });
+      } catch (firstErr: any) {
+        console.warn(
+          `[Sage Chat Dev Server] First attempt to ${targetModel} failed: ${firstErr?.message || firstErr}. Waiting 2s before retry...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        response = await client.models.generateContent({
+          model: targetModel,
+          contents,
+          config: {
+            systemInstruction,
+          },
+        });
+      }
 
-      const replyText = response.text || 'I could not generate a response at this moment. Please try again.';
+      const replyText = response?.text || 'I could not generate a response at this moment. Please try again.';
       return res.json({ reply: replyText });
     } catch (err: any) {
       console.error('[Sage Chat API Error]:', err);

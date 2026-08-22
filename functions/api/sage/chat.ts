@@ -108,18 +108,37 @@ Key Guidelines:
       parts: [{ text: m.content }],
     }));
 
-    // Initialize GoogleGenAI SDK and call gemini-3.7-flash
+    // Initialize GoogleGenAI SDK using the stable gemini-2.5-flash model
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents,
-      config: {
-        systemInstruction,
-      },
-    });
+    const targetModel = 'gemini-2.5-flash';
+
+    let response: any;
+    try {
+      response = await ai.models.generateContent({
+        model: targetModel,
+        contents,
+        config: {
+          systemInstruction,
+        },
+      });
+    } catch (firstErr: any) {
+      console.warn(
+        `[Sage Chat] First attempt to ${targetModel} encountered an issue: ${firstErr?.message || firstErr}. Waiting 2s before retry...`
+      );
+      // Wait 2 seconds and retry automatically once
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      response = await ai.models.generateContent({
+        model: targetModel,
+        contents,
+        config: {
+          systemInstruction,
+        },
+      });
+    }
 
     const replyText =
-      response.text || 'I could not generate a response at this moment. Please try again.';
+      response?.text || 'I could not generate a response at this moment. Please try again.';
 
     return new Response(JSON.stringify({ reply: replyText }), {
       status: 200,
