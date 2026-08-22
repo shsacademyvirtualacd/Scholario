@@ -80,11 +80,11 @@ export const PriceManagerPage: React.FC = () => {
         await syncPricingToFeeConfigs(cls.id, price);
       }
 
-      triggerNotification('success', 'All class fee configurations saved and synced to database!');
+      triggerNotification('success', 'All class fee rates saved successfully!');
       await loadData();
     } catch (err: any) {
       console.error(err);
-      triggerNotification('error', 'Failed to save database pricing: ' + (err.message || 'database error'));
+      triggerNotification('error', 'Failed to save fee rates: ' + (err.message || 'Error occurred'));
     } finally {
       setSaving(false);
     }
@@ -94,6 +94,21 @@ export const PriceManagerPage: React.FC = () => {
     ? classesList
     : classesList.filter((c) => c.board_id === selectedBoardId);
 
+  const totalClassesCount = classesList.length;
+  const configuredCount = classesList.filter((c) => c.is_set && c.amount > 0).length;
+  const unconfiguredCount = totalClassesCount - configuredCount;
+
+  const boardStats = BOARDS.map((b) => {
+    const boardClasses = classesList.filter((c) => c.board_id === b.id);
+    const configured = boardClasses.filter((c) => c.is_set && c.amount > 0).length;
+    return {
+      ...b,
+      total: boardClasses.length,
+      configured,
+      unconfigured: boardClasses.length - configured,
+    };
+  });
+
   return (
     <AdminShell>
       <div className="space-y-6">
@@ -101,7 +116,7 @@ export const PriceManagerPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SectionHeader
             title="Syllabus Price & Fee Manager"
-            description="Configure official tuition pricing and calculator rates across all boards (Federal Board / FBISE & Sindh Board). Unset classes will automatically insert a new fee record on save."
+            description="Configure official tuition pricing and fee rates across all boards (Federal Board / FBISE & Sindh Board). Changes apply instantly across student onboarding, checkout, and the public fee calculator."
           />
         </div>
 
@@ -156,20 +171,53 @@ export const PriceManagerPage: React.FC = () => {
         {loading ? (
           <div className="card py-20 flex flex-col items-center justify-center gap-3 interactive">
             <div className="w-8 h-8 rounded-full border-2 border-[#E5E5E5] border-t-[#F4C430] animate-spin" />
-            <span className="text-xs text-[#737373] font-medium">Loading classes and fee configurations...</span>
+            <span className="text-xs text-[#737373] font-medium">Loading classes and fee rates...</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Instructions */}
+            {/* Pricing Summary & Overview */}
             <div className="lg:col-span-1">
               <div className="card card-elevated sticky top-24 space-y-4 interactive">
                 <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
                   <Coins size={18} className="text-[#F4C430]" />
                   <h2 className="font-bold text-[#111111] text-base">Board-Agnostic Pricing</h2>
                 </div>
+
                 <p className="text-xs text-[#737373] leading-relaxed">
-                  Fee rates are configured per class in the database. When saving a class without an existing configuration row (such as newly added Sindh Board classes), a new <code className="text-[11px] bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-800">fee_configs</code> row is automatically created.
+                  Prices set here apply instantly across the site for the selected board and class — no other steps needed.
                 </p>
+
+                {/* Quick Stats */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-[#111111] pb-1 border-b border-[#F5F5F5]">
+                    <span className="text-[#737373]">Pricing Coverage</span>
+                    <span className="text-[#111111]">{configuredCount} of {totalClassesCount} Configured</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {boardStats.map((bs) => (
+                      <div key={bs.id} className="flex items-center justify-between text-xs bg-[#FAFAFA] px-3 py-2 rounded-xl border border-[#F0F0F0]">
+                        <span className="font-bold text-[#111111]">{bs.name}</span>
+                        <span className="font-semibold text-xs text-[#737373]">
+                          {bs.configured}/{bs.total} active
+                          {bs.unconfigured > 0 ? (
+                            <span className="ml-1.5 text-amber-600 font-bold">({bs.unconfigured} unset)</span>
+                          ) : (
+                            <span className="ml-1.5 text-emerald-600 font-bold">✓</span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {unconfiguredCount > 0 && (
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-800 bg-amber-50/80 border border-amber-200/70 p-2.5 rounded-xl">
+                      <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                      <span>{unconfiguredCount} {unconfiguredCount === 1 ? 'class requires' : 'classes require'} a fee rate to be configured.</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 space-y-1.5">
                   <span className="text-[11px] font-bold text-amber-900 block">Single Source of Truth</span>
                   <p className="text-[11px] text-amber-800 leading-normal">
@@ -217,8 +265,8 @@ export const PriceManagerPage: React.FC = () => {
                             </div>
                             <span className="text-[10px] text-[#A3A3A3] font-semibold mt-1 block">
                               {cls.is_set && cls.amount > 0
-                                ? `Current Live DB Rate: PKR ${cls.amount.toLocaleString()} / term`
-                                : 'Status: Price not yet inserted in database (will insert on save)'}
+                                ? `Current Live Rate: PKR ${cls.amount.toLocaleString()} / term`
+                                : 'Status: Price unset (defaults to PKR 0)'}
                             </span>
                           </div>
 
