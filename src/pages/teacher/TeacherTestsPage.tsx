@@ -5,7 +5,6 @@ import TeacherShell from '../../components/teacher/TeacherShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
 import TestUploadModal from '../../components/teacher/TestUploadModal';
-import AnswerKeyUploadModal from '../../components/teacher/AnswerKeyUploadModal';
 import TestViewerModal from '../../components/common/TestViewerModal';
 import { getAllTests } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -17,9 +16,7 @@ export const TeacherTestsPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
-  const [answerKeyUploadTest, setAnswerKeyUploadTest] = useState<TestPaper | null>(null);
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
-  const [viewingAnswerKeyTest, setViewingAnswerKeyTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
 
   // Filters
@@ -89,10 +86,6 @@ export const TeacherTestsPage: React.FC = () => {
     setSelectedTestId(newTest.id);
   };
 
-  const handleAnswerKeyUploadSuccess = (updatedTest: TestPaper) => {
-    setTests((prev) => prev.map((t) => (t.id === updatedTest.id ? updatedTest : t)));
-  };
-
   const handleTestDelete = (testId: string) => {
     setTests((prev) => prev.filter((t) => t.id !== testId));
     if (selectedTestId === testId) {
@@ -107,7 +100,7 @@ export const TeacherTestsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-[#111111] tracking-tight">Test Assessments & Grading</h1>
           <p className="text-xs text-[#737373] mt-1">
-            Publish question papers, manage official answer keys (within 5-minute window), and review Gemini AI auto-graded submissions.
+            Publish question papers and evaluate student answer sheet submissions with marks and remarks.
           </p>
         </div>
 
@@ -215,8 +208,6 @@ export const TeacherTestsPage: React.FC = () => {
                   onSelect={(t) => setSelectedTestId(t.id)}
                   onView={(t) => setViewingTest(t)}
                   onDelete={handleTestDelete}
-                  onOpenAnswerKeyUpload={(t) => setAnswerKeyUploadTest(t)}
-                  onViewAnswerKey={(t) => setViewingAnswerKeyTest(t)}
                 />
               ))}
             </div>
@@ -229,7 +220,6 @@ export const TeacherTestsPage: React.FC = () => {
             selectedTest={selectedTest}
             onOpenTestViewer={(t) => setViewingTest(t)}
             onOpenSubmissionViewer={(s) => setViewingSubmission(s)}
-            onViewAnswerKey={(t) => setViewingAnswerKeyTest(t)}
           />
         </div>
       </div>
@@ -241,30 +231,14 @@ export const TeacherTestsPage: React.FC = () => {
         onSuccess={handleTestUploadSuccess}
       />
 
-      {/* 5-Minute Window Answer Key Upload Modal */}
-      <AnswerKeyUploadModal
-        isOpen={Boolean(answerKeyUploadTest)}
-        test={answerKeyUploadTest}
-        onClose={() => setAnswerKeyUploadTest(null)}
-        onSuccess={handleAnswerKeyUploadSuccess}
-      />
-
       {/* Lightbox Question Paper / Submission Viewer Modal */}
       <TestViewerModal
         test={viewingTest}
         submission={viewingSubmission}
-        mode="question_paper"
         onClose={() => {
           setViewingTest(null);
           setViewingSubmission(null);
         }}
-      />
-
-      {/* Lightbox Answer Key Viewer Modal (Faculty Only) */}
-      <TestViewerModal
-        test={viewingAnswerKeyTest}
-        mode="answer_key"
-        onClose={() => setViewingAnswerKeyTest(null)}
       />
     </TeacherShell>
   );

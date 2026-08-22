@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Scholario — FBISE Taxonomy (Single Source of Truth)
+// Scholario — Educational Boards & Class Taxonomy (Single Source of Truth)
 // ─────────────────────────────────────────────────────────────────────────────
-// ALL grade/stream/subject data lives here. No other file may hardcode this
+// ALL board/grade/stream/subject data lives here. No other file may hardcode this
 // information. Import from this module whenever you need taxonomy data.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -15,14 +15,38 @@ export interface GradeDef {
   displayName: string;
   streams: StreamDef[];
   commonSubjects: string[];
+  boardId?: string;
 }
+
+export interface BoardDef {
+  id: 'fbise' | 'sindh';
+  name: string;
+  shortName: string;
+  description: string;
+}
+
+export const BOARDS: BoardDef[] = [
+  {
+    id: 'fbise',
+    name: 'Federal Board (FBISE)',
+    shortName: 'FBISE',
+    description: 'Federal Board of Intermediate & Secondary Education (Islamabad & National)',
+  },
+  {
+    id: 'sindh',
+    name: 'Sindh Board',
+    shortName: 'Sindh Board',
+    description: 'Sindh Secondary & Higher Secondary Education (Karachi & Provincial Boards)',
+  },
+];
 
 export const BOARD = { id: 'fbise', name: 'FBISE' } as const;
 
-export const GRADES: GradeDef[] = [
+export const FBISE_GRADES: GradeDef[] = [
   {
     grade: '9',
     displayName: '9th',
+    boardId: 'fbise',
     commonSubjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Islamiat'],
     streams: [
       { name: 'Biology', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Biology', 'Islamiat'] },
@@ -32,6 +56,7 @@ export const GRADES: GradeDef[] = [
   {
     grade: '10',
     displayName: '10th',
+    boardId: 'fbise',
     commonSubjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics'],
     streams: [
       { name: 'Biology', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Biology'] },
@@ -41,6 +66,7 @@ export const GRADES: GradeDef[] = [
   {
     grade: '11',
     displayName: '11th',
+    boardId: 'fbise',
     commonSubjects: ['English', 'Urdu', 'Islamiat'],
     streams: [
       { name: 'Pre-Medical', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Islamiat'] },
@@ -51,6 +77,7 @@ export const GRADES: GradeDef[] = [
   {
     grade: '12',
     displayName: '12th',
+    boardId: 'fbise',
     commonSubjects: ['English', 'Urdu'],
     streams: [
       { name: 'Pre-Medical', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology'] },
@@ -60,6 +87,65 @@ export const GRADES: GradeDef[] = [
   },
 ];
 
+export const SINDH_GRADES: GradeDef[] = [
+  {
+    grade: '9',
+    displayName: '9th',
+    boardId: 'sindh',
+    commonSubjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Islamiat'],
+    streams: [
+      { name: 'Biology', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Biology', 'Islamiat'] },
+      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Computer Science', 'Islamiat'] },
+    ],
+  },
+  {
+    grade: '10',
+    displayName: '10th',
+    boardId: 'sindh',
+    commonSubjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Pakistan Studies'],
+    streams: [
+      { name: 'Biology', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Biology', 'Pakistan Studies'] },
+      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Computer Science', 'Pakistan Studies'] },
+    ],
+  },
+  {
+    grade: '11',
+    displayName: '11th',
+    boardId: 'sindh',
+    commonSubjects: ['English', 'Urdu', 'Islamiat'],
+    streams: [
+      { name: 'Pre-Medical', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Islamiat'] },
+      { name: 'Pre-Engineering', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Islamiat'] },
+      { name: 'ICS', subjects: ['English', 'Urdu', 'Computer Science', 'Mathematics', 'Physics', 'Islamiat'] },
+    ],
+  },
+  {
+    grade: '12',
+    displayName: '12th',
+    boardId: 'sindh',
+    commonSubjects: ['English', 'Urdu', 'Pakistan Studies'],
+    streams: [
+      { name: 'Pre-Medical', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Pakistan Studies'] },
+      { name: 'Pre-Engineering', subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Pakistan Studies'] },
+      { name: 'ICS', subjects: ['English', 'Urdu', 'Computer Science', 'Mathematics', 'Physics', 'Pakistan Studies'] },
+    ],
+  },
+];
+
+// GRADES default alias (FBISE for backward compatibility)
+export const GRADES: GradeDef[] = FBISE_GRADES;
+
+/** Get grades for a specific board */
+export function getGradesForBoard(boardId: string): GradeDef[] {
+  if (boardId === 'sindh') return SINDH_GRADES;
+  return FBISE_GRADES;
+}
+
+/** Get board definition by id */
+export function getBoardDef(boardId?: string | null): BoardDef {
+  return BOARDS.find((b) => b.id === boardId) || BOARDS[0];
+}
+
 /** Default monthly tuition price by grade */
 export function getDefaultPrice(grade: string): number {
   return ['11', '12'].includes(grade) ? 3499 : 2499;
@@ -68,7 +154,8 @@ export function getDefaultPrice(grade: string): number {
 /** All unique subject names used across the entire taxonomy */
 export function getAllSubjectNames(): string[] {
   const set = new Set<string>();
-  for (const g of GRADES) {
+  const allGrades = [...FBISE_GRADES, ...SINDH_GRADES];
+  for (const g of allGrades) {
     for (const s of g.streams) {
       for (const sub of s.subjects) {
         set.add(sub);
@@ -78,9 +165,10 @@ export function getAllSubjectNames(): string[] {
   return Array.from(set).sort();
 }
 
-/** Get streams available for a given grade */
-export function getStreamsForGrade(grade: string): StreamDef[] {
-  return GRADES.find((g) => g.grade === grade)?.streams ?? [];
+/** Get streams available for a given grade and optional board */
+export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[] {
+  const gradeList = boardId ? getGradesForBoard(boardId) : GRADES;
+  return gradeList.find((g) => g.grade === grade)?.streams ?? [];
 }
 
 /**

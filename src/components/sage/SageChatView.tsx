@@ -15,7 +15,8 @@ import {
   BookOpen,
   HelpCircle,
   Lightbulb,
-  FileQuestion
+  FileQuestion,
+  Square,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -234,8 +235,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Sync to session storage
   useEffect(() => {
@@ -261,6 +264,12 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
   };
 
   const handleClear = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+    setStreamingId(null);
     const welcomeMsg: ChatMessage = {
       id: `welcome-${Date.now()}`,
       role: 'assistant',
@@ -284,6 +293,16 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+    setStreamingId(null);
+    toast.info('Generation stopped');
+  };
+
   const handleSend = async (userText?: string) => {
     const textToSend = (userText || input).trim();
     if (!textToSend || isLoading) return;
@@ -296,16 +315,28 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
+    const assistantMsgId = `sage-${Date.now() + 1}`;
+    const placeholderAssistantMsg: ChatMessage = {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
     const newHistory = [...messages, userMsg];
-    setMessages(newHistory);
+    setMessages([...newHistory, placeholderAssistantMsg]);
     setInput('');
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
     setIsLoading(true);
+    setStreamingId(assistantMsgId);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     try {
-      // Build API payload for server-side Gemini route
+      // Build API payload for streaming Gemini route
       const payloadMessages = newHistory.map((m) => ({
         role: m.role,
         content: m.content,
@@ -313,7 +344,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
 
       const res = await fetch('/api/sage/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify({
           messages: payloadMessages,
           userRole: role,
@@ -321,6 +355,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
           grade: (profile as any)?.grade || '',
           stream: (profile as any)?.stream || '',
         }),
+        signal: abortController.signal,
       });
 
       if (!res.ok) {
@@ -328,21 +363,86 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
         throw new Error(errorData.error || `Server responded with ${res.status}`);
       }
 
-      const data = (await res.json()) as { reply?: string; error?: string };
-      const assistantMsg: ChatMessage = {
-        id: `sage-${Date.now()}`,
-        role: 'assistant',
-        content: data.reply || 'No response returned from AI.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+      if (!res.body) {
+        throw new Error('Streaming not supported by browser environment.');
+      }
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedText = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
+
+          const dataStr = trimmed.replace(/^data:\s*/, '');
+          if (dataStr === '[DONE]') {
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+            if (parsed.text) {
+              accumulatedText += parsed.text;
+              const currentAccumulated = accumulatedText;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, content: currentAccumulated } : msg
+                )
+              );
+            }
+          } catch (parseErr: any) {
+            if (parseErr.message && !dataStr.includes('{')) {
+              // Non-JSON or incomplete line ignored
+            } else if (parseErr.message) {
+              throw parseErr;
+            }
+          }
+        }
+      }
+
+      // If finished and no text received, provide a fallback message
+      if (!accumulatedText.trim()) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMsgId
+              ? {
+                  ...msg,
+                  content:
+                    'I am ready to assist with your FBISE curriculum questions. Please try sending your prompt again.',
+                }
+              : msg
+          )
+        );
+      }
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('[Sage Chat] Stream cancelled by user');
+        return;
+      }
       console.error('[Sage Chat Frontend Error]:', err);
       setErrorMsg(err.message || 'Unable to connect to Sage. Please try again.');
       toast.error('Failed to get response from Sage');
+      // Clean up empty placeholder if failed at beginning
+      setMessages((prev) =>
+        prev.filter((msg) => msg.id !== assistantMsgId || msg.content.trim().length > 0)
+      );
     } finally {
       setIsLoading(false);
+      setStreamingId(null);
+      abortControllerRef.current = null;
     }
   };
 
@@ -396,6 +496,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
+          const isCurrentStreaming = msg.id === streamingId;
+          const isPendingFirstToken = isCurrentStreaming && !msg.content;
+
           return (
             <div
               key={msg.id}
@@ -409,11 +512,17 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                     : 'bg-[#F4C430] text-[#111111] shadow-2xs'
                 }`}
               >
-                {isUser ? <User size={15} /> : <Bot size={16} />}
+                {isUser ? (
+                  <User size={15} />
+                ) : isCurrentStreaming ? (
+                  <Sparkles size={16} className="animate-spin" />
+                ) : (
+                  <Bot size={16} />
+                )}
               </div>
 
               {/* Message Bubble */}
-              <div className={`space-y-1 min-w-0 max-w-[85%] sm:max-w-[78%]`}>
+              <div className="space-y-1 min-w-0 max-w-[85%] sm:max-w-[78%]">
                 <div
                   className={`p-4 rounded-2xl shadow-xs transition-all ${
                     isUser
@@ -423,46 +532,68 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                 >
                   {isUser ? (
                     <p className="text-[14px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  ) : isPendingFirstToken ? (
+                    <div className="flex items-center gap-2 py-0.5 text-xs text-[#737373] font-medium">
+                      <span>Sage is thinking</span>
+                      <div className="flex items-center gap-1">
+                        <div
+                          className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce"
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <div
+                          className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce"
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <div
+                          className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce"
+                          style={{ animationDelay: '300ms' }}
+                        />
+                      </div>
+                    </div>
                   ) : (
-                    <SageMarkdownRenderer content={msg.content} />
+                    <div>
+                      <SageMarkdownRenderer content={msg.content} />
+                      {isCurrentStreaming && (
+                        <span
+                          className="inline-block w-1.5 h-4 bg-[#F4C430] animate-pulse ml-0.5 align-middle rounded-xs"
+                          title="Streaming..."
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
 
                 {/* Footer info: time & copy */}
-                <div className={`flex items-center gap-2 px-1 text-[11px] text-[#A3A3A3] ${isUser ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`flex items-center gap-2 px-1 text-[11px] text-[#A3A3A3] ${
+                    isUser ? 'justify-end' : 'justify-start'
+                  }`}
+                >
                   <span>{msg.timestamp}</span>
-                  {!isUser && (
+                  {!isUser && !isPendingFirstToken && msg.content && (
                     <button
                       onClick={() => handleCopy(msg.id, msg.content)}
                       className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1"
                       title="Copy response"
                     >
-                      {copiedId === msg.id ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
+                      {copiedId === msg.id ? (
+                        <Check size={12} className="text-green-600" />
+                      ) : (
+                        <Copy size={12} />
+                      )}
                       <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                     </button>
+                  )}
+                  {isCurrentStreaming && (
+                    <span className="text-[10px] text-[#EAB308] font-bold tracking-wider uppercase ml-1 animate-pulse">
+                      Generating...
+                    </span>
                   )}
                 </div>
               </div>
             </div>
           );
         })}
-
-        {/* Loading Indicator */}
-        {isLoading && (
-          <div className="flex gap-3 max-w-2xl mr-auto animate-fade-in">
-            <div className="w-8 h-8 rounded-xl bg-[#F4C430] flex items-center justify-center shrink-0 text-[#111111]">
-              <Sparkles size={16} className="animate-spin" />
-            </div>
-            <div className="bg-white border border-[#E5E5E5] rounded-2xl rounded-tl-xs p-4 shadow-xs flex items-center gap-3">
-              <span className="text-xs font-semibold text-[#737373]">Sage is thinking</span>
-              <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Error message */}
         {errorMsg && (
@@ -532,19 +663,31 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
             className="w-full resize-none bg-transparent px-2.5 py-2 text-sm text-[#111111] placeholder:text-[#A3A3A3] focus:outline-none max-h-36 font-normal leading-relaxed"
           />
 
-          <button
-            type="submit"
-            id="sage-chat-send-btn"
-            disabled={!input.trim() || isLoading}
-            className={`p-3 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-              input.trim() && !isLoading
-                ? 'bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive'
-                : 'bg-[#E5E5E5] text-[#A3A3A3] cursor-not-allowed'
-            }`}
-            title="Send Message"
-          >
-            <Send size={16} />
-          </button>
+          {isLoading ? (
+            <button
+              type="button"
+              id="sage-chat-stop-btn"
+              onClick={handleStop}
+              className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-md hover:scale-105 interactive transition-all"
+              title="Stop Generating"
+            >
+              <Square size={16} className="fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              id="sage-chat-send-btn"
+              disabled={!input.trim()}
+              className={`p-3 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                input.trim()
+                  ? 'bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive'
+                  : 'bg-[#E5E5E5] text-[#A3A3A3] cursor-not-allowed'
+              }`}
+              title="Send Message"
+            >
+              <Send size={16} />
+            </button>
+          )}
         </form>
 
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3]">

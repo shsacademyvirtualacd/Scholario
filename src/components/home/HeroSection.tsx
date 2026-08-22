@@ -87,7 +87,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
             </span>
           </h1>
           <p className="text-xl md:text-2xl text-[#737373] font-normal leading-relaxed max-w-3xl mx-auto">
-            Built exclusively for SHS Virtual Academy students — live FBISE 9th–12th classes, subject note vaults, and daily timetables in one private learning hub.
+            Built exclusively for SHS Virtual Academy students — live Federal Board (FBISE) & Sindh Board 9th–12th classes, subject note vaults, and daily timetables in one unified learning hub.
           </p>
         </div>
 

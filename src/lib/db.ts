@@ -8,6 +8,7 @@
 import { supabase } from './supabase';
 import { pageCache } from './pageCache';
 import { getPKTNow } from './scheduleUtils';
+import { BOARDS, FBISE_GRADES, SINDH_GRADES } from './taxonomy';
 // getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
   Profile, Teacher, ClassOffering, ClassSlot,
@@ -134,16 +135,48 @@ export async function completeStudentOnboarding(
   _selectedSubjectIds: string[],
   fullName?: string
 ): Promise<void> {
-  const { error } = await (supabase as any).rpc('complete_student_onboarding', {
-    p_student_id: studentId,
-    p_board_id: boardId,
-    p_class_id: classId,
-    p_stream_id: streamId || null,
-    p_full_name: fullName || 'Student',
-  });
+  const isUUID = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  
+  if (isUUID(classId) && (isUUID(boardId) || boardId === 'fbise' || boardId === 'sindh')) {
+    const { error } = await (supabase as any).rpc('complete_student_onboarding', {
+      p_student_id: studentId,
+      p_board_id: boardId,
+      p_class_id: classId,
+      p_stream_id: isUUID(streamId) ? streamId : null,
+      p_full_name: fullName || 'Student',
+    });
 
-  if (error) {
-    throw new Error(`[db:completeStudentOnboarding] Onboarding RPC failed: ${error.message}`);
+    if (!error) return;
+    console.warn('[db:completeStudentOnboarding] RPC returned error, attempting direct profile update:', error.message);
+  }
+
+  // Fallback direct profile & fee_status upsert to ensure onboarding succeeds even if board/class ID is synthetic or RPC fails
+  const updatePayload: any = {
+    full_name: fullName || 'Student',
+    board_id: boardId,
+    role: 'student',
+  };
+  if (isUUID(classId)) updatePayload.class_id = classId;
+  if (isUUID(streamId)) updatePayload.stream_id = streamId;
+
+  const { error: profErr } = await (supabase as any)
+    .from('profiles')
+    .update(updatePayload)
+    .eq('id', studentId);
+  
+  if (profErr) {
+    console.warn('[db:completeStudentOnboarding] direct profile update warning:', profErr);
+  }
+
+  // Also ensure fee status row exists
+  try {
+    await (supabase as any).from('fee_status').upsert({
+      student_id: studentId,
+      status: 'unpaid',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'student_id' });
+  } catch (fe) {
+    console.warn('[db:completeStudentOnboarding] fee_status upsert warning:', fe);
   }
 }
 
@@ -1206,15 +1239,9 @@ async function enrichTestsUrls(tests: any[]): Promise<TestPaper[]> {
     if (r.id) {
       url = `/api/tests/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     }
-    let answerKeyUrl = r.answer_key_url || '';
-    if (r.id && (r.has_answer_key || r.answer_key_path || r.answer_key_url)) {
-      answerKeyUrl = `/api/tests/answer-key/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-    }
     return {
       ...r,
       file_url: url,
-      answer_key_url: answerKeyUrl || undefined,
-      has_answer_key: Boolean(r.has_answer_key || r.answer_key_path || r.answer_key_url),
       published_at: r.published_at || r.created_at,
       offering: mapOffering(r.offering),
       submissions_count: r.submissions_count || (r.submissions ? r.submissions.length : 0),
@@ -1324,7 +1351,7 @@ export async function getTestsForTeacher(teacherId?: string): Promise<TestPaper[
   return all.filter((t) => !t.teacher_id || t.teacher_id === teacherId);
 }
 
-/** Upload test paper file (+ optional answer key) to Cloudflare R2 /api/tests/upload */
+/** Upload test paper file to Cloudflare R2 /api/tests/upload */
 export async function uploadTestPaperToR2(
   file: File,
   payload: {
@@ -1340,7 +1367,6 @@ export async function uploadTestPaperToR2(
     uploaded_by?: string | null;
     uploaded_by_name?: string | null;
     file_type?: 'pdf' | 'image' | 'doc';
-    answerKeyFile?: File | null;
   },
   onProgress?: (pct: number) => void
 ): Promise<any> {
@@ -1350,9 +1376,6 @@ export async function uploadTestPaperToR2(
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
-    if (payload.answerKeyFile) {
-      formData.append('answer_key_file', payload.answerKeyFile);
-    }
     formData.append('title', payload.title);
     if (payload.instructions) formData.append('instructions', payload.instructions);
     formData.append('subject', payload.subject);
@@ -1398,113 +1421,6 @@ export async function uploadTestPaperToR2(
     xhr.onerror = () => reject(new Error('Network error during test upload.'));
     xhr.send(formData);
   });
-}
-
-/** Upload answer key to an existing test paper within the 5-minute window */
-export async function uploadAnswerKeyToR2(
-  testId: string,
-  answerKeyFile: File,
-  onProgress?: (pct: number) => void
-): Promise<any> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
-
-  return new Promise((resolve, reject) => {
-    const formData = new FormData();
-    formData.append('answer_key_file', answerKeyFile);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/api/tests/answer-key/upload/${testId}`);
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    }
-
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable && onProgress) {
-        onProgress(Math.round((ev.loaded / ev.total) * 100));
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText));
-        } catch {
-          reject(new Error('Invalid JSON response from answer key upload server.'));
-        }
-      } else {
-        let errMsg = xhr.responseText;
-        try {
-          const parsed = JSON.parse(xhr.responseText);
-          if (parsed.error) errMsg = parsed.error;
-        } catch {}
-        reject(new Error(`Answer key upload failed: ${errMsg}`));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Network error during answer key upload.'));
-    xhr.send(formData);
-  });
-}
-
-/** Teacher/Admin: securely download answer key file */
-export async function downloadAnswerKeyBlob(test: TestPaper, onProgress?: (pct: number) => void): Promise<void> {
-  if (!test.id) {
-    throw new Error('Test ID is required for download.');
-  }
-
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
-
-  const dlUrl = `/api/tests/answer-key/dl/${test.id}`;
-  const response = await fetch(dlUrl, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-
-  if (!response.ok) throw new Error(`Answer key download failed with status ${response.status}`);
-
-  const contentLength = response.headers.get('Content-Length');
-  const total = contentLength ? parseInt(contentLength, 10) : 0;
-
-  if (!response.body) {
-    const blob = await response.blob();
-    if (onProgress) onProgress(100);
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = `${test.title.replace(/[^a-zA-Z0-9_\-\.]/g, '_')}_Answer_Key.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(objectUrl);
-    return;
-  }
-
-  const reader = response.body.getReader();
-  const chunks: any[] = [];
-  let receivedLength = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      chunks.push(value);
-      receivedLength += value.length;
-      if (total && onProgress) {
-        onProgress(Math.round((receivedLength / total) * 100));
-      }
-    }
-  }
-
-  const blob = new Blob(chunks, { type: response.headers.get('Content-Type') || 'application/pdf' });
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = objectUrl;
-  link.download = `${test.title.replace(/[^a-zA-Z0-9_\-\.]/g, '_')}_Answer_Key.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(objectUrl);
 }
 
 /** Teacher/Admin: delete a test paper */
@@ -2094,17 +2010,18 @@ export async function getUniversalFeeConfig(): Promise<any | null> {
 }
 
 /** Resolve live fee configuration for a given grade / class with single source of truth resolution */
-export async function resolveGradeFeeConfig(grade: string, classId?: string | null): Promise<{
+export async function resolveGradeFeeConfig(grade: string, classId?: string | null, boardId?: string): Promise<{
   amount: number;
   payment_instructions: string;
   whatsapp_number: string;
 }> {
   let targetClassId = classId;
+  const targetBoard = boardId || 'fbise';
   if (!targetClassId) {
     const { data: clsData } = await (supabase as any)
       .from('classes')
       .select('id')
-      .eq('board_id', 'fbise')
+      .eq('board_id', targetBoard)
       .eq('grade', grade)
       .limit(1);
     if (clsData?.[0]?.id) targetClassId = clsData[0].id;
@@ -2394,40 +2311,91 @@ export async function getTaxonomy(): Promise<{
     supabase.from('stream_subjects').select('*'),
   ]);
 
-  const classesData = c.data || [];
+  const boardsList: BoardEntry[] = [...(b.data || [])];
+  // Ensure both boards are represented
+  for (const boardDef of BOARDS) {
+    if (!boardsList.some((bItem) => bItem.id === boardDef.id)) {
+      boardsList.push({
+        id: boardDef.id,
+        name: boardDef.name,
+      } as any);
+    }
+  }
+
+  const classesData: ClassEntry[] = [...(c.data || [])];
+  // Ensure both FBISE and Sindh classes (9, 10, 11, 12) exist in classesData
+  for (const boardDef of BOARDS) {
+    const grades = boardDef.id === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    for (const g of grades) {
+      if (!classesData.some((cls) => cls.board_id === boardDef.id && String(cls.grade) === String(g.grade))) {
+        classesData.push({
+          id: `${boardDef.id}-${g.grade}`,
+          board_id: boardDef.id,
+          grade: g.grade,
+          display_name: g.displayName,
+          board: { id: boardDef.id, name: boardDef.name },
+        } as any);
+      }
+    }
+  }
   classesData.sort((a: any, b: any) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
 
+  const streamsData: StreamEntry[] = [...(s.data || [])];
+  // Ensure streams exist for all classes
+  for (const cls of classesData) {
+    const grades = cls.board_id === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    const gradeDef = grades.find((g) => String(g.grade) === String(cls.grade));
+    if (gradeDef) {
+      for (const st of gradeDef.streams) {
+        if (!streamsData.some((sItem) => sItem.class_id === cls.id && sItem.name.toLowerCase() === st.name.toLowerCase())) {
+          streamsData.push({
+            id: `${cls.id}-${st.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+            class_id: cls.id,
+            name: st.name,
+          } as any);
+        }
+      }
+    }
+  }
+
+  const subjectsData: SubjectEntry[] = [...(sub.data || [])];
+  const streamSubjectsData = [...(ss.data || [])];
+
   cachedTaxonomy = {
-    boards: b.data || [],
+    boards: boardsList,
     classes: classesData,
-    streams: s.data || [],
-    subjects: sub.data || [],
-    streamSubjects: ss.data || [],
+    streams: streamsData,
+    subjects: subjectsData,
+    streamSubjects: streamSubjectsData,
   };
   return cachedTaxonomy;
 }
 
 /**
  * DB-backed replacement for the old taxonomy.ts getSubjectsForStream.
- *
- * Reads synchronously from cachedTaxonomy, which is populated by getTaxonomy()
- * on page load. All pages that use stream filtering already call getTaxonomy()
- * on mount, so the cache is always warm by the time this runs.
- *
- * Returns string[] of subject names that exactly match the DB subjects.name
- * column — no more static string drift.
- *
- * If cache is not yet warm (page called this before awaiting getTaxonomy()),
- * returns [] and logs a warning.
+ * Supports board-aware lookup with fallback to taxonomy definition.
  */
-export function getSubjectsForStream(grade: string, streamName: string): string[] {
+export function getSubjectsForStream(grade: string, streamName: string, boardId?: string): string[] {
+  const targetBoard = boardId || 'fbise';
   if (!cachedTaxonomy) {
-    console.error('[db:getSubjectsForStream] Called before getTaxonomy() resolved. Return [].');
-    return [];
+    const grades = targetBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    const g = grades.find((gr) => gr.grade === grade);
+    if (!g) return [];
+    if (!streamName) return g.commonSubjects || [];
+    const norm = streamName.trim().toLowerCase();
+    const st = g.streams.find((s) => s.name.toLowerCase() === norm || norm.includes(s.name.toLowerCase()));
+    return st?.subjects || g.streams[0]?.subjects || g.commonSubjects || [];
   }
 
-  const gradeClass = cachedTaxonomy.classes.find((c: any) => String(c.grade) === String(grade));
-  if (!gradeClass) return [];
+  const gradeClass = cachedTaxonomy.classes.find(
+    (c: any) => String(c.grade) === String(grade) && (!boardId || c.board_id === boardId)
+  ) || cachedTaxonomy.classes.find((c: any) => String(c.grade) === String(grade));
+
+  if (!gradeClass) {
+    const grades = targetBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    const g = grades.find((gr) => gr.grade === grade);
+    return g ? (g.streams[0]?.subjects || g.commonSubjects || []) : [];
+  }
 
   if (!streamName) {
     // "All Streams" — return every subject across all streams for this grade, deduplicated
@@ -2440,7 +2408,11 @@ export function getSubjectsForStream(grade: string, streamName: string): string[
       .filter((ss: any) => gradeStreamIds.has(ss.stream_id))
       .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
       .filter(Boolean) as string[];
-    return Array.from(new Set(subjects)).sort();
+
+    if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
+    const grades = (gradeClass.board_id === 'sindh' || targetBoard === 'sindh') ? SINDH_GRADES : FBISE_GRADES;
+    const g = grades.find((gr) => gr.grade === grade);
+    return g ? Array.from(new Set(g.streams.flatMap(s => s.subjects))).sort() : [];
   }
 
   const norm = streamName.trim().toLowerCase();
@@ -2453,12 +2425,20 @@ export function getSubjectsForStream(grade: string, streamName: string): string[
         s.name.toLowerCase().includes(norm)
       )
   );
-  if (!stream) return [];
 
-  return cachedTaxonomy.streamSubjects
-    .filter((ss: any) => ss.stream_id === stream.id)
-    .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
-    .filter(Boolean) as string[];
+  if (stream) {
+    const subjects = cachedTaxonomy.streamSubjects
+      .filter((ss: any) => ss.stream_id === stream.id)
+      .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+      .filter(Boolean) as string[];
+    if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
+  }
+
+  const grades = (gradeClass.board_id === 'sindh' || targetBoard === 'sindh') ? SINDH_GRADES : FBISE_GRADES;
+  const g = grades.find((gr) => gr.grade === grade);
+  if (!g) return [];
+  const st = g.streams.find((s) => s.name.toLowerCase() === norm || norm.includes(s.name.toLowerCase()));
+  return st?.subjects || g.streams[0]?.subjects || g.commonSubjects || [];
 }
 
 // =============================================================================

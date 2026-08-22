@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle2, AlertTriangle, Coins, Save, Loader2 } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertTriangle, Coins, Save, Loader2, Layers } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { syncPricingToFeeConfigs, getTaxonomy, getFeeConfig } from '../../lib/db';
-import { BOARD } from '../../lib/taxonomy';
+import { BOARDS } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 
 export const PriceManagerPage: React.FC = () => {
   const isMobile = useMobile();
   const [taxonomy, setTaxonomy] = useState<any>(null);
+  const [selectedBoardId, setSelectedBoardId] = useState<string>('fbise');
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [notif, setNotif] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -19,7 +20,7 @@ export const PriceManagerPage: React.FC = () => {
 
   useEffect(() => {
     if (!taxonomy) return;
-    const list = taxonomy.classes.filter((c: any) => c.board_id === BOARD.id);
+    const list = taxonomy.classes.filter((c: any) => c.board_id === selectedBoardId);
     const loadPrices = async () => {
       const initialPrices: Record<string, number> = {};
       for (const c of list) {
@@ -34,7 +35,7 @@ export const PriceManagerPage: React.FC = () => {
       setPrices(initialPrices);
     };
     loadPrices();
-  }, [taxonomy]);
+  }, [taxonomy, selectedBoardId]);
 
   const triggerNotification = (type: 'success' | 'error', message: string) => {
     setNotif({ type, message });
@@ -53,9 +54,6 @@ export const PriceManagerPage: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      // Sync strictly by exact class ID (UUID from classes table) to fee_configs.
-      // Sequential writes (for...of) rather than concurrent Promise.all to avoid
-      // opening multiple simultaneous DB connections for what is a rare admin action.
       for (const [classId, price] of Object.entries(prices)) {
         await syncPricingToFeeConfigs(classId, price);
       }
@@ -69,9 +67,11 @@ export const PriceManagerPage: React.FC = () => {
     }
   };
 
+  const currentBoardDef = BOARDS.find((b) => b.id === selectedBoardId) || BOARDS[0];
+
   const currentGradesList = taxonomy
     ? taxonomy.classes
-        .filter((c: any) => c.board_id === BOARD.id)
+        .filter((c: any) => c.board_id === selectedBoardId)
         .map((c: any) => ({
           id: c.id,
           value: c.grade,
@@ -86,8 +86,27 @@ export const PriceManagerPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SectionHeader
             title="Syllabus Price Manager"
-            description="Configure marketing rates for the landing page calculator. For student-specific billing and WhatsApp collections, use the Fees manager."
+            description="Configure marketing rates for the landing page calculator across FBISE & Sindh Board. For student-specific billing and WhatsApp collections, use the Fees manager."
           />
+        </div>
+
+        {/* Board Switcher */}
+        <div className="flex items-center gap-2 bg-white p-2 rounded-2xl border border-[#E5E5E5] shadow-sm max-w-md">
+          {BOARDS.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => setSelectedBoardId(b.id)}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+                selectedBoardId === b.id
+                  ? 'bg-[#111111] text-white shadow-sm'
+                  : 'text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5]'
+              }`}
+            >
+              <Layers size={14} className={selectedBoardId === b.id ? 'text-[#F4C430]' : 'text-[#A3A3A3]'} />
+              <span>{b.name}</span>
+            </button>
+          ))}
         </div>
 
         {/* Status Toast */}
@@ -110,10 +129,10 @@ export const PriceManagerPage: React.FC = () => {
             <div className="card card-elevated sticky top-24 space-y-4 interactive">
               <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
                 <Coins size={18} className="text-[#F4C430]" />
-                <h2 className="font-bold text-[#111111] text-base">FBISE Pricing</h2>
+                <h2 className="font-bold text-[#111111] text-base">{currentBoardDef.name} Pricing</h2>
               </div>
               <p className="text-xs text-[#737373] leading-relaxed">
-                Configure tuition pricing for each FBISE grade. Once saved, the price will instantly sync to the client pricing widget.
+                Configure tuition pricing for each {currentBoardDef.name} class. Once saved, the price will instantly sync to the client pricing calculator and payment system.
               </p>
             </div>
           </div>
@@ -125,10 +144,10 @@ export const PriceManagerPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-[#F4C430]" />
                   <h2 className="font-bold text-[#111111] text-base">
-                    Federal Board (FBISE) Pricing
+                    {currentBoardDef.name} Package Rates
                   </h2>
                 </div>
-                <span className="badge badge-gray text-xs">{currentGradesList.length} packages</span>
+                <span className="badge badge-gray text-xs">{currentGradesList.length} classes</span>
               </div>
 
               <form onSubmit={handleSave} className="space-y-5">

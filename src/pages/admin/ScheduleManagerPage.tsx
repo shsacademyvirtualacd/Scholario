@@ -17,6 +17,7 @@ import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
 const BOARDS = [
   { id: 'fbise', label: 'FBISE' },
+  { id: 'sindh', label: 'Sindh Board' },
 ];
 
 export const ScheduleManagerPage: React.FC = () => {
@@ -576,7 +577,7 @@ export const ScheduleManagerPage: React.FC = () => {
 
   const activeGrades = taxonomy
     ? taxonomy.classes
-        .filter((c: any) => c.board_id === 'fbise')
+        .filter((c: any) => c.board_id === selectedBoard)
         .map((c: any) => ({ id: c.grade, label: c.display_name }))
     : [];
 

@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Check, ArrowRight, Zap, GraduationCap, BookOpen } from 'lucide-react';
-import { GRADES, getDefaultPrice } from '../../lib/taxonomy';
+import { Check, ArrowRight, Zap, GraduationCap, BookOpen, Layers } from 'lucide-react';
+import { BOARDS, getGradesForBoard, getDefaultPrice } from '../../lib/taxonomy';
 import { resolveGradeFeeConfig } from '../../lib/db';
 
 const PricingSection: React.FC = () => {
+  const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh'>('fbise');
   const [selectedGradeValue, setSelectedGradeValue] = useState('10');
   const [displayPrice, setDisplayPrice] = useState(2499);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
-  const activeGradesList = GRADES.map((g) => {
+  const currentBoardDef = BOARDS.find((b) => b.id === selectedBoardId) || BOARDS[0];
+  const gradesForSelectedBoard = getGradesForBoard(selectedBoardId);
+
+  const activeGradesList = gradesForSelectedBoard.map((g) => {
     // Collect unique subjects across streams
     const allSubjs = new Set<string>();
     g.streams.forEach((s) => s.subjects.forEach((sub) => allSubjs.add(sub)));
+    const key = `${selectedBoardId}-${g.grade}`;
     return {
       value: g.grade,
       label: `Class ${g.displayName}`,
       subjects: Array.from(allSubjs),
-      basePrice: livePrices[g.grade] || getDefaultPrice(g.grade),
+      basePrice: livePrices[key] || livePrices[g.grade] || getDefaultPrice(g.grade),
     };
   });
 
@@ -26,14 +31,18 @@ const PricingSection: React.FC = () => {
   useEffect(() => {
     const loadAllPrices = async () => {
       const resolved: Record<string, number> = {};
-      for (const g of GRADES) {
-        try {
-          const cfg = await resolveGradeFeeConfig(g.grade);
-          if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
-            resolved[g.grade] = cfg.amount;
+      for (const board of BOARDS) {
+        const boardGrades = getGradesForBoard(board.id);
+        for (const g of boardGrades) {
+          try {
+            const cfg = await resolveGradeFeeConfig(g.grade, null, board.id);
+            if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
+              resolved[`${board.id}-${g.grade}`] = cfg.amount;
+              if (board.id === 'fbise') resolved[g.grade] = cfg.amount;
+            }
+          } catch (err) {
+            console.warn(`[PricingSection] Failed to load price for ${board.id} grade ${g.grade}:`, err);
           }
-        } catch (err) {
-          console.warn(`[PricingSection] Failed to load price for grade ${g.grade}:`, err);
         }
       }
       setLivePrices(resolved);
@@ -42,12 +51,15 @@ const PricingSection: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (livePrices[selectedGradeValue]) {
+    const key = `${selectedBoardId}-${selectedGradeValue}`;
+    if (livePrices[key]) {
+      setDisplayPrice(livePrices[key]);
+    } else if (livePrices[selectedGradeValue]) {
       setDisplayPrice(livePrices[selectedGradeValue]);
     } else {
-      setDisplayPrice(activeGrade?.basePrice || 2499);
+      setDisplayPrice(activeGrade?.basePrice || (['11', '12'].includes(selectedGradeValue) ? 3499 : 2499));
     }
-  }, [selectedGradeValue, livePrices, activeGrade]);
+  }, [selectedBoardId, selectedGradeValue, livePrices, activeGrade]);
 
   return (
     <section className="py-28 bg-white">
@@ -57,30 +69,61 @@ const PricingSection: React.FC = () => {
         <div className="text-center mb-12">
           <span className="section-label justify-center mb-4">Pricing Calculator</span>
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#111111] mb-5 leading-tight">
-            Select your Class (FBISE)
+            Select your Board & Class
           </h2>
-          <p className="text-xl text-[#737373] max-w-xl mx-auto mb-8">
-            Choose your academic class below to see the exact subjects and personalized monthly pricing plans.
+          <p className="text-xl text-[#737373] max-w-2xl mx-auto mb-8">
+            Choose your academic education board and class below to see the exact subjects and personalized monthly pricing plans.
           </p>
 
           {/* Interactive Selectors Bar */}
-          <div className="max-w-md mx-auto bg-[#FAFAFA] border border-[#E5E5E5] p-5 rounded-2xl mb-12">
+          <div className="max-w-xl mx-auto bg-[#FAFAFA] border border-[#E5E5E5] p-5 rounded-2xl mb-12 space-y-4">
+            {/* Board Selector Pills */}
+            <div>
+              <label className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
+                Select Education Board
+              </label>
+              <div className="grid grid-cols-2 gap-2 bg-[#EFEFEF] p-1 rounded-xl">
+                {BOARDS.map((board) => (
+                  <button
+                    key={board.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedBoardId(board.id as 'fbise' | 'sindh');
+                    }}
+                    className={`py-2.5 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                      selectedBoardId === board.id
+                        ? 'bg-white text-[#111111] shadow-sm border border-[#E5E5E5]'
+                        : 'text-[#737373] hover:text-[#111111]'
+                    }`}
+                  >
+                    <Layers size={13} className={selectedBoardId === board.id ? 'text-[#F4C430]' : 'text-[#A3A3A3]'} />
+                    <span>{board.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grade Selector */}
             <div>
               <label htmlFor="grade-select" className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
-                Select Class / Grade
+                Select Class / Grade ({currentBoardDef.name})
               </label>
-              <select
-                id="grade-select"
-                value={selectedGradeValue}
-                onChange={(e) => setSelectedGradeValue(e.target.value)}
-                className="w-full bg-white border border-[#E5E5E5] rounded-xl px-4 py-3 text-sm font-semibold text-[#111111] focus:outline-none focus:border-[#F4C430] cursor-pointer"
-              >
+              <div className="grid grid-cols-4 gap-1.5 bg-[#EFEFEF] p-1 rounded-xl">
                 {activeGradesList.map((g) => (
-                  <option key={g.value} value={g.value}>
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => setSelectedGradeValue(g.value)}
+                    className={`py-2 px-2 rounded-lg text-xs font-bold transition-all text-center ${
+                      selectedGradeValue === g.value
+                        ? 'bg-[#111111] text-white shadow-sm'
+                        : 'text-[#737373] hover:text-[#111111] bg-white/40'
+                    }`}
+                  >
                     {g.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
         </div>
@@ -91,31 +134,34 @@ const PricingSection: React.FC = () => {
           {/* Included Subjects Info (Left Side - 5 Columns) */}
           <div className="md:col-span-5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-2xl p-6 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#FFFBF0] flex items-center justify-center border border-[#FDF3C8]">
                   <GraduationCap size={16} className="text-[#D4A017]" />
                 </div>
-                <h3 className="font-bold text-[#111111] text-lg">Active Subjects Included</h3>
+                <div>
+                  <h3 className="font-bold text-[#111111] text-lg">Active Subjects Included</h3>
+                  <p className="text-[11px] font-semibold text-[#D4A017]">{currentBoardDef.name} · Class {activeGrade?.value}th</p>
+                </div>
               </div>
-              <p className="text-xs text-[#737373] mb-6 leading-relaxed">
-                You will get comprehensive access to live classes, notes and announcements for the following subjects:
+              <p className="text-xs text-[#737373] mb-5 leading-relaxed">
+                You will get comprehensive access to live lectures, notes vaults and announcements for the following curriculum subjects:
               </p>
 
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {activeGrade?.subjects.map((sub) => (
-                  <li key={sub} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-[#F0F0F0]">
+                  <li key={sub} className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#F0F0F0]">
                     <div className="w-5 h-5 rounded-full bg-green-50 flex items-center justify-center border border-green-100 shrink-0">
                       <Check size={12} className="text-[#22c55e]" />
                     </div>
-                    <span className="text-sm font-bold text-[#111111]">{sub}</span>
+                    <span className="text-xs font-bold text-[#111111]">{sub}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[#E5E5E5] text-[11px] text-[#A3A3A3] flex items-center gap-2">
-              <BookOpen size={12} />
-              <span>Full syllabus aligned with FBISE requirements.</span>
+            <div className="mt-8 pt-6 border-t border-[#E5E5E5] text-[11px] text-[#737373] flex items-center gap-2">
+              <BookOpen size={13} className="text-[#F4C430] shrink-0" />
+              <span>Full curriculum aligned with {currentBoardDef.name} syllabus guidelines.</span>
             </div>
           </div>
 
@@ -135,12 +181,17 @@ const PricingSection: React.FC = () => {
               </div>
 
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-base font-bold text-white">Premium Plan</span>
-                  <Zap size={14} style={{ color: '#F4C430' }} />
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-white">Academic Plan</span>
+                    <Zap size={14} style={{ color: '#F4C430' }} />
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#262626] text-[#F4C430]">
+                    {currentBoardDef.name}
+                  </span>
                 </div>
-                <p className="text-xs text-[#737373] leading-relaxed mb-6">
-                  Ideal for students looking for structured daily classes, schedules and note vaults.
+                <p className="text-xs text-[#A3A3A3] leading-relaxed mb-6">
+                  Structured daily classes, syllabus schedules and interactive note vaults for Class {activeGrade?.value}th.
                 </p>
 
                 {/* Dynamic Price */}
@@ -158,24 +209,24 @@ const PricingSection: React.FC = () => {
                 <ul className="space-y-2.5 mb-6 text-xs text-[#D4D4D4]">
                   <li className="flex items-center gap-2">
                     <Check size={12} className="text-[#F4C430]" />
-                    <span>Complete Course access</span>
+                    <span>Complete {currentBoardDef.name} Course access</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check size={12} className="text-[#F4C430]" />
-                    <span>Daily schedule logs</span>
+                    <span>Daily live interactive schedule</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check size={12} className="text-[#F4C430]" />
-                    <span>Resource library vaults</span>
+                    <span>Resource library & solved vaults</span>
                   </li>
                 </ul>
               </div>
 
               <a
-                href="/register"
+                href={`/register?board=${selectedBoardId}&grade=${selectedGradeValue}`}
                 className="btn btn-gold btn-md w-full flex items-center justify-center gap-1 interactive"
               >
-                Get Started
+                Get Started with {currentBoardDef.name}
                 <ArrowRight size={14} />
               </a>
             </div>

@@ -226,11 +226,14 @@ export const SlotForm: React.FC<SlotFormProps> = ({
               className="input py-2.5 text-sm w-full bg-white border-[#E5E5E5] rounded-xl font-medium text-gray-800"
             >
               <option value="">-- Select Class --</option>
-              {taxonomy?.classes?.filter((c: any) => c.board_id === 'fbise').map((c: any) => (
-                <option key={c.id} value={c.id}>
-                  Grade {c.display_name || c.grade} ({c.board_id?.toUpperCase()})
-                </option>
-              ))}
+              {taxonomy?.classes?.map((c: any) => {
+                const boardLabel = c.board_id === 'sindh' ? 'Sindh Board' : 'FBISE';
+                return (
+                  <option key={c.id} value={c.id}>
+                    {boardLabel} — Grade {c.display_name || c.grade}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

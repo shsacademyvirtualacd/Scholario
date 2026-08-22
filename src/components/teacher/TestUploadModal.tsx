@@ -49,9 +49,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
     return d.toISOString().split('T')[0];
   });
   const [file, setFile] = useState<File | null>(null);
-  const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState<boolean>(false);
-  const [akDragActive, setAkDragActive] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -224,7 +222,6 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
           uploaded_by: profile?.id || null,
           uploaded_by_name: profile?.full_name || null,
           file_type: fileType,
-          answerKeyFile: answerKeyFile || null,
         },
         (pct) => setProgress(pct)
       );
@@ -247,7 +244,6 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
         due_date: dueDate,
         published_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
-        has_answer_key: Boolean(answerKeyFile),
         submissions_count: 0,
         graded_count: 0,
       };
@@ -529,91 +525,6 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
                     Drag & drop question paper, or <span className="underline">browse</span>
                   </p>
                   <p className="text-[11px] text-[#737373]">Supports PDF, JPG, PNG, DOC (max 25MB)</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Optional Answer Key / Marking Scheme Upload */}
-          <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-[#0F172A]">
-                Answer Key / Marking Scheme <span className="text-[#64748B] font-normal">(Optional • Teacher/Admin only)</span>
-              </label>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E0E7FF] text-[#3730A3] border border-[#C7D2FE]">
-                Enables Gemini Auto-Grading
-              </span>
-            </div>
-            <p className="text-[11px] text-[#64748B]">
-              Upload the official marking scheme or answer key now, or within 5 minutes of publishing. Students will never see this file.
-            </p>
-
-            <div
-              id="answer-key-drop-zone"
-              onDragOver={(e) => {
-                e.preventDefault();
-                setAkDragActive(true);
-              }}
-              onDragLeave={() => setAkDragActive(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setAkDragActive(false);
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                  setAnswerKeyFile(e.dataTransfer.files[0]);
-                }
-              }}
-              className={`relative border-2 border-dashed rounded-xl p-3.5 text-center transition-all ${
-                akDragActive
-                  ? 'border-[#2563EB] bg-[#EFF6FF]'
-                  : answerKeyFile
-                  ? 'border-[#10B981] bg-[#ECFDF5]'
-                  : 'border-[#CBD5E1] bg-white hover:bg-[#F1F5F9]'
-              }`}
-            >
-              <input
-                type="file"
-                id="answer-key-file-input"
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setAnswerKeyFile(e.target.files[0]);
-                  }
-                }}
-                disabled={uploading}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-              />
-
-              {answerKeyFile ? (
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex items-center gap-2.5 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-[#10B981]/15 text-[#059669] flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={16} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-[#0F172A] truncate max-w-xs">{answerKeyFile.name}</p>
-                      <p className="text-[10px] text-[#64748B]">
-                        {(answerKeyFile.size / (1024 * 1024)).toFixed(2)} MB • Answer Key attached
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAnswerKeyFile(null);
-                    }}
-                    className="p-1 text-[#64748B] hover:text-[#DC2626] rounded-md transition-colors"
-                    title="Remove answer key"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2 text-xs text-[#475569]">
-                  <Upload size={14} className="text-[#64748B]" />
-                  <span>
-                    Upload Marking Scheme PDF / image <span className="text-[#2563EB] font-bold underline">(Click or drop)</span>
-                  </span>
                 </div>
               )}
             </div>
