@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, Lock, UserCheck, Clock, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ClassSlot, TeacherAttendanceRating, TeacherAttendanceRatingVote } from '../../types';
@@ -24,25 +24,22 @@ export const TeacherAttendanceRatingCard: React.FC<TeacherAttendanceRatingCardPr
   onRatingSubmitted,
 }) => {
   const [submitting, setSubmitting] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Periodically refresh every 15 seconds to detect class start/end & voting window expiration in real time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   const pktnow = getPKTNow();
   const target = findActiveOrRecentSlotForRating(slots, pktnow);
 
+  // Hidden by default when no session is actively in-session or within the post-class voting window
   if (!target) {
-    return (
-      <div className="card card-elevated p-4 sm:p-5 border border-[#E5E5E5] bg-white rounded-2xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#F5F5F5] flex items-center justify-center text-[#737373] shrink-0">
-            <UserCheck size={20} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-[#111111]">Was your teacher present?</h3>
-            <p className="text-xs text-[#737373] mt-0.5">
-              Teacher attendance verification will activate when your next class is in-session or recently completed.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const { slot, sessionDate, isOngoing, statusLabel } = target;

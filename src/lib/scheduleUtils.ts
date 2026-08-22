@@ -465,6 +465,9 @@ export function isSlotOngoing(
   return pktnow.totalMins >= startMins && pktnow.totalMins < endMins;
 }
 
+/** Maximum time after class end that students can verify teacher attendance (in minutes) */
+export const TEACHER_ATTENDANCE_VOTING_WINDOW_MINS = 60;
+
 export interface RatingSessionTarget {
   slot: ClassSlot;
   sessionDate: string; // YYYY-MM-DD
@@ -473,8 +476,15 @@ export interface RatingSessionTarget {
 }
 
 /**
- * Finds either the currently in-session class or the most recently completed class slot
+ * Finds either the currently in-session class or recently completed class slot today
  * for student teacher attendance rating.
+ *
+ * Rules:
+ *  - Hidden by default.
+ *  - Only becomes visible starting EXACTLY at the class's scheduled start time on that specific day.
+ *  - Remains visible during the live class and up to 60 minutes after class ends (voting window).
+ *  - Disappears once the voting window closes.
+ *  - Strictly evaluates against today's day of week and current PKT time (never shows for future/past days).
  */
 export function findActiveOrRecentSlotForRating(
   slots: ClassSlot[],
@@ -483,12 +493,15 @@ export function findActiveOrRecentSlotForRating(
   const active = slots.filter(s => !s.is_cancelled && s.day_of_week != null && s.start_time && s.end_time);
   if (active.length === 0) return null;
 
-  // 1. Check if any class is currently ONGOING today
+  // Only consider classes scheduled for TODAY (current day of week in PKT)
   const todaySlots = active.filter(s => s.day_of_week === pktnow.dayIndex);
+  if (todaySlots.length === 0) return null;
+
+  // 1. Check if any class is currently ONGOING today (start_time <= current time < end_time)
   const ongoing = todaySlots.find(s => {
     const startMins = timeStrToMins(s.start_time!);
     const endMins = timeStrToMins(s.end_time!);
-    return startMins <= pktnow.totalMins && pktnow.totalMins < endMins;
+    return pktnow.totalMins >= startMins && pktnow.totalMins < endMins;
   });
 
   if (ongoing) {
@@ -496,45 +509,32 @@ export function findActiveOrRecentSlotForRating(
       slot: ongoing,
       sessionDate: pktnow.dateString,
       isOngoing: true,
-      statusLabel: 'Live In Session',
+      statusLabel: 'Live Class In Session',
     };
   }
 
-  // 2. Check if any class has COMPLETED earlier today
-  const completedToday = todaySlots
-    .filter(s => timeStrToMins(s.end_time!) <= pktnow.totalMins)
+  // 2. Check if any class has completed earlier today AND is still within the voting window (within 60m of end_time)
+  const recentEligible = todaySlots
+    .filter(s => {
+      const endMins = timeStrToMins(s.end_time!);
+      // Current time must be past end_time and within post-class voting window
+      return pktnow.totalMins >= endMins && pktnow.totalMins <= endMins + TEACHER_ATTENDANCE_VOTING_WINDOW_MINS;
+    })
     .sort((a, b) => timeStrToMins(b.end_time!) - timeStrToMins(a.end_time!));
 
-  if (completedToday.length > 0) {
+  if (recentEligible.length > 0) {
+    const slot = recentEligible[0];
+    const endMins = timeStrToMins(slot.end_time!);
+    const minsLeftInWindow = Math.max(0, (endMins + TEACHER_ATTENDANCE_VOTING_WINDOW_MINS) - pktnow.totalMins);
     return {
-      slot: completedToday[0],
+      slot,
       sessionDate: pktnow.dateString,
       isOngoing: false,
-      statusLabel: 'Completed Today',
+      statusLabel: minsLeftInWindow > 0 ? `Voting open · ${minsLeftInWindow}m left` : 'Voting closing',
     };
   }
 
-  // 3. Look back over the past 7 days for the most recently completed class
-  for (let daysAgo = 1; daysAgo <= 7; daysAgo++) {
-    const targetDayIndex = (pktnow.dayIndex - daysAgo + 7) % 7;
-    const pastSlots = active
-      .filter(s => s.day_of_week === targetDayIndex)
-      .sort((a, b) => timeStrToMins(b.end_time!) - timeStrToMins(a.end_time!));
-
-    if (pastSlots.length > 0) {
-      const [year, month, day] = pktnow.dateString.split('-').map(Number);
-      const targetDate = new Date(Date.UTC(year, month - 1, day - daysAgo));
-      const pastDate = targetDate.toISOString().slice(0, 10);
-      const dayName = DAYS_OF_WEEK_SHORT[targetDayIndex];
-      return {
-        slot: pastSlots[0],
-        sessionDate: pastDate,
-        isOngoing: false,
-        statusLabel: `Completed (${dayName}, ${pastDate})`,
-      };
-    }
-  }
-
+  // Otherwise, no class is active or within voting window today -> hidden by default
   return null;
 }
 
