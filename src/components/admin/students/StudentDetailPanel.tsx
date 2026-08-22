@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Mail, Calendar } from 'lucide-react';
-import type { Profile, Enrollment, ClassOffering, Teacher, RosterEntry } from '../../../types';
-import { getEnrollmentsForStudent, getAllOfferings, getAllTeachers, getAllRoster } from '../../../lib/db';
+import { Phone, Mail, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import type { Profile, Enrollment, ClassOffering, Teacher, RosterEntry, Attendance } from '../../../types';
+import { getEnrollmentsForStudent, getAllOfferings, getAllTeachers, getAllRoster, getAttendanceForStudent } from '../../../lib/db';
 
 interface StudentDetailPanelProps {
   student: Profile;
@@ -12,6 +12,7 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,12 +21,14 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
       getEnrollmentsForStudent(student.id),
       getAllOfferings(),
       getAllTeachers(),
-      getAllRoster()
-    ]).then(([e, o, t, r]) => {
+      getAllRoster(),
+      getAttendanceForStudent(student.id)
+    ]).then(([e, o, t, r, att]) => {
       setEnrollments(e);
       setOfferings(o);
       setTeachers(t);
       setRoster(r);
+      setAttendanceRecords(att);
     }).catch(console.error).finally(() => setLoading(false));
   }, [student.id]);
 
@@ -54,6 +57,14 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
   const rosterEntry = roster.find(r => r.profile_id === student.id);
   const emailDisplay = rosterEntry ? rosterEntry.email : 'No email address registered';
 
+  // Attendance metrics
+  const totalSessions = attendanceRecords.length;
+  const presentCount = attendanceRecords.filter(a => a.status === 'present').length;
+  const lateCount = attendanceRecords.filter(a => a.status === 'late').length;
+  const absentCount = attendanceRecords.filter(a => a.status === 'absent').length;
+  const attendedCount = presentCount + lateCount;
+  const attendanceRate = totalSessions > 0 ? Math.round((attendedCount / totalSessions) * 100) : 100;
+
   if (loading) {
     return (
       <div className="py-24 text-center">
@@ -77,6 +88,56 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
         <p className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mt-3">
           {gradeLabel} · {boardLabel}
         </p>
+      </div>
+
+      {/* Attendance Summary */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Attendance Performance</h4>
+          {totalSessions > 0 && (
+            <span
+              className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                attendanceRate >= 75
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : attendanceRate >= 70
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}
+            >
+              {attendanceRate}% Rate
+            </span>
+          )}
+        </div>
+
+        {totalSessions === 0 ? (
+          <div className="text-xs text-[#A3A3A3] font-semibold text-center py-4 bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
+            No attendance records recorded yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-2.5">
+              <div className="flex items-center justify-center gap-1 text-emerald-600 mb-1">
+                <CheckCircle2 size={13} />
+                <span className="text-xs font-bold">{presentCount}</span>
+              </div>
+              <span className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Present</span>
+            </div>
+            <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-2.5">
+              <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+                <Clock size={13} />
+                <span className="text-xs font-bold">{lateCount}</span>
+              </div>
+              <span className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Late</span>
+            </div>
+            <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-2.5">
+              <div className="flex items-center justify-center gap-1 text-rose-600 mb-1">
+                <XCircle size={13} />
+                <span className="text-xs font-bold">{absentCount}</span>
+              </div>
+              <span className="text-[9px] font-bold text-[#737373] uppercase tracking-wider">Absent</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Info Card */}

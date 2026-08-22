@@ -25,6 +25,7 @@ const AdminDashboardPage   = lazy(() => import('../pages/admin/AdminDashboardPag
 
 // ─── Teacher Portal (lazy) ──────────────────
 const TeacherDashboardPage = lazy(() => import('../pages/teacher/TeacherDashboardPage'));
+const TeacherAttendancePage = lazy(() => import('../pages/teacher/TeacherAttendancePage'));
 const TeacherNotesPage = lazy(() => import('../pages/teacher/TeacherNotesPage'));
 const TeacherTestsPage = lazy(() => import('../pages/teacher/TeacherTestsPage'));
 const TeacherSchedulePage = lazy(() => import('../pages/teacher/TeacherSchedulePage'));
@@ -218,6 +219,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/teacher"
             element={<ProtectedRoute requiredRole="teacher"><TeacherDashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/attendance"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherAttendancePage /></ProtectedRoute>}
           />
           <Route
             path="/teacher/notes"

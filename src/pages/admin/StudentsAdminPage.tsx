@@ -1,28 +1,63 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, Users, Sparkles, Eye } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Filter, Users, Sparkles, Eye, TrendingUp, AlertTriangle } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StudentTable from '../../components/admin/students/StudentTable';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import StudentDetailPanel from '../../components/admin/students/StudentDetailPanel';
-import { getAllStudents, getAllEnrollments, getAllOfferings } from '../../lib/db';
+import { getAllStudents, getAllEnrollments, getAllOfferings, getAllAttendance } from '../../lib/db';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
-import type { Profile, Enrollment, ClassOffering } from '../../types';
+import type { Profile, Enrollment, ClassOffering, Attendance } from '../../types';
 
 export const StudentsAdminPage: React.FC = () => {
   const isMobile = useMobile();
   const [students, setStudents] = useState<Profile[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
 
-  // ── Load from DB (or mock) on mount ──────────────────────────────────────
+  // ── Load from DB on mount ──────────────────────────────────────
+  const loadData = async () => {
+    try {
+      const [stList, enList, offList, attList] = await Promise.all([
+        getAllStudents(),
+        getAllEnrollments(),
+        getAllOfferings(),
+        getAllAttendance()
+      ]);
+      setStudents(stList);
+      setEnrollments(enList);
+      setOfferings(offList);
+      setAttendanceRecords(attList);
+    } catch (err) {
+      console.error('[StudentsAdminPage] loadData error:', err);
+    }
+  };
+
   useEffect(() => {
-    Promise.all([
-      getAllStudents().then(setStudents),
-      getAllEnrollments().then(setEnrollments),
-      getAllOfferings().then(setOfferings)
-    ]).catch(console.error);
+    loadData();
   }, []);
+
+  // ── Realtime sync for attendance updates ─────────────────────────
+  useRealtimeTable({
+    table: 'attendance',
+    debounceMs: 1200,
+    onAny: async () => {
+      const attList = await getAllAttendance();
+      setAttendanceRecords(attList);
+    }
+  });
+
+  useRealtimeTable({
+    table: 'enrollments',
+    debounceMs: 2000,
+    onAny: async () => {
+      const enList = await getAllEnrollments();
+      setEnrollments(enList);
+    }
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [streamFilter, setStreamFilter] = useState<'all' | 'pre-medical' | 'pre-engineering' | 'ics'>('all');
 
@@ -32,6 +67,45 @@ export const StudentsAdminPage: React.FC = () => {
 
   // Compute student stats
   const totalCount = students.length;
+
+  // Compute attendance stats across all students & per student
+  const attendanceStats = useMemo(() => {
+    const totalSessions = attendanceRecords.length;
+    const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
+    const lateCount = attendanceRecords.filter(r => r.status === 'late').length;
+    const attendedCount = presentCount + lateCount;
+    const avgRate = totalSessions > 0 ? Math.round((attendedCount / totalSessions) * 100) : 100;
+
+    // Student-specific map
+    const studentMap = new Map<string, { attended: number; total: number; rate: number }>();
+    attendanceRecords.forEach(r => {
+      const curr = studentMap.get(r.student_id) || { attended: 0, total: 0, rate: 100 };
+      curr.total += 1;
+      if (r.status === 'present' || r.status === 'late') {
+        curr.attended += 1;
+      }
+      curr.rate = curr.total > 0 ? Math.round((curr.attended / curr.total) * 100) : 100;
+      studentMap.set(r.student_id, curr);
+    });
+
+    // Risk Alerts count: Students currently below 70% rate with minimum 10 recorded sessions eligibility
+    let riskAlertsCount = 0;
+    studentMap.forEach(val => {
+      if (val.total >= 10 && val.rate < 70) {
+        riskAlertsCount += 1;
+      }
+    });
+
+    return {
+      totalSessions,
+      presentCount,
+      lateCount,
+      attendedCount,
+      avgRate,
+      riskAlertsCount,
+      studentMap,
+    };
+  }, [attendanceRecords]);
 
   // Search and Filter logical execution
   const filteredStudents = students.filter((s) => {
@@ -107,32 +181,32 @@ export const StudentsAdminPage: React.FC = () => {
         </div>
 
         {/* Avg Attendance Card */}
-        <div className="stat-card relative opacity-40 select-none interactive">
-          <span className="absolute top-2 right-2 text-[8px] bg-zinc-200 text-zinc-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-            Soon
-          </span>
+        <div className="stat-card interactive">
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Users size={15} />
+              <TrendingUp size={15} />
             </div>
             <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Avg Attendance</span>
           </div>
-          <div className="stat-value text-emerald-600">—</div>
-          <div className="stat-label">Class presence rate</div>
+          <div className="stat-value text-emerald-600">
+            {attendanceRecords.length > 0 ? `${attendanceStats.avgRate}%` : '100%'}
+          </div>
+          <div className="stat-label">
+            {attendanceStats.totalSessions > 0
+              ? `${attendanceStats.attendedCount} of ${attendanceStats.totalSessions} sessions attended`
+              : 'Class presence rate'}
+          </div>
         </div>
 
         {/* Attendance Warnings Card */}
-        <div className="stat-card relative opacity-40 select-none interactive">
-          <span className="absolute top-2 right-2 text-[8px] bg-zinc-200 text-zinc-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-            Soon
-          </span>
+        <div className="stat-card interactive">
           <div className="flex items-center justify-between mb-2">
             <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
-              <Users size={15} />
+              <AlertTriangle size={15} />
             </div>
             <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Risk Alerts</span>
           </div>
-          <div className="stat-value text-red-500">—</div>
+          <div className="stat-value text-red-500">{attendanceStats.riskAlertsCount}</div>
           <div className="stat-label">Students below 70% rate</div>
         </div>
       </div>
@@ -185,6 +259,9 @@ export const StudentsAdminPage: React.FC = () => {
               ? student.stream.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
               : 'General';
 
+            const attData = attendanceStats.studentMap.get(student.id);
+            const hasAtt = attData && attData.total > 0;
+
             return (
               <div key={student.id} className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-sm flex flex-col gap-3">
                 <div className="flex items-center justify-between">
@@ -204,7 +281,7 @@ export const StudentsAdminPage: React.FC = () => {
                     <Eye size={14} />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3 border-t border-[#F5F5F5] pt-3 text-xs">
+                <div className="grid grid-cols-3 gap-2 border-t border-[#F5F5F5] pt-3 text-xs">
                   <div>
                     <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Stream</span>
                     <span className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${getStreamColor(student.stream)}`}>
@@ -213,7 +290,25 @@ export const StudentsAdminPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Class</span>
-                    <span className="font-semibold text-[#525252] mt-1 block">{stats.boardAndGrade}</span>
+                    <span className="font-semibold text-[#525252] mt-1 block truncate">{stats.boardAndGrade}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Attendance</span>
+                    {hasAtt ? (
+                      <span
+                        className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${
+                          attData.rate >= 75
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : attData.rate >= 70
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}
+                      >
+                        {attData.rate}%
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#A3A3A3] font-medium mt-1 block">—</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -226,6 +321,7 @@ export const StudentsAdminPage: React.FC = () => {
           onView={handleViewTrigger}
           enrollments={enrollments}
           offerings={offerings}
+          attendanceStatsMap={attendanceStats.studentMap}
         />
       )}
 
