@@ -14,6 +14,7 @@ import {
   getStudentsInOffering,
   getSlotsForTeacher,
   getAttendanceForTeacher,
+  getAttendanceForSession,
   recordAttendance,
   upsertAttendanceBatch
 } from '../../lib/db';
@@ -436,10 +437,24 @@ export const TeacherDashboardPage: React.FC = () => {
 
   // Fetch attendance records for today's session
   const fetchTeacherAttendance = async () => {
-    if (!teacherId) return;
     try {
-      const records = await getAttendanceForTeacher(teacherId, todayDateStr);
-      setTeacherAttendance(records);
+      let combined: Attendance[] = [];
+      if (activeTodaySlot?.id) {
+        const sessionRecords = await getAttendanceForSession(activeTodaySlot.id, todayDateStr);
+        combined = sessionRecords || [];
+      }
+      if (teacherId) {
+        const teacherRecords = await getAttendanceForTeacher(teacherId, todayDateStr);
+        const seenKeys = new Set(combined.map(r => `${r.student_id}_${r.slot_id}`));
+        teacherRecords.forEach(tr => {
+          const key = `${tr.student_id}_${tr.slot_id}`;
+          if (!seenKeys.has(key)) {
+            combined.push(tr);
+            seenKeys.add(key);
+          }
+        });
+      }
+      setTeacherAttendance(combined);
     } catch (err) {
       console.error('Failed fetching teacher attendance:', err);
     }
@@ -447,7 +462,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchTeacherAttendance();
-  }, [teacherId, todayDateStr, activeOfferingId]);
+  }, [teacherId, todayDateStr, activeTodaySlot?.id, activeOfferingId]);
 
   useRealtimeTable({
     table: 'attendance',

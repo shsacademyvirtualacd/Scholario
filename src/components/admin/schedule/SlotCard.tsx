@@ -4,12 +4,14 @@ import type { ClassSlot } from '../../../types';
 
 interface SlotCardProps {
   slot: ClassSlot & {
+    streamName?: string;
     offering?: {
       board?: string;
       grade?: string;
       subject_name?: string;
       subject?: string;
       stream_id?: string | null;
+      stream?: string;
       teacher?: { full_name: string };
     };
   };
@@ -126,7 +128,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         </div>
       </div>
 
-      {/* Footer: Core/Elective badge & Cancelled status */}
+      {/* Footer: Core/Elective/Stream badge & Cancelled status */}
       <div className="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-black/5">
         <span
           className={`text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded shrink-0 ${
@@ -134,9 +136,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               ? 'bg-slate-200/80 text-slate-700'
               : 'bg-purple-100 text-purple-800 border border-purple-200/60'
           }`}
-          title={isCore ? 'Core subject (shared across streams)' : 'Stream elective subject'}
+          title={isCore ? 'Core subject (shared across streams)' : `Stream: ${slot.streamName || 'Elective'}`}
         >
-          {isCore ? '• Core' : '◆ Elective'}
+          {slot.streamName ? `◆ ${slot.streamName}` : isCore ? '• Core' : '◆ Elective'}
         </span>
 
         {isCancelled && (

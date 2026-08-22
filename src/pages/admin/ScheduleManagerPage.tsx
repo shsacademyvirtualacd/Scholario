@@ -43,10 +43,10 @@ export const ScheduleManagerPage: React.FC = () => {
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
 
-  // Filters - default to Grade 10 class-wise view for better usability
+  // Filters - default to Grade 10 class-wise view with 'all' streams selected for full institutional visibility
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>('10');
-  const [selectedStream, setSelectedStream] = useState<string>('');
+  const [selectedStream, setSelectedStream] = useState<string>('all');
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [showPublishBanner, setShowPublishBanner] = useState(false);
 
@@ -74,18 +74,10 @@ export const ScheduleManagerPage: React.FC = () => {
     loadData();
   }, []);
 
-  // Auto-select the first available stream whenever taxonomy loads or the grade changes.
-  // This replaces the old manual setSelectedStream('all') calls and ensures the filter
-  // is never left in an ambiguous empty state.
+  // Default to 'all' streams whenever taxonomy loads or grade changes so no class slot is hidden from admins
   useEffect(() => {
     if (!taxonomy) return;
-    const cls = taxonomy.classes.find(
-      (c: any) => c.grade === selectedGrade && c.board_id === selectedBoard
-    );
-    const streams = cls
-      ? taxonomy.streams.filter((s: any) => s.class_id === cls.id)
-      : [];
-    setSelectedStream(streams.length > 0 ? streams[0].id : '');
+    setSelectedStream('all');
   }, [taxonomy, selectedGrade, selectedBoard]);
 
   useRealtimeTable({
@@ -100,51 +92,67 @@ export const ScheduleManagerPage: React.FC = () => {
   const enrichedSlots = slots.map((slot) => {
     const offering = offerings.find((o) => o.id === slot.offering_id);
     const teacher = offering ? teachers.find((t) => t.id === offering.teacher_id) : undefined;
+    const streamId = slot.stream_id || offering?.stream_id;
+    const streamObj = streamId ? taxonomy?.streams?.find((s: any) => s.id === streamId) : undefined;
     return {
       ...slot,
       offering: offering ? { ...offering, teacher } : undefined,
+      streamName: streamObj?.name || (offering as any)?.stream || undefined,
     };
   });
 
   const activeClass = taxonomy?.classes?.find((c: any) => c.grade === selectedGrade && c.board_id === selectedBoard);
   const activeStreams = activeClass
     ? taxonomy.streams.filter((s: any) => s.class_id === activeClass.id)
-    : [];
+    : (selectedGrade !== 'all' && taxonomy?.classes
+        ? taxonomy.streams.filter((s: any) => {
+            const cls = taxonomy.classes.find((c: any) => c.id === s.class_id);
+            return cls && String(cls.grade) === String(selectedGrade);
+          })
+        : []);
 
-  // Apply active class-wise and teacher filters
+  // Apply active class-wise, stream-wise and teacher filters
   const filteredSlots = enrichedSlots.filter((slot) => {
+    const slotClass = taxonomy?.classes?.find((c: any) => c.id === slot.class_id || c.id === slot.offering?.class_id || c.id === (slot.offering as any)?.class?.id);
+    
     // 1. Grade match
-    const slotGrade = slot.offering?.grade || taxonomy?.classes?.find((c: any) => c.id === slot.class_id)?.grade;
+    const slotGrade = slot.offering?.grade || slotClass?.grade || (slot.offering as any)?.class?.grade;
     const gradeMatch = selectedGrade === 'all' || String(slotGrade) === String(selectedGrade);
 
     // 2. Board match
-    const slotBoard = slot.offering?.board || taxonomy?.classes?.find((c: any) => c.id === slot.class_id)?.board_id;
-    const boardMatch = selectedBoard === 'all' || slotBoard === selectedBoard;
+    const slotBoard = slot.offering?.board || slotClass?.board_id || (slot.offering as any)?.class?.board?.id;
+    const boardMatch = selectedBoard === 'all' || !slotBoard || slotBoard === selectedBoard;
 
     // 3. Teacher match
     const slotTeacherId = slot.offering?.teacher_id;
     const teacherMatch = teacherFilter === 'all' || slotTeacherId === teacherFilter;
 
-    // 4. Stream match
+    // 4. Stream match:
+    // When 'all' or empty, display all slots for this cohort.
+    // When a specific stream is chosen, match if slot or offering is explicitly tagged to that stream,
+    // or if untagged offering belongs to that stream's subject list.
     let streamMatch = true;
-    if (selectedStream && selectedStream !== '') {
-      if (slot.offering_id && slot.offering) {
-        // Match explicit stream_id first
-        if (slot.offering.stream_id === selectedStream) {
-          streamMatch = true;
-        } else {
-          const activeStreamName = activeStreams.find((s: any) => s.id === selectedStream)?.name || taxonomy?.streams?.find((s: any) => s.id === selectedStream)?.name;
-          if (activeStreamName && slotGrade) {
-            const streamSubjects = getSubjectsForStream(slotGrade, activeStreamName);
-            const offeringSubject = slot.offering.subject_name || slot.offering.subject?.name;
-            streamMatch = streamSubjects ? streamSubjects.includes(offeringSubject) : false;
-          } else {
-            streamMatch = false;
-          }
-        }
+    if (selectedStream && selectedStream !== 'all' && selectedStream !== '') {
+      const explicitSlotStream = slot.stream_id;
+      const explicitOfferingStream = slot.offering?.stream_id || (slot.offering as any)?.stream?.id;
+      const slotStreamId = explicitSlotStream || explicitOfferingStream;
+
+      if (slotStreamId) {
+        streamMatch = slotStreamId === selectedStream || slotStreamId === 'all';
       } else {
-        // If it's a schedule-only slot, match stream_id directly. If stream_id is null, it's common.
-        streamMatch = !slot.stream_id || slot.stream_id === selectedStream;
+        const activeStreamName = activeStreams.find((s: any) => s.id === selectedStream)?.name || taxonomy?.streams?.find((s: any) => s.id === selectedStream)?.name;
+        if (activeStreamName && slotGrade) {
+          const streamSubjects = getSubjectsForStream(String(slotGrade), activeStreamName);
+          const offeringSubject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject?.name || slot.offering?.subject;
+          if (streamSubjects && streamSubjects.length > 0 && offeringSubject) {
+            streamMatch = streamSubjects.some((s: string) => s.toLowerCase() === String(offeringSubject).toLowerCase());
+          } else {
+            // Common/Untagged subject visible across streams
+            streamMatch = true;
+          }
+        } else {
+          streamMatch = true;
+        }
       }
     }
 
@@ -551,18 +559,19 @@ export const ScheduleManagerPage: React.FC = () => {
   const resetFilters = () => {
     setSelectedBoard('fbise');
     setSelectedGrade('10');
-    // selectedStream is reset automatically by the auto-select useEffect
+    setSelectedStream('all');
     setTeacherFilter('all');
   };
 
   const handleBoardChange = (boardId: string) => {
     setSelectedBoard(boardId);
-    setSelectedGrade('10'); // Default to grade 10; stream auto-selected by effect
+    setSelectedGrade('10');
+    setSelectedStream('all');
   };
 
   const handleGradeChange = (gradeId: string) => {
     setSelectedGrade(gradeId);
-    // selectedStream is reset automatically by the auto-select useEffect
+    setSelectedStream('all');
   };
 
   const activeGrades = taxonomy
@@ -685,6 +694,16 @@ export const ScheduleManagerPage: React.FC = () => {
           {activeStreams.length > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 border-b border-[#F0F0F0] overflow-x-auto no-scrollbar bg-[#FAFAFA]">
               <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Stream:</span>
+              <button
+                onClick={() => setSelectedStream('all')}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
+                  selectedStream === 'all' || !selectedStream
+                    ? 'bg-[#111111] border-[#111111] text-white'
+                    : 'bg-white border-[#E5E5E5] text-[#525252]'
+                }`}
+              >
+                All Streams
+              </button>
               {activeStreams.map((s: any) => (
                 <button
                   key={s.id}
@@ -795,6 +814,16 @@ export const ScheduleManagerPage: React.FC = () => {
           {activeStreams.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 py-2 bg-[#F9F9F9] px-4 border-b border-[#E5E5E5] transition-all duration-250 animate-in slide-in-from-top-1">
               <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream:</span>
+              <button
+                onClick={() => setSelectedStream('all')}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                  selectedStream === 'all' || !selectedStream
+                    ? 'bg-[#111111] border-[#111111] text-white'
+                    : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                }`}
+              >
+                All Streams
+              </button>
               {activeStreams.map((s: any) => (
                 <button
                   key={s.id}
