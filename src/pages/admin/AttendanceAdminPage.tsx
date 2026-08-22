@@ -326,6 +326,72 @@ export const AttendanceAdminPage: React.FC = () => {
     return Array.from(subs);
   }, [offerings]);
 
+  // Realtime Live Attendance Metrics calculated directly from attendanceRecords state
+  const liveMetrics = useMemo(() => {
+    // Check records for selected date
+    const recordsForSelectedDate = attendanceRecords.filter(r => r.session_date === selectedDate);
+    
+    // Unique students strictly marked 'present' on selected date
+    const strictlyPresentStudentIdsOnDate = new Set(
+      recordsForSelectedDate.filter(r => r.status === 'present').map(r => r.student_id)
+    );
+    // Unique students marked 'absent' on selected date
+    const absentStudentIdsOnDate = new Set(
+      recordsForSelectedDate.filter(r => r.status === 'absent').map(r => r.student_id)
+    );
+    // Unique students marked 'late' on selected date
+    const lateStudentIdsOnDate = new Set(
+      recordsForSelectedDate.filter(r => r.status === 'late').map(r => r.student_id)
+    );
+
+    // Overall attendance counts across all current in-memory attendance records
+    let totalPresentLogs = 0;
+    let totalAbsentLogs = 0;
+    let totalLateLogs = 0;
+    attendanceRecords.forEach(r => {
+      if (r.status === 'present') totalPresentLogs++;
+      else if (r.status === 'late') totalLateLogs++;
+      else if (r.status === 'absent') totalAbsentLogs++;
+    });
+    const totalLogs = attendanceRecords.length;
+    const liveRate = totalLogs > 0 ? Math.round(((totalPresentLogs + totalLateLogs) / totalLogs) * 100) : 100;
+
+    // Unique students marked present across all records
+    const uniquePresentStudentsOverall = new Set(
+      attendanceRecords.filter(r => r.status === 'present').map(r => r.student_id)
+    ).size;
+    // Unique students marked absent across all records
+    const uniqueAbsentStudentsOverall = new Set(
+      attendanceRecords.filter(r => r.status === 'absent').map(r => r.student_id)
+    ).size;
+    // Unique students marked late across all records
+    const uniqueLateStudentsOverall = new Set(
+      attendanceRecords.filter(r => r.status === 'late').map(r => r.student_id)
+    ).size;
+
+    // Determine counts for selected date (or fallback to unique student counts overall if date filter has no logs)
+    const presentStudentsCount = recordsForSelectedDate.length > 0 
+      ? strictlyPresentStudentIdsOnDate.size 
+      : uniquePresentStudentsOverall;
+    
+    const absentStudentsCount = recordsForSelectedDate.length > 0
+      ? absentStudentIdsOnDate.size
+      : uniqueAbsentStudentsOverall;
+
+    const lateStudentsCount = recordsForSelectedDate.length > 0
+      ? lateStudentIdsOnDate.size
+      : uniqueLateStudentsOverall;
+
+    return {
+      rate: liveRate,
+      presentStudents: presentStudentsCount,
+      absentStudents: absentStudentsCount,
+      lateStudents: lateStudentsCount,
+      totalLogs: totalLogs,
+      recordsOnDateCount: recordsForSelectedDate.length
+    };
+  }, [attendanceRecords, selectedDate]);
+
   return (
     <AdminShell>
       {/* Header */}
@@ -359,48 +425,54 @@ export const AttendanceAdminPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-[#111111]">{stats.attendanceRate}%</div>
-            <div className="text-xs text-[#737373] font-medium mt-0.5">Across all recorded sessions</div>
+            <div className="text-2xl font-black text-[#111111]">{liveMetrics.rate}%</div>
+            <div className="text-xs text-[#737373] font-medium mt-0.5">
+              Across {liveMetrics.totalLogs} recorded check-ins
+            </div>
           </div>
           <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] font-bold text-emerald-700">
             <span>Institution Target: 85%+</span>
-            <span>{stats.attendanceRate >= 85 ? '✓ On Track' : '⚠ Below Target'}</span>
+            <span>{liveMetrics.rate >= 85 ? '✓ On Track' : '⚠ Below Target'}</span>
           </div>
         </div>
 
-        {/* Present Sessions */}
+        {/* Present Students */}
         <div className="stat-card flex flex-col justify-between min-h-[120px] interactive">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Present Logs</span>
+            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Present Students</span>
             <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
               <ClipboardCheck size={14} />
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-[#111111]">{stats.presentCount}</div>
-            <div className="text-xs text-[#737373] font-medium mt-0.5">Student presence check-ins</div>
+            <div className="text-2xl font-black text-[#111111]">{liveMetrics.presentStudents}</div>
+            <div className="text-xs text-[#737373] font-medium mt-0.5">
+              {liveMetrics.recordsOnDateCount > 0 ? `Attending on ${selectedDate}` : 'Logged Present status'}
+            </div>
           </div>
           <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] font-bold text-[#737373]">
-            <span>Late Check-ins: {stats.lateCount}</span>
-            <span className="text-blue-600">Active</span>
+            <span>Late Check-ins: {liveMetrics.lateStudents}</span>
+            <span className="text-blue-600 font-semibold">Active</span>
           </div>
         </div>
 
-        {/* Absent Count */}
+        {/* Absent Students */}
         <div className="stat-card flex flex-col justify-between min-h-[120px] interactive">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Absent Logs</span>
+            <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Absent Students</span>
             <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
               <X size={14} />
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-[#111111]">{stats.absentCount}</div>
-            <div className="text-xs text-[#737373] font-medium mt-0.5">Missed lecture sessions</div>
+            <div className="text-2xl font-black text-[#111111]">{liveMetrics.absentStudents}</div>
+            <div className="text-xs text-[#737373] font-medium mt-0.5">
+              {liveMetrics.recordsOnDateCount > 0 ? `Unexcused on ${selectedDate}` : 'Logged Absent status'}
+            </div>
           </div>
           <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] font-bold text-rose-600">
             <span>Requires Follow-up</span>
-            <span>{stats.absentCount > 0 ? 'Action Needed' : 'None'}</span>
+            <span>{liveMetrics.absentStudents > 0 ? `${liveMetrics.absentStudents} Action Needed` : 'None'}</span>
           </div>
         </div>
 
