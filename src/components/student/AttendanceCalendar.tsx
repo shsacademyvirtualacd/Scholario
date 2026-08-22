@@ -109,6 +109,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendan
             } else if (record.status === 'late') {
               dayStyles = 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]';
               indicatorElement = <span className="absolute bottom-1 w-1 h-1 rounded-full bg-[#F4C430]" />;
+            } else if (record.status === 'pending') {
+              dayStyles = 'bg-amber-50 text-amber-900 border border-amber-300';
+              indicatorElement = <span className="absolute bottom-1 w-1 h-1 rounded-full bg-amber-500 animate-pulse" />;
             }
           }
 
@@ -127,7 +130,11 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendan
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 mt-6 pt-4 border-t border-[#F5F5F5] text-[10px] font-bold text-[#737373]">
+      <div className="flex items-center justify-center gap-3.5 mt-6 pt-4 border-t border-[#F5F5F5] text-[10px] font-bold text-[#737373] flex-wrap">
+        <div className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-50 border border-amber-300 flex items-center justify-center text-[7px] text-amber-800 font-extrabold animate-pulse">●</span>
+          Pending
+        </div>
         <div className="flex items-center gap-1">
           <span className="w-2.5 h-2.5 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center text-[7px] text-[#065F46] font-extrabold"><Check size={6} /></span>
           Present

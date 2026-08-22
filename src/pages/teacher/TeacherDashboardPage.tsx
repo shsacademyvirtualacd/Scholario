@@ -451,7 +451,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
   useRealtimeTable({
     table: 'attendance',
-    debounceMs: 1500,
+    debounceMs: 300,
     onAny: fetchTeacherAttendance
   });
 
@@ -503,6 +503,35 @@ export const TeacherDashboardPage: React.FC = () => {
       console.error('Error saving attendance:', err);
     } finally {
       setSavingAttendanceId(null);
+    }
+  };
+
+  const handleApproveAllPending = async () => {
+    if (!activeTodaySlot || rosterStudents.length === 0) return;
+    const pendingStudents = rosterStudents.filter(st => getStudentStatus(st.id).status === 'pending');
+    if (pendingStudents.length === 0) return;
+
+    const updates = pendingStudents.map(st => ({
+      student_id: st.id,
+      slot_id: activeTodaySlot.id,
+      session_date: todayDateStr,
+      status: 'present' as AttendanceStatus,
+      marked_at: new Date().toISOString(),
+    }));
+
+    // Optimistic update
+    setTeacherAttendance(prev => {
+      const studentIds = new Set(pendingStudents.map(s => s.id));
+      const remaining = prev.filter(
+        a => !(studentIds.has(a.student_id) && a.slot_id === activeTodaySlot.id && a.session_date === todayDateStr)
+      );
+      return [...remaining, ...updates.map(u => ({ ...u, id: `att-${Date.now()}-${u.student_id}`, marked_by: 'teacher' as const }))];
+    });
+
+    try {
+      await upsertAttendanceBatch(updates);
+    } catch (err) {
+      console.error('Error approving all pending claims:', err);
     }
   };
 
@@ -780,38 +809,78 @@ export const TeacherDashboardPage: React.FC = () => {
 
                 {/* Real-time Status Counts for Today's Class */}
                 {rosterStudents.length > 0 && (
-                  <div className="flex items-center gap-2.5 pt-2 text-[11px] font-bold text-[#737373] overflow-x-auto flex-wrap">
+                  <div className="space-y-2 pt-2">
+                    {/* Pending Claims Alert Banner */}
                     {(() => {
-                      let pres = 0, late = 0, abs = 0, un = 0;
-                      rosterStudents.forEach(st => {
-                        const stStatus = getStudentStatus(st.id).status;
-                        if (stStatus === 'present') pres++;
-                        else if (stStatus === 'late') late++;
-                        else if (stStatus === 'absent') abs++;
-                        else un++;
-                      });
+                      const pendingStudents = rosterStudents.filter(st => getStudentStatus(st.id).status === 'pending');
+                      if (pendingStudents.length === 0) return null;
                       return (
-                        <>
-                          <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                            ● Present: {pres}
-                          </span>
-                          <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                            ● Late: {late}
-                          </span>
-                          <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
-                            ● Absent: {abs}
-                          </span>
-                          {un > 0 && (
-                            <span className="text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md">
-                              ○ Unmarked: {un}
-                            </span>
-                          )}
-                          <span className="text-[#111111] ml-auto font-extrabold">
-                            {rosterStudents.length} {rosterStudents.length === 1 ? 'Student' : 'Students'} Enrolled
-                          </span>
-                        </>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-amber-900 shadow-xs">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                              <Clock size={16} className="animate-spin text-amber-600" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-extrabold text-amber-900">
+                                {pendingStudents.length} Pending Attendance Claim{pendingStudents.length > 1 ? 's' : ''}
+                              </div>
+                              <div className="text-[10px] text-amber-700 font-medium">
+                                {pendingStudents.length === 1 ? 'A student has' : `${pendingStudents.length} students have`} claimed attendance for this session and {pendingStudents.length === 1 ? 'is' : 'are'} awaiting approval.
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={handleApproveAllPending}
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-all cursor-pointer interactive shrink-0"
+                            title="Approve all pending student attendance claims for this session"
+                          >
+                            <Check size={13} strokeWidth={3} />
+                            <span>Approve All ({pendingStudents.length})</span>
+                          </button>
+                        </div>
                       );
                     })()}
+
+                    {/* Status Pill Counters */}
+                    <div className="flex items-center gap-2.5 text-[11px] font-bold text-[#737373] overflow-x-auto flex-wrap">
+                      {(() => {
+                        let pres = 0, late = 0, abs = 0, un = 0, pend = 0;
+                        rosterStudents.forEach(st => {
+                          const stStatus = getStudentStatus(st.id).status;
+                          if (stStatus === 'present') pres++;
+                          else if (stStatus === 'late') late++;
+                          else if (stStatus === 'absent') abs++;
+                          else if (stStatus === 'pending') pend++;
+                          else un++;
+                        });
+                        return (
+                          <>
+                            {pend > 0 && (
+                              <span className="text-amber-800 bg-amber-100/80 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 font-extrabold animate-pulse">
+                                <Clock size={11} className="animate-spin text-amber-600" /> Pending: {pend}
+                              </span>
+                            )}
+                            <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                              ● Present: {pres}
+                            </span>
+                            <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                              ● Late: {late}
+                            </span>
+                            <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                              ● Absent: {abs}
+                            </span>
+                            {un > 0 && (
+                              <span className="text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md">
+                                ○ Unmarked: {un}
+                              </span>
+                            )}
+                            <span className="text-[#111111] ml-auto font-extrabold">
+                              {rosterStudents.length} {rosterStudents.length === 1 ? 'Student' : 'Students'} Enrolled
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>
@@ -865,12 +934,23 @@ export const TeacherDashboardPage: React.FC = () => {
 
                         <td className="py-3">
                           <div className="flex flex-col gap-0.5">
-                            {stStatus === 'present' ? (
+                            {stStatus === 'pending' ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300">
+                                  <Clock size={10} className="animate-spin text-amber-600" /> Pending Approval
+                                </span>
+                                {joinTime && (
+                                  <span className="text-[9px] text-amber-700 font-semibold bg-amber-50/70 px-1.5 py-0.5 rounded">
+                                    Claimed {joinTime}
+                                  </span>
+                                )}
+                              </div>
+                            ) : stStatus === 'present' ? (
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                                   ✓ Present
                                 </span>
-                                {markedBy === 'self' || joinTime ? (
+                                {markedBy === 'self' || markedBy === 'student' || joinTime ? (
                                   <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50/50 px-1.5 py-0.5 rounded">
                                     ⚡ Joined {joinTime || ''}
                                   </span>
@@ -904,44 +984,67 @@ export const TeacherDashboardPage: React.FC = () => {
                         </td>
 
                         <td className="py-3 text-right">
-                          <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
-                            <button
-                              onClick={() => handleUpdateStudentStatus(st.id, 'present')}
-                              disabled={isSaving}
-                              className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
-                                stStatus === 'present'
-                                  ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
-                              }`}
-                              title="Mark Present"
-                            >
-                              P
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStudentStatus(st.id, 'late')}
-                              disabled={isSaving}
-                              className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
-                                stStatus === 'late'
-                                  ? 'bg-amber-500 text-white shadow-xs'
-                                  : 'text-[#737373] hover:text-amber-700 hover:bg-white'
-                              }`}
-                              title="Mark Late"
-                            >
-                              L
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStudentStatus(st.id, 'absent')}
-                              disabled={isSaving}
-                              className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
-                                stStatus === 'absent'
-                                  ? 'bg-rose-600 text-white shadow-xs'
-                                  : 'text-[#737373] hover:text-rose-700 hover:bg-white'
-                              }`}
-                              title="Mark Absent"
-                            >
-                              A
-                            </button>
-                          </div>
+                          {stStatus === 'pending' ? (
+                            <div className="inline-flex items-center gap-1.5 justify-end">
+                              <button
+                                onClick={() => handleUpdateStudentStatus(st.id, 'present')}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer interactive"
+                                title="Approve attendance claim (Mark Present)"
+                              >
+                                <Check size={11} strokeWidth={3} />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStudentStatus(st.id, 'absent')}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer interactive"
+                                title="Reject attendance claim (Mark Absent)"
+                              >
+                                <X size={11} strokeWidth={3} />
+                                <span>Reject</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
+                              <button
+                                onClick={() => handleUpdateStudentStatus(st.id, 'present')}
+                                disabled={isSaving}
+                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                  stStatus === 'present'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
+                                }`}
+                                title="Mark Present"
+                              >
+                                P
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStudentStatus(st.id, 'late')}
+                                disabled={isSaving}
+                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                  stStatus === 'late'
+                                    ? 'bg-amber-500 text-white shadow-xs'
+                                    : 'text-[#737373] hover:text-amber-700 hover:bg-white'
+                                }`}
+                                title="Mark Late"
+                              >
+                                L
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStudentStatus(st.id, 'absent')}
+                                disabled={isSaving}
+                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                  stStatus === 'absent'
+                                    ? 'bg-rose-600 text-white shadow-xs'
+                                    : 'text-[#737373] hover:text-rose-700 hover:bg-white'
+                                }`}
+                                title="Mark Absent"
+                              >
+                                A
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

@@ -10,7 +10,7 @@ import { pageCache } from './pageCache';
 // getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
   Profile, Teacher, ClassOffering, ClassSlot,
-  Enrollment, Attendance, Note, RosterEntry,
+  Enrollment, Attendance, AttendanceStatus, Note, RosterEntry,
   BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
 } from '../types';
 
@@ -487,12 +487,33 @@ export async function getAttendanceForSession(slotId: string, date: string): Pro
 /** Teacher: get all attendance records for classes taught by a teacher */
 export async function getAttendanceForTeacher(teacherId: string, sessionDate?: string): Promise<Attendance[]> {
   try {
-    const all = await getAllAttendance();
-    return all.filter((r) => {
+    let query = supabase
+      .from('attendance')
+      .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))');
+
+    if (sessionDate) {
+      query = query.eq('session_date', sessionDate);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.warn('[getAttendanceForTeacher] direct query failed, falling back:', error);
+      const all = await getAllAttendance();
+      return all.filter((r) => {
+        const tId = r.slot?.offering?.teacher_id || r.slot?.offering?.teacher?.id;
+        if (tId !== teacherId) return false;
+        if (sessionDate && r.session_date !== sessionDate) return false;
+        return true;
+      });
+    }
+    const rows = (data || []).map((r: any) => {
+      if (r.slot) {
+        r.slot.offering = mapOffering(r.slot.offering);
+      }
+      return r;
+    });
+    return rows.filter((r: any) => {
       const tId = r.slot?.offering?.teacher_id || r.slot?.offering?.teacher?.id;
-      if (tId !== teacherId) return false;
-      if (sessionDate && r.session_date !== sessionDate) return false;
-      return true;
+      return tId === teacherId;
     });
   } catch (err) {
     console.warn('[getAttendanceForTeacher] error:', err);
@@ -731,17 +752,19 @@ export function computeAttendanceStreak(records: Attendance[]): {
   return { currentStreak, personalBest, last7Days };
 }
 
-/** Admin: bulk upsert attendance records for a session */
+/** Admin / Teacher: bulk upsert attendance records for a session */
 export async function upsertAttendanceBatch(records: Array<{
   student_id: string;
   slot_id: string;
   session_date: string;
-  status: 'present' | 'absent' | 'late';
+  status: AttendanceStatus;
+  marked_at?: string;
+  marked_by?: 'student' | 'teacher' | 'admin' | 'self';
 }>): Promise<void> {
   const nowTimestamp = new Date().toISOString();
   const recordsWithTimestamp = records.map(r => ({
     ...r,
-    marked_at: nowTimestamp,
+    marked_at: r.marked_at || nowTimestamp,
   }));
   
   // Try batch upsert first

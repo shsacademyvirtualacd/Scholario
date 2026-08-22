@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookMarked, CheckCircle2, ChevronRight, ArrowRight, GraduationCap,
-  Clock, Play, Pause, RotateCcw, Zap, Lock, Video
+  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, Check, X, XCircle
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
@@ -21,7 +21,7 @@ import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, Note, Attendance } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration, getLinkAvailabilityStatus
+  formatTime12h, calcDuration, getLinkAvailabilityStatus, isSlotOngoing
 } from '../../lib/scheduleUtils';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
@@ -154,16 +154,17 @@ const PomodoroTimer: React.FC = () => {
 const StudentLiveLink: React.FC<{
   slot: ClassSlot;
   studentId?: string;
-  onAttendanceMarked?: (slotId: string) => void;
-  isMarked?: boolean;
-}> = ({ slot, studentId, onAttendanceMarked, isMarked }) => {
+  attendanceRecord?: Attendance | null;
+  onAttendanceMarked?: (slotId: string, record: Attendance) => void;
+}> = ({ slot, studentId, attendanceRecord: propAttendance, onAttendanceMarked }) => {
   const [pktnow, setPktnow] = useState(getPKTNow);
   const [isMarking, setIsMarking] = useState(false);
-  const [localMarked, setLocalMarked] = useState(isMarked);
+  const [localAttendance, setLocalAttendance] = useState<Attendance | null>(propAttendance || null);
+  const todayStr = pktnow.dateString || new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    setLocalMarked(isMarked);
-  }, [isMarked]);
+    setLocalAttendance(propAttendance || null);
+  }, [propAttendance]);
 
   // Dynamic 10-second timer tick so the link unlocks in real time
   useEffect(() => {
@@ -171,53 +172,106 @@ const StudentLiveLink: React.FC<{
     return () => clearInterval(timer);
   }, []);
 
-  const handleJoinAndMark = async () => {
-    if (studentId) {
-      setIsMarking(true);
-      try {
-        await markStudentSelfAttendance(studentId, slot.id);
-        setLocalMarked(true);
-        onAttendanceMarked?.(slot.id);
-      } catch (e) {
-        console.error('Failed marking attendance:', e);
-        setLocalMarked(true);
-      } finally {
-        setIsMarking(false);
-      }
-    }
+  const isOngoing = isSlotOngoing(slot, pktnow);
+  const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
+  const hasRawLink = Boolean(slot?.room_or_link && slot.room_or_link.trim().length > 0);
 
-    if (slot.room_or_link) {
+  const handleMarkAttendance = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!studentId || !isOngoing || isMarking) return;
+    setIsMarking(true);
+    try {
+      const rec = await markStudentSelfAttendance(studentId, slot.id, todayStr);
+      setLocalAttendance(rec);
+      onAttendanceMarked?.(slot.id, rec);
+    } catch (e) {
+      console.error('Failed marking attendance:', e);
+      const fallbackRec: Attendance = {
+        id: `att-${Date.now()}`,
+        student_id: studentId,
+        slot_id: slot.id,
+        session_date: todayStr,
+        status: 'pending',
+        marked_at: new Date().toISOString(),
+        marked_by: 'student',
+      };
+      setLocalAttendance(fallbackRec);
+      onAttendanceMarked?.(slot.id, fallbackRec);
+    } finally {
+      setIsMarking(false);
+    }
+  };
+
+  const handleJoinClass = async () => {
+    if (isOngoing && (!localAttendance || localAttendance.status === 'absent')) {
+      handleMarkAttendance();
+    }
+    if (linkStatus.isAvailable && slot.room_or_link) {
       const url = slot.room_or_link.startsWith('http') ? slot.room_or_link : `https://${slot.room_or_link}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
-  const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
-  const hasRawLink = Boolean(slot?.room_or_link && slot.room_or_link.trim().length > 0);
-
   return (
     <div className="mt-2 space-y-1.5 w-full">
-      {/* Attendance marked confirmation or quick self-mark button */}
-      {localMarked ? (
-        <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 py-1.5 px-2 rounded-md">
-          <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
-          <span>Attendance Marked: Present</span>
-        </div>
-      ) : studentId ? (
-        <button
-          onClick={handleJoinAndMark}
-          disabled={isMarking}
-          className="flex items-center justify-center gap-1.5 w-full bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] text-[11px] font-bold py-1.5 px-2 rounded-md transition-all shadow-xs interactive"
-        >
-          <CheckCircle2 size={12} />
-          <span>{isMarking ? 'Marking...' : 'Mark My Attendance'}</span>
-        </button>
-      ) : null}
+      {/* 4 Attendance States */}
+      {(() => {
+        if (localAttendance?.status === 'pending') {
+          return (
+            <button
+              disabled
+              className="flex items-center justify-center gap-1.5 w-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold py-1.5 px-2 rounded-md cursor-not-allowed shadow-xs"
+              title="Your attendance claim has been submitted and is awaiting teacher approval"
+            >
+              <Clock size={12} className="text-amber-600 animate-pulse" />
+              <span>Awaiting Teacher Approval</span>
+            </button>
+          );
+        }
+
+        if (localAttendance?.status === 'present' || localAttendance?.status === 'late') {
+          const timeStr = localAttendance.marked_at
+            ? new Date(localAttendance.marked_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+            : '';
+          return (
+            <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 py-1.5 px-2 rounded-md shadow-xs">
+              <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+              <span>{timeStr ? `Attendance Confirmed (${timeStr})` : 'Attendance Confirmed'}</span>
+            </div>
+          );
+        }
+
+        if (localAttendance?.status === 'absent' && (localAttendance.marked_by === 'teacher' || localAttendance.marked_by === 'admin')) {
+          return (
+            <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 py-1.5 px-2 rounded-md shadow-xs">
+              <XCircle size={12} className="text-rose-600 shrink-0" />
+              <span>Attendance Not Confirmed</span>
+            </div>
+          );
+        }
+
+        // Not yet marked
+        return (
+          <button
+            onClick={handleMarkAttendance}
+            disabled={!isOngoing || isMarking}
+            className={`flex items-center justify-center gap-1.5 w-full text-[11px] font-bold py-1.5 px-2 rounded-md transition-all shadow-xs ${
+              isOngoing
+                ? 'bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] cursor-pointer interactive'
+                : 'bg-[#F4C430]/40 text-[#737373] border border-[#E5E5E5] cursor-not-allowed opacity-60'
+            }`}
+            title={isOngoing ? 'Mark your attendance for this ongoing class session' : 'Mark My Attendance is enabled only while class is in session'}
+          >
+            <CheckCircle2 size={12} className={isOngoing ? 'text-[#111111]' : 'text-[#737373]'} />
+            <span>{isMarking ? 'Submitting...' : 'Mark My Attendance'}</span>
+          </button>
+        );
+      })()}
 
       {/* Video link */}
       {linkStatus.isAvailable ? (
         <button
-          onClick={handleJoinAndMark}
+          onClick={handleJoinClass}
           className="flex items-center justify-center gap-1.5 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-xs interactive"
         >
           <Video size={13} /> Join Live Class
@@ -289,8 +343,8 @@ const NextClassWidget: React.FC<{
     const remH = Math.floor(state.minsRemaining / 60);
     const remM = state.minsRemaining % 60;
     const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
-    const isMarked = attendanceRecords?.some(
-      a => a.slot_id === state.activeSlot.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late')
+    const slotAttendance = attendanceRecords?.find(
+      a => a.slot_id === state.activeSlot.id && a.session_date === todayStr
     );
     return (
       <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
@@ -314,7 +368,7 @@ const NextClassWidget: React.FC<{
         <StudentLiveLink
           slot={state.activeSlot}
           studentId={studentId}
-          isMarked={isMarked}
+          attendanceRecord={slotAttendance}
           onAttendanceMarked={onAttendanceMarked}
         />
       </div>
@@ -325,8 +379,8 @@ const NextClassWidget: React.FC<{
   const nextSlot = state.nextSlot!;
   const minsUntil = state.minsUntil ?? 0;
   const subject = getSlotSubject(nextSlot);
-  const isMarked = attendanceRecords?.some(
-    a => a.slot_id === nextSlot.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late')
+  const nextSlotAttendance = attendanceRecords?.find(
+    a => a.slot_id === nextSlot.id && a.session_date === todayStr
   );
   
   let badgeLabel = '';
@@ -374,7 +428,7 @@ const NextClassWidget: React.FC<{
       <StudentLiveLink
         slot={nextSlot}
         studentId={studentId}
-        isMarked={isMarked}
+        attendanceRecord={nextSlotAttendance}
         onAttendanceMarked={onAttendanceMarked}
       />
     </div>
@@ -477,6 +531,13 @@ const StudentDashboardPage: React.FC = () => {
     pageCache.set('student_notes', n, studentId);
   };
 
+  const fetchAttendance = async () => {
+    if (!studentId) return;
+    const att = await getAttendanceForStudent(studentId);
+    setAttendanceRecords(att);
+    pageCache.set('student_attendance', att, studentId);
+  };
+
   useRealtimeTable({
     table: 'class_slots',
     debounceMs: 2000,
@@ -489,10 +550,16 @@ const StudentDashboardPage: React.FC = () => {
     onAny: fetchNotes
   });
 
+  useRealtimeTable({
+    table: 'attendance',
+    debounceMs: 500,
+    onAny: fetchAttendance
+  });
+
   const recentNotes = studentNotes.slice(0, 3);
 
-  // Get Today's classes — PKT-aware day index
-  const currentDayIndex = getPKTNow().dayIndex;
+  const pktnow = getPKTNow();
+  const currentDayIndex = pktnow.dayIndex;
   const todayClasses = scheduleSlots
     .filter(slot => slot.day_of_week === currentDayIndex)
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
@@ -677,9 +744,10 @@ const StudentDashboardPage: React.FC = () => {
                 const rawClsSubj = cls.custom_title || (cls.offering as any)?.subject_name || cls.offering?.subject || '';
                 const clsSubj = typeof rawClsSubj === 'string' ? rawClsSubj : ((rawClsSubj as any)?.name || 'Class');
                 const color = getSubjectColor(clsSubj);
-                const isMarked = attendanceRecords.some(
-                  a => a.slot_id === cls.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late')
+                const att = attendanceRecords.find(
+                  a => a.slot_id === cls.id && a.session_date === todayStr
                 );
+                const isClsOngoing = isSlotOngoing(cls, pktnow);
                 return (
                   <div
                     key={cls.id}
@@ -687,13 +755,21 @@ const StudentDashboardPage: React.FC = () => {
                   >
                     <div className="w-1.5 h-12 rounded-full shrink-0" style={{ background: color }} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-sm text-[#111111] truncate">{clsSubj}</span>
-                        {isMarked && (
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
-                            ✓ Present
+                        {att?.status === 'pending' ? (
+                          <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0 inline-flex items-center gap-1">
+                            <Clock size={9} className="animate-spin text-amber-600" /> Awaiting Approval
                           </span>
-                        )}
+                        ) : att?.status === 'present' || att?.status === 'late' ? (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 inline-flex items-center gap-1">
+                            <Check size={9} strokeWidth={3} /> {att.status === 'late' ? 'Late' : 'Present'}
+                          </span>
+                        ) : att?.status === 'absent' && (att.marked_by === 'teacher' || att.marked_by === 'admin') ? (
+                          <span className="text-[9px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shrink-0 inline-flex items-center gap-1">
+                            <X size={9} strokeWidth={3} /> Not Confirmed
+                          </span>
+                        ) : null}
                       </div>
                       <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
                         {cls.offering?.teacher?.full_name || 'Staff'} · {calcDuration(cls.start_time, cls.end_time) || '90m'}
@@ -701,12 +777,18 @@ const StudentDashboardPage: React.FC = () => {
                     </div>
                     <div className="text-right shrink-0 flex flex-col items-end gap-1">
                       <div className="text-sm font-extrabold text-[#111111]">{formatClassTime(cls.start_time)}</div>
-                      {!isMarked && !cls.is_cancelled ? (
+                      {!att && !cls.is_cancelled ? (
                         <button
                           onClick={() => handleMarkTodayAttendance(cls.id)}
-                          className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2 py-0.5 rounded-md shadow-xs interactive"
+                          disabled={!isClsOngoing}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs transition-all ${
+                            isClsOngoing
+                              ? 'bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] cursor-pointer interactive'
+                              : 'bg-[#F4C430]/40 text-[#737373] border border-[#E5E5E5] cursor-not-allowed opacity-60'
+                          }`}
+                          title={isClsOngoing ? 'Mark your attendance for this class' : 'Attendance can only be marked while class is ongoing'}
                         >
-                          Mark Present
+                          Mark My Attendance
                         </button>
                       ) : (
                         <StatusPill status={cls.is_cancelled ? 'cancelled' : 'upcoming'} />
