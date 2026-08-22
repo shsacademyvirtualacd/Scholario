@@ -1,4 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import {
   Sparkles,
   Send,
@@ -26,6 +30,110 @@ export interface ChatMessage {
 interface SageChatViewProps {
   role: 'student' | 'teacher' | 'admin';
 }
+
+const SageMarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
+  return (
+    <div className="sage-markdown-body text-[14px] leading-relaxed text-[#262626] break-words">
+      <Markdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          h1: ({ children }) => (
+            <h1 className="text-lg font-extrabold text-[#111111] mt-3 mb-1.5 pb-1 border-b border-[#E5E5E5]">
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-base font-bold text-[#111111] mt-2.5 mb-1 pb-0.5 border-b border-[#F0F0F0]">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-[15px] font-bold text-[#111111] mt-2 mb-1">{children}</h3>
+          ),
+          h4: ({ children }) => (
+            <h4 className="text-[14px] font-bold text-[#111111] mt-1.5 mb-0.5">{children}</h4>
+          ),
+          h5: ({ children }) => (
+            <h5 className="text-[13px] font-bold text-[#111111] mt-1 mb-0.5">{children}</h5>
+          ),
+          h6: ({ children }) => (
+            <h6 className="text-[12px] font-bold text-[#111111] mt-1 mb-0.5">{children}</h6>
+          ),
+          p: ({ children }) => <p className="text-[14px] leading-relaxed my-1.5">{children}</p>,
+          ul: ({ children }) => (
+            <ul className="list-disc pl-5 my-1.5 space-y-1 text-[14px] marker:text-[#F4C430]">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-5 my-1.5 space-y-1 text-[14px] marker:font-bold marker:text-[#111111]">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => <li className="leading-relaxed pl-0.5">{children}</li>,
+          strong: ({ children }) => <strong className="font-bold text-[#111111]">{children}</strong>,
+          em: ({ children }) => <em className="italic text-[#333333]">{children}</em>,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-3 border-[#F4C430] bg-[#FAFAFA] pl-3.5 py-1.5 my-2 italic text-[#525252] rounded-r-lg">
+              {children}
+            </blockquote>
+          ),
+          table: ({ children }) => (
+            <div className="my-2.5 overflow-x-auto rounded-lg border border-[#E5E5E5]">
+              <table className="w-full text-xs text-left border-collapse">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-[#F5F5F5] text-[#111111] font-semibold border-b border-[#E5E5E5]">
+              {children}
+            </thead>
+          ),
+          th: ({ children }) => (
+            <th className="px-3 py-2 border-r border-[#E5E5E5] last:border-r-0 font-semibold">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3 py-2 border-t border-[#E5E5E5] border-r border-[#E5E5E5] last:border-r-0">
+              {children}
+            </td>
+          ),
+          code: ({ inline, className, children, ...props }: any) => {
+            const match = /language-(\w+)/.exec(className || '');
+            if (!inline && (match || String(children).includes('\n'))) {
+              return (
+                <div className="my-2 rounded-xl bg-[#1C1C1E] text-[#F3F4F6] p-3 text-xs font-mono border border-[#333333] overflow-x-auto shadow-inner">
+                  {match && (
+                    <div className="text-[10px] uppercase font-bold text-[#F4C430] mb-1.5 tracking-wider select-none">
+                      {match[1]}
+                    </div>
+                  )}
+                  <pre className="overflow-x-auto font-mono">
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  </pre>
+                </div>
+              );
+            }
+            return (
+              <code
+                className="px-1.5 py-0.5 rounded-md bg-[#F5F5F5] font-mono text-xs text-[#C2410C] border border-[#E5E5E5]"
+                {...props}
+              >
+                {children}
+              </code>
+            );
+          },
+          hr: () => <hr className="my-3 border-[#E5E5E5]" />,
+        }}
+      >
+        {content}
+      </Markdown>
+    </div>
+  );
+};
 
 const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: string; text: string; icon: any }>> = {
   student: [
@@ -245,84 +353,6 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
     }
   };
 
-  // Helper to format basic markdown (bold, lists, code, linebreaks)
-  const renderFormattedContent = (content: string) => {
-    const lines = content.split('\n');
-    return (
-      <div className="space-y-2 leading-relaxed text-[14px]">
-        {lines.map((line, idx) => {
-          if (!line.trim()) {
-            return <div key={idx} className="h-1.5" />;
-          }
-
-          // Code block indicator or inline backticks
-          if (line.startsWith('```')) {
-            return (
-              <div key={idx} className="text-xs font-mono bg-[#1C1C1E] text-[#F4C430] p-2 rounded-lg my-1">
-                {line.replace(/```[a-z]*/g, '')}
-              </div>
-            );
-          }
-
-          // Header lines
-          if (line.startsWith('### ')) {
-            return (
-              <h4 key={idx} className="font-bold text-base text-[#111111] pt-1">
-                {line.replace('### ', '')}
-              </h4>
-            );
-          }
-          if (line.startsWith('## ')) {
-            return (
-              <h3 key={idx} className="font-bold text-lg text-[#111111] pt-1.5 border-b border-[#F0F0F0] pb-1">
-                {line.replace('## ', '')}
-              </h3>
-            );
-          }
-
-          // Bullet points
-          if (line.startsWith('* ') || line.startsWith('- ') || line.startsWith('• ')) {
-            const cleanText = line.replace(/^(\*|-|•)\s+/, '');
-            return (
-              <div key={idx} className="flex items-start gap-2 pl-2">
-                <span className="text-[#F4C430] text-sm mt-0.5">•</span>
-                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(cleanText) }} />
-              </div>
-            );
-          }
-
-          // Numbered lists
-          const numMatch = line.match(/^(\d+)\.\s+(.*)/);
-          if (numMatch) {
-            return (
-              <div key={idx} className="flex items-start gap-2 pl-2">
-                <span className="font-bold text-[#F4C430] text-xs mt-0.5">{numMatch[1]}.</span>
-                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(numMatch[2]) }} />
-              </div>
-            );
-          }
-
-          return (
-            <p
-              key={idx}
-              dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line) }}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
-  const formatInlineMarkdown = (text: string) => {
-    // Bold: **text**
-    let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-[#111111]">$1</strong>');
-    // Italic: *text*
-    formatted = formatted.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em class="italic">$1</em>');
-    // Inline code: `text`
-    formatted = formatted.replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-[#F5F5F5] font-mono text-xs text-[#E65100] border border-[#E5E5E5]">$1</code>');
-    return formatted;
-  };
-
   const starters = STARTER_PROMPTS[role];
 
   return (
@@ -344,7 +374,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
             </div>
             <p className="text-[11px] text-[#A3A3A3] flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-ping inline-block" />
-              Powered by Gemini 3.7 Flash • FBISE Aligned
+              Powered by Gemini 3.6 Flash • Markdown & Math Enabled
             </p>
           </div>
         </div>
@@ -394,7 +424,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                   {isUser ? (
                     <p className="text-[14px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   ) : (
-                    <div>{renderFormattedContent(msg.content)}</div>
+                    <SageMarkdownRenderer content={msg.content} />
                   )}
                 </div>
 
