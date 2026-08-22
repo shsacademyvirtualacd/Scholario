@@ -445,9 +445,9 @@ export const TeacherDashboardPage: React.FC = () => {
       }
       if (teacherId) {
         const teacherRecords = await getAttendanceForTeacher(teacherId, todayDateStr);
-        const seenKeys = new Set(combined.map(r => `${r.student_id}_${r.slot_id}`));
+        const seenKeys = new Set(combined.map(r => `${r.student_id}_${r.slot_id}_${r.session_date}`));
         teacherRecords.forEach(tr => {
-          const key = `${tr.student_id}_${tr.slot_id}`;
+          const key = `${tr.student_id}_${tr.slot_id}_${tr.session_date}`;
           if (!seenKeys.has(key)) {
             combined.push(tr);
             seenKeys.add(key);
