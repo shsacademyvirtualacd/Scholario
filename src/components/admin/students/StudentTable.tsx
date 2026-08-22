@@ -1,13 +1,14 @@
 import React from 'react';
 import { Eye, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import type { Profile, Enrollment, ClassOffering } from '../../../types';
+import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel } from '../../../lib/taxonomy';
 
 interface StudentTableProps {
   students: Profile[];
   onView: (student: Profile) => void;
   enrollments?: Enrollment[];
   offerings?: ClassOffering[];
-  attendanceStatsMap?: Map<string, { attended: number; total: number; rate: number }>;
+  attendanceStatsMap?: Map<string, { attended: number; total: number; rate: number; qualified?: boolean }>;
 }
 
 export const StudentTable: React.FC<StudentTableProps> = ({
@@ -17,18 +18,15 @@ export const StudentTable: React.FC<StudentTableProps> = ({
   offerings = [],
   attendanceStatsMap,
 }) => {
-  // Compute student attendance stats dynamically
-  const getStats = (studentId: string) => {
-    const studentEnrollments = enrollments.filter((e) => e.student_id === studentId);
+  // Compute student stats dynamically from real profile and enrollment data
+  const getStats = (student: Profile) => {
+    const studentEnrollments = enrollments.filter((e) => e.student_id === student.id);
     const classesCount = studentEnrollments.length;
     
-    let boardAndGrade = 'No active classes';
-    if (studentEnrollments.length > 0) {
-      const primaryOffering = offerings.find(o => o.id === studentEnrollments[0].offering_id);
-      if (primaryOffering) {
-        boardAndGrade = `Grade ${primaryOffering.grade} · FBISE`;
-      }
-    }
+    const boardName = getStudentBoardLabel(student, enrollments, offerings);
+    const gradeName = getStudentGradeLabel(student, enrollments, offerings);
+    const boardAndGrade = `${gradeName} · ${boardName}`;
+    
     return { classesCount, boardAndGrade };
   };
 
@@ -42,12 +40,11 @@ export const StudentTable: React.FC<StudentTableProps> = ({
   };
 
   const getStreamColor = (stream?: string | null) => {
-    switch (stream) {
-      case 'pre-medical': return 'badge-gold bg-amber-50 text-amber-700 border-amber-200';
-      case 'pre-engineering': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'ics': return 'bg-purple-50 text-purple-700 border-purple-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
+    const norm = (stream || '').toLowerCase();
+    if (norm.includes('pre-med') || norm.includes('biology')) return 'badge-gold bg-amber-50 text-amber-700 border-amber-200';
+    if (norm.includes('pre-eng') || norm.includes('engineering')) return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (norm.includes('ics') || norm.includes('computer')) return 'bg-purple-50 text-purple-700 border-purple-200';
+    return 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
   return (
@@ -65,13 +62,11 @@ export const StudentTable: React.FC<StudentTableProps> = ({
         </thead>
         <tbody>
           {students.map((student) => {
-            const stats = getStats(student.id);
-            const streamLabel = student.stream
-              ? student.stream.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-              : 'General';
+            const stats = getStats(student);
+            const streamLabel = getStudentStreamLabel(student);
 
             const attData = attendanceStatsMap?.get(student.id);
-            const hasAtt = attData && attData.total > 0;
+            const isQualified = attData && attData.total >= 10;
 
             return (
               <tr key={student.id}>
@@ -84,7 +79,7 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                   </div>
                 </td>
                 <td>
-                  <span className={`badge border text-[10px] uppercase font-bold py-0.5 px-2 rounded-md ${getStreamColor(student.stream)}`}>
+                  <span className={`badge border text-[10px] uppercase font-bold py-0.5 px-2 rounded-md ${getStreamColor(student.stream_obj?.name || student.stream)}`}>
                     {streamLabel}
                   </span>
                 </td>
@@ -97,7 +92,7 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                   <span className="text-xs font-medium text-[#737373]">{student.phone || 'N/A'}</span>
                 </td>
                 <td className="text-center">
-                  {hasAtt ? (
+                  {isQualified ? (
                     <div className="inline-flex flex-col items-center">
                       <span
                         className={`inline-flex items-center gap-1 text-xs font-extrabold px-2.5 py-0.5 rounded-full border ${
@@ -123,12 +118,17 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                       </span>
                     </div>
                   ) : (
-                    <span
-                      className="text-xs text-[#A3A3A3] font-medium px-2 py-0.5 rounded bg-[#FAFAFA] border border-[#F0F0F0]"
-                      title="No recorded sessions yet"
-                    >
-                      —
-                    </span>
+                    <div className="inline-flex flex-col items-center">
+                      <span
+                        className="text-[11px] text-[#737373] font-semibold px-2.5 py-0.5 rounded-full bg-[#FAFAFA] border border-[#E5E5E5]"
+                        title={attData && attData.total > 0 ? `${attData.total}/10 sessions recorded` : '0/10 sessions recorded'}
+                      >
+                        Collecting data
+                      </span>
+                      <span className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">
+                        {attData?.total || 0}/10 sessions
+                      </span>
+                    </div>
                   )}
                 </td>
                 <td className="text-right">

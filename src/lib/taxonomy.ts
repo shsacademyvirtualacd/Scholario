@@ -230,3 +230,98 @@ export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[])
   return Array.from(new Set(subjects)).sort();
 }
 
+/** Resolves the human-readable board name for a student (e.g. 'Federal Board (FBISE)' or 'Sindh Board') */
+export function getStudentBoardLabel(
+  student: {
+    board_id?: string | null;
+    board?: { id?: string; name?: string } | null;
+    class?: { board_id?: string; grade?: string; display_name?: string; board?: { id?: string; name?: string } } | null;
+    id?: string;
+  },
+  enrollments?: Array<{ student_id: string; offering_id: string }>,
+  offerings?: Array<{ id: string; grade?: string; board?: string; class_id?: string; class?: { board_id?: string; board?: { name?: string } } }>
+): string {
+  // 1. Check direct board_id or joined board on student profile
+  const boardId = student.board_id || student.board?.id || student.class?.board_id || student.class?.board?.id;
+  if (boardId) {
+    if (boardId === 'sindh') return 'Sindh Board';
+    if (boardId === 'fbise') return 'Federal Board (FBISE)';
+    const bDef = BOARDS.find((b) => b.id === boardId);
+    if (bDef) return bDef.name;
+  }
+
+  // 2. Check joined board name on student class
+  if (student.class?.board?.name) {
+    return student.class.board.name;
+  }
+
+  // 3. Check enrollments and corresponding class offerings
+  if (enrollments && offerings && student.id) {
+    const studentEnrollments = enrollments.filter((e) => e.student_id === student.id);
+    for (const en of studentEnrollments) {
+      const off = offerings.find((o) => o.id === en.offering_id);
+      if (off) {
+        const offBoard = off.board || off.class?.board_id;
+        if (offBoard === 'sindh') return 'Sindh Board';
+        if (offBoard === 'fbise') return 'Federal Board (FBISE)';
+        if (off.class?.board?.name) return off.class.board.name;
+      }
+    }
+  }
+
+  // Default fallback if no board specified
+  return 'Federal Board (FBISE)';
+}
+
+/** Resolves the grade label for a student (e.g. 'Grade 9', 'Grade 10') */
+export function getStudentGradeLabel(
+  student: {
+    class?: { grade?: string; display_name?: string } | null;
+    id?: string;
+  },
+  enrollments?: Array<{ student_id: string; offering_id: string }>,
+  offerings?: Array<{ id: string; grade?: string }>
+): string {
+  if (student.class?.grade) {
+    return `Grade ${student.class.grade}`;
+  }
+  if (student.class?.display_name) {
+    return student.class.display_name.startsWith('Grade')
+      ? student.class.display_name
+      : `Grade ${student.class.display_name}`;
+  }
+
+  if (enrollments && offerings && student.id) {
+    const studentEnrollments = enrollments.filter((e) => e.student_id === student.id);
+    for (const en of studentEnrollments) {
+      const off = offerings.find((o) => o.id === en.offering_id);
+      if (off?.grade) {
+        return `Grade ${off.grade}`;
+      }
+    }
+  }
+
+  return 'General';
+}
+
+/** Resolves the formatted stream label for a student */
+export function getStudentStreamLabel(student: {
+  stream?: string | null;
+  stream_obj?: { name?: string } | null;
+}): string {
+  const raw = student.stream_obj?.name || student.stream;
+  if (!raw) return 'General';
+
+  const lower = raw.trim().toLowerCase();
+  if (lower === 'ics') return 'ICS';
+  if (lower === 'pre-medical' || lower === 'pre medical') return 'Pre-Medical';
+  if (lower === 'pre-engineering' || lower === 'pre engineering') return 'Pre-Engineering';
+  if (lower === 'computer science' || lower === 'computer-science') return 'Computer Science';
+  if (lower === 'biology') return 'Biology';
+
+  return raw
+    .split(/[-_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+

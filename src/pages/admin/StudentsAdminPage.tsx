@@ -6,6 +6,7 @@ import StudentTable from '../../components/admin/students/StudentTable';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import StudentDetailPanel from '../../components/admin/students/StudentDetailPanel';
 import { getAllStudents, getAllEnrollments, getAllOfferings, getAllAttendance } from '../../lib/db';
+import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 import type { Profile, Enrollment, ClassOffering, Attendance } from '../../types';
@@ -39,10 +40,28 @@ export const StudentsAdminPage: React.FC = () => {
     loadData();
   }, []);
 
-  // ── Realtime sync for attendance updates ─────────────────────────
+  // ── Realtime sync for live profile and attendance updates ───────
+  useRealtimeTable({
+    table: 'profiles',
+    debounceMs: 500,
+    onAny: async () => {
+      const stList = await getAllStudents();
+      setStudents(stList);
+    }
+  });
+
+  useRealtimeTable({
+    table: 'roster',
+    debounceMs: 500,
+    onAny: async () => {
+      const stList = await getAllStudents();
+      setStudents(stList);
+    }
+  });
+
   useRealtimeTable({
     table: 'attendance',
-    debounceMs: 1200,
+    debounceMs: 1000,
     onAny: async () => {
       const attList = await getAllAttendance();
       setAttendanceRecords(attList);
@@ -51,10 +70,11 @@ export const StudentsAdminPage: React.FC = () => {
 
   useRealtimeTable({
     table: 'enrollments',
-    debounceMs: 2000,
+    debounceMs: 1000,
     onAny: async () => {
-      const enList = await getAllEnrollments();
+      const [enList, stList] = await Promise.all([getAllEnrollments(), getAllStudents()]);
       setEnrollments(enList);
+      setStudents(stList);
     }
   });
 
@@ -70,49 +90,77 @@ export const StudentsAdminPage: React.FC = () => {
 
   // Compute attendance stats across all students & per student
   const attendanceStats = useMemo(() => {
-    const totalSessions = attendanceRecords.length;
-    const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
-    const lateCount = attendanceRecords.filter(r => r.status === 'late').length;
-    const attendedCount = presentCount + lateCount;
-    const avgRate = totalSessions > 0 ? Math.round((attendedCount / totalSessions) * 100) : 100;
-
     // Student-specific map
-    const studentMap = new Map<string, { attended: number; total: number; rate: number }>();
+    const studentMap = new Map<string, { attended: number; total: number; rate: number; qualified: boolean }>();
+    
+    // Initialize student entries
+    students.forEach(s => {
+      studentMap.set(s.id, { attended: 0, total: 0, rate: 0, qualified: false });
+    });
+
     attendanceRecords.forEach(r => {
-      const curr = studentMap.get(r.student_id) || { attended: 0, total: 0, rate: 100 };
+      const curr = studentMap.get(r.student_id) || { attended: 0, total: 0, rate: 0, qualified: false };
       curr.total += 1;
       if (r.status === 'present' || r.status === 'late') {
         curr.attended += 1;
       }
-      curr.rate = curr.total > 0 ? Math.round((curr.attended / curr.total) * 100) : 100;
+      curr.rate = curr.total > 0 ? Math.round((curr.attended / curr.total) * 100) : 0;
+      curr.qualified = curr.total >= 10;
       studentMap.set(r.student_id, curr);
     });
 
-    // Risk Alerts count: Students currently below 70% rate with minimum 10 recorded sessions eligibility
-    let riskAlertsCount = 0;
-    studentMap.forEach(val => {
-      if (val.total >= 10 && val.rate < 70) {
-        riskAlertsCount += 1;
-      }
-    });
+    // Qualified students: students who have reached the 10-session threshold
+    const qualifiedStudents = Array.from(studentMap.values()).filter(s => s.qualified);
+
+    // Avg Attendance: calculated ONLY from students who've reached the 10-session threshold
+    let avgRate: number | null = null;
+    let qualifiedAttended = 0;
+    let qualifiedTotal = 0;
+
+    if (qualifiedStudents.length > 0) {
+      qualifiedStudents.forEach(q => {
+        qualifiedAttended += q.attended;
+        qualifiedTotal += q.total;
+      });
+      avgRate = qualifiedTotal > 0 ? Math.round((qualifiedAttended / qualifiedTotal) * 100) : null;
+    }
+
+    // Risk Alerts count: ONLY students with 10+ sessions AND attendance below 70%
+    const riskAlertsCount = qualifiedStudents.filter(val => val.rate < 70).length;
 
     return {
-      totalSessions,
-      presentCount,
-      lateCount,
-      attendedCount,
+      totalSessions: attendanceRecords.length,
+      qualifiedStudentsCount: qualifiedStudents.length,
+      qualifiedAttended,
+      qualifiedTotal,
       avgRate,
       riskAlertsCount,
       studentMap,
     };
-  }, [attendanceRecords]);
+  }, [students, attendanceRecords]);
 
   // Search and Filter logical execution
   const filteredStudents = students.filter((s) => {
-    const matchesSearch = s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.phone && s.phone.includes(searchTerm));
-    const matchesStream = streamFilter === 'all' || s.stream === streamFilter;
-    return matchesSearch && matchesStream;
+    const sBoard = getStudentBoardLabel(s, enrollments, offerings).toLowerCase();
+    const sGrade = getStudentGradeLabel(s, enrollments, offerings).toLowerCase();
+    const sStream = getStudentStreamLabel(s).toLowerCase();
+    const searchLower = searchTerm.toLowerCase();
+
+    const matchesSearch =
+      s.full_name.toLowerCase().includes(searchLower) ||
+      (s.phone && s.phone.includes(searchTerm)) ||
+      sBoard.includes(searchLower) ||
+      sGrade.includes(searchLower) ||
+      sStream.includes(searchLower);
+
+    if (!matchesSearch) return false;
+    if (streamFilter === 'all') return true;
+
+    const rawStream = (s.stream_obj?.name || s.stream || '').toLowerCase().replace(/[\s_]+/g, '-');
+    if (streamFilter === 'pre-medical') return rawStream.includes('pre-med') || rawStream.includes('bio');
+    if (streamFilter === 'pre-engineering') return rawStream.includes('pre-eng') || rawStream.includes('eng');
+    if (streamFilter === 'ics') return rawStream.includes('ics') || rawStream.includes('comp');
+    return rawStream === streamFilter;
   });
 
   // Action handlers
@@ -121,17 +169,14 @@ export const StudentsAdminPage: React.FC = () => {
     setDrawerOpen(true);
   };
 
-  const getStats = (studentId: string) => {
-    const studentEnrollments = enrollments.filter((e) => e.student_id === studentId);
+  const getStats = (student: Profile) => {
+    const studentEnrollments = enrollments.filter((e) => e.student_id === student.id);
     const classesCount = studentEnrollments.length;
     
-    let boardAndGrade = 'No active classes';
-    if (studentEnrollments.length > 0) {
-      const primaryOffering = offerings.find(o => o.id === studentEnrollments[0].offering_id);
-      if (primaryOffering) {
-        boardAndGrade = `Grade ${primaryOffering.grade} · FBISE`;
-      }
-    }
+    const boardName = getStudentBoardLabel(student, enrollments, offerings);
+    const gradeName = getStudentGradeLabel(student, enrollments, offerings);
+    const boardAndGrade = `${gradeName} · ${boardName}`;
+
     return { classesCount, boardAndGrade };
   };
 
@@ -145,12 +190,11 @@ export const StudentsAdminPage: React.FC = () => {
   };
 
   const getStreamColor = (stream?: string | null) => {
-    switch (stream) {
-      case 'pre-medical': return 'badge-gold bg-amber-50 text-amber-700 border-amber-200';
-      case 'pre-engineering': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'ics': return 'bg-purple-50 text-purple-700 border-purple-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
+    const norm = (stream || '').toLowerCase();
+    if (norm.includes('pre-med') || norm.includes('biology')) return 'badge-gold bg-amber-50 text-amber-700 border-amber-200';
+    if (norm.includes('pre-eng') || norm.includes('engineering')) return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (norm.includes('ics') || norm.includes('computer')) return 'bg-purple-50 text-purple-700 border-purple-200';
+    return 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
   return (
@@ -188,13 +232,13 @@ export const StudentsAdminPage: React.FC = () => {
             </div>
             <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Avg Attendance</span>
           </div>
-          <div className="stat-value text-emerald-600">
-            {attendanceRecords.length > 0 ? `${attendanceStats.avgRate}%` : '100%'}
+          <div className={`stat-value ${attendanceStats.avgRate !== null ? 'text-emerald-600' : 'text-sm font-bold text-[#737373] tracking-tight'}`}>
+            {attendanceStats.avgRate !== null ? `${attendanceStats.avgRate}%` : 'Not enough data yet'}
           </div>
           <div className="stat-label">
-            {attendanceStats.totalSessions > 0
-              ? `${attendanceStats.attendedCount} of ${attendanceStats.totalSessions} sessions attended`
-              : 'Class presence rate'}
+            {attendanceStats.avgRate !== null
+              ? `${attendanceStats.qualifiedStudentsCount} student${attendanceStats.qualifiedStudentsCount === 1 ? '' : 's'} (≥10 sessions)`
+              : 'Requires ≥10 recorded sessions'}
           </div>
         </div>
 
@@ -207,7 +251,11 @@ export const StudentsAdminPage: React.FC = () => {
             <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Risk Alerts</span>
           </div>
           <div className="stat-value text-red-500">{attendanceStats.riskAlertsCount}</div>
-          <div className="stat-label">Students below 70% rate</div>
+          <div className="stat-label">
+            {attendanceStats.qualifiedStudentsCount > 0
+              ? 'Students below 70% (≥10 sessions)'
+              : 'Students below 70% rate'}
+          </div>
         </div>
       </div>
 
@@ -254,13 +302,10 @@ export const StudentsAdminPage: React.FC = () => {
       ) : isMobile ? (
         <div className="space-y-4">
           {filteredStudents.map((student) => {
-            const stats = getStats(student.id);
-            const streamLabel = student.stream
-              ? student.stream.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-              : 'General';
+            const stats = getStats(student);
+            const streamLabel = getStudentStreamLabel(student);
 
             const attData = attendanceStats.studentMap.get(student.id);
-            const hasAtt = attData && attData.total > 0;
 
             return (
               <div key={student.id} className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-sm flex flex-col gap-3">
@@ -284,7 +329,7 @@ export const StudentsAdminPage: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 border-t border-[#F5F5F5] pt-3 text-xs">
                   <div>
                     <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Stream</span>
-                    <span className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${getStreamColor(student.stream)}`}>
+                    <span className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${getStreamColor(student.stream_obj?.name || student.stream)}`}>
                       {streamLabel}
                     </span>
                   </div>
@@ -294,7 +339,7 @@ export const StudentsAdminPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Attendance</span>
-                    {hasAtt ? (
+                    {attData && attData.total >= 10 ? (
                       <span
                         className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${
                           attData.rate >= 75
@@ -307,7 +352,9 @@ export const StudentsAdminPage: React.FC = () => {
                         {attData.rate}%
                       </span>
                     ) : (
-                      <span className="text-xs text-[#A3A3A3] font-medium mt-1 block">—</span>
+                      <span className="inline-block text-[10px] text-[#737373] font-semibold bg-[#FAFAFA] border border-[#E5E5E5] py-0.5 px-1.5 rounded-md mt-1 whitespace-nowrap">
+                        Collecting data
+                      </span>
                     )}
                   </div>
                 </div>

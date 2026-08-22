@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Phone, Mail, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import type { Profile, Enrollment, ClassOffering, Teacher, RosterEntry, Attendance } from '../../../types';
 import { getEnrollmentsForStudent, getAllOfferings, getAllTeachers, getAllRoster, getAttendanceForStudent } from '../../../lib/db';
+import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel } from '../../../lib/taxonomy';
 
 interface StudentDetailPanelProps {
   student: Profile;
@@ -51,8 +52,9 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
       .slice(0, 2);
   };
 
-  const boardLabel = student.class?.board?.name || 'No Board';
-  const gradeLabel = student.class?.display_name || 'No Grade';
+  const boardLabel = getStudentBoardLabel(student, enrollments, offerings);
+  const gradeLabel = getStudentGradeLabel(student, enrollments, offerings);
+  const streamLabel = getStudentStreamLabel(student);
 
   const rosterEntry = roster.find(r => r.profile_id === student.id);
   const emailDisplay = rosterEntry ? rosterEntry.email : 'No email address registered';
@@ -83,7 +85,7 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
         </div>
         <h3 className="text-lg font-black text-[#111111]">{student.full_name}</h3>
         <span className="badge badge-gold mt-1.5 uppercase text-[9px] font-bold py-0.5 px-2.5 rounded-md border border-[#FDE68A]">
-          {student.stream_obj?.name || student.stream || 'General Stream'} Stream
+          {streamLabel} Stream
         </span>
         <p className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mt-3">
           {gradeLabel} · {boardLabel}
