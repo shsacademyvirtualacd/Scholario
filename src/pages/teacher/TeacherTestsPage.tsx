@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, BookOpen } from 'lucide-react';
+import { Search, BookOpen } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
-import TestUploadModal from '../../components/teacher/TestUploadModal';
 import TestViewerModal from '../../components/common/TestViewerModal';
-import { getAllTests } from '../../lib/db';
+import { getTestsForTeacher } from '../../lib/db';
+import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { TestPaper, TestSubmission } from '../../types';
 
 export const TeacherTestsPage: React.FC = () => {
+  const { user, profile } = useAuth();
   const [searchParams] = useSearchParams();
   const [tests, setTests] = useState<TestPaper[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
 
@@ -27,10 +27,14 @@ export const TeacherTestsPage: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const allTests = await getAllTests();
-      setTests(allTests);
-      if (!selectedTestId && allTests.length > 0) {
-        setSelectedTestId(allTests[0].id);
+      const teacherId = profile?.id;
+      const teacherEmail = user?.email || (profile as any)?.email;
+      const teacherName = profile?.full_name;
+
+      const teacherTests = await getTestsForTeacher(teacherId, teacherEmail, teacherName);
+      setTests(teacherTests);
+      if (!selectedTestId && teacherTests.length > 0) {
+        setSelectedTestId(teacherTests[0].id);
       }
     } catch (err) {
       console.error('Error fetching tests for teacher:', err);
@@ -41,7 +45,7 @@ export const TeacherTestsPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [profile?.id, user?.email, profile?.full_name]);
 
   useRealtimeTable({
     table: 'tests',
@@ -81,18 +85,6 @@ export const TeacherTestsPage: React.FC = () => {
 
   const selectedTest = tests.find((t) => t.id === selectedTestId) || filteredTests[0] || null;
 
-  const handleTestUploadSuccess = (newTest: TestPaper) => {
-    setTests((prev) => [newTest, ...prev]);
-    setSelectedTestId(newTest.id);
-  };
-
-  const handleTestDelete = (testId: string) => {
-    setTests((prev) => prev.filter((t) => t.id !== testId));
-    if (selectedTestId === testId) {
-      setSelectedTestId(null);
-    }
-  };
-
   return (
     <TeacherShell>
       {/* Header */}
@@ -100,18 +92,9 @@ export const TeacherTestsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-[#111111] tracking-tight">Test Assessments & Grading</h1>
           <p className="text-xs text-[#737373] mt-1">
-            Publish question papers and evaluate student answer sheet submissions with marks and remarks.
+            View assigned question papers and evaluate student answer sheet submissions with marks and remarks.
           </p>
         </div>
-
-        <button
-          id="teacher-open-test-upload-btn"
-          onClick={() => setIsUploadModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-extrabold transition-all shadow-xs shrink-0 cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>Upload Test Paper</span>
-        </button>
       </div>
 
       {/* Filter & Search Bar */}
@@ -168,7 +151,7 @@ export const TeacherTestsPage: React.FC = () => {
         <div className="lg:col-span-6 xl:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-[#111111] flex items-center gap-2">
-              <span>Published Test Papers</span>
+              <span>Assigned Test Papers</span>
               <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
                 {filteredTests.length}
               </span>
@@ -188,15 +171,8 @@ export const TeacherTestsPage: React.FC = () => {
               <p className="text-xs text-[#737373] mt-1">
                 {searchTerm || gradeFilter !== 'all' || subjectFilter !== 'all'
                   ? 'Try clearing active filters to see more tests.'
-                  : 'Get started by uploading your first assessment paper.'}
+                  : 'No tests have been assigned to your subject and class yet. Tests uploaded and assigned by Admin will appear here.'}
               </p>
-              <button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] text-white text-xs font-bold cursor-pointer"
-              >
-                <Plus size={14} />
-                <span>Upload Test Paper</span>
-              </button>
             </div>
           ) : (
             <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
@@ -205,9 +181,9 @@ export const TeacherTestsPage: React.FC = () => {
                   key={test.id}
                   test={test}
                   isSelected={selectedTest?.id === test.id}
+                  canDelete={false}
                   onSelect={(t) => setSelectedTestId(t.id)}
                   onView={(t) => setViewingTest(t)}
-                  onDelete={handleTestDelete}
                 />
               ))}
             </div>
@@ -223,13 +199,6 @@ export const TeacherTestsPage: React.FC = () => {
           />
         </div>
       </div>
-
-      {/* Upload Test Modal */}
-      <TestUploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={handleTestUploadSuccess}
-      />
 
       {/* Lightbox Question Paper / Submission Viewer Modal */}
       <TestViewerModal

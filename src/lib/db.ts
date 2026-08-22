@@ -1447,11 +1447,84 @@ export async function getAllTests(): Promise<TestPaper[]> {
   }
 }
 
-/** Teacher: get tests created by or assigned to teacher */
-export async function getTestsForTeacher(teacherId?: string): Promise<TestPaper[]> {
-  const all = await getAllTests();
-  if (!teacherId) return all;
-  return all.filter((t) => !t.teacher_id || t.teacher_id === teacherId);
+/** Teacher: get tests assigned to teacher strictly matching their id and assigned subject/class combinations */
+export async function getTestsForTeacher(
+  teacherId?: string,
+  teacherEmail?: string,
+  teacherName?: string
+): Promise<TestPaper[]> {
+  if (!teacherId && !teacherEmail && !teacherName) return [];
+  try {
+    const allTests = await getAllTests();
+    if (allTests.length === 0) return [];
+
+    // Look up teachers table to resolve teacher record IDs and names
+    const { data: teachersData } = await supabase.from('teachers').select('*');
+    const teacherList = teachersData || [];
+
+    const matchingTeacherIds = new Set<string>();
+    const matchingTeacherNames = new Set<string>();
+
+    if (teacherId) matchingTeacherIds.add(teacherId);
+    if (teacherName && teacherName.trim()) matchingTeacherNames.add(teacherName.trim().toLowerCase());
+
+    // Find matching records in teachers table
+    teacherList.forEach((t: any) => {
+      const idMatches = teacherId && (t.id === teacherId || t.user_id === teacherId);
+      const emailMatches = teacherEmail && t.email && t.email.toLowerCase() === teacherEmail.toLowerCase();
+      const nameMatches = teacherName && t.full_name && t.full_name.toLowerCase() === teacherName.toLowerCase();
+
+      if (idMatches || emailMatches || nameMatches) {
+        matchingTeacherIds.add(t.id);
+        if (t.user_id) matchingTeacherIds.add(t.user_id);
+        if (t.full_name) matchingTeacherNames.add(t.full_name.trim().toLowerCase());
+      }
+    });
+
+    // Get offerings assigned to this teacher to get their active subject + class (grade) combinations
+    let assignedOfferings: any[] = [];
+    try {
+      assignedOfferings = await getOfferingsForTeacher(teacherId);
+    } catch {
+      assignedOfferings = [];
+    }
+
+    const validPairs = assignedOfferings
+      .map((o) => ({
+        grade: String(o.class?.grade || o.grade || '').trim(),
+        subject: (o.subject?.name || o.subject_name || '').trim().toLowerCase(),
+      }))
+      .filter((p) => p.grade && p.subject);
+
+    // Strict filter:
+    // 1) Test MUST be assigned to this teacher (by matching teacher_id or teacher_name)
+    // 2) If teacher has offerings registered, test MUST match one of the teacher's subject + class combinations
+    const filtered = allTests.filter((t) => {
+      const isTeacherAssigned =
+        (t.teacher_id && matchingTeacherIds.has(t.teacher_id)) ||
+        (t.teacher_name && matchingTeacherNames.has(t.teacher_name.trim().toLowerCase()));
+
+      if (!isTeacherAssigned) return false;
+
+      if (validPairs.length > 0) {
+        const tGrade = String(t.grade || '').trim();
+        const tSub = (t.subject || '').trim().toLowerCase();
+        const matchesOffering = validPairs.some(
+          (p) =>
+            p.grade === tGrade &&
+            (p.subject === tSub || p.subject.includes(tSub) || tSub.includes(p.subject))
+        );
+        if (!matchesOffering) return false;
+      }
+
+      return true;
+    });
+
+    return filtered;
+  } catch (err) {
+    console.warn('[getTestsForTeacher] error:', err);
+    return [];
+  }
 }
 
 /** Upload test paper file to Cloudflare R2 /api/tests/upload */

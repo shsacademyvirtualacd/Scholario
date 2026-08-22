@@ -14,14 +14,16 @@ import { downloadTestBlob, deleteTestPaper } from '../../lib/db';
 interface TeacherTestCardProps {
   test: TestPaper;
   isSelected?: boolean;
+  canDelete?: boolean;
   onSelect: (test: TestPaper) => void;
   onView: (test: TestPaper) => void;
-  onDelete: (testId: string) => void;
+  onDelete?: (testId: string) => void;
 }
 
 export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
   test,
   isSelected,
+  canDelete = false,
   onSelect,
   onView,
   onDelete,
@@ -49,6 +51,7 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
 
   const handleDeleteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canDelete || !onDelete) return;
     if (!window.confirm(`Are you sure you want to delete "${test.title}"? This will remove all associated submissions.`)) {
       return;
     }
@@ -143,15 +146,17 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
           >
             {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
           </button>
-          <button
-            id={`delete-test-btn-${test.id}`}
-            onClick={handleDeleteClick}
-            disabled={deleting}
-            title="Delete Test Paper"
-            className="p-1.5 rounded-lg bg-[#FAFAFA] hover:bg-[#FEE2E2] text-[#DC2626] transition-colors border border-[#E5E5E5] disabled:opacity-50 cursor-pointer"
-          >
-            {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-          </button>
+          {canDelete && (
+            <button
+              id={`delete-test-btn-${test.id}`}
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              title="Delete Test Paper"
+              className="p-1.5 rounded-lg bg-[#FAFAFA] hover:bg-[#FEE2E2] text-[#DC2626] transition-colors border border-[#E5E5E5] disabled:opacity-50 cursor-pointer"
+            >
+              {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            </button>
+          )}
         </div>
       </div>
     </div>

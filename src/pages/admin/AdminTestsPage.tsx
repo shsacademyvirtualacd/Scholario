@@ -203,6 +203,7 @@ export const AdminTestsPage: React.FC = () => {
                   key={test.id}
                   test={test}
                   isSelected={selectedTest?.id === test.id}
+                  canDelete={true}
                   onSelect={(t) => setSelectedTestId(t.id)}
                   onView={(t) => setViewingTest(t)}
                   onDelete={handleTestDelete}
