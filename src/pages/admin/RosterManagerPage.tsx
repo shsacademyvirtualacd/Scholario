@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Users, Shield, Trash2, Edit, 
-  Clock, X, UserCheck, UserX, Lock, Unlock, Phone, GraduationCap, 
+  Clock, X, UserCheck, Lock, Unlock, Phone, GraduationCap, 
   BookOpen, Copy, Check, UserPlus, Save, ShieldAlert, DollarSign,
   CheckCircle2, AlertCircle
 } from 'lucide-react';
@@ -587,44 +587,6 @@ export const RosterManagerPage: React.FC = () => {
     }
   };
 
-  const handleToggleStudentAccess = async (entry: RosterEntry, grant: boolean) => {
-    setProcessingIds(prev => ({ ...prev, [entry.id]: true }));
-    try {
-      const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
-        profilesMap[entry.id] ||
-        (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
-      const targetStudentId = matchedProfile?.id || entry.profile_id || entry.id;
-
-      // Ensure profile row exists in profiles so fee_statuses foreign key doesn't fail
-      if (!matchedProfile) {
-        await (supabase as any).from('profiles').upsert({
-          id: targetStudentId,
-          role: 'student',
-          full_name: entry.full_name || 'Student',
-          onboarding_complete: true,
-        }, { onConflict: 'id' });
-      }
-
-      const nextStatus = grant ? 'paid' : 'unpaid';
-      await updateFeeStatus(targetStudentId, nextStatus, grant ? 'Access granted by administrator from Roster' : 'Access revoked by administrator from Roster');
-
-      // If grant is true and billing was locked, also unlock billing automatically
-      if (grant && entry.fee_suspended) {
-        await toggleFeeSuspension(entry.id, false);
-        setRoster(prev => prev.map(r => r.id === entry.id ? { ...r, fee_suspended: false } : r));
-      }
-
-      await fetchEnrichmentData();
-      toast.success(grant ? `Access granted to ${entry.full_name}.` : `Access revoked for ${entry.full_name}.`);
-    } catch (err: any) {
-      console.error('Toggle student access error:', err);
-      alert(err.message || 'Failed to update access status.');
-      toast.error(err.message || 'Failed to update student access.');
-    } finally {
-      setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
-    }
-  };
-
   // Filter & Section breakdown
   const filteredRoster = useMemo(() => {
     return roster.filter(entry => {
@@ -960,35 +922,13 @@ export const RosterManagerPage: React.FC = () => {
                   {activeSection !== 'admins' && (
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-[#F0F0F0]">
                       {activeSection === 'students' && (
-                        <>
-                          {feeStatusVal === 'paid' ? (
-                            <button
-                              disabled={processingIds[entry.id]}
-                              onClick={() => handleToggleStudentAccess(entry, false)}
-                              className="flex-1 min-w-[120px] py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-rose-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                              title="Manually revoke course access"
-                            >
-                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <UserX size={12} />} Revoke Access
-                            </button>
-                          ) : (
-                            <button
-                              disabled={processingIds[entry.id]}
-                              onClick={() => handleToggleStudentAccess(entry, true)}
-                              className="flex-1 min-w-[120px] py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                              title="Manually grant course access"
-                            >
-                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <UserCheck size={12} />} Grant Access
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => openEditStudent(entry)}
-                            className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all"
-                            title="Edit student profile"
-                          >
-                            <Edit size={12} /> Edit
-                          </button>
-                        </>
+                        <button
+                          onClick={() => openEditStudent(entry)}
+                          className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all"
+                          title="Edit student profile"
+                        >
+                          <Edit size={12} /> Edit
+                        </button>
                       )}
 
                       <button
@@ -1241,26 +1181,6 @@ export const RosterManagerPage: React.FC = () => {
 
                             {activeSection === 'students' && (
                               <>
-                                {feeStatusVal === 'paid' ? (
-                                  <button
-                                    onClick={() => handleToggleStudentAccess(entry, false)}
-                                    disabled={processingIds[entry.id]}
-                                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-rose-700 hover:text-rose-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all disabled:opacity-50"
-                                    title="Manually revoke course access"
-                                  >
-                                    {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <UserX size={13} />} Revoke Access
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => handleToggleStudentAccess(entry, true)}
-                                    disabled={processingIds[entry.id]}
-                                    className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 hover:text-emerald-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all disabled:opacity-50"
-                                    title="Manually grant course access"
-                                  >
-                                    {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <UserCheck size={13} />} Grant Access
-                                  </button>
-                                )}
-
                                 <button
                                   onClick={() => openEditStudent(entry)}
                                   className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 hover:text-zinc-900 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
