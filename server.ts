@@ -3,17 +3,14 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
-let geminiClient: GoogleGenAI | null = null;
-
-function getGeminiClient(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-  if (!geminiClient) {
-    geminiClient = new GoogleGenAI({ apiKey });
-  }
-  return geminiClient;
+function getCandidateGeminiKeys(): string[] {
+  const keys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4,
+  ];
+  return keys.filter((k): k is string => typeof k === 'string' && k.trim().length > 0);
 }
 
 async function startServer() {
@@ -36,7 +33,7 @@ async function startServer() {
         return res.status(400).json({ error: 'Messages array is required' });
       }
 
-      const client = getGeminiClient();
+      const candidateKeys = getCandidateGeminiKeys();
 
       // Build context-aware system instruction
       const roleDescription =
@@ -59,11 +56,11 @@ Key Guidelines:
 4. When asked for study tips or note summaries, structure them with key concepts, definitions, formulas, and common exam pitfalls.
 5. If the user asks who you are, introduce yourself as Sage, the AI academic study companion for Scholario & SHS Virtual Academy.`;
 
-      if (!client) {
-        // Fallback intelligent simulation if GEMINI_API_KEY is not set in the environment
+      if (candidateKeys.length === 0) {
+        // Fallback intelligent simulation if no GEMINI_API_KEY is set in the environment
         const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
         return res.json({
-          reply: `**Sage (Study Companion)**: I received your question about *"_**${lastUserMsg}**_*. Please ensure the \`GEMINI_API_KEY\` is configured in your project settings for live AI responses. Here is a helpful tip: In FBISE curricula, always structure your answers with definitions, core formulas, and labeled diagrams for full marks!`,
+          reply: `**Sage (Study Companion)**: I received your question about *"_**${lastUserMsg}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for live AI responses. Here is a helpful tip: In FBISE curricula, always structure your answers with definitions, core formulas, and labeled diagrams for full marks!`,
         });
       }
 
@@ -73,16 +70,29 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const response = await client.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents,
-        config: {
-          systemInstruction,
-        },
-      });
+      let lastError: any = null;
+      for (let i = 0; i < candidateKeys.length; i++) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: candidateKeys[i] });
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.7-flash',
+            contents,
+            config: {
+              systemInstruction,
+            },
+          });
 
-      const replyText = response.text || 'I could not generate a response at this moment. Please try again.';
-      return res.json({ reply: replyText });
+          const replyText = response.text || 'I could not generate a response at this moment. Please try again.';
+          return res.json({ reply: replyText });
+        } catch (keyErr: any) {
+          lastError = keyErr;
+          console.warn(`[Sage Chat Server] Key #${i + 1} failed: ${keyErr?.message || keyErr}. Retrying next key...`);
+        }
+      }
+
+      return res.status(500).json({
+        error: lastError?.message || 'All configured Gemini API keys failed or exceeded quota.',
+      });
     } catch (err: any) {
       console.error('[Sage Chat API Error]:', err);
       return res.status(500).json({
