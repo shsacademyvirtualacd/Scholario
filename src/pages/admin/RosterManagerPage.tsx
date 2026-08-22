@@ -463,14 +463,10 @@ export const RosterManagerPage: React.FC = () => {
     setEditStudentError(null);
 
     const nameTrim = editStudentName.trim();
-    const emailTrim = editStudentEmail.trim().toLowerCase();
+    const emailTrim = (editStudentEntry.email || editStudentEmail || '').trim().toLowerCase();
 
-    if (!nameTrim || !emailTrim) {
-      setEditStudentError('Please fill out all required profile fields.');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      setEditStudentError('Please enter a valid email address.');
+    if (!nameTrim) {
+      setEditStudentError('Please enter the student\'s full name.');
       return;
     }
     if (!editStudentClass) {
@@ -1614,19 +1610,24 @@ export const RosterManagerPage: React.FC = () => {
                 />
               </div>
 
-              {/* Email */}
+              {/* Email (Read-Only / Auth Account Identifier) */}
               <div>
-                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                  Email Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={editStudentEmail}
-                  onChange={(e) => setEditStudentEmail(e.target.value)}
-                  className="input w-full py-2.5 px-3.5 text-xs bg-zinc-50 border-zinc-200 rounded-xl font-medium focus:bg-white focus:border-purple-500"
-                  placeholder="student@example.com"
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider">
+                    Email Address
+                  </label>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md border border-zinc-200">
+                    <Lock size={11} className="text-zinc-500" />
+                    <span>Locked (Login ID)</span>
+                  </span>
+                </div>
+                <div className="w-full py-2.5 px-3.5 text-xs bg-zinc-100/90 border border-zinc-200 rounded-xl font-medium text-zinc-700 flex items-center justify-between cursor-not-allowed select-text">
+                  <span className="font-mono">{editStudentEmail || editStudentEntry.email || 'No email associated'}</span>
+                  <Lock size={13} className="text-zinc-400 shrink-0" />
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-1.5 flex items-center gap-1">
+                  <span>Tied to student Google Sign-In auth account and cannot be modified.</span>
+                </p>
               </div>
 
               {/* Board Selection (Federal / Sindh) */}
