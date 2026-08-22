@@ -11,7 +11,14 @@ function getGeminiClient(): GoogleGenAI | null {
     return null;
   }
   if (!geminiClient) {
-    geminiClient = new GoogleGenAI({ apiKey });
+    geminiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
   }
   return geminiClient;
 }
@@ -73,7 +80,7 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const targetModel = 'gemini-3.6-flash';
+      const targetModel = 'gemini-3.7-flash';
       let response: any;
       try {
         response = await client.models.generateContent({

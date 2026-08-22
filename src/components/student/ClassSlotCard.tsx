@@ -1,14 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Video, MapPin, Clock, Lock } from 'lucide-react';
+import { Video, MapPin, Clock, Lock, CheckCircle2, Check } from 'lucide-react';
 import StatusPill from '../ui/StatusPill';
 import { calcDuration, formatTime12h, getPKTNow, getLinkAvailabilityStatus } from '../../lib/scheduleUtils';
+import { useAuth } from '../../features/auth/AuthContext';
+import { markStudentSelfAttendance } from '../../lib/db';
+import { pageCache } from '../../lib/pageCache';
+import type { Attendance } from '../../types';
 
 interface ClassSlotCardProps {
   slot: any;
+  onAttendanceMarked?: (slotId: string, timestamp: string) => void;
+  isMarkedPresent?: boolean;
 }
 
-export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
+export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot, onAttendanceMarked, isMarkedPresent: initialMarked }) => {
+  const { user } = useAuth();
   const [pktnow, setPktnow] = useState(getPKTNow);
+  const [isMarking, setIsMarking] = useState(false);
+  const todayStr = getPKTNow().dateString || new Date().toISOString().slice(0, 10);
+
+  // Check if attendance already marked in cache / props
+  const [markedTime, setMarkedTime] = useState<string | null>(() => {
+    if (initialMarked) return 'Marked';
+    if (!user?.id) return null;
+    const cachedAtt = pageCache.get<Attendance[]>('student_attendance', user.id);
+    const existing = cachedAtt?.find(a => a.slot_id === slot.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late'));
+    return existing ? existing.marked_at : null;
+  });
 
   // Ticker to re-evaluate link availability every 10 seconds in real time
   useEffect(() => {
@@ -42,6 +60,30 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
   const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
   const hasRawLink = Boolean(slot.room_or_link && slot.room_or_link.trim().length > 0);
 
+  const handleMarkAttendanceAndJoin = async () => {
+    if (!user?.id || isCancelled) return;
+    setIsMarking(true);
+    try {
+      const rec = await markStudentSelfAttendance(user.id, slot.id, todayStr);
+      setMarkedTime(rec.marked_at || new Date().toISOString());
+      onAttendanceMarked?.(slot.id, rec.marked_at || new Date().toISOString());
+      
+      // If live link is available, open in a new tab
+      if (linkStatus.isAvailable && slot.room_or_link) {
+        const url = slot.room_or_link.startsWith('http') ? slot.room_or_link : `https://${slot.room_or_link}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      console.error('Failed to mark attendance:', err);
+      // Optimistic update
+      const nowIso = new Date().toISOString();
+      setMarkedTime(nowIso);
+      onAttendanceMarked?.(slot.id, nowIso);
+    } finally {
+      setIsMarking(false);
+    }
+  };
+
   return (
     <div
       className={`bg-white border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-sm ${
@@ -66,24 +108,43 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot }) => {
 
       {/* Class info */}
       <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5]">
-        <h3 className={`text-base font-extrabold text-[#111111] leading-tight truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`}>
-          {subject}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className={`text-base font-extrabold text-[#111111] leading-tight truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`}>
+            {subject}
+          </h3>
+          {markedTime && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
+              <Check size={10} strokeWidth={3} /> Present
+            </span>
+          )}
+        </div>
         <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">{teacherName}</p>
       </div>
 
-      {/* Location / Join links with 10m timing restriction */}
-      <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end">
+      {/* Attendance & Join Actions */}
+      <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end flex-wrap sm:flex-nowrap">
+        {/* Attendance Mark Button if not already marked */}
+        {!isCancelled && !markedTime && (
+          <button
+            onClick={handleMarkAttendanceAndJoin}
+            disabled={isMarking}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] transition-all shadow-xs interactive"
+            title="Mark attendance as Present for this session"
+          >
+            <CheckCircle2 size={13} className="text-[#111111]" />
+            <span>{isMarking ? 'Marking...' : 'Mark Attendance'}</span>
+          </button>
+        )}
+
+        {/* Location / Join links with 10m timing restriction */}
         {linkStatus.isAvailable ? (
-          <a
-            href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs hover:scale-105"
+          <button
+            onClick={handleMarkAttendanceAndJoin}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs hover:scale-105 interactive"
           >
             <Video size={13} className="text-white" />
             <span>Join Class</span>
-          </a>
+          </button>
         ) : linkStatus.status === 'locked' ? (
           <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border bg-amber-50 border-amber-200 text-amber-700" title="Link opens 10 minutes before class start time">
             <Lock size={12} className="text-amber-600 shrink-0" />

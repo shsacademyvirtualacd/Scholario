@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, ChevronRight,
-  GraduationCap, Percent, Megaphone
+  GraduationCap, Percent, Megaphone, ShieldCheck
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import {
@@ -10,9 +10,10 @@ import {
   getAllTeachers,
   getAllOfferings,
   getAllSlots,
-  getAllEnrollments
+  getAllEnrollments,
+  getOverallAttendanceStats
 } from '../../lib/db';
-import type { Teacher, ClassOffering, ClassSlot, Enrollment } from '../../types';
+import type { Teacher, ClassOffering, ClassSlot, Enrollment, Profile } from '../../types';
 import { useMobile } from '../../hooks/useMobile';
 
 // ─── Main ────────────────────────────────────────────────────────
@@ -25,6 +26,27 @@ const AdminDashboardPage: React.FC = () => {
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [slots, setSlots] = useState<ClassSlot[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [attendanceStats, setAttendanceStats] = useState<{
+    attendanceRate: number;
+    totalRecords: number;
+    presentCount: number;
+    absentCount: number;
+    lateCount: number;
+    lowAttendanceStudents: Array<{
+      student: Profile;
+      rate: number;
+      attended: number;
+      total: number;
+      subject: string;
+    }>;
+  }>({
+    attendanceRate: 100,
+    totalRecords: 0,
+    presentCount: 0,
+    absentCount: 0,
+    lateCount: 0,
+    lowAttendanceStudents: [],
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +56,8 @@ const AdminDashboardPage: React.FC = () => {
       getAllTeachers().then(setTeachers),
       getAllOfferings().then(setOfferings),
       getAllSlots().then(setSlots),
-      getAllEnrollments().then(setEnrollments)
+      getAllEnrollments().then(setEnrollments),
+      getOverallAttendanceStats().then(setAttendanceStats)
     ]).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -49,16 +72,18 @@ const AdminDashboardPage: React.FC = () => {
       icon: Users,
       color: '#3b82f6',
       bg: '#EFF6FF',
+      onClick: () => navigate('/admin/students'),
     },
     {
       label: 'Attendance Rate',
-      value: '—',
+      value: `${attendanceStats.attendanceRate}%`,
       change: '+0%',
-      changeLabel: 'vs last week',
+      changeLabel: `${attendanceStats.totalRecords} total sessions`,
       positive: true,
       icon: Percent,
       color: '#22c55e',
       bg: '#F0FDF4',
+      onClick: () => navigate('/admin/attendance'),
     },
     {
       label: 'Teachers on Staff',
@@ -69,6 +94,7 @@ const AdminDashboardPage: React.FC = () => {
       icon: GraduationCap,
       color: '#F4C430',
       bg: '#FFFBF0',
+      onClick: () => navigate('/admin/teachers'),
     },
     {
       label: 'Recent Announcements',
@@ -79,6 +105,7 @@ const AdminDashboardPage: React.FC = () => {
       icon: Megaphone,
       color: '#a855f7',
       bg: '#FAF5FF',
+      onClick: () => navigate('/admin/announcements'),
     },
   ];
 
@@ -163,26 +190,25 @@ const AdminDashboardPage: React.FC = () => {
           ))
         ) : (
           stats.map((stat) => {
-            const isAttendance = stat.label === 'Attendance Rate';
             return (
-              <div key={stat.label} className={`bg-white border border-[#E5E5E5] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between ${isAttendance ? 'opacity-40 select-none' : ''}`}>
-                {isAttendance && (
-                  <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider scale-95 origin-top-right">
-                    Soon
-                  </span>
-                )}
+              <div
+                key={stat.label}
+                onClick={stat.onClick}
+                className="bg-white border border-[#E5E5E5] hover:border-[#D4D4D4] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between cursor-pointer transition-all hover:shadow-md group"
+              >
                 <div className="flex items-center justify-between mb-3">
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform"
                     style={{ background: stat.bg }}
                   >
                     <stat.icon size={15} style={{ color: stat.color }} />
                   </div>
+                  <ChevronRight size={13} className="text-[#A3A3A3] group-hover:text-[#111111] transition-colors" />
                 </div>
                 <div>
-                  <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] leading-none">{isAttendance ? '—' : stat.value}</div>
+                  <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] leading-none">{stat.value}</div>
                   <div className="text-[10px] font-bold text-[#737373] mt-2 uppercase tracking-wider">{stat.label}</div>
-                  <div className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">{isAttendance ? 'Coming soon' : stat.changeLabel}</div>
+                  <div className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">{stat.changeLabel}</div>
                 </div>
               </div>
             );
@@ -190,26 +216,52 @@ const AdminDashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Low attendance ── */}
+      {/* ── Low attendance Watchlist ── */}
       <div className="card card-elevated relative overflow-hidden interactive">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance</h2>
-          <span className="text-[9px] bg-zinc-200 text-zinc-600 font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider">
-            Coming Soon
-          </span>
-        </div>
-        <div className="space-y-3 opacity-40 pointer-events-none select-none">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420]">
-            <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
-              AH
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-[#111111]">Ali Hassan</div>
-              <div className="text-xs text-[#737373]">Mathematics · 5/8 classes</div>
-            </div>
-            <span className="text-sm font-bold text-[#ef4444]">62%</span>
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5]">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance Watchlist (&lt;75%)</h2>
+            {attendanceStats.lowAttendanceStudents.length > 0 && (
+              <span className="text-[9px] bg-rose-100 text-rose-700 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {attendanceStats.lowAttendanceStudents.length} At Risk
+              </span>
+            )}
           </div>
+          <button
+            onClick={() => navigate('/admin/attendance')}
+            className="text-xs font-bold text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
+          >
+            Manage attendance <ChevronRight size={13} />
+          </button>
         </div>
+
+        {attendanceStats.lowAttendanceStudents.length === 0 ? (
+          <div className="py-6 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl flex items-center justify-center gap-2">
+            <ShieldCheck size={18} className="text-emerald-600" />
+            <span className="font-semibold text-[#111111]">All students are compliant above the 75% attendance threshold.</span>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {attendanceStats.lowAttendanceStudents.slice(0, 3).map((item, idx) => (
+              <div
+                key={idx}
+                onClick={() => navigate('/admin/attendance')}
+                className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                  {item.student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-[#111111]">{item.student.full_name}</div>
+                  <div className="text-[10px] text-[#737373]">{item.subject} · {item.attended}/{item.total} classes attended</div>
+                </div>
+                <span className="text-xs font-black text-[#ef4444] bg-white px-2 py-1 rounded-md border border-rose-200">
+                  {item.rate}%
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Teachers overview ── */}

@@ -13,10 +13,13 @@ import {
   getStudentsForTeacher,
   getStudentsInOffering,
   getSlotsForTeacher,
+  getAttendanceForTeacher,
+  recordAttendance,
+  upsertAttendanceBatch
 } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
-import type { ClassOffering, ClassSlot, Profile } from '../../types';
+import type { ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, calcDuration, getLinkAvailabilityStatus
@@ -339,10 +342,48 @@ export const TeacherDashboardPage: React.FC = () => {
     .filter(slot => slot.day_of_week === currentDayIndex)
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
-  // Active Class Roster View states
+  // Active Class Roster & Attendance View states
   const [selectedOfferingId, setSelectedOfferingId] = useState<string>(cachedOfferings && cachedOfferings.length > 0 ? cachedOfferings[0].id : '');
   const cachedRoster = (teacherId && selectedOfferingId) ? pageCache.get<Profile[]>(`teacher_roster_${selectedOfferingId}`, teacherId) : null;
   const [rosterStudents, setRosterStudents] = useState<Profile[]>(cachedRoster || []);
+  const [sessionDate, setSessionDate] = useState<string>(getPKTNow().dateString || new Date().toISOString().slice(0, 10));
+  const [teacherAttendance, setTeacherAttendance] = useState<Attendance[]>([]);
+  const [savingAttendanceId, setSavingAttendanceId] = useState<string | null>(null);
+
+  // Find slot for selected offering
+  const offeringSlots = allSlots.filter(s => s.offering_id === selectedOfferingId || (s.offering as any)?.id === selectedOfferingId);
+  const [selectedSlotId, setSelectedSlotId] = useState<string>('');
+
+  useEffect(() => {
+    if (offeringSlots.length > 0) {
+      if (!selectedSlotId || !offeringSlots.some(s => s.id === selectedSlotId)) {
+        setSelectedSlotId(offeringSlots[0].id);
+      }
+    } else {
+      setSelectedSlotId('');
+    }
+  }, [selectedOfferingId, allSlots]);
+
+  // Fetch attendance records for this teacher
+  const fetchTeacherAttendance = async () => {
+    if (!teacherId) return;
+    try {
+      const records = await getAttendanceForTeacher(teacherId, sessionDate);
+      setTeacherAttendance(records);
+    } catch (err) {
+      console.error('Failed fetching teacher attendance:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeacherAttendance();
+  }, [teacherId, sessionDate, selectedOfferingId]);
+
+  useRealtimeTable({
+    table: 'attendance',
+    debounceMs: 1500,
+    onAny: fetchTeacherAttendance
+  });
 
   useEffect(() => {
     if (!selectedOfferingId) {
@@ -366,6 +407,85 @@ export const TeacherDashboardPage: React.FC = () => {
       mounted = false;
     };
   }, [selectedOfferingId, teacherId]);
+
+  // Attendance helpers
+  const getStudentStatus = (studentId: string): { status: AttendanceStatus | 'unmarked'; markedAt?: string; markedBy?: string } => {
+    const record = teacherAttendance.find(
+      a => a.student_id === studentId && (selectedSlotId ? a.slot_id === selectedSlotId : true) && a.session_date === sessionDate
+    );
+    if (!record) return { status: 'unmarked' };
+    return {
+      status: record.status,
+      markedAt: record.marked_at,
+      markedBy: record.marked_by
+    };
+  };
+
+  const handleUpdateStudentStatus = async (studentId: string, newStatus: AttendanceStatus) => {
+    const slotIdToUse = selectedSlotId || offeringSlots[0]?.id;
+    if (!slotIdToUse) return;
+
+    setSavingAttendanceId(studentId);
+
+    // Optimistic UI update
+    setTeacherAttendance(prev => {
+      const filtered = prev.filter(
+        a => !(a.student_id === studentId && a.slot_id === slotIdToUse && a.session_date === sessionDate)
+      );
+      const newRec: Attendance = {
+        id: `att-${Date.now()}-${studentId}`,
+        student_id: studentId,
+        slot_id: slotIdToUse,
+        session_date: sessionDate,
+        status: newStatus,
+        marked_at: new Date().toISOString(),
+        marked_by: 'teacher'
+      };
+      return [...filtered, newRec];
+    });
+
+    try {
+      await recordAttendance({
+        student_id: studentId,
+        slot_id: slotIdToUse,
+        session_date: sessionDate,
+        status: newStatus,
+        marked_by: 'teacher'
+      });
+    } catch (err) {
+      console.error('Error saving attendance:', err);
+    } finally {
+      setSavingAttendanceId(null);
+    }
+  };
+
+  const handleMarkAllPresent = async () => {
+    const slotIdToUse = selectedSlotId || offeringSlots[0]?.id;
+    if (!slotIdToUse || rosterStudents.length === 0) return;
+
+    const updates = rosterStudents.map(st => ({
+      student_id: st.id,
+      slot_id: slotIdToUse,
+      session_date: sessionDate,
+      status: 'present' as AttendanceStatus,
+      marked_at: new Date().toISOString(),
+    }));
+
+    // Optimistic update
+    setTeacherAttendance(prev => {
+      const studentIds = new Set(rosterStudents.map(s => s.id));
+      const remaining = prev.filter(
+        a => !(studentIds.has(a.student_id) && a.slot_id === slotIdToUse && a.session_date === sessionDate)
+      );
+      return [...remaining, ...updates.map(u => ({ ...u, id: `att-${Date.now()}-${u.student_id}`, marked_by: 'teacher' as const }))];
+    });
+
+    try {
+      await upsertAttendanceBatch(updates);
+    } catch (err) {
+      console.error('Error in batch marking:', err);
+    }
+  };
 
   // Dynamic colors for subjects
   const getSubjectColor = (subject: string) => {
@@ -537,28 +657,119 @@ export const TeacherDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Class Rosters */}
+        {/* Class Rosters & Session Attendance */}
         <div className={`card card-elevated ${isMobile ? '' : 'col-span-2'}`}>
-          <div className={`flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between gap-3'} mb-4 pb-2 border-b border-[#F5F5F5]`}>
-            <div>
-              <h2 className="text-sm font-bold text-[#111111]">Class Rosters</h2>
-              <p className="text-[10px] text-[#737373] font-medium mt-0.5">Secure, admin-assigned class student lists.</p>
+          <div className="flex flex-col gap-3 mb-4 pb-3 border-b border-[#F5F5F5]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-[#111111] flex items-center gap-2">
+                  <span>Class Attendance & Roster</span>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                    Live Session Mode
+                  </span>
+                </h2>
+                <p className="text-[10px] text-[#737373] font-medium mt-0.5">
+                  Track student joins in real time and manage presence records.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleMarkAllPresent}
+                  disabled={rosterStudents.length === 0}
+                  className="text-[11px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1.5 rounded-lg shadow-xs transition-all flex items-center gap-1.5 interactive disabled:opacity-50"
+                  title="Mark all currently enrolled students as Present for this date"
+                >
+                  <CheckCircle2 size={13} />
+                  <span>Mark All Present</span>
+                </button>
+              </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#737373]">Select Class:</span>
-              <select
-                value={selectedOfferingId}
-                onChange={(e) => setSelectedOfferingId(e.target.value)}
-                className="input py-1.5 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-lg cursor-pointer max-w-[200px]"
-              >
-                {offerings.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.subject_name || o.subject} (Class {o.grade} FBISE)
-                  </option>
-                ))}
-              </select>
+
+            {/* Selectors Bar: Offering, Slot, Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-[#F5F5F5]">
+              <div>
+                <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Class Group</label>
+                <select
+                  value={selectedOfferingId}
+                  onChange={(e) => setSelectedOfferingId(e.target.value)}
+                  className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg cursor-pointer text-[#111111] font-semibold focus:outline-hidden"
+                >
+                  {offerings.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.subject_name || o.subject} (Gr. {o.grade || '10'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Lecture Time</label>
+                <select
+                  value={selectedSlotId}
+                  onChange={(e) => setSelectedSlotId(e.target.value)}
+                  className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg cursor-pointer text-[#111111] font-semibold focus:outline-hidden"
+                >
+                  {offeringSlots.length === 0 ? (
+                    <option value="">No slots configured</option>
+                  ) : (
+                    offeringSlots.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.day_of_week] || 'Day'} · {formatClassTime(s.start_time)} - {formatClassTime(s.end_time)}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Session Date</label>
+                <input
+                  type="date"
+                  value={sessionDate}
+                  onChange={(e) => setSessionDate(e.target.value)}
+                  className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg cursor-pointer text-[#111111] font-semibold focus:outline-hidden"
+                />
+              </div>
             </div>
+
+            {/* Attendance Status Counts Summary */}
+            {rosterStudents.length > 0 && (
+              <div className="flex items-center gap-3 pt-2 text-[11px] font-bold text-[#737373] overflow-x-auto">
+                {(() => {
+                  let pres = 0, late = 0, abs = 0, un = 0;
+                  rosterStudents.forEach(st => {
+                    const stStatus = getStudentStatus(st.id).status;
+                    if (stStatus === 'present') pres++;
+                    else if (stStatus === 'late') late++;
+                    else if (stStatus === 'absent') abs++;
+                    else un++;
+                  });
+                  return (
+                    <>
+                      <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                        ● Present: {pres}
+                      </span>
+                      <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                        ● Late: {late}
+                      </span>
+                      <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                        ● Absent: {abs}
+                      </span>
+                      {un > 0 && (
+                        <span className="text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md">
+                          ○ Unmarked: {un}
+                        </span>
+                      )}
+                      <span className="text-[#111111] ml-auto">
+                        Total Enrolled: {rosterStudents.length}
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -567,8 +778,9 @@ export const TeacherDashboardPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-[#F0F0F0]">
                     <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student Name</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Stream / Group</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Contact Phone</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Stream</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Status & Log</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider text-right">Attendance Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#FAFAFA]">
@@ -587,7 +799,10 @@ export const TeacherDashboardPage: React.FC = () => {
                         <div className="h-3 bg-gray-100 rounded w-16" />
                       </td>
                       <td className="py-3">
-                        <div className="h-3 bg-gray-100 rounded w-20" />
+                        <div className="h-3 bg-gray-100 rounded w-24" />
+                      </td>
+                      <td className="py-3 text-right">
+                        <div className="h-6 bg-gray-100 rounded w-28 ml-auto" />
                       </td>
                     </tr>
                   ))}
@@ -609,33 +824,121 @@ export const TeacherDashboardPage: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-[#F0F0F0]">
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student Name</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Stream / Group</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Contact Phone</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Stream</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Status & Auto-Join Log</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider text-right">Toggle Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#FAFAFA]">
-                  {rosterStudents.map((st) => (
-                    <tr key={st.id} className="hover:bg-[#FAFAFA]/40 transition-colors">
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-[#FAFAFA] border border-[#F0F0F0] flex items-center justify-center text-[10px] font-bold text-[#525252]">
-                            {st.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  {rosterStudents.map((st) => {
+                    const { status: stStatus, markedAt, markedBy } = getStudentStatus(st.id);
+                    const isSaving = savingAttendanceId === st.id;
+                    const joinTime = markedAt ? new Date(markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+
+                    return (
+                      <tr key={st.id} className="hover:bg-[#FAFAFA]/50 transition-colors">
+                        <td className="py-3 pr-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-[#FAFAFA] border border-[#F0F0F0] flex items-center justify-center text-[10px] font-bold text-[#525252] shrink-0">
+                              {st.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-[#111111] block leading-tight truncate">{st.full_name}</span>
+                              <span className="text-[9px] text-[#737373] font-medium leading-tight truncate block">
+                                {(st as any).email || `ID: ${st.id.slice(0, 8)}`}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-xs font-bold text-[#111111] block leading-tight">{st.full_name}</span>
-                            <span className="text-[9px] text-[#737373] font-medium leading-tight">Student ID: {st.id}</span>
+                        </td>
+
+                        <td className="py-3 text-xs font-semibold text-[#525252] capitalize whitespace-nowrap">
+                          {st.stream || 'General'}
+                        </td>
+
+                        <td className="py-3">
+                          <div className="flex flex-col gap-0.5">
+                            {stStatus === 'present' ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                  ✓ Present
+                                </span>
+                                {markedBy === 'self' || joinTime ? (
+                                  <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50/50 px-1.5 py-0.5 rounded">
+                                    ⚡ Joined {joinTime || ''}
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-[#737373] font-medium">
+                                    (Teacher marked)
+                                  </span>
+                                )}
+                              </div>
+                            ) : stStatus === 'late' ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                  ⏱ Late
+                                </span>
+                                {joinTime && (
+                                  <span className="text-[9px] text-amber-600 font-semibold">
+                                    at {joinTime}
+                                  </span>
+                                )}
+                              </div>
+                            ) : stStatus === 'absent' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                                ✕ Absent
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                                ○ Unmarked
+                              </span>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3 text-xs font-semibold text-[#525252] capitalize">
-                        {st.stream || 'General'}
-                      </td>
-                      <td className="py-3 text-xs font-medium text-[#737373]">
-                        {st.phone || 'No phone record'}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+
+                        <td className="py-3 text-right">
+                          <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
+                            <button
+                              onClick={() => handleUpdateStudentStatus(st.id, 'present')}
+                              disabled={isSaving}
+                              className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                stStatus === 'present'
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
+                              }`}
+                              title="Mark Present"
+                            >
+                              P
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStudentStatus(st.id, 'late')}
+                              disabled={isSaving}
+                              className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                stStatus === 'late'
+                                  ? 'bg-amber-500 text-white shadow-xs'
+                                  : 'text-[#737373] hover:text-amber-700 hover:bg-white'
+                              }`}
+                              title="Mark Late"
+                            >
+                              L
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStudentStatus(st.id, 'absent')}
+                              disabled={isSaving}
+                              className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                stStatus === 'absent'
+                                  ? 'bg-rose-600 text-white shadow-xs'
+                                  : 'text-[#737373] hover:text-rose-700 hover:bg-white'
+                              }`}
+                              title="Mark Absent"
+                            >
+                              A
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

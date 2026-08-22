@@ -32,6 +32,8 @@ export interface PKTNow {
   hour: number;
   /** Human-readable minute (0-59) in PKT */
   minute: number;
+  /** Formatted date string in PKT timezone (YYYY-MM-DD) */
+  dateString: string;
 }
 
 /**
@@ -50,6 +52,13 @@ export function getPKTNow(): PKTNow {
     hourCycle: 'h23',
   });
 
+  const dateFmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Karachi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
   const parts = fmt.formatToParts(now);
   const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
 
@@ -64,8 +73,9 @@ export function getPKTNow(): PKTNow {
   const hour = parseInt(get('hour'), 10) || 0;
   const minute = parseInt(get('minute'), 10) || 0;
   const totalMins = hour * 60 + minute;
+  const dateString = dateFmt.format(now);
 
-  return { dayIndex, totalMins, hour, minute };
+  return { dayIndex, totalMins, hour, minute, dateString };
 }
 
 // ─── Time String Helpers ───────────────────────────────────────────────────────

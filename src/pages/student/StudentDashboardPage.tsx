@@ -7,7 +7,14 @@ import {
 import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getSlotsForStudent, getNotesForOfferings, getOfferingsForStudent, getAttendanceForStudent } from '../../lib/db';
+import {
+  getSlotsForStudent,
+  getNotesForOfferings,
+  getOfferingsForStudent,
+  getAttendanceForStudent,
+  computeAttendanceStreak,
+  markStudentSelfAttendance
+} from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
@@ -144,8 +151,19 @@ const PomodoroTimer: React.FC = () => {
 };
 
 // ─── Live Link Join Button for Student ────────────────────────────
-const StudentLiveLink: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
+const StudentLiveLink: React.FC<{
+  slot: ClassSlot;
+  studentId?: string;
+  onAttendanceMarked?: (slotId: string) => void;
+  isMarked?: boolean;
+}> = ({ slot, studentId, onAttendanceMarked, isMarked }) => {
   const [pktnow, setPktnow] = useState(getPKTNow);
+  const [isMarking, setIsMarking] = useState(false);
+  const [localMarked, setLocalMarked] = useState(isMarked);
+
+  useEffect(() => {
+    setLocalMarked(isMarked);
+  }, [isMarked]);
 
   // Dynamic 10-second timer tick so the link unlocks in real time
   useEffect(() => {
@@ -153,60 +171,89 @@ const StudentLiveLink: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
     return () => clearInterval(timer);
   }, []);
 
+  const handleJoinAndMark = async () => {
+    if (studentId) {
+      setIsMarking(true);
+      try {
+        await markStudentSelfAttendance(studentId, slot.id);
+        setLocalMarked(true);
+        onAttendanceMarked?.(slot.id);
+      } catch (e) {
+        console.error('Failed marking attendance:', e);
+        setLocalMarked(true);
+      } finally {
+        setIsMarking(false);
+      }
+    }
+
+    if (slot.room_or_link) {
+      const url = slot.room_or_link.startsWith('http') ? slot.room_or_link : `https://${slot.room_or_link}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
   const hasRawLink = Boolean(slot?.room_or_link && slot.room_or_link.trim().length > 0);
 
-  if (!hasRawLink && linkStatus.status === 'no_link') return null;
+  return (
+    <div className="mt-2 space-y-1.5 w-full">
+      {/* Attendance marked confirmation or quick self-mark button */}
+      {localMarked ? (
+        <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 py-1.5 px-2 rounded-md">
+          <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+          <span>Attendance Marked: Present</span>
+        </div>
+      ) : studentId ? (
+        <button
+          onClick={handleJoinAndMark}
+          disabled={isMarking}
+          className="flex items-center justify-center gap-1.5 w-full bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] text-[11px] font-bold py-1.5 px-2 rounded-md transition-all shadow-xs interactive"
+        >
+          <CheckCircle2 size={12} />
+          <span>{isMarking ? 'Marking...' : 'Mark My Attendance'}</span>
+        </button>
+      ) : null}
 
-  if (linkStatus.isAvailable) {
-    return (
-      <a 
-        href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`}
-        target="_blank" 
-        rel="noreferrer" 
-        className="mt-2 flex items-center justify-center gap-1.5 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-xs"
-      >
-        <Video size={13} /> Join Live Class
-      </a>
-    );
-  }
-
-  if (linkStatus.status === 'locked') {
-    return (
-      <div 
-        className="mt-2 flex items-center justify-center gap-1.5 w-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold py-1.5 px-2 rounded-md"
-        title="Class link will become accessible 10 minutes before class start time"
-      >
-        <Lock size={12} className="text-amber-600 shrink-0" />
-        <span className="truncate">{linkStatus.message}</span>
-      </div>
-    );
-  }
-
-  if (linkStatus.status === 'ended') {
-    return (
-      <div className="mt-2 flex items-center justify-center gap-1.5 w-full bg-gray-100 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
-        <Clock size={12} className="text-gray-400 shrink-0" />
-        <span>Class Session Ended</span>
-      </div>
-    );
-  }
-
-  if (hasRawLink) {
-    return (
-      <div className="mt-2 flex items-center justify-center gap-1.5 w-full bg-gray-50 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
-        <Lock size={12} className="text-gray-400 shrink-0" />
-        <span>Unlocks 10m Before Class</span>
-      </div>
-    );
-  }
-
-  return null;
+      {/* Video link */}
+      {linkStatus.isAvailable ? (
+        <button
+          onClick={handleJoinAndMark}
+          className="flex items-center justify-center gap-1.5 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-xs interactive"
+        >
+          <Video size={13} /> Join Live Class
+        </button>
+      ) : linkStatus.status === 'locked' ? (
+        <div 
+          className="flex items-center justify-center gap-1.5 w-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold py-1.5 px-2 rounded-md"
+          title="Class link will become accessible 10 minutes before class start time"
+        >
+          <Lock size={12} className="text-amber-600 shrink-0" />
+          <span className="truncate">{linkStatus.message}</span>
+        </div>
+      ) : linkStatus.status === 'ended' ? (
+        <div className="flex items-center justify-center gap-1.5 w-full bg-gray-100 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
+          <Clock size={12} className="text-gray-400 shrink-0" />
+          <span>Class Session Ended</span>
+        </div>
+      ) : hasRawLink ? (
+        <div className="flex items-center justify-center gap-1.5 w-full bg-gray-50 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
+          <Lock size={12} className="text-gray-400 shrink-0" />
+          <span>Unlocks 10m Before Class</span>
+        </div>
+      ) : null}
+    </div>
+  );
 };
 
 // ─── Live Next Class Countdown Widget ─────────────────────────────
-const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
+const NextClassWidget: React.FC<{
+  slots: ClassSlot[];
+  studentId?: string;
+  attendanceRecords?: Attendance[];
+  onAttendanceMarked?: (slotId: string) => void;
+}> = ({ slots, studentId, attendanceRecords, onAttendanceMarked }) => {
   const [pktnow, setPktnow] = useState(getPKTNow);
+  const todayStr = getPKTNow().dateString || new Date().toISOString().slice(0, 10);
 
   // Re-evaluate every 60 seconds against PKT clock
   useEffect(() => {
@@ -242,6 +289,9 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
     const remH = Math.floor(state.minsRemaining / 60);
     const remM = state.minsRemaining % 60;
     const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
+    const isMarked = attendanceRecords?.some(
+      a => a.slot_id === state.activeSlot.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late')
+    );
     return (
       <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
@@ -261,7 +311,12 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
           <Zap size={13} className="text-emerald-500 shrink-0" />
           <span className="text-xs font-bold text-[#111111]">{formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}</span>
         </div>
-        <StudentLiveLink slot={state.activeSlot} />
+        <StudentLiveLink
+          slot={state.activeSlot}
+          studentId={studentId}
+          isMarked={isMarked}
+          onAttendanceMarked={onAttendanceMarked}
+        />
       </div>
     );
   }
@@ -270,6 +325,9 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
   const nextSlot = state.nextSlot!;
   const minsUntil = state.minsUntil ?? 0;
   const subject = getSlotSubject(nextSlot);
+  const isMarked = attendanceRecords?.some(
+    a => a.slot_id === nextSlot.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late')
+  );
   
   let badgeLabel = '';
   let isPulsing = false;
@@ -313,7 +371,12 @@ const NextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
           FBISE · Gr. {nextSlot.offering?.grade || '10'}
         </span>
       </div>
-      <StudentLiveLink slot={nextSlot} />
+      <StudentLiveLink
+        slot={nextSlot}
+        studentId={studentId}
+        isMarked={isMarked}
+        onAttendanceMarked={onAttendanceMarked}
+      />
     </div>
   );
 };
@@ -445,6 +508,18 @@ const StudentDashboardPage: React.FC = () => {
   };
 
   const formatClassTime = formatTime12h;
+  const streakMetrics = computeAttendanceStreak(attendanceRecords);
+  const todayStr = getPKTNow().dateString || new Date().toISOString().slice(0, 10);
+
+  const handleMarkTodayAttendance = async (slotId: string) => {
+    if (!studentId) return;
+    try {
+      const rec = await markStudentSelfAttendance(studentId, slotId, todayStr);
+      setAttendanceRecords(prev => [rec, ...prev.filter(p => !(p.slot_id === slotId && p.session_date === todayStr))]);
+    } catch (err) {
+      console.error('Failed to mark attendance:', err);
+    }
+  };
 
   return (
     <StudentShell>
@@ -493,29 +568,31 @@ const StudentDashboardPage: React.FC = () => {
         ) : (
           <>
             {/* Streak */}
-            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive relative opacity-40 select-none">
+            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive relative">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
-                <span className="absolute top-2.5 right-2.5 text-[8px] bg-zinc-200 text-zinc-600 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                  Soon
+                <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  🔥 Active
                 </span>
               </div>
               <div>
-                <div className="stat-value">—</div>
-                <div className="stat-label">coming soon</div>
+                <div className="stat-value">{streakMetrics.currentStreak} {streakMetrics.currentStreak === 1 ? 'day' : 'days'}</div>
+                <div className="stat-label">
+                  {streakMetrics.currentStreak > 0 ? 'Consistent attendance!' : 'Attend today to start streak'}
+                </div>
               </div>
               <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
-                <div className="flex gap-0.5 flex-1 max-w-[120px]">
-                  {[false, false, false, false, false, false, false].map((_, i) => (
+                <div className="flex gap-1 flex-1 max-w-[130px]">
+                  {streakMetrics.last7Days.map((attended, i) => (
                     <div
                       key={i}
-                      className="flex-1 h-1.5 rounded-full transition-all duration-300"
-                      style={{ background: '#F0F0F0' }}
-                      title="Coming Soon"
+                      className="flex-1 h-2 rounded-full transition-all duration-300"
+                      style={{ background: attended ? '#22c55e' : '#F0F0F0' }}
+                      title={attended ? 'Present' : 'Absent/No class'}
                     />
                   ))}
                 </div>
-                <span className="text-[10px] text-[#A3A3A3] font-bold">PB: —</span>
+                <span className="text-[10px] text-[#737373] font-bold">PB: {streakMetrics.personalBest}d</span>
               </div>
             </div>
             {/* Academic Program */}
@@ -537,7 +614,23 @@ const StudentDashboardPage: React.FC = () => {
             </div>
 
             {/* Next Class Countdown */}
-            <NextClassWidget slots={scheduleSlots} />
+            <NextClassWidget
+              slots={scheduleSlots}
+              studentId={studentId}
+              attendanceRecords={attendanceRecords}
+              onAttendanceMarked={(slotId) => {
+                const todayStr = getPKTNow().dateString || new Date().toISOString().slice(0, 10);
+                const newRec: Attendance = {
+                  id: `att-${Date.now()}`,
+                  student_id: studentId,
+                  slot_id: slotId,
+                  session_date: todayStr,
+                  status: 'present',
+                  marked_at: new Date().toISOString(),
+                };
+                setAttendanceRecords(prev => [newRec, ...prev.filter(p => !(p.slot_id === slotId && p.session_date === todayStr))]);
+              }}
+            />
 
             {/* Pomodoro Timer */}
             <PomodoroTimer />
@@ -584,23 +677,40 @@ const StudentDashboardPage: React.FC = () => {
                 const rawClsSubj = cls.custom_title || (cls.offering as any)?.subject_name || cls.offering?.subject || '';
                 const clsSubj = typeof rawClsSubj === 'string' ? rawClsSubj : ((rawClsSubj as any)?.name || 'Class');
                 const color = getSubjectColor(clsSubj);
+                const isMarked = attendanceRecords.some(
+                  a => a.slot_id === cls.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late')
+                );
                 return (
                   <div
                     key={cls.id}
-                    className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all hover:shadow-sm bg-white"
+                    className="flex items-center gap-3 sm:gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all hover:shadow-sm bg-white"
                   >
                     <div className="w-1.5 h-12 rounded-full shrink-0" style={{ background: color }} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm text-[#111111]">{clsSubj}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-[#111111] truncate">{clsSubj}</span>
+                        {isMarked && (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                            ✓ Present
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
                         {cls.offering?.teacher?.full_name || 'Staff'} · {calcDuration(cls.start_time, cls.end_time) || '90m'}
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 flex flex-col items-end gap-1">
                       <div className="text-sm font-extrabold text-[#111111]">{formatClassTime(cls.start_time)}</div>
-                      <div className="mt-1">
+                      {!isMarked && !cls.is_cancelled ? (
+                        <button
+                          onClick={() => handleMarkTodayAttendance(cls.id)}
+                          className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2 py-0.5 rounded-md shadow-xs interactive"
+                        >
+                          Mark Present
+                        </button>
+                      ) : (
                         <StatusPill status={cls.is_cancelled ? 'cancelled' : 'upcoming'} />
-                      </div>
+                      )}
                     </div>
                   </div>
                 );

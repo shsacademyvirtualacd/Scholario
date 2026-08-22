@@ -124,8 +124,13 @@ export interface Attendance {
   session_date: string; // YYYY-MM-DD
   status: AttendanceStatus;
   marked_at: string;
+  marked_by?: 'self' | 'teacher' | 'admin';
   // joined
   slot?: ClassSlot;
+  student?: Profile;
+  teacher?: Teacher;
+  subject?: string;
+  class_id?: string;
 }
 
 // ─── notes ──────────────────────────────────
