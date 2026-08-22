@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import type { ClassSlot } from '../../../types';
 
@@ -34,6 +34,54 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const subject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class';
   const teacherName = slot.offering?.teacher?.full_name || 'Staff';
 
+  // Multi-tap state tracking
+  const tapCountRef = useRef<number>(0);
+  const lastTapTimeRef = useRef<number>(0);
+  const singleTapTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const TRIPLE_TAP_WINDOW_MS = 750; // Window to complete 3 taps
+
+  const handleCardTap = (e: React.MouseEvent) => {
+    // 1. In selection mode, 1 tap immediately toggles selection
+    if (selectionMode && onToggleSelect) {
+      e.stopPropagation();
+      onToggleSelect(slot.id);
+      return;
+    }
+
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapTimeRef.current;
+
+    // Reset count if interval exceeded the window
+    if (timeSinceLastTap > TRIPLE_TAP_WINDOW_MS) {
+      tapCountRef.current = 1;
+    } else {
+      tapCountRef.current += 1;
+    }
+    lastTapTimeRef.current = now;
+
+    // Clear any pending single-tap action
+    if (singleTapTimerRef.current) {
+      clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = null;
+    }
+
+    // 2. Triple-tap/click (3 taps) -> Trigger Edit Modal
+    if (tapCountRef.current >= 3) {
+      e.stopPropagation();
+      tapCountRef.current = 0; // Reset
+      onEdit(slot);
+      return;
+    }
+
+    // 3. Single tap fallback
+    if (tapCountRef.current === 1) {
+      singleTapTimerRef.current = setTimeout(() => {
+        tapCountRef.current = 0;
+      }, 300);
+    }
+  };
+
   // Core vs Elective distinction: null stream_id means core (shared across streams)
   const isCore = !slot.stream_id && !slot.offering?.stream_id;
 
@@ -66,27 +114,17 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   return (
     <div
-      onClick={(e) => {
-        if (selectionMode && onToggleSelect) {
-          e.stopPropagation();
-          onToggleSelect(slot.id);
-        }
-      }}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        if (!selectionMode) {
-          onEdit(slot);
-        }
-      }}
-      title={selectionMode ? undefined : `${subject} (${teacherName}) — Double-click to edit`}
-      className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left ${
-        selectionMode ? 'cursor-pointer select-none' : 'cursor-pointer hover:shadow-md select-none'
+      onClick={handleCardTap}
+      title={selectionMode ? undefined : `${subject} (${teacherName}) — Triple-tap/click to edit`}
+      className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left touch-manipulation select-none ${
+        selectionMode ? 'cursor-pointer' : 'cursor-pointer hover:shadow-md'
       } ${
         isSelected
           ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/80 shadow-md'
           : isCancelled ? 'opacity-50 bg-gray-100/70 border-gray-300' : ''
       }`}
       style={{
+        touchAction: 'manipulation', // Prevents double-tap zoom on mobile browsers
         backgroundColor: isSelected ? undefined : (isCancelled ? undefined : style.bg),
         borderColor: isSelected ? undefined : (isCancelled ? undefined : `${style.border}40`),
         borderLeft: `3.5px solid ${isSelected ? '#2563eb' : (isCancelled ? '#9ca3af' : style.border)}`,
@@ -145,38 +183,44 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         )}
       </div>
 
-      {/* Hover Action Overlay */}
+      {/* Explicit Action Controls (Desktop hover & Dedicated touch targets with click isolation) */}
       {!selectionMode && (
-        <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-md p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-md p-0.5 shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 z-10"
+        >
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onToggleCancel(slot.id, isCancelled);
             }}
             title={isCancelled ? 'Mark Active' : 'Mark Cancelled'}
-            className={`p-1 rounded text-gray-500 transition-colors ${
+            className={`p-1 rounded text-gray-500 transition-colors cursor-pointer ${
               isCancelled ? 'hover:text-emerald-600 hover:bg-emerald-50' : 'hover:text-amber-600 hover:bg-amber-50'
             }`}
           >
             {isCancelled ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
           </button>
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onEdit(slot);
             }}
             title="Edit slot"
-            className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <Edit2 size={11} />
           </button>
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(slot.id);
             }}
             title="Delete slot"
-            className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+            className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
           >
             <Trash2 size={11} />
           </button>
