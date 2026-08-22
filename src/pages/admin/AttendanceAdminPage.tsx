@@ -25,6 +25,7 @@ import {
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import {
   DAYS_OF_WEEK_SHORT,
+  DAYS_OF_WEEK_FULL,
   formatTime12h
 } from '../../lib/scheduleUtils';
 import type { Teacher, ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus, Enrollment, TeacherAttendanceRating } from '../../types';
@@ -325,6 +326,14 @@ export const AttendanceAdminPage: React.FC = () => {
     });
     return Array.from(subs);
   }, [offerings]);
+
+  // Calculate day of week index for selectedDate: 0 = Monday, ..., 6 = Sunday
+  const selectedDateDayIndex = useMemo(() => {
+    if (!selectedDate) return 0;
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    return (dateObj.getDay() + 6) % 7;
+  }, [selectedDate]);
 
   // Realtime Live Attendance Metrics calculated directly from attendanceRecords state
   const liveMetrics = useMemo(() => {
@@ -820,7 +829,9 @@ export const AttendanceAdminPage: React.FC = () => {
                                   );
 
                                   const isClassExpanded = expandedClassIds.has(offering.id);
-                                  const primarySlotId = offeringSlots[0]?.id || 'slot-1';
+                                  const daySlot = offeringSlots.find(s => s.day_of_week === selectedDateDayIndex);
+                                  const isScheduledForDate = Boolean(daySlot);
+                                  const primarySlotId = daySlot?.id || '';
 
                                   // Count breakdown on selectedDate
                                   let presCount = 0;
@@ -865,10 +876,17 @@ export const AttendanceAdminPage: React.FC = () => {
                                           return (
                                             <span
                                               key={s.id}
-                                              className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#F5F5F5] text-[#333333] border border-[#E5E5E5] px-1.5 py-0.5 rounded-md"
+                                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${
+                                                s.day_of_week === selectedDateDayIndex
+                                                  ? 'bg-amber-100 text-amber-900 border-amber-300 ring-1 ring-amber-400'
+                                                  : 'bg-[#F5F5F5] text-[#333333] border-[#E5E5E5]'
+                                              }`}
                                             >
                                               <span className="text-[#111111] font-black">{dayLabel}</span>
-                                              {timeLabel && <span className="text-[#737373]">{timeLabel}</span>}
+                                              {timeLabel && <span className={s.day_of_week === selectedDateDayIndex ? 'text-amber-800' : 'text-[#737373]'}>{timeLabel}</span>}
+                                              {s.day_of_week === selectedDateDayIndex && (
+                                                <span className="text-[8px] bg-amber-500 text-white font-extrabold px-1 rounded">Today</span>
+                                              )}
                                             </span>
                                           );
                                         })}
@@ -926,7 +944,13 @@ export const AttendanceAdminPage: React.FC = () => {
 
                                         {/* Attendance Breakdown on selectedDate */}
                                         <td className="py-3 px-3">
-                                          <div className="space-y-1.5 min-w-[200px]">
+                                          {!isScheduledForDate ? (
+                                            <div className="flex items-center gap-1.5 text-xs text-amber-800 font-semibold bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+                                              <Clock size={13} className="shrink-0 text-amber-600" />
+                                              <span>No lecture on {DAYS_OF_WEEK_FULL[selectedDateDayIndex]}s</span>
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-1.5 min-w-[200px]">
                                             <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
                                               <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                                                 ✓ {presCount}
@@ -962,20 +986,32 @@ export const AttendanceAdminPage: React.FC = () => {
                                               )}
                                             </div>
                                           </div>
+                                          )}
                                         </td>
 
                                         {/* Actions */}
                                         <td className="py-3 px-3.5 text-right whitespace-nowrap">
                                           <div className="inline-flex items-center gap-2">
                                             {totalEnrolledInClass > 0 && (
-                                              <button
-                                                onClick={() => handleMarkAllSlotPresent(primarySlotId, offering.id)}
-                                                className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
-                                                title={`Mark all ${totalEnrolledInClass} students Present for ${selectedDate}`}
-                                              >
-                                                <CheckCircle2 size={11} />
-                                                <span>Mark All</span>
-                                              </button>
+                                              isScheduledForDate ? (
+                                                <button
+                                                  onClick={() => handleMarkAllSlotPresent(primarySlotId, offering.id)}
+                                                  className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                                                  title={`Mark all ${totalEnrolledInClass} students Present for ${selectedDate}`}
+                                                >
+                                                  <CheckCircle2 size={11} />
+                                                  <span>Mark All</span>
+                                                </button>
+                                              ) : (
+                                                <button
+                                                  disabled
+                                                  className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-not-allowed opacity-60"
+                                                  title={`Class session is not scheduled on ${DAYS_OF_WEEK_FULL[selectedDateDayIndex]}`}
+                                                >
+                                                  <CheckCircle2 size={11} />
+                                                  <span>Off Schedule</span>
+                                                </button>
+                                              )
                                             )}
 
                                             <button
@@ -1010,13 +1046,19 @@ export const AttendanceAdminPage: React.FC = () => {
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
-                                                  <button
-                                                    onClick={() => handleMarkAllSlotPresent(primarySlotId, offering.id)}
-                                                    className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1 rounded-md transition-all flex items-center gap-1 shadow-xs cursor-pointer"
-                                                  >
-                                                    <CheckCircle2 size={12} />
-                                                    <span>Mark All Present</span>
-                                                  </button>
+                                                  {isScheduledForDate ? (
+                                                    <button
+                                                      onClick={() => handleMarkAllSlotPresent(primarySlotId, offering.id)}
+                                                      className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1 rounded-md transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                                                    >
+                                                      <CheckCircle2 size={12} />
+                                                      <span>Mark All Present</span>
+                                                    </button>
+                                                  ) : (
+                                                    <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                                                      Not scheduled for {DAYS_OF_WEEK_FULL[selectedDateDayIndex]}
+                                                    </span>
+                                                  )}
                                                   <button
                                                     onClick={() => toggleClassExpand(offering.id)}
                                                     className="text-[10px] font-semibold text-[#737373] hover:text-[#111111] px-2 py-1 bg-[#F5F5F5] rounded-md border border-[#E5E5E5] cursor-pointer"
@@ -1025,6 +1067,15 @@ export const AttendanceAdminPage: React.FC = () => {
                                                   </button>
                                                 </div>
                                               </div>
+
+                                              {!isScheduledForDate && (
+                                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center gap-2">
+                                                  <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+                                                  <span>
+                                                    This class has no lecture scheduled on {DAYS_OF_WEEK_FULL[selectedDateDayIndex]} ({selectedDate}). Attendance can only be recorded on scheduled timetable days.
+                                                  </span>
+                                                </div>
+                                              )}
 
                                               {enrolledStudentsList.length === 0 ? (
                                                 <div className="py-6 text-center text-xs text-[#737373] bg-white rounded-xl border border-[#E5E5E5]">
@@ -1117,14 +1168,17 @@ export const AttendanceAdminPage: React.FC = () => {
                                                                 <button
                                                                   type="button"
                                                                   onClick={() => handleAdminClickAttendance(st.id, st.full_name, primarySlotId, selectedDate, status, 'present', offering.subject_name || offering.subject)}
-                                                                  disabled={isUpdating}
-                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                                                  disabled={isUpdating || !isScheduledForDate}
+                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                                                                    !isScheduledForDate ? 'opacity-40 cursor-not-allowed text-gray-400' :
                                                                     status === 'present'
-                                                                      ? 'bg-emerald-600 text-white shadow-xs'
-                                                                      : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
+                                                                      ? 'bg-emerald-600 text-white shadow-xs cursor-pointer'
+                                                                      : 'text-[#737373] hover:text-emerald-700 hover:bg-white cursor-pointer'
                                                                   }`}
                                                                   title={
-                                                                    status === 'present'
+                                                                    !isScheduledForDate
+                                                                      ? 'Cannot mark attendance: Class is not scheduled on this day'
+                                                                      : status === 'present'
                                                                       ? 'Status is recorded as Present (Locked)'
                                                                       : status !== 'unmarked'
                                                                       ? 'Change status to Present (Requires confirmation)'
@@ -1136,14 +1190,17 @@ export const AttendanceAdminPage: React.FC = () => {
                                                                 <button
                                                                   type="button"
                                                                   onClick={() => handleAdminClickAttendance(st.id, st.full_name, primarySlotId, selectedDate, status, 'late', offering.subject_name || offering.subject)}
-                                                                  disabled={isUpdating}
-                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                                                  disabled={isUpdating || !isScheduledForDate}
+                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                                                                    !isScheduledForDate ? 'opacity-40 cursor-not-allowed text-gray-400' :
                                                                     status === 'late'
-                                                                      ? 'bg-amber-500 text-white shadow-xs'
-                                                                      : 'text-[#737373] hover:text-amber-700 hover:bg-white'
+                                                                      ? 'bg-amber-500 text-white shadow-xs cursor-pointer'
+                                                                      : 'text-[#737373] hover:text-amber-700 hover:bg-white cursor-pointer'
                                                                   }`}
                                                                   title={
-                                                                    status === 'late'
+                                                                    !isScheduledForDate
+                                                                      ? 'Cannot mark attendance: Class is not scheduled on this day'
+                                                                      : status === 'late'
                                                                       ? 'Status is recorded as Late (Locked)'
                                                                       : status !== 'unmarked'
                                                                       ? 'Change status to Late (Requires confirmation)'
@@ -1155,14 +1212,17 @@ export const AttendanceAdminPage: React.FC = () => {
                                                                 <button
                                                                   type="button"
                                                                   onClick={() => handleAdminClickAttendance(st.id, st.full_name, primarySlotId, selectedDate, status, 'absent', offering.subject_name || offering.subject)}
-                                                                  disabled={isUpdating}
-                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                                                  disabled={isUpdating || !isScheduledForDate}
+                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                                                                    !isScheduledForDate ? 'opacity-40 cursor-not-allowed text-gray-400' :
                                                                     status === 'absent'
-                                                                      ? 'bg-rose-600 text-white shadow-xs'
-                                                                      : 'text-[#737373] hover:text-rose-700 hover:bg-white'
+                                                                      ? 'bg-rose-600 text-white shadow-xs cursor-pointer'
+                                                                      : 'text-[#737373] hover:text-rose-700 hover:bg-white cursor-pointer'
                                                                   }`}
                                                                   title={
-                                                                    status === 'absent'
+                                                                    !isScheduledForDate
+                                                                      ? 'Cannot mark attendance: Class is not scheduled on this day'
+                                                                      : status === 'absent'
                                                                       ? 'Status is recorded as Absent (Locked)'
                                                                       : status !== 'unmarked'
                                                                       ? 'Change status to Absent (Requires confirmation)'

@@ -677,6 +677,43 @@ export async function getAttendanceForStudent(studentId: string): Promise<Attend
   });
 }
 
+/** Validate that a slot exists, has a valid class offering, and matches the session date */
+export async function validateSlotForAttendance(slotId: string, sessionDate: string): Promise<{ valid: boolean; error?: string }> {
+  if (!slotId || slotId === 'slot-1') {
+    return { valid: false, error: 'A valid scheduled class slot is required to record attendance.' };
+  }
+  if (!sessionDate) {
+    return { valid: false, error: 'A valid session date is required.' };
+  }
+
+  const { data: slot, error } = await supabase
+    .from('class_slots')
+    .select('id, day_of_week, offering_id, is_cancelled')
+    .eq('id', slotId)
+    .maybeSingle();
+
+  const slotData = slot as { id: string; day_of_week: number | null; offering_id: string | null; is_cancelled?: boolean } | null;
+
+  if (error || !slotData || !slotData.offering_id) {
+    return { valid: false, error: 'The class slot is not linked to an active scheduled class offering.' };
+  }
+
+  // Calculate day of week for sessionDate (0 = Monday, ..., 6 = Sunday)
+  const [year, month, day] = sessionDate.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const sessionDow = (d.getDay() + 6) % 7;
+
+  if (slotData.day_of_week != null && slotData.day_of_week !== sessionDow) {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return {
+      valid: false,
+      error: `Class slot is scheduled on ${days[slotData.day_of_week] || 'another day'}, but ${sessionDate} is a ${days[sessionDow] || 'different day'}. Attendance can only be recorded on scheduled timetable days.`
+    };
+  }
+
+  return { valid: true };
+}
+
 /** Mark student attendance when they tap "Join Class" or "Mark Attendance" */
 export async function markStudentSelfAttendance(
   studentId: string,
@@ -685,6 +722,12 @@ export async function markStudentSelfAttendance(
 ): Promise<Attendance> {
   const today = sessionDate || new Date().toISOString().slice(0, 10);
   const nowTimestamp = new Date().toISOString();
+
+  // Validate that slot is real and scheduled for today
+  const validation = await validateSlotForAttendance(slotId, today);
+  if (!validation.valid) {
+    throw new Error(validation.error || 'Cannot mark attendance for an unscheduled slot.');
+  }
 
   // 1. Check if record already exists
   const { data: existing } = await supabase
@@ -782,6 +825,12 @@ export async function recordAttendance(params: {
   const { student_id, slot_id, session_date, status, marked_by = 'teacher' } = params;
   const nowTimestamp = new Date().toISOString();
 
+  // Validate that slot is real and scheduled for session_date
+  const validation = await validateSlotForAttendance(slot_id, session_date);
+  if (!validation.valid) {
+    throw new Error(validation.error || 'Cannot record attendance for an unscheduled slot.');
+  }
+
   const { data: existing } = await supabase
     .from('attendance')
     .select('id')
@@ -821,6 +870,7 @@ export async function recordAttendance(params: {
           session_date,
           status,
           marked_at: nowTimestamp,
+          marked_by,
         }, { onConflict: 'student_id,slot_id,session_date' });
       if (upsertErr) throw upsertErr;
     }
@@ -929,10 +979,20 @@ export async function upsertAttendanceBatch(records: Array<{
   marked_at?: string;
   marked_by?: 'student' | 'teacher' | 'admin' | 'self';
 }>): Promise<void> {
+  if (!records || records.length === 0) return;
+
+  // Validate the slot and session_date of the batch
+  const firstRecord = records[0];
+  const validation = await validateSlotForAttendance(firstRecord.slot_id, firstRecord.session_date);
+  if (!validation.valid) {
+    throw new Error(validation.error || 'Cannot record batch attendance for an unscheduled slot.');
+  }
+
   const nowTimestamp = new Date().toISOString();
   const recordsWithTimestamp = records.map(r => ({
     ...r,
     marked_at: r.marked_at || nowTimestamp,
+    marked_by: r.marked_by || 'admin',
   }));
   
   // Try batch upsert first
