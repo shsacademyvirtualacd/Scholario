@@ -20,7 +20,7 @@ export const RegisterPage: React.FC = () => {
     if (session) {
       if (!profile) {
         // New user goes to unregistered page to fill the student registration form
-        navigate('/unregistered', { replace: true });
+        navigate('/unregistered' + location.search, { replace: true });
         return;
       }
       // Existing user goes to their dashboard

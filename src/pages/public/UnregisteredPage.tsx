@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { getTaxonomy, completeStudentOnboarding, resolveGradeFeeConfig, requestAccountTermination } from '../../lib/db';
 import Logo from '../../components/ui/Logo';
-import { BOARD, getDefaultPrice } from '../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getBoardDef, getDefaultPrice } from '../../lib/taxonomy';
 import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isMobile = useMobile();
+
+  const queryBoard = searchParams.get('board');
+  const queryGrade = searchParams.get('grade');
 
   const [taxonomy, setTaxonomy] = useState<any>(null);
 
   // Form Fields
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || user?.email?.split('@')[0] || '');
   const [phone, setPhone] = useState('');
+  const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh'>(
+    queryBoard === 'sindh' ? 'sindh' : 'fbise'
+  );
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStreamId, setSelectedStreamId] = useState<string | null>(null);
   const [livePrice, setLivePrice] = useState<number | null>(null);
@@ -33,10 +40,16 @@ export const UnregisteredPage: React.FC = () => {
     getTaxonomy()
       .then((tax) => {
         setTaxonomy(tax);
-        // Default class to first FBISE class
-        const fbiseClasses = tax.classes.filter((c: any) => c.board_id === BOARD.id);
-        if (fbiseClasses.length > 0) {
-          setSelectedClassId(fbiseClasses[0].id);
+        // Default class to selected board's target grade or first class
+        const boardClasses = tax.classes.filter((c: any) => c.board_id === selectedBoardId);
+        const matchingClass = queryGrade
+          ? boardClasses.find((c: any) => String(c.grade) === String(queryGrade))
+          : boardClasses[0];
+
+        if (matchingClass) {
+          setSelectedClassId(matchingClass.id);
+        } else if (boardClasses.length > 0) {
+          setSelectedClassId(boardClasses[0].id);
         }
       })
       .catch((err) => {
@@ -44,13 +57,27 @@ export const UnregisteredPage: React.FC = () => {
       });
   }, []);
 
-  // Reset stream and calculate live price when class changes
+  // When board changes, ensure selectedClassId moves to the corresponding class in that board
+  useEffect(() => {
+    if (!taxonomy) return;
+    const currentClass = taxonomy.classes.find((c: any) => c.id === selectedClassId);
+    const targetGrade = currentClass?.grade || queryGrade || '10';
+    const boardClasses = taxonomy.classes.filter((c: any) => c.board_id === selectedBoardId);
+    const matchingClass = boardClasses.find((c: any) => String(c.grade) === String(targetGrade)) || boardClasses[0];
+
+    if (matchingClass && matchingClass.id !== selectedClassId) {
+      setSelectedClassId(matchingClass.id);
+      setSelectedStreamId(null);
+    }
+  }, [selectedBoardId, taxonomy]);
+
+  // Reset stream and calculate live price when class or board changes
   useEffect(() => {
     setSelectedStreamId(null);
     if (selectedClassId && taxonomy) {
       const cls = taxonomy.classes.find((c: any) => c.id === selectedClassId);
       if (cls) {
-        resolveGradeFeeConfig(cls.grade || '10', cls.id)
+        resolveGradeFeeConfig(cls.grade || '10', cls.id, selectedBoardId)
           .then((cfg) => {
             if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
               setLivePrice(cfg.amount);
@@ -61,7 +88,7 @@ export const UnregisteredPage: React.FC = () => {
           .catch(() => setLivePrice(cls.grade ? getDefaultPrice(cls.grade) : 2499));
       }
     }
-  }, [selectedClassId, taxonomy]);
+  }, [selectedClassId, selectedBoardId, taxonomy]);
 
   // Redirect if profile already exists and is fully set up
   useEffect(() => {
@@ -112,6 +139,18 @@ export const UnregisteredPage: React.FC = () => {
     setError(null);
 
     try {
+      // Find stream name for profile
+      const classStreams = taxonomy ? taxonomy.streams.filter((s: any) => s.class_id === selectedClassId) : [];
+      const selectedStreamObj = classStreams.find((s: any) => s.id === selectedStreamId);
+      let selectedStreamName = selectedStreamObj?.name || null;
+      if (!selectedStreamName) {
+        const boardGrades = getGradesForBoard(selectedBoardId);
+        const clsObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
+        const gradeDef = boardGrades.find((g) => String(g.grade) === String(clsObj?.grade));
+        const stDef = gradeDef?.streams.find((st) => `${selectedClassId}-${st.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}` === selectedStreamId || st.name.toLowerCase() === selectedStreamId?.toLowerCase());
+        if (stDef) selectedStreamName = stDef.name;
+      }
+
       // 1. Check or insert Roster entry linked to student profile
       const emailLower = user.email?.toLowerCase() || '';
       const { data: existingRoster } = await (supabase as any)
@@ -127,7 +166,7 @@ export const UnregisteredPage: React.FC = () => {
             email: emailLower,
             full_name: fullName.trim(),
             role: 'student',
-            class_ids: [],
+            class_ids: selectedClassId ? [selectedClassId] : [],
             profile_id: user.id
           });
 
@@ -138,7 +177,7 @@ export const UnregisteredPage: React.FC = () => {
       } else {
         await (supabase as any)
           .from('roster')
-          .update({ profile_id: user.id, full_name: fullName.trim() })
+          .update({ profile_id: user.id, full_name: fullName.trim(), class_ids: [selectedClassId] })
           .eq('id', existingRoster.id);
       }
 
@@ -151,6 +190,10 @@ export const UnregisteredPage: React.FC = () => {
           full_name: fullName.trim(),
           avatar_url: user.user_metadata?.avatar_url ?? null,
           phone: phone.trim() || null,
+          board_id: selectedBoardId,
+          class_id: selectedClassId,
+          stream_id: selectedStreamId,
+          stream: selectedStreamName,
           onboarding_complete: false
         }, { onConflict: 'id' });
 
@@ -162,7 +205,7 @@ export const UnregisteredPage: React.FC = () => {
       // 3. Perform complete onboarding and enrollment assignment
       await completeStudentOnboarding(
         user.id,
-        BOARD.id,
+        selectedBoardId,
         selectedClassId,
         selectedStreamId,
         [],
@@ -196,9 +239,24 @@ export const UnregisteredPage: React.FC = () => {
     );
   }
 
-  const classesForBoard = taxonomy.classes.filter((c: any) => c.board_id === BOARD.id);
-  const streamsForClass = taxonomy.streams.filter((s: any) => s.class_id === selectedClassId);
+  const classesForBoard = taxonomy.classes.filter((c: any) => c.board_id === selectedBoardId);
   const selectedClassObj = taxonomy.classes.find((c: any) => c.id === selectedClassId);
+  const currentBoardDef = getBoardDef(selectedBoardId);
+
+  // Extract streams for selected class, with seamless fallback to taxonomy definitions
+  let streamsForClass: any[] = taxonomy.streams.filter((s: any) => s.class_id === selectedClassId);
+  if (streamsForClass.length === 0 && selectedClassObj) {
+    const boardGrades = getGradesForBoard(selectedBoardId);
+    const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
+    if (gradeDef) {
+      streamsForClass = gradeDef.streams.map((st) => ({
+        id: `${selectedClassObj.id}-${st.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+        class_id: selectedClassObj.id,
+        name: st.name,
+        subjects: st.subjects,
+      }));
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col page-transition justify-center items-center px-4 py-12">
@@ -359,12 +417,12 @@ export const UnregisteredPage: React.FC = () => {
                     <Sparkles size={18} className="text-[#F4C430]" />
                     <h1 className="text-xl font-black text-[#111111] tracking-tight">Student Registration</h1>
                   </div>
-                  <span className="text-xs font-bold text-[#737373] bg-[#F5F5F5] px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    {BOARD.name} Only
+                  <span className="text-xs font-bold text-[#111111] bg-[#F5F5F5] px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    {currentBoardDef.shortName}
                   </span>
                 </div>
                 <p className="text-xs text-[#737373]">
-                  Complete your registration in one simple step to customize your learning stream and unlock tuition checkout.
+                  Select your board, academic grade, and learning stream to customize your curriculum and proceed to tuition checkout.
                 </p>
               </div>
 
@@ -419,14 +477,45 @@ export const UnregisteredPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Section 2: Class Selection */}
+                {/* Section 2: Educational Board Selection */}
                 <div className="space-y-3 pt-4 border-t border-[#F5F5F5]">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
-                    <BookOpen size={14} className="text-[#F4C430]" />
-                    <span>Step 2: Select Academic Grade</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
+                      <Layers size={14} className="text-[#F4C430]" />
+                      <span>Step 2: Select Educational Board</span>
+                    </div>
+                    <span className="text-[10px] text-[#A3A3A3] font-medium">Curriculum Standard</span>
                   </div>
 
-                  <div className={isMobile ? 'flex flex-col gap-2.5' : 'grid grid-cols-4 gap-2.5'}>
+                  <div className="grid grid-cols-2 gap-2 bg-[#F5F5F5] p-1.5 rounded-2xl border border-[#E5E5E5]">
+                    {BOARDS.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => setSelectedBoardId(b.id as 'fbise' | 'sindh')}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                          selectedBoardId === b.id
+                            ? 'bg-white text-[#111111] shadow-sm border border-[#E5E5E5]'
+                            : 'text-[#737373] hover:text-[#111111]'
+                        }`}
+                      >
+                        <div className={`w-2 h-2 rounded-full ${selectedBoardId === b.id ? 'bg-[#F4C430]' : 'bg-[#D4D4D4]'}`} />
+                        <span>{b.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section 3: Class Selection */}
+                <div className="space-y-3 pt-4 border-t border-[#F5F5F5]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
+                      <BookOpen size={14} className="text-[#F4C430]" />
+                      <span>Step 3: Select Academic Grade ({currentBoardDef.shortName})</span>
+                    </div>
+                  </div>
+
+                  <div className={isMobile ? 'grid grid-cols-2 gap-2.5' : 'grid grid-cols-4 gap-2.5'}>
                     {classesForBoard.map((c: any) => (
                       <button
                         key={c.id}
@@ -444,25 +533,34 @@ export const UnregisteredPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Section 3: Stream Selection */}
+                {/* Section 4: Stream Selection */}
                 {selectedClassId && (
                   <div className="space-y-3 pt-4 border-t border-[#F5F5F5] animate-in fade-in duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
                         <GraduationCap size={14} className="text-[#F4C430]" />
-                        <span>Step 3: Choose Stream ({selectedClassObj?.display_name})</span>
+                        <span>Step 4: Choose Stream ({selectedClassObj?.display_name} - {currentBoardDef.shortName})</span>
                       </div>
                       <span className="text-[10px] text-[#A3A3A3] font-medium">Select one</span>
                     </div>
 
                     <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-3'}>
                       {streamsForClass.map((s: any) => {
-                        const streamSubjects = taxonomy.streamSubjects
-                          ? taxonomy.streamSubjects
+                        let streamSubjects: string[] = [];
+                        if (Array.isArray(s.subjects) && s.subjects.length > 0) {
+                          streamSubjects = s.subjects;
+                        } else if (taxonomy.streamSubjects) {
+                          streamSubjects = taxonomy.streamSubjects
                             .filter((ss: any) => ss.stream_id === s.id)
                             .map((ss: any) => taxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
-                            .filter(Boolean)
-                          : [];
+                            .filter(Boolean);
+                        }
+                        if (streamSubjects.length === 0 && selectedClassObj) {
+                          const boardGrades = getGradesForBoard(selectedBoardId);
+                          const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
+                          const stDef = gradeDef?.streams.find((st) => st.name.toLowerCase() === s.name?.toLowerCase());
+                          if (stDef) streamSubjects = stDef.subjects;
+                        }
 
                         return (
                           <button
@@ -499,7 +597,7 @@ export const UnregisteredPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Section 4: Live Tuition Fee Summary */}
+                {/* Section 5: Live Tuition Fee Summary */}
                 {selectedClassId && selectedStreamId && (
                   <div className={`bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-4 flex ${isMobile ? 'flex-col items-start' : 'flex-row items-center'} justify-between gap-3 animate-in fade-in duration-300`}>
                     <div className="flex items-center gap-3">
@@ -508,7 +606,7 @@ export const UnregisteredPage: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">
-                          Live Tuition Summary ({selectedClassObj?.display_name})
+                          Live Tuition Summary ({selectedClassObj?.display_name} - {currentBoardDef.shortName})
                         </span>
                         {livePrice !== null && livePrice > 0 ? (
                           <span className="text-xl font-black text-[#111111]">

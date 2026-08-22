@@ -9,7 +9,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { getFeeStatus, updateFeeStatus, getFeeAuditLogs, getEnrollmentsForStudent, resolveGradeFeeConfig } from '../../lib/db';
-import { BOARD } from '../../lib/taxonomy';
+import { getBoardDef } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 
 export const StudentCheckoutPage: React.FC = () => {
@@ -23,6 +23,8 @@ export const StudentCheckoutPage: React.FC = () => {
   const [feeStatus, setFeeStatus] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [studentClass, setStudentClass] = useState<any | null>(null);
+  const [studentBoardId, setStudentBoardId] = useState<'fbise' | 'sindh'>((profile?.board_id as any) || 'fbise');
+  const [studentGrade, setStudentGrade] = useState<string>('10');
   const [copiedText, setCopiedText] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export const StudentCheckoutPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Get student's enrolled classes to identify primary class grade
+      // Get student's enrolled classes to identify primary class grade & board
       let enrolls: any[] = [];
       try {
         enrolls = await getEnrollmentsForStudent(profile.id);
@@ -42,21 +44,27 @@ export const StudentCheckoutPage: React.FC = () => {
       }
 
       let grade = '10';
+      let boardId: 'fbise' | 'sindh' = (profile.board_id as any) || 'fbise';
+
       if (enrolls && enrolls.length > 0) {
         const offering = enrolls[0].offering;
         setStudentClass(offering);
         if (offering && (offering.class?.grade || offering.grade)) {
           grade = offering.class?.grade || offering.grade;
         }
+        if (offering?.class?.board_id || offering?.board_id || offering?.board) {
+          boardId = offering.class?.board_id || offering.board_id || offering.board;
+        }
       }
 
       if (profile.class_id && (!enrolls || enrolls.length === 0)) {
         const { data: clsData } = await (supabase as any)
           .from('classes')
-          .select('grade, id')
+          .select('grade, id, board_id')
           .eq('id', profile.class_id)
           .limit(1);
         if (clsData?.[0]?.grade) grade = clsData[0].grade;
+        if (clsData?.[0]?.board_id) boardId = clsData[0].board_id;
       }
 
       // Look up exact class ID for this grade & board to read from fee_configs table
@@ -69,23 +77,27 @@ export const StudentCheckoutPage: React.FC = () => {
       if (!classId) {
         const { data: dbProf } = await (supabase as any)
           .from('profiles')
-          .select('class_id')
+          .select('class_id, board_id')
           .eq('id', profile.id)
           .maybeSingle();
         if (dbProf?.class_id) classId = dbProf.class_id;
+        if (dbProf?.board_id) boardId = dbProf.board_id;
       }
       if (!classId) {
         const { data: clsData } = await (supabase as any)
           .from('classes')
-          .select('id')
-          .eq('board_id', BOARD.id)
+          .select('id, board_id')
+          .eq('board_id', boardId)
           .eq('grade', grade)
           .limit(1);
         if (clsData?.[0]?.id) classId = clsData[0].id;
       }
 
+      setStudentBoardId(boardId);
+      setStudentGrade(grade);
+
       // Read live fee configuration via centralized resolution helper
-      const resolvedCfg = await resolveGradeFeeConfig(grade, classId);
+      const resolvedCfg = await resolveGradeFeeConfig(grade, classId, boardId);
       const status = await getFeeStatus(profile.id);
       const logs = await getFeeAuditLogs(profile.id);
 
@@ -134,7 +146,10 @@ export const StudentCheckoutPage: React.FC = () => {
     } else if (cleanPhone.startsWith('3') && cleanPhone.length === 9) {
       cleanPhone = '92' + cleanPhone;
     }
-    const className = studentClass ? `${studentClass.subject_name || studentClass.subject || 'FBISE'} (Grade ${studentClass.grade || '10'})` : 'FBISE Program';
+    const boardDef = getBoardDef(studentBoardId);
+    const className = studentClass 
+      ? `${studentClass.subject_name || studentClass.subject || boardDef.shortName} (${boardDef.shortName} Grade ${studentClass.grade || studentGrade})` 
+      : `${boardDef.name} (Class ${studentGrade}th)`;
     const message = `Hello, I am ${profile?.full_name || 'Student'}. I have sent the payment proof for my class fee (PKR ${feeConfig.amount.toLocaleString()}) for ${className}. Please verify and authorize my account.`;
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
@@ -253,7 +268,9 @@ export const StudentCheckoutPage: React.FC = () => {
                     <div>
                       <h2 className="text-base font-extrabold text-[#111111] tracking-tight">Tuition Fee Package</h2>
                       <p className="text-xs text-[#737373] mt-0.5">
-                        {studentClass ? `${studentClass.subject_name || studentClass.subject || 'FBISE Program'} (Grade ${studentClass.grade})` : 'FBISE Academic Program'}
+                        {studentClass 
+                          ? `${studentClass.subject_name || studentClass.subject || getBoardDef(studentBoardId).shortName} (${getBoardDef(studentBoardId).shortName} Grade ${studentClass.grade || studentGrade})` 
+                          : `${getBoardDef(studentBoardId).name} Academic Program (Class ${studentGrade}th)`}
                       </p>
                     </div>
                     {getStatusBadge()}
