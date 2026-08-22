@@ -1,29 +1,35 @@
 import React, { useEffect, useState } from 'react';
-import { X, Download, FileText, Calendar, Award, User, BookOpen, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
+import { X, Download, FileText, Calendar, Award, User, BookOpen, AlertCircle, Loader2, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
-import { downloadTestBlob, downloadSubmissionBlob } from '../../lib/db';
+import { downloadTestBlob, downloadAnswerKeyBlob, downloadSubmissionBlob } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../features/auth/AuthContext';
 import PdfViewer from '../ui/PdfViewer';
 
 interface TestViewerModalProps {
   test?: TestPaper | null;
   submission?: TestSubmission | null;
+  mode?: 'question_paper' | 'answer_key';
   onClose: () => void;
 }
 
 export const TestViewerModal: React.FC<TestViewerModalProps> = ({
   test,
   submission,
+  mode = 'question_paper',
   onClose,
 }) => {
+  const { profile } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [authToken, setAuthToken] = useState<string>('');
   const [activeUrl, setActiveUrl] = useState<string>('');
   const [loadingUrl, setLoadingUrl] = useState<boolean>(true);
+  const [forbiddenError, setForbiddenError] = useState<string | null>(null);
 
   const item = test || submission;
   const isTest = !!test;
+  const isAnswerKeyMode = mode === 'answer_key' && isTest;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,6 +41,17 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
 
   useEffect(() => {
     let mounted = true;
+    setForbiddenError(null);
+
+    // Strict role check for Answer Key view
+    if (isAnswerKeyMode) {
+      if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
+        setForbiddenError('Access Denied: Official Answer Keys are strictly restricted to teachers and administrators.');
+        setLoadingUrl(false);
+        return;
+      }
+    }
+
     const fetchSessionAndUrl = async () => {
       if (!item) {
         setActiveUrl('');
@@ -51,7 +68,9 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
         setAuthToken(token);
 
         let baseUrl = item.file_url || '';
-        if (isTest && test?.id) {
+        if (isAnswerKeyMode && test?.id) {
+          baseUrl = `/api/tests/answer-key/view/${test.id}`;
+        } else if (isTest && test?.id) {
           baseUrl = `/api/tests/view/${test.id}`;
         } else if (!isTest && submission?.id) {
           baseUrl = `/api/submissions/view/${submission.id}`;
@@ -76,30 +95,40 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
     return () => {
       mounted = false;
     };
-  }, [item, isTest, test?.id, submission?.id]);
+  }, [item, isTest, isAnswerKeyMode, test?.id, submission?.id, profile?.role]);
 
   if (!item) return null;
 
-  const title = isTest ? test?.title : `${submission?.student_name || 'Student'}'s Submission`;
+  const title = isAnswerKeyMode
+    ? `${test?.title || 'Test'} — Official Answer Key`
+    : isTest
+    ? test?.title
+    : `${submission?.student_name || 'Student'}'s Submission`;
+
   const isImage = item.file_type === 'image' || activeUrl?.match(/\.(jpeg|jpg|png|webp|gif)/i);
 
   const handleDownload = async () => {
     setDownloading(true);
     setDownloadProgress(0);
     try {
-      if (isTest && test) {
+      if (isAnswerKeyMode && test) {
+        await downloadAnswerKeyBlob(test, (pct) => setDownloadProgress(pct));
+      } else if (isTest && test) {
         await downloadTestBlob(test, (pct) => setDownloadProgress(pct));
       } else if (submission) {
         await downloadSubmissionBlob(submission, (pct) => setDownloadProgress(pct));
       }
     } catch (err) {
       console.error('Download error:', err);
-      // Fallback direct link download
       const targetUrl = activeUrl || item.file_url;
       if (targetUrl) {
         const link = document.createElement('a');
         link.href = targetUrl;
-        link.download = isTest ? `${test?.title || 'test'}.pdf` : `${submission?.student_name || 'submission'}.pdf`;
+        link.download = isAnswerKeyMode
+          ? `${test?.title || 'test'}_Answer_Key.pdf`
+          : isTest
+          ? `${test?.title || 'test'}.pdf`
+          : `${submission?.student_name || 'submission'}.pdf`;
         link.target = '_blank';
         link.click();
       }
@@ -124,12 +153,21 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E5E5] bg-[#FAFAFA] shrink-0">
           <div className="flex items-center gap-3 min-w-0 pr-4">
-            <div className="w-10 h-10 rounded-xl bg-[#111111] text-white flex items-center justify-center shrink-0 shadow-xs">
-              <FileText size={20} />
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs text-white ${
+                isAnswerKeyMode ? 'bg-[#059669]' : 'bg-[#111111]'
+              }`}
+            >
+              {isAnswerKeyMode ? <KeyRound size={20} /> : <FileText size={20} />}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-extrabold text-[#111111] truncate">{title}</h3>
+                {isAnswerKeyMode && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
+                    Teacher & Admin Protected
+                  </span>
+                )}
                 {isTest && test?.subject && (
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F0F0F0] text-[#111111] border border-[#E0E0E0]">
                     {test.subject}
@@ -145,10 +183,12 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
                     className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase ${
                       submission.status === 'graded'
                         ? 'bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]'
+                        : submission.status === 'ai_graded'
+                        ? 'bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]'
                         : 'bg-[#FFF8E1] text-[#F57F17] border border-[#FFE082]'
                     }`}
                   >
-                    {submission.status}
+                    {submission.status === 'ai_graded' ? 'AI Graded (Review)' : submission.status}
                   </span>
                 )}
               </div>
@@ -178,7 +218,7 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {activeUrl && (
+            {activeUrl && !forbiddenError && (
               <a
                 href={activeUrl}
                 target="_blank"
@@ -191,28 +231,31 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
               </a>
             )}
 
-            <button
-              id="test-modal-download-btn"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
-            >
-              {downloading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  <span>{downloadProgress > 0 ? `${downloadProgress}%` : 'Downloading...'}</span>
-                </>
-              ) : (
-                <>
-                  <Download size={14} />
-                  <span className="hidden sm:inline">Download File</span>
-                </>
-              )}
-            </button>
+            {!forbiddenError && (
+              <button
+                id="test-modal-download-btn"
+                onClick={handleDownload}
+                disabled={downloading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>{downloadProgress > 0 ? `${downloadProgress}%` : 'Downloading...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} />
+                    <span className="hidden sm:inline">Download</span>
+                  </>
+                )}
+              </button>
+            )}
+
             <button
               id="test-modal-close-btn"
               onClick={onClose}
-              className="p-2 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5] transition-colors"
+              className="p-2 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5] transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X size={20} />
@@ -220,8 +263,8 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
           </div>
         </div>
 
-        {/* Teacher Instructions Banner (if test) */}
-        {isTest && test?.instructions && (
+        {/* Teacher Instructions Banner (if test & not answer key mode) */}
+        {isTest && !isAnswerKeyMode && test?.instructions && (
           <div className="px-5 py-2.5 bg-[#FFFBEB] border-b border-[#FDE68A] text-xs text-[#92400E] flex items-start gap-2 shrink-0">
             <AlertCircle size={15} className="shrink-0 mt-0.5 text-[#D97706]" />
             <div>
@@ -232,11 +275,13 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
         )}
 
         {/* Graded Feedback Banner (if submission) */}
-        {!isTest && submission?.status === 'graded' && (
+        {!isTest && (submission?.status === 'graded' || submission?.status === 'ai_graded') && (
           <div className="px-5 py-3 bg-[#F0FDF4] border-b border-[#BBF7D0] flex items-center justify-between flex-wrap gap-2 text-xs shrink-0">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#16A34A]" />
-              <span className="font-bold text-[#15803D]">Score Awarded:</span>
+              <span className="font-bold text-[#15803D]">
+                {submission.status === 'ai_graded' ? 'AI Evaluated Score:' : 'Score Awarded:'}
+              </span>
               <span className="font-extrabold text-[#111111] text-sm">
                 {submission.marks_obtained !== null && submission.marks_obtained !== undefined ? submission.marks_obtained : '—'}
                 {submission.max_marks ? ` / ${submission.max_marks}` : ''}
@@ -244,7 +289,7 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
             </div>
             {submission.teacher_feedback && (
               <div className="text-[#374151]">
-                <strong className="font-bold text-[#1F2937]">Feedback:</strong> {submission.teacher_feedback}
+                <strong className="font-bold text-[#1F2937]">Teacher's Remark:</strong> {submission.teacher_feedback}
               </div>
             )}
           </div>
@@ -252,7 +297,13 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
 
         {/* Preview Frame */}
         <div className="flex-1 bg-[#F5F5F5] relative overflow-hidden flex items-center justify-center p-3">
-          {loadingUrl ? (
+          {forbiddenError ? (
+            <div className="text-center p-6 bg-white rounded-2xl border border-[#FCA5A5] max-w-md shadow-xs">
+              <ShieldAlert size={40} className="mx-auto mb-3 text-[#DC2626]" />
+              <p className="text-sm font-extrabold text-[#991B1B]">Access Denied</p>
+              <p className="text-xs text-[#7F1D1D] mt-1">{forbiddenError}</p>
+            </div>
+          ) : loadingUrl ? (
             <div className="flex flex-col items-center justify-center text-center p-6">
               <Loader2 className="w-8 h-8 text-[#111111] animate-spin mb-3" />
               <p className="text-xs font-bold text-[#525252]">Authenticating and preparing document view...</p>
@@ -288,4 +339,3 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
 };
 
 export default TestViewerModal;
-

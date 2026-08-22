@@ -1206,9 +1206,16 @@ async function enrichTestsUrls(tests: any[]): Promise<TestPaper[]> {
     if (r.id) {
       url = `/api/tests/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     }
+    let answerKeyUrl = r.answer_key_url || '';
+    if (r.id && (r.has_answer_key || r.answer_key_path || r.answer_key_url)) {
+      answerKeyUrl = `/api/tests/answer-key/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    }
     return {
       ...r,
       file_url: url,
+      answer_key_url: answerKeyUrl || undefined,
+      has_answer_key: Boolean(r.has_answer_key || r.answer_key_path || r.answer_key_url),
+      published_at: r.published_at || r.created_at,
       offering: mapOffering(r.offering),
       submissions_count: r.submissions_count || (r.submissions ? r.submissions.length : 0),
       graded_count: r.graded_count || (r.submissions ? r.submissions.filter((s: any) => s.status === 'graded').length : 0),
@@ -1317,7 +1324,7 @@ export async function getTestsForTeacher(teacherId?: string): Promise<TestPaper[
   return all.filter((t) => !t.teacher_id || t.teacher_id === teacherId);
 }
 
-/** Upload test paper file to Cloudflare R2 /api/tests/upload */
+/** Upload test paper file (+ optional answer key) to Cloudflare R2 /api/tests/upload */
 export async function uploadTestPaperToR2(
   file: File,
   payload: {
@@ -1333,6 +1340,7 @@ export async function uploadTestPaperToR2(
     uploaded_by?: string | null;
     uploaded_by_name?: string | null;
     file_type?: 'pdf' | 'image' | 'doc';
+    answerKeyFile?: File | null;
   },
   onProgress?: (pct: number) => void
 ): Promise<any> {
@@ -1342,6 +1350,9 @@ export async function uploadTestPaperToR2(
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (payload.answerKeyFile) {
+      formData.append('answer_key_file', payload.answerKeyFile);
+    }
     formData.append('title', payload.title);
     if (payload.instructions) formData.append('instructions', payload.instructions);
     formData.append('subject', payload.subject);
@@ -1387,6 +1398,113 @@ export async function uploadTestPaperToR2(
     xhr.onerror = () => reject(new Error('Network error during test upload.'));
     xhr.send(formData);
   });
+}
+
+/** Upload answer key to an existing test paper within the 5-minute window */
+export async function uploadAnswerKeyToR2(
+  testId: string,
+  answerKeyFile: File,
+  onProgress?: (pct: number) => void
+): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('answer_key_file', answerKeyFile);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/tests/answer-key/upload/${testId}`);
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable && onProgress) {
+        onProgress(Math.round((ev.loaded / ev.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid JSON response from answer key upload server.'));
+        }
+      } else {
+        let errMsg = xhr.responseText;
+        try {
+          const parsed = JSON.parse(xhr.responseText);
+          if (parsed.error) errMsg = parsed.error;
+        } catch {}
+        reject(new Error(`Answer key upload failed: ${errMsg}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during answer key upload.'));
+    xhr.send(formData);
+  });
+}
+
+/** Teacher/Admin: securely download answer key file */
+export async function downloadAnswerKeyBlob(test: TestPaper, onProgress?: (pct: number) => void): Promise<void> {
+  if (!test.id) {
+    throw new Error('Test ID is required for download.');
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const dlUrl = `/api/tests/answer-key/dl/${test.id}`;
+  const response = await fetch(dlUrl, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) throw new Error(`Answer key download failed with status ${response.status}`);
+
+  const contentLength = response.headers.get('Content-Length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+  if (!response.body) {
+    const blob = await response.blob();
+    if (onProgress) onProgress(100);
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = `${test.title.replace(/[^a-zA-Z0-9_\-\.]/g, '_')}_Answer_Key.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: any[] = [];
+  let receivedLength = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      receivedLength += value.length;
+      if (total && onProgress) {
+        onProgress(Math.round((receivedLength / total) * 100));
+      }
+    }
+  }
+
+  const blob = new Blob(chunks, { type: response.headers.get('Content-Type') || 'application/pdf' });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = `${test.title.replace(/[^a-zA-Z0-9_\-\.]/g, '_')}_Answer_Key.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
 }
 
 /** Teacher/Admin: delete a test paper */

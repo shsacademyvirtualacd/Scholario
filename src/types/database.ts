@@ -150,7 +150,7 @@ export interface Note {
 
 // ─── tests & submissions ────────────────────
 export type TestFileType = 'pdf' | 'image' | 'doc';
-export type TestSubmissionStatus = 'submitted' | 'graded' | 'pending';
+export type TestSubmissionStatus = 'submitted' | 'graded' | 'pending' | 'ai_graded';
 
 export interface TestPaper {
   id: string;
@@ -170,7 +170,12 @@ export interface TestPaper {
   file_size_bytes?: number;
   total_marks: number;
   due_date: string;
+  published_at?: string;
   created_at: string;
+  answer_key_url?: string | null;
+  answer_key_path?: string | null;
+  answer_key_name?: string | null;
+  has_answer_key?: boolean;
   // joined
   offering?: ClassOffering;
   teacher?: Teacher;
@@ -195,6 +200,13 @@ export interface TestSubmission {
   teacher_feedback?: string | null;
   graded_at?: string | null;
   graded_by?: string | null;
+  ai_graded_at?: string | null;
+  ai_grading_job?: {
+    status: 'queued' | 'processing' | 'completed' | 'failed';
+    per_question_marks?: Array<{ question: string | number; marks_obtained: number; max_marks: number; comment?: string }>;
+    raw_response?: string;
+    error?: string;
+  } | null;
   // joined
   test?: TestPaper;
   student?: Profile;

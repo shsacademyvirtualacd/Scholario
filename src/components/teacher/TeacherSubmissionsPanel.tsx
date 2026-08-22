@@ -10,6 +10,8 @@ import {
   Loader2,
   FileCheck2,
   User,
+  Sparkles,
+  KeyRound,
 } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
 import { getSubmissionsForTest, gradeTestSubmission, downloadSubmissionBlob } from '../../lib/db';
@@ -18,16 +20,18 @@ interface TeacherSubmissionsPanelProps {
   selectedTest: TestPaper | null;
   onOpenTestViewer: (test: TestPaper) => void;
   onOpenSubmissionViewer: (sub: TestSubmission) => void;
+  onViewAnswerKey?: (test: TestPaper) => void;
 }
 
 export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = ({
   selectedTest,
   onOpenTestViewer,
   onOpenSubmissionViewer,
+  onViewAnswerKey,
 }) => {
   const [submissions, setSubmissions] = useState<TestSubmission[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'graded'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'ai_graded' | 'graded'>('all');
   const [search, setSearch] = useState<string>('');
   const [gradingSubId, setGradingSubId] = useState<string | null>(null);
   const [marksInput, setMarksInput] = useState<{ [subId: string]: string }>({});
@@ -87,8 +91,8 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
     );
   }
 
-  const handleGradeSubmit = async (sub: TestSubmission) => {
-    const rawMarks = marksInput[sub.id];
+  const handleGradeSubmit = async (sub: TestSubmission, confirmedMarks?: number, confirmedFeedback?: string) => {
+    const rawMarks = confirmedMarks !== undefined ? confirmedMarks : marksInput[sub.id];
     if (rawMarks === undefined || rawMarks === '') {
       alert('Please enter marks before saving.');
       return;
@@ -100,12 +104,14 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
       return;
     }
 
+    const feedback = confirmedFeedback !== undefined ? confirmedFeedback : (feedbackInput[sub.id] || undefined);
+
     setSavingGradeId(sub.id);
     try {
       await gradeTestSubmission(sub.id, {
         marks_obtained: marks,
         max_marks: selectedTest.total_marks,
-        teacher_feedback: feedbackInput[sub.id] || undefined,
+        teacher_feedback: feedback,
       });
 
       setSubmissions((prev) =>
@@ -116,7 +122,7 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
                 status: 'graded',
                 marks_obtained: marks,
                 max_marks: selectedTest.total_marks,
-                teacher_feedback: feedbackInput[sub.id] || null,
+                teacher_feedback: feedback || null,
               }
             : s
         )
@@ -151,7 +157,8 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
   const filteredSubmissions = submissions.filter((s) => {
     const matchesFilter =
       filter === 'all' ||
-      (filter === 'pending' && s.status !== 'graded') ||
+      (filter === 'pending' && s.status === 'submitted') ||
+      (filter === 'ai_graded' && s.status === 'ai_graded') ||
       (filter === 'graded' && s.status === 'graded');
 
     const q = search.toLowerCase();
@@ -165,6 +172,8 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
 
   const totalCount = submissions.length;
   const gradedCount = submissions.filter((s) => s.status === 'graded').length;
+  const aiGradedCount = submissions.filter((s) => s.status === 'ai_graded').length;
+  const hasAnswerKey = Boolean(selectedTest.has_answer_key || selectedTest.answer_key_path || selectedTest.answer_key_url);
 
   return (
     <div
@@ -174,23 +183,44 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
       {/* Test Overview Header */}
       <div className="border-b border-[#E5E5E5] pb-5">
         <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-[#111111] text-white">
               {selectedTest.subject}
             </span>
             <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5]">
               Grade {selectedTest.grade} {selectedTest.stream && selectedTest.stream !== 'all' ? `• ${selectedTest.stream}` : ''}
             </span>
+
+            {hasAnswerKey && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
+                <Sparkles size={11} />
+                <span>Marking Scheme Attached</span>
+              </span>
+            )}
           </div>
 
-          <button
-            id="teacher-preview-question-paper-btn"
-            onClick={() => onOpenTestViewer(selectedTest)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] text-xs font-bold border border-[#E5E5E5] transition-colors"
-          >
-            <Eye size={14} />
-            <span>Preview Question Paper</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {hasAnswerKey && onViewAnswerKey && (
+              <button
+                id="teacher-preview-answer-key-btn"
+                onClick={() => onViewAnswerKey(selectedTest)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#059669] text-xs font-bold border border-[#A7F3D0] transition-colors"
+                title="View Faculty Answer Key"
+              >
+                <KeyRound size={13} />
+                <span>Answer Key</span>
+              </button>
+            )}
+
+            <button
+              id="teacher-preview-question-paper-btn"
+              onClick={() => onOpenTestViewer(selectedTest)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] text-xs font-bold border border-[#E5E5E5] transition-colors"
+            >
+              <Eye size={14} />
+              <span>Preview Question Paper</span>
+            </button>
+          </div>
         </div>
 
         <h3 className="text-lg font-extrabold text-[#111111] mb-2">{selectedTest.title}</h3>
@@ -224,6 +254,9 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
             <span className="text-[11px] text-[#737373] block">Evaluation Progress</span>
             <span className="font-bold text-[#15803D] flex items-center gap-1 mt-0.5">
               <CheckCircle2 size={12} /> {gradedCount} / {totalCount} Graded
+              {aiGradedCount > 0 && (
+                <span className="text-[#2563EB] ml-1 font-semibold">({aiGradedCount} AI-Pending)</span>
+              )}
             </span>
           </div>
         </div>
@@ -245,7 +278,7 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
           </div>
 
           <div className="flex items-center gap-1 bg-[#FAFAFA] p-0.5 rounded-lg border border-[#E5E5E5] self-end sm:self-auto">
-            {(['all', 'pending', 'graded'] as const).map((f) => (
+            {(['all', 'pending', 'ai_graded', 'graded'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -255,7 +288,7 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
                     : 'text-[#737373] hover:text-[#111111]'
                 }`}
               >
-                {f === 'pending' ? 'Ungraded' : f}
+                {f === 'pending' ? 'Ungraded' : f === 'ai_graded' ? 'AI Review' : f}
               </button>
             ))}
           </div>
@@ -281,6 +314,7 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
           <div className="space-y-3 max-h-[calc(100vh-340px)] overflow-y-auto pr-1">
             {filteredSubmissions.map((sub) => {
               const isGraded = sub.status === 'graded';
+              const isAiGraded = sub.status === 'ai_graded';
               const isGradingActive = gradingSubId === sub.id;
 
               return (
@@ -290,6 +324,8 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
                   className={`p-4 rounded-2xl border transition-all ${
                     isGraded
                       ? 'bg-white border-[#E5E5E5]'
+                      : isAiGraded
+                      ? 'bg-white border-[#93C5FD] ring-1 ring-[#3B82F6]/30'
                       : 'bg-white border-[#E5E5E5] ring-1 ring-[#F59E0B]/20'
                   }`}
                 >
@@ -299,11 +335,16 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
                         {(sub.student_name || 'S').charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h5 className="text-xs font-extrabold text-[#111111] truncate">{sub.student_name || 'Student'}</h5>
                           {isGraded ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]">
                               {sub.marks_obtained} / {selectedTest.total_marks} Marks
+                            </span>
+                          ) : isAiGraded ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                              <Sparkles size={10} />
+                              <span>AI Graded ({sub.marks_obtained}/{selectedTest.total_marks}) • Pending Review</span>
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]">
@@ -335,17 +376,68 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
                         {downloadingId === sub.id ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
                       </button>
                       <button
-                        onClick={() => setGradingSubId(isGradingActive ? null : sub.id)}
+                        onClick={() => {
+                          setGradingSubId(isGradingActive ? null : sub.id);
+                          if (!isGradingActive && (sub.marks_obtained !== null && sub.marks_obtained !== undefined)) {
+                            setMarksInput((prev) => ({ ...prev, [sub.id]: String(sub.marks_obtained) }));
+                            setFeedbackInput((prev) => ({ ...prev, [sub.id]: sub.teacher_feedback || '' }));
+                          }
+                        }}
                         className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all border ${
                           isGraded
                             ? 'bg-[#FAFAFA] text-[#525252] border-[#E5E5E5] hover:bg-[#E5E5E5]'
+                            : isAiGraded
+                            ? 'bg-[#1D4ED8] text-white border-[#1D4ED8] hover:bg-[#1E40AF]'
                             : 'bg-[#111111] text-white border-[#111111]'
                         }`}
                       >
-                        {isGraded ? 'Edit Grade' : 'Grade'}
+                        {isGraded ? 'Edit Grade' : isAiGraded ? 'Review & Approve' : 'Grade'}
                       </button>
                     </div>
                   </div>
+
+                  {/* AI Suggested Grade & Feedback Box (Pending Review) */}
+                  {isAiGraded && !isGradingActive && (
+                    <div className="mt-3 text-xs bg-[#F0F9FF] p-3 rounded-xl border border-[#BAE6FD] text-[#0369A1] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold flex items-center gap-1.5 text-[#0284C7]">
+                          <Sparkles size={13} />
+                          Gemini AI Auto-Evaluation
+                        </span>
+                        <span className="font-black text-[#0369A1]">
+                          Suggested Score: {sub.marks_obtained} / {selectedTest.total_marks}
+                        </span>
+                      </div>
+                      {sub.teacher_feedback && (
+                        <p className="text-xs text-[#334155] leading-relaxed">
+                          <strong className="text-[#0284C7]">Remark: </strong>
+                          {sub.teacher_feedback}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#E0F2FE]">
+                        <button
+                          type="button"
+                          onClick={() => handleGradeSubmit(sub, sub.marks_obtained || 0, sub.teacher_feedback || '')}
+                          disabled={savingGradeId === sub.id}
+                          className="px-3 py-1 bg-[#0284C7] hover:bg-[#0369A1] text-white text-[11px] font-extrabold rounded-lg transition-colors inline-flex items-center gap-1 shadow-xs"
+                        >
+                          <CheckCircle2 size={12} />
+                          <span>Approve & Finalize Grade</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGradingSubId(sub.id);
+                            setMarksInput((prev) => ({ ...prev, [sub.id]: String(sub.marks_obtained || '') }));
+                            setFeedbackInput((prev) => ({ ...prev, [sub.id]: sub.teacher_feedback || '' }));
+                          }}
+                          className="px-3 py-1 bg-white hover:bg-[#E0F2FE] text-[#0369A1] text-[11px] font-bold border border-[#BAE6FD] rounded-lg transition-colors"
+                        >
+                          Modify Grade
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Feedback preview if already graded & not currently editing */}
                   {isGraded && !isGradingActive && sub.teacher_feedback && (

@@ -37,6 +37,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   }
 
   const file = formData.get('file') as File | null;
+  const answerKeyFile = (formData.get('answer_key_file') || formData.get('answerKeyFile')) as File | null;
   const title = formData.get('title') as string | null;
   const instructions = formData.get('instructions') as string | null;
   const subject = formData.get('subject') as string | null;
@@ -75,7 +76,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
   const arrayBuffer = await file.arrayBuffer();
 
-  // Put object in NOTES_BUCKET
+  // Put question paper in NOTES_BUCKET
   if (env.NOTES_BUCKET) {
     try {
       await env.NOTES_BUCKET.put(storageKey, arrayBuffer, {
@@ -100,6 +101,37 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     }
   }
 
+  let answerKeyPath: string | null = null;
+  let answerKeyUrl: string | null = null;
+  let answerKeyName: string | null = null;
+
+  // If answer key file provided at initial creation
+  if (answerKeyFile && env.NOTES_BUCKET) {
+    try {
+      const akBuffer = await answerKeyFile.arrayBuffer();
+      const akSafeName = answerKeyFile.name ? answerKeyFile.name.replace(/[^a-zA-Z0-9_\-\.]/g, '_') : 'answer-key.pdf';
+      answerKeyPath = `tests/${testId}/answer-key.pdf`;
+      answerKeyUrl = `/api/tests/answer-key/view/${testId}`;
+      answerKeyName = akSafeName;
+
+      await env.NOTES_BUCKET.put(answerKeyPath, akBuffer, {
+        httpMetadata: {
+          contentType: 'application/pdf',
+          contentDisposition: `inline; filename="${akSafeName}"`,
+        },
+        customMetadata: {
+          uploadedBy: userId,
+          testId,
+          type: 'answer_key',
+        },
+      });
+    } catch (akErr) {
+      console.error('[AnswerKey R2 Upload Error during test creation]', akErr);
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+
   // Insert into tests database table
   const testRecord = {
     id: testId,
@@ -118,7 +150,12 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     file_size_bytes: file.size,
     total_marks,
     due_date,
-    created_at: new Date().toISOString(),
+    published_at: nowIso,
+    created_at: nowIso,
+    answer_key_url: answerKeyUrl,
+    answer_key_path: answerKeyPath,
+    answer_key_name: answerKeyName,
+    has_answer_key: Boolean(answerKeyFile),
   };
 
   try {
