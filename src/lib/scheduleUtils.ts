@@ -450,3 +450,18 @@ export function findBestSlotForOffering(
   return { slot: best.slot, sessionDate };
 }
 
+/**
+ * Checks if a specific class slot is currently ongoing based on PKT clock.
+ */
+export function isSlotOngoing(
+  slot: ClassSlot | null | undefined,
+  pktnow: PKTNow = getPKTNow()
+): boolean {
+  if (!slot || slot.is_cancelled) return false;
+  if (slot.day_of_week !== pktnow.dayIndex) return false;
+  if (!slot.start_time || !slot.end_time) return false;
+  const startMins = timeStrToMins(slot.start_time);
+  const endMins = timeStrToMins(slot.end_time);
+  return pktnow.totalMins >= startMins && pktnow.totalMins < endMins;
+}
+

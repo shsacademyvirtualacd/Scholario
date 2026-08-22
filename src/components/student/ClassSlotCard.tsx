@@ -1,40 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { Video, MapPin, Clock, Lock, CheckCircle2, Check } from 'lucide-react';
+import { Video, MapPin, Clock, Lock, CheckCircle2, Check, XCircle, X } from 'lucide-react';
 import StatusPill from '../ui/StatusPill';
-import { calcDuration, formatTime12h, getPKTNow, getLinkAvailabilityStatus } from '../../lib/scheduleUtils';
+import { calcDuration, formatTime12h, getPKTNow, getLinkAvailabilityStatus, isSlotOngoing } from '../../lib/scheduleUtils';
 import { useAuth } from '../../features/auth/AuthContext';
 import { markStudentSelfAttendance } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
-import type { Attendance } from '../../types';
+import type { Attendance, ClassSlot } from '../../types';
 
 interface ClassSlotCardProps {
-  slot: any;
-  onAttendanceMarked?: (slotId: string, timestamp: string) => void;
+  slot: ClassSlot;
+  attendanceRecord?: Attendance | null;
+  onAttendanceMarked?: (slotId: string, record: Attendance) => void;
   isMarkedPresent?: boolean;
 }
 
-export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot, onAttendanceMarked, isMarkedPresent: initialMarked }) => {
+export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
+  slot,
+  attendanceRecord: propAttendance,
+  onAttendanceMarked,
+}) => {
   const { user } = useAuth();
   const [pktnow, setPktnow] = useState(getPKTNow);
   const [isMarking, setIsMarking] = useState(false);
-  const todayStr = getPKTNow().dateString || new Date().toISOString().slice(0, 10);
+  const todayStr = pktnow.dateString || new Date().toISOString().slice(0, 10);
 
-  // Check if attendance already marked in cache / props
-  const [markedTime, setMarkedTime] = useState<string | null>(() => {
-    if (initialMarked) return 'Marked';
-    if (!user?.id) return null;
-    const cachedAtt = pageCache.get<Attendance[]>('student_attendance', user.id);
-    const existing = cachedAtt?.find(a => a.slot_id === slot.id && a.session_date === todayStr && (a.status === 'present' || a.status === 'late'));
-    return existing ? existing.marked_at : null;
-  });
-
-  // Ticker to re-evaluate link availability every 10 seconds in real time
+  // Re-evaluate PKT clock and link availability every 5 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setPktnow(getPKTNow());
-    }, 10_000);
+    }, 5_000);
     return () => clearInterval(timer);
   }, []);
+
+  // Look up attendance record for (student.id, slot.id, today's date)
+  const getCachedOrPropAttendance = (): Attendance | null => {
+    if (propAttendance !== undefined) return propAttendance;
+    if (!user?.id) return null;
+    const cachedAtt = pageCache.get<Attendance[]>('student_attendance', user.id);
+    const found = cachedAtt?.find(
+      a => a.slot_id === slot.id && a.session_date === todayStr
+    );
+    return found || null;
+  };
+
+  const [localAttendance, setLocalAttendance] = useState<Attendance | null>(getCachedOrPropAttendance);
+
+  useEffect(() => {
+    if (propAttendance !== undefined) {
+      setLocalAttendance(propAttendance);
+    } else if (user?.id) {
+      const cachedAtt = pageCache.get<Attendance[]>('student_attendance', user.id);
+      const found = cachedAtt?.find(
+        a => a.slot_id === slot.id && a.session_date === todayStr
+      );
+      if (found) setLocalAttendance(found);
+    }
+  }, [propAttendance, slot.id, todayStr, user?.id]);
 
   const isCancelled = slot.is_cancelled;
   const rawSubj = slot.custom_title || (slot.offering as any)?.subject_name || slot.offering?.subject || 'Class';
@@ -59,28 +80,42 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot, onAttendance
   // 10-minute timing restriction status
   const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
   const hasRawLink = Boolean(slot.room_or_link && slot.room_or_link.trim().length > 0);
+  const isOngoing = isSlotOngoing(slot, pktnow);
 
-  const handleMarkAttendanceAndJoin = async () => {
-    if (!user?.id || isCancelled) return;
+  const handleMarkAttendance = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!user?.id || isCancelled || !isOngoing || isMarking) return;
     setIsMarking(true);
     try {
       const rec = await markStudentSelfAttendance(user.id, slot.id, todayStr);
-      setMarkedTime(rec.marked_at || new Date().toISOString());
-      onAttendanceMarked?.(slot.id, rec.marked_at || new Date().toISOString());
-      
-      // If live link is available, open in a new tab
-      if (linkStatus.isAvailable && slot.room_or_link) {
-        const url = slot.room_or_link.startsWith('http') ? slot.room_or_link : `https://${slot.room_or_link}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
+      setLocalAttendance(rec);
+      onAttendanceMarked?.(slot.id, rec);
     } catch (err) {
-      console.error('Failed to mark attendance:', err);
-      // Optimistic update
-      const nowIso = new Date().toISOString();
-      setMarkedTime(nowIso);
-      onAttendanceMarked?.(slot.id, nowIso);
+      console.error('Failed to claim attendance:', err);
+      // Optimistic fallback
+      const fallbackRec: Attendance = {
+        id: `att-${Date.now()}`,
+        student_id: user.id,
+        slot_id: slot.id,
+        session_date: todayStr,
+        status: 'pending',
+        marked_at: new Date().toISOString(),
+        marked_by: 'student',
+      };
+      setLocalAttendance(fallbackRec);
+      onAttendanceMarked?.(slot.id, fallbackRec);
     } finally {
       setIsMarking(false);
+    }
+  };
+
+  const handleJoinClass = async () => {
+    if (isOngoing && (!localAttendance || localAttendance.status === 'absent')) {
+      handleMarkAttendance();
+    }
+    if (linkStatus.isAvailable && slot.room_or_link) {
+      const url = slot.room_or_link.startsWith('http') ? slot.room_or_link : `https://${slot.room_or_link}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -108,14 +143,25 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot, onAttendance
 
       {/* Class info */}
       <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5]">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h3 className={`text-base font-extrabold text-[#111111] leading-tight truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`}>
             {subject}
           </h3>
-          {markedTime && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
-              <Check size={10} strokeWidth={3} /> Present
-            </span>
+          {/* Status badge */}
+          {localAttendance && !isCancelled && (
+            localAttendance.status === 'pending' ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+                <Clock size={10} className="animate-spin text-amber-600" /> Awaiting Approval
+              </span>
+            ) : localAttendance.status === 'present' || localAttendance.status === 'late' ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
+                <Check size={10} strokeWidth={3} /> {localAttendance.status === 'late' ? 'Late' : 'Present'}
+              </span>
+            ) : localAttendance.status === 'absent' && (localAttendance.marked_by === 'teacher' || localAttendance.marked_by === 'admin') ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 shrink-0">
+                <X size={10} strokeWidth={3} /> Absent
+              </span>
+            ) : null
           )}
         </div>
         <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">{teacherName}</p>
@@ -123,23 +169,68 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot, onAttendance
 
       {/* Attendance & Join Actions */}
       <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end flex-wrap sm:flex-nowrap">
-        {/* Attendance Mark Button if not already marked */}
-        {!isCancelled && !markedTime && (
-          <button
-            onClick={handleMarkAttendanceAndJoin}
-            disabled={isMarking}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] transition-all shadow-xs interactive"
-            title="Mark attendance as Present for this session"
-          >
-            <CheckCircle2 size={13} className="text-[#111111]" />
-            <span>{isMarking ? 'Marking...' : 'Mark Attendance'}</span>
-          </button>
-        )}
+        {/* Attendance Button / State Indicator */}
+        {!isCancelled && (() => {
+          if (localAttendance?.status === 'pending') {
+            return (
+              <button
+                disabled
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 cursor-not-allowed shadow-xs"
+                title="Your attendance claim has been submitted and is awaiting teacher approval"
+              >
+                <Clock size={13} className="text-amber-600 animate-pulse" />
+                <span>Awaiting Teacher Approval</span>
+              </button>
+            );
+          }
+
+          if (localAttendance?.status === 'present' || localAttendance?.status === 'late') {
+            const timeStr = localAttendance.marked_at
+              ? new Date(localAttendance.marked_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+              : '';
+            return (
+              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-xs">
+                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                <span>{timeStr ? `Attendance Confirmed (${timeStr})` : 'Attendance Confirmed'}</span>
+              </div>
+            );
+          }
+
+          if (localAttendance?.status === 'absent' && (localAttendance.marked_by === 'teacher' || localAttendance.marked_by === 'admin')) {
+            return (
+              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 shadow-xs">
+                <XCircle size={13} className="text-rose-600 shrink-0" />
+                <span>Attendance Not Confirmed</span>
+              </div>
+            );
+          }
+
+          // No row / not yet clicked
+          return (
+            <button
+              onClick={handleMarkAttendance}
+              disabled={!isOngoing || isMarking}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs ${
+                isOngoing
+                  ? 'bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] cursor-pointer hover:scale-102 active:scale-98'
+                  : 'bg-[#F4C430]/40 text-[#737373] border border-[#E5E5E5] cursor-not-allowed opacity-60'
+              }`}
+              title={
+                isOngoing
+                  ? 'Mark your attendance for this ongoing class session'
+                  : 'Mark My Attendance is enabled only while class is in session'
+              }
+            >
+              <CheckCircle2 size={13} className={isOngoing ? 'text-[#111111]' : 'text-[#737373]'} />
+              <span>{isMarking ? 'Submitting...' : 'Mark My Attendance'}</span>
+            </button>
+          );
+        })()}
 
         {/* Location / Join links with 10m timing restriction */}
         {linkStatus.isAvailable ? (
           <button
-            onClick={handleMarkAttendanceAndJoin}
+            onClick={handleJoinClass}
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs hover:scale-105 interactive"
           >
             <Video size={13} className="text-white" />
@@ -175,4 +266,3 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({ slot, onAttendance
 };
 
 export default ClassSlotCard;
-

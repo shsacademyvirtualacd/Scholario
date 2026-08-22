@@ -542,9 +542,9 @@ export async function markStudentSelfAttendance(
     const { data, error } = await (supabase as any)
       .from('attendance')
       .update({
-        status: 'present',
+        status: 'pending',
         marked_at: nowTimestamp,
-        marked_by: 'self',
+        marked_by: 'student',
       })
       .eq('id', existingRec.id)
       .select()
@@ -552,7 +552,7 @@ export async function markStudentSelfAttendance(
 
     if (error) {
       console.warn('[markStudentSelfAttendance] update failed, returning fallback:', error);
-      record = { ...existingRec, status: 'present', marked_at: nowTimestamp, marked_by: 'self' };
+      record = { ...existingRec, status: 'pending', marked_at: nowTimestamp, marked_by: 'student' };
     } else {
       record = data;
     }
@@ -563,9 +563,9 @@ export async function markStudentSelfAttendance(
         student_id: studentId,
         slot_id: slotId,
         session_date: today,
-        status: 'present',
+        status: 'pending',
         marked_at: nowTimestamp,
-        marked_by: 'self',
+        marked_by: 'student',
       })
       .select()
       .single();
@@ -578,9 +578,9 @@ export async function markStudentSelfAttendance(
           student_id: studentId,
           slot_id: slotId,
           session_date: today,
-          status: 'present',
+          status: 'pending',
           marked_at: nowTimestamp,
-          marked_by: 'self',
+          marked_by: 'student',
         }, { onConflict: 'student_id,slot_id,session_date' })
         .select()
         .maybeSingle();
@@ -590,9 +590,9 @@ export async function markStudentSelfAttendance(
         student_id: studentId,
         slot_id: slotId,
         session_date: today,
-        status: 'present',
+        status: 'pending',
         marked_at: nowTimestamp,
-        marked_by: 'self',
+        marked_by: 'student',
       };
     } else {
       record = data;
@@ -616,8 +616,8 @@ export async function recordAttendance(params: {
   student_id: string;
   slot_id: string;
   session_date: string;
-  status: 'present' | 'absent' | 'late';
-  marked_by?: 'self' | 'teacher' | 'admin';
+  status: AttendanceStatus;
+  marked_by?: 'student' | 'teacher' | 'admin' | 'self';
 }): Promise<void> {
   const { student_id, slot_id, session_date, status, marked_by = 'teacher' } = params;
   const nowTimestamp = new Date().toISOString();

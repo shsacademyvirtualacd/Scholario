@@ -5,7 +5,7 @@
 
 export type Role = 'student' | 'admin' | 'teacher';
 export type Board = 'fbise';
-export type AttendanceStatus = 'present' | 'absent' | 'late';
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'pending';
 export type NoteFileType = 'pdf' | 'image';
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5; // 0=Mon … 5=Sat
 
@@ -124,7 +124,7 @@ export interface Attendance {
   session_date: string; // YYYY-MM-DD
   status: AttendanceStatus;
   marked_at: string;
-  marked_by?: 'self' | 'teacher' | 'admin';
+  marked_by?: 'student' | 'teacher' | 'admin' | 'self';
   // joined
   slot?: ClassSlot;
   student?: Profile;

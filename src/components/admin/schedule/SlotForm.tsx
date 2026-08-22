@@ -17,6 +17,7 @@ interface SlotFormProps {
     day_of_week: number;
     start_time: string;
     end_time: string;
+    is_cancelled?: boolean;
     publish_to_news: boolean;
     notify_affected?: boolean;
   }) => Promise<void> | void;
@@ -53,12 +54,14 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   const [dayOfWeek, setDayOfWeek] = useState<number>(0);
   const [startTime, setStartTime] = useState('16:00');
   const [endTime, setEndTime] = useState('16:30');
+  const [isCancelled, setIsCancelled] = useState(false);
   const [notifyAffected, setNotifyAffected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (slot && slot.id) {
+      setIsCancelled(!!slot.is_cancelled);
       if (slot.offering_id) {
         setSlotMode('offering');
         setOfferingId(slot.offering_id);
@@ -78,6 +81,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     } else {
       // Defaults for new slot — leave stream blank so ALL offerings for the class are visible.
       // The admin picks an offering first; stream then auto-fills from that offering's stream_id.
+      setIsCancelled(false);
       setSelectedClassId(defaultClassId || '');
       setSelectedStreamId('');
       setSlotMode('offering');
@@ -188,6 +192,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
         day_of_week: dayOfWeek,
         start_time: fullStartTime,
         end_time: fullEndTime,
+        is_cancelled: isCancelled,
         publish_to_news: notifyAffected,
         notify_affected: notifyAffected,
       });
@@ -414,6 +419,29 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Session Status Toggle for Existing Slots */}
+      {slot && (slot as any).id && (
+        <div className="p-4 bg-gray-50/80 border border-gray-200/80 rounded-2xl flex items-center justify-between gap-4">
+          <div>
+            <span className="text-xs font-bold text-[#111111] block">Session Status</span>
+            <span className="text-[11px] text-[#737373] block mt-0.5">
+              {isCancelled ? 'This slot is currently marked as Cancelled.' : 'This slot is active and scheduled on the timetable.'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCancelled(!isCancelled)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+              isCancelled
+                ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+            }`}
+          >
+            {isCancelled ? 'Cancelled (Click to Reactivate)' : 'Active (Click to Cancel)'}
+          </button>
+        </div>
+      )}
 
       {/* Actions with alongside Notify Checkbox */}
       <div className={`flex pt-4 border-t border-[#F5F5F5] mt-6 gap-3 ${isMobile ? 'flex-col' : 'flex-row items-center justify-between flex-wrap'}`}>

@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit2, Trash2, X } from 'lucide-react';
 import type { ClassSlot } from '../../../types';
 
 interface SlotCardProps {
@@ -15,7 +15,7 @@ interface SlotCardProps {
   };
   onEdit: (slot: any) => void;
   onDelete: (slotId: string) => void;
-  onToggleCancel: (slotId: string, currentStatus: boolean) => void;
+  onToggleCancel?: (slotId: string, currentStatus: boolean) => void;
   selectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (slotId: string) => void;
@@ -25,61 +25,22 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   slot,
   onEdit,
   onDelete,
-  onToggleCancel,
   selectionMode = false,
   isSelected = false,
   onToggleSelect,
 }) => {
+  const [isActive, setIsActive] = useState(false);
   const isCancelled = slot.is_cancelled;
   const subject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class';
   const teacherName = slot.offering?.teacher?.full_name || 'Staff';
 
-  // Multi-tap state tracking
-  const tapCountRef = useRef<number>(0);
-  const lastTapTimeRef = useRef<number>(0);
-  const singleTapTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const TRIPLE_TAP_WINDOW_MS = 750; // Window to complete 3 taps
-
-  const handleCardTap = (e: React.MouseEvent) => {
-    // 1. In selection mode, 1 tap immediately toggles selection
+  const handleCardClick = (e: React.MouseEvent) => {
     if (selectionMode && onToggleSelect) {
       e.stopPropagation();
       onToggleSelect(slot.id);
       return;
     }
-
-    const now = Date.now();
-    const timeSinceLastTap = now - lastTapTimeRef.current;
-
-    // Reset count if interval exceeded the window
-    if (timeSinceLastTap > TRIPLE_TAP_WINDOW_MS) {
-      tapCountRef.current = 1;
-    } else {
-      tapCountRef.current += 1;
-    }
-    lastTapTimeRef.current = now;
-
-    // Clear any pending single-tap action
-    if (singleTapTimerRef.current) {
-      clearTimeout(singleTapTimerRef.current);
-      singleTapTimerRef.current = null;
-    }
-
-    // 2. Triple-tap/click (3 taps) -> Trigger Edit Modal
-    if (tapCountRef.current >= 3) {
-      e.stopPropagation();
-      tapCountRef.current = 0; // Reset
-      onEdit(slot);
-      return;
-    }
-
-    // 3. Single tap fallback
-    if (tapCountRef.current === 1) {
-      singleTapTimerRef.current = setTimeout(() => {
-        tapCountRef.current = 0;
-      }, 300);
-    }
+    setIsActive(prev => !prev);
   };
 
   // Core vs Elective distinction: null stream_id means core (shared across streams)
@@ -114,17 +75,19 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   return (
     <div
-      onClick={handleCardTap}
-      title={selectionMode ? undefined : `${subject} (${teacherName}) — Triple-tap/click to edit`}
+      onClick={handleCardClick}
+      title={selectionMode ? undefined : `${subject} (${teacherName})`}
       className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left touch-manipulation select-none ${
         selectionMode ? 'cursor-pointer' : 'cursor-pointer hover:shadow-md'
       } ${
         isSelected
           ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/80 shadow-md'
-          : isCancelled ? 'opacity-50 bg-gray-100/70 border-gray-300' : ''
+          : isActive
+            ? 'ring-2 ring-amber-400/80 border-amber-400 bg-amber-50/30 shadow-md'
+            : isCancelled ? 'opacity-50 bg-gray-100/70 border-gray-300' : ''
       }`}
       style={{
-        touchAction: 'manipulation', // Prevents double-tap zoom on mobile browsers
+        touchAction: 'manipulation',
         backgroundColor: isSelected ? undefined : (isCancelled ? undefined : style.bg),
         borderColor: isSelected ? undefined : (isCancelled ? undefined : `${style.border}40`),
         borderLeft: `3.5px solid ${isSelected ? '#2563eb' : (isCancelled ? '#9ca3af' : style.border)}`,
@@ -143,9 +106,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         </div>
       )}
 
-      {/* Subject + Core/Elective Indicator Header */}
+      {/* Subject + Teacher Header */}
       <div>
-        <div className="flex items-start justify-between gap-1 pr-6">
+        <div className="flex items-start justify-between gap-1 pr-16">
           <span
             className={`text-xs font-black tracking-tight leading-snug truncate ${
               isCancelled ? 'line-through text-gray-500' : ''
@@ -183,46 +146,49 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         )}
       </div>
 
-      {/* Explicit Action Controls (Desktop hover & Dedicated touch targets with click isolation) */}
+      {/* Explicit Action Controls (Always visible on touch/mobile, hover on desktop) */}
       {!selectionMode && (
         <div 
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-md p-0.5 shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 z-10"
+          className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-gray-200/90 rounded-lg p-0.5 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 z-10"
         >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleCancel(slot.id, isCancelled);
-            }}
-            title={isCancelled ? 'Mark Active' : 'Mark Cancelled'}
-            className={`p-1 rounded text-gray-500 transition-colors cursor-pointer ${
-              isCancelled ? 'hover:text-emerald-600 hover:bg-emerald-50' : 'hover:text-amber-600 hover:bg-amber-50'
-            }`}
-          >
-            {isCancelled ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
-          </button>
+          {/* Edit (Pencil) */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onEdit(slot);
             }}
-            title="Edit slot"
-            className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
+            title="Edit class slot"
+            className="p-1 rounded-md text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
           >
-            <Edit2 size={11} />
+            <Edit2 size={12} />
           </button>
+
+          {/* Delete (Trash) */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(slot.id);
             }}
-            title="Delete slot"
-            className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+            title="Delete class slot"
+            className="p-1 rounded-md text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
           >
-            <Trash2 size={11} />
+            <Trash2 size={12} />
+          </button>
+
+          {/* Neutral Dismiss / Close (X) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsActive(false);
+            }}
+            title="Deselect / Dismiss"
+            className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <X size={12} />
           </button>
         </div>
       )}

@@ -343,6 +343,7 @@ export const ScheduleManagerPage: React.FC = () => {
         day_of_week: formData.day_of_week as any,
         start_time: formData.start_time,
         end_time: formData.end_time,
+        is_cancelled: formData.is_cancelled !== undefined ? formData.is_cancelled : false,
       });
 
       // Reload slots

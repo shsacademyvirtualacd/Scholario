@@ -6,10 +6,10 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import ClassSlotCard from '../../components/student/ClassSlotCard';
 import EmptyState from '../../components/ui/EmptyState';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getSlotsForStudent } from '../../lib/db';
+import { getSlotsForStudent, getAttendanceForStudent } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
-import type { ClassSlot } from '../../types';
+import type { ClassSlot, Attendance } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, getLinkAvailabilityStatus
@@ -33,8 +33,21 @@ export const SchedulePage: React.FC = () => {
   const studentId = profile?.id;
   
   const cachedSlots = studentId ? pageCache.get<ClassSlot[]>('schedule_slots', studentId) : null;
+  const cachedAtt = studentId ? pageCache.get<Attendance[]>('student_attendance', studentId) : null;
   const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>(cachedSlots || []);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(cachedAtt || []);
   const [loading, setLoading] = useState<boolean>(!cachedSlots);
+
+  const fetchAttendance = async () => {
+    if (!studentId) return;
+    try {
+      const records = await getAttendanceForStudent(studentId);
+      setAttendanceRecords(records);
+      pageCache.set('student_attendance', records, studentId);
+    } catch (err) {
+      console.warn('[SchedulePage] fetchAttendance error:', err);
+    }
+  };
 
   useEffect(() => {
     if (!studentId) return;
@@ -63,6 +76,8 @@ export const SchedulePage: React.FC = () => {
         if (mounted) setLoading(false);
       });
 
+    fetchAttendance();
+
     return () => {
       mounted = false;
     };
@@ -76,6 +91,14 @@ export const SchedulePage: React.FC = () => {
       const freshSlots = await getSlotsForStudent(studentId);
       setScheduleSlots(freshSlots);
       pageCache.set('schedule_slots', freshSlots, studentId);
+    }
+  });
+
+  useRealtimeTable({
+    table: 'attendance',
+    debounceMs: 500,
+    onAny: () => {
+      fetchAttendance();
     }
   });
 
@@ -241,9 +264,24 @@ export const SchedulePage: React.FC = () => {
             }.`}
           />
         ) : (
-          filteredSlots.map(slot => (
-            <ClassSlotCard key={slot.id} slot={slot} />
-          ))
+          filteredSlots.map(slot => {
+            const att = attendanceRecords.find(
+              a => a.slot_id === slot.id && a.session_date === pktnow.dateString
+            );
+            return (
+              <ClassSlotCard
+                key={slot.id}
+                slot={slot}
+                attendanceRecord={att}
+                onAttendanceMarked={(slotId, rec) => {
+                  setAttendanceRecords(prev => [
+                    rec,
+                    ...prev.filter(a => !(a.slot_id === slotId && a.session_date === rec.session_date))
+                  ]);
+                }}
+              />
+            );
+          })
         )}
       </div>
     </StudentShell>
