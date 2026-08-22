@@ -90,6 +90,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       });
     } catch (err: any) {
       console.error('[Tests R2 Upload Error]', err);
+      return new Response(
+        JSON.stringify({ error: `Storage upload failed: ${err.message || 'R2 storage unavailable'}` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
   }
 
@@ -120,21 +124,37 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       .single();
 
     if (error) {
-      console.warn('[tests:upload] Supabase insert warning:', error);
-      return new Response(JSON.stringify({ success: true, test: testRecord }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      console.error('[tests:upload] Supabase insert failed:', error);
+      // Roll back storage write if DB insert fails
+      if (env.NOTES_BUCKET) {
+        try {
+          await env.NOTES_BUCKET.delete(storageKey);
+        } catch (delErr) {
+          console.error('[tests:upload] Failed to rollback R2 file:', delErr);
+        }
+      }
+      return new Response(
+        JSON.stringify({ error: `Database insert failed: ${error.message || 'Could not save test record'}` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(JSON.stringify({ success: true, test: data || testRecord }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch {
-    return new Response(JSON.stringify({ success: true, test: testRecord }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  } catch (dbErr: any) {
+    console.error('[tests:upload] Unexpected DB error:', dbErr);
+    if (env.NOTES_BUCKET) {
+      try {
+        await env.NOTES_BUCKET.delete(storageKey);
+      } catch (delErr) {
+        console.error('[tests:upload] Failed to rollback R2 file:', delErr);
+      }
+    }
+    return new Response(
+      JSON.stringify({ error: `Failed to commit test to database: ${dbErr?.message || 'Unknown error'}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }

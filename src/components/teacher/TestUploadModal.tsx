@@ -26,7 +26,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   const [subject, setSubject] = useState<string>(defaultSubject);
   const [title, setTitle] = useState<string>('');
   const [instructions, setInstructions] = useState<string>('');
-  const [totalMarks, setTotalMarks] = useState<number>(50);
+  const [totalMarks, setTotalMarks] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>(() => {
     // Default 3 days from now at 23:59
     const d = new Date();
@@ -111,6 +111,13 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
     setUploading(true);
     setProgress(0);
 
+    const parsedMarks = totalMarks.trim() ? parseInt(totalMarks.trim(), 10) : 100;
+    if (totalMarks.trim() && (isNaN(parsedMarks) || parsedMarks <= 0)) {
+      setError('Please enter a valid positive number for total marks (e.g. 50 or 100).');
+      setUploading(false);
+      return;
+    }
+
     try {
       const fileType = file.type.includes('image')
         ? 'image'
@@ -126,7 +133,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
           subject,
           grade,
           stream,
-          total_marks: totalMarks,
+          total_marks: parsedMarks,
           due_date: dueDate,
           teacher_name: profile?.full_name || 'Faculty',
           file_type: fileType,
@@ -146,7 +153,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
         file_url: `/api/tests/view/test_${Date.now()}`,
         file_type: fileType,
         file_size_bytes: file.size,
-        total_marks: totalMarks,
+        total_marks: parsedMarks,
         due_date: dueDate,
         created_at: new Date().toISOString(),
         submissions_count: 0,
@@ -279,13 +286,14 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
               <div className="relative">
                 <input
                   type="number"
-                  min="5"
-                  max="500"
+                  min="1"
+                  max="1000"
                   id="test-total-marks-input"
+                  placeholder="e.g. 50 or 100"
                   value={totalMarks}
-                  onChange={(e) => setTotalMarks(parseInt(e.target.value, 10) || 50)}
+                  onChange={(e) => setTotalMarks(e.target.value)}
                   disabled={uploading}
-                  className="w-full h-10 px-3 pl-8 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
+                  className="w-full h-10 px-3 pl-8 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] placeholder:text-[#A3A3A3] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
                 />
                 <Award size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
               </div>

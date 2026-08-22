@@ -84,6 +84,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       });
     } catch (err: any) {
       console.error('[Submissions R2 Upload Error]', err);
+      return new Response(
+        JSON.stringify({ error: `Storage upload failed: ${err.message || 'R2 storage unavailable'}` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
   }
 
@@ -119,21 +123,36 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       .single();
 
     if (error) {
-      console.warn('[submissions:upload] Supabase insert warning:', error);
-      return new Response(JSON.stringify({ success: true, submission: submissionRecord }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      console.error('[submissions:upload] Supabase insert failed:', error);
+      if (env.NOTES_BUCKET) {
+        try {
+          await env.NOTES_BUCKET.delete(storageKey);
+        } catch (delErr) {
+          console.error('[submissions:upload] Rollback R2 file failed:', delErr);
+        }
+      }
+      return new Response(
+        JSON.stringify({ error: `Database insert failed: ${error.message || 'Could not save submission record'}` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(JSON.stringify({ success: true, submission: data || submissionRecord }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch {
-    return new Response(JSON.stringify({ success: true, submission: submissionRecord }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  } catch (dbErr: any) {
+    console.error('[submissions:upload] Unexpected DB error:', dbErr);
+    if (env.NOTES_BUCKET) {
+      try {
+        await env.NOTES_BUCKET.delete(storageKey);
+      } catch (delErr) {
+        console.error('[submissions:upload] Rollback R2 file failed:', delErr);
+      }
+    }
+    return new Response(
+      JSON.stringify({ error: `Failed to commit submission to database: ${dbErr?.message || 'Unknown error'}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
