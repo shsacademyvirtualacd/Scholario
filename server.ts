@@ -1,7 +1,16 @@
 import express from 'express';
 import path from 'path';
+import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30 MB
+});
+
+// In-memory buffer store for dev server local previewing
+const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename: string }>();
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -112,6 +121,170 @@ Key Guidelines:
         error: err.message || 'Failed to process AI chat request',
       });
     }
+  });
+
+  // ── Tests Upload (Express Dev Handler) ──────────────
+  app.post('/api/tests/upload', upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const { title, instructions, subject, grade, stream = 'all', total_marks = '100', due_date, teacher_name } = req.body;
+
+      if (!file || !title || !subject || !grade || !due_date) {
+        return res.status(400).json({ error: 'Missing required parameters (file, title, subject, grade, due_date)' });
+      }
+
+      const testId = `test_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const mimeType = file.mimetype || (file.originalname.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+
+      fileStorage.set(testId, {
+        buffer: file.buffer,
+        mimeType,
+        filename: file.originalname || 'test_paper.pdf',
+      });
+
+      const testRecord = {
+        id: testId,
+        title,
+        instructions: instructions || null,
+        subject,
+        grade,
+        stream,
+        teacher_id: null,
+        teacher_name: teacher_name || 'Faculty',
+        file_url: `/api/tests/view/${testId}`,
+        file_path: `tests/${grade}/${stream}/${subject}/${testId}_${file.originalname}`,
+        file_type: mimeType.includes('image') ? 'image' : 'pdf',
+        file_size_bytes: file.size,
+        total_marks: parseInt(total_marks, 10) || 100,
+        due_date,
+        created_at: new Date().toISOString(),
+      };
+
+      return res.json({ success: true, test: testRecord });
+    } catch (err: any) {
+      console.error('[Dev Server Test Upload Error]', err);
+      return res.status(500).json({ error: err.message || 'Test upload failed' });
+    }
+  });
+
+  // ── Tests View ──────────────────────────────────────
+  app.get('/api/tests/view/:testId', (req, res) => {
+    const { testId } = req.params;
+    const stored = fileStorage.get(testId);
+    if (!stored) {
+      // Return a basic sample response or 404
+      return res.status(404).send('Test file not found');
+    }
+    res.setHeader('Content-Type', stored.mimeType);
+    res.setHeader('Content-Length', stored.buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    return res.send(stored.buffer);
+  });
+
+  // ── Tests Download ──────────────────────────────────
+  app.get('/api/tests/dl/:testId', (req, res) => {
+    const { testId } = req.params;
+    const stored = fileStorage.get(testId);
+    if (!stored) {
+      return res.status(404).send('Test file not found');
+    }
+    res.setHeader('Content-Type', stored.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${stored.filename}"`);
+    return res.send(stored.buffer);
+  });
+
+  // ── Tests Delete ────────────────────────────────────
+  app.delete('/api/tests/del/:testId', (req, res) => {
+    const { testId } = req.params;
+    fileStorage.delete(testId);
+    return res.json({ success: true });
+  });
+
+  // ── Submissions Upload ──────────────────────────────
+  app.post('/api/submissions/upload', upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const { test_id, student_name, student_email, grade = '10', stream = 'all', subject = 'General' } = req.body;
+
+      if (!file || !test_id) {
+        return res.status(400).json({ error: 'Missing required parameters (file, test_id)' });
+      }
+
+      const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const mimeType = file.mimetype || (file.originalname.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+
+      fileStorage.set(submissionId, {
+        buffer: file.buffer,
+        mimeType,
+        filename: file.originalname || 'submission.pdf',
+      });
+
+      const subRecord = {
+        id: submissionId,
+        test_id,
+        student_id: 'current_student',
+        student_name: student_name || 'Student',
+        student_email: student_email || null,
+        file_url: `/api/submissions/view/${submissionId}`,
+        file_path: `submissions/${grade}/${stream}/${subject}/${test_id}/${submissionId}_${file.originalname}`,
+        file_type: mimeType.includes('image') ? 'image' : 'pdf',
+        file_size_bytes: file.size,
+        submitted_at: new Date().toISOString(),
+        status: 'submitted',
+        marks_obtained: null,
+        max_marks: null,
+        teacher_feedback: null,
+      };
+
+      return res.json({ success: true, submission: subRecord });
+    } catch (err: any) {
+      console.error('[Dev Server Submission Upload Error]', err);
+      return res.status(500).json({ error: err.message || 'Submission upload failed' });
+    }
+  });
+
+  // ── Submissions View ────────────────────────────────
+  app.get('/api/submissions/view/:submissionId', (req, res) => {
+    const { submissionId } = req.params;
+    const stored = fileStorage.get(submissionId);
+    if (!stored) {
+      return res.status(404).send('Submission file not found');
+    }
+    res.setHeader('Content-Type', stored.mimeType);
+    res.setHeader('Content-Length', stored.buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    return res.send(stored.buffer);
+  });
+
+  // ── Submissions Download ────────────────────────────
+  app.get('/api/submissions/dl/:submissionId', (req, res) => {
+    const { submissionId } = req.params;
+    const stored = fileStorage.get(submissionId);
+    if (!stored) {
+      return res.status(404).send('Submission file not found');
+    }
+    res.setHeader('Content-Type', stored.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${stored.filename}"`);
+    return res.send(stored.buffer);
+  });
+
+  // ── Submissions Grade ───────────────────────────────
+  app.post('/api/submissions/grade', express.json(), (req, res) => {
+    const { submission_id, marks_obtained, max_marks, teacher_feedback } = req.body;
+    if (!submission_id) {
+      return res.status(400).json({ error: 'Missing submission_id' });
+    }
+    return res.json({
+      success: true,
+      submission: {
+        id: submission_id,
+        status: 'graded',
+        marks_obtained: marks_obtained !== undefined ? Number(marks_obtained) : null,
+        max_marks: max_marks !== undefined ? Number(max_marks) : null,
+        teacher_feedback: teacher_feedback || null,
+        graded_at: new Date().toISOString(),
+      },
+    });
   });
 
   // Vite middleware for dev or static serving for production

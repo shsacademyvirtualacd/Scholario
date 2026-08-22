@@ -4,6 +4,14 @@ import { onRequestGet as dlHandler } from '../functions/api/notes/dl/[noteId]';
 import { onRequestDelete as delHandler } from '../functions/api/notes/del/[noteId]';
 import { onRequestGet as auditR2Handler } from '../functions/api/admin/audit-r2';
 import { onRequestPost as sageChatPostHandler, onRequestOptions as sageChatOptionsHandler } from '../functions/api/sage/chat';
+import { onRequestPost as testUploadHandler } from '../functions/api/tests/upload';
+import { onRequestGet as testViewHandler } from '../functions/api/tests/view/[testId]';
+import { onRequestGet as testDlHandler } from '../functions/api/tests/dl/[testId]';
+import { onRequestDelete as testDelHandler } from '../functions/api/tests/del/[testId]';
+import { onRequestPost as submissionUploadHandler } from '../functions/api/submissions/upload';
+import { onRequestGet as submissionViewHandler } from '../functions/api/submissions/view/[submissionId]';
+import { onRequestGet as submissionDlHandler } from '../functions/api/submissions/dl/[submissionId]';
+import { onRequestPost as submissionGradeHandler } from '../functions/api/submissions/grade';
 
 export interface Env {
   NOTES_BUCKET: any;
@@ -131,6 +139,143 @@ export default {
           env,
           params: { noteId },
           waitUntil: ctx.waitUntil.bind(ctx),
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    // ── Test Endpoints ────────────────────────────────
+    if (url.pathname === '/api/tests/upload' && request.method === 'POST') {
+      try {
+        return await testUploadHandler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/tests/view/')) {
+      const cleanPath = url.pathname.replace(/\/+$/, '');
+      const parts = cleanPath.split('/');
+      const testId = parts[parts.length - 1];
+      try {
+        return await testViewHandler({
+          request,
+          env,
+          params: { testId },
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/tests/dl/')) {
+      const cleanPath = url.pathname.replace(/\/+$/, '');
+      const parts = cleanPath.split('/');
+      const testId = parts[parts.length - 1];
+      try {
+        return await testDlHandler({
+          request,
+          env,
+          params: { testId },
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/tests/del/') && request.method === 'DELETE') {
+      const cleanPath = url.pathname.replace(/\/+$/, '');
+      const parts = cleanPath.split('/');
+      const testId = parts[parts.length - 1];
+      try {
+        return await testDelHandler({
+          request,
+          env,
+          params: { testId },
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    // ── Submission Endpoints ──────────────────────────
+    if (url.pathname === '/api/submissions/upload' && request.method === 'POST') {
+      try {
+        return await submissionUploadHandler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/submissions/view/')) {
+      const cleanPath = url.pathname.replace(/\/+$/, '');
+      const parts = cleanPath.split('/');
+      const submissionId = parts[parts.length - 1];
+      try {
+        return await submissionViewHandler({
+          request,
+          env,
+          params: { submissionId },
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/submissions/dl/')) {
+      const cleanPath = url.pathname.replace(/\/+$/, '');
+      const parts = cleanPath.split('/');
+      const submissionId = parts[parts.length - 1];
+      try {
+        return await submissionDlHandler({
+          request,
+          env,
+          params: { submissionId },
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname === '/api/submissions/grade' && request.method === 'POST') {
+      try {
+        return await submissionGradeHandler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
           next: () => Promise.resolve(new Response('')),
           data: {}
         } as any);

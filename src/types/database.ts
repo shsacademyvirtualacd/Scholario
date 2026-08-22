@@ -148,6 +148,56 @@ export interface Note {
   offering?: ClassOffering;
 }
 
+// ─── tests & submissions ────────────────────
+export type TestFileType = 'pdf' | 'image' | 'doc';
+export type TestSubmissionStatus = 'submitted' | 'graded' | 'pending';
+
+export interface TestPaper {
+  id: string;
+  title: string;
+  instructions?: string | null;
+  subject: string;
+  grade: string; // '9' | '10' | '11' | '12'
+  stream: string; // 'Biology' | 'Computer Science' | 'Pre-Medical' | 'Pre-Engineering' | 'ICS' | 'all'
+  offering_id?: string | null;
+  teacher_id?: string | null;
+  teacher_name?: string | null;
+  file_url: string;
+  file_path?: string;
+  file_type: TestFileType;
+  file_size_bytes?: number;
+  total_marks: number;
+  due_date: string;
+  created_at: string;
+  // joined
+  offering?: ClassOffering;
+  teacher?: Teacher;
+  submissions_count?: number;
+  graded_count?: number;
+}
+
+export interface TestSubmission {
+  id: string;
+  test_id: string;
+  student_id: string;
+  student_name?: string;
+  student_email?: string;
+  file_url: string;
+  file_path?: string;
+  file_type: TestFileType;
+  file_size_bytes?: number;
+  submitted_at: string;
+  status: TestSubmissionStatus;
+  marks_obtained?: number | null;
+  max_marks?: number | null;
+  teacher_feedback?: string | null;
+  graded_at?: string | null;
+  graded_by?: string | null;
+  // joined
+  test?: TestPaper;
+  student?: Profile;
+}
+
 // ─── study_sessions ─────────────────────────
 export interface StudySession {
   id: string;
@@ -300,6 +350,16 @@ export interface Database {
         Row: TeacherAttendanceRating;
         Insert: Omit<TeacherAttendanceRating, 'id' | 'created_at' | 'student' | 'teacher' | 'slot'> & { id?: string; created_at?: string };
         Update: Partial<Omit<TeacherAttendanceRating, 'id' | 'created_at' | 'student' | 'teacher' | 'slot'>>;
+      };
+      tests: {
+        Row: TestPaper;
+        Insert: Omit<TestPaper, 'id' | 'created_at' | 'offering' | 'teacher' | 'submissions_count' | 'graded_count'> & { id?: string; created_at?: string };
+        Update: Partial<Omit<TestPaper, 'id' | 'created_at' | 'offering' | 'teacher' | 'submissions_count' | 'graded_count'>>;
+      };
+      test_submissions: {
+        Row: TestSubmission;
+        Insert: Omit<TestSubmission, 'id' | 'submitted_at' | 'test' | 'student'> & { id?: string; submitted_at?: string };
+        Update: Partial<Omit<TestSubmission, 'id' | 'submitted_at' | 'test' | 'student'>>;
       };
     };
   };

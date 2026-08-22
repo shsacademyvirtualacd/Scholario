@@ -14,6 +14,7 @@ import type {
   Enrollment, Attendance, AttendanceStatus, Note, RosterEntry,
   BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
   TeacherAttendanceRating, TeacherAttendanceRatingVote,
+  TestPaper, TestSubmission,
 } from '../types';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
@@ -1191,6 +1192,422 @@ export async function deleteNote(noteId: string): Promise<void> {
     } catch {}
     throw new Error(`Delete failed: ${errMsg}`);
   }
+}
+
+// =============================================================================
+// TESTS & TEST SUBMISSIONS
+// =============================================================================
+
+async function enrichTestsUrls(tests: any[]): Promise<TestPaper[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+  return tests.map((r: any) => {
+    let url = r.file_url || '';
+    if (r.id) {
+      url = `/api/tests/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    }
+    return {
+      ...r,
+      file_url: url,
+      offering: mapOffering(r.offering),
+      submissions_count: r.submissions_count || (r.submissions ? r.submissions.length : 0),
+      graded_count: r.graded_count || (r.submissions ? r.submissions.filter((s: any) => s.status === 'graded').length : 0),
+    };
+  });
+}
+
+async function enrichSubmissionsUrls(subs: any[]): Promise<TestSubmission[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+  return subs.map((r: any) => {
+    let url = r.file_url || '';
+    if (r.id) {
+      url = `/api/submissions/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    }
+    return {
+      ...r,
+      file_url: url,
+    };
+  });
+}
+
+/** Student: fetch tests scoped to student's exact grade and stream */
+export async function getTestsForStudent(grade: string, stream?: string): Promise<TestPaper[]> {
+  if (!grade) return [];
+  try {
+    const { data, error } = await (supabase as any)
+      .from('tests')
+      .select('*')
+      .eq('grade', String(grade))
+      .order('due_date', { ascending: true });
+
+    if (error) {
+      console.warn('[getTestsForStudent] error:', error);
+      return [];
+    }
+
+    const rows = (data as TestPaper[]) || [];
+    
+    // Strict scoping: visibility is intersection of grade AND stream
+    const filtered = rows.filter((t) => {
+      if (t.grade !== String(grade)) return false;
+      if (!t.stream || t.stream === 'all' || t.stream === 'All Streams') return true;
+      if (!stream) return true;
+      
+      const normStream = stream.trim().toLowerCase();
+      const testStream = t.stream.trim().toLowerCase();
+      return testStream === normStream || testStream.includes(normStream) || normStream.includes(testStream);
+    });
+
+    return enrichTestsUrls(filtered);
+  } catch (err) {
+    console.warn('[getTestsForStudent] catch:', err);
+    return [];
+  }
+}
+
+/** Admin / Teacher: get all test papers with optional teacher/grade/subject filters */
+export async function getAllTests(): Promise<TestPaper[]> {
+  try {
+    const { data: testsData, error: testsErr } = await (supabase as any)
+      .from('tests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (testsErr) {
+      console.warn('[getAllTests] error:', testsErr);
+      return [];
+    }
+
+    // Fetch submissions to calculate counts
+    const { data: subsData } = await (supabase as any)
+      .from('test_submissions')
+      .select('id, test_id, status');
+
+    const subsByTest = new Map<string, { total: number; graded: number }>();
+    if (subsData) {
+      subsData.forEach((s: any) => {
+        const curr = subsByTest.get(s.test_id) || { total: 0, graded: 0 };
+        curr.total += 1;
+        if (s.status === 'graded') curr.graded += 1;
+        subsByTest.set(s.test_id, curr);
+      });
+    }
+
+    const tests = (testsData || []).map((t: any) => {
+      const counts = subsByTest.get(t.id) || { total: 0, graded: 0 };
+      return {
+        ...t,
+        submissions_count: counts.total,
+        graded_count: counts.graded,
+      };
+    });
+
+    return enrichTestsUrls(tests);
+  } catch (err) {
+    console.warn('[getAllTests] catch:', err);
+    return [];
+  }
+}
+
+/** Teacher: get tests created by or assigned to teacher */
+export async function getTestsForTeacher(teacherId?: string): Promise<TestPaper[]> {
+  const all = await getAllTests();
+  if (!teacherId) return all;
+  return all.filter((t) => !t.teacher_id || t.teacher_id === teacherId);
+}
+
+/** Upload test paper file to Cloudflare R2 /api/tests/upload */
+export async function uploadTestPaperToR2(
+  file: File,
+  payload: {
+    title: string;
+    instructions?: string;
+    subject: string;
+    grade: string;
+    stream: string;
+    total_marks: number;
+    due_date: string;
+    teacher_name?: string;
+    file_type?: 'pdf' | 'image' | 'doc';
+  },
+  onProgress?: (pct: number) => void
+): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', payload.title);
+    if (payload.instructions) formData.append('instructions', payload.instructions);
+    formData.append('subject', payload.subject);
+    formData.append('grade', payload.grade);
+    formData.append('stream', payload.stream || 'all');
+    formData.append('total_marks', String(payload.total_marks || 100));
+    formData.append('due_date', payload.due_date);
+    if (payload.teacher_name) formData.append('teacher_name', payload.teacher_name);
+    formData.append('file_type', payload.file_type || 'pdf');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/tests/upload');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable && onProgress) {
+        onProgress(Math.round((ev.loaded / ev.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid JSON response from test upload server.'));
+        }
+      } else {
+        let errMsg = xhr.responseText;
+        try {
+          const parsed = JSON.parse(xhr.responseText);
+          if (parsed.error) errMsg = parsed.error;
+        } catch {}
+        reject(new Error(`Test upload failed (${xhr.status}): ${errMsg}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during test upload.'));
+    xhr.send(formData);
+  });
+}
+
+/** Teacher/Admin: delete a test paper */
+export async function deleteTestPaper(testId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const response = await fetch(`/api/tests/del/${testId}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let errMsg = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed.error) errMsg = parsed.error;
+    } catch {}
+    throw new Error(`Test delete failed: ${errMsg}`);
+  }
+}
+
+/** Student: upload answer sheet file to Cloudflare R2 /api/submissions/upload */
+export async function uploadTestSubmissionToR2(
+  file: File,
+  payload: {
+    test_id: string;
+    student_name?: string;
+    student_email?: string;
+    grade?: string;
+    stream?: string;
+    subject?: string;
+    file_type?: 'pdf' | 'image' | 'doc';
+  },
+  onProgress?: (pct: number) => void
+): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('test_id', payload.test_id);
+    if (payload.student_name) formData.append('student_name', payload.student_name);
+    if (payload.student_email) formData.append('student_email', payload.student_email);
+    if (payload.grade) formData.append('grade', payload.grade);
+    if (payload.stream) formData.append('stream', payload.stream);
+    if (payload.subject) formData.append('subject', payload.subject);
+    formData.append('file_type', payload.file_type || 'pdf');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/submissions/upload');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable && onProgress) {
+        onProgress(Math.round((ev.loaded / ev.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid JSON response from submission server.'));
+        }
+      } else {
+        let errMsg = xhr.responseText;
+        try {
+          const parsed = JSON.parse(xhr.responseText);
+          if (parsed.error) errMsg = parsed.error;
+        } catch {}
+        reject(new Error(`Submission upload failed (${xhr.status}): ${errMsg}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during submission upload.'));
+    xhr.send(formData);
+  });
+}
+
+/** Get all submissions for a specific test paper */
+export async function getSubmissionsForTest(testId: string): Promise<TestSubmission[]> {
+  try {
+    const [subsRes, profilesRes] = await Promise.all([
+      (supabase as any).from('test_submissions').select('*').eq('test_id', testId).order('submitted_at', { ascending: false }),
+      supabase.from('profiles').select('id, full_name, email:phone, phone, avatar_url')
+    ]);
+
+    const subs = subsRes.data || [];
+    const profiles = profilesRes.data || [];
+    const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+
+    const merged = subs.map((s: any) => {
+      const prof = profileMap.get(s.student_id);
+      return {
+        ...s,
+        student_name: s.student_name || prof?.full_name || 'Student',
+        student_email: s.student_email || prof?.phone || null,
+        student: prof,
+      };
+    });
+
+    return enrichSubmissionsUrls(merged);
+  } catch (err) {
+    console.warn('[getSubmissionsForTest] error:', err);
+    return [];
+  }
+}
+
+/** Student: get all submissions submitted by a specific student */
+export async function getSubmissionsForStudent(studentId: string): Promise<TestSubmission[]> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('test_submissions')
+      .select('*, test:tests(*)')
+      .eq('student_id', studentId)
+      .order('submitted_at', { ascending: false });
+
+    if (error) {
+      console.warn('[getSubmissionsForStudent] error:', error);
+      return [];
+    }
+
+    return enrichSubmissionsUrls(data || []);
+  } catch (err) {
+    console.warn('[getSubmissionsForStudent] catch:', err);
+    return [];
+  }
+}
+
+/** Teacher/Admin: grade a student test submission */
+export async function gradeTestSubmission(
+  submissionId: string,
+  payload: {
+    marks_obtained: number;
+    max_marks?: number;
+    teacher_feedback?: string;
+  }
+): Promise<TestSubmission> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const response = await fetch('/api/submissions/grade', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      submission_id: submissionId,
+      marks_obtained: payload.marks_obtained,
+      max_marks: payload.max_marks,
+      teacher_feedback: payload.teacher_feedback,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let errMsg = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed.error) errMsg = parsed.error;
+    } catch {}
+    throw new Error(`Grading failed: ${errMsg}`);
+  }
+
+  const result = (await response.json()) as any;
+  return result.submission;
+}
+
+/** Download test paper blob */
+export async function downloadTestBlob(test: TestPaper, onProgress?: (progress: number) => void): Promise<void> {
+  if (!test.id) throw new Error('Test ID is required.');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const dlUrl = `/api/tests/dl/${test.id}`;
+  const response = await fetch(dlUrl, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) throw new Error(`Download fetch failed with status ${response.status}`);
+
+  const blob = await response.blob();
+  if (onProgress) onProgress(100);
+
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  const cleanTitle = (test.title || 'test_paper').replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  link.download = `${cleanTitle}.${test.file_type === 'pdf' ? 'pdf' : 'jpg'}`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
+}
+
+/** Download student submission answer sheet blob */
+export async function downloadSubmissionBlob(sub: TestSubmission, onProgress?: (progress: number) => void): Promise<void> {
+  if (!sub.id) throw new Error('Submission ID is required.');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
+  const dlUrl = `/api/submissions/dl/${sub.id}`;
+  const response = await fetch(dlUrl, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) throw new Error(`Download fetch failed with status ${response.status}`);
+
+  const blob = await response.blob();
+  if (onProgress) onProgress(100);
+
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  const cleanName = (sub.student_name || 'student').replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  link.download = `${cleanName}_answer_sheet.${sub.file_type === 'pdf' ? 'pdf' : 'jpg'}`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
 }
 
 // =============================================================================

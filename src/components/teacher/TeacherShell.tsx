@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Calendar,
   BookMarked,
+  FileCheck2,
   Bell,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ interface TeacherShellProps {
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',  path: '/teacher' },
   { icon: BookMarked,      label: 'Notes Manager', path: '/teacher/notes' },
+  { icon: FileCheck2,      label: 'Tests',       path: '/teacher/tests' },
   { icon: Calendar,        label: 'Schedule',   path: '/teacher/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/teacher/announcements' },
   { icon: Sparkles,        label: 'Sage',       path: '/teacher/sage' },

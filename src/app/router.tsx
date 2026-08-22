@@ -26,6 +26,7 @@ const AdminDashboardPage   = lazy(() => import('../pages/admin/AdminDashboardPag
 // ─── Teacher Portal (lazy) ──────────────────
 const TeacherDashboardPage = lazy(() => import('../pages/teacher/TeacherDashboardPage'));
 const TeacherNotesPage = lazy(() => import('../pages/teacher/TeacherNotesPage'));
+const TeacherTestsPage = lazy(() => import('../pages/teacher/TeacherTestsPage'));
 const TeacherSchedulePage = lazy(() => import('../pages/teacher/TeacherSchedulePage'));
 const TeacherAnnouncementsPage = lazy(() => import('../pages/teacher/TeacherAnnouncementsPage'));
 const TeacherProfilePage = lazy(() => import('../pages/teacher/ProfilePage'));
@@ -41,6 +42,7 @@ const AdminSagePage   = lazy(() => import('../pages/admin/AdminSagePage'));
 
 // ─── Student sub-pages (lazy) ────────────────
 const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
+const StudentTestsPage = lazy(() => import('../pages/student/TestsPage'));
 const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
 const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
 const ProfilePage    = lazy(() => import('../pages/student/ProfilePage'));
@@ -51,6 +53,7 @@ const ScheduleManagerPage  = lazy(() => import('../pages/admin/ScheduleManagerPa
 const TeachersPage         = lazy(() => import('../pages/admin/TeachersPage'));
 const StudentsAdminPage    = lazy(() => import('../pages/admin/StudentsAdminPage'));
 const NotesManagerPage     = lazy(() => import('../pages/admin/NotesManagerPage'));
+const AdminTestsPage       = lazy(() => import('../pages/admin/AdminTestsPage'));
 const AttendanceAdminPage  = lazy(() => import('../pages/admin/AttendanceAdminPage'));
 const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
 const AdminProfilePage     = lazy(() => import('../pages/admin/ProfilePage'));
@@ -121,6 +124,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="student"><NotesPage /></ProtectedRoute>}
           />
           <Route
+            path="/student/tests"
+            element={<ProtectedRoute requiredRole="student"><StudentTestsPage /></ProtectedRoute>}
+          />
+          <Route
             path="/student/schedule"
             element={<ProtectedRoute requiredRole="student"><SchedulePage /></ProtectedRoute>}
           />
@@ -175,6 +182,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="admin"><NotesManagerPage /></ProtectedRoute>}
           />
           <Route
+            path="/admin/tests"
+            element={<ProtectedRoute requiredRole="admin"><AdminTestsPage /></ProtectedRoute>}
+          />
+          <Route
             path="/admin/attendance"
             element={<ProtectedRoute requiredRole="admin"><AttendanceAdminPage /></ProtectedRoute>}
           />
@@ -211,6 +222,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/teacher/notes"
             element={<ProtectedRoute requiredRole="teacher"><TeacherNotesPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/tests"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherTestsPage /></ProtectedRoute>}
           />
           <Route
             path="/teacher/schedule"
