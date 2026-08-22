@@ -175,7 +175,7 @@ export async function completeStudentOnboarding(
 
   // Also ensure fee status row exists
   try {
-    await (supabase as any).from('fee_status').upsert({
+    await (supabase as any).from('fee_statuses').upsert({
       student_id: studentId,
       status: 'unpaid',
       updated_at: new Date().toISOString(),
@@ -2456,7 +2456,7 @@ export async function getTaxonomy(): Promise<{
       for (const st of gradeDef.streams) {
         if (!streamsData.some((sItem) => sItem.class_id === cls.id && sItem.name.toLowerCase() === st.name.toLowerCase())) {
           streamsData.push({
-            id: `${cls.id}-${st.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+            id: st.name,
             class_id: cls.id,
             name: st.name,
           } as any);

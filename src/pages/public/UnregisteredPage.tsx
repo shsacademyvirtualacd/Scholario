@@ -135,6 +135,9 @@ export const UnregisteredPage: React.FC = () => {
     }
   };
 
+  const isUUID = (str?: string | null): boolean =>
+    !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -152,19 +155,52 @@ export const UnregisteredPage: React.FC = () => {
     setError(null);
 
     try {
-      // Find stream name for profile
+      const cleanClassId = isUUID(selectedClassId) ? selectedClassId : null;
+
+      // 1. Resolve stream name and clean stream UUID separately (never concatenated)
+      let selectedStreamName: string | null = null;
+      let cleanStreamId: string | null = null;
+
       const classStreams = taxonomy ? taxonomy.streams.filter((s: any) => s.class_id === selectedClassId) : [];
-      const selectedStreamObj = classStreams.find((s: any) => s.id === selectedStreamId);
-      let selectedStreamName = selectedStreamObj?.name || null;
+      const selectedStreamObj = classStreams.find(
+        (s: any) => s.id === selectedStreamId || s.name.toLowerCase() === selectedStreamId?.toLowerCase()
+      );
+
+      if (selectedStreamObj) {
+        selectedStreamName = selectedStreamObj.name;
+        if (isUUID(selectedStreamObj.id)) {
+          cleanStreamId = selectedStreamObj.id;
+        }
+      }
+
       if (!selectedStreamName) {
         const boardGrades = getGradesForBoard(selectedBoardId);
         const clsObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
         const gradeDef = boardGrades.find((g) => String(g.grade) === String(clsObj?.grade));
-        const stDef = gradeDef?.streams.find((st) => `${selectedClassId}-${st.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}` === selectedStreamId || st.name.toLowerCase() === selectedStreamId?.toLowerCase());
-        if (stDef) selectedStreamName = stDef.name;
+        const stDef = gradeDef?.streams.find(
+          (st) => st.name.toLowerCase() === selectedStreamId?.toLowerCase()
+        );
+        selectedStreamName = stDef ? stDef.name : (selectedStreamId || 'General');
       }
 
-      // 1. Check or insert Roster entry linked to student profile
+      // If cleanStreamId is still null, look up matching stream UUID in DB for this class
+      if (!cleanStreamId && cleanClassId && selectedStreamName) {
+        try {
+          const { data: dbStream } = await (supabase as any)
+            .from('streams')
+            .select('id')
+            .eq('class_id', cleanClassId)
+            .ilike('name', selectedStreamName)
+            .maybeSingle();
+          if ((dbStream as any)?.id && isUUID((dbStream as any).id)) {
+            cleanStreamId = (dbStream as any).id;
+          }
+        } catch (streamErr) {
+          console.warn('[Register] Stream DB lookup notice:', streamErr);
+        }
+      }
+
+      // 2. Check or insert Roster entry linked to student profile
       const emailLower = user.email?.toLowerCase() || '';
       const { data: existingRoster } = await (supabase as any)
         .from('roster')
@@ -179,7 +215,7 @@ export const UnregisteredPage: React.FC = () => {
             email: emailLower,
             full_name: fullName.trim(),
             role: 'student',
-            class_ids: selectedClassId ? [selectedClassId] : [],
+            class_ids: cleanClassId ? [cleanClassId] : [],
             profile_id: user.id
           });
 
@@ -190,11 +226,15 @@ export const UnregisteredPage: React.FC = () => {
       } else {
         await (supabase as any)
           .from('roster')
-          .update({ profile_id: user.id, full_name: fullName.trim(), class_ids: [selectedClassId] })
+          .update({
+            profile_id: user.id,
+            full_name: fullName.trim(),
+            class_ids: cleanClassId ? [cleanClassId] : []
+          })
           .eq('id', existingRoster.id);
       }
 
-      // 2. Ensure student profile exists in profiles table before calling completeStudentOnboarding
+      // 3. Ensure student profile exists in profiles table with clean columns
       const { error: profileUpsertErr } = await (supabase as any)
         .from('profiles')
         .upsert({
@@ -204,8 +244,8 @@ export const UnregisteredPage: React.FC = () => {
           avatar_url: user.user_metadata?.avatar_url ?? null,
           phone: phone.trim() || null,
           board_id: selectedBoardId,
-          class_id: selectedClassId,
-          stream_id: selectedStreamId,
+          class_id: cleanClassId,
+          stream_id: isUUID(cleanStreamId) ? cleanStreamId : null,
           stream: selectedStreamName,
           onboarding_complete: false
         }, { onConflict: 'id' });
@@ -215,20 +255,20 @@ export const UnregisteredPage: React.FC = () => {
         throw new Error(profileUpsertErr.message || 'Student profile creation failed.');
       }
 
-      // 3. Perform complete onboarding and enrollment assignment
+      // 4. Perform complete onboarding and enrollment assignment with clean UUIDs
       await completeStudentOnboarding(
         user.id,
         selectedBoardId,
-        selectedClassId,
-        selectedStreamId,
+        cleanClassId || selectedClassId,
+        isUUID(cleanStreamId) ? cleanStreamId : null,
         [],
         fullName.trim()
       );
 
-      // 4. Reload profile context
+      // 5. Reload profile context
       await refreshProfile();
 
-      // 5. Route directly to checkout
+      // 6. Route directly to checkout
       navigate('/student/checkout', { replace: true });
       toast.success('Registration completed successfully.');
 
@@ -263,7 +303,7 @@ export const UnregisteredPage: React.FC = () => {
     const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
     if (gradeDef) {
       streamsForClass = gradeDef.streams.map((st) => ({
-        id: `${selectedClassObj.id}-${st.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+        id: st.name,
         class_id: selectedClassObj.id,
         name: st.name,
         subjects: st.subjects,
