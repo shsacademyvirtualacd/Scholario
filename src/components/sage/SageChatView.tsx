@@ -373,8 +373,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
               </span>
             </div>
             <p className="text-[11px] text-[#A3A3A3] flex items-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-ping inline-block" />
-              Powered by Gemini 3.6 Flash • Markdown & Math Enabled
+              <span className="w-2 h-2 rounded-full bg-[#22C55E] inline-block" />
+              Markdown & Math Enabled
             </p>
           </div>
         </div>
