@@ -183,30 +183,30 @@ const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: st
   ],
   admin: [
     {
-      label: 'Academic Notice',
-      text: 'Draft an official academy notice regarding midterm examination timetable and examination hall rules.',
-      icon: BookOpen,
-    },
-    {
-      label: 'Fee Reminder Notice',
-      text: 'Draft a polite and formal circular for parents regarding monthly fee clearance before examinations.',
-      icon: FileQuestion,
-    },
-    {
-      label: 'Curriculum Schedule',
-      text: 'Outline standard academic term milestones for FBISE 9th-12th annual session.',
+      label: 'Live Platform Overview',
+      text: 'Provide a real-time summary of total enrolled students, faculty members, class offerings, and test submissions across the academy.',
       icon: Lightbulb,
     },
     {
-      label: 'Staff Briefing Note',
-      text: 'Write a staff briefing summary on standardizing student attendance tracking and note uploads.',
+      label: 'Student Distribution',
+      text: 'How many students are currently registered in Federal Board vs Sindh Board, broken down by class grade and stream?',
+      icon: BookOpen,
+    },
+    {
+      label: 'Pricing & Fee Summary',
+      text: 'What are the current tuition fee rates configured per class, and what is our student fee payment status breakdown?',
+      icon: FileQuestion,
+    },
+    {
+      label: 'Tests & Grading Progress',
+      text: 'Show all published assessments across subjects and recent student submission grading progress.',
       icon: HelpCircle,
     },
   ],
 };
 
 export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = sessionStorage.getItem(`sage_chat_${role}`);
     if (saved) {
@@ -224,7 +224,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
           role === 'teacher'
             ? `Hello **${profile?.full_name || 'Professor'}**! I am **Sage**, your AI academic assistant. How can I assist you with lesson planning, quiz questions, syllabus breakdowns, or announcements today?`
             : role === 'admin'
-            ? `Greetings **${profile?.full_name || 'Administrator'}**! I am **Sage**, your administrative AI assistant. How can I assist you with academy notices, policy drafts, schedule frameworks, or academic operations?`
+            ? `Greetings **${profile?.full_name || 'Administrator'}**! I am **Sage**, your administrative AI assistant with real-time live database access. Ask me about live student counts, board/grade distributions, faculty rosters, active offerings, test submissions, fee configurations, or drafting academic notices!`
             : `Assalam-o-Alaikum **${profile?.full_name || 'Student'}**! 🌟 I'm **Sage**, your AI study companion for SHS Virtual Academy. Ask me anything about your FBISE subjects (Math, Physics, Chemistry, Biology, CS, English, Urdu, etc.), formula derivations, or note summaries!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
@@ -342,12 +342,17 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
         content: m.content,
       }));
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch('/api/sage/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-        },
+        headers,
         body: JSON.stringify({
           messages: payloadMessages,
           userRole: role,

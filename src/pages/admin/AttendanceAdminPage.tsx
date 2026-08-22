@@ -412,7 +412,7 @@ export const AttendanceAdminPage: React.FC = () => {
           </div>
           <div>
             <div className="text-2xl font-black text-amber-600">{stats.lowAttendanceStudents.length}</div>
-            <div className="text-xs text-[#737373] font-medium mt-0.5">Students with &lt;75% attendance</div>
+            <div className="text-xs text-[#737373] font-medium mt-0.5">Students with &lt;75% attendance (min. 10 sessions)</div>
           </div>
           <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] font-bold text-amber-700">
             <span>Click to review list</span>
@@ -1233,7 +1233,7 @@ export const AttendanceAdminPage: React.FC = () => {
                 </span>
               </h3>
               <p className="text-xs text-[#737373] mt-0.5">
-                Students below the 75% institutional attendance requirement who may require parent notification.
+                Students with at least 10 recorded class sessions who fall below the 75% institutional attendance requirement.
               </p>
             </div>
           </div>
@@ -1241,8 +1241,8 @@ export const AttendanceAdminPage: React.FC = () => {
           {stats.lowAttendanceStudents.length === 0 ? (
             <div className="py-16 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl flex flex-col items-center">
               <ShieldCheck size={36} className="text-emerald-500 mb-2" />
-              <span className="font-bold text-sm text-[#111111]">All Students Compliant</span>
-              <span className="text-[10px] text-[#737373] mt-0.5">No students currently fall below the 75% attendance threshold.</span>
+              <span className="font-bold text-sm text-[#111111]">All Eligible Students Compliant</span>
+              <span className="text-[10px] text-[#737373] mt-0.5">No students with 10+ recorded sessions currently fall below the 75% attendance threshold.</span>
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -1018,7 +1018,9 @@ export async function getOverallAttendanceStats(): Promise<{
 
     studentMap.forEach((val, studId) => {
       const studRate = val.total > 0 ? Math.round((val.present / val.total) * 100) : 100;
-      if (studRate < 75 && val.total >= 1) {
+      // Eligibility rule: A student is only eligible to appear on the Low Attendance Watchlist
+      // after at least 10 recorded class sessions exist for them.
+      if (val.total >= 10 && studRate < 75) {
         const studentProfile = profilesById.get(studId) || {
           id: studId,
           full_name: 'Student',

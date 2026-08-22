@@ -366,7 +366,7 @@ export const AdminFeesPage: React.FC = () => {
                           Per-Class Tuition Rates (All Boards & Classes)
                         </h2>
                         <p className="text-xs text-[#737373] mt-0.5">
-                          List and edit class tuition amounts across Federal Board (FBISE) and Sindh Board. Classes without database records will automatically insert a new fee configuration row on save.
+                          Configure official tuition fee amounts across Federal Board (FBISE) and Sindh Board. Prices set here apply instantly across student onboarding, checkout, and the public fee calculator.
                         </p>
                       </div>
                     </div>

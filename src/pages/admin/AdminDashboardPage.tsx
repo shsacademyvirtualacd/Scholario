@@ -238,7 +238,7 @@ const AdminDashboardPage: React.FC = () => {
         {attendanceStats.lowAttendanceStudents.length === 0 ? (
           <div className="py-6 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl flex items-center justify-center gap-2">
             <ShieldCheck size={18} className="text-emerald-600" />
-            <span className="font-semibold text-[#111111]">All students are compliant above the 75% attendance threshold.</span>
+            <span className="font-semibold text-[#111111]">All eligible students (10+ recorded sessions) meet or exceed the 75% attendance threshold.</span>
           </div>
         ) : (
           <div className="space-y-2.5">

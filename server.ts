@@ -19,6 +19,8 @@ const upload = multer({
 // In-memory buffer store for dev server local previewing
 const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename: string }>();
 
+import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDataTools';
+
 let geminiClient: GoogleGenAI | null = null;
 
 function getGeminiClient(): GoogleGenAI | null {
@@ -70,17 +72,25 @@ async function startServer() {
 
       const client = getGeminiClient();
 
-      // Build context-aware system instruction
-      const roleDescription =
-        userRole === 'teacher'
-          ? 'You are speaking with a teacher/faculty member. Assist with lesson preparation, topic explanations, quiz question generation, assignment outlines, and pedagogical advice.'
-          : userRole === 'admin'
-          ? 'You are speaking with an institution administrator. Assist with academic administration, announcement drafting, timetable organization, and educational operations.'
-          : `You are speaking with an SHS Virtual Academy student${userName ? ` named ${userName}` : ''}${
-              grade ? ` in ${grade}` : ''
-            }${stream ? ` (${stream} stream)` : ''}. Assist with academic questions, step-by-step problem solving, revision notes, conceptual explanations, and exam preparation.`;
+      const isAdmin = userRole === 'admin';
 
-      const systemInstruction = `You are Sage, the intelligent, friendly, and expert AI study companion built exclusively for Scholario & SHS Virtual Academy (FBISE 9th-12th grade curricula: Mathematics, Physics, Chemistry, Biology, Computer Science, English, Urdu, Islamiat, and Pakistan Studies).
+      // Build context-aware system instruction
+      const roleDescription = isAdmin
+        ? `You are speaking with an institution administrator of Scholario & SHS Virtual Academy.
+ADMINISTRATIVE LIVE DATA ACCESS: You have full READ-ONLY live platform data access via your built-in tools. When the administrator asks data, statistical, or operational questions (such as student counts, enrollment breakdowns by board/grade/stream, teacher directories, active class offerings, attendance rates, published tests, student grading and submissions, or fee pricing configs), ALWAYS call your tools to query the real-time live database and present accurate, structured, and helpful data.
+CRITICAL RULES FOR ADMIN:
+1. Live Database Queries: Whenever the admin asks about students, teachers, classes, attendance, tests, grading, or fees, call the appropriate read-only data query tool to retrieve real-time data from the live platform.
+2. Read-Only Access: Your database access is strictly read-only. You cannot insert, update, or delete records. If the admin asks you to perform database modifications (e.g. create a test, delete a user, change fees), politely inform them that you have read-only live data access and guide them to the appropriate dashboard section where they can perform the action.
+3. Accurate & Clear Presentation: Use Markdown tables, bold figures, and bullet points to organize data clearly.`
+        : userRole === 'teacher'
+        ? `You are speaking with a teacher/faculty member. Assist with lesson preparation, topic explanations, quiz question generation, assignment outlines, and pedagogical advice.
+ACCESS CONTROL & PRIVACY RULE: You are in general-purpose academic assistant mode and DO NOT have access to live administrative database records, fee configs, or private platform data. If the teacher asks data-specific questions about real platform data (such as how many students are enrolled, student contact lists, fee configs, grades of other classes, or private roster records), politely explain that live database information is not available to them here and suggest checking with an admin or their teacher dashboard instead.`
+        : `You are speaking with an SHS Virtual Academy student${userName ? ` named ${userName}` : ''}${
+            grade ? ` in ${grade}` : ''
+          }${stream ? ` (${stream} stream)` : ''}. Assist with academic questions, step-by-step problem solving, revision notes, conceptual explanations, and exam preparation.
+ACCESS CONTROL & PRIVACY RULE: You are an academic study assistant and DO NOT have access to administrative database records or private platform data. If the student asks data-specific questions about real platform data (such as how many students are enrolled, other students' records, or private administrative settings), politely explain that this information isn't available to them here and suggest checking with an administrator or their student dashboard instead.`;
+
+      const systemInstruction = `You are Sage, the intelligent, friendly, and expert AI study and academic companion built exclusively for Scholario & SHS Virtual Academy (FBISE and Sindh Board 9th-12th grade curricula: Mathematics, Physics, Chemistry, Biology, Computer Science, English, Urdu, Islamiat, and Pakistan Studies).
 
 ${roleDescription}
 
@@ -88,13 +98,34 @@ Key Guidelines:
 1. **Be Concise & Direct by Default**: Keep answers short, direct, and to the point (typically 1-3 focused paragraphs or bullet points). Avoid conversational fluff or unnecessary preambles.
 2. **Detailed Drafts on Request Only**: Provide comprehensive documents, full essay-length breakdowns, or complete circular notices ONLY when the user explicitly requests a "full draft", "complete notice", "complete document", "in-depth explanation", or similar.
 3. **Format with Markdown & LaTeX Math**: Use standard Markdown (headings, bold, lists, tables). For all mathematical or scientific formulas, write standard LaTeX syntax using inline \`$formula$\` (e.g. \`$E = mc^2$\`, \`$v = u + at$\`, \`$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$\`) or block \`$$equation$$\`.
-4. **Curriculum Alignment**: Adhere to FBISE / Federal Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
+4. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
 5. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
 
       if (!client) {
         // Fallback intelligent simulation if no GEMINI_API_KEY is configured in the environment
         const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
-        const fallbackText = `**Sage (Study Companion)**: I received your question about *"_**${lastUserMsg}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for live AI responses. Here is a helpful tip: In FBISE curricula, always structure your answers with definitions, core formulas, and labeled diagrams for full marks!`;
+        let fallbackText = '';
+
+        if (isAdmin) {
+          // If admin asks in fallback mode, still fetch live DB overview if possible
+          try {
+            const overview = await executeAdminDataQuery('queryPlatformOverview', {}, supabaseServer);
+            const feeData = await executeAdminDataQuery('queryPricingAndFeeConfigs', {}, supabaseServer);
+            fallbackText = `**Sage (Live Platform Overview — Admin Mode)**:\n\n` +
+              `Here is the live snapshot from Scholario's database:\n` +
+              `- **Registered Students**: ${overview?.kpis?.total_registered_students ?? 0} (Onboarded: ${overview?.kpis?.onboarded_students ?? 0})\n` +
+              `- **Faculty Teachers**: ${overview?.kpis?.total_faculty_teachers ?? 0} (Active: ${overview?.kpis?.active_teachers ?? 0})\n` +
+              `- **Active Class Offerings**: ${overview?.kpis?.active_class_offerings ?? 0}\n` +
+              `- **Published Assessments**: ${overview?.kpis?.published_assessments_count ?? 0} (Submissions: ${overview?.kpis?.total_student_submissions ?? 0})\n` +
+              `- **Tuition Fee Configurations**: ${feeData?.fee_configurations?.length ?? 0} classes configured\n\n` +
+              `*Note: Configure \`GEMINI_API_KEY\` in your environment settings for custom interactive AI responses.*`;
+          } catch {
+            fallbackText = `**Sage (Admin Mode)**: I received your query about *"_**${lastUserMsg}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for full interactive AI responses.`;
+          }
+        } else {
+          fallbackText = `**Sage (Study Companion)**: I received your question about *"_**${lastUserMsg}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for live AI responses. Here is a helpful tip: In FBISE curricula, always structure your answers with definitions, core formulas, and labeled diagrams for full marks!`;
+        }
+
         const words = fallbackText.split(' ');
         for (let i = 0; i < words.length; i += 3) {
           const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
@@ -111,21 +142,117 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      // High-performance Flash-tier model with minimal latency
-      const targetModel = 'gemini-3.7-flash';
-      const streamResponse = await client.models.generateContentStream({
-        model: targetModel,
-        contents,
-        config: {
-          systemInstruction,
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        },
-      });
+      const targetModel = 'gemini-2.5-flash';
 
-      for await (const chunk of streamResponse) {
-        const chunkText = chunk.text;
-        if (chunkText) {
-          res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+      if (isAdmin) {
+        // Admin flow: Call generateContent with read-only tools
+        try {
+          const initialRes = await client.models.generateContent({
+            model: targetModel,
+            contents,
+            config: {
+              systemInstruction,
+              tools: [{ functionDeclarations: adminToolDeclarations }],
+              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            },
+          });
+
+          if (initialRes.functionCalls && initialRes.functionCalls.length > 0) {
+            // Execute requested read-only query tools
+            const toolParts: any[] = [];
+            for (const call of initialRes.functionCalls) {
+              const toolName = call.name || '';
+              const data = await executeAdminDataQuery(toolName, call.args || {}, supabaseServer);
+              toolParts.push({
+                functionResponse: {
+                  name: toolName,
+                  response: {
+                    result: data,
+                  },
+                  ...(call.id ? { id: call.id } : {}),
+                },
+              });
+            }
+
+            const modelCandidate = initialRes.candidates?.[0]?.content;
+            const updatedContents: any[] = [
+              ...contents,
+              modelCandidate,
+              {
+                role: 'tool',
+                parts: toolParts,
+              },
+            ];
+
+            // Stream grounded answer back with tool outputs
+            const streamResponse = await client.models.generateContentStream({
+              model: targetModel,
+              contents: updatedContents,
+              config: {
+                systemInstruction,
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+              },
+            });
+
+            for await (const chunk of streamResponse) {
+              const chunkText = chunk.text;
+              if (chunkText) {
+                res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+              }
+            }
+          } else {
+            // If model produced direct text without tool call
+            if (initialRes.text) {
+              res.write(`data: ${JSON.stringify({ text: initialRes.text })}\n\n`);
+            } else {
+              const streamResponse = await client.models.generateContentStream({
+                model: targetModel,
+                contents,
+                config: {
+                  systemInstruction,
+                  thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+                },
+              });
+              for await (const chunk of streamResponse) {
+                if (chunk.text) {
+                  res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+                }
+              }
+            }
+          }
+        } catch (adminAiErr: any) {
+          console.warn('[Sage Admin AI error, falling back to direct stream/DB summary]:', adminAiErr.message);
+          // Fallback to stream without tools or deliver data summary
+          try {
+            const overview = await executeAdminDataQuery('queryPlatformOverview', {}, supabaseServer);
+            res.write(`data: ${JSON.stringify({
+              text: `**Sage (Live Platform Query)**:\n\n` +
+                `- **Total Students**: ${overview?.kpis?.total_registered_students ?? 0} (Onboarded: ${overview?.kpis?.onboarded_students ?? 0})\n` +
+                `- **Total Faculty**: ${overview?.kpis?.total_faculty_teachers ?? 0}\n` +
+                `- **Class Offerings**: ${overview?.kpis?.active_class_offerings ?? 0}\n` +
+                `- **Assessments**: ${overview?.kpis?.published_assessments_count ?? 0} published (${overview?.kpis?.total_student_submissions ?? 0} submissions)\n` +
+                `- **Fee Configs**: ${overview?.kpis?.total_fee_configurations ?? 0} active tiers\n`
+            })}\n\n`);
+          } catch {
+            res.write(`data: ${JSON.stringify({ error: adminAiErr.message || 'Error executing AI response' })}\n\n`);
+          }
+        }
+      } else {
+        // Non-admin flow (teacher/student): No tools, direct streaming general academic assistant
+        const streamResponse = await client.models.generateContentStream({
+          model: targetModel,
+          contents,
+          config: {
+            systemInstruction,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        });
+
+        for await (const chunk of streamResponse) {
+          const chunkText = chunk.text;
+          if (chunkText) {
+            res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+          }
         }
       }
 
