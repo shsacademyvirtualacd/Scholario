@@ -142,52 +142,73 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const targetModel = 'gemini-3.6-flash';
+      const targetModel = 'gemini-3.7-flash';
 
       if (isAdmin) {
         // Admin flow: Call generateContent with read-only tools
         try {
-          const initialRes = await client.models.generateContent({
-            model: targetModel,
-            contents,
-            config: {
-              systemInstruction,
-              tools: [{ functionDeclarations: adminToolDeclarations }],
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-            },
-          });
+          let currentContents = [...contents];
+          const maxTurns = 3;
+          let turn = 0;
+          let finalResponseSent = false;
 
-          if (initialRes.functionCalls && initialRes.functionCalls.length > 0) {
-            // Execute requested read-only query tools
-            const toolParts: any[] = [];
-            for (const call of initialRes.functionCalls) {
-              const toolName = call.name || '';
-              const data = await executeAdminDataQuery(toolName, call.args || {}, supabaseServer);
-              toolParts.push({
-                functionResponse: {
-                  name: toolName,
-                  response: {
-                    result: data,
-                  },
-                  ...(call.id ? { id: call.id } : {}),
-                },
-              });
-            }
-
-            const modelCandidate = initialRes.candidates?.[0]?.content;
-            const updatedContents: any[] = [
-              ...contents,
-              modelCandidate,
-              {
-                role: 'tool',
-                parts: toolParts,
+          while (turn < maxTurns) {
+            turn++;
+            const genRes = await client.models.generateContent({
+              model: targetModel,
+              contents: currentContents,
+              config: {
+                systemInstruction,
+                tools: [{ functionDeclarations: adminToolDeclarations }],
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
               },
-            ];
+            });
 
-            // Stream grounded answer back with tool outputs
+            if (genRes.functionCalls && genRes.functionCalls.length > 0) {
+              const toolParts: any[] = [];
+              for (const call of genRes.functionCalls) {
+                const toolName = call.name || '';
+                const data = await executeAdminDataQuery(toolName, call.args || {}, supabaseServer);
+                toolParts.push({
+                  functionResponse: {
+                    name: toolName,
+                    response: {
+                      result: data,
+                    },
+                    ...(call.id ? { id: call.id } : {}),
+                  },
+                });
+              }
+
+              const modelCandidate = genRes.candidates?.[0]?.content;
+              if (modelCandidate) {
+                currentContents.push(modelCandidate);
+              }
+              currentContents.push({
+                role: 'user',
+                parts: toolParts,
+              });
+            } else {
+              // Final response produced
+              if (genRes.text) {
+                // Stream the text to the client in smooth chunks
+                const words = genRes.text.split(' ');
+                for (let i = 0; i < words.length; i += 3) {
+                  const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
+                  res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                  await new Promise((r) => setTimeout(r, 15));
+                }
+                finalResponseSent = true;
+              }
+              break;
+            }
+          }
+
+          if (!finalResponseSent) {
+            // Stream the final response with full context
             const streamResponse = await client.models.generateContentStream({
               model: targetModel,
-              contents: updatedContents,
+              contents: currentContents,
               config: {
                 systemInstruction,
                 thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
@@ -200,38 +221,19 @@ Key Guidelines:
                 res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
               }
             }
-          } else {
-            // If model produced direct text without tool call
-            if (initialRes.text) {
-              res.write(`data: ${JSON.stringify({ text: initialRes.text })}\n\n`);
-            } else {
-              const streamResponse = await client.models.generateContentStream({
-                model: targetModel,
-                contents,
-                config: {
-                  systemInstruction,
-                  thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-                },
-              });
-              for await (const chunk of streamResponse) {
-                if (chunk.text) {
-                  res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
-                }
-              }
-            }
           }
         } catch (adminAiErr: any) {
           console.warn('[Sage Admin AI error, falling back to direct stream/DB summary]:', adminAiErr.message);
-          // Fallback to stream without tools or deliver data summary
+          // Fallback to deliver live platform overview summary if Gemini call fails
           try {
             const overview = await executeAdminDataQuery('queryPlatformOverview', {}, supabaseServer);
             res.write(`data: ${JSON.stringify({
-              text: `**Sage (Live Platform Query)**:\n\n` +
-                `- **Total Students**: ${overview?.kpis?.total_registered_students ?? 0} (Onboarded: ${overview?.kpis?.onboarded_students ?? 0})\n` +
-                `- **Total Faculty**: ${overview?.kpis?.total_faculty_teachers ?? 0}\n` +
-                `- **Class Offerings**: ${overview?.kpis?.active_class_offerings ?? 0}\n` +
-                `- **Assessments**: ${overview?.kpis?.published_assessments_count ?? 0} published (${overview?.kpis?.total_student_submissions ?? 0} submissions)\n` +
-                `- **Fee Configs**: ${overview?.kpis?.total_fee_configurations ?? 0} active tiers\n`
+              text: `**Sage (Live Platform Snapshot — Admin Mode)**:\n\n` +
+                `- **Total Registered Students**: ${overview?.kpis?.total_registered_students ?? 0} (Onboarded: ${overview?.kpis?.onboarded_students ?? 0})\n` +
+                `- **Total Faculty Teachers**: ${overview?.kpis?.total_faculty_teachers ?? 0} (Active: ${overview?.kpis?.active_teachers ?? 0})\n` +
+                `- **Active Class Offerings**: ${overview?.kpis?.active_class_offerings ?? 0}\n` +
+                `- **Published Assessments**: ${overview?.kpis?.published_assessments_count ?? 0} (${overview?.kpis?.total_student_submissions ?? 0} submissions)\n` +
+                `- **Tuition Fee Configurations**: ${overview?.kpis?.total_fee_configurations ?? 0} active tiers\n`
             })}\n\n`);
           } catch {
             res.write(`data: ${JSON.stringify({ error: adminAiErr.message || 'Error executing AI response' })}\n\n`);

@@ -160,48 +160,68 @@ Key Guidelines:
           },
         },
       });
-      const targetModel = 'gemini-3.6-flash';
+      const targetModel = 'gemini-3.7-flash';
 
       if (isAdmin) {
-        const initialRes = await ai.models.generateContent({
-          model: targetModel,
-          contents,
-          config: {
-            systemInstruction,
-            tools: [{ functionDeclarations: adminToolDeclarations }],
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          },
-        });
+        let currentContents: any[] = [...contents];
+        const maxTurns = 3;
+        let turn = 0;
+        let finalResponseSent = false;
 
-        if (initialRes.functionCalls && initialRes.functionCalls.length > 0) {
-          const toolParts: any[] = [];
-          for (const call of initialRes.functionCalls) {
-            const toolName = call.name || '';
-            const data = await executeAdminDataQuery(toolName, call.args || {}, supabase);
-            toolParts.push({
-              functionResponse: {
-                name: toolName,
-                response: {
-                  result: data,
-                },
-                ...(call.id ? { id: call.id } : {}),
-              },
-            });
-          }
-
-          const modelCandidate = initialRes.candidates?.[0]?.content;
-          const updatedContents: any[] = [
-            ...contents,
-            modelCandidate,
-            {
-              role: 'tool',
-              parts: toolParts,
+        while (turn < maxTurns) {
+          turn++;
+          const genRes = await ai.models.generateContent({
+            model: targetModel,
+            contents: currentContents,
+            config: {
+              systemInstruction,
+              tools: [{ functionDeclarations: adminToolDeclarations }],
+              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             },
-          ];
+          });
 
+          if (genRes.functionCalls && genRes.functionCalls.length > 0) {
+            const toolParts: any[] = [];
+            for (const call of genRes.functionCalls) {
+              const toolName = call.name || '';
+              const data = await executeAdminDataQuery(toolName, call.args || {}, supabase);
+              toolParts.push({
+                functionResponse: {
+                  name: toolName,
+                  response: {
+                    result: data,
+                  },
+                  ...(call.id ? { id: call.id } : {}),
+                },
+              });
+            }
+
+            const modelCandidate = genRes.candidates?.[0]?.content;
+            if (modelCandidate) {
+              currentContents.push(modelCandidate);
+            }
+            currentContents.push({
+              role: 'user',
+              parts: toolParts,
+            });
+          } else {
+            if (genRes.text) {
+              const words = genRes.text.split(' ');
+              for (let i = 0; i < words.length; i += 3) {
+                const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
+                await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
+                await new Promise((r) => setTimeout(r, 15));
+              }
+              finalResponseSent = true;
+            }
+            break;
+          }
+        }
+
+        if (!finalResponseSent) {
           const streamResponse = await ai.models.generateContentStream({
             model: targetModel,
-            contents: updatedContents,
+            contents: currentContents,
             config: {
               systemInstruction,
               thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
@@ -212,24 +232,6 @@ Key Guidelines:
             const chunkText = chunk.text;
             if (chunkText) {
               await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`));
-            }
-          }
-        } else {
-          if (initialRes.text) {
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ text: initialRes.text })}\n\n`));
-          } else {
-            const streamResponse = await ai.models.generateContentStream({
-              model: targetModel,
-              contents,
-              config: {
-                systemInstruction,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-              },
-            });
-            for await (const chunk of streamResponse) {
-              if (chunk.text) {
-                await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunk.text })}\n\n`));
-              }
             }
           }
         }
