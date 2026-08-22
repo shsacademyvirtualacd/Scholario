@@ -23,7 +23,8 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration, getLinkAvailabilityStatus, findBestSlotForOffering
+  formatTime12h, calcDuration, getLinkAvailabilityStatus, findBestSlotForOffering,
+  timeStrToMins
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -231,6 +232,71 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
   );
 };
 
+/**
+ * Calculates the most relevant initial offering to select:
+ * 1. Checks if the teacher has an active class slot scheduled TODAY.
+ * 2. If no class today, picks the offering with the nearest upcoming class in the weekly schedule.
+ * 3. Fallbacks to the first assigned offering.
+ */
+function getBestInitialOfferingId(
+  offs: ClassOffering[],
+  slots: ClassSlot[],
+  currentSelectedId?: string
+): string {
+  if (!offs || offs.length === 0) return '';
+
+  const pktnow = getPKTNow();
+  const currentDayIndex = pktnow.dayIndex;
+
+  // 1. Look for a class offering that has an active slot TODAY
+  const todaySlots = (slots || []).filter(
+    s => !s.is_cancelled && s.day_of_week === currentDayIndex
+  );
+
+  if (todaySlots.length > 0) {
+    // If the currently selected offering is already one of today's slots, keep it
+    if (currentSelectedId && todaySlots.some(s => s.offering_id === currentSelectedId || (s.offering as any)?.id === currentSelectedId)) {
+      return currentSelectedId;
+    }
+
+    // Otherwise, select the earliest/active offering today
+    for (const slot of todaySlots) {
+      const match = offs.find(
+        o => o.id === slot.offering_id || (slot.offering as any)?.id === o.id
+      );
+      if (match) return match.id;
+    }
+  }
+
+  // 2. If currentSelectedId is already valid in offs, keep it
+  if (currentSelectedId && offs.some(o => o.id === currentSelectedId)) {
+    return currentSelectedId;
+  }
+
+  // 3. Look for the offering with the nearest upcoming scheduled slot
+  const sortedUpcoming = (slots || [])
+    .filter(s => !s.is_cancelled && s.day_of_week != null)
+    .map(slot => {
+      const day = slot.day_of_week ?? 0;
+      let daysAhead = day - currentDayIndex;
+      if (daysAhead <= 0) daysAhead += 7;
+      return { slot, daysAhead, startMins: timeStrToMins(slot.start_time || '00:00') };
+    })
+    .sort((a, b) => {
+      if (a.daysAhead !== b.daysAhead) return a.daysAhead - b.daysAhead;
+      return a.startMins - b.startMins;
+    });
+
+  for (const item of sortedUpcoming) {
+    const match = offs.find(
+      o => o.id === item.slot.offering_id || (item.slot.offering as any)?.id === o.id
+    );
+    if (match) return match.id;
+  }
+
+  return offs[0]?.id || '';
+}
+
 export const TeacherDashboardPage: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -260,7 +326,8 @@ export const TeacherDashboardPage: React.FC = () => {
     if (initSlots && allSlots.length === 0 && mounted) setAllSlots(initSlots);
 
     if (initOffs && initOffs.length > 0 && !selectedOfferingId && mounted) {
-      setSelectedOfferingId(initOffs[0].id);
+      const bestOffId = getBestInitialOfferingId(initOffs, initSlots || []);
+      setSelectedOfferingId(bestOffId);
     }
 
     Promise.all([
@@ -284,8 +351,14 @@ export const TeacherDashboardPage: React.FC = () => {
         setAllSlots(slots);
         pageCache.set('teacher_slots', slots, teacherId);
       }
-      if (offs.length > 0 && !selectedOfferingId) {
-        setSelectedOfferingId(offs[0].id);
+      if (offs.length > 0) {
+        // Auto-detect today's class on load or fallback gracefully
+        setSelectedOfferingId(prev => {
+          if (prev && offs.some(o => o.id === prev)) {
+            return prev;
+          }
+          return getBestInitialOfferingId(offs, slots);
+        });
       }
     }).catch(console.error).finally(() => {
       if (mounted) setLoading(false);
@@ -735,11 +808,18 @@ export const TeacherDashboardPage: React.FC = () => {
                   onChange={(e) => handleSelectOffering(e.target.value)}
                   className="w-full py-2 px-3 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl cursor-pointer text-[#111111] font-bold focus:outline-hidden focus:border-[#F4C430] transition-colors"
                 >
-                  {offerings.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.subject_name || o.subject} (Grade {o.grade || '10'} - {o.board ? o.board.toUpperCase() : 'FBISE'})
-                    </option>
-                  ))}
+                  {offerings.map((o) => {
+                    const subjectName = o.subject_name || o.subject;
+                    const grade = o.grade || (o as any).class?.grade || '10';
+                    const stream = o.stream ? (typeof o.stream === 'string' ? o.stream : (o.stream as any).name) : null;
+                    const board = o.board ? o.board.toUpperCase() : 'FBISE';
+                    const slotCount = allSlots.filter(s => s.offering_id === o.id || (s.offering as any)?.id === o.id).length;
+                    return (
+                      <option key={o.id} value={o.id}>
+                        {subjectName} — Class {grade} {stream ? `(${stream})` : ''} [{board}] · {slotCount} {slotCount === 1 ? 'Slot' : 'Slots'}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

@@ -5,7 +5,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import {
   ClipboardCheck, Search, CheckCircle2,
   Clock, AlertTriangle, ChevronDown, ChevronRight, Download, RefreshCw,
-  GraduationCap, ShieldCheck, X
+  GraduationCap, ShieldCheck, X, Users, BookOpen, Layers
 } from 'lucide-react';
 import {
   getAllTeachers,
@@ -19,6 +19,10 @@ import {
   upsertAttendanceBatch
 } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import {
+  DAYS_OF_WEEK_SHORT,
+  formatTime12h
+} from '../../lib/scheduleUtils';
 import type { Teacher, ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus, Enrollment } from '../../types';
 import { toast } from 'sonner';
 
@@ -60,10 +64,12 @@ export const AttendanceAdminPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'late' | 'absent' | 'low_attendance'>('all');
   const [expandedTeacherIds, setExpandedTeacherIds] = useState<Set<string>>(new Set());
+  const [expandedClassIds, setExpandedClassIds] = useState<Set<string>>(new Set());
+  const [hideEmptyClasses, setHideEmptyClasses] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'by_teacher' | 'all_records' | 'low_attendance'>('by_teacher');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Auto-filter if classId param is provided in route
+  // Auto-filter and expand if classId param is provided in route
   useEffect(() => {
     if (classId && offerings.length > 0) {
       const matched = offerings.find(o => o.id === classId);
@@ -72,6 +78,7 @@ export const AttendanceAdminPage: React.FC = () => {
           setSelectedTeacherId(matched.teacher_id);
           setExpandedTeacherIds(new Set([matched.teacher_id]));
         }
+        setExpandedClassIds(new Set([matched.id]));
         setSelectedSubject(matched.subject_name || matched.subject || 'all');
       }
     }
@@ -99,8 +106,14 @@ export const AttendanceAdminPage: React.FC = () => {
       setAttendanceRecords(attList);
       setStats(overallStats);
 
-      // Auto-expand all teachers by default
-      setExpandedTeacherIds(new Set(tList.map(t => t.id)));
+      // Collapsed by default unless a specific class was requested via URL
+      if (classId) {
+        const matched = oList.find(o => o.id === classId);
+        if (matched?.teacher_id) {
+          setExpandedTeacherIds(new Set([matched.teacher_id]));
+          setExpandedClassIds(new Set([matched.id]));
+        }
+      }
     } catch (err) {
       console.error('Failed loading admin attendance data:', err);
       toast.error('Failed to load attendance records');
@@ -135,6 +148,25 @@ export const AttendanceAdminPage: React.FC = () => {
       else next.add(tId);
       return next;
     });
+  };
+
+  // Toggle class roster inline drawer
+  const toggleClassExpand = (offId: string) => {
+    setExpandedClassIds(prev => {
+      const next = new Set(prev);
+      if (next.has(offId)) next.delete(offId);
+      else next.add(offId);
+      return next;
+    });
+  };
+
+  // Expand or collapse all teachers
+  const toggleAllTeachers = () => {
+    if (expandedTeacherIds.size > 0) {
+      setExpandedTeacherIds(new Set());
+    } else {
+      setExpandedTeacherIds(new Set(teachers.map(t => t.id)));
+    }
   };
 
   // Toggle or record single student attendance
@@ -497,16 +529,46 @@ export const AttendanceAdminPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── TAB 1: TEACHER & CLASS BREAKDOWN (User requested primary hierarchy) ── */}
+      {/* ── TAB 1: TEACHER & CLASS BREAKDOWN (Compact Scannable Table Layout) ── */}
       {activeTab === 'by_teacher' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
+          {/* Top Bar Controls & Noise Reduction Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#E5E5E5] rounded-xl px-4 py-2.5 shadow-xs">
+            <div className="flex items-center gap-4 flex-wrap">
+              <button
+                onClick={toggleAllTeachers}
+                className="text-xs font-bold text-[#111111] hover:text-[#000000] bg-[#F5F5F5] hover:bg-[#E5E5E5] px-3 py-1.5 rounded-lg border border-[#E0E0E0] transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Layers size={13} className="text-[#525252]" />
+                <span>{expandedTeacherIds.size === teachers.length && teachers.length > 0 ? 'Collapse All Teachers' : 'Expand All Teachers'}</span>
+              </button>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-[#525252] hover:text-[#111111]">
+                <input
+                  type="checkbox"
+                  checked={hideEmptyClasses}
+                  onChange={(e) => setHideEmptyClasses(e.target.checked)}
+                  className="rounded border-[#D4D4D4] text-[#111111] focus:ring-[#F4C430] w-3.5 h-3.5"
+                />
+                <span>Hide classes with 0 enrolled students</span>
+              </label>
+            </div>
+
+            <div className="text-[11px] font-semibold text-[#737373] flex items-center gap-1.5">
+              <Users size={13} className="text-[#A3A3A3]" />
+              <span>
+                Showing {teachers.filter(t => selectedTeacherId === 'all' || t.id === selectedTeacherId).length} Teachers · {offerings.filter(o => selectedSubject === 'all' || (o.subject_name || o.subject) === selectedSubject).length} Classes
+              </span>
+            </div>
+          </div>
+
           {loading ? (
-            <div className="space-y-4 animate-pulse">
+            <div className="space-y-3 animate-pulse">
               {[1, 2, 3].map(n => (
-                <div key={n} className="bg-white border border-[#E5E5E5] rounded-xl p-5 space-y-3">
+                <div key={n} className="bg-white border border-[#E5E5E5] rounded-xl p-4 space-y-3">
                   <div className="h-5 bg-gray-100 rounded w-48" />
                   <div className="h-4 bg-gray-100 rounded w-32" />
-                  <div className="h-20 bg-gray-50 rounded" />
+                  <div className="h-16 bg-gray-50 rounded" />
                 </div>
               ))}
             </div>
@@ -520,243 +582,487 @@ export const AttendanceAdminPage: React.FC = () => {
             teachers
               .filter(t => selectedTeacherId === 'all' || t.id === selectedTeacherId)
               .map(teacher => {
-                const teacherOfferings = offerings.filter(o => o.teacher_id === teacher.id);
+                const rawTeacherOfferings = offerings.filter(o => o.teacher_id === teacher.id);
                 const isExpanded = expandedTeacherIds.has(teacher.id);
+
+                // Calculate teacher overall counts for selectedDate
+                let teacherTotalEnrolled = 0;
+                let teacherPresent = 0;
+                let teacherLate = 0;
+                let teacherAbsent = 0;
+                let teacherUnmarked = 0;
+
+                const filteredOfferings = rawTeacherOfferings
+                  .filter(o => selectedSubject === 'all' || (o.subject_name || o.subject) === selectedSubject)
+                  .filter(o => {
+                    if (!hideEmptyClasses) return true;
+                    const enrolledCount = enrollments.filter(e => e.offering_id === o.id).length;
+                    return enrolledCount > 0;
+                  });
+
+                // Compute aggregated numbers across this teacher's classes
+                rawTeacherOfferings.forEach(off => {
+                  const offSlots = slots.filter(s => s.offering_id === off.id || (s.offering as any)?.id === off.id);
+                  const offStudentIds = enrollments.filter(e => e.offering_id === off.id).map(e => e.student_id);
+                  teacherTotalEnrolled += offStudentIds.length;
+
+                  offStudentIds.forEach(stId => {
+                    const rec = attendanceRecords.find(
+                      a => a.student_id === stId && (offSlots.some(s => s.id === a.slot_id) || a.slot_id === offSlots[0]?.id) && a.session_date === selectedDate
+                    );
+                    const stStatus = rec?.status || 'unmarked';
+                    if (stStatus === 'present') teacherPresent++;
+                    else if (stStatus === 'late') teacherLate++;
+                    else if (stStatus === 'absent') teacherAbsent++;
+                    else teacherUnmarked++;
+                  });
+                });
 
                 return (
                   <div
                     key={teacher.id}
-                    className="bg-white border border-[#E5E5E5] rounded-2xl shadow-xs overflow-hidden transition-all"
+                    className="bg-white border border-[#E5E5E5] rounded-xl shadow-xs overflow-hidden transition-all"
                   >
-                    {/* Teacher Header Bar */}
+                    {/* Teacher Header Accordion Bar */}
                     <div
                       onClick={() => toggleTeacherExpand(teacher.id)}
-                      className="p-4 bg-[#FAFAFA] border-b border-[#F0F0F0] flex items-center justify-between cursor-pointer hover:bg-[#F5F5F5] transition-colors"
+                      className="p-3.5 bg-[#FAFAFA] border-b border-[#F0F0F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-[#F5F5F5] transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#111111] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-[#111111] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                           {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-extrabold text-[#111111]">{teacher.full_name}</h3>
-                            <span className="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full border border-blue-200">
-                              {teacherOfferings.length} {teacherOfferings.length === 1 ? 'Class' : 'Classes'}
+                            <span className="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-md border border-blue-200">
+                              {rawTeacherOfferings.length} {rawTeacherOfferings.length === 1 ? 'Class' : 'Classes'}
+                            </span>
+                            <span className="text-[10px] bg-[#F0F0F0] text-[#525252] font-bold px-2 py-0.5 rounded-md border border-[#E5E5E5]">
+                              {teacherTotalEnrolled} Enrolled
                             </span>
                           </div>
-                          <p className="text-xs text-[#737373] mt-0.5">
+                          <p className="text-[11px] text-[#737373] mt-0.5 font-medium">
                             {teacher.email || 'Faculty Staff'} · {(teacher as any).subjects?.join(', ') || 'Academic Faculty'}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-[#737373]">
-                          {isExpanded ? 'Collapse' : 'Expand Classes'}
-                        </span>
-                        <div className="w-7 h-7 rounded-lg bg-white border border-[#E5E5E5] flex items-center justify-center text-[#111111]">
+                      {/* Teacher Date Attendance Summary Badges */}
+                      <div className="flex items-center gap-3 self-end sm:self-auto">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            ✓ {teacherPresent} Present
+                          </span>
+                          {teacherLate > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md">
+                              ⏱ {teacherLate} Late
+                            </span>
+                          )}
+                          {teacherAbsent > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 rounded-md">
+                              ✕ {teacherAbsent} Absent
+                            </span>
+                          )}
+                          {teacherUnmarked > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 rounded-md">
+                              ○ {teacherUnmarked} Unmarked
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="w-6 h-6 rounded-lg bg-white border border-[#E5E5E5] flex items-center justify-center text-[#111111] shrink-0 ml-1">
                           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </div>
                       </div>
                     </div>
 
-                    {/* Teacher Classes Content */}
+                    {/* Compact Table View for Teacher Classes */}
                     {isExpanded && (
-                      <div className="p-4 space-y-6">
-                        {teacherOfferings.length === 0 ? (
-                          <div className="py-6 text-center text-xs text-[#737373] font-medium bg-[#FAFAFA] rounded-xl">
-                            No class groups assigned to this teacher yet.
+                      <div className="p-0">
+                        {filteredOfferings.length === 0 ? (
+                          <div className="p-6 text-center text-xs text-[#737373] bg-[#FAFAFA]">
+                            {rawTeacherOfferings.length > 0 && hideEmptyClasses
+                              ? 'All assigned classes currently have 0 enrolled students (Hidden by filter).'
+                              : 'No class offerings assigned to this teacher matching filters.'}
                           </div>
                         ) : (
-                          teacherOfferings
-                            .filter(o => selectedSubject === 'all' || (o.subject_name || o.subject) === selectedSubject)
-                            .map(offering => {
-                              const offeringSlots = slots.filter(
-                                s => s.offering_id === offering.id || (s.offering as any)?.id === offering.id
-                              );
-                              const enrolledStudentIds = enrollments
-                                .filter(e => e.offering_id === offering.id)
-                                .map(e => e.student_id);
-                              const enrolledStudentsList = students.filter(st =>
-                                enrolledStudentIds.includes(st.id) &&
-                                (searchQuery === '' ||
-                                  st.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                  Boolean((st as any).email && (st as any).email.toLowerCase().includes(searchQuery.toLowerCase())))
-                              );
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA]/70 text-[10px] font-black text-[#737373] uppercase tracking-wider">
+                                  <th className="py-2.5 px-3.5">Subject & Cohort</th>
+                                  <th className="py-2.5 px-3">Weekly Timetable</th>
+                                  <th className="py-2.5 px-3 text-center">Enrolled</th>
+                                  <th className="py-2.5 px-3">Attendance Breakdown ({selectedDate})</th>
+                                  <th className="py-2.5 px-3.5 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#F0F0F0]">
+                                {filteredOfferings.map(offering => {
+                                  const offeringSlots = slots.filter(
+                                    s => s.offering_id === offering.id || (s.offering as any)?.id === offering.id
+                                  );
+                                  const enrolledStudentIds = enrollments
+                                    .filter(e => e.offering_id === offering.id)
+                                    .map(e => e.student_id);
+                                  const enrolledStudentsList = students.filter(st =>
+                                    enrolledStudentIds.includes(st.id) &&
+                                    (searchQuery === '' ||
+                                      st.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                      Boolean((st as any).email && (st as any).email.toLowerCase().includes(searchQuery.toLowerCase())))
+                                  );
 
-                              return (
-                                <div
-                                  key={offering.id}
-                                  className="border border-[#E5E5E5] rounded-xl p-4 bg-white"
-                                >
-                                  {/* Class Offering Header */}
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#F0F0F0] mb-3">
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <h4 className="text-xs font-black text-[#111111]">
-                                          {offering.subject_name || offering.subject}
-                                        </h4>
-                                        <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
-                                          Class {offering.grade || '10'} FBISE
-                                        </span>
+                                  const isClassExpanded = expandedClassIds.has(offering.id);
+                                  const primarySlotId = offeringSlots[0]?.id || 'slot-1';
+
+                                  // Count breakdown on selectedDate
+                                  let presCount = 0;
+                                  let lateCount = 0;
+                                  let absCount = 0;
+                                  let unCount = 0;
+
+                                  enrolledStudentsList.forEach(st => {
+                                    const rec = attendanceRecords.find(
+                                      a => a.student_id === st.id && 
+                                           (offeringSlots.some(s => s.id === a.slot_id) || a.slot_id === primarySlotId) && 
+                                           a.session_date === selectedDate
+                                    );
+                                    const status = rec?.status || 'unmarked';
+                                    if (status === 'present') presCount++;
+                                    else if (status === 'late') lateCount++;
+                                    else if (status === 'absent') absCount++;
+                                    else unCount++;
+                                  });
+
+                                  const totalEnrolledInClass = enrolledStudentsList.length;
+                                  const markedCount = presCount + lateCount + absCount;
+                                  const markedPct = totalEnrolledInClass > 0 ? Math.round((markedCount / totalEnrolledInClass) * 100) : 0;
+
+                                  // Timetable schedule string / chips
+                                  const renderScheduleChips = () => {
+                                    if (offeringSlots.length === 0) {
+                                      return <span className="text-[10px] text-[#A3A3A3] italic font-medium">No slots scheduled</span>;
+                                    }
+                                    const sorted = [...offeringSlots].sort((a, b) => {
+                                      const dayA = a.day_of_week ?? 0;
+                                      const dayB = b.day_of_week ?? 0;
+                                      if (dayA !== dayB) return dayA - dayB;
+                                      return (a.start_time || '').localeCompare(b.start_time || '');
+                                    });
+
+                                    return (
+                                      <div className="flex flex-wrap items-center gap-1">
+                                        {sorted.map(s => {
+                                          const dayLabel = DAYS_OF_WEEK_SHORT[s.day_of_week ?? 0] || 'Day';
+                                          const timeLabel = s.start_time ? `${formatTime12h(s.start_time)}` : '';
+                                          return (
+                                            <span
+                                              key={s.id}
+                                              className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#F5F5F5] text-[#333333] border border-[#E5E5E5] px-1.5 py-0.5 rounded-md"
+                                            >
+                                              <span className="text-[#111111] font-black">{dayLabel}</span>
+                                              {timeLabel && <span className="text-[#737373]">{timeLabel}</span>}
+                                            </span>
+                                          );
+                                        })}
                                       </div>
-                                      <p className="text-[10px] text-[#737373] font-medium mt-0.5">
-                                        {enrolledStudentsList.length} enrolled students · {offeringSlots.length} lecture slots configured
-                                      </p>
-                                    </div>
+                                    );
+                                  };
 
-                                    {/* Action Buttons */}
-                                    <div className="flex items-center gap-2">
-                                      {offeringSlots[0] && (
-                                        <button
-                                          onClick={() => handleMarkAllSlotPresent(offeringSlots[0].id, offering.id)}
-                                          className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1 rounded-md transition-all flex items-center gap-1 shadow-xs"
-                                        >
-                                          <CheckCircle2 size={12} />
-                                          <span>Mark All Present for {selectedDate}</span>
-                                        </button>
+                                  const subjectTitle = offering.subject_name || offering.subject;
+                                  const gradeLabel = offering.grade || (offering as any).class?.grade || '10';
+                                  const streamLabel = offering.stream ? (typeof offering.stream === 'string' ? offering.stream : (offering.stream as any).name) : null;
+                                  const boardLabel = offering.board ? offering.board.toUpperCase() : 'FBISE';
+
+                                  return (
+                                    <React.Fragment key={offering.id}>
+                                      {/* Main Class Row */}
+                                      <tr className={`hover:bg-[#FAFAFA] transition-colors ${isClassExpanded ? 'bg-amber-50/20' : ''}`}>
+                                        {/* Subject & Cohort */}
+                                        <td className="py-3 px-3.5">
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#F4C430] shrink-0" />
+                                            <div>
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="font-black text-xs text-[#111111]">{subjectTitle}</span>
+                                                <span className="text-[10px] font-bold bg-[#F0F0F0] text-[#525252] px-1.5 py-0.2 rounded">
+                                                  Grade {gradeLabel}
+                                                </span>
+                                                {streamLabel && (
+                                                  <span className="text-[10px] font-semibold text-[#737373]">
+                                                    · {streamLabel}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <span className="text-[10px] text-[#A3A3A3] font-medium block">
+                                                {boardLabel} Board · {offeringSlots.length} lecture {offeringSlots.length === 1 ? 'slot' : 'slots'}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </td>
+
+                                        {/* Weekly Timetable */}
+                                        <td className="py-3 px-3">
+                                          {renderScheduleChips()}
+                                        </td>
+
+                                        {/* Enrolled Count */}
+                                        <td className="py-3 px-3 text-center">
+                                          <span className={`inline-block text-xs font-extrabold px-2.5 py-0.5 rounded-full ${
+                                            totalEnrolledInClass > 0
+                                              ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                                              : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                          }`}>
+                                            {totalEnrolledInClass} {totalEnrolledInClass === 1 ? 'Student' : 'Students'}
+                                          </span>
+                                        </td>
+
+                                        {/* Attendance Breakdown on selectedDate */}
+                                        <td className="py-3 px-3">
+                                          <div className="space-y-1.5 min-w-[200px]">
+                                            <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
+                                              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                                ✓ {presCount}
+                                              </span>
+                                              {lateCount > 0 && (
+                                                <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                                  ⏱ {lateCount}
+                                                </span>
+                                              )}
+                                              {absCount > 0 && (
+                                                <span className="text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                                  ✕ {absCount}
+                                                </span>
+                                              )}
+                                              {unCount > 0 && (
+                                                <span className="text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                                  ○ {unCount}
+                                                </span>
+                                              )}
+                                              <span className="text-[9px] text-[#737373] ml-auto font-medium">
+                                                {markedPct}% marked
+                                              </span>
+                                            </div>
+
+                                            {/* Visual Progress Line */}
+                                            <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden flex">
+                                              {totalEnrolledInClass > 0 && (
+                                                <>
+                                                  <div style={{ width: `${(presCount / totalEnrolledInClass) * 100}%` }} className="bg-emerald-500 h-full" />
+                                                  <div style={{ width: `${(lateCount / totalEnrolledInClass) * 100}%` }} className="bg-amber-400 h-full" />
+                                                  <div style={{ width: `${(absCount / totalEnrolledInClass) * 100}%` }} className="bg-rose-500 h-full" />
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                                          <div className="inline-flex items-center gap-2">
+                                            {totalEnrolledInClass > 0 && (
+                                              <button
+                                                onClick={() => handleMarkAllSlotPresent(primarySlotId, offering.id)}
+                                                className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                                                title={`Mark all ${totalEnrolledInClass} students Present for ${selectedDate}`}
+                                              >
+                                                <CheckCircle2 size={11} />
+                                                <span>Mark All</span>
+                                              </button>
+                                            )}
+
+                                            <button
+                                              onClick={() => toggleClassExpand(offering.id)}
+                                              className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                                                isClassExpanded
+                                                  ? 'bg-[#111111] text-white border-[#111111]'
+                                                  : 'bg-white hover:bg-[#F5F5F5] text-[#111111] border-[#E5E5E5]'
+                                              }`}
+                                            >
+                                              <span>{isClassExpanded ? 'Hide Roster' : 'View Roster'}</span>
+                                              <ChevronDown size={12} className={`transition-transform ${isClassExpanded ? 'rotate-180' : ''}`} />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+
+                                      {/* Inline Expandable Student Roster Drawer */}
+                                      {isClassExpanded && (
+                                        <tr>
+                                          <td colSpan={5} className="p-0 bg-[#FAFAFA]/70 border-b border-[#E5E5E5]">
+                                            <div className="p-4 space-y-3">
+                                              <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#E5E5E5]">
+                                                <div className="flex items-center gap-2">
+                                                  <BookOpen size={14} className="text-[#111111]" />
+                                                  <h5 className="font-extrabold text-xs text-[#111111]">
+                                                    {subjectTitle} Student Attendance Roster ({selectedDate})
+                                                  </h5>
+                                                  <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
+                                                    {enrolledStudentsList.length} Students
+                                                  </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    onClick={() => handleMarkAllSlotPresent(primarySlotId, offering.id)}
+                                                    className="text-[10px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-2.5 py-1 rounded-md transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                                                  >
+                                                    <CheckCircle2 size={12} />
+                                                    <span>Mark All Present</span>
+                                                  </button>
+                                                  <button
+                                                    onClick={() => toggleClassExpand(offering.id)}
+                                                    className="text-[10px] font-semibold text-[#737373] hover:text-[#111111] px-2 py-1 bg-[#F5F5F5] rounded-md border border-[#E5E5E5] cursor-pointer"
+                                                  >
+                                                    Close
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {enrolledStudentsList.length === 0 ? (
+                                                <div className="py-6 text-center text-xs text-[#737373] bg-white rounded-xl border border-[#E5E5E5]">
+                                                  No students enrolled in this offering or matching search.
+                                                </div>
+                                              ) : (
+                                                <div className="bg-white rounded-xl border border-[#E5E5E5] overflow-hidden">
+                                                  <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                      <tr className="border-b border-[#F0F0F0] bg-[#FAFAFA] text-[9px] font-black text-[#A3A3A3] uppercase tracking-wider">
+                                                        <th className="py-2 px-3">Student Name</th>
+                                                        <th className="py-2 px-3">Stream</th>
+                                                        <th className="py-2 px-3">Attendance Status & Timestamp</th>
+                                                        <th className="py-2 px-3 text-right">Admin Override</th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-[#FAFAFA]">
+                                                      {enrolledStudentsList.map(st => {
+                                                        const record = attendanceRecords.find(
+                                                          a => a.student_id === st.id && 
+                                                               (offeringSlots.some(s => s.id === a.slot_id) || a.slot_id === primarySlotId) && 
+                                                               a.session_date === selectedDate
+                                                        );
+                                                        const status = record?.status || 'unmarked';
+                                                        const isUpdating = updatingId === st.id;
+                                                        const joinTime = record?.marked_at
+                                                          ? new Date(record.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                          : null;
+
+                                                        if (statusFilter !== 'all' && statusFilter !== status) {
+                                                          return null;
+                                                        }
+
+                                                        return (
+                                                          <tr key={st.id} className="hover:bg-[#FAFAFA]/50 transition-colors">
+                                                            <td className="py-2.5 px-3">
+                                                              <div className="flex items-center gap-2">
+                                                                <div className="w-6 h-6 rounded-md bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center text-[9px] font-bold text-[#525252] shrink-0">
+                                                                  {st.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                  <span className="text-xs font-bold text-[#111111] block leading-tight truncate">
+                                                                    {st.full_name}
+                                                                  </span>
+                                                                  <span className="text-[9px] text-[#737373] font-medium leading-tight truncate block">
+                                                                    {(st as any).email || `ID: ${st.id.slice(0, 8)}`}
+                                                                  </span>
+                                                                </div>
+                                                              </div>
+                                                            </td>
+
+                                                            <td className="py-2.5 px-3 text-xs font-semibold text-[#525252] capitalize">
+                                                              {st.stream || 'General'}
+                                                            </td>
+
+                                                            <td className="py-2.5 px-3">
+                                                              <div className="flex items-center gap-2 flex-wrap">
+                                                                {status === 'present' ? (
+                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                                                    ✓ Present
+                                                                  </span>
+                                                                ) : status === 'late' ? (
+                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                                                    ⏱ Late
+                                                                  </span>
+                                                                ) : status === 'absent' ? (
+                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                                                                    ✕ Absent
+                                                                  </span>
+                                                                ) : (
+                                                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                                                                    ○ Unmarked
+                                                                  </span>
+                                                                )}
+
+                                                                {joinTime && (
+                                                                  <span className="text-[9px] text-[#737373] font-medium bg-[#FAFAFA] px-1.5 py-0.5 rounded border border-[#E5E5E5] flex items-center gap-1">
+                                                                    <Clock size={10} className="text-emerald-600" />
+                                                                    <span>Joined at {joinTime}</span>
+                                                                    {record?.marked_by === 'self' && (
+                                                                      <span className="text-emerald-600 font-bold">(Self-Checkin)</span>
+                                                                    )}
+                                                                  </span>
+                                                                )}
+                                                              </div>
+                                                            </td>
+
+                                                            <td className="py-2.5 px-3 text-right">
+                                                              <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
+                                                                <button
+                                                                  onClick={() => handleAdminToggleAttendance(st.id, primarySlotId, selectedDate, 'present')}
+                                                                  disabled={isUpdating}
+                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                                                    status === 'present'
+                                                                      ? 'bg-emerald-600 text-white shadow-xs'
+                                                                      : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
+                                                                  }`}
+                                                                  title="Mark Present"
+                                                                >
+                                                                  P
+                                                                </button>
+                                                                <button
+                                                                  onClick={() => handleAdminToggleAttendance(st.id, primarySlotId, selectedDate, 'late')}
+                                                                  disabled={isUpdating}
+                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                                                    status === 'late'
+                                                                      ? 'bg-amber-500 text-white shadow-xs'
+                                                                      : 'text-[#737373] hover:text-amber-700 hover:bg-white'
+                                                                  }`}
+                                                                  title="Mark Late"
+                                                                >
+                                                                  L
+                                                                </button>
+                                                                <button
+                                                                  onClick={() => handleAdminToggleAttendance(st.id, primarySlotId, selectedDate, 'absent')}
+                                                                  disabled={isUpdating}
+                                                                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                                                    status === 'absent'
+                                                                      ? 'bg-rose-600 text-white shadow-xs'
+                                                                      : 'text-[#737373] hover:text-rose-700 hover:bg-white'
+                                                                  }`}
+                                                                  title="Mark Absent"
+                                                                >
+                                                                  A
+                                                                </button>
+                                                              </div>
+                                                            </td>
+                                                          </tr>
+                                                        );
+                                                      })}
+                                                    </tbody>
+                                                  </table>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </td>
+                                        </tr>
                                       )}
-                                    </div>
-                                  </div>
-
-                                  {/* Students Attendance Table */}
-                                  {enrolledStudentsList.length === 0 ? (
-                                    <div className="py-6 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-lg">
-                                      No students matching the current filter in this offering.
-                                    </div>
-                                  ) : (
-                                    <div className="overflow-x-auto">
-                                      <table className="w-full text-left border-collapse">
-                                        <thead>
-                                          <tr className="border-b border-[#F0F0F0]">
-                                            <th className="py-2 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student Name</th>
-                                            <th className="py-2 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Stream</th>
-                                            <th className="py-2 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Attendance Status & Timestamp</th>
-                                            <th className="py-2 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider text-right">Admin Override</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-[#FAFAFA]">
-                                          {enrolledStudentsList.map(st => {
-                                            const slotId = offeringSlots[0]?.id || 'slot-1';
-                                            const record = attendanceRecords.find(
-                                              a => a.student_id === st.id && a.slot_id === slotId && a.session_date === selectedDate
-                                            );
-                                            const status = record?.status || 'unmarked';
-                                            const isUpdating = updatingId === st.id;
-                                            const joinTime = record?.marked_at
-                                              ? new Date(record.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                              : null;
-
-                                            // Apply status filter if set
-                                            if (statusFilter !== 'all' && statusFilter !== status) {
-                                              return null;
-                                            }
-
-                                            return (
-                                              <tr key={st.id} className="hover:bg-[#FAFAFA]/50 transition-colors">
-                                                <td className="py-2.5 pr-3">
-                                                  <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 rounded-md bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center text-[9px] font-bold text-[#525252] shrink-0">
-                                                      {st.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                      <span className="text-xs font-bold text-[#111111] block leading-tight truncate">
-                                                        {st.full_name}
-                                                      </span>
-                                                      <span className="text-[9px] text-[#737373] font-medium leading-tight truncate block">
-                                                        {(st as any).email || `ID: ${st.id.slice(0, 8)}`}
-                                                      </span>
-                                                    </div>
-                                                  </div>
-                                                </td>
-
-                                                <td className="py-2.5 text-xs font-semibold text-[#525252] capitalize">
-                                                  {st.stream || 'General'}
-                                                </td>
-
-                                                <td className="py-2.5">
-                                                  <div className="flex items-center gap-2 flex-wrap">
-                                                    {status === 'present' ? (
-                                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                                        ✓ Present
-                                                      </span>
-                                                    ) : status === 'late' ? (
-                                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                                        ⏱ Late
-                                                      </span>
-                                                    ) : status === 'absent' ? (
-                                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                                                        ✕ Absent
-                                                      </span>
-                                                    ) : (
-                                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
-                                                        ○ Unmarked
-                                                      </span>
-                                                    )}
-
-                                                    {/* Auto-join indicator and exact timestamp */}
-                                                    {joinTime && (
-                                                      <span className="text-[9px] text-[#737373] font-medium bg-[#FAFAFA] px-1.5 py-0.5 rounded border border-[#E5E5E5] flex items-center gap-1">
-                                                        <Clock size={10} className="text-emerald-600" />
-                                                        <span>Joined at {joinTime}</span>
-                                                        {record?.marked_by === 'self' && (
-                                                          <span className="text-emerald-600 font-bold">(Self-Checkin)</span>
-                                                        )}
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                </td>
-
-                                                <td className="py-2.5 text-right">
-                                                  <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
-                                                    <button
-                                                      onClick={() => handleAdminToggleAttendance(st.id, slotId, selectedDate, 'present')}
-                                                      disabled={isUpdating}
-                                                      className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
-                                                        status === 'present'
-                                                          ? 'bg-emerald-600 text-white shadow-xs'
-                                                          : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
-                                                      }`}
-                                                      title="Mark Present"
-                                                    >
-                                                      P
-                                                    </button>
-                                                    <button
-                                                      onClick={() => handleAdminToggleAttendance(st.id, slotId, selectedDate, 'late')}
-                                                      disabled={isUpdating}
-                                                      className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
-                                                        status === 'late'
-                                                          ? 'bg-amber-500 text-white shadow-xs'
-                                                          : 'text-[#737373] hover:text-amber-700 hover:bg-white'
-                                                      }`}
-                                                      title="Mark Late"
-                                                    >
-                                                      L
-                                                    </button>
-                                                    <button
-                                                      onClick={() => handleAdminToggleAttendance(st.id, slotId, selectedDate, 'absent')}
-                                                      disabled={isUpdating}
-                                                      className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
-                                                        status === 'absent'
-                                                          ? 'bg-rose-600 text-white shadow-xs'
-                                                          : 'text-[#737373] hover:text-rose-700 hover:bg-white'
-                                                      }`}
-                                                      title="Mark Absent"
-                                                    >
-                                                      A
-                                                    </button>
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            );
-                                          })}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         )}
                       </div>
                     )}
