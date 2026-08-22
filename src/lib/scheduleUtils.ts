@@ -465,3 +465,77 @@ export function isSlotOngoing(
   return pktnow.totalMins >= startMins && pktnow.totalMins < endMins;
 }
 
+export interface RatingSessionTarget {
+  slot: ClassSlot;
+  sessionDate: string; // YYYY-MM-DD
+  isOngoing: boolean;
+  statusLabel: string;
+}
+
+/**
+ * Finds either the currently in-session class or the most recently completed class slot
+ * for student teacher attendance rating.
+ */
+export function findActiveOrRecentSlotForRating(
+  slots: ClassSlot[],
+  pktnow: PKTNow = getPKTNow()
+): RatingSessionTarget | null {
+  const active = slots.filter(s => !s.is_cancelled && s.day_of_week != null && s.start_time && s.end_time);
+  if (active.length === 0) return null;
+
+  // 1. Check if any class is currently ONGOING today
+  const todaySlots = active.filter(s => s.day_of_week === pktnow.dayIndex);
+  const ongoing = todaySlots.find(s => {
+    const startMins = timeStrToMins(s.start_time!);
+    const endMins = timeStrToMins(s.end_time!);
+    return startMins <= pktnow.totalMins && pktnow.totalMins < endMins;
+  });
+
+  if (ongoing) {
+    return {
+      slot: ongoing,
+      sessionDate: pktnow.dateString,
+      isOngoing: true,
+      statusLabel: 'Live In Session',
+    };
+  }
+
+  // 2. Check if any class has COMPLETED earlier today
+  const completedToday = todaySlots
+    .filter(s => timeStrToMins(s.end_time!) <= pktnow.totalMins)
+    .sort((a, b) => timeStrToMins(b.end_time!) - timeStrToMins(a.end_time!));
+
+  if (completedToday.length > 0) {
+    return {
+      slot: completedToday[0],
+      sessionDate: pktnow.dateString,
+      isOngoing: false,
+      statusLabel: 'Completed Today',
+    };
+  }
+
+  // 3. Look back over the past 7 days for the most recently completed class
+  for (let daysAgo = 1; daysAgo <= 7; daysAgo++) {
+    const targetDayIndex = (pktnow.dayIndex - daysAgo + 7) % 7;
+    const pastSlots = active
+      .filter(s => s.day_of_week === targetDayIndex)
+      .sort((a, b) => timeStrToMins(b.end_time!) - timeStrToMins(a.end_time!));
+
+    if (pastSlots.length > 0) {
+      const [year, month, day] = pktnow.dateString.split('-').map(Number);
+      const targetDate = new Date(Date.UTC(year, month - 1, day - daysAgo));
+      const pastDate = targetDate.toISOString().slice(0, 10);
+      const dayName = DAYS_OF_WEEK_SHORT[targetDayIndex];
+      return {
+        slot: pastSlots[0],
+        sessionDate: pastDate,
+        isOngoing: false,
+        statusLabel: `Completed (${dayName}, ${pastDate})`,
+      };
+    }
+  }
+
+  return null;
+}
+
+

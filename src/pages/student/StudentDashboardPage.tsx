@@ -13,12 +13,14 @@ import {
   getOfferingsForStudent,
   getAttendanceForStudent,
   computeAttendanceStreak,
-  markStudentSelfAttendance
+  markStudentSelfAttendance,
+  getTeacherAttendanceRatingsForStudent
 } from '../../lib/db';
+import TeacherAttendanceRatingCard from '../../components/student/TeacherAttendanceRatingCard';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
-import type { ClassSlot, Note, Attendance } from '../../types';
+import type { ClassSlot, Note, Attendance, TeacherAttendanceRating } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, calcDuration, getLinkAvailabilityStatus, isSlotOngoing
@@ -448,10 +450,12 @@ const StudentDashboardPage: React.FC = () => {
   const cachedNotes = studentId ? pageCache.get<Note[]>('student_notes', studentId) : null;
   const cachedAttendance = studentId ? pageCache.get<Attendance[]>('student_attendance', studentId) : null;
   const cachedOfferings = studentId ? pageCache.get<any[]>('student_offerings', studentId) : null;
+  const cachedRatings = studentId ? pageCache.get<TeacherAttendanceRating[]>('student_teacher_ratings', studentId) : null;
 
   const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>(cachedSlots || []);
   const [studentNotes, setStudentNotes] = useState<Note[]>(cachedNotes || []);
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(cachedAttendance || []);
+  const [teacherRatings, setTeacherRatings] = useState<TeacherAttendanceRating[]>(cachedRatings || []);
   const [offerings, setOfferings] = useState<any[]>(cachedOfferings || []);
   const [loading, setLoading] = useState(!cachedOfferings || cachedOfferings.length === 0);
 
@@ -464,10 +468,12 @@ const StudentDashboardPage: React.FC = () => {
     const initNotes = pageCache.get<Note[]>('student_notes', studentId);
     const initAtt = pageCache.get<Attendance[]>('student_attendance', studentId);
     const initOffs = pageCache.get<any[]>('student_offerings', studentId);
+    const initRats = pageCache.get<TeacherAttendanceRating[]>('student_teacher_ratings', studentId);
 
     if (initSlots && scheduleSlots.length === 0 && mounted) setScheduleSlots(initSlots);
     if (initNotes && studentNotes.length === 0 && mounted) setStudentNotes(initNotes);
     if (initAtt && attendanceRecords.length === 0 && mounted) setAttendanceRecords(initAtt);
+    if (initRats && teacherRatings.length === 0 && mounted) setTeacherRatings(initRats);
     if (initOffs && offerings.length === 0 && mounted) setOfferings(initOffs);
 
     // Background fetch + diff update
@@ -486,6 +492,14 @@ const StudentDashboardPage: React.FC = () => {
         if (!currentAtt || JSON.stringify(currentAtt) !== JSON.stringify(att)) {
           setAttendanceRecords(att);
           pageCache.set('student_attendance', att, studentId);
+        }
+      }),
+      getTeacherAttendanceRatingsForStudent(studentId).then((rats) => {
+        if (!mounted) return;
+        const currentRats = pageCache.get<TeacherAttendanceRating[]>('student_teacher_ratings', studentId);
+        if (!currentRats || JSON.stringify(currentRats) !== JSON.stringify(rats)) {
+          setTeacherRatings(rats);
+          pageCache.set('student_teacher_ratings', rats, studentId);
         }
       }),
       getOfferingsForStudent(studentId).then(async (offs) => {
@@ -538,6 +552,13 @@ const StudentDashboardPage: React.FC = () => {
     pageCache.set('student_attendance', att, studentId);
   };
 
+  const fetchTeacherRatings = async () => {
+    if (!studentId) return;
+    const rats = await getTeacherAttendanceRatingsForStudent(studentId);
+    setTeacherRatings(rats);
+    pageCache.set('student_teacher_ratings', rats, studentId);
+  };
+
   useRealtimeTable({
     table: 'class_slots',
     debounceMs: 2000,
@@ -554,6 +575,12 @@ const StudentDashboardPage: React.FC = () => {
     table: 'attendance',
     debounceMs: 500,
     onAny: fetchAttendance
+  });
+
+  useRealtimeTable({
+    table: 'teacher_attendance_ratings',
+    debounceMs: 500,
+    onAny: fetchTeacherRatings
   });
 
   const recentNotes = studentNotes.slice(0, 3);
@@ -716,6 +743,29 @@ const StudentDashboardPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* ── Teacher Attendance Verification Card ── */}
+      {!loading && studentId && (
+        <TeacherAttendanceRatingCard
+          slots={scheduleSlots}
+          studentId={studentId}
+          ratings={teacherRatings}
+          onRatingSubmitted={(newRating) => {
+            setTeacherRatings(prev => [
+              newRating,
+              ...prev.filter(r => !(r.slot_id === newRating.slot_id && r.session_date === newRating.session_date))
+            ]);
+            pageCache.set(
+              'student_teacher_ratings',
+              [
+                newRating,
+                ...teacherRatings.filter(r => !(r.slot_id === newRating.slot_id && r.session_date === newRating.session_date))
+              ],
+              studentId
+            );
+          }}
+        />
+      )}
 
       {/* ── Today's Classes + Recent Notes ── */}
       <div className={`${isMobile ? 'flex flex-col gap-5' : 'grid lg:grid-cols-2 gap-5'}`}>

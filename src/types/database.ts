@@ -175,6 +175,23 @@ export interface Announcement {
   creator?: Profile;
 }
 
+// ─── teacher_attendance_ratings ──────────────
+export type TeacherAttendanceRatingVote = 'present' | 'absent';
+
+export interface TeacherAttendanceRating {
+  id: string;
+  student_id: string;
+  slot_id: string;
+  teacher_id: string | null;
+  session_date: string; // YYYY-MM-DD
+  rating: TeacherAttendanceRatingVote;
+  created_at: string;
+  // joined
+  student?: Profile;
+  teacher?: Teacher;
+  slot?: ClassSlot;
+}
+
 // ─── roster ──────────────────────────────────
 export interface RosterEntry {
   id: string;
@@ -278,6 +295,11 @@ export interface Database {
         Row: Announcement;
         Insert: Omit<Announcement, 'id' | 'created_at' | 'class' | 'stream' | 'creator'> & { id?: string; created_at?: string };
         Update: Partial<Omit<Announcement, 'id' | 'created_at' | 'class' | 'stream' | 'creator'>>;
+      };
+      teacher_attendance_ratings: {
+        Row: TeacherAttendanceRating;
+        Insert: Omit<TeacherAttendanceRating, 'id' | 'created_at' | 'student' | 'teacher' | 'slot'> & { id?: string; created_at?: string };
+        Update: Partial<Omit<TeacherAttendanceRating, 'id' | 'created_at' | 'student' | 'teacher' | 'slot'>>;
       };
     };
   };

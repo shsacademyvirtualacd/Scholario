@@ -13,6 +13,7 @@ import type {
   Profile, Teacher, ClassOffering, ClassSlot,
   Enrollment, Attendance, AttendanceStatus, Note, RosterEntry,
   BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
+  TeacherAttendanceRating, TeacherAttendanceRatingVote,
 } from '../types';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
@@ -917,6 +918,72 @@ export async function getOverallAttendanceStats(): Promise<{
       lateCount: 0,
       lowAttendanceStudents: [],
     };
+  }
+}
+
+// =============================================================================
+// TEACHER ATTENDANCE RATINGS (Student-side Vote & Admin Aggregation)
+// =============================================================================
+
+/** Student: Fetch all teacher attendance rating votes cast by this student */
+export async function getTeacherAttendanceRatingsForStudent(studentId: string): Promise<TeacherAttendanceRating[]> {
+  try {
+    const { data, error } = await supabase
+      .from('teacher_attendance_ratings')
+      .select('*')
+      .eq('student_id', studentId);
+    if (error) {
+      console.warn('[getTeacherAttendanceRatingsForStudent] error:', error);
+      return [];
+    }
+    return (data as TeacherAttendanceRating[]) || [];
+  } catch (err) {
+    console.warn('[getTeacherAttendanceRatingsForStudent] catch:', err);
+    return [];
+  }
+}
+
+/** Student: Submit a locked vote on teacher attendance for a specific session */
+export async function submitTeacherAttendanceRating(
+  studentId: string,
+  slotId: string,
+  sessionDate: string,
+  teacherId: string | null,
+  rating: TeacherAttendanceRatingVote
+): Promise<TeacherAttendanceRating> {
+  const { data, error } = await (supabase as any)
+    .from('teacher_attendance_ratings')
+    .insert({
+      student_id: studentId,
+      slot_id: slotId,
+      session_date: sessionDate,
+      teacher_id: teacherId,
+      rating,
+    })
+    .select()
+    .single();
+
+  return throwOnError(data, error, 'submitTeacherAttendanceRating');
+}
+
+/** Admin: Fetch all teacher attendance ratings with joined student, teacher, slot, offering data */
+export async function getAllTeacherAttendanceRatings(): Promise<TeacherAttendanceRating[]> {
+  try {
+    const { data, error } = await supabase
+      .from('teacher_attendance_ratings')
+      .select('*, student:profiles(id, full_name, phone), teacher:teachers(id, full_name), slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))')
+      .order('session_date', { ascending: false });
+
+    const rows = throwOnError(data, error, 'getAllTeacherAttendanceRatings') || [];
+    return rows.map((r: any) => {
+      if (r.slot) {
+        r.slot.offering = mapOffering(r.slot.offering);
+      }
+      return r;
+    });
+  } catch (err) {
+    console.warn('[getAllTeacherAttendanceRatings] error:', err);
+    return [];
   }
 }
 

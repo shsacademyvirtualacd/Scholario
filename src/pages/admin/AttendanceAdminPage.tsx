@@ -5,8 +5,9 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import {
   ClipboardCheck, Search, CheckCircle2,
   Clock, AlertTriangle, ChevronDown, ChevronRight, Download, RefreshCw,
-  GraduationCap, ShieldCheck, X, Users, BookOpen, Layers
+  GraduationCap, ShieldCheck, X, Users, BookOpen, Layers, UserCheck
 } from 'lucide-react';
+import TeacherAttendanceRatingsAdminView from '../../components/admin/TeacherAttendanceRatingsAdminView';
 import {
   getAllTeachers,
   getAllOfferings,
@@ -16,14 +17,15 @@ import {
   getAllAttendance,
   getOverallAttendanceStats,
   recordAttendance,
-  upsertAttendanceBatch
+  upsertAttendanceBatch,
+  getAllTeacherAttendanceRatings
 } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import {
   DAYS_OF_WEEK_SHORT,
   formatTime12h
 } from '../../lib/scheduleUtils';
-import type { Teacher, ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus, Enrollment } from '../../types';
+import type { Teacher, ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus, Enrollment, TeacherAttendanceRating } from '../../types';
 import { toast } from 'sonner';
 
 export const AttendanceAdminPage: React.FC = () => {
@@ -34,6 +36,7 @@ export const AttendanceAdminPage: React.FC = () => {
   const [students, setStudents] = useState<Profile[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
+  const [teacherRatings, setTeacherRatings] = useState<TeacherAttendanceRating[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<{
     attendanceRate: number;
@@ -66,7 +69,7 @@ export const AttendanceAdminPage: React.FC = () => {
   const [expandedTeacherIds, setExpandedTeacherIds] = useState<Set<string>>(new Set());
   const [expandedClassIds, setExpandedClassIds] = useState<Set<string>>(new Set());
   const [hideEmptyClasses, setHideEmptyClasses] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'by_teacher' | 'all_records' | 'low_attendance'>('by_teacher');
+  const [activeTab, setActiveTab] = useState<'by_teacher' | 'all_records' | 'low_attendance' | 'teacher_ratings'>('by_teacher');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Auto-filter and expand if classId param is provided in route
@@ -88,7 +91,7 @@ export const AttendanceAdminPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tList, oList, sList, stList, eList, attList, overallStats] = await Promise.all([
+      const [tList, oList, sList, stList, eList, attList, overallStats, ratingsList] = await Promise.all([
         getAllTeachers(),
         getAllOfferings(),
         getAllSlots(),
@@ -96,6 +99,7 @@ export const AttendanceAdminPage: React.FC = () => {
         getAllEnrollments(),
         getAllAttendance(),
         getOverallAttendanceStats(),
+        getAllTeacherAttendanceRatings(),
       ]);
 
       setTeachers(tList);
@@ -104,6 +108,7 @@ export const AttendanceAdminPage: React.FC = () => {
       setStudents(stList);
       setEnrollments(eList);
       setAttendanceRecords(attList);
+      setTeacherRatings(ratingsList);
       setStats(overallStats);
 
       // Collapsed by default unless a specific class was requested via URL
@@ -137,6 +142,15 @@ export const AttendanceAdminPage: React.FC = () => {
       ]);
       setAttendanceRecords(attList);
       setStats(overallStats);
+    }
+  });
+
+  useRealtimeTable({
+    table: 'teacher_attendance_ratings',
+    debounceMs: 1000,
+    onAny: async () => {
+      const ratingsList = await getAllTeacherAttendanceRatings();
+      setTeacherRatings(ratingsList);
     }
   });
 
@@ -447,87 +461,102 @@ export const AttendanceAdminPage: React.FC = () => {
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab('teacher_ratings')}
+          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 ml-4 ${
+            activeTab === 'teacher_ratings' ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
+          }`}
+        >
+          <UserCheck size={15} />
+          <span>Teacher Attendance Ratings ({teacherRatings.length})</span>
+          {activeTab === 'teacher_ratings' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F4C430]" />
+          )}
+        </button>
       </div>
 
-      {/* Filters Toolbar */}
-      <div className="card mb-6 p-4 bg-white border border-[#E5E5E5] rounded-xl shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {/* Session Date */}
-          <div>
-            <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Session Date</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
-            />
-          </div>
-
-          {/* Teacher Selector */}
-          <div>
-            <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Teacher</label>
-            <select
-              value={selectedTeacherId}
-              onChange={(e) => setSelectedTeacherId(e.target.value)}
-              className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
-            >
-              <option value="all">All Teachers ({teachers.length})</option>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Subject Selector */}
-          <div>
-            <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Subject</label>
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
-            >
-              <option value="all">All Subjects</option>
-              {allSubjects.map((sub) => (
-                <option key={sub} value={sub}>
-                  {sub}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
-            >
-              <option value="all">All Statuses</option>
-              <option value="present">Present Only</option>
-              <option value="late">Late Only</option>
-              <option value="absent">Absent Only</option>
-            </select>
-          </div>
-
-          {/* Search Box */}
-          <div>
-            <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Search Student</label>
-            <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#737373]" />
+      {/* Filters Toolbar for Student Attendance Tabs */}
+      {activeTab !== 'teacher_ratings' && (
+        <div className="card mb-6 p-4 bg-white border border-[#E5E5E5] rounded-xl shadow-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {/* Session Date */}
+            <div>
+              <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Session Date</label>
               <input
-                type="text"
-                placeholder="Name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden placeholder:text-[#A3A3A3]"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
               />
+            </div>
+
+            {/* Teacher Selector */}
+            <div>
+              <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Teacher</label>
+              <select
+                value={selectedTeacherId}
+                onChange={(e) => setSelectedTeacherId(e.target.value)}
+                className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
+              >
+                <option value="all">All Teachers ({teachers.length})</option>
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subject Selector */}
+            <div>
+              <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Subject</label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
+              >
+                <option value="all">All Subjects</option>
+                {allSubjects.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden"
+              >
+                <option value="all">All Statuses</option>
+                <option value="present">Present Only</option>
+                <option value="late">Late Only</option>
+                <option value="absent">Absent Only</option>
+              </select>
+            </div>
+
+            {/* Search Box */}
+            <div>
+              <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Search Student</label>
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#737373]" />
+                <input
+                  type="text"
+                  placeholder="Name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg text-[#111111] font-semibold focus:outline-hidden placeholder:text-[#A3A3A3]"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── TAB 1: TEACHER & CLASS BREAKDOWN (Compact Scannable Table Layout) ── */}
       {activeTab === 'by_teacher' && (
@@ -1271,6 +1300,19 @@ export const AttendanceAdminPage: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── TAB 4: TEACHER ATTENDANCE RATINGS ── */}
+      {activeTab === 'teacher_ratings' && (
+        <TeacherAttendanceRatingsAdminView
+          ratings={teacherRatings}
+          teachers={teachers}
+          offerings={offerings}
+          slots={slots}
+          students={students}
+          loading={loading}
+          onRefresh={fetchData}
+        />
       )}
     </AdminShell>
   );
