@@ -142,7 +142,7 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const targetModel = 'gemini-3.7-flash';
+      const targetModel = 'gemini-3.6-flash';
 
       if (isAdmin) {
         // Admin flow: Call generateContent with read-only tools
