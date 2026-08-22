@@ -175,6 +175,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="admin"><NotesManagerPage /></ProtectedRoute>}
           />
           <Route
+            path="/admin/attendance"
+            element={<ProtectedRoute requiredRole="admin"><AttendanceAdminPage /></ProtectedRoute>}
+          />
+          <Route
             path="/admin/attendance/:classId"
             element={<ProtectedRoute requiredRole="admin"><AttendanceAdminPage /></ProtectedRoute>}
           />

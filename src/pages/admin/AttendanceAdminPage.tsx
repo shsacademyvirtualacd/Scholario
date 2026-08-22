@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import {
@@ -22,6 +23,7 @@ import type { Teacher, ClassOffering, ClassSlot, Profile, Attendance, Attendance
 import { toast } from 'sonner';
 
 export const AttendanceAdminPage: React.FC = () => {
+  const { classId } = useParams<{ classId?: string }>();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [slots, setSlots] = useState<ClassSlot[]>([]);
@@ -60,6 +62,20 @@ export const AttendanceAdminPage: React.FC = () => {
   const [expandedTeacherIds, setExpandedTeacherIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'by_teacher' | 'all_records' | 'low_attendance'>('by_teacher');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Auto-filter if classId param is provided in route
+  useEffect(() => {
+    if (classId && offerings.length > 0) {
+      const matched = offerings.find(o => o.id === classId);
+      if (matched) {
+        if (matched.teacher_id) {
+          setSelectedTeacherId(matched.teacher_id);
+          setExpandedTeacherIds(new Set([matched.teacher_id]));
+        }
+        setSelectedSubject(matched.subject_name || matched.subject || 'all');
+      }
+    }
+  }, [classId, offerings]);
 
   // Fetch initial data
   const fetchData = async () => {

@@ -14,7 +14,8 @@ import {
   UserCheck,
   Coins,
   Sparkles,
-  Loader2
+  Loader2,
+  ClipboardCheck
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -32,6 +33,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard',  path: '/admin' },
+  { icon: ClipboardCheck,  label: 'Attendance', path: '/admin/attendance' },
   { icon: UserCheck,       label: 'Roster Manager', path: '/admin/roster' },
   { icon: Calendar,        label: 'Schedule',   path: '/admin/schedule' },
   { icon: GraduationCap,   label: 'Teachers',   path: '/admin/teachers' },

@@ -9,7 +9,8 @@ import {
   Menu,
   CreditCard,
   Sparkles,
-  Loader2
+  Loader2,
+  ClipboardCheck
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -28,6 +29,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/student' },
+  { icon: ClipboardCheck,  label: 'Attendance', path: '/student/attendance' },
   { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
   { icon: Calendar,        label: 'Schedule',   path: '/student/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/student/announcements' },
