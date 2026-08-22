@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase';
 import { pageCache } from './pageCache';
+import { getPKTNow } from './scheduleUtils';
 // getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
   Profile, Teacher, ClassOffering, ClassSlot,
@@ -688,65 +689,94 @@ export async function recordAttendance(params: {
   }
 }
 
-/** Compute live attendance streak metrics for a student */
+/** Helper to calculate difference in calendar days between two YYYY-MM-DD strings */
+function diffCalendarDays(dateA: string, dateB: string): number {
+  const [yA, mA, dA] = dateA.split('-').map(Number);
+  const [yB, mB, dB] = dateB.split('-').map(Number);
+  const utcA = Date.UTC(yA, mA - 1, dA);
+  const utcB = Date.UTC(yB, mB - 1, dB);
+  return Math.round((utcB - utcA) / (1000 * 60 * 60 * 24));
+}
+
+/** Compute live attendance streak metrics for a student based strictly on verified attendance */
 export function computeAttendanceStreak(records: Attendance[]): {
   currentStreak: number;
   personalBest: number;
   last7Days: boolean[];
 } {
+  const emptyResult = {
+    currentStreak: 0,
+    personalBest: 0,
+    last7Days: [false, false, false, false, false, false, false],
+  };
+
   if (!records || records.length === 0) {
-    return { currentStreak: 0, personalBest: 0, last7Days: [false, false, false, false, false, false, false] };
+    return emptyResult;
   }
 
-  const attendedDates = new Set<string>();
-  const allDatesSet = new Set<string>();
-
+  // 1. Gather all unique calendar dates with confirmed 'present' or 'late' status
+  const attendedDatesSet = new Set<string>();
   records.forEach((r) => {
     if (!r.session_date) return;
     const dateStr = r.session_date.slice(0, 10);
-    allDatesSet.add(dateStr);
     if (r.status === 'present' || r.status === 'late') {
-      attendedDates.add(dateStr);
+      attendedDatesSet.add(dateStr);
     }
   });
 
-  const sortedDates = Array.from(allDatesSet).sort();
+  const sortedAttendedDates = Array.from(attendedDatesSet).sort();
+  if (sortedAttendedDates.length === 0) {
+    return emptyResult;
+  }
+
+  // 2. Compute Personal Best: max consecutive calendar day streak across all history
+  let personalBest = 1;
+  let runningPBStreak = 1;
+  for (let i = 1; i < sortedAttendedDates.length; i++) {
+    const diff = diffCalendarDays(sortedAttendedDates[i - 1], sortedAttendedDates[i]);
+    if (diff === 1) {
+      runningPBStreak += 1;
+    } else {
+      runningPBStreak = 1;
+    }
+    if (runningPBStreak > personalBest) {
+      personalBest = runningPBStreak;
+    }
+  }
+
+  // 3. Compute Current Streak: consecutive calendar days active ending TODAY or YESTERDAY
+  const pkt = getPKTNow();
+  const todayStr = pkt.dateString || new Date().toISOString().slice(0, 10);
+  const lastAttendedDate = sortedAttendedDates[sortedAttendedDates.length - 1];
+  const daysSinceLastAttended = diffCalendarDays(lastAttendedDate, todayStr);
+
   let currentStreak = 0;
-  let personalBest = 0;
-  let tempStreak = 0;
-
-  for (let i = 0; i < sortedDates.length; i++) {
-    const d = sortedDates[i];
-    if (attendedDates.has(d)) {
-      tempStreak += 1;
-      if (tempStreak > personalBest) personalBest = tempStreak;
-    } else {
-      tempStreak = 0;
+  // If the last attended session was today (0) or yesterday (1), the streak is alive!
+  if (daysSinceLastAttended >= 0 && daysSinceLastAttended <= 1) {
+    let streakCount = 1;
+    for (let i = sortedAttendedDates.length - 1; i > 0; i--) {
+      const diff = diffCalendarDays(sortedAttendedDates[i - 1], sortedAttendedDates[i]);
+      if (diff === 1) {
+        streakCount += 1;
+      } else {
+        break;
+      }
     }
+    currentStreak = streakCount;
+  } else {
+    currentStreak = 0; // Streak lapsed (no attendance today or yesterday)
   }
 
-  let streakCount = 0;
-  for (let i = sortedDates.length - 1; i >= 0; i--) {
-    const d = sortedDates[i];
-    if (attendedDates.has(d)) {
-      streakCount += 1;
-    } else {
-      break;
-    }
-  }
-  currentStreak = streakCount;
-
-  const now = new Date();
-  const currentDayIndex = (now.getDay() + 6) % 7; // 0 = Mon ... 6 = Sun
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - currentDayIndex);
-
+  // 4. Compute last7Days for the current week (Monday=0 ... Sunday=6) in PKT timezone
+  const [tYear, tMonth, tDay] = todayStr.split('-').map(Number);
+  const currentDayIndex = pkt.dayIndex; // 0=Mon ... 6=Sun
   const last7Days: boolean[] = [];
+
   for (let i = 0; i < 7; i++) {
-    const dt = new Date(monday);
-    dt.setDate(monday.getDate() + i);
-    const dtStr = dt.toISOString().slice(0, 10);
-    last7Days.push(attendedDates.has(dtStr));
+    const offset = i - currentDayIndex;
+    const targetDate = new Date(Date.UTC(tYear, tMonth - 1, tDay + offset));
+    const targetDateStr = targetDate.toISOString().slice(0, 10);
+    last7Days.push(attendedDatesSet.has(targetDateStr));
   }
 
   return { currentStreak, personalBest, last7Days };

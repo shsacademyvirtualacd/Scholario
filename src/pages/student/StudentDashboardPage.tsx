@@ -638,14 +638,24 @@ const StudentDashboardPage: React.FC = () => {
             <div className="stat-card flex flex-col justify-between min-h-[140px] interactive relative">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Day Streak</span>
-                <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  🔥 Active
-                </span>
+                {streakMetrics.currentStreak > 0 ? (
+                  <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    🔥 Active
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-gray-100 text-[#737373] border border-gray-200 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    ○ Inactive
+                  </span>
+                )}
               </div>
               <div>
                 <div className="stat-value">{streakMetrics.currentStreak} {streakMetrics.currentStreak === 1 ? 'day' : 'days'}</div>
                 <div className="stat-label">
-                  {streakMetrics.currentStreak > 0 ? 'Consistent attendance!' : 'Attend today to start streak'}
+                  {streakMetrics.currentStreak === 0
+                    ? 'Start your streak today!'
+                    : streakMetrics.currentStreak === 1
+                    ? 'Streak started! Keep it going'
+                    : 'Consistent attendance!'}
                 </div>
               </div>
               <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
@@ -659,7 +669,9 @@ const StudentDashboardPage: React.FC = () => {
                     />
                   ))}
                 </div>
-                <span className="text-[10px] text-[#737373] font-bold">PB: {streakMetrics.personalBest}d</span>
+                <span className="text-[10px] text-[#737373] font-bold">
+                  {streakMetrics.personalBest > 0 ? `PB: ${streakMetrics.personalBest}d` : 'PB: —'}
+                </span>
               </div>
             </div>
             {/* Academic Program */}

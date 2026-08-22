@@ -46,7 +46,7 @@ export const AttendancePage: React.FC = () => {
   const presentCount = records.filter(r => r.status === 'present' || r.status === 'late').length;
   const absentCount = records.filter(r => r.status === 'absent').length;
   const lateCount = records.filter(r => r.status === 'late').length;
-  const attendanceRate = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 100;
+  const attendanceRate = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
 
   // Filter subjects for selector
   const subjectList = Array.from(new Set(records.map(r => r.subject || (r.slot?.offering as any)?.subject_name || (r.slot?.offering as any)?.subject?.name || 'General').filter(Boolean)));
@@ -72,8 +72,8 @@ export const AttendancePage: React.FC = () => {
             Attendance Rate
           </span>
           <div className="flex items-baseline gap-2">
-            <span className={`text-2xl font-black ${attendanceRate >= 85 ? 'text-emerald-600' : attendanceRate >= 75 ? 'text-amber-600' : 'text-rose-600'}`}>
-              {loading ? '—' : `${attendanceRate}%`}
+            <span className={`text-2xl font-black ${totalClasses === 0 ? 'text-gray-400' : attendanceRate >= 85 ? 'text-emerald-600' : attendanceRate >= 75 ? 'text-amber-600' : 'text-rose-600'}`}>
+              {loading ? '—' : totalClasses === 0 ? '—' : `${attendanceRate}%`}
             </span>
             <span className="text-xs text-[#737373] font-bold">
               {presentCount}/{totalClasses || 0} classes
@@ -130,7 +130,7 @@ export const AttendancePage: React.FC = () => {
           </div>
           <div className="flex items-center justify-between mt-3 text-[11px] text-[#737373] font-semibold">
             <span>Personal Best</span>
-            <span className="font-bold text-[#111111]">{streakMetrics.personalBest} days</span>
+            <span className="font-bold text-[#111111]">{streakMetrics.personalBest > 0 ? `${streakMetrics.personalBest} days` : '—'}</span>
           </div>
         </div>
       </div>
