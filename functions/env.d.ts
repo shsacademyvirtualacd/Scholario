@@ -7,7 +7,4 @@ export interface Env {
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_ANON_KEY?: string;
   GEMINI_API_KEY?: string;
-  GEMINI_API_KEY_2?: string;
-  GEMINI_API_KEY_3?: string;
-  GEMINI_API_KEY_4?: string;
 }

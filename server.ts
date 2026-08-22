@@ -3,14 +3,17 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
-function getCandidateGeminiKeys(): string[] {
-  const keys = [
-    process.env.GEMINI_API_KEY,
-    process.env.GEMINI_API_KEY_2,
-    process.env.GEMINI_API_KEY_3,
-    process.env.GEMINI_API_KEY_4,
-  ];
-  return keys.filter((k): k is string => typeof k === 'string' && k.trim().length > 0);
+let geminiClient: GoogleGenAI | null = null;
+
+function getGeminiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+  if (!geminiClient) {
+    geminiClient = new GoogleGenAI({ apiKey });
+  }
+  return geminiClient;
 }
 
 async function startServer() {
@@ -33,7 +36,7 @@ async function startServer() {
         return res.status(400).json({ error: 'Messages array is required' });
       }
 
-      const candidateKeys = getCandidateGeminiKeys();
+      const client = getGeminiClient();
 
       // Build context-aware system instruction
       const roleDescription =
@@ -56,7 +59,7 @@ Key Guidelines:
 4. When asked for study tips or note summaries, structure them with key concepts, definitions, formulas, and common exam pitfalls.
 5. If the user asks who you are, introduce yourself as Sage, the AI academic study companion for Scholario & SHS Virtual Academy.`;
 
-      if (candidateKeys.length === 0) {
+      if (!client) {
         // Fallback intelligent simulation if no GEMINI_API_KEY is set in the environment
         const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
         return res.json({
@@ -70,29 +73,16 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      let lastError: any = null;
-      for (let i = 0; i < candidateKeys.length; i++) {
-        try {
-          const ai = new GoogleGenAI({ apiKey: candidateKeys[i] });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.7-flash',
-            contents,
-            config: {
-              systemInstruction,
-            },
-          });
-
-          const replyText = response.text || 'I could not generate a response at this moment. Please try again.';
-          return res.json({ reply: replyText });
-        } catch (keyErr: any) {
-          lastError = keyErr;
-          console.warn(`[Sage Chat Server] Key #${i + 1} failed: ${keyErr?.message || keyErr}. Retrying next key...`);
-        }
-      }
-
-      return res.status(500).json({
-        error: lastError?.message || 'All configured Gemini API keys failed or exceeded quota.',
+      const response = await client.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents,
+        config: {
+          systemInstruction,
+        },
       });
+
+      const replyText = response.text || 'I could not generate a response at this moment. Please try again.';
+      return res.json({ reply: replyText });
     } catch (err: any) {
       console.error('[Sage Chat API Error]:', err);
       return res.status(500).json({

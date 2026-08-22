@@ -65,14 +65,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       );
     }
 
-    // Collect all candidate Gemini API keys in priority order
-    const candidateKeys: string[] = [
-      env?.GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined),
-      env?.GEMINI_API_KEY_2 || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY_2 : undefined),
-      env?.GEMINI_API_KEY_3 || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY_3 : undefined),
-      env?.GEMINI_API_KEY_4 || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY_4 : undefined),
-      (env as any)?.GOOGLE_GENAI_API_KEY,
-    ].filter((k): k is string => typeof k === 'string' && k.trim().length > 0);
+    // Retrieve Gemini API Key from Cloudflare environment secrets or process env
+    const apiKey =
+      env?.GEMINI_API_KEY ||
+      (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
 
     // Build context-aware system instruction
     const roleDescription =
@@ -95,8 +91,8 @@ Key Guidelines:
 4. When asked for study tips or note summaries, structure them with key concepts, definitions, formulas, and common exam pitfalls.
 5. If the user asks who you are, introduce yourself as Sage, the AI academic study companion for Scholario & SHS Virtual Academy.`;
 
-    if (candidateKeys.length === 0) {
-      // Graceful fallback when no GEMINI_API_KEY secrets are set in Cloudflare dashboard
+    if (!apiKey) {
+      // Graceful fallback when GEMINI_API_KEY secret is not set in Cloudflare dashboard
       const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
       return new Response(
         JSON.stringify({
@@ -112,52 +108,23 @@ Key Guidelines:
       parts: [{ text: m.content }],
     }));
 
-    // Sequential fallback strategy: try each key in order until one succeeds
-    let lastError: any = null;
+    // Initialize GoogleGenAI SDK and call gemini-3.7-flash
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.7-flash',
+      contents,
+      config: {
+        systemInstruction,
+      },
+    });
 
-    for (let i = 0; i < candidateKeys.length; i++) {
-      const currentKey = candidateKeys[i];
-      const keyLabel = `Key #${i + 1}`;
+    const replyText =
+      response.text || 'I could not generate a response at this moment. Please try again.';
 
-      try {
-        const ai = new GoogleGenAI({ apiKey: currentKey });
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents,
-          config: {
-            systemInstruction,
-          },
-        });
-
-        const replyText =
-          response.text || 'I could not generate a response at this moment. Please try again.';
-
-        return new Response(JSON.stringify({ reply: replyText }), {
-          status: 200,
-          headers: CORS_HEADERS,
-        });
-      } catch (keyErr: any) {
-        lastError = keyErr;
-        console.warn(
-          `[Sage Chat Fallback] ${keyLabel} failed with error: ${keyErr?.message || keyErr}. ` +
-          (i < candidateKeys.length - 1
-            ? `Attempting fallback with Key #${i + 2}...`
-            : 'All configured Gemini API keys have been exhausted.')
-        );
-      }
-    }
-
-    // If all candidate keys failed (quota/rate-limits/network)
-    console.error('[Cloudflare Pages Sage Chat] All API keys failed. Last error:', lastError);
-    return new Response(
-      JSON.stringify({
-        error:
-          lastError?.message ||
-          'All configured Gemini API keys exceeded quota or encountered errors. Please try again in a few moments.',
-      }),
-      { status: 500, headers: CORS_HEADERS }
-    );
+    return new Response(JSON.stringify({ reply: replyText }), {
+      status: 200,
+      headers: CORS_HEADERS,
+    });
   } catch (err: any) {
     console.error('[Cloudflare Pages Sage Chat Function Error]:', err);
     return new Response(
