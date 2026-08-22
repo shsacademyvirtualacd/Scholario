@@ -18,6 +18,9 @@ import type { ClassSlot } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+export const DAYS_OF_WEEK_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+export const DAYS_OF_WEEK_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
 /** Gap threshold in minutes. Classes beyond this are "end-of-day" mode. */
 const BUFFER_MINS = 4 * 60; // 4 hours
 
@@ -378,5 +381,72 @@ export function getLinkAvailabilityStatus(
     status: 'ended',
     message: 'Class session ended',
   };
+}
+
+// ─── Dynamic Attendance Session & Day Helpers ─────────────────────────────────
+
+/**
+ * Calculates the calendar date string (YYYY-MM-DD) for a given target day of week (0=Mon...6=Sun).
+ * If targetDayIndex matches today's day of week, returns today's date in PKT/device timezone.
+ * If targetDayIndex is in the future this week or rolls over to next week, calculates the exact upcoming date.
+ */
+export function getClosestDateForDayOfWeek(
+  targetDayIndex: number,
+  basePktNow: PKTNow = getPKTNow()
+): string {
+  const currentDayIndex = basePktNow.dayIndex;
+  let daysOffset = targetDayIndex - currentDayIndex;
+  if (daysOffset < 0) {
+    daysOffset += 7;
+  }
+
+  // Parse today's base date in YYYY-MM-DD
+  const [year, month, day] = basePktNow.dateString.split('-').map(Number);
+  const targetDate = new Date(Date.UTC(year, month - 1, day + daysOffset));
+  return targetDate.toISOString().slice(0, 10);
+}
+
+/**
+ * Given a list of class slots for a subject offering:
+ * 1. Checks if any slot is scheduled TODAY (day_of_week === pktnow.dayIndex).
+ *    If so, returns that slot and today's date.
+ * 2. If no slot today, finds the closest upcoming slot in the schedule cycle,
+ *    and calculates its upcoming calendar date.
+ */
+export function findBestSlotForOffering(
+  slots: ClassSlot[],
+  pktnow: PKTNow = getPKTNow()
+): { slot: ClassSlot | null; sessionDate: string } {
+  const activeSlots = slots.filter(s => !s.is_cancelled && s.day_of_week != null);
+  if (activeSlots.length === 0) {
+    return { slot: null, sessionDate: pktnow.dateString };
+  }
+
+  // 1. Check for a slot today
+  const todaySlots = activeSlots.filter(s => s.day_of_week === pktnow.dayIndex);
+  if (todaySlots.length > 0) {
+    // If there's an ongoing slot or earliest slot today
+    const upcomingToday = todaySlots
+      .filter(s => s.start_time && timeStrToMins(s.start_time) >= pktnow.totalMins - 60)
+      .sort((a, b) => timeStrToMins(a.start_time || '') - timeStrToMins(b.start_time || ''));
+
+    const chosen = upcomingToday.length > 0 ? upcomingToday[0] : todaySlots[0];
+    return { slot: chosen, sessionDate: pktnow.dateString };
+  }
+
+  // 2. No slot today — find the nearest upcoming scheduled slot
+  const sortedUpcoming = [...activeSlots].map(slot => {
+    const day = slot.day_of_week ?? 0;
+    let daysAhead = day - pktnow.dayIndex;
+    if (daysAhead <= 0) daysAhead += 7;
+    return { slot, daysAhead, startMins: timeStrToMins(slot.start_time || '00:00') };
+  }).sort((a, b) => {
+    if (a.daysAhead !== b.daysAhead) return a.daysAhead - b.daysAhead;
+    return a.startMins - b.startMins;
+  });
+
+  const best = sortedUpcoming[0];
+  const sessionDate = getClosestDateForDayOfWeek(best.slot.day_of_week ?? 0, pktnow);
+  return { slot: best.slot, sessionDate };
 }
 

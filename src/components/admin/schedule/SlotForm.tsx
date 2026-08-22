@@ -31,6 +31,7 @@ const DAYS = [
   { value: 3, label: 'Thursday' },
   { value: 4, label: 'Friday' },
   { value: 5, label: 'Saturday' },
+  { value: 6, label: 'Sunday' },
 ];
 
 export const SlotForm: React.FC<SlotFormProps> = ({

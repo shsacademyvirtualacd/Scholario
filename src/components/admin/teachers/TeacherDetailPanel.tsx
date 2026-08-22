@@ -7,7 +7,7 @@ interface TeacherDetailPanelProps {
   teacher: Teacher;
 }
 
-const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher }) => {
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);

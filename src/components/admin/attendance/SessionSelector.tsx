@@ -1,5 +1,6 @@
 import React from 'react';
 import { Calendar, BookOpen } from 'lucide-react';
+import { DAYS_OF_WEEK_FULL, formatTime12h, calcDuration } from '../../../lib/scheduleUtils';
 
 interface SessionSelectorProps {
   slots: any[];
@@ -9,8 +10,6 @@ interface SessionSelectorProps {
   onSelectDate: (date: string) => void;
 }
 
-const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 export const SessionSelector: React.FC<SessionSelectorProps> = ({
   slots,
   selectedSlotId,
@@ -18,16 +17,8 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
   selectedDate,
   onSelectDate,
 }) => {
-  const formatTime = (timeStr: string) => {
-    if (!timeStr) return '';
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
-  };
-
   return (
-    <div className="card bg-white border border-[#E5E5E5] p-5 flex flex-col md:flex-row items-stretch md:items-center gap-4 shadow-sm interactive">
+    <div className="card bg-white border border-[#E5E5E5] p-5 flex flex-col md:flex-row items-stretch md:items-center gap-4 shadow-xs interactive">
       
       {/* Slot Selector Dropdown */}
       <div className="flex-1 space-y-1">
@@ -42,15 +33,17 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
         >
           <option value="" disabled>Select a scheduled class offering...</option>
           {slots.map((slot) => {
-            const subject = slot.offering?.subject || 'Class';
+            const subject = slot.offering?.subject_name || slot.offering?.subject || 'Class';
             const teacherName = slot.offering?.teacher?.full_name || 'Staff';
-            const dayName = DAYS_NAME[slot.day_of_week];
+            const dayName = DAYS_OF_WEEK_FULL[slot.day_of_week] || 'Day';
             const grade = slot.offering?.grade || '';
             const board = slot.offering?.board?.toUpperCase() || '';
+            const timeStr = `${formatTime12h(slot.start_time)} - ${formatTime12h(slot.end_time)}`;
+            const dur = calcDuration(slot.start_time, slot.end_time);
 
             return (
               <option key={slot.id} value={slot.id}>
-                {subject} (Gr. {grade} - {board}) · {dayName} at {formatTime(slot.start_time)} (Taught by {teacherName})
+                {subject} (Gr. {grade} {board}) · {dayName} {timeStr} {dur ? `(${dur})` : ''} · {teacherName}
               </option>
             );
           })}

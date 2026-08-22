@@ -20,7 +20,8 @@ const DAYS_OF_WEEK = [
   { label: 'Wednesday', index: 2 },
   { label: 'Thursday', index: 3 },
   { label: 'Friday', index: 4 },
-  { label: 'Saturday', index: 5 }
+  { label: 'Saturday', index: 5 },
+  { label: 'Sunday', index: 6 }
 ];
 
 export const TeacherSchedulePage: React.FC = () => {
@@ -41,10 +42,10 @@ export const TeacherSchedulePage: React.FC = () => {
     const urlDay = searchParams.get('day');
     if (urlDay !== null) {
       const parsed = parseInt(urlDay, 10);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 5) return parsed;
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 6) return parsed;
     }
     const todayIdx = getPKTNow().dayIndex;
-    return todayIdx <= 5 ? todayIdx : 0;
+    return todayIdx <= 6 ? todayIdx : 0;
   };
 
   const [activeDay, setActiveDay] = useState<number>(getInitialDay());

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import TeacherShell from '../../components/teacher/TeacherShell';
+import AttendanceSessionPicker from '../../components/teacher/AttendanceSessionPicker';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
@@ -22,7 +23,7 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration, getLinkAvailabilityStatus
+  formatTime12h, calcDuration, getLinkAvailabilityStatus, findBestSlotForOffering
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -350,19 +351,54 @@ export const TeacherDashboardPage: React.FC = () => {
   const [teacherAttendance, setTeacherAttendance] = useState<Attendance[]>([]);
   const [savingAttendanceId, setSavingAttendanceId] = useState<string | null>(null);
 
-  // Find slot for selected offering
-  const offeringSlots = allSlots.filter(s => s.offering_id === selectedOfferingId || (s.offering as any)?.id === selectedOfferingId);
+  // Dynamically find and sort slots for the selected offering
+  const offeringSlots = useMemo(() => {
+    return allSlots
+      .filter(s => s.offering_id === selectedOfferingId || (s.offering as any)?.id === selectedOfferingId)
+      .sort((a, b) => {
+        const dayA = a.day_of_week ?? 0;
+        const dayB = b.day_of_week ?? 0;
+        if (dayA !== dayB) return dayA - dayB;
+        return (a.start_time || '').localeCompare(b.start_time || '');
+      });
+  }, [allSlots, selectedOfferingId]);
+
   const [selectedSlotId, setSelectedSlotId] = useState<string>('');
 
+  // When offering or slots change: default to today's session if one exists; otherwise next upcoming session!
   useEffect(() => {
     if (offeringSlots.length > 0) {
-      if (!selectedSlotId || !offeringSlots.some(s => s.id === selectedSlotId)) {
-        setSelectedSlotId(offeringSlots[0].id);
+      const exists = offeringSlots.some(s => s.id === selectedSlotId);
+      if (!selectedSlotId || !exists) {
+        const pktnow = getPKTNow();
+        const best = findBestSlotForOffering(offeringSlots, pktnow);
+        if (best.slot) {
+          setSelectedSlotId(best.slot.id);
+          setSessionDate(best.sessionDate);
+        } else {
+          setSelectedSlotId(offeringSlots[0].id);
+        }
       }
     } else {
       setSelectedSlotId('');
     }
-  }, [selectedOfferingId, allSlots]);
+  }, [selectedOfferingId, offeringSlots]);
+
+  // Handler when user switches class offering
+  const handleSelectOffering = (offeringId: string) => {
+    setSelectedOfferingId(offeringId);
+    const slotsForOff = allSlots.filter(s => s.offering_id === offeringId || (s.offering as any)?.id === offeringId);
+    if (slotsForOff.length > 0) {
+      const pktnow = getPKTNow();
+      const best = findBestSlotForOffering(slotsForOff, pktnow);
+      if (best.slot) {
+        setSelectedSlotId(best.slot.id);
+        setSessionDate(best.sessionDate);
+      }
+    } else {
+      setSelectedSlotId('');
+    }
+  };
 
   // Fetch attendance records for this teacher
   const fetchTeacherAttendance = async () => {
@@ -687,51 +723,35 @@ export const TeacherDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Selectors Bar: Offering, Slot, Date */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-[#F5F5F5]">
-              <div>
-                <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Class Group</label>
+            {/* Dynamic Class & Session Selector Bar */}
+            <div className="pt-2.5 border-t border-[#F5F5F5] space-y-3">
+              <div className="w-full">
+                <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+                  <BookOpen size={12} className="text-[#A3A3A3]" />
+                  Target Class Offering
+                </label>
                 <select
                   value={selectedOfferingId}
-                  onChange={(e) => setSelectedOfferingId(e.target.value)}
-                  className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg cursor-pointer text-[#111111] font-semibold focus:outline-hidden"
+                  onChange={(e) => handleSelectOffering(e.target.value)}
+                  className="w-full py-2 px-3 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl cursor-pointer text-[#111111] font-bold focus:outline-hidden focus:border-[#F4C430] transition-colors"
                 >
                   {offerings.map((o) => (
                     <option key={o.id} value={o.id}>
-                      {o.subject_name || o.subject} (Gr. {o.grade || '10'})
+                      {o.subject_name || o.subject} (Grade {o.grade || '10'} - {o.board ? o.board.toUpperCase() : 'FBISE'})
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Lecture Time</label>
-                <select
-                  value={selectedSlotId}
-                  onChange={(e) => setSelectedSlotId(e.target.value)}
-                  className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg cursor-pointer text-[#111111] font-semibold focus:outline-hidden"
-                >
-                  {offeringSlots.length === 0 ? (
-                    <option value="">No slots configured</option>
-                  ) : (
-                    offeringSlots.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.day_of_week] || 'Day'} · {formatClassTime(s.start_time)} - {formatClassTime(s.end_time)}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block mb-1">Session Date</label>
-                <input
-                  type="date"
-                  value={sessionDate}
-                  onChange={(e) => setSessionDate(e.target.value)}
-                  className="w-full py-1.5 px-2.5 text-xs bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg cursor-pointer text-[#111111] font-semibold focus:outline-hidden"
-                />
-              </div>
+              {/* Dynamic Personalized Session / Day / Time Picker */}
+              <AttendanceSessionPicker
+                offeringSlots={offeringSlots}
+                selectedOffering={offerings.find(o => o.id === selectedOfferingId)}
+                selectedSlotId={selectedSlotId}
+                onSelectSlot={setSelectedSlotId}
+                sessionDate={sessionDate}
+                onSelectDate={setSessionDate}
+              />
             </div>
 
             {/* Attendance Status Counts Summary */}
