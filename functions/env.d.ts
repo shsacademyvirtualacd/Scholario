@@ -6,4 +6,5 @@ export interface Env {
   VITE_SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_ANON_KEY?: string;
+  GEMINI_API_KEY?: string;
 }
