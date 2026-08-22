@@ -28,9 +28,14 @@ function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
 function mapOffering(off: any): any {
   if (!off) return off;
   const subjName = off.subject?.name || (typeof off.subject === 'string' ? off.subject : null) || off.subject_name || 'Subject';
+  const rawBoard = off.class?.board_id || off.class?.board?.id || off.board_id || off.board || 'fbise';
+  const boardId = String(rawBoard).toLowerCase();
+  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)');
   return {
     ...off,
-    board: off.class?.board_id || off.class?.board?.id || off.board,
+    board: boardId,
+    board_id: boardId,
+    board_name: boardName,
     grade: off.class?.grade || off.grade || '10',
     stream_id: off.stream_id || off.stream?.id || null,
     stream: typeof off.stream === 'string' ? off.stream : (off.stream?.name || off.stream_name || null),

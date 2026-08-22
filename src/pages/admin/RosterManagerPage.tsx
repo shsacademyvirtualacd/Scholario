@@ -124,6 +124,14 @@ export const RosterManagerPage: React.FC = () => {
     onUpdate: async () => { await fetchEnrichmentData(); },
   });
 
+  // Keep offerings live: re-fetch when class_offerings change
+  useRealtimeTable({
+    table: 'class_offerings',
+    onAny: async () => {
+      const offeringsData = await getAllOfferings().catch(() => []);
+      setOfferings(offeringsData);
+    }
+  });
 
   const openAddTeacher = () => {
     setSelectedEntry(null);
@@ -146,7 +154,15 @@ export const RosterManagerPage: React.FC = () => {
     if (entry.role === 'student') {
       setSelectedClass(entry.class_ids[0] || '');
     } else {
-      setSelectedClasses(entry.class_ids);
+      // Collect all offering IDs currently assigned to this teacher
+      const assignedFromOfferings = offerings
+        .filter(o => {
+          const tId = o.teacher_id || o.teacher?.id;
+          return tId && (tId === entry.id || tId === entry.profile_id);
+        })
+        .map(o => o.id);
+      const combined = Array.from(new Set([...(entry.class_ids || []), ...assignedFromOfferings]));
+      setSelectedClasses(combined);
     }
     setDrawerOpen(true);
   };
@@ -395,12 +411,41 @@ export const RosterManagerPage: React.FC = () => {
   const studentCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'student').length, [roster, profilesMap]);
   const teacherCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'teacher').length, [roster, profilesMap]);
 
-  const sortedOfferings = useMemo(() => [...offerings].sort((a, b) => {
-    const aGrade = parseInt(String(a.grade || '99'), 10);
-    const bGrade = parseInt(String(b.grade || '99'), 10);
-    if (aGrade !== bGrade) return aGrade - bGrade;
-    return (a.subject_name || '').localeCompare(b.subject_name || '');
-  }), [offerings]);
+  const fbiseOfferings = useMemo(() => {
+    return offerings
+      .filter(o => (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase() === 'fbise')
+      .sort((a, b) => {
+        const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
+        const bGrade = parseInt(String(b.grade || b.class?.grade || '99'), 10);
+        if (aGrade !== bGrade) return aGrade - bGrade;
+        return (a.subject_name || '').localeCompare(b.subject_name || '');
+      });
+  }, [offerings]);
+
+  const sindhOfferings = useMemo(() => {
+    return offerings
+      .filter(o => (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase() === 'sindh')
+      .sort((a, b) => {
+        const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
+        const bGrade = parseInt(String(b.grade || b.class?.grade || '99'), 10);
+        if (aGrade !== bGrade) return aGrade - bGrade;
+        return (a.subject_name || '').localeCompare(b.subject_name || '');
+      });
+  }, [offerings]);
+
+  const otherOfferings = useMemo(() => {
+    return offerings
+      .filter(o => {
+        const bId = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
+        return bId !== 'fbise' && bId !== 'sindh';
+      })
+      .sort((a, b) => {
+        const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
+        const bGrade = parseInt(String(b.grade || b.class?.grade || '99'), 10);
+        if (aGrade !== bGrade) return aGrade - bGrade;
+        return (a.subject_name || '').localeCompare(b.subject_name || '');
+      });
+  }, [offerings]);
 
   return (
     <AdminShell>
@@ -934,7 +979,7 @@ export const RosterManagerPage: React.FC = () => {
             onClick={() => setDrawerOpen(false)}
           />
 
-          <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
+          <div className="relative w-full max-w-lg sm:max-w-xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
             <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between bg-[#FAFAFA]">
               <div>
                 <h3 className="text-base font-black text-[#111111]">
@@ -942,7 +987,7 @@ export const RosterManagerPage: React.FC = () => {
                   {drawerMode === 'edit' && `Edit Classes — ${selectedEntry?.full_name}`}
                 </h3>
                 <p className="text-xs text-[#737373] mt-0.5">
-                  {drawerMode !== 'edit' ? 'Create a pre-provisioned account by email and name.' : 'Update assigned schedule offerings.'}
+                  {drawerMode !== 'edit' ? 'Create a pre-provisioned account by email and name.' : 'Update assigned schedule offerings across Federal and Sindh boards.'}
                 </p>
               </div>
               <button 
@@ -953,7 +998,7 @@ export const RosterManagerPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 flex-1 overflow-y-auto space-y-5">
+            <form onSubmit={handleSave} className="p-6 flex-1 overflow-y-auto space-y-6">
               {formError && (
                 <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
                   <span className="shrink-0 mt-0.5">⚠️</span>
@@ -962,7 +1007,7 @@ export const RosterManagerPage: React.FC = () => {
               )}
 
               {drawerMode !== 'edit' && (
-                <>
+                <div className="space-y-4 pb-2 border-b border-[#E5E5E5]">
                   <div>
                     <label className="label text-xs font-bold text-[#404040] mb-1.5 block uppercase tracking-wider">
                       Email Address <span className="text-red-500">*</span>
@@ -970,7 +1015,7 @@ export const RosterManagerPage: React.FC = () => {
                     <input
                       type="email"
                       required
-                      placeholder="e.g. student@example.com"
+                      placeholder="e.g. teacher@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
@@ -987,51 +1032,243 @@ export const RosterManagerPage: React.FC = () => {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Ahmed Khan"
+                      placeholder="e.g. Mr. Ahmed Khan"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
                     />
                   </div>
-
-                </>
+                </div>
               )}
 
               {drawerMode === 'add_teacher' || (drawerMode === 'edit' && selectedEntry?.role === 'teacher') ? (
-                <div>
-                  <label className="label text-xs font-bold text-[#404040] mb-2 block uppercase tracking-wider">
-                    Assign Schedule Offerings
-                  </label>
-                  <div className="border border-[#E5E5E5] rounded-2xl max-h-64 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50">
-                    {sortedOfferings.length === 0 ? (
-                      <div className="p-4 text-xs text-[#737373] text-center">No class offerings available.</div>
-                    ) : (
-                      sortedOfferings.map(off => {
-                        const isChecked = selectedClasses.includes(off.id);
-                        return (
-                          <label 
-                            key={off.id}
-                            className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/60 font-bold' : ''}`}
-                          >
-                            <div>
-                              <div className="text-xs font-bold text-[#111111]">
-                                {off.subject_name} — Gr. {off.grade}
-                              </div>
-                              <div className="text-[10px] text-[#737373] mt-0.5">
-                                Current Teacher: {off.teacher?.full_name || 'Unassigned'}
-                              </div>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleClassSelect(off.id)}
-                              className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
-                            />
-                          </label>
-                        );
-                      })
-                    )}
+                <div className="space-y-6">
+                  {/* Summary Bar */}
+                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-50/80 border border-purple-200/70 text-purple-900 text-xs font-semibold">
+                    <span className="flex items-center gap-1.5 font-bold">
+                      <BookOpen size={15} className="text-purple-600 shrink-0" />
+                      Assigned Offerings Selected:
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-700 text-white font-black text-xs shadow-sm">
+                      {selectedClasses.length} total
+                    </span>
                   </div>
+
+                  {/* ── SECTION 1: Federal Board (FBISE) ── */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
+                        <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                          Federal Board (FBISE)
+                        </h4>
+                        <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
+                          {fbiseOfferings.length}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedClasses.filter(id => fbiseOfferings.some(o => o.id === id)).length > 0 && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                            {selectedClasses.filter(id => fbiseOfferings.some(o => o.id === id)).length} selected
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const fbiseIds = fbiseOfferings.map(o => o.id);
+                            const allSelected = fbiseIds.length > 0 && fbiseIds.every(id => selectedClasses.includes(id));
+                            if (allSelected) {
+                              setSelectedClasses(prev => prev.filter(id => !fbiseIds.includes(id)));
+                            } else {
+                              setSelectedClasses(prev => Array.from(new Set([...prev, ...fbiseIds])));
+                            }
+                          }}
+                          className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
+                        >
+                          {fbiseOfferings.length > 0 && fbiseOfferings.every(o => selectedClasses.includes(o.id)) ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
+                      {fbiseOfferings.length === 0 ? (
+                        <div className="p-4 text-xs text-[#737373] text-center">No Federal Board offerings found.</div>
+                      ) : (
+                        fbiseOfferings.map(off => {
+                          const isChecked = selectedClasses.includes(off.id);
+                          const isAssignedToThisTeacher = selectedEntry && (
+                            off.teacher_id === selectedEntry.id || 
+                            off.teacher_id === selectedEntry.profile_id || 
+                            off.teacher?.id === selectedEntry.id || 
+                            off.teacher?.id === selectedEntry.profile_id
+                          );
+                          return (
+                            <label 
+                              key={off.id}
+                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
+                            >
+                              <div className="pr-3">
+                                <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
+                                  <span>{off.subject_name} — Gr. {off.grade}</span>
+                                  {off.stream && (
+                                    <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
+                                      {off.stream}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] mt-0.5">
+                                  {off.teacher ? (
+                                    <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
+                                      Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
+                                      {isAssignedToThisTeacher && ' (Assigned)'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
+                                  )}
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleClassSelect(off.id)}
+                                className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
+                              />
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── SECTION 2: Sindh Board ── */}
+                  <div className="space-y-2.5 pt-2">
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 shrink-0" />
+                        <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                          Sindh Board
+                        </h4>
+                        <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
+                          {sindhOfferings.length}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedClasses.filter(id => sindhOfferings.some(o => o.id === id)).length > 0 && (
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-md">
+                            {selectedClasses.filter(id => sindhOfferings.some(o => o.id === id)).length} selected
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const sindhIds = sindhOfferings.map(o => o.id);
+                            const allSelected = sindhIds.length > 0 && sindhIds.every(id => selectedClasses.includes(id));
+                            if (allSelected) {
+                              setSelectedClasses(prev => prev.filter(id => !sindhIds.includes(id)));
+                            } else {
+                              setSelectedClasses(prev => Array.from(new Set([...prev, ...sindhIds])));
+                            }
+                          }}
+                          className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
+                        >
+                          {sindhOfferings.length > 0 && sindhOfferings.every(o => selectedClasses.includes(o.id)) ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
+                      {sindhOfferings.length === 0 ? (
+                        <div className="p-4 text-xs text-[#737373] text-center">No Sindh Board offerings found.</div>
+                      ) : (
+                        sindhOfferings.map(off => {
+                          const isChecked = selectedClasses.includes(off.id);
+                          const isAssignedToThisTeacher = selectedEntry && (
+                            off.teacher_id === selectedEntry.id || 
+                            off.teacher_id === selectedEntry.profile_id || 
+                            off.teacher?.id === selectedEntry.id || 
+                            off.teacher?.id === selectedEntry.profile_id
+                          );
+                          return (
+                            <label 
+                              key={off.id}
+                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
+                            >
+                              <div className="pr-3">
+                                <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
+                                  <span>{off.subject_name} — Gr. {off.grade}</span>
+                                  {off.stream && (
+                                    <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
+                                      {off.stream}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] mt-0.5">
+                                  {off.teacher ? (
+                                    <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
+                                      Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
+                                      {isAssignedToThisTeacher && ' (Assigned)'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
+                                  )}
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleClassSelect(off.id)}
+                                className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
+                              />
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Optional Fallback for any other boards */}
+                  {otherOfferings.length > 0 && (
+                    <div className="space-y-2.5 pt-2">
+                      <div className="flex items-center justify-between pb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-zinc-400 ring-4 ring-zinc-100 shrink-0" />
+                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                            Other Board Offerings
+                          </h4>
+                          <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
+                            {otherOfferings.length}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="border border-[#E5E5E5] rounded-2xl max-h-48 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
+                        {otherOfferings.map(off => {
+                          const isChecked = selectedClasses.includes(off.id);
+                          return (
+                            <label 
+                              key={off.id}
+                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
+                            >
+                              <div className="pr-3">
+                                <div className="text-xs font-bold text-[#111111]">
+                                  {off.subject_name} — Gr. {off.grade}
+                                </div>
+                                <div className="text-[11px] text-[#737373] mt-0.5">
+                                  Current Teacher: {off.teacher?.full_name || 'Unassigned'}
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleClassSelect(off.id)}
+                                className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : null}
 

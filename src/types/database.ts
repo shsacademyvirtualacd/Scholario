@@ -82,6 +82,8 @@ export interface ClassOffering {
   
   // Flattened for backward compatibility in the frontend
   board?: any;
+  board_id?: string;
+  board_name?: string;
   grade?: string;
   stream?: any;
   subject_name?: string;
