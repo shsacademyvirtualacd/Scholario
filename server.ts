@@ -101,6 +101,13 @@ Key Guidelines:
 4. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
 5. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
 
+      const authHeader = (req.headers.authorization || req.headers['authorization']) as string | undefined;
+      const requestSupabase = authHeader
+        ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { headers: { Authorization: authHeader } },
+          })
+        : supabaseServer;
+
       if (!client) {
         // Fallback intelligent simulation if no GEMINI_API_KEY is configured in the environment
         const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
@@ -109,8 +116,8 @@ Key Guidelines:
         if (isAdmin) {
           // If admin asks in fallback mode, still fetch live DB overview if possible
           try {
-            const overview = await executeAdminDataQuery('queryPlatformOverview', {}, supabaseServer);
-            const feeData = await executeAdminDataQuery('queryPricingAndFeeConfigs', {}, supabaseServer);
+            const overview = await executeAdminDataQuery('queryPlatformOverview', {}, requestSupabase);
+            const feeData = await executeAdminDataQuery('queryPricingAndFeeConfigs', {}, requestSupabase);
             fallbackText = `**Sage (Live Platform Overview — Admin Mode)**:\n\n` +
               `Here is the live snapshot from Scholario's database:\n` +
               `- **Registered Students**: ${overview?.kpis?.total_registered_students ?? 0} (Onboarded: ${overview?.kpis?.onboarded_students ?? 0})\n` +
@@ -168,7 +175,7 @@ Key Guidelines:
               const toolParts: any[] = [];
               for (const call of genRes.functionCalls) {
                 const toolName = call.name || '';
-                const data = await executeAdminDataQuery(toolName, call.args || {}, supabaseServer);
+                const data = await executeAdminDataQuery(toolName, call.args || {}, requestSupabase);
                 toolParts.push({
                   functionResponse: {
                     name: toolName,

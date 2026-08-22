@@ -74,7 +74,12 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
   const supabaseUrl = env?.SUPABASE_URL || env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
   const supabaseKey = env?.SUPABASE_ANON_KEY || env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const authHeader = request.headers.get('Authorization') || request.headers.get('authorization') || undefined;
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: authHeader ? { Authorization: authHeader } : {},
+    },
+  });
 
   const isAdmin = userRole === 'admin';
 
