@@ -73,7 +73,7 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const targetModel = 'gemini-2.5-flash';
+      const targetModel = 'gemini-3.6-flash';
       let response: any;
       try {
         response = await client.models.generateContent({

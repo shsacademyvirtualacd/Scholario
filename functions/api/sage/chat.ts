@@ -108,9 +108,9 @@ Key Guidelines:
       parts: [{ text: m.content }],
     }));
 
-    // Initialize GoogleGenAI SDK using the stable gemini-2.5-flash model
+    // Initialize GoogleGenAI SDK using the gemini-3.6-flash model
     const ai = new GoogleGenAI({ apiKey });
-    const targetModel = 'gemini-2.5-flash';
+    const targetModel = 'gemini-3.6-flash';
 
     let response: any;
     try {
