@@ -1022,7 +1022,7 @@ export const AttendanceAdminPage: React.FC = () => {
                                                   : 'bg-white hover:bg-[#F5F5F5] text-[#111111] border-[#E5E5E5]'
                                               }`}
                                             >
-                                              <span>{isClassExpanded ? 'Hide Roster' : 'View Roster'}</span>
+                                              <span>{isClassExpanded ? 'Hide Students' : 'View Students'}</span>
                                               <ChevronDown size={12} className={`transition-transform ${isClassExpanded ? 'rotate-180' : ''}`} />
                                             </button>
                                           </div>
