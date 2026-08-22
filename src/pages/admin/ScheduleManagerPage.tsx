@@ -6,9 +6,11 @@ import WeeklyGrid from '../../components/admin/schedule/WeeklyGrid';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import SlotForm from '../../components/admin/schedule/SlotForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
+import ScheduleConflictModal, { ConflictDetails } from '../../components/admin/schedule/ScheduleConflictModal';
 import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, deleteSlots, getTaxonomy, createAnnouncement } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { DAYS_OF_WEEK_FULL, formatTime12h } from '../../lib/scheduleUtils';
 import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, ClassOffering, Teacher } from '../../types';
@@ -35,6 +37,7 @@ export const ScheduleManagerPage: React.FC = () => {
   const [notifyCancel, setNotifyCancel] = useState(true);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [pendingMoveData, setPendingMoveData] = useState<any>(null);
+  const [conflictData, setConflictData] = useState<ConflictDetails | null>(null);
   const [clearScheduleModalOpen, setClearScheduleModalOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
@@ -148,6 +151,134 @@ export const ScheduleManagerPage: React.FC = () => {
     return boardMatch && gradeMatch && teacherMatch && streamMatch;
   });
 
+  // Duplicate and Double-booking conflict detector
+  const checkSlotConflict = (
+    formData: any,
+    targetSlotId: string | null
+  ): ConflictDetails | null => {
+    const formOffering = offerings.find((o) => o.id === formData.offering_id);
+    const formSubject =
+      formData.custom_title ||
+      formOffering?.subject_name ||
+      formOffering?.subject?.name ||
+      'Class';
+    const formTeacherId = formOffering?.teacher_id;
+    const formTeacher = teachers.find((t) => t.id === formTeacherId);
+    const formClassId =
+      formData.class_id ||
+      formOffering?.class_id ||
+      (formOffering as any)?.class?.id ||
+      taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
+    const formStreamId = formData.stream_id || formOffering?.stream_id || null;
+    const formGrade =
+      taxonomy?.classes?.find((c: any) => c.id === formClassId)?.grade || selectedGrade;
+    const formStreamObj = taxonomy?.streams?.find((s: any) => s.id === formStreamId);
+
+    const timeToMins = (t: string) => {
+      if (!t) return 0;
+      const [h = 0, m = 0] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const formStart = timeToMins(formData.start_time);
+    const formEnd = timeToMins(formData.end_time || formData.start_time);
+
+    for (const s of slots) {
+      if (s.id === targetSlotId || s.is_cancelled) continue;
+
+      // Check same day of week
+      if (s.day_of_week !== formData.day_of_week) continue;
+
+      // Check time overlap
+      const sStart = timeToMins(s.start_time);
+      const sEnd = timeToMins(s.end_time || s.start_time);
+      const isOverlap = Math.max(sStart, formStart) < Math.min(sEnd, formEnd);
+
+      if (!isOverlap) continue;
+
+      const sOffering = offerings.find((o) => o.id === s.offering_id);
+      const sSubject =
+        s.custom_title || sOffering?.subject_name || sOffering?.subject?.name || 'Class';
+      const sTeacherId = sOffering?.teacher_id;
+      const sTeacher = teachers.find((t) => t.id === sTeacherId);
+      const sClassId = s.class_id || sOffering?.class_id || (sOffering as any)?.class?.id;
+      const sStreamId = s.stream_id || sOffering?.stream_id || null;
+      const sGrade =
+        taxonomy?.classes?.find((c: any) => c.id === sClassId)?.grade || formGrade;
+
+      const isSameClass =
+        !formClassId || !sClassId || formClassId === sClassId || String(formGrade) === String(sGrade);
+      const isSameStream =
+        !formStreamId ||
+        !sStreamId ||
+        formStreamId === 'all' ||
+        sStreamId === 'all' ||
+        formStreamId === sStreamId;
+      const isSameSubject =
+        (formData.offering_id && s.offering_id && formData.offering_id === s.offering_id) ||
+        formSubject.trim().toLowerCase() === sSubject.trim().toLowerCase();
+
+      // Check 1: Duplicate Class
+      if (isSameClass && isSameStream && isSameSubject) {
+        return {
+          type: 'duplicate_class',
+          title: `${formSubject} already exists`,
+          message: `${formSubject} already exists on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for Grade ${formGrade}${formStreamObj ? ` (${formStreamObj.name})` : ''}. Do you want to keep it here as well, or move it?`,
+          subjectName: formSubject,
+          teacherName: formTeacher?.full_name || 'Instructor',
+          dayIndex: formData.day_of_week,
+          startTime: formData.start_time,
+          endTime: formData.end_time,
+          cohortGrade: formGrade,
+          streamName: formStreamObj?.name,
+          conflictingSlot: { ...s, offering: sOffering },
+          pendingFormData: formData,
+          isEditMode: !!targetSlotId,
+        };
+      }
+
+      // Check 2: Instructor double-booking (same teacher, same day, overlapping time)
+      if (formTeacherId && sTeacherId && formTeacherId === sTeacherId) {
+        return {
+          type: 'teacher_double_booking',
+          title: `Instructor Double-Booking Conflict`,
+          message: `Instructor ${formTeacher?.full_name || 'Teacher'} is already scheduled to teach ${sSubject} on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)}${sGrade ? ` (Grade ${sGrade})` : ''}.`,
+          subjectName: formSubject,
+          teacherName: formTeacher?.full_name || 'Instructor',
+          dayIndex: formData.day_of_week,
+          startTime: formData.start_time,
+          endTime: formData.end_time,
+          cohortGrade: formGrade,
+          streamName: formStreamObj?.name,
+          conflictingSlot: { ...s, offering: sOffering },
+          pendingFormData: formData,
+          isEditMode: !!targetSlotId,
+        };
+      }
+
+      // Check 3: Cohort Time Slot Collision
+      if (isSameClass && isSameStream && !isSameSubject) {
+        return {
+          type: 'cohort_clash',
+          title: `Class Slot Already Occupied`,
+          message: `${sSubject} (${sTeacher?.full_name || 'Instructor'}) is already scheduled on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for Grade ${formGrade}.`,
+          subjectName: formSubject,
+          teacherName: formTeacher?.full_name || 'Instructor',
+          dayIndex: formData.day_of_week,
+          startTime: formData.start_time,
+          endTime: formData.end_time,
+          cohortGrade: formGrade,
+          streamName: formStreamObj?.name,
+          conflictingSlot: { ...s, offering: sOffering },
+          pendingFormData: formData,
+          isEditMode: !!targetSlotId,
+        };
+      }
+    }
+
+    return null;
+  };
+
   // Handle drawer save (Add / Edit)
   const handleSaveSlot = async (formData: {
     offering_id: string | null;
@@ -162,6 +293,13 @@ export const ScheduleManagerPage: React.FC = () => {
   }) => {
     const isEditMode = !!editingSlotId;
 
+    // Check for duplicate / instructor conflict first
+    const conflict = checkSlotConflict(formData, editingSlotId);
+    if (conflict) {
+      setConflictData(conflict);
+      return;
+    }
+
     // Intercept move (when day or start time changes on an existing slot) with a confirmation modal
     if (isEditMode && selectedSlot) {
       const dayChanged = selectedSlot.day_of_week !== formData.day_of_week;
@@ -175,6 +313,20 @@ export const ScheduleManagerPage: React.FC = () => {
     }
 
     await executeSaveSlot(formData);
+  };
+
+  const handleConflictResolved = async (updatedFormData: any) => {
+    setConflictData(null);
+    await executeSaveSlot(updatedFormData);
+  };
+
+  const handleConflictConfirmAnyway = async (updatedFormData: any) => {
+    setConflictData(null);
+    await executeSaveSlot(updatedFormData);
+  };
+
+  const handleConflictCancel = () => {
+    setConflictData(null);
   };
 
   const executeSaveSlot = async (formData: any) => {
@@ -200,8 +352,7 @@ export const ScheduleManagerPage: React.FC = () => {
       if (formData.publish_to_news || formData.notify_affected) {
         const offering = offerings.find((o) => o.id === formData.offering_id);
         const subject = formData.custom_title || (offering ? (offering.subject_name || offering.subject?.name || 'Class') : 'Class');
-        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayName = dayNames[formData.day_of_week];
+        const dayName = DAYS_OF_WEEK_FULL[formData.day_of_week] || 'Scheduled Day';
         const timeStr = formData.start_time.slice(0, 5);
 
         const targetClassId = formData.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
@@ -802,10 +953,19 @@ export const ScheduleManagerPage: React.FC = () => {
         title="Move Class Session?"
         description={
           selectedSlot && pendingMoveData
-            ? `This will move this class from ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedSlot.day_of_week]} to ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][pendingMoveData.day_of_week]}. The session on ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedSlot.day_of_week]} will be relocated. Continue?`
+            ? `This will move this class from ${DAYS_OF_WEEK_FULL[selectedSlot.day_of_week]} to ${DAYS_OF_WEEK_FULL[pendingMoveData.day_of_week]}. The session on ${DAYS_OF_WEEK_FULL[selectedSlot.day_of_week]} will be relocated. Continue?`
             : 'Are you sure you want to move this class session?'
         }
         confirmLabel="Move Class Slot"
+      />
+
+      {/* Schedule Conflict / Duplicate Warning Modal */}
+      <ScheduleConflictModal
+        conflict={conflictData}
+        allSlots={slots}
+        onResolve={handleConflictResolved}
+        onConfirmAnyway={handleConflictConfirmAnyway}
+        onCancel={handleConflictCancel}
       />
 
       {/* Clear Cohort Schedule Confirmation Modal */}
@@ -834,8 +994,7 @@ export const ScheduleManagerPage: React.FC = () => {
             .filter((s) => selectedSlotIds.includes(s.id))
             .map((s) => {
               const subject = s.custom_title || s.offering?.subject_name || s.offering?.subject || 'Class';
-              const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-              const dayName = dayNames[s.day_of_week];
+              const dayName = DAYS_OF_WEEK_FULL[s.day_of_week] || 'Day';
               const timeStr = s.start_time ? s.start_time.slice(0, 5) : '16:00';
               return (
                 <div key={s.id} className="flex justify-between items-center py-1 border-b border-gray-200/60 last:border-0 text-gray-800">

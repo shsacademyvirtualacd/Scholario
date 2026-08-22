@@ -72,8 +72,15 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           onToggleSelect(slot.id);
         }
       }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        if (!selectionMode) {
+          onEdit(slot);
+        }
+      }}
+      title={selectionMode ? undefined : `${subject} (${teacherName}) — Double-click to edit`}
       className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left ${
-        selectionMode ? 'cursor-pointer select-none' : ''
+        selectionMode ? 'cursor-pointer select-none' : 'cursor-pointer hover:shadow-md select-none'
       } ${
         isSelected
           ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/80 shadow-md'

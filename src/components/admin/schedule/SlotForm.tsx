@@ -118,6 +118,12 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     return true;
   });
 
+  const currentSelectedOffering = offerings.find(o => o.id === offeringId);
+  const selectableOfferings = [...filteredOfferings];
+  if (currentSelectedOffering && !selectableOfferings.some(o => o.id === currentSelectedOffering.id)) {
+    selectableOfferings.unshift(currentSelectedOffering);
+  }
+
   const handleClassChange = (val: string) => {
     setSelectedClassId(val);
     setSelectedStreamId('');
@@ -284,7 +290,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
               disabled={!selectedClassId}
             >
               <option value="">-- Choose Subject Offering --</option>
-              {filteredOfferings.map((offering) => (
+              {selectableOfferings.map((offering) => (
                 <option key={offering.id} value={offering.id}>
                   {offering.subject_name || offering.subject?.name} — {offering.teacher?.full_name || 'Assigned Teacher'}
                   {offering.stream ? ` (${typeof offering.stream === 'string' ? offering.stream : offering.stream.name})` : ''}
@@ -294,7 +300,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
             {!selectedClassId && (
               <p className="text-[11px] text-amber-600 font-medium">Please select a Target Class above to see its available subjects.</p>
             )}
-            {selectedClassId && filteredOfferings.length === 0 && (
+            {selectedClassId && selectableOfferings.length === 0 && (
               <p className="text-[11px] text-red-500 font-medium">No active subjects found for this Class / Stream combination.</p>
             )}
           </div>
