@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Video, MapPin, Clock, CheckCircle2, Zap } from 'lucide-react';
+import { Video, Clock, CheckCircle2, Zap } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StatusPill from '../../components/ui/StatusPill';
@@ -10,8 +10,9 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration, getLinkAvailabilityStatus
+  formatTime12h, calcDuration, getClosestDateForDayOfWeek
 } from '../../lib/scheduleUtils';
+import { LiveLinkEditor } from './TeacherDashboardPage';
 import { useMobile } from '../../hooks/useMobile';
 
 const DAYS_OF_WEEK = [
@@ -53,16 +54,21 @@ export const TeacherSchedulePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const fetchSlots = () => {
+  // Compute calendar session date for the active day of week
+  const activeSessionDate = getClosestDateForDayOfWeek(activeDay, pktnow);
+
+  const fetchSlots = async () => {
     setLoading(true);
     setFetchError(null);
-    getSlotsForTeacher(teacherId)
-      .then(setScheduleSlots)
-      .catch((err: any) => {
-        console.error('[TeacherSchedulePage] fetchSlots error:', err);
-        setFetchError(err?.message || 'Failed to load schedule. Please try refreshing.');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const slots = await getSlotsForTeacher(teacherId);
+      setScheduleSlots(slots);
+    } catch (err: any) {
+      console.error('[TeacherSchedulePage] fetchSlots error:', err);
+      setFetchError(err?.message || 'Failed to load schedule. Please try refreshing.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -82,12 +88,19 @@ export const TeacherSchedulePage: React.FC = () => {
     onAny: fetchSlots
   });
 
+  // Refetch session links when updated
+  useRealtimeTable({
+    table: 'class_session_links',
+    debounceMs: 1000,
+    onAny: fetchSlots
+  });
+
   // Synchronize day focus if URL query parameters change
   useEffect(() => {
     const urlDay = searchParams.get('day');
     if (urlDay !== null) {
       const parsed = parseInt(urlDay, 10);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 5) {
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 6) {
         setActiveDay(parsed);
       }
     }
@@ -98,7 +111,7 @@ export const TeacherSchedulePage: React.FC = () => {
     .filter(slot => slot.day_of_week === activeDay)
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
-  // PKT-aware next-class banner state (re-ticks every 60s; must come after scheduleSlots)
+  // PKT-aware next-class banner state
   const bannerState = classWidgetState(scheduleSlots, pktnow);
 
   // Use formatTime12h from scheduleUtils
@@ -194,8 +207,7 @@ export const TeacherSchedulePage: React.FC = () => {
                     Next Lecture Session: {getSlotSubject(bannerState.nextSlot)}
                   </h3>
                   <p className="text-xs text-[#737373] mt-0.5 font-medium">
-                    Class {bannerState.nextSlot.offering?.grade} (FBISE) ·{' '}
-                    {(bannerState.nextSlot.room_or_link && (bannerState.nextSlot.room_or_link.includes('http') || bannerState.nextSlot.room_or_link.includes('zoom'))) ? 'Online Link Available' : 'TBD'}
+                    Class {bannerState.nextSlot.offering?.grade} (FBISE) · Scheduled Lecture
                   </p>
                 </>
               )}
@@ -242,70 +254,57 @@ export const TeacherSchedulePage: React.FC = () => {
             const isCancelled = slot.is_cancelled;
             const subject: string = (slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class') as string;
             const subjectColor = getSubjectColor(subject);
-            const isOnline = slot.room_or_link?.toLowerCase().includes('http') || slot.room_or_link?.toLowerCase().includes('zoom');
 
             return (
               <div
                 key={slot.id}
-                className={`bg-white border rounded-xl p-4 flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between gap-4'} transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-sm ${
+                className={`bg-white border rounded-xl p-4 flex flex-col gap-3 transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-sm ${
                   isCancelled ? 'opacity-60 bg-gray-50' : ''
                 }`}
                 style={{ borderLeft: isCancelled ? '4px solid #D4D4D4' : `4px solid ${subjectColor}` }}
               >
-                {/* Time & Duration */}
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="w-10 h-10 rounded-lg bg-[#F5F5F5] flex items-center justify-center text-[#737373] shrink-0">
-                    <Clock size={16} />
-                  </div>
-                  <div>
-                    <div className={`text-sm font-extrabold text-[#111111] ${isCancelled ? 'line-through' : ''}`}>
-                      {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                <div className={`flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between gap-4'}`}>
+                  {/* Time & Duration */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-[#F5F5F5] flex items-center justify-center text-[#737373] shrink-0">
+                      <Clock size={16} />
                     </div>
-                    <span className="text-[10px] text-[#A3A3A3] font-bold">
-                      {calcDuration(slot.start_time, slot.end_time) || '90m'} duration
-                    </span>
-                  </div>
-                </div>
-
-                {/* Class info */}
-                <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5]">
-                  <h3 className={`text-base font-extrabold text-[#111111] leading-tight truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`}>
-                    {subject}
-                  </h3>
-                  <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">
-                    Class {slot.offering?.grade} (FBISE)
-                  </p>
-                </div>
-
-                {/* Location & Status */}
-                <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end">
-                  {isOnline ? (
-                    <div className="flex flex-col items-end gap-1">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-blue-50 border-blue-100 text-blue-600">
-                        <Video size={13} className="text-blue-500" />
-                        <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link}`} target="_blank" rel="noreferrer" className="truncate max-w-[120px] hover:underline">
-                          Launch Link
-                        </a>
+                    <div>
+                      <div className={`text-sm font-extrabold text-[#111111] ${isCancelled ? 'line-through' : ''}`}>
+                        {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
                       </div>
-                      <span className="text-[9px] text-[#737373] font-medium">
-                        {(() => {
-                          const status = getLinkAvailabilityStatus(slot, pktnow);
-                          return status.isAvailable
-                            ? '🟢 Student link active'
-                            : '🔒 Student link unlocks 10m before class';
-                        })()}
+                      <span className="text-[10px] text-[#A3A3A3] font-bold">
+                        {calcDuration(slot.start_time, slot.end_time) || '90m'} duration
                       </span>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
-                      <MapPin size={13} className="text-[#737373]" />
-                      <span className="truncate max-w-[120px]">TBD</span>
-                    </div>
-                  )}
-                  
+                  </div>
+
+                  {/* Class info */}
+                  <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5]">
+                    <h3 className={`text-base font-extrabold text-[#111111] leading-tight truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`}>
+                      {subject}
+                    </h3>
+                    <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">
+                      Class {slot.offering?.grade} (FBISE) · Session date: {activeSessionDate}
+                    </p>
+                  </div>
+
                   {/* Status Pill */}
-                  <StatusPill status={isCancelled ? 'cancelled' : 'upcoming'} />
+                  <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end">
+                    <StatusPill status={isCancelled ? 'cancelled' : 'upcoming'} />
+                  </div>
                 </div>
+
+                {/* Per-session Live Link Editor */}
+                {!isCancelled && (
+                  <div className="pt-2 border-t border-[#F5F5F5]">
+                    <LiveLinkEditor
+                      slot={slot}
+                      sessionDate={activeSessionDate}
+                      teacherId={teacherId}
+                    />
+                  </div>
+                )}
               </div>
             );
           })

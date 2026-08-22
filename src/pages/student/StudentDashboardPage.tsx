@@ -14,7 +14,8 @@ import {
   getAttendanceForStudent,
   computeAttendanceStreak,
   markStudentSelfAttendance,
-  getTeacherAttendanceRatingsForStudent
+  getTeacherAttendanceRatingsForStudent,
+  getSessionLink
 } from '../../lib/db';
 import TeacherAttendanceRatingCard from '../../components/student/TeacherAttendanceRatingCard';
 import { pageCache } from '../../lib/pageCache';
@@ -23,7 +24,8 @@ import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, Note, Attendance, TeacherAttendanceRating } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration, getLinkAvailabilityStatus, isSlotOngoing
+  formatTime12h, calcDuration, getLinkAvailabilityStatus, isSlotOngoing,
+  getClosestDateForDayOfWeek
 } from '../../lib/scheduleUtils';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
@@ -155,18 +157,46 @@ const PomodoroTimer: React.FC = () => {
 // ─── Live Link Join Button for Student ────────────────────────────
 const StudentLiveLink: React.FC<{
   slot: ClassSlot;
+  sessionDate?: string;
   studentId?: string;
   attendanceRecord?: Attendance | null;
   onAttendanceMarked?: (slotId: string, record: Attendance) => void;
-}> = ({ slot, studentId, attendanceRecord: propAttendance, onAttendanceMarked }) => {
+}> = ({ slot, sessionDate, studentId, attendanceRecord: propAttendance, onAttendanceMarked }) => {
   const [pktnow, setPktnow] = useState(getPKTNow);
   const [isMarking, setIsMarking] = useState(false);
   const [localAttendance, setLocalAttendance] = useState<Attendance | null>(propAttendance || null);
-  const todayStr = pktnow.dateString || new Date().toISOString().slice(0, 10);
+  const [sessionLinkUrl, setSessionLinkUrl] = useState<string | null>(null);
+
+  const effectiveSessionDate = sessionDate || (
+    slot.day_of_week === pktnow.dayIndex
+      ? pktnow.dateString
+      : getClosestDateForDayOfWeek(slot.day_of_week ?? 0, pktnow)
+  );
+
+  const fetchSessionLink = async () => {
+    if (!slot?.id || !effectiveSessionDate) return;
+    try {
+      const rec = await getSessionLink(slot.id, effectiveSessionDate);
+      setSessionLinkUrl(rec?.link_url || null);
+    } catch (err) {
+      console.warn('[StudentLiveLink] fetch link err:', err);
+    }
+  };
 
   useEffect(() => {
     setLocalAttendance(propAttendance || null);
   }, [propAttendance]);
+
+  useEffect(() => {
+    fetchSessionLink();
+  }, [slot?.id, effectiveSessionDate]);
+
+  // Realtime updates for session links
+  useRealtimeTable({
+    table: 'class_session_links',
+    debounceMs: 1000,
+    onAny: fetchSessionLink,
+  });
 
   // Dynamic 10-second timer tick so the link unlocks in real time
   useEffect(() => {
@@ -175,15 +205,15 @@ const StudentLiveLink: React.FC<{
   }, []);
 
   const isOngoing = isSlotOngoing(slot, pktnow);
-  const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
-  const hasRawLink = Boolean(slot?.room_or_link && slot.room_or_link.trim().length > 0);
+  const linkStatus = getLinkAvailabilityStatus(slot, pktnow, sessionLinkUrl, effectiveSessionDate);
+  const hasLink = Boolean(sessionLinkUrl && sessionLinkUrl.trim().length > 0);
 
   const handleMarkAttendance = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!studentId || !isOngoing || isMarking) return;
     setIsMarking(true);
     try {
-      const rec = await markStudentSelfAttendance(studentId, slot.id, todayStr);
+      const rec = await markStudentSelfAttendance(studentId, slot.id, effectiveSessionDate);
       setLocalAttendance(rec);
       onAttendanceMarked?.(slot.id, rec);
     } catch (e) {
@@ -192,7 +222,7 @@ const StudentLiveLink: React.FC<{
         id: `att-${Date.now()}`,
         student_id: studentId,
         slot_id: slot.id,
-        session_date: todayStr,
+        session_date: effectiveSessionDate,
         status: 'pending',
         marked_at: new Date().toISOString(),
         marked_by: 'student',
@@ -208,8 +238,8 @@ const StudentLiveLink: React.FC<{
     if (isOngoing && (!localAttendance || localAttendance.status === 'absent')) {
       handleMarkAttendance();
     }
-    if (linkStatus.isAvailable && slot.room_or_link) {
-      const url = slot.room_or_link.startsWith('http') ? slot.room_or_link : `https://${slot.room_or_link}`;
+    if (linkStatus.isAvailable && sessionLinkUrl) {
+      const url = sessionLinkUrl.startsWith('http') ? sessionLinkUrl : `https://${sessionLinkUrl}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
@@ -291,7 +321,7 @@ const StudentLiveLink: React.FC<{
           <Clock size={12} className="text-gray-400 shrink-0" />
           <span>Class Session Ended</span>
         </div>
-      ) : hasRawLink ? (
+      ) : hasLink ? (
         <div className="flex items-center justify-center gap-1.5 w-full bg-gray-50 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
           <Lock size={12} className="text-gray-400 shrink-0" />
           <span>Unlocks 10m Before Class</span>
@@ -348,6 +378,8 @@ const NextClassWidget: React.FC<{
     const slotAttendance = attendanceRecords?.find(
       a => a.slot_id === state.activeSlot.id && a.session_date === todayStr
     );
+    const sessionDate = pktnow.dateString;
+
     return (
       <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
@@ -369,6 +401,7 @@ const NextClassWidget: React.FC<{
         </div>
         <StudentLiveLink
           slot={state.activeSlot}
+          sessionDate={sessionDate}
           studentId={studentId}
           attendanceRecord={slotAttendance}
           onAttendanceMarked={onAttendanceMarked}
@@ -381,8 +414,11 @@ const NextClassWidget: React.FC<{
   const nextSlot = state.nextSlot!;
   const minsUntil = state.minsUntil ?? 0;
   const subject = getSlotSubject(nextSlot);
+  const sessionDate = nextSlot.day_of_week === pktnow.dayIndex
+    ? pktnow.dateString
+    : getClosestDateForDayOfWeek(nextSlot.day_of_week ?? 0, pktnow);
   const nextSlotAttendance = attendanceRecords?.find(
-    a => a.slot_id === nextSlot.id && a.session_date === todayStr
+    a => a.slot_id === nextSlot.id && a.session_date === sessionDate
   );
   
   let badgeLabel = '';
@@ -429,6 +465,7 @@ const NextClassWidget: React.FC<{
       </div>
       <StudentLiveLink
         slot={nextSlot}
+        sessionDate={sessionDate}
         studentId={studentId}
         attendanceRecord={nextSlotAttendance}
         onAttendanceMarked={onAttendanceMarked}

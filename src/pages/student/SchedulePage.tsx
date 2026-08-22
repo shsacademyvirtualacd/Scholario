@@ -6,13 +6,13 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import ClassSlotCard from '../../components/student/ClassSlotCard';
 import EmptyState from '../../components/ui/EmptyState';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getSlotsForStudent, getAttendanceForStudent } from '../../lib/db';
+import { getSlotsForStudent, getAttendanceForStudent, getSessionLink } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot, Attendance } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, getLinkAvailabilityStatus
+  formatTime12h, getLinkAvailabilityStatus, getClosestDateForDayOfWeek
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -104,12 +104,44 @@ export const SchedulePage: React.FC = () => {
 
   // PKT-aware next-class banner state (re-ticks every 60s)
   const [pktnow, setPktnow] = useState(getPKTNow);
+  const [bannerLinkUrl, setBannerLinkUrl] = useState<string | null>(null);
+
   useEffect(() => {
     const id = setInterval(() => setPktnow(getPKTNow()), 60_000);
     return () => clearInterval(id);
   }, []);
 
   const bannerState = classWidgetState(scheduleSlots, pktnow);
+
+  const bannerSlot = bannerState.type === 'ongoing' ? bannerState.activeSlot : (bannerState.nextSlot || null);
+  const bannerSessionDate = bannerSlot ? (
+    bannerSlot.day_of_week === pktnow.dayIndex
+      ? pktnow.dateString
+      : getClosestDateForDayOfWeek(bannerSlot.day_of_week ?? 0, pktnow)
+  ) : null;
+
+  const fetchBannerLink = async () => {
+    if (!bannerSlot?.id || !bannerSessionDate) {
+      setBannerLinkUrl(null);
+      return;
+    }
+    try {
+      const rec = await getSessionLink(bannerSlot.id, bannerSessionDate);
+      setBannerLinkUrl(rec?.link_url || null);
+    } catch {
+      setBannerLinkUrl(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchBannerLink();
+  }, [bannerSlot?.id, bannerSessionDate]);
+
+  useRealtimeTable({
+    table: 'class_session_links',
+    debounceMs: 1000,
+    onAny: fetchBannerLink,
+  });
 
   // Active tab defaults to today in PKT
   const getInitialDay = () => {
@@ -188,11 +220,11 @@ export const SchedulePage: React.FC = () => {
                   <p className="text-xs text-[#737373] mt-0.5 font-medium">
                     with {bannerState.nextSlot.offering?.teacher?.full_name || 'Staff'} ·{' '}
                     {(() => {
-                      const status = getLinkAvailabilityStatus(bannerState.nextSlot, pktnow);
+                      const status = getLinkAvailabilityStatus(bannerState.nextSlot, pktnow, bannerLinkUrl, bannerSessionDate || undefined);
                       if (status.isAvailable) return 'Online Link Active';
                       if (status.status === 'locked') return 'Link Unlocks 10m Before Class';
-                      if (bannerState.nextSlot.room_or_link) return 'Online Link Scheduled';
-                      return 'TBD';
+                      if (bannerLinkUrl) return 'Online Link Scheduled';
+                      return 'No link yet';
                     })()}
                   </p>
                 </>
@@ -264,24 +296,31 @@ export const SchedulePage: React.FC = () => {
             }.`}
           />
         ) : (
-          filteredSlots.map(slot => {
-            const att = attendanceRecords.find(
-              a => a.slot_id === slot.id && a.session_date === pktnow.dateString
-            );
-            return (
-              <ClassSlotCard
-                key={slot.id}
-                slot={slot}
-                attendanceRecord={att}
-                onAttendanceMarked={(slotId, rec) => {
-                  setAttendanceRecords(prev => [
-                    rec,
-                    ...prev.filter(a => !(a.slot_id === slotId && a.session_date === rec.session_date))
-                  ]);
-                }}
-              />
-            );
-          })
+          (() => {
+            const sessionDateForTab = activeDay === pktnow.dayIndex
+              ? pktnow.dateString
+              : getClosestDateForDayOfWeek(activeDay, pktnow);
+
+            return filteredSlots.map(slot => {
+              const att = attendanceRecords.find(
+                a => a.slot_id === slot.id && a.session_date === sessionDateForTab
+              );
+              return (
+                <ClassSlotCard
+                  key={slot.id}
+                  slot={slot}
+                  sessionDate={sessionDateForTab}
+                  attendanceRecord={att}
+                  onAttendanceMarked={(slotId, rec) => {
+                    setAttendanceRecords(prev => [
+                      rec,
+                      ...prev.filter(a => !(a.slot_id === slotId && a.session_date === rec.session_date))
+                    ]);
+                  }}
+                />
+              );
+            });
+          })()
         )}
       </div>
     </StudentShell>

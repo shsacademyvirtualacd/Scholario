@@ -322,17 +322,20 @@ export interface LinkAvailabilityStatus {
 /**
  * Evaluates whether a class slot's live link should be accessible to students.
  * Rules:
- *  1. Teacher can post/edit a link at any time.
- *  2. For students, the link is accessible ONLY starting 10 minutes prior to class
- *     start time up until the class end time.
+ *  1. Teacher can post/edit a link at any time for a specific session date.
+ *  2. For students, the link is accessible ONLY on the day of the session,
+ *     starting 10 minutes prior to class start time up until the class end time.
  *  3. If uploaded within 10 minutes (or during class), it is immediately available.
  *  4. Outside the 10-minute window, the link is locked/hidden from students.
+ *  5. Once class end time has passed, the link becomes 'ended' and is no longer joinable.
  */
 export function getLinkAvailabilityStatus(
   slot: ClassSlot,
-  pktnow: PKTNow = getPKTNow()
+  pktnow: PKTNow = getPKTNow(),
+  sessionLinkUrl?: string | null,
+  targetSessionDate?: string
 ): LinkAvailabilityStatus {
-  const link = slot?.room_or_link?.trim();
+  const link = (sessionLinkUrl !== undefined ? sessionLinkUrl : slot?.room_or_link)?.trim();
   if (!link) {
     return {
       isAvailable: false,
@@ -341,13 +344,31 @@ export function getLinkAvailabilityStatus(
     };
   }
 
-  const slotDay = slot.day_of_week ?? 0;
-  if (slotDay !== pktnow.dayIndex) {
-    return {
-      isAvailable: false,
-      status: 'future_day',
-      message: 'Available 10m before class',
-    };
+  // Check target session date against current PKT date if provided
+  if (targetSessionDate) {
+    if (targetSessionDate < pktnow.dateString) {
+      return {
+        isAvailable: false,
+        status: 'ended',
+        message: 'Class session ended',
+      };
+    }
+    if (targetSessionDate > pktnow.dateString) {
+      return {
+        isAvailable: false,
+        status: 'future_day',
+        message: 'Available 10m before class',
+      };
+    }
+  } else {
+    const slotDay = slot.day_of_week ?? 0;
+    if (slotDay !== pktnow.dayIndex) {
+      return {
+        isAvailable: false,
+        status: 'future_day',
+        message: 'Available 10m before class',
+      };
+    }
   }
 
   const startMins = slot.start_time ? timeStrToMins(slot.start_time) : 0;

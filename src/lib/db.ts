@@ -11,7 +11,7 @@ import { getPKTNow } from './scheduleUtils';
 import { BOARDS, FBISE_GRADES, SINDH_GRADES } from './taxonomy';
 // getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
-  Profile, Teacher, ClassOffering, ClassSlot,
+  Profile, Teacher, ClassOffering, ClassSlot, ClassSessionLink,
   Enrollment, Attendance, AttendanceStatus, Note, RosterEntry,
   BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
   TeacherAttendanceRating, TeacherAttendanceRatingVote,
@@ -422,6 +422,104 @@ export async function deleteSlot(slotId: string): Promise<void> {
 export async function deleteSlots(slotIds: string[]): Promise<void> {
   if (slotIds.length === 0) return;
   const { error } = await (supabase as any).from('class_slots').delete().in('id', slotIds);
+  if (error) throw error;
+}
+
+// =============================================================================
+// CLASS SESSION LINKS (instance-specific Zoom/Meet links)
+// =============================================================================
+
+/** Get all session links for a specific calendar date (YYYY-MM-DD) */
+export async function getSessionLinksForDate(sessionDate: string): Promise<ClassSessionLink[]> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('class_session_links')
+      .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))')
+      .eq('session_date', sessionDate);
+    if (error) {
+      console.warn('[db:getSessionLinksForDate] warning:', error.message);
+      return [];
+    }
+    return (data || []) as ClassSessionLink[];
+  } catch (err) {
+    console.warn('[db:getSessionLinksForDate] catch error:', err);
+    return [];
+  }
+}
+
+/** Get session links for multiple dates (e.g. today + upcoming days) */
+export async function getSessionLinksForDates(sessionDates: string[]): Promise<ClassSessionLink[]> {
+  if (!sessionDates || sessionDates.length === 0) return [];
+  try {
+    const { data, error } = await (supabase as any)
+      .from('class_session_links')
+      .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))')
+      .in('session_date', sessionDates);
+    if (error) {
+      console.warn('[db:getSessionLinksForDates] warning:', error.message);
+      return [];
+    }
+    return (data || []) as ClassSessionLink[];
+  } catch (err) {
+    console.warn('[db:getSessionLinksForDates] catch error:', err);
+    return [];
+  }
+}
+
+/** Get a specific session link for a given slot and date */
+export async function getSessionLink(slotId: string, sessionDate: string): Promise<ClassSessionLink | null> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('class_session_links')
+      .select('*')
+      .eq('slot_id', slotId)
+      .eq('session_date', sessionDate)
+      .maybeSingle();
+    if (error) {
+      console.warn('[db:getSessionLink] warning:', error.message);
+      return null;
+    }
+    return data as ClassSessionLink | null;
+  } catch (err) {
+    console.warn('[db:getSessionLink] catch error:', err);
+    return null;
+  }
+}
+
+/** Upsert a live class link for a specific class slot and session date */
+export async function upsertSessionLink(
+  slotId: string,
+  sessionDate: string,
+  linkUrl: string,
+  offeringId?: string | null,
+  createdBy?: string | null
+): Promise<ClassSessionLink> {
+  const trimmed = linkUrl.trim();
+  const payload: any = {
+    slot_id: slotId,
+    session_date: sessionDate,
+    link_url: trimmed,
+    updated_at: new Date().toISOString(),
+  };
+  if (offeringId) payload.offering_id = offeringId;
+  if (createdBy) payload.created_by = createdBy;
+
+  const { data, error } = await (supabase as any)
+    .from('class_session_links')
+    .upsert(payload, { onConflict: 'slot_id,session_date' })
+    .select()
+    .single();
+
+  return throwOnError(data, error, 'upsertSessionLink') as ClassSessionLink;
+}
+
+/** Delete / clear a session link for a specific slot and session date */
+export async function deleteSessionLink(slotId: string, sessionDate: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('class_session_links')
+    .delete()
+    .eq('slot_id', slotId)
+    .eq('session_date', sessionDate);
   if (error) throw error;
 }
 

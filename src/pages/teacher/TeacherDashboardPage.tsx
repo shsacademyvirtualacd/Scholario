@@ -4,7 +4,6 @@ import {
   BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
   Link as LinkIcon, Check, X, Lock
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -16,7 +15,10 @@ import {
   getAttendanceForTeacher,
   getAttendanceForSession,
   recordAttendance,
-  upsertAttendanceBatch
+  upsertAttendanceBatch,
+  getSessionLink,
+  upsertSessionLink,
+  deleteSessionLink
 } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -24,78 +26,175 @@ import type { ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus } 
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, calcDuration, getLinkAvailabilityStatus,
-  timeStrToMins
+  timeStrToMins, getClosestDateForDayOfWeek
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 
-// ─── Live Link Editor for Teacher ────────────────────────────────────
-const LiveLinkEditor: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
+// ─── Live Link Editor for Teacher (per-session date instance) ──────────
+export const LiveLinkEditor: React.FC<{
+  slot: ClassSlot;
+  sessionDate: string;
+  teacherId?: string;
+  onLinkUpdated?: (linkUrl: string | null) => void;
+}> = ({ slot, sessionDate, teacherId, onLinkUpdated }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [linkVal, setLinkVal] = useState(slot.room_or_link || '');
+  const [linkVal, setLinkVal] = useState('');
+  const [currentLink, setCurrentLink] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async () => {
-    setIsSaving(true);
+  // Load session-specific link for this slot and sessionDate
+  const fetchSessionLink = async () => {
+    if (!slot?.id || !sessionDate) return;
     try {
-      const { error } = await (supabase as any).from('class_slots').update({ room_or_link: linkVal }).eq('id', slot.id);
-      if (error) throw error;
-      slot.room_or_link = linkVal; // optimistically update local state
+      const rec = await getSessionLink(slot.id, sessionDate);
+      const url = rec?.link_url || null;
+      setCurrentLink(url);
+      setLinkVal(url || '');
+      onLinkUpdated?.(url);
     } catch (err) {
-      console.error('Failed to save link:', err);
+      console.warn('[LiveLinkEditor] error fetching session link:', err);
     } finally {
-      setIsSaving(false);
-      setIsEditing(false);
+      setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchSessionLink();
+  }, [slot?.id, sessionDate]);
+
+  // Realtime updates for session links
+  useRealtimeTable({
+    table: 'class_session_links',
+    debounceMs: 1000,
+    onAny: fetchSessionLink,
+  });
+
+  const handleSave = async () => {
+    if (!slot?.id || !sessionDate) return;
+    setIsSaving(true);
+    const trimmed = linkVal.trim();
+    try {
+      if (trimmed) {
+        await upsertSessionLink(slot.id, sessionDate, trimmed, slot.offering_id, teacherId);
+        setCurrentLink(trimmed);
+        onLinkUpdated?.(trimmed);
+      } else {
+        await deleteSessionLink(slot.id, sessionDate);
+        setCurrentLink(null);
+        onLinkUpdated?.(null);
+      }
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to save session link:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemove = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!slot?.id || !sessionDate) return;
+    setIsSaving(true);
+    try {
+      await deleteSessionLink(slot.id, sessionDate);
+      setCurrentLink(null);
+      setLinkVal('');
+      onLinkUpdated?.(null);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to delete session link:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-7 bg-gray-50 rounded animate-pulse w-full mt-2" />
+    );
+  }
 
   if (isEditing) {
     return (
       <div className="flex flex-col gap-1 mt-2 w-full">
-        <div className="flex items-center gap-2 w-full">
+        <div className="flex items-center gap-1.5 w-full">
           <input 
             type="text" 
-            placeholder="https://zoom.us/j/..."
+            placeholder="https://zoom.us/j/... or https://meet.google.com/..."
             value={linkVal}
             onChange={e => setLinkVal(e.target.value)}
-            className="flex-1 text-xs px-2 py-1 border border-[#E5E5E5] rounded focus:outline-none focus:border-[#F4C430]"
+            className="flex-1 text-xs px-2.5 py-1.5 border border-[#E5E5E5] rounded-lg focus:outline-none focus:border-[#F4C430] bg-white shadow-xs"
             autoFocus
             onKeyDown={e => e.key === 'Enter' && handleSave()}
           />
-          <button onClick={handleSave} disabled={isSaving} className="p-1 bg-[#F4C430] text-[#111111] rounded hover:bg-[#E5B520] interactive">
-            <Check size={12} />
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="p-1.5 bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] rounded-lg interactive disabled:opacity-50"
+            title="Save live class link for this session"
+          >
+            <Check size={13} />
           </button>
-          <button onClick={() => { setIsEditing(false); setLinkVal(slot.room_or_link || ''); }} className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-            <X size={12} />
+          <button
+            onClick={() => { setIsEditing(false); setLinkVal(currentLink || ''); }}
+            className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
+            title="Cancel"
+          >
+            <X size={13} />
           </button>
         </div>
         <span className="text-[10px] text-[#737373] italic">
-          ℹ️ Link will automatically become accessible to students 10 minutes before class.
+          ℹ️ Link applies ONLY to session ({sessionDate}). Accessible to students 10m before class.
         </span>
       </div>
     );
   }
 
-  const hasLink = slot.room_or_link && slot.room_or_link.trim().length > 0;
-  const status = getLinkAvailabilityStatus(slot, getPKTNow());
+  const hasLink = currentLink && currentLink.trim().length > 0;
+  const status = getLinkAvailabilityStatus(slot, getPKTNow(), currentLink, sessionDate);
   
   if (hasLink) {
     return (
-      <div className="flex flex-col gap-1 w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded p-2">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-1.5 truncate">
+      <div className="flex flex-col gap-1.5 w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg p-2">
+        <div className="flex items-center justify-between w-full gap-2">
+          <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
             <LinkIcon size={12} className="text-blue-500 shrink-0" />
-            <a href={slot.room_or_link!.startsWith('http') ? slot.room_or_link! : `https://${slot.room_or_link!}`} target="_blank" rel="noreferrer" className="text-[10px] font-semibold text-blue-600 hover:underline truncate">
-              {slot.room_or_link}
+            <a
+              href={currentLink.startsWith('http') ? currentLink : `https://${currentLink}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] font-semibold text-blue-600 hover:underline truncate"
+            >
+              {currentLink}
             </a>
           </div>
-          <button onClick={() => setIsEditing(true)} className="flex items-center gap-1 text-[10px] text-[#737373] hover:text-[#111111] font-semibold shrink-0 ml-2">
-            ✏️ Edit
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-[10px] text-[#737373] hover:text-[#111111] font-semibold px-1.5 py-0.5 rounded hover:bg-gray-200 transition-colors"
+            >
+              ✏️ Edit
+            </button>
+            <button
+              onClick={handleRemove}
+              disabled={isSaving}
+              className="text-[10px] text-rose-600 hover:text-rose-700 font-semibold px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors"
+              title="Remove link for this session"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-1 text-[9px] font-semibold">
           {status.isAvailable ? (
             <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
               🟢 Accessible to students now
+            </span>
+          ) : status.status === 'ended' ? (
+            <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+              Session ended
             </span>
           ) : (
             <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1">
@@ -108,14 +207,17 @@ const LiveLinkEditor: React.FC<{ slot: ClassSlot }> = ({ slot }) => {
   }
 
   return (
-    <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-[10px] text-[#737373] hover:text-[#111111] font-semibold border border-dashed border-[#D4D4D4] px-2 py-1.5 rounded transition-colors w-full justify-center bg-[#FAFAFA] hover:bg-[#F5F5F5] mt-2">
+    <button
+      onClick={() => setIsEditing(true)}
+      className="flex items-center gap-1.5 text-[11px] text-[#737373] hover:text-[#111111] font-semibold border border-dashed border-[#D4D4D4] hover:border-[#111111] px-2.5 py-1.5 rounded-lg transition-colors w-full justify-center bg-[#FAFAFA] hover:bg-[#F5F5F5] mt-2 shadow-xs"
+    >
       🔗 Add Live Class Link (Zoom/Meet)
     </button>
   );
 };
 
 // ─── Live Next Class Countdown Widget for Teacher ──────────────────
-const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => {
+const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string }> = ({ slots, teacherId }) => {
   const [pktnow, setPktnow] = useState(getPKTNow);
 
   useEffect(() => {
@@ -151,6 +253,8 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
     const remH = Math.floor(state.minsRemaining / 60);
     const remM = state.minsRemaining % 60;
     const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
+    const sessionDate = pktnow.dateString;
+
     return (
       <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
@@ -173,7 +277,7 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
             <span className="text-[10px] text-[#A3A3A3]">· {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time)}</span>
           )}
         </div>
-        <LiveLinkEditor slot={state.activeSlot} />
+        <LiveLinkEditor slot={state.activeSlot} sessionDate={sessionDate} teacherId={teacherId} />
       </div>
     );
   }
@@ -182,6 +286,9 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
   const nextSlot = state.nextSlot!;
   const minsUntil = state.minsUntil ?? 0;
   const subject = getSlotSubject(nextSlot);
+  const sessionDate = nextSlot.day_of_week === pktnow.dayIndex
+    ? pktnow.dateString
+    : getClosestDateForDayOfWeek(nextSlot.day_of_week ?? 0, pktnow);
   
   let badgeLabel = '';
   let isPulsing = false;
@@ -222,12 +329,8 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[] }> = ({ slots }) => 
       <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
         <Clock size={13} className="text-[#F4C430] shrink-0" />
         <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
-        <span className="text-xs text-[#A3A3A3]">·</span>
-        <span className="text-xs font-semibold text-[#737373] truncate max-w-[100px]">
-          {(nextSlot.room_or_link && (nextSlot.room_or_link.includes('http') || nextSlot.room_or_link.includes('zoom') || nextSlot.room_or_link.includes('meet'))) ? 'Online' : 'TBD'}
-        </span>
       </div>
-      <LiveLinkEditor slot={nextSlot} />
+      <LiveLinkEditor slot={nextSlot} sessionDate={sessionDate} teacherId={teacherId} />
     </div>
   );
 };
@@ -662,7 +765,7 @@ export const TeacherDashboardPage: React.FC = () => {
             </div>
 
             {/* Next ClassCountdown Widget */}
-            <TeacherNextClassWidget slots={allSlots} />
+            <TeacherNextClassWidget slots={allSlots} teacherId={teacherId} />
 
             {/* Classes Today */}
             <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">

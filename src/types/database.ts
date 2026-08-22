@@ -106,6 +106,21 @@ export interface ClassSlot {
   offering?: ClassOffering;
 }
 
+// ─── class_session_links ────────────────────
+export interface ClassSessionLink {
+  id: string;
+  slot_id: string;
+  offering_id?: string | null;
+  session_date: string; // YYYY-MM-DD
+  link_url: string;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  // joined
+  slot?: ClassSlot;
+  offering?: ClassOffering;
+}
+
 // ─── enrollments ────────────────────────────
 export interface Enrollment {
   id: string;

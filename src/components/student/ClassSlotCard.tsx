@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Video, MapPin, Clock, Lock, CheckCircle2, Check, XCircle, X } from 'lucide-react';
 import StatusPill from '../ui/StatusPill';
-import { calcDuration, formatTime12h, getPKTNow, getLinkAvailabilityStatus, isSlotOngoing } from '../../lib/scheduleUtils';
+import { calcDuration, formatTime12h, getPKTNow, getLinkAvailabilityStatus, isSlotOngoing, getClosestDateForDayOfWeek } from '../../lib/scheduleUtils';
 import { useAuth } from '../../features/auth/AuthContext';
-import { markStudentSelfAttendance } from '../../lib/db';
+import { markStudentSelfAttendance, getSessionLink } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { Attendance, ClassSlot } from '../../types';
 
 interface ClassSlotCardProps {
   slot: ClassSlot;
+  sessionDate?: string;
+  sessionLinkUrl?: string | null;
   attendanceRecord?: Attendance | null;
   onAttendanceMarked?: (slotId: string, record: Attendance) => void;
   isMarkedPresent?: boolean;
@@ -16,13 +19,44 @@ interface ClassSlotCardProps {
 
 export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
   slot,
+  sessionDate: propSessionDate,
+  sessionLinkUrl: propSessionLinkUrl,
   attendanceRecord: propAttendance,
   onAttendanceMarked,
 }) => {
   const { user } = useAuth();
   const [pktnow, setPktnow] = useState(getPKTNow);
   const [isMarking, setIsMarking] = useState(false);
-  const todayStr = pktnow.dateString || new Date().toISOString().slice(0, 10);
+  const [fetchedLink, setFetchedLink] = useState<string | null>(null);
+
+  const effectiveSessionDate = propSessionDate || (
+    slot.day_of_week === pktnow.dayIndex
+      ? pktnow.dateString
+      : getClosestDateForDayOfWeek(slot.day_of_week ?? 0, pktnow)
+  );
+
+  const fetchLink = async () => {
+    if (propSessionLinkUrl !== undefined) return;
+    if (!slot?.id || !effectiveSessionDate) return;
+    try {
+      const rec = await getSessionLink(slot.id, effectiveSessionDate);
+      setFetchedLink(rec?.link_url || null);
+    } catch (err) {
+      console.warn('[ClassSlotCard] fetch link error:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLink();
+  }, [slot?.id, effectiveSessionDate, propSessionLinkUrl]);
+
+  useRealtimeTable({
+    table: 'class_session_links',
+    debounceMs: 1000,
+    onAny: fetchLink,
+  });
+
+  const effectiveLink = propSessionLinkUrl !== undefined ? propSessionLinkUrl : fetchedLink;
 
   // Re-evaluate PKT clock and link availability every 5 seconds
   useEffect(() => {
@@ -32,13 +66,13 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Look up attendance record for (student.id, slot.id, today's date)
+  // Look up attendance record for (student.id, slot.id, effectiveSessionDate)
   const getCachedOrPropAttendance = (): Attendance | null => {
     if (propAttendance !== undefined) return propAttendance;
     if (!user?.id) return null;
     const cachedAtt = pageCache.get<Attendance[]>('student_attendance', user.id);
     const found = cachedAtt?.find(
-      a => a.slot_id === slot.id && a.session_date === todayStr
+      a => a.slot_id === slot.id && a.session_date === effectiveSessionDate
     );
     return found || null;
   };
@@ -51,11 +85,11 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     } else if (user?.id) {
       const cachedAtt = pageCache.get<Attendance[]>('student_attendance', user.id);
       const found = cachedAtt?.find(
-        a => a.slot_id === slot.id && a.session_date === todayStr
+        a => a.slot_id === slot.id && a.session_date === effectiveSessionDate
       );
       if (found) setLocalAttendance(found);
     }
-  }, [propAttendance, slot.id, todayStr, user?.id]);
+  }, [propAttendance, slot.id, effectiveSessionDate, user?.id]);
 
   const isCancelled = slot.is_cancelled;
   const rawSubj = slot.custom_title || (slot.offering as any)?.subject_name || slot.offering?.subject || 'Class';
@@ -78,8 +112,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
   const subjectColor = getSubjectColor(subject);
 
   // 10-minute timing restriction status
-  const linkStatus = getLinkAvailabilityStatus(slot, pktnow);
-  const hasRawLink = Boolean(slot.room_or_link && slot.room_or_link.trim().length > 0);
+  const linkStatus = getLinkAvailabilityStatus(slot, pktnow, effectiveLink, effectiveSessionDate);
+  const hasLink = Boolean(effectiveLink && effectiveLink.trim().length > 0);
   const isOngoing = isSlotOngoing(slot, pktnow);
 
   const handleMarkAttendance = async (e?: React.MouseEvent) => {
@@ -87,7 +121,7 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     if (!user?.id || isCancelled || !isOngoing || isMarking) return;
     setIsMarking(true);
     try {
-      const rec = await markStudentSelfAttendance(user.id, slot.id, todayStr);
+      const rec = await markStudentSelfAttendance(user.id, slot.id, effectiveSessionDate);
       setLocalAttendance(rec);
       onAttendanceMarked?.(slot.id, rec);
     } catch (err) {
@@ -97,7 +131,7 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
         id: `att-${Date.now()}`,
         student_id: user.id,
         slot_id: slot.id,
-        session_date: todayStr,
+        session_date: effectiveSessionDate,
         status: 'pending',
         marked_at: new Date().toISOString(),
         marked_by: 'student',
@@ -113,8 +147,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     if (isOngoing && (!localAttendance || localAttendance.status === 'absent')) {
       handleMarkAttendance();
     }
-    if (linkStatus.isAvailable && slot.room_or_link) {
-      const url = slot.room_or_link.startsWith('http') ? slot.room_or_link : `https://${slot.room_or_link}`;
+    if (linkStatus.isAvailable && effectiveLink) {
+      const url = effectiveLink.startsWith('http') ? effectiveLink : `https://${effectiveLink}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
@@ -246,7 +280,7 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
             <Clock size={12} className="text-gray-400 shrink-0" />
             <span>Session Ended</span>
           </div>
-        ) : hasRawLink ? (
+        ) : hasLink ? (
           <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500" title="Link accessible 10 minutes before class">
             <Lock size={12} className="text-gray-400 shrink-0" />
             <span>Unlocks 10m before</span>
