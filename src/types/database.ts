@@ -129,6 +129,7 @@ export interface Enrollment {
   total_classes: number;
   enrolled_at: string;
   // joined
+  student?: Profile;
   offering?: ClassOffering;
   classes_attended?: number; // computed
 }
@@ -142,6 +143,7 @@ export interface Attendance {
   status: AttendanceStatus;
   marked_at: string;
   marked_by?: 'student' | 'teacher' | 'admin' | 'self';
+  created_at?: string;
   // joined
   slot?: ClassSlot;
   student?: Profile;
@@ -272,6 +274,7 @@ export interface RosterEntry {
   role: 'student' | 'teacher' | 'admin';
   class_ids: string[];
   profile_id: string | null;
+  phone?: string | null;
   suspended?: boolean;
   fee_suspended?: boolean;
   awaiting_termination?: boolean;

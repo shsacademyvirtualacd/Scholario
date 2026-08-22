@@ -30,10 +30,11 @@ import {
   getStudentsForTeacher,
   getAllStudents,
   getAllEnrollments,
+  getAllRoster,
   getAttendanceForTeacher,
   recordAttendance
 } from '../../lib/db';
-import type { Attendance, AttendanceStatus, ClassOffering, ClassSlot, Enrollment, Profile } from '../../types';
+import type { Attendance, AttendanceStatus, ClassOffering, ClassSlot, Enrollment, Profile, RosterEntry } from '../../types';
 
 export const TeacherAttendancePage: React.FC = () => {
   const { profile } = useAuth();
@@ -45,11 +46,13 @@ export const TeacherAttendancePage: React.FC = () => {
   const cachedStudents = teacherId ? pageCache.get<Profile[]>('teacher_students', teacherId) : null;
   const cachedAttendance = teacherId ? pageCache.get<Attendance[]>('teacher_attendance_all', teacherId) : null;
   const cachedEnrollments = teacherId ? pageCache.get<Enrollment[]>('teacher_enrollments', teacherId) : null;
+  const cachedRoster = teacherId ? pageCache.get<RosterEntry[]>('teacher_roster', teacherId) : null;
 
   const [offerings, setOfferings] = useState<ClassOffering[]>(cachedOfferings || []);
   const [slots, setSlots] = useState<ClassSlot[]>(cachedSlots || []);
   const [students, setStudents] = useState<Profile[]>(cachedStudents || []);
   const [enrollments, setEnrollments] = useState<Enrollment[]>(cachedEnrollments || []);
+  const [roster, setRoster] = useState<RosterEntry[]>(cachedRoster || []);
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(cachedAttendance || []);
   const [loading, setLoading] = useState(!cachedAttendance || cachedAttendance.length === 0);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,25 +83,51 @@ export const TeacherAttendancePage: React.FC = () => {
     else if (attendanceRecords.length === 0) setLoading(true);
 
     try {
-      const [teacherOffs, teacherSlots, teacherStuds, allStuds, attList, allEnrs] = await Promise.all([
+      const [teacherOffs, teacherSlots, teacherStuds, allStuds, attList, allEnrs, rosterList] = await Promise.all([
         getOfferingsForTeacher(teacherId),
         getSlotsForTeacher(teacherId),
         getStudentsForTeacher(teacherId),
         getAllStudents().catch(() => [] as Profile[]),
         getAttendanceForTeacher(teacherId),
         getAllEnrollments().catch(() => [] as Enrollment[]),
+        getAllRoster().catch(() => [] as RosterEntry[]),
       ]);
 
       // Combine student records so we have maximum profile coverage
       const studentMap = new Map<string, Profile>();
       allStuds.forEach(s => studentMap.set(s.id, s));
       teacherStuds.forEach(s => studentMap.set(s.id, s));
+      allEnrs.forEach(e => {
+        if (e.student && e.student.id) studentMap.set(e.student.id, e.student);
+      });
+      rosterList.forEach(r => {
+        if (r.role === 'student') {
+          const sId = r.profile_id || r.id;
+          const existing = studentMap.get(sId);
+          if (!existing) {
+            studentMap.set(sId, {
+              id: sId,
+              full_name: r.full_name || 'Student',
+              role: 'student',
+              avatar_url: null,
+              phone: r.phone || null,
+              created_at: r.created_at || new Date().toISOString(),
+              stream: null,
+              email: r.email,
+              class_id: Array.isArray(r.class_ids) && r.class_ids.length > 0 ? r.class_ids[0] : null,
+            } as any);
+          } else if (r.full_name && (!existing.full_name || existing.full_name.startsWith('Student '))) {
+            existing.full_name = r.full_name;
+          }
+        }
+      });
       const mergedStudents = Array.from(studentMap.values());
 
       setOfferings(teacherOffs);
       setSlots(teacherSlots);
       setStudents(mergedStudents);
       setEnrollments(allEnrs || []);
+      setRoster(rosterList || []);
       setAttendanceRecords(attList);
 
       if (teacherId) {
@@ -106,6 +135,7 @@ export const TeacherAttendancePage: React.FC = () => {
         pageCache.set('teacher_slots', teacherSlots, teacherId);
         pageCache.set('teacher_students', mergedStudents, teacherId);
         pageCache.set('teacher_enrollments', allEnrs || [], teacherId);
+        pageCache.set('teacher_roster', rosterList || [], teacherId);
         pageCache.set('teacher_attendance_all', attList, teacherId);
       }
     } catch (err: any) {
@@ -138,18 +168,22 @@ export const TeacherAttendancePage: React.FC = () => {
     debounceMs: 2000,
     onAny: async () => {
       if (!teacherId) return;
-      const [studs, enrs] = await Promise.all([
+      const [studs, enrs, rList] = await Promise.all([
         getStudentsForTeacher(teacherId),
         getAllEnrollments().catch(() => [] as Enrollment[]),
+        getAllRoster().catch(() => [] as RosterEntry[]),
       ]);
       setEnrollments(enrs);
+      setRoster(rList);
       setStudents(prev => {
         const map = new Map(prev.map(s => [s.id, s]));
         studs.forEach(s => map.set(s.id, s));
+        enrs.forEach(e => { if (e.student?.id) map.set(e.student.id, e.student); });
         return Array.from(map.values());
       });
       if (teacherId) {
         pageCache.set('teacher_enrollments', enrs, teacherId);
+        pageCache.set('teacher_roster', rList, teacherId);
       }
     }
   });
@@ -897,33 +931,46 @@ export const TeacherAttendancePage: React.FC = () => {
             </div>
           ) : (
             offerings.map(off => {
-              // 1. Resolve enrolled students for this offering from real enrollment records and profile matches
+              // 1. Resolve enrolled students for this offering from real enrollment records
               const directEnrolledIds = new Set(
                 enrollments.filter(e => e.offering_id === off.id).map(e => e.student_id)
               );
 
+              // 2. Resolve enrolled students from roster records (matching offering ID or class ID)
+              const rosterEnrolledIds = new Set<string>();
+              roster.forEach(r => {
+                if (r.role !== 'student') return;
+                const matchesOffering = Array.isArray(r.class_ids) && (
+                  r.class_ids.includes(off.id) ||
+                  (off.class_id && r.class_ids.includes(off.class_id))
+                );
+                if (matchesOffering) {
+                  rosterEnrolledIds.add(r.profile_id || r.id);
+                }
+              });
+
+              // 3. Resolve students assigned by grade/board/stream or class_id
               const classEnrolledIds = new Set<string>();
               students.forEach(s => {
                 if (s.role !== 'student') return;
                 const matchClassId = s.class_id && off.class_id && s.class_id === off.class_id;
                 const sGrade = s.class?.grade || (s as any).grade;
-                const sBoardId = s.board_id || s.board?.id;
+                const sBoardId = s.board_id || s.board?.id || (s.class as any)?.board_id;
+                const offGrade = off.class?.grade || (off as any).grade;
+                const offBoardId = off.class?.board_id || off.board_id || (off.class as any)?.board?.id;
                 const matchBoardGrade = (
                   sBoardId &&
                   sGrade &&
-                  off.class?.board_id &&
-                  off.class?.grade &&
-                  sBoardId === off.class.board_id &&
-                  sGrade === off.class.grade &&
+                  offBoardId &&
+                  offGrade &&
+                  sBoardId === offBoardId &&
+                  String(sGrade) === String(offGrade) &&
                   (!off.stream_id || s.stream_id === off.stream_id || (s as any).stream === off.stream_id)
                 );
                 if (matchClassId || matchBoardGrade) {
                   classEnrolledIds.add(s.id);
                 }
               });
-
-              // Combine all enrolled student IDs
-              const allEnrolledIds = new Set([...directEnrolledIds, ...classEnrolledIds]);
 
               // Attendance logs belonging to this offering
               const offRecords = attendanceRecords.filter(r => {
@@ -932,20 +979,29 @@ export const TeacherAttendancePage: React.FC = () => {
                 return offId === off.id;
               });
 
-              // Include any student who has an attendance record in this offering
+              const attEnrolledIds = new Set<string>();
               offRecords.forEach(r => {
-                if (r.student_id) allEnrolledIds.add(r.student_id);
+                if (r.student_id) attEnrolledIds.add(r.student_id);
               });
+
+              // Combine all enrolled student IDs
+              const allEnrolledIds = new Set([
+                ...directEnrolledIds,
+                ...rosterEnrolledIds,
+                ...classEnrolledIds,
+                ...attEnrolledIds
+              ]);
 
               // Individual breakdown for each enrolled student
               const enrolledStudentList = Array.from(allEnrolledIds).map(stId => {
-                const profileObj = studentsMap[stId] || students.find(s => s.id === stId) || { id: stId, full_name: 'Student ' + stId.slice(0, 6) } as Profile;
-                const stLogs = offRecords.filter(r => r.student_id === stId);
+                const profileObj = studentsMap[stId] || students.find(s => s.id === stId) || (roster.find(r => r.profile_id === stId || r.id === stId) as any) || { id: stId, full_name: 'Student ' + stId.slice(0, 6) } as Profile;
+                const stLogs = offRecords.filter(r => r.student_id === stId || (r.student && r.student.id === stId));
                 const present = stLogs.filter(r => r.status === 'present').length;
                 const late = stLogs.filter(r => r.status === 'late').length;
                 const absent = stLogs.filter(r => r.status === 'absent').length;
                 const total = stLogs.length;
                 const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+                const latestLog = [...stLogs].sort((a, b) => new Date(b.session_date || b.created_at || '').getTime() - new Date(a.session_date || a.created_at || '').getTime())[0];
 
                 return {
                   id: stId,
@@ -956,6 +1012,7 @@ export const TeacherAttendancePage: React.FC = () => {
                   total,
                   rate,
                   hasLogs: total > 0,
+                  latestStatus: latestLog ? latestLog.status : null,
                 };
               }).sort((a, b) => (a.student?.full_name || '').localeCompare(b.student?.full_name || ''));
 
@@ -991,7 +1048,12 @@ export const TeacherAttendancePage: React.FC = () => {
                           )}
                         </div>
                         <p className="text-xs text-[#737373] mt-0.5">
-                          {gradeName ? `${gradeName} · ` : ''}{enrolledStudentList.length} {enrolledStudentList.length === 1 ? 'enrolled student tracked' : 'enrolled students tracked'}
+                          {gradeName ? `${gradeName} · ` : ''}
+                          {enrolledStudentList.length === 0 ? (
+                            <span className="text-amber-600 font-medium">No students enrolled yet</span>
+                          ) : (
+                            <span>{enrolledStudentList.length} {enrolledStudentList.length === 1 ? 'enrolled student tracked' : 'enrolled students tracked'}</span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1043,8 +1105,12 @@ export const TeacherAttendancePage: React.FC = () => {
                       </div>
 
                       {enrolledStudentList.length === 0 ? (
-                        <div className="py-6 text-center text-xs text-[#737373] bg-white rounded-xl border border-[#E5E5E5]">
-                          No students are currently enrolled in this class offering.
+                        <div className="py-8 text-center bg-white rounded-xl border border-[#E5E5E5] px-4">
+                          <GraduationCap size={28} className="mx-auto mb-2 text-[#A3A3A3]" />
+                          <p className="text-xs font-bold text-[#111111]">No students enrolled yet</p>
+                          <p className="text-[11px] text-[#737373] mt-0.5">
+                            No students are currently enrolled in this specific class offering.
+                          </p>
                         </div>
                       ) : (
                         <div className="bg-white rounded-xl border border-[#E5E5E5] overflow-hidden">

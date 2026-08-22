@@ -531,36 +531,124 @@ export async function deleteSessionLink(slotId: string, sessionDate: string): Pr
 export async function getAllEnrollments(): Promise<Enrollment[]> {
   const { data, error } = await supabase
     .from('enrollments')
-    .select('*');
-  return throwOnError(data, error, 'getAllEnrollments');
+    .select('*, student:profiles(*, class:classes(*, board:boards(*)), stream_obj:streams(*)), offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))');
+  if (error) {
+    const simple = await supabase.from('enrollments').select('*');
+    return (simple.data || []) as Enrollment[];
+  }
+  return (data || []).map((r: any) => ({
+    ...r,
+    offering: r.offering ? mapOffering(r.offering) : undefined,
+  })) as Enrollment[];
 }
 
 /** Admin/Teacher: get all students enrolled in a specific offering */
 export async function getStudentsInOffering(offeringId: string): Promise<Profile[]> {
-  const { data, error } = await supabase
-    .from('enrollments')
-    .select('student:profiles(*)')
-    .eq('offering_id', offeringId);
-  const rows = throwOnError(data, error, 'getStudentsInOffering');
-  return rows.map((r: any) => r.student).filter(Boolean);
+  const students: Profile[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('student:profiles(*, class:classes(*, board:boards(*)), stream_obj:streams(*))')
+      .eq('offering_id', offeringId);
+    if (!error && data) {
+      data.forEach((r: any) => {
+        if (r.student) students.push(r.student);
+      });
+    }
+  } catch (err) {
+    console.warn('[db:getStudentsInOffering] enrollments join error:', err);
+  }
+
+  // Also resolve from roster table if any students have this offering assigned
+  try {
+    const { data: rosterData } = await (supabase as any)
+      .from('roster')
+      .select('*')
+      .eq('role', 'student');
+    if (rosterData && Array.isArray(rosterData)) {
+      rosterData.forEach((r: any) => {
+        if (Array.isArray(r.class_ids) && r.class_ids.includes(offeringId)) {
+          students.push({
+            id: r.profile_id || r.id,
+            full_name: r.full_name || 'Student',
+            role: 'student',
+            avatar_url: null,
+            phone: r.phone || null,
+            created_at: r.created_at || new Date().toISOString(),
+            stream: null,
+            email: r.email,
+          } as any);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[db:getStudentsInOffering] roster query error:', err);
+  }
+
+  const seen = new Set<string>();
+  return students.filter((s: Profile) => {
+    if (!s?.id || seen.has(s.id)) return false;
+    seen.add(s.id);
+    return true;
+  });
 }
 
 /** Teacher: get all unique students across this teacher's offerings */
 export async function getStudentsForTeacher(teacherId: string): Promise<Profile[]> {
   const offerings = await getOfferingsForTeacher(teacherId);
   const ids = offerings.map(o => o.id);
+  const classIds = offerings.map(o => o.class_id).filter(Boolean);
   if (ids.length === 0) return [];
-  const { data, error } = await supabase
-    .from('enrollments')
-    .select('student:profiles(*)')
-    .in('offering_id', ids);
-  const rows = throwOnError(data, error, 'getStudentsForTeacher');
+
+  const students: Profile[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('student:profiles(*, class:classes(*, board:boards(*)), stream_obj:streams(*))')
+      .in('offering_id', ids);
+    if (!error && data) {
+      data.forEach((r: any) => {
+        if (r.student) students.push(r.student);
+      });
+    }
+  } catch (err) {
+    console.warn('[db:getStudentsForTeacher] enrollments join error:', err);
+  }
+
+  // Also query roster to pick up students linked to these class offerings
+  try {
+    const { data: rosterData } = await (supabase as any)
+      .from('roster')
+      .select('*')
+      .eq('role', 'student');
+    if (rosterData && Array.isArray(rosterData)) {
+      rosterData.forEach((r: any) => {
+        const hasMatch = Array.isArray(r.class_ids) && r.class_ids.some((cid: string) => ids.includes(cid) || classIds.includes(cid));
+        if (hasMatch) {
+          students.push({
+            id: r.profile_id || r.id,
+            full_name: r.full_name || 'Student',
+            role: 'student',
+            avatar_url: null,
+            phone: r.phone || null,
+            created_at: r.created_at || new Date().toISOString(),
+            stream: null,
+            email: r.email,
+          } as any);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[db:getStudentsForTeacher] roster query error:', err);
+  }
+
   // De-duplicate by profile id
   const seen = new Set<string>();
-  return rows
-    .map((r: any) => r.student)
-    .filter(Boolean)
-    .filter((s: Profile) => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
+  return students.filter((s: Profile) => {
+    if (!s?.id || seen.has(s.id)) return false;
+    seen.add(s.id);
+    return true;
+  });
 }
 
 /** Admin: enrol a student in an offering */
