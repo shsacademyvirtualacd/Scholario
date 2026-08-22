@@ -4,7 +4,7 @@ import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import {
   ClipboardCheck, Search, CheckCircle2,
-  Clock, AlertTriangle, ChevronDown, ChevronRight, Download, RefreshCw,
+  Clock, AlertTriangle, ChevronDown, ChevronRight, RefreshCw,
   GraduationCap, ShieldCheck, X, Users, BookOpen, Layers, UserCheck
 } from 'lucide-react';
 import TeacherAttendanceRatingsAdminView from '../../components/admin/TeacherAttendanceRatingsAdminView';
@@ -276,44 +276,6 @@ export const AttendanceAdminPage: React.FC = () => {
     return Array.from(subs);
   }, [offerings]);
 
-  // Export CSV Report
-  const handleExportCSV = () => {
-    if (attendanceRecords.length === 0) {
-      toast.info('No attendance records to export');
-      return;
-    }
-
-    const headers = ['Date', 'Student Name', 'Student Email', 'Subject', 'Grade', 'Teacher', 'Status', 'Marked At', 'Marked By'];
-    const rows = attendanceRecords.map(rec => {
-      const student = students.find(s => s.id === rec.student_id);
-      const slot = slots.find(s => s.id === rec.slot_id);
-      const offering = offerings.find(o => o.id === (slot?.offering_id || (slot?.offering as any)?.id));
-      const teacher = teachers.find(t => t.id === offering?.teacher_id);
-
-      return [
-        rec.session_date,
-        student?.full_name || rec.student_id,
-        (student as any)?.email || 'N/A',
-        offering?.subject_name || offering?.subject || 'Class',
-        offering?.grade || 'FBISE',
-        teacher?.full_name || 'Teacher',
-        rec.status.toUpperCase(),
-        rec.marked_at ? new Date(rec.marked_at).toLocaleString() : 'N/A',
-        rec.marked_by || 'system'
-      ];
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.map(val => `"${val}"`).join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Attendance_Audit_Report_${selectedDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Attendance CSV downloaded');
-  };
-
   return (
     <AdminShell>
       {/* Header */}
@@ -332,13 +294,6 @@ export const AttendanceAdminPage: React.FC = () => {
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3 font-bold"
-          >
-            <Download size={13} />
-            <span>Export CSV</span>
           </button>
         </div>
       </div>

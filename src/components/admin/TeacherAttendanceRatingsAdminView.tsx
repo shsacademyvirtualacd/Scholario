@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import {
-  UserCheck, Search, Download, CheckCircle2,
+  UserCheck, Search, CheckCircle2,
   AlertTriangle, Clock, Calendar, Check, X,
   RefreshCw, ChevronDown, ChevronRight,
   ShieldCheck, Users
 } from 'lucide-react';
-import { toast } from 'sonner';
 import type { Teacher, ClassOffering, ClassSlot, Profile, TeacherAttendanceRating } from '../../types';
 import { formatTime12h } from '../../lib/scheduleUtils';
 
@@ -226,64 +225,6 @@ export const TeacherAttendanceRatingsAdminView: React.FC<TeacherAttendanceRating
     setExpandedSessions(new Set());
   };
 
-  // Export CSV Report
-  const handleExportCSV = () => {
-    if (filteredSessions.length === 0) {
-      toast.info('No teacher attendance rating data to export');
-      return;
-    }
-
-    const headers = [
-      'Session Date',
-      'Teacher Name',
-      'Subject',
-      'Grade / Board',
-      'Time Slot',
-      'Present Votes',
-      'Absent Votes',
-      'Total Votes Cast',
-      'Presence Ratio (%)',
-      'Individual Student Votes'
-    ];
-
-    const rows = filteredSessions.map(g => {
-      const votesSummary = g.votes
-        .map(v => `${v.studentName}: ${v.rating.toUpperCase()}`)
-        .join('; ');
-
-      const timeSlot = g.startTime && g.endTime
-        ? `${formatTime12h(g.startTime)} - ${formatTime12h(g.endTime)}`
-        : 'Scheduled Class';
-
-      return [
-        g.sessionDate,
-        g.teacherName,
-        g.subjectName,
-        `${g.gradeLevel} ${g.boardName}`.trim(),
-        timeSlot,
-        g.presentCount,
-        g.absentCount,
-        g.totalVotes,
-        `${g.presenceRatio}%`,
-        votesSummary
-      ];
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [
-      headers.join(','),
-      ...rows.map(e => e.map(val => `"${val}"`).join(','))
-    ].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Teacher_Attendance_Ratings_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Teacher attendance rating audit CSV exported');
-  };
-
   return (
     <div className="space-y-6">
       {/* Overview Stat Cards */}
@@ -431,13 +372,6 @@ export const TeacherAttendanceRatingsAdminView: React.FC<TeacherAttendanceRating
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
               <span>Refresh</span>
-            </button>
-            <button
-              onClick={handleExportCSV}
-              className="btn btn-primary text-xs flex items-center gap-1.5 py-1.5 px-3 font-bold"
-            >
-              <Download size={13} />
-              <span>Export CSV</span>
             </button>
           </div>
         </div>

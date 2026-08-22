@@ -274,6 +274,7 @@ Key Guidelines:
       const {
         title,
         instructions,
+        board = 'fbise',
         subject,
         grade,
         stream = 'all',
@@ -304,6 +305,8 @@ Key Guidelines:
         id: testId,
         title: title.trim(),
         instructions: instructions ? instructions.trim() : null,
+        board: board || 'fbise',
+        board_id: board || 'fbise',
         subject,
         grade,
         stream,

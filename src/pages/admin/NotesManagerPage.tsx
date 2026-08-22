@@ -10,11 +10,16 @@ import NoteViewerModal from '../../components/student/NoteViewerModal';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getAllNotes, deleteNote, getAllOfferings, getTaxonomy } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
-import { getStreamsForGrade, GRADES } from '../../lib/taxonomy';
+import { getStreamsForGrade, getGradesForBoard } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
 import type { Note, ClassOffering } from '../../types';
+
+const BOARDS = [
+  { id: 'fbise', label: 'Federal Board (FBISE)' },
+  { id: 'sindh', label: 'Sindh Board' },
+];
 
 export const NotesManagerPage: React.FC = () => {
   useAuth();
@@ -70,9 +75,9 @@ export const NotesManagerPage: React.FC = () => {
   // Compute active grades from taxonomy or fallback
   const rawGrades = taxonomy && taxonomy.classes && taxonomy.classes.length > 0
     ? taxonomy.classes
-        .filter((c: any) => c.board_id === 'fbise' || !c.board_id)
+        .filter((c: any) => c.board_id === selectedBoard || (!c.board_id && selectedBoard === 'fbise'))
         .map((c: any) => ({ id: String(c.grade), label: c.display_name || `${c.grade}th` }))
-    : GRADES.map((g) => ({ id: g.grade, label: g.displayName }));
+    : getGradesForBoard(selectedBoard).map((g) => ({ id: g.grade, label: g.displayName }));
 
   const seenGrades = new Set<string>();
   const activeGrades: { id: string; label: string }[] = rawGrades.filter((g: any) => {
@@ -80,7 +85,7 @@ export const NotesManagerPage: React.FC = () => {
     seenGrades.add(g.id);
     return true;
   });
-  activeGrades.push({ id: 'all', label: 'All FBISE' });
+  activeGrades.push({ id: 'all', label: selectedBoard === 'sindh' ? 'All Sindh' : 'All FBISE' });
 
   // Compute active streams for selected grade
   const activeClass = taxonomy?.classes?.find(
@@ -92,7 +97,7 @@ export const NotesManagerPage: React.FC = () => {
 
   const activeStreams: { id: string; name: string }[] = dbStreams.length > 0
     ? dbStreams.map((s: any) => ({ id: s.id, name: s.name }))
-    : getStreamsForGrade(selectedGrade).map((s) => ({ id: s.name, name: s.name }));
+    : getStreamsForGrade(selectedGrade, selectedBoard).map((s) => ({ id: s.name, name: s.name }));
 
   // Scope offerings for Subject dropdown by selected Board, Grade, and Stream
   const scopedOfferings = offerings.filter((offering) => {
@@ -151,10 +156,16 @@ export const NotesManagerPage: React.FC = () => {
 
     const matchesType = typeFilter === 'all' || note.file_type === typeFilter;
 
+    // Board match
+    const offBoard = note.offering?.board || (note.offering as any)?.class?.board_id || taxonomy?.classes?.find((c: any) => c.id === (note.offering as any)?.class_id)?.board_id || 'fbise';
+    if (selectedBoard && selectedBoard !== 'all' && offBoard !== selectedBoard) {
+      return false;
+    }
+
     // Taxonomy 4-Layer Match
     if (selectedSubject && selectedSubject !== 'all') {
       if (note.offering_id !== selectedSubject) return false;
-    } else if (selectedBoard !== 'fbise' || selectedGrade !== 'all' || selectedStream !== 'all') {
+    } else if (selectedGrade !== 'all' || selectedStream !== 'all') {
       if (!scopedOfferings.some((o) => o.id === note.offering_id)) return false;
     }
 
@@ -168,6 +179,13 @@ export const NotesManagerPage: React.FC = () => {
     setSelectedSubject('all');
     setTypeFilter('all');
     setSearchTerm('');
+  };
+
+  const handleBoardChange = (boardId: string) => {
+    setSelectedBoard(boardId);
+    setSelectedGrade('all');
+    setSelectedStream('all');
+    setSelectedSubject('all');
   };
 
   const handleGradeChange = (gId: string) => {
@@ -243,10 +261,22 @@ export const NotesManagerPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
+      {/* Board Selector Tabs */}
       <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-        <div className="flex overflow-x-auto gap-6 border-transparent text-xs font-bold text-[#737373] pb-3">
-          Board: FBISE (Pakistan)
+        <div className="flex overflow-x-auto gap-6 border-transparent">
+          {BOARDS.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => handleBoardChange(b.id)}
+              className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+                selectedBoard === b.id
+                  ? 'border-[#F4C430] text-[#111111]'
+                  : 'border-transparent text-[#737373] hover:text-[#111111]'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
         </div>
 
         {/* Secondary controls (Reset) */}
@@ -348,9 +378,10 @@ export const NotesManagerPage: React.FC = () => {
               {scopedOfferings.map((o) => {
                 const subjName = o.subject_name || (typeof o.subject === 'string' ? o.subject : o.subject?.name) || 'Class';
                 const gr = o.grade || (o as any).class?.grade || '10';
+                const boardLabel = o.board === 'sindh' || (o as any).class?.board_id === 'sindh' ? 'Sindh' : 'FBISE';
                 return (
                   <option key={o.id} value={o.id}>
-                    {subjName} ({gr}th FBISE)
+                    {subjName} ({gr}th {boardLabel})
                   </option>
                 );
               })}
@@ -404,6 +435,7 @@ export const NotesManagerPage: React.FC = () => {
         <NoteUploadForm
           offerings={offerings}
           taxonomy={taxonomy}
+          initialBoard={selectedBoard}
           onUpload={handleUploadSave}
           onCancel={() => setDrawerOpen(false)}
           initialGrade={selectedGrade !== 'all' ? selectedGrade : undefined}

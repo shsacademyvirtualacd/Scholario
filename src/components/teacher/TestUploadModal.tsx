@@ -10,8 +10,8 @@ import {
   Award,
   User,
 } from 'lucide-react';
-import { GRADES, getStreamsForGrade, getSubjectsForStream } from '../../lib/taxonomy';
-import { uploadTestPaperToR2, getAllTeachers } from '../../lib/db';
+import { getGradesForBoard, getStreamsForGrade } from '../../lib/taxonomy';
+import { uploadTestPaperToR2, getAllTeachers, getSubjectsForStream } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import type { TestPaper, Teacher } from '../../types';
 
@@ -19,6 +19,7 @@ interface TestUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (newTest: TestPaper) => void;
+  defaultBoard?: string;
   defaultGrade?: string;
   defaultSubject?: string;
 }
@@ -27,6 +28,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  defaultBoard = 'fbise',
   defaultGrade = '10',
   defaultSubject = '',
 }) => {
@@ -36,6 +38,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [selectedTeacherName, setSelectedTeacherName] = useState<string>('');
 
+  const [board, setBoard] = useState<string>(defaultBoard || 'fbise');
   const [grade, setGrade] = useState<string>(defaultGrade);
   const [stream, setStream] = useState<string>('all');
   const [subject, setSubject] = useState<string>(defaultSubject);
@@ -53,6 +56,11 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   const [uploading, setUploading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync board default if prop changes
+  useEffect(() => {
+    if (defaultBoard) setBoard(defaultBoard);
+  }, [defaultBoard]);
 
   // Fetch teachers when modal is opened
   useEffect(() => {
@@ -104,13 +112,16 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
     };
   }, [isOpen, profile, user]);
 
-  // Available streams for current grade
-  const availableStreams = getStreamsForGrade(grade);
+  // Available grades for selected board
+  const availableGrades = getGradesForBoard(board);
 
-  // Available subjects for selected grade + stream
+  // Available streams for current grade and board
+  const availableStreams = getStreamsForGrade(grade, board);
+
+  // Available subjects for selected board + grade + stream
   const availableSubjects = React.useMemo(() => {
     if (stream === 'all') {
-      const gDef = GRADES.find((g) => g.grade === grade);
+      const gDef = availableGrades.find((g) => g.grade === grade);
       const set = new Set<string>();
       if (gDef) {
         gDef.commonSubjects?.forEach((s) => set.add(s));
@@ -118,8 +129,8 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
       }
       return Array.from(set).sort();
     }
-    return getSubjectsForStream(grade, stream);
-  }, [grade, stream]);
+    return getSubjectsForStream(grade, stream, board);
+  }, [grade, stream, board, availableGrades]);
 
   // Reset or adjust subject when grade/stream changes
   useEffect(() => {
@@ -212,6 +223,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
         {
           title: title.trim(),
           instructions: instructions.trim() || undefined,
+          board,
           subject,
           grade,
           stream,
@@ -230,6 +242,8 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
         id: `test_${Date.now()}`,
         title: title.trim(),
         instructions: instructions.trim() || null,
+        board: board || 'fbise',
+        board_id: board || 'fbise',
         subject,
         grade,
         stream,
@@ -301,6 +315,47 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
             </div>
           )}
 
+          {/* Board Curriculum Selector */}
+          <div className="border-b border-[#E5E5E5] pb-3">
+            <label className="block text-xs font-bold text-[#111111] mb-2">
+              Board Curriculum <span className="text-[#DC2626]">*</span>
+            </label>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setBoard('fbise');
+                  setGrade('10');
+                  setStream('all');
+                }}
+                disabled={uploading}
+                className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  board === 'fbise'
+                    ? 'border-[#F4C430] text-[#111111]'
+                    : 'border-transparent text-[#737373] hover:text-[#111111]'
+                }`}
+              >
+                Federal Board (FBISE)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBoard('sindh');
+                  setGrade('10');
+                  setStream('all');
+                }}
+                disabled={uploading}
+                className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  board === 'sindh'
+                    ? 'border-[#F4C430] text-[#111111]'
+                    : 'border-transparent text-[#737373] hover:text-[#111111]'
+                }`}
+              >
+                Sindh Board
+              </button>
+            </div>
+          </div>
+
           {/* Grade & Stream Selection (Crucial Scoping) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -317,9 +372,9 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
                 disabled={uploading}
                 className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-white text-sm font-semibold text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
               >
-                {GRADES.map((g) => (
+                {availableGrades.map((g) => (
                   <option key={g.grade} value={g.grade}>
-                    Grade {g.grade} ({g.displayName} FBISE)
+                    Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : 'FBISE'})
                   </option>
                 ))}
               </select>

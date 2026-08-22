@@ -187,6 +187,8 @@ export interface TestPaper {
   file_size_bytes?: number;
   total_marks: number;
   due_date: string;
+  board?: string | null;
+  board_id?: string | null;
   published_at?: string;
   created_at: string;
   // joined

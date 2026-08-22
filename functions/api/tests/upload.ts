@@ -40,6 +40,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   const answerKeyFile = (formData.get('answer_key_file') || formData.get('answerKeyFile')) as File | null;
   const title = formData.get('title') as string | null;
   const instructions = formData.get('instructions') as string | null;
+  const board = (formData.get('board') as string | null) || 'fbise';
   const subject = formData.get('subject') as string | null;
   const grade = formData.get('grade') as string | null;
   const stream = (formData.get('stream') as string | null) || 'all';
@@ -137,6 +138,8 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     id: testId,
     title,
     instructions: instructions || null,
+    board,
+    board_id: board,
     subject,
     grade,
     stream,

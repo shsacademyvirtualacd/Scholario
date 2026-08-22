@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, BookOpen } from 'lucide-react';
+import { Plus, Search, BookOpen, RotateCcw } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
 import TestUploadModal from '../../components/teacher/TestUploadModal';
 import TestViewerModal from '../../components/common/TestViewerModal';
 import { getAllTests } from '../../lib/db';
+import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { TestPaper, TestSubmission } from '../../types';
 
@@ -20,6 +21,7 @@ export const AdminTestsPage: React.FC = () => {
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
 
   // Filters
+  const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [gradeFilter, setGradeFilter] = useState<string>('all');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
@@ -55,15 +57,22 @@ export const AdminTestsPage: React.FC = () => {
     onAny: () => fetchData(),
   });
 
+  const availableGrades = getGradesForBoard(selectedBoard);
+
   const distinctSubjects = React.useMemo(() => {
     const s = new Set<string>();
     tests.forEach((t) => {
-      if (t.subject) s.add(t.subject);
+      const testBoard = t.board || t.board_id || 'fbise';
+      if (!selectedBoard || selectedBoard === 'all' || testBoard === selectedBoard) {
+        if (t.subject) s.add(t.subject);
+      }
     });
     return Array.from(s).sort();
-  }, [tests]);
+  }, [tests, selectedBoard]);
 
   const filteredTests = tests.filter((t) => {
+    const testBoard = t.board || t.board_id || 'fbise';
+    const matchesBoard = !selectedBoard || selectedBoard === 'all' || testBoard === selectedBoard;
     const matchesGrade = gradeFilter === 'all' || t.grade === gradeFilter;
     const matchesSubject = subjectFilter === 'all' || t.subject === subjectFilter;
     const q = searchTerm.toLowerCase();
@@ -74,10 +83,23 @@ export const AdminTestsPage: React.FC = () => {
       (t.teacher_name || '').toLowerCase().includes(q) ||
       (t.instructions || '').toLowerCase().includes(q);
 
-    return matchesGrade && matchesSubject && matchesSearch;
+    return matchesBoard && matchesGrade && matchesSubject && matchesSearch;
   });
 
   const selectedTest = tests.find((t) => t.id === selectedTestId) || filteredTests[0] || null;
+
+  const handleBoardChange = (bId: string) => {
+    setSelectedBoard(bId);
+    setGradeFilter('all');
+    setSubjectFilter('all');
+  };
+
+  const resetFilters = () => {
+    setSelectedBoard('fbise');
+    setGradeFilter('all');
+    setSubjectFilter('all');
+    setSearchTerm('');
+  };
 
   const handleTestUploadSuccess = (newTest: TestPaper) => {
     setTests((prev) => [newTest, ...prev]);
@@ -94,7 +116,7 @@ export const AdminTestsPage: React.FC = () => {
   return (
     <AdminShell>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-black text-[#111111] tracking-tight">Institution Tests & Assessments</h1>
           <p className="text-xs text-[#737373] mt-1">
@@ -105,11 +127,40 @@ export const AdminTestsPage: React.FC = () => {
         <button
           id="admin-open-test-upload-btn"
           onClick={() => setIsUploadModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-extrabold transition-all shadow-xs shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-extrabold transition-all shadow-xs shrink-0 cursor-pointer"
         >
           <Plus size={16} />
           <span>Upload Test Paper</span>
         </button>
+      </div>
+
+      {/* Board Selector Tabs */}
+      <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="flex overflow-x-auto gap-6 border-transparent">
+          {BOARDS.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => handleBoardChange(b.id)}
+              className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 cursor-pointer ${
+                selectedBoard === b.id
+                  ? 'border-[#F4C430] text-[#111111]'
+                  : 'border-transparent text-[#737373] hover:text-[#111111]'
+              }`}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+
+        {(selectedBoard !== 'fbise' || gradeFilter !== 'all' || subjectFilter !== 'all' || searchTerm !== '') && (
+          <button
+            onClick={resetFilters}
+            className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive pb-2 sm:pb-0"
+          >
+            <RotateCcw size={10} />
+            Reset Filters
+          </button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -129,17 +180,17 @@ export const AdminTestsPage: React.FC = () => {
           {/* Grade Selector */}
           <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
             <span className="text-[11px] font-bold text-[#737373] px-2">Grade:</span>
-            {['all', '9', '10', '11', '12'].map((g) => (
+            {['all', ...availableGrades.map((g) => g.grade)].map((g) => (
               <button
                 key={g}
                 onClick={() => setGradeFilter(g)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   gradeFilter === g
                     ? 'bg-[#111111] text-white shadow-xs'
                     : 'text-[#525252] hover:text-[#111111]'
                 }`}
               >
-                {g === 'all' ? 'All' : g}
+                {g === 'all' ? (selectedBoard === 'sindh' ? 'All Sindh' : 'All FBISE') : `${g}th`}
               </button>
             ))}
           </div>
@@ -148,9 +199,9 @@ export const AdminTestsPage: React.FC = () => {
           <select
             value={subjectFilter}
             onChange={(e) => setSubjectFilter(e.target.value)}
-            className="h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden"
+            className="h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden cursor-pointer"
           >
-            <option value="all">All Subjects</option>
+            <option value="all">All Subjects ({distinctSubjects.length})</option>
             {distinctSubjects.map((sub) => (
               <option key={sub} value={sub}>
                 {sub}
@@ -190,7 +241,7 @@ export const AdminTestsPage: React.FC = () => {
               </p>
               <button
                 onClick={() => setIsUploadModalOpen(true)}
-                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] text-white text-xs font-bold"
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] text-white text-xs font-bold cursor-pointer"
               >
                 <Plus size={14} />
                 <span>Upload Test Paper</span>
@@ -226,6 +277,7 @@ export const AdminTestsPage: React.FC = () => {
       {/* Upload Test Modal */}
       <TestUploadModal
         isOpen={isUploadModalOpen}
+        defaultBoard={selectedBoard}
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleTestUploadSuccess}
       />

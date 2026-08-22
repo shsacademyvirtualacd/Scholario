@@ -1371,7 +1371,7 @@ async function enrichSubmissionsUrls(subs: any[]): Promise<TestSubmission[]> {
 }
 
 /** Student: fetch tests scoped to student's exact grade and stream */
-export async function getTestsForStudent(grade: string, stream?: string): Promise<TestPaper[]> {
+export async function getTestsForStudent(grade: string, stream?: string, boardId?: string): Promise<TestPaper[]> {
   if (!grade) return [];
   try {
     const { data, error } = await (supabase as any)
@@ -1387,8 +1387,12 @@ export async function getTestsForStudent(grade: string, stream?: string): Promis
 
     const rows = (data as TestPaper[]) || [];
     
-    // Strict scoping: visibility is intersection of grade AND stream
+    // Strict scoping: visibility is intersection of board, grade AND stream
     const filtered = rows.filter((t) => {
+      if (boardId) {
+        const testBoard = t.board || t.board_id || 'fbise';
+        if (testBoard !== boardId) return false;
+      }
       if (t.grade !== String(grade)) return false;
       if (!t.stream || t.stream === 'all' || t.stream === 'All Streams') return true;
       if (!stream) return true;
@@ -1535,6 +1539,7 @@ export async function uploadTestPaperToR2(
   payload: {
     title: string;
     instructions?: string;
+    board?: string;
     subject: string;
     grade: string;
     stream: string;
@@ -1556,6 +1561,7 @@ export async function uploadTestPaperToR2(
     formData.append('file', file);
     formData.append('title', payload.title);
     if (payload.instructions) formData.append('instructions', payload.instructions);
+    if (payload.board) formData.append('board', payload.board);
     formData.append('subject', payload.subject);
     formData.append('grade', payload.grade);
     formData.append('stream', payload.stream || 'all');

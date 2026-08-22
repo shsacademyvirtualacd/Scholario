@@ -4,31 +4,31 @@ import type { ClassOffering } from '../../../types';
 import { getTaxonomy, uploadNoteFileToR2 } from '../../../lib/db';
 import { getSubjectsForStream } from '../../../lib/db';
 import { toast } from 'sonner';
-import { getStreamsForGrade, GRADES } from '../../../lib/taxonomy';
+import { getStreamsForGrade, getGradesForBoard } from '../../../lib/taxonomy';
 
 interface NoteUploadFormProps {
   offerings: ClassOffering[];
   taxonomy?: any; // passed from parent to avoid duplicate fetch
   onUpload: (data: any) => Promise<void> | void;
   onCancel: () => void;
+  initialBoard?: string;
   initialGrade?: string;
   initialStream?: string;
   initialOfferingId?: string;
 }
-
-
 
 export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
   offerings,
   taxonomy: taxonomyProp,
   onUpload,
   onCancel,
+  initialBoard,
   initialGrade,
   initialStream,
   initialOfferingId,
 }) => {
   const [taxonomy, setTaxonomy] = useState<any>(taxonomyProp || null);
-  const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
+  const [selectedBoard, setSelectedBoard] = useState<string>(initialBoard || 'fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>(
     initialGrade && initialGrade !== 'all' ? initialGrade : (offerings[0]?.grade || (offerings[0] as any)?.class?.grade || '10')
   );
@@ -65,9 +65,9 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
   // Compute active grades
   const rawGrades = taxonomy && taxonomy.classes && taxonomy.classes.length > 0
     ? taxonomy.classes
-        .filter((c: any) => c.board_id === 'fbise' || !c.board_id)
+        .filter((c: any) => c.board_id === selectedBoard || (!c.board_id && selectedBoard === 'fbise'))
         .map((c: any) => ({ id: String(c.grade), label: c.display_name || `${c.grade}th` }))
-    : GRADES.map((g) => ({ id: g.grade, label: g.displayName }));
+    : getGradesForBoard(selectedBoard).map((g) => ({ id: g.grade, label: g.displayName }));
 
   const seenGrades = new Set<string>();
   const activeGrades: { id: string; label: string }[] = rawGrades.filter((g: any) => {
@@ -78,7 +78,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
 
   // Compute active streams for selected grade
   const activeClass = taxonomy?.classes?.find(
-    (c: any) => String(c.grade) === String(selectedGrade) && (c.board_id === selectedBoard || !c.board_id)
+    (c: any) => String(c.grade) === String(selectedGrade) && (c.board_id === selectedBoard || (!c.board_id && selectedBoard === 'fbise'))
   );
   const dbStreams = activeClass && taxonomy?.streams
     ? taxonomy.streams.filter((s: any) => s.class_id === activeClass.id)
@@ -86,7 +86,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
 
   const activeStreams: { id: string; name: string }[] = dbStreams.length > 0
     ? dbStreams.map((s: any) => ({ id: s.id, name: s.name }))
-    : getStreamsForGrade(selectedGrade).map((s) => ({ id: s.name, name: s.name }));
+    : getStreamsForGrade(selectedGrade, selectedBoard).map((s) => ({ id: s.name, name: s.name }));
 
   // Scope offerings by selected Board, Grade, and Stream
   const scopedOfferings = offerings.filter((offering) => {
@@ -218,7 +218,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
         </div>
       )}
 
-      {/* ── Layer 1: Board Selector (FBISE only one active) ── */}
+      {/* ── Layer 1: Board Selector ── */}
       <div className="border-b border-[#E5E5E5] pb-2">
         <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wide block mb-1.5">
           1. Board Curriculum:
@@ -226,7 +226,11 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
         <div className="flex gap-4">
           <button
             type="button"
-            onClick={() => setSelectedBoard('fbise')}
+            onClick={() => {
+              setSelectedBoard('fbise');
+              setSelectedStream('all');
+              setOfferingId('');
+            }}
             disabled={loading}
             className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
               selectedBoard === 'fbise'
@@ -234,7 +238,23 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
                 : 'border-transparent text-[#737373] hover:text-[#111111]'
             }`}
           >
-            FBISE
+            Federal Board (FBISE)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedBoard('sindh');
+              setSelectedStream('all');
+              setOfferingId('');
+            }}
+            disabled={loading}
+            className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+              selectedBoard === 'sindh'
+                ? 'border-[#F4C430] text-[#111111]'
+                : 'border-transparent text-[#737373] hover:text-[#111111]'
+            }`}
+          >
+            Sindh Board
           </button>
         </div>
       </div>
@@ -322,9 +342,10 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
             const subjName = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || 'Class';
             const gr = offering.grade || (offering as any).class?.grade || '10';
             const st = typeof offering.stream === 'string' ? offering.stream : offering.stream?.name || 'All Streams';
+            const offBoard = offering.board === 'sindh' || (offering as any).class?.board_id === 'sindh' ? 'Sindh' : 'FBISE';
             return (
               <option key={offering.id} value={offering.id}>
-                {subjName} — Grade {gr} FBISE ({st})
+                {subjName} — Grade {gr} {offBoard} ({st})
               </option>
             );
           })}
