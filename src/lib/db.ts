@@ -1963,12 +1963,60 @@ export async function deleteRosterEntry(rosterId: string): Promise<void> {
 // FEE SYSTEM FUNCTIONS
 // =============================================================================
 
-let cachedUniversalFeeConfig: any = null;
-const cachedFeeConfigs = new Map<string, any>();
+export interface LiveGradeFee {
+  class_id: string;
+  board_id: string;
+  grade: string;
+  amount: number;
+  payment_instructions: string;
+  whatsapp_number: string;
+}
+
+/**
+ * Fetches all live fee configurations in a single query across all classes and boards.
+ * Bypasses all client-side caches to provide immediate fresh pricing data.
+ */
+export async function getAllLiveFeeConfigs(): Promise<{
+  byKey: Record<string, number>;
+  byClassId: Record<string, LiveGradeFee>;
+  list: LiveGradeFee[];
+}> {
+  const { data, error } = await (supabase as any)
+    .from('fee_configs')
+    .select('amount, payment_instructions, whatsapp_number, class_id, classes:classes(id, grade, board_id)');
+
+  const byKey: Record<string, number> = {};
+  const byClassId: Record<string, LiveGradeFee> = {};
+  const list: LiveGradeFee[] = [];
+
+  if (!error && Array.isArray(data)) {
+    data.forEach((row: any) => {
+      const cls = row.classes;
+      const amt = typeof row.amount === 'number' ? row.amount : parseInt(row.amount, 10) || 0;
+      if (cls && amt > 0) {
+        const item: LiveGradeFee = {
+          class_id: cls.id,
+          board_id: cls.board_id,
+          grade: String(cls.grade),
+          amount: amt,
+          payment_instructions: row.payment_instructions,
+          whatsapp_number: row.whatsapp_number,
+        };
+        byKey[`${cls.board_id}-${cls.grade}`] = amt;
+        if (cls.board_id === 'fbise') {
+          byKey[String(cls.grade)] = amt;
+        }
+        byClassId[cls.id] = item;
+        list.push(item);
+      }
+    });
+  }
+
+  return { byKey, byClassId, list };
+}
 
 export async function getFeeConfig(classId: string): Promise<any | null> {
   if (!classId) return null;
-  if (cachedFeeConfigs.has(classId)) return cachedFeeConfigs.get(classId);
 
   const { data, error } = await (supabase as any)
     .from('fee_configs')
@@ -1984,13 +2032,10 @@ export async function getFeeConfig(classId: string): Promise<any | null> {
     row.payment_instructions = row.payment_instructions.replace(/033353292094/g, '03335292094');
   }
   
-  cachedFeeConfigs.set(classId, row);
   return row;
 }
 
 export async function getUniversalFeeConfig(): Promise<any | null> {
-  if (cachedUniversalFeeConfig) return cachedUniversalFeeConfig;
-
   const { data, error } = await (supabase as any)
     .from('fee_configs')
     .select('*')
@@ -2005,7 +2050,6 @@ export async function getUniversalFeeConfig(): Promise<any | null> {
     row.payment_instructions = row.payment_instructions.replace(/033353292094/g, '03335292094');
   }
   
-  cachedUniversalFeeConfig = row;
   return row;
 }
 
@@ -2041,7 +2085,7 @@ export async function resolveGradeFeeConfig(grade: string, classId?: string | nu
     amount = config.amount;
   }
   if (amount === null || amount <= 0) {
-    const fallbackPrice = ['11', '12'].includes(grade) ? 3499 : 2499;
+    const fallbackPrice = ['11', '12'].includes(grade) ? 4000 : 3000;
     amount = fallbackPrice;
   }
 
@@ -2073,9 +2117,6 @@ export async function saveFeeConfig(
       updated_at: new Date().toISOString()
     }, { onConflict: 'class_id' });
   if (error) throw error;
-  
-  cachedFeeConfigs.delete(classId);
-  cachedUniversalFeeConfig = null;
 }
 
 export async function saveUniversalFeeConfig(
@@ -2112,9 +2153,6 @@ export async function saveUniversalFeeConfig(
       });
     if (error) throw error;
   }
-  
-  cachedUniversalFeeConfig = null;
-  cachedFeeConfigs.clear();
 }
 
 export async function getFeeStatus(studentId: string): Promise<any | null> {
@@ -2287,9 +2325,6 @@ export async function syncPricingToFeeConfigs(
     .upsert(payload, { onConflict: 'class_id' });
 
   if (upsertError) throw upsertError;
-  
-  cachedFeeConfigs.delete(classId);
-  cachedUniversalFeeConfig = null;
 }
 
 export interface ClassWithFeeConfig {

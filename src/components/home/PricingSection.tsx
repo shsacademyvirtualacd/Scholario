@@ -1,65 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Check, ArrowRight, Zap, GraduationCap, BookOpen, Layers } from 'lucide-react';
 import { BOARDS, getGradesForBoard, getDefaultPrice } from '../../lib/taxonomy';
-import { resolveGradeFeeConfig } from '../../lib/db';
+import { getAllLiveFeeConfigs } from '../../lib/db';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 const PricingSection: React.FC = () => {
   const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh'>('fbise');
   const [selectedGradeValue, setSelectedGradeValue] = useState('10');
-  const [displayPrice, setDisplayPrice] = useState(2499);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   const currentBoardDef = BOARDS.find((b) => b.id === selectedBoardId) || BOARDS[0];
   const gradesForSelectedBoard = getGradesForBoard(selectedBoardId);
+
+  const loadAllPrices = useCallback(async () => {
+    try {
+      const { byKey } = await getAllLiveFeeConfigs();
+      setLivePrices(byKey);
+    } catch (err) {
+      console.warn('[PricingSection] Failed to load live fee configs:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAllPrices();
+  }, [loadAllPrices]);
+
+  // Subscribe to realtime fee_configs updates
+  useRealtimeTable({
+    table: 'fee_configs',
+    onInsert: loadAllPrices,
+    onUpdate: loadAllPrices,
+    onDelete: loadAllPrices,
+  });
 
   const activeGradesList = gradesForSelectedBoard.map((g) => {
     // Collect unique subjects across streams
     const allSubjs = new Set<string>();
     g.streams.forEach((s) => s.subjects.forEach((sub) => allSubjs.add(sub)));
     const key = `${selectedBoardId}-${g.grade}`;
+    const livePrice = livePrices[key] ?? (selectedBoardId === 'fbise' ? livePrices[g.grade] : undefined);
     return {
       value: g.grade,
       label: `Class ${g.displayName}`,
       subjects: Array.from(allSubjs),
-      basePrice: livePrices[key] || livePrices[g.grade] || getDefaultPrice(g.grade),
+      basePrice: livePrice ?? getDefaultPrice(g.grade),
     };
   });
 
   // Find currently active grade option, fall back to first if none matches
   const activeGrade = activeGradesList.find((g) => g.value === selectedGradeValue) || activeGradesList[0];
-
-  useEffect(() => {
-    const loadAllPrices = async () => {
-      const resolved: Record<string, number> = {};
-      for (const board of BOARDS) {
-        const boardGrades = getGradesForBoard(board.id);
-        for (const g of boardGrades) {
-          try {
-            const cfg = await resolveGradeFeeConfig(g.grade, null, board.id);
-            if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
-              resolved[`${board.id}-${g.grade}`] = cfg.amount;
-              if (board.id === 'fbise') resolved[g.grade] = cfg.amount;
-            }
-          } catch (err) {
-            console.warn(`[PricingSection] Failed to load price for ${board.id} grade ${g.grade}:`, err);
-          }
-        }
-      }
-      setLivePrices(resolved);
-    };
-    loadAllPrices();
-  }, []);
-
-  useEffect(() => {
-    const key = `${selectedBoardId}-${selectedGradeValue}`;
-    if (livePrices[key]) {
-      setDisplayPrice(livePrices[key]);
-    } else if (livePrices[selectedGradeValue]) {
-      setDisplayPrice(livePrices[selectedGradeValue]);
-    } else {
-      setDisplayPrice(activeGrade?.basePrice || (['11', '12'].includes(selectedGradeValue) ? 3499 : 2499));
-    }
-  }, [selectedBoardId, selectedGradeValue, livePrices, activeGrade]);
+  const displayPrice = activeGrade ? activeGrade.basePrice : getDefaultPrice(selectedGradeValue);
 
   return (
     <section className="py-28 bg-white">

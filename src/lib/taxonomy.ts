@@ -146,9 +146,9 @@ export function getBoardDef(boardId?: string | null): BoardDef {
   return BOARDS.find((b) => b.id === boardId) || BOARDS[0];
 }
 
-/** Default monthly tuition price by grade */
+/** Default monthly tuition price by grade (aligned with database fee_configs) */
 export function getDefaultPrice(grade: string): number {
-  return ['11', '12'].includes(grade) ? 3499 : 2499;
+  return ['11', '12'].includes(grade) ? 4000 : 3000;
 }
 
 /** All unique subject names used across the entire taxonomy */

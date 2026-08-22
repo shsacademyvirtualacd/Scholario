@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { getFeeStatus, updateFeeStatus, getFeeAuditLogs, getEnrollmentsForStudent, resolveGradeFeeConfig } from '../../lib/db';
 import { getBoardDef } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 export const StudentCheckoutPage: React.FC = () => {
   const { profile } = useAuth();
@@ -115,6 +116,20 @@ export const StudentCheckoutPage: React.FC = () => {
   useEffect(() => {
     fetchFeeDetails();
   }, [profile]);
+
+  useRealtimeTable({
+    table: 'fee_configs',
+    onInsert: fetchFeeDetails,
+    onUpdate: fetchFeeDetails,
+    onDelete: fetchFeeDetails,
+  });
+
+  useRealtimeTable({
+    table: 'fee_statuses',
+    onInsert: fetchFeeDetails,
+    onUpdate: fetchFeeDetails,
+    onDelete: fetchFeeDetails,
+  });
 
   const handleCopyInstructions = () => {
     if (feeConfig?.payment_instructions) {

@@ -8,6 +8,7 @@ import Logo from '../../components/ui/Logo';
 import { BOARDS, getGradesForBoard, getBoardDef, getDefaultPrice } from '../../lib/taxonomy';
 import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
+import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
@@ -71,9 +72,7 @@ export const UnregisteredPage: React.FC = () => {
     }
   }, [selectedBoardId, taxonomy]);
 
-  // Reset stream and calculate live price when class or board changes
-  useEffect(() => {
-    setSelectedStreamId(null);
+  const refreshLivePrice = () => {
     if (selectedClassId && taxonomy) {
       const cls = taxonomy.classes.find((c: any) => c.id === selectedClassId);
       if (cls) {
@@ -82,13 +81,27 @@ export const UnregisteredPage: React.FC = () => {
             if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
               setLivePrice(cfg.amount);
             } else {
-              setLivePrice(cls.grade ? getDefaultPrice(cls.grade) : 2499);
+              setLivePrice(cls.grade ? getDefaultPrice(cls.grade) : 3000);
             }
           })
-          .catch(() => setLivePrice(cls.grade ? getDefaultPrice(cls.grade) : 2499));
+          .catch(() => setLivePrice(cls.grade ? getDefaultPrice(cls.grade) : 3000));
       }
     }
+  };
+
+  // Reset stream and calculate live price when class or board changes
+  useEffect(() => {
+    setSelectedStreamId(null);
+    refreshLivePrice();
   }, [selectedClassId, selectedBoardId, taxonomy]);
+
+  // Realtime subscription to fee_configs updates
+  useRealtimeTable({
+    table: 'fee_configs',
+    onInsert: refreshLivePrice,
+    onUpdate: refreshLivePrice,
+    onDelete: refreshLivePrice,
+  });
 
   // Redirect if profile already exists and is fully set up
   useEffect(() => {

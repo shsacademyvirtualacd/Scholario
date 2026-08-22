@@ -61,8 +61,8 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
     offers: {
       '@type': 'AggregateOffer',
       priceCurrency: 'PKR',
-      lowPrice: 2499,
-      highPrice: 3499,
+      lowPrice: 3000,
+      highPrice: 4000,
       offerCount: 4,
       priceValidUntil: '2026-12-31',
       availability: 'https://schema.org/InStock',
@@ -117,7 +117,7 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
             {
               '@type': 'Offer',
               category: 'Paid',
-              price: 2499,
+              price: 3000,
               priceCurrency: 'PKR',
               availability: 'https://schema.org/InStock',
             },
@@ -144,7 +144,7 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
             {
               '@type': 'Offer',
               category: 'Paid',
-              price: 2499,
+              price: 3000,
               priceCurrency: 'PKR',
               availability: 'https://schema.org/InStock',
             },
@@ -171,7 +171,7 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
             {
               '@type': 'Offer',
               category: 'Paid',
-              price: 3499,
+              price: 4000,
               priceCurrency: 'PKR',
               availability: 'https://schema.org/InStock',
             },
@@ -198,7 +198,7 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
             {
               '@type': 'Offer',
               category: 'Paid',
-              price: 3499,
+              price: 4000,
               priceCurrency: 'PKR',
               availability: 'https://schema.org/InStock',
             },
