@@ -186,7 +186,13 @@ Return ONLY a valid JSON object matching this structure:
         topic,
       }));
 
-      const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool);
+      const validationContext = {
+        subject,
+        topic,
+        grade: String(grade),
+        board: String(board),
+      };
+      const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool, validationContext, normExcludes);
 
       if (validatedQuestions.length >= count) {
         return new Response(

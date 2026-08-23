@@ -1,5 +1,5 @@
 import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
-import { validateMCQQuestion } from './mcqValidator';
+import { validateMCQQuestion, checkQuestionDuplicate, validateQuestionTopicRelevance } from './mcqValidator';
 
 /**
  * Authoritative Grade 9 FBISE Question Bank
@@ -555,25 +555,358 @@ export const FBISE_9_QUESTION_BANK: Record<string, Record<string, MCQQuestion[]>
         question: 'The maximum number of electrons that can be accommodated in the M shell ($n = 3$) is:',
         options: { A: '18', B: '8', C: '32', D: '2' },
         correctAnswer: 'A',
-        explanation: 'Using the $2n^2$ formula: for $n=3$, maximum electrons = $2(3^2) = 2(9) = 18$.',
+        explanation: 'Using the Bohr-Bury formula $2n^2$: for the M shell ($n = 3$), maximum electron capacity is $2(3^2) = 2(9) = 18$.',
         chapter: 'Atomic Structure',
         topic: 'Atomic Structure',
       },
       {
         id: 'fbise9_chem_3_2',
-        question: 'What is the electronic configuration of a neutral Sodium atom ($_{11}\\text{Na}$)?',
+        question: 'What is the ground-state electronic configuration of a neutral Sodium atom ($_{11}\\text{Na}$)?',
         options: { A: '$1s^2 2s^2 2p^6 3s^1$', B: '$1s^2 2s^2 2p^5 3s^2$', C: '$1s^2 2s^2 2p^6 3p^1$', D: '$1s^2 2s^1 2p^6 3s^2$' },
         correctAnswer: 'A',
-        explanation: 'Sodium has 11 electrons: K shell ($1s^2$), L shell ($2s^2 2p^6$), M shell ($3s^1$).',
+        explanation: 'Sodium has an atomic number $Z = 11$. Electrons fill orbitals in order of increasing energy: $1s^2 2s^2 2p^6 3s^1$.',
         chapter: 'Atomic Structure',
         topic: 'Atomic Structure',
       },
       {
         id: 'fbise9_chem_3_3',
-        question: 'Isotopes are atoms of the same chemical element having:',
-        options: { A: 'Same atomic number ($Z$) but different mass numbers ($A$)', B: 'Same mass number but different atomic numbers', C: 'Same number of neutrons but different protons', D: 'Different chemical properties' },
+        question: 'Isotopes are defined as atoms of the same chemical element that possess:',
+        options: { A: 'Same atomic number ($Z$) but different mass numbers ($A$)', B: 'Same mass number but different atomic numbers', C: 'Same number of neutrons but different protons', D: 'Different chemical properties and same physical properties' },
         correctAnswer: 'A',
-        explanation: 'Isotopes have identical numbers of protons ($Z$) but differing numbers of neutrons, resulting in different mass numbers ($A$).',
+        explanation: 'Isotopes possess identical numbers of protons (atomic number $Z$) and identical electron configurations, but differing numbers of neutrons (mass number $A$).',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_4',
+        question: 'Who discovered the subatomic particle "Neutron" in 1932 by bombarding Beryllium ($^9\\text{Be}$) with alpha particles?',
+        options: { A: 'James Chadwick', B: 'J.J. Thomson', C: 'Ernest Rutherford', D: 'Eugen Goldstein' },
+        correctAnswer: 'A',
+        explanation: 'James Chadwick discovered the neutron in 1932 by bombarding a beryllium target with alpha particles, observing penetrating neutral radiation.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_5',
+        question: 'In Rutherford’s Alpha Particle Scattering Experiment, what observed phenomenon proved the existence of a dense, positively charged nucleus?',
+        options: { A: 'A small fraction of alpha particles were deflected at very large angles (> 90°)', B: 'All alpha particles passed straight through undeflected', C: 'Electrons were emitted from the gold foil', D: 'Alpha particles were completely absorbed by the gold foil' },
+        correctAnswer: 'A',
+        explanation: 'The deflection of approximately 1 in 20,000 alpha particles by angles greater than 90° demonstrated that positive charge and mass are concentrated in a tiny central nucleus.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_6',
+        question: 'According to classical electromagnetic theory, what was the primary defect identified in Rutherford’s planetary atomic model?',
+        options: { A: 'Accelerating electrons would continuously radiate energy and spiral into the nucleus', B: 'The atom would produce a discrete line spectrum', C: 'Neutrons could not exist inside the nucleus', D: 'Protons would repel each other outside the atom' },
+        correctAnswer: 'A',
+        explanation: 'Classical physics predicted revolving electrons must emit electromagnetic radiation continuously, losing kinetic energy and spiraling into the nucleus in $10^{-8}\\text{ s}$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_7',
+        question: 'According to Bohr’s Atomic Model, an electron can revolve only in those orbits where its orbital angular momentum ($mvr$) is equal to:',
+        options: { A: '$\\frac{nh}{2\\pi}$', B: '$\\frac{nh}{\\pi}$', C: '$nh\\nu$', D: '$\\frac{2\\pi}{nh}$' },
+        correctAnswer: 'A',
+        explanation: 'Bohr’s quantization postulate states that an electron orbits without radiating energy only in stationary states where angular momentum $mvr = \\frac{nh}{2\\pi}$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_8',
+        question: 'When an electron jumps from a higher energy orbit ($E_2$) to a lower energy orbit ($E_1$), the emitted photon energy ($\Delta E$) is given by Planck’s relation:',
+        options: { A: '$\\Delta E = E_2 - E_1 = h\\nu$', B: '$\\Delta E = E_1 - E_2 = \\frac{h}{\\nu}$', C: '$\\Delta E = \\frac{E_2 + E_1}{2}$', D: '$\\Delta E = mvr$' },
+        correctAnswer: 'A',
+        explanation: 'Energy difference $\\Delta E = E_2 - E_1 = h\\nu$, where $h$ is Planck’s constant and $\\nu$ is the frequency of emitted radiation.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_9',
+        question: 'What is the maximum electron capacity of the "p" subshell?',
+        options: { A: '6 electrons', B: '2 electrons', C: '10 electrons', D: '14 electrons' },
+        correctAnswer: 'A',
+        explanation: 'A p subshell consists of 3 degenerate orbitals ($p_x, p_y, p_z$), each holding up to 2 electrons with opposite spins, for a total of 6 electrons.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_10',
+        question: 'How many neutrons are present in an atom of Carbon-14 ($^{14}_{6}\\text{C}$)?',
+        options: { A: '8', B: '6', C: '14', D: '20' },
+        correctAnswer: 'A',
+        explanation: 'Number of neutrons $N = \\text{Mass number } (A) - \\text{Atomic number } (Z) = 14 - 6 = 8$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_11',
+        question: 'Which radioisotope is extensively used in medicine for radiotherapy and treatment of cancerous tumors?',
+        options: { A: 'Cobalt-60 ($^{60}\\text{Co}$)', B: 'Carbon-14 ($^{14}\\text{C}$)', C: 'Uranium-235 ($^{235}\\text{U}$)', D: 'Sodium-24 ($^{24}\\text{Na}$)' },
+        correctAnswer: 'A',
+        explanation: 'Cobalt-60 ($^{60}\\text{Co}$) emits high-energy gamma rays utilized in teletherapy to destroy malignant cancer cells.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_12',
+        question: 'Which of the following isotopes of Hydrogen is radioactive and contains two neutrons in its nucleus?',
+        options: { A: 'Tritium ($^3_1\\text{H}$)', B: 'Protium ($^1_1\\text{H}$)', C: 'Deuterium ($^2_1\\text{H}$)', D: 'Hydronium' },
+        correctAnswer: 'A',
+        explanation: 'Tritium ($^3_1\\text{H}$) has 1 proton, 1 electron, and 2 neutrons ($A - Z = 3 - 1 = 2$). It is radioactive with a half-life of 12.3 years.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_13',
+        question: 'What is the electronic configuration of a neutral Chlorine atom ($_{17}\\text{Cl}$)?',
+        options: { A: '$1s^2 2s^2 2p^6 3s^2 3p^5$', B: '$1s^2 2s^2 2p^6 3s^2 3p^6$', C: '$1s^2 2s^2 2p^6 3s^1 3p^6$', D: '$1s^2 2s^2 2p^5 3s^2 3p^6$' },
+        correctAnswer: 'A',
+        explanation: 'Chlorine ($Z = 17$) has 17 electrons: K shell ($1s^2$), L shell ($2s^2 2p^6$), and valence M shell ($3s^2 3p^5$).',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_14',
+        question: 'Canal rays (positive rays) were first observed in a gas discharge tube equipped with a perforated cathode by:',
+        options: { A: 'Eugen Goldstein', B: 'J.J. Thomson', C: 'William Crookes', D: 'John Dalton' },
+        correctAnswer: 'A',
+        explanation: 'In 1886, Eugen Goldstein discovered canal rays (positive rays) traveling in the opposite direction to cathode rays through holes in a perforated cathode.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_15',
+        question: 'Which of the following subshells has the highest energy level in multi-electron atoms according to the $(n + l)$ rule?',
+        options: { A: '$3d$', B: '$4s$', C: '$3p$', D: '$3s$' },
+        correctAnswer: 'A',
+        explanation: 'For $3d$, $n+l = 3+2 = 5$. For $4s$, $n+l = 4+0 = 4$. Higher $(n+l)$ value corresponds to higher orbital energy, so $3d > 4s$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_16',
+        question: 'The radioisotope Iodine-131 ($^{131}\\text{I}$) is clinically employed for:',
+        options: { A: 'Diagnosis and treatment of thyroid gland disorders (goiter)', B: 'Radiocarbon dating of organic fossils', C: 'Fuel in nuclear power fission reactors', D: 'Sterilization of medical surgical equipment' },
+        correctAnswer: 'A',
+        explanation: 'Iodine concentrates naturally in the thyroid gland, making $^{131}\\text{I}$ ideal for diagnosing and treating thyroid gland abnormalities and goiter.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_17',
+        question: 'What is the number of valence electrons present in a neutral Phosphorus atom ($_{15}\\text{P}$)?',
+        options: { A: '5', B: '3', C: '15', D: '8' },
+        correctAnswer: 'A',
+        explanation: 'Phosphorus ($Z = 15$) has configuration $1s^2 2s^2 2p^6 3s^2 3p^3$. The outermost shell ($n = 3$) contains $2 + 3 = 5$ valence electrons.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_18',
+        question: 'What is the electronic configuration of a Magnesium ion ($\\text{Mg}^{2+}$, $Z = 12$)?',
+        options: { A: '$1s^2 2s^2 2p^6$', B: '$1s^2 2s^2 2p^6 3s^2$', C: '$1s^2 2s^2 2p^5 3s^1$', D: '$1s^2 2s^2 2p^4$' },
+        correctAnswer: 'A',
+        explanation: 'A neutral Mg atom has 12 electrons ($1s^2 2s^2 2p^6 3s^2$). Forming $\\text{Mg}^{2+}$ loses the 2 valence $3s$ electrons, leaving the stable octet $1s^2 2s^2 2p^6$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_19',
+        question: 'Cathode rays were proved to be streams of negatively charged particles (electrons) because they:',
+        options: { A: 'Deflect toward the positive plate in an electrostatic field', B: 'Cast sharp shadows of opaque objects', C: 'Produce fluorescence on zinc sulfide screens', D: 'Can travel through thin sheets of metal foil' },
+        correctAnswer: 'A',
+        explanation: 'Deflection of cathode rays toward the anode (positive electric plate) confirmed that cathode rays carry negative electric charge.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_20',
+        question: 'The maximum electron holding capacity of any orbital (e.g., $s, p_x, d_{xy}$) regardless of its subshell is:',
+        options: { A: '2 electrons (with opposite spins)', B: '6 electrons', C: '8 electrons', D: '14 electrons' },
+        correctAnswer: 'A',
+        explanation: 'According to Pauli’s Exclusion Principle, a single spatial orbital can hold a maximum of 2 electrons with paired opposite spins ($\\uparrow\\downarrow$).',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_21',
+        question: 'How many protons, neutrons, and electrons are in a neutral atom of Argon-40 ($^{40}_{18}\\text{Ar}$)?',
+        options: { A: '18 protons, 22 neutrons, 18 electrons', B: '18 protons, 40 neutrons, 18 electrons', C: '22 protons, 18 neutrons, 22 electrons', D: '18 protons, 18 neutrons, 22 electrons' },
+        correctAnswer: 'A',
+        explanation: 'Protons $Z = 18$, Electrons $= 18$, Neutrons $N = A - Z = 40 - 18 = 22$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_22',
+        question: 'Which isotope of Carbon is used in archaeological carbon dating to estimate the age of ancient organic fossils?',
+        options: { A: 'Carbon-14 ($^{14}\\text{C}$)', B: 'Carbon-12 ($^{12}\\text{C}$)', C: 'Carbon-13 ($^{13}\\text{C}$)', D: 'Carbon-16 ($^{16}\\text{C}$)' },
+        correctAnswer: 'A',
+        explanation: 'Carbon-14 ($^{14}\\text{C}$) decays with a half-life of 5,730 years and is standardly measured in radiocarbon dating of dead organic matter.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_23',
+        question: 'What is the electronic configuration of a Potassium atom ($_{19}\\text{K}$)?',
+        options: { A: '$1s^2 2s^2 2p^6 3s^2 3p^6 4s^1$', B: '$1s^2 2s^2 2p^6 3s^2 3p^7$', C: '$1s^2 2s^2 2p^6 3s^2 3p^6 3d^1$', D: '$1s^2 2s^2 2p^6 3s^1 3p^6 4s^2$' },
+        correctAnswer: 'A',
+        explanation: 'Because the $4s$ orbital has lower energy than $3d$ ($n+l = 4 < 5$), the 19th electron of Potassium enters $4s$: $1s^2 2s^2 2p^6 3s^2 3p^6 4s^1$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_24',
+        question: 'The properties of canal rays differ from cathode rays in that their charge-to-mass ratio ($e/m$):',
+        options: { A: 'Depends on the nature of residual gas present in the discharge tube', B: 'Is constant regardless of the gas used', C: 'Is identical to that of an electron', D: 'Is zero because positive rays are uncharged' },
+        correctAnswer: 'A',
+        explanation: 'Canal rays are positive ions formed when gas molecules lose electrons. Since different gases have different ionic masses, $e/m$ depends on the gas.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_25',
+        question: 'An atom of an element has an atomic number $Z = 8$ and mass number $A = 17$. This atom is an isotope of:',
+        options: { A: 'Oxygen ($_{8}\\text{O}$)', B: 'Nitrogen ($_{7}\\text{N}$)', C: 'Fluorine ($_{9}\\text{F}$)', D: 'Carbon ($_{6}\\text{C}$)' },
+        correctAnswer: 'A',
+        explanation: 'Atomic number $Z = 8$ uniquely defines the element Oxygen. Oxygen has three natural isotopes: $^{16}\\text{O}, ^{17}\\text{O}, ^{18}\\text{O}$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_26',
+        question: 'What is the maximum number of electrons that can be held in the "d" subshell?',
+        options: { A: '10', B: '6', C: '2', D: '14' },
+        correctAnswer: 'A',
+        explanation: 'The d subshell contains 5 orbitals ($d_{xy}, d_{yz}, d_{zx}, d_{x^2-y^2}, d_{z^2}$), holding a maximum of $5 \\times 2 = 10$ electrons.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_27',
+        question: 'Why do isotopes of an element display identical chemical properties?',
+        options: { A: 'They have the same number and arrangement of valence electrons', B: 'They have the same number of neutrons', C: 'They have identical mass numbers', D: 'They possess the same nuclear binding energy' },
+        correctAnswer: 'A',
+        explanation: 'Chemical properties depend on the electronic configuration of valence electrons, which is identical for all isotopes of a given element.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_28',
+        question: 'What is the ground-state electronic configuration of a neutral Aluminium atom ($_{13}\\text{Al}$)?',
+        options: { A: '$1s^2 2s^2 2p^6 3s^2 3p^1$', B: '$1s^2 2s^2 2p^6 3s^3$', C: '$1s^2 2s^2 2p^5 3s^2 3p^2$', D: '$1s^2 2s^2 2p^6 3p^3$' },
+        correctAnswer: 'A',
+        explanation: 'Aluminium ($Z = 13$) fills orbitals as $1s^2 2s^2 2p^6 3s^2 3p^1$, having 3 valence electrons in the third energy shell.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_29',
+        question: 'In nuclear energy generation, which isotope of Uranium undergoes nuclear fission when struck by slow thermal neutrons?',
+        options: { A: 'Uranium-235 ($^{235}\\text{U}$)', B: 'Uranium-238 ($^{238}\\text{U}$)', C: 'Uranium-234 ($^{234}\\text{U}$)', D: 'Uranium-239 ($^{239}\\text{U}$)' },
+        correctAnswer: 'A',
+        explanation: 'Uranium-235 is fissile and splits into lighter nuclei releasing immense energy in nuclear reactors upon thermal neutron capture.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_30',
+        question: 'The atomic mass unit (amu) is formally defined as exactly equal to:',
+        options: { A: '$\\frac{1}{12}\\text{th}$ the mass of a single Carbon-12 ($^{12}\\text{C}$) atom', B: 'The exact mass of one Hydrogen-1 atom', C: '$\\frac{1}{16}\\text{th}$ the mass of an Oxygen-16 atom', D: 'The mass of a free neutron' },
+        correctAnswer: 'A',
+        explanation: '$1\\text{ amu} = \\frac{1}{12} \\times \\text{mass of one } ^{12}\\text{C atom} \\approx 1.66 \\times 10^{-24}\\text{ g} = 1.66 \\times 10^{-27}\\text{ kg}$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_31',
+        question: 'What is the electronic configuration of an Oxide ion ($\\text{O}^{2-}$, atomic number of Oxygen $Z = 8$)?',
+        options: { A: '$1s^2 2s^2 2p^6$', B: '$1s^2 2s^2 2p^4$', C: '$1s^2 2s^2 2p^2$', D: '$1s^2 2s^2 2p^5$' },
+        correctAnswer: 'A',
+        explanation: 'An oxygen atom has 8 electrons ($1s^2 2s^2 2p^4$). Gaining 2 electrons forms the stable $\\text{O}^{2-}$ octet: $1s^2 2s^2 2p^6$ (isoelectronic with Neon).',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_32',
+        question: 'Which of the following subatomic particles has a relative charge of $+1$ and a mass of approximately $1.0073\\text{ amu}$?',
+        options: { A: 'Proton', B: 'Electron', C: 'Neutron', D: 'Alpha particle' },
+        correctAnswer: 'A',
+        explanation: 'A proton carries a unit positive charge ($+1.602 \\times 10^{-19}\\text{ C}$) and has a mass of $1.0073\\text{ amu}$ ($1.673 \\times 10^{-27}\\text{ kg}$).',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_33',
+        question: 'What is the electronic configuration of a neutral Calcium atom ($_{20}\\text{Ca}$)?',
+        options: { A: '$1s^2 2s^2 2p^6 3s^2 3p^6 4s^2$', B: '$1s^2 2s^2 2p^6 3s^2 3p^6 3d^2$', C: '$1s^2 2s^2 2p^6 3s^2 3p^8$', D: '$1s^2 2s^2 2p^6 3s^1 3p^6 4s^3$' },
+        correctAnswer: 'A',
+        explanation: 'Calcium ($Z = 20$) fills up to the $4s$ subshell: $1s^2 2s^2 2p^6 3s^2 3p^6 4s^2$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_34',
+        question: 'Naturally occurring Chlorine consists of two isotopes, $^{35}\\text{Cl}$ (75%) and $^{37}\\text{Cl}$ (25%). What is the average atomic mass of Chlorine?',
+        options: { A: '$35.5\\text{ amu}$', B: '$36.0\\text{ amu}$', C: '$35.0\\text{ amu}$', D: '$37.0\\text{ amu}$' },
+        correctAnswer: 'A',
+        explanation: '$\\text{Average mass} = \\frac{(35 \\times 75) + (37 \\times 25)}{100} = \\frac{2625 + 925}{100} = \\frac{3550}{100} = 35.5\\text{ amu}$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_35',
+        question: 'The radioisotope Sodium-24 ($^{24}\\text{Na}$) is medically applied as a tracer to:',
+        options: { A: 'Trace blood circulation and locate blood clots/constrictions', B: 'Detect brain tumors through PET scanning', C: 'Irradiate food to destroy bacteria', D: 'Determine the structural age of sedimentary rocks' },
+        correctAnswer: 'A',
+        explanation: 'Sodium-24 ($^{24}\\text{Na}$) is injected into the bloodstream to monitor blood flow dynamics and detect vascular obstructions.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_36',
+        question: 'What is the maximum number of electrons that can be held in the N shell ($n = 4$)?',
+        options: { A: '32', B: '18', C: '8', D: '50' },
+        correctAnswer: 'A',
+        explanation: 'Using $2n^2$: for the N shell ($n = 4$), maximum electrons $= 2(4^2) = 2(16) = 32$.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_37',
+        question: 'Which of the following subatomic particles has the smallest mass?',
+        options: { A: 'Electron ($9.11 \\times 10^{-31}\\text{ kg}$)', B: 'Proton ($1.673 \\times 10^{-27}\\text{ kg}$)', C: 'Neutron ($1.675 \\times 10^{-27}\\text{ kg}$)', D: 'Alpha particle ($6.64 \\times 10^{-27}\\text{ kg}$)' },
+        correctAnswer: 'A',
+        explanation: 'The mass of an electron is approximately $\\frac{1}{1836}$ times the mass of a proton, making it by far the lightest subatomic particle.',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_38',
+        question: 'What is the ground-state electronic configuration of a neutral Carbon atom ($_{6}\\text{C}$)?',
+        options: { A: '$1s^2 2s^2 2p^2$', B: '$1s^2 2s^1 2p^3$', C: '$1s^2 2s^2 2p^1$', D: '$1s^1 2s^2 2p^3$' },
+        correctAnswer: 'A',
+        explanation: 'Carbon ($Z = 6$) has 6 electrons: $1s^2 2s^2 2p^2$, with 4 valence electrons in the second shell ($n=2$).',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_39',
+        question: 'In atomic terminology, what is the term used for the total number of protons and neutrons present in an atomic nucleus?',
+        options: { A: 'Nucleon number (Mass number $A$)', B: 'Atomic number ($Z$)', C: 'Valency', D: 'Principal quantum number' },
+        correctAnswer: 'A',
+        explanation: 'Protons and neutrons reside in the nucleus and are collectively called nucleons; their sum is the nucleon number (mass number $A$).',
+        chapter: 'Atomic Structure',
+        topic: 'Atomic Structure',
+      },
+      {
+        id: 'fbise9_chem_3_40',
+        question: 'What did Niels Bohr’s model successfully explain that Rutherford’s model could not?',
+        options: { A: 'The stability of the atom and the discrete line emission spectrum of Hydrogen', B: 'The discovery of the neutron', C: 'The calculation of nuclear binding energies', D: 'The existence of isotopes' },
+        correctAnswer: 'A',
+        explanation: 'Bohr introduced quantized stationary orbits, explaining both why electrons do not collapse into the nucleus and the distinct spectral lines of hydrogen.',
         chapter: 'Atomic Structure',
         topic: 'Atomic Structure',
       },
@@ -1800,19 +2133,119 @@ function generateConcreteDynamicMCQ(subject: string, chapter: string, index: num
 
   // Chemistry dynamic concrete questions
   if (normSub.includes('chem')) {
-    const moles = (index % 4) + 1;
-    const mass = moles * 18;
+    if (normChap.includes('atom') || normChap.includes('structure')) {
+      const variants = [
+        {
+          q: 'How many neutrons are present in the nucleus of a Potassium-39 isotope ($^{39}_{19}\\text{K}$)?',
+          opts: { A: '20', B: '19', C: '39', D: '58' },
+          ans: 'A',
+          exp: 'Neutrons $N = \\text{Mass number } (A) - \\text{Atomic number } (Z) = 39 - 19 = 20$.',
+        },
+        {
+          q: 'What is the maximum number of electrons that can be held in the third principal energy level (M shell, $n = 3$)?',
+          opts: { A: '18', B: '8', C: '32', D: '2' },
+          ans: 'A',
+          exp: 'Maximum electrons in shell $n$ is given by $2n^2 = 2(3^2) = 2(9) = 18$.',
+        },
+        {
+          q: 'Which of the following represents the correct ground-state electronic configuration of a neutral Fluorine atom ($_{9}\\text{F}$)?',
+          opts: { A: '$1s^2 2s^2 2p^5$', B: '$1s^2 2s^2 2p^6$', C: '$1s^2 2s^1 2p^6$', D: '$1s^2 2s^3 2p^4$' },
+          ans: 'A',
+          exp: 'Fluorine has 9 electrons: K shell ($1s^2$) and L shell ($2s^2 2p^5$), needing 1 electron for octet.',
+        },
+        {
+          q: 'The radioisotope Phosphorus-32 ($^{32}\\text{P}$) is primarily used in agricultural science to:',
+          opts: { A: 'Track plant uptake and utilization of phosphorus fertilizers', B: 'Sterilize canned food packages', C: 'Power nuclear generation turbines', D: 'Detect oil pipeline leakages' },
+          ans: 'A',
+          exp: 'Phosphorus-32 is used as a radioactive tracer to study the absorption and movement of phosphate fertilizers in plants.',
+        },
+        {
+          q: 'In Bohr’s atomic model, the fixed circular path in which an electron moves around the nucleus without radiating energy is termed:',
+          opts: { A: 'Stationary Orbit / Energy Level', B: 'Trajectory', C: 'Wave packet', D: 'Continuous continuum' },
+          ans: 'A',
+          exp: 'Bohr defined stationary orbits as discrete energy levels where electrons do not radiate electromagnetic energy.',
+        },
+        {
+          q: 'What is the electronic configuration of a neutral Silicon atom ($_{14}\\text{Si}$)?',
+          opts: { A: '$1s^2 2s^2 2p^6 3s^2 3p^2$', B: '$1s^2 2s^2 2p^6 3s^4$', C: '$1s^2 2s^2 2p^6 3p^4$', D: '$1s^2 2s^2 2p^5 3s^2 3p^3$' },
+          ans: 'A',
+          exp: 'Silicon ($Z = 14$) has 14 electrons: $1s^2 2s^2 2p^6 3s^2 3p^2$, having 4 valence electrons in the third shell.',
+        },
+      ];
+      const selected = variants[index % variants.length];
+      return {
+        id: `fbise9_dyn_chem_atom_${index}`,
+        question: selected.q,
+        options: selected.opts,
+        correctAnswer: selected.ans as 'A' | 'B' | 'C' | 'D',
+        explanation: selected.exp,
+        chapter,
+        topic: chapter,
+      };
+    }
+
+    if (normChap.includes('stoichiometr') || normChap.includes('fundamental')) {
+      const moles = (index % 4) + 1;
+      const mass = moles * 18;
+      return {
+        id: `fbise9_dyn_chem_stoich_${index}`,
+        question: `What is the mass of $${moles}\\text{ mole(s)}$ of pure water ($\\text{H}_2\\text{O}$, molar mass $= 18\\text{ g/mol}$)?`,
+        options: {
+          A: `$${mass}\\text{ g}$`,
+          B: `$${mass + 18}\\text{ g}$`,
+          C: `$${(mass / 2).toFixed(1)}\\text{ g}$`,
+          D: `$${mass * 2}\\text{ g}$`,
+        },
+        correctAnswer: 'A',
+        explanation: `$\\text{Mass} = \\text{Moles} \\times \\text{Molar mass} = ${moles} \\times 18 = ${mass}\\text{ g}$.`,
+        chapter,
+        topic: chapter,
+      };
+    }
+
+    if (normChap.includes('acid') || normChap.includes('base') || normChap.includes('salt')) {
+      const phValues = [
+        { sol: 'Neutral pure water at $25^\\circ\\text{C}$', ph: '7', dist: '0' },
+        { sol: 'Strongly acidic gastric juice', ph: '1 to 2', dist: '8 to 9' },
+        { sol: 'Strongly basic sodium hydroxide solution ($0.1\\text{ M}$)', ph: '13', dist: '3' },
+        { sol: 'Human blood under normal physiological conditions', ph: '7.35 to 7.45', dist: '5.5 to 6.0' },
+      ];
+      const selected = phValues[index % phValues.length];
+      return {
+        id: `fbise9_dyn_chem_acid_${index}`,
+        question: `What is the characteristic $\\text{pH}$ value of ${selected.sol}?`,
+        options: {
+          A: selected.ph,
+          B: selected.dist,
+          C: '14',
+          D: '0',
+        },
+        correctAnswer: 'A',
+        explanation: `The standard pH for ${selected.sol} is ${selected.ph}.`,
+        chapter,
+        topic: chapter,
+      };
+    }
+
+    // Default Chemistry fallback
+    const elements = [
+      { name: 'Magnesium', sym: 'Mg', z: 12, grp: 'Group 2 (Alkaline Earth Metals)' },
+      { name: 'Oxygen', sym: 'O', z: 8, grp: 'Group 16 (Chalcogens)' },
+      { name: 'Chlorine', sym: 'Cl', z: 17, grp: 'Group 17 (Halogens)' },
+      { name: 'Argon', sym: 'Ar', z: 18, grp: 'Group 18 (Noble Gases)' },
+    ];
+    const elem = elements[index % elements.length];
     return {
-      id: `fbise9_dyn_chem_${index}`,
-      question: `What is the mass of $${moles}\\text{ mole(s)}$ of pure water ($\\text{H}_2\\text{O}$, molar mass $= 18\\text{ g/mol}$)?`,
+      id: `fbise9_dyn_chem_gen_${index}`,
+      question: `To which group of the Modern Periodic Table does the element ${elem.name} ($_{${elem.z}}\\text{${elem.sym}}$) belong?`,
       options: {
-        A: `$${mass}\\text{ g}$`,
-        B: `$${mass + 18}\\text{ g}$`,
-        C: `$${(mass / 2).toFixed(1)}\\text{ g}$`,
-        D: `$${mass * 2}\\text{ g}$`,
+        A: elem.grp,
+        B: 'Group 1 (Alkali Metals)',
+        C: 'Transition Metals (d-block)',
+        D: 'Lanthanides series',
       },
       correctAnswer: 'A',
-      explanation: `$\\text{Mass} = \\text{Moles} \\times \\text{Molar mass} = ${moles} \\times 18 = ${mass}\\text{ g}$.`,
+      explanation: `${elem.name} ($Z = ${elem.z}$) has valence electron configuration corresponding to ${elem.grp}.`,
       chapter,
       topic: chapter,
     };
@@ -1955,17 +2388,28 @@ export function getGrade9FBISEQuestions(
     }
   }
 
-  // Filter out any invalid/generic questions and excluded questions
-  const validPool = rawResults.filter((q) => {
-    if (!validateMCQQuestion(q).valid) return false;
+  // Filter out any invalid/generic questions, topic-irrelevant, and excluded questions
+  const validPool: MCQQuestion[] = [];
+  const targetChapter = selectedChapters[0] || (selectedChapters.length > 0 ? selectedChapters.join(', ') : '');
+
+  for (const q of rawResults) {
+    if (!validateMCQQuestion(q).valid) continue;
+    if (targetChapter && !validateQuestionTopicRelevance(q, { subject: normSub, topic: targetChapter, grade: '9' }).valid) continue;
+
     if (normExcludes.length > 0) {
       const qText = q.question.trim().toLowerCase();
       if (normExcludes.some((ex) => qText === ex || (q.id && ex === q.id.toLowerCase()))) {
-        return false;
+        continue;
       }
     }
-    return true;
-  });
+
+    // Deduplicate against already accepted items in validPool
+    if (checkQuestionDuplicate(q, validPool, 0.65).isDuplicate) {
+      continue;
+    }
+
+    validPool.push(q);
+  }
 
   // If we have enough valid questions, shuffle and return
   if (validPool.length >= count) {
@@ -1976,14 +2420,17 @@ export function getGrade9FBISEQuestions(
 
   // If requested count exceeds the static bank size, synthesize concrete dynamic questions
   const finalResults = [...validPool];
-  const targetChapter = selectedChapters[0] || Object.keys(subjectBank)[0] || 'Core Curriculum';
+  const dynamicChapter = targetChapter || Object.keys(subjectBank)[0] || 'Core Curriculum';
   let dynCounter = 1;
 
-  while (finalResults.length < count && dynCounter <= count * 5) {
-    const dynQ = generateConcreteDynamicMCQ(normSub, targetChapter, dynCounter);
-    if (validateMCQQuestion(dynQ).valid) {
+  while (finalResults.length < count && dynCounter <= count * 10) {
+    const dynQ = generateConcreteDynamicMCQ(normSub, dynamicChapter, dynCounter);
+    if (
+      validateMCQQuestion(dynQ).valid &&
+      validateQuestionTopicRelevance(dynQ, { subject: normSub, topic: dynamicChapter, grade: '9' }).valid
+    ) {
       const qText = dynQ.question.trim().toLowerCase();
-      if (!normExcludes.some((ex) => qText === ex) && !finalResults.some((r) => r.question.trim().toLowerCase() === qText)) {
+      if (!normExcludes.some((ex) => qText === ex) && !checkQuestionDuplicate(dynQ, finalResults, 0.65).isDuplicate) {
         finalResults.push(dynQ);
       }
     }

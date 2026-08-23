@@ -191,3 +191,137 @@ export function isGrade9FBISE(board?: string | null, grade?: string | null): boo
   const isNine = g === '9' || g === '9th' || g.toLowerCase() === 'grade 9';
   return isFbise && isNine;
 }
+
+export interface ChapterSyllabusScope {
+  subject: string;
+  chapter: string;
+  chapterNumber?: number;
+  subtopics: string[];
+  guidelines: string;
+  requiredKeywords: string[];
+  forbiddenCrossChapterPatterns: { pattern: RegExp; reason: string }[];
+  isFullSyllabus: boolean;
+}
+
+/**
+ * Returns the exact syllabus scope, subtopics, and anti-bleed validation rules for a subject & topic/chapter.
+ */
+export function getChapterSyllabusScope(
+  subject: string,
+  topicOrChapter: string
+): ChapterSyllabusScope {
+  const canonicalSubject = normalizeFBISEGrade9Subject(subject) || subject;
+  const rawTopic = (topicOrChapter || '').trim();
+  const normTopic = rawTopic.toLowerCase();
+
+  const isFullSyllabus =
+    !rawTopic ||
+    normTopic === 'full syllabus' ||
+    normTopic === 'mixed chapters' ||
+    normTopic === 'all' ||
+    normTopic === 'entire syllabus';
+
+  if (isFullSyllabus) {
+    return {
+      subject: canonicalSubject,
+      chapter: 'Full Syllabus',
+      subtopics: ['Comprehensive review of all syllabus chapters'],
+      guidelines: FBISE_GRADE_9_CURRICULUM[canonicalSubject]?.guidelines || 'Syllabus-aligned questions',
+      requiredKeywords: [],
+      forbiddenCrossChapterPatterns: [],
+      isFullSyllabus: true,
+    };
+  }
+
+  const subjectData = FBISE_GRADE_9_CURRICULUM[canonicalSubject];
+  let matchedChapter: ChapterDef | undefined;
+
+  if (subjectData) {
+    matchedChapter = subjectData.chapters.find((ch) => {
+      const chNorm = ch.name.toLowerCase();
+      return chNorm === normTopic || chNorm.includes(normTopic) || normTopic.includes(chNorm);
+    });
+  }
+
+  const chapterName = matchedChapter?.name || rawTopic;
+  const subtopics = matchedChapter?.subtopics || [chapterName];
+  const guidelines = subjectData?.guidelines || '';
+
+  // Subject-specific keyword scopes and anti-bleed forbidden patterns
+  const normSub = canonicalSubject.toLowerCase();
+  const requiredKeywords: string[] = [];
+  const forbiddenCrossChapterPatterns: { pattern: RegExp; reason: string }[] = [];
+
+  if (normSub.includes('chem')) {
+    if (normTopic.includes('atomic structure') || normTopic.includes('atom')) {
+      requiredKeywords.push(
+        'atom', 'proton', 'neutron', 'electron', 'nucleus', 'subatomic',
+        'rutherford', 'bohr', 'gold foil', 'alpha particle', 'scattering',
+        'atomic number', 'mass number', 'nucleon', 'isotope', 'isotopic',
+        'electronic configuration', 'shell', 'subshell', 'orbital', 'valence',
+        'k shell', 'l shell', 'm shell', 'n shell', '1s', '2s', '2p', '3s', '3p',
+        'energy level', 'quantized', 'quantum', 'spectral', 'line spectrum',
+        'canal rays', 'cathode rays', 'discharge tube', 'goldstein', 'chadwick',
+        'thomson', 'planck', 'deuterium', 'tritium', 'protium', 'carbon-14',
+        'cobalt-60', 'iodine-131', 'uranium-235', 'half-life', 'radioisotope'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(molar mass|avogadro|moles? of (water|nacl|co2|o2|h2|gas)|\bstoichiometr|empirical formula|percentage composition of)\b/i, reason: 'Stoichiometry & Mole concepts belong to Chapter 6 (Stoichiometry), not Atomic Structure.' },
+        { pattern: /\b(arrhenius|ph of (the )?solution|poh|acid-base indicator|titration|neutralization reaction|acid rain)\b/i, reason: 'Acids, Bases & Salts concepts belong to Chapter 10, not Atomic Structure.' },
+        { pattern: /\b(functional group|alkane|alkene|alkyne|homologous series|catenation|isomerism|esterification|carboxylic acid)\b/i, reason: 'Organic chemistry concepts belong to Chapters 13 & 14, not Atomic Structure.' },
+        { pattern: /\b(oxidation state of|redox|galvanic cell|electrolytic cell|anode and cathode in electrolysis|corrosion of iron|rusting)\b/i, reason: 'Electrochemistry concepts belong to Chapter 7, not Atomic Structure.' },
+        { pattern: /\b(le chatelier|equilibrium constant kc|dynamic equilibrium|reversible reaction)\b/i, reason: 'Chemical equilibrium concepts belong to Chapter 9, not Atomic Structure.' },
+        { pattern: /\b(enthalpy change|exothermic and endothermic|activation energy|heat of combustion)\b/i, reason: 'Chemical energetics concepts belong to Chapter 8, not Atomic Structure.' },
+        { pattern: /\b(paper chromatography|retention factor|rf value|fractional distillation|crystallization)\b/i, reason: 'Separation techniques belong to Chapters 17 & 19, not Atomic Structure.' }
+      );
+    } else if (normTopic.includes('stoichiometr') || normTopic.includes('mole')) {
+      requiredKeywords.push('mole', 'molar mass', 'avogadro', 'amu', 'formula mass', 'empirical formula', 'percentage composition', 'limiting reactant', 'stoichiometric');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(bohr's postulates|rutherford alpha scattering|cathode ray discharge)\b/i, reason: 'Atomic models belong to Atomic Structure chapter.' },
+        { pattern: /\b(alkane|alkene|functional group|catenation)\b/i, reason: 'Organic chemistry belongs to Chapters 13 & 14.' }
+      );
+    } else if (normTopic.includes('acid') || normTopic.includes('base') || normTopic.includes('salt')) {
+      requiredKeywords.push('arrhenius', 'acid', 'base', 'salt', 'ph', 'poh', 'indicator', 'neutralization', 'litmus', 'phenolphthalein', 'hydronium', 'hydroxide');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(rutherford model|bohr orbit|electronic configuration 1s|isotopes of carbon)\b/i, reason: 'Belongs to Atomic Structure chapter.' },
+        { pattern: /\b(alkane|alkene|functional group|hydrocarbon)\b/i, reason: 'Belongs to Organic Chemistry.' }
+      );
+    } else if (normTopic.includes('periodic table') || normTopic.includes('periodicity')) {
+      requiredKeywords.push('periodic table', 'period', 'group', 'atomic radius', 'ionization energy', 'electron affinity', 'electronegativity', 'moseley', 'mendeleev', 'noble gases', 'halogens', 'alkali metals');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(moles? of (pure )?water|empirical formula calculation|stoichiometric)\b/i, reason: 'Belongs to Stoichiometry chapter.' },
+        { pattern: /\b(titration|ph value|indicator color)\b/i, reason: 'Belongs to Acids & Bases.' }
+      );
+    } else if (normTopic.includes('bonding')) {
+      requiredKeywords.push('ionic bond', 'covalent bond', 'coordinate covalent', 'dative', 'octet rule', 'duplet rule', 'polar', 'non-polar', 'metallic bond', 'hydrogen bonding', 'lattice energy');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(rutherford scattering|discovery of neutron|canal rays)\b/i, reason: 'Belongs to Atomic Structure chapter.' },
+        { pattern: /\b(le chatelier|equilibrium constant kc)\b/i, reason: 'Belongs to Equilibrium.' }
+      );
+    } else if (normTopic.includes('organic') || normTopic.includes('hydrocarbon')) {
+      requiredKeywords.push('organic', 'carbon', 'catenation', 'tetravalency', 'hydrocarbon', 'alkane', 'alkene', 'alkyne', 'functional group', 'alcohol', 'aldehyde', 'ketone', 'carboxylic acid', 'ester', 'methane', 'ethane', 'ethene', 'ethyne');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(rutherford|bohr radius|discovery of electron|alpha particle scattering)\b/i, reason: 'Belongs to Atomic Structure chapter.' },
+        { pattern: /\b(galvanic cell|electrolysis of molten nacl)\b/i, reason: 'Belongs to Electrochemistry.' }
+      );
+    } else if (normTopic.includes('electrochemistry')) {
+      requiredKeywords.push('oxidation', 'reduction', 'redox', 'oxidation state', 'oxidizing agent', 'reducing agent', 'electrolytic cell', 'galvanic cell', 'voltaic cell', 'anode', 'cathode', 'electrolysis', 'electroplating', 'corrosion');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(rutherford|bohr model|energy level mvr)\b/i, reason: 'Belongs to Atomic Structure.' },
+        { pattern: /\b(alkane|alkene|catenation)\b/i, reason: 'Belongs to Organic Chemistry.' }
+      );
+    }
+  }
+
+  return {
+    subject: canonicalSubject,
+    chapter: chapterName,
+    chapterNumber: matchedChapter?.number,
+    subtopics,
+    guidelines,
+    requiredKeywords,
+    forbiddenCrossChapterPatterns,
+    isFullSyllabus: false,
+  };
+}
+

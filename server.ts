@@ -686,7 +686,7 @@ Return ONLY a valid JSON object matching this structure:
           grade: String(effectiveGrade),
           board: String(effectiveBoard),
         };
-        const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool, validationContext);
+        const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool, validationContext, normExcludes);
 
         if (validatedQuestions.length >= count) {
           return res.json({

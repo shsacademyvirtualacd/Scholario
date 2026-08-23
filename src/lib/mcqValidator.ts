@@ -1,4 +1,5 @@
 import type { MCQQuestion } from '../types/selfTest';
+import { getChapterSyllabusScope } from './curriculumFBISE9';
 
 /**
  * Forbidden phrases that indicate generic AI filler or meta-language
@@ -46,6 +47,125 @@ export interface ValidationContext {
 }
 
 /**
+ * Normalizes question text to a generic template skeleton by replacing numbers,
+ * formulas, and variable placeholders. Used to catch near-duplicate parameterized templates.
+ */
+export function normalizeQuestionTemplate(text: string): string {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    // Replace LaTeX math delimiters
+    .replace(/\$[^$]+\$/g, '<MATH>')
+    // Replace scientific numbers, exponents, fractions, decimals
+    .replace(/\b\d+(\.\d+)?(e[+-]?\d+)?\b/gi, '<NUM>')
+    // Remove punctuation
+    .replace(/[^\w\s<>]/g, ' ')
+    // Collapse consecutive whitespaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Extracts normalized word tokens for semantic similarity calculation
+ */
+function extractTokens(text: string): Set<string> {
+  const words = text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !['the', 'and', 'for', 'with', 'that', 'this', 'what', 'which', 'from'].includes(w));
+  return new Set(words);
+}
+
+/**
+ * Calculates Jaccard similarity and template equivalence between two questions
+ */
+export function calculateQuestionSimilarity(q1: string, q2: string): { similarity: number; isTemplateDuplicate: boolean } {
+  const norm1 = q1.trim().toLowerCase();
+  const norm2 = q2.trim().toLowerCase();
+  if (norm1 === norm2) {
+    return { similarity: 1.0, isTemplateDuplicate: true };
+  }
+
+  const skel1 = normalizeQuestionTemplate(q1);
+  const skel2 = normalizeQuestionTemplate(q2);
+  if (skel1.length > 20 && skel1 === skel2) {
+    return { similarity: 0.95, isTemplateDuplicate: true };
+  }
+
+  const tokens1 = extractTokens(q1);
+  const tokens2 = extractTokens(q2);
+
+  if (tokens1.size === 0 || tokens2.size === 0) {
+    return { similarity: 0, isTemplateDuplicate: false };
+  }
+
+  let intersectionCount = 0;
+  for (const t of tokens1) {
+    if (tokens2.has(t)) {
+      intersectionCount++;
+    }
+  }
+
+  const unionCount = new Set([...tokens1, ...tokens2]).size;
+  const jaccard = unionCount > 0 ? intersectionCount / unionCount : 0;
+
+  return {
+    similarity: jaccard,
+    isTemplateDuplicate: jaccard >= 0.75,
+  };
+}
+
+/**
+ * Compares a candidate question against a pool of accepted questions and existing bank questions.
+ * Rejects questions that exceed the similarity threshold or share identical template skeletons.
+ */
+export function checkQuestionDuplicate(
+  candidate: MCQQuestion,
+  existingList: MCQQuestion[],
+  similarityThreshold: number = 0.65
+): { isDuplicate: boolean; similarity: number; duplicateWith?: string; reason?: string } {
+  const candText = candidate.question || '';
+  const candOpts = Object.values(candidate.options || {}).map((v) => String(v).trim().toLowerCase()).sort().join('|');
+
+  for (const existing of existingList) {
+    const exText = existing.question || '';
+    const { similarity, isTemplateDuplicate } = calculateQuestionSimilarity(candText, exText);
+
+    if (isTemplateDuplicate) {
+      return {
+        isDuplicate: true,
+        similarity,
+        duplicateWith: exText,
+        reason: `Template skeleton matches existing question: "${exText.substring(0, 60)}..."`,
+      };
+    }
+
+    if (similarity >= similarityThreshold) {
+      return {
+        isDuplicate: true,
+        similarity,
+        duplicateWith: exText,
+        reason: `Question has ${(similarity * 100).toFixed(0)}% semantic overlap with: "${exText.substring(0, 60)}..."`,
+      };
+    }
+
+    // Option set duplicate check
+    const exOpts = Object.values(existing.options || {}).map((v) => String(v).trim().toLowerCase()).sort().join('|');
+    if (candOpts && candOpts === exOpts && similarity > 0.4) {
+      return {
+        isDuplicate: true,
+        similarity: 0.9,
+        duplicateWith: exText,
+        reason: 'Options are identical to an existing question.',
+      };
+    }
+  }
+
+  return { isDuplicate: false, similarity: 0 };
+}
+
+/**
  * Validates whether a single question's content actually matches the selected topic/chapter
  * and does not bleed into unrelated chapters or out-of-syllabus concepts.
  */
@@ -83,147 +203,72 @@ export function validateQuestionTopicRelevance(q: any, context?: ValidationConte
     }
   }
 
-  // 2. MATHEMATICS Topic Scoping
+  // 2. Syllabus scope retrieval
+  const scope = getChapterSyllabusScope(subject, context.topic);
+
+  // Check forbidden cross-chapter patterns defined in scope
+  for (const rule of scope.forbiddenCrossChapterPatterns) {
+    if (rule.pattern.test(fullText)) {
+      return { valid: false, reason: rule.reason };
+    }
+  }
+
+  // Positive grounding check for specific single chapters
+  if (scope.requiredKeywords.length > 0) {
+    const fullTextNorm = fullText.toLowerCase();
+    const hasMatch = scope.requiredKeywords.some((kw) => {
+      const kwNorm = kw.toLowerCase();
+      return fullTextNorm.includes(kwNorm);
+    });
+
+    if (!hasMatch) {
+      return {
+        valid: false,
+        reason: `Question content does not match the defined syllabus concepts for chapter "${scope.chapter}".`,
+      };
+    }
+  }
+
+  // 3. MATHEMATICS Topic Scoping
   if (subject.includes('math')) {
-    // Topic: Factorization and Algebraic Manipulation
     if (topic.includes('factoriz') || topic.includes('algebraic manipulation') || topic.includes('algebraic expressions')) {
-      // Must NOT contain Matrix/Determinants
-      if (/\b(matrix|matrices|determinant|adjoint|singular matrix|non-singular matrix)\b/i.test(fullText)) {
+      if (/\b(matrix|matrices|determinant|adjoint|singular matrix)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question mentions matrices/determinants, which belongs to another chapter' };
       }
-      // Must NOT contain Trigonometry
-      if (/\b(trigonometr|sin\^?2|cos\^?2|tan\^?2|\bsin\s*\(|\bcos\s*\(|\btan\s*\(|\bsec\s*\(|\bcsc\s*\(|\bcot\s*\(|\bbearing\b|elevation and depression)\b/i.test(fullText)) {
+      if (/\b(trigonometr|sin\^?2|cos\^?2|tan\^?2|\bsin\s*\(|\bcos\s*\(|\btan\s*\(|\bsec\s*\(|\bcsc\s*\(|\bcot\s*\(|\bbearing\b)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question contains trigonometric identities/bearing, which belongs to Trigonometry chapter' };
       }
-      // Must NOT contain Coordinate Geometry distance/midpoint
-      if (/\b(distance between (the )?two points|coordinate plane|cartesian coordinates|mid-?point formula|collinear points)\b/i.test(fullText)) {
+      if (/\b(distance between (the )?two points|coordinate plane|cartesian coordinates|mid-?point formula)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question contains coordinate geometry formulas, which belongs to Coordinate Geometry chapter' };
       }
-      // Must NOT contain Logarithms
       if (/\b(logarithm|\blog_{?\d+}?|\bmantissa\b|\bcharacteristic of log)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question contains logarithms, which belongs to Logarithms chapter' };
       }
-      // Must NOT contain Statistics
       if (/\b(arithmetic mean of|median of the data|mode of the dataset|frequency distribution|histogram)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question contains statistics/mean/median, which belongs to Basic Statistics chapter' };
       }
-      // Must NOT contain Geometry of Straight Lines / Polygons
-      if (/\b(alternate interior angles|transversal line|sum of interior angles of a (pentagon|hexagon|polygon)|congruence of triangles)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question contains geometry proofs/polygons, which belongs to Geometry chapters' };
-      }
-    }
-
-    // Topic: Real Numbers
-    if (topic.includes('real number') || topic.includes('radicals')) {
-      if (/\b(matrix|matrices|determinant|trigonometr|\bsin\s*\(|\bcos\s*\(|\btan\s*\(|mid-?point|remainder theorem|factor theorem|frequency distribution)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated mathematics chapter outside Real Numbers' };
-      }
-    }
-
-    // Topic: Logarithms
-    if (topic.includes('logarithm')) {
-      if (/\b(matrix|matrices|determinant|trigonometr|\bsin\s*\(|\bcos\s*\(|\btan\s*\(|distance formula|mid-?point|remainder theorem|factor theorem)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated mathematics chapter outside Logarithms' };
-      }
-    }
-
-    // Topic: Sets and Relations
-    if (topic.includes('set') || topic.includes('relation')) {
-      if (/\b(matrix|matrices|determinant|trigonometr|\bsin\s*\(|\bcos\s*\(|\btan\s*\(|distance formula|logarithm|remainder theorem)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated mathematics chapter outside Sets and Relations' };
-      }
-    }
-
-    // Topic: Trigonometry and Bearing
-    if (topic.includes('trigonometr') || topic.includes('bearing')) {
-      if (/\b(matrix|matrices|determinant|logarithm|remainder theorem|factor theorem|frequency distribution|venn diagram)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated mathematics chapter outside Trigonometry' };
-      }
-    }
-
-    // Topic: Coordinate Geometry
-    if (topic.includes('coordinate geometry')) {
-      if (/\b(matrix|matrices|determinant|logarithm|remainder theorem|factor theorem|frequency distribution|venn diagram|log_{)/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated mathematics chapter outside Coordinate Geometry' };
-      }
-    }
-
-    // Topic: Basic Statistics
-    if (topic.includes('statistic') || topic.includes('mean') || topic.includes('median')) {
-      if (/\b(matrix|matrices|determinant|trigonometr|\bsin\s*\(|\bcos\s*\(|\btan\s*\(|distance formula|remainder theorem|factor theorem)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated mathematics chapter outside Basic Statistics' };
-      }
     }
   }
 
-  // 3. PHYSICS Topic Scoping
+  // 4. PHYSICS Topic Scoping
   if (subject.includes('phys')) {
-    // Topic: Kinematics
     if (topic.includes('kinematic')) {
-      if (/\b(pascal's law|archimedes|upthrust|magnetic pole|magnetic domain|specific heat capacity|thermal expansion|half-life|coulomb's law|young's modulus|hooke's law)\b/i.test(fullText)) {
+      if (/\b(pascal's law|archimedes|upthrust|magnetic pole|magnetic domain|specific heat capacity|thermal expansion|half-life|coulomb's law|young's modulus)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question belongs to an unrelated physics chapter outside Kinematics' };
       }
     }
-    // Topic: Physical Quantities and Measurement
     if (topic.includes('measurement') || topic.includes('physical quantit')) {
       if (/\b(centripetal force|potential energy formula ep|magnetic field lines|pascal's principle|hydraulic lift|latent heat)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question belongs to an unrelated physics chapter outside Measurements' };
-      }
-    }
-    // Topic: Pressure and Deformation
-    if (topic.includes('pressure') || topic.includes('deformation')) {
-      if (/\b(equations of motion|speed-time graph|magnetic poles|thermal expansion|kinematics)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated physics chapter outside Pressure and Deformation' };
-      }
-    }
-    // Topic: Work and Energy
-    if (topic.includes('work') || topic.includes('energy')) {
-      if (/\b(vernier calipers|screw gauge least count|pascal's principle|magnetic pole|magnetic field)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated physics chapter outside Work and Energy' };
-      }
-    }
-    // Topic: Magnetism
-    if (topic.includes('magnet')) {
-      if (/\b(equations of motion|speed-time graph|pascal's law|archimedes upthrust|specific heat capacity)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated physics chapter outside Magnetism' };
-      }
-    }
-  }
-
-  // 4. CHEMISTRY Topic Scoping
-  if (subject.includes('chem')) {
-    // Topic: Atomic Structure
-    if (topic.includes('atomic structure') || topic.includes('atom')) {
-      if (/\b(catenation|alkane|alkene|alkyne|fractional distillation|acid rain|titration|le chatelier|ph of solution)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated chemistry chapter outside Atomic Structure' };
-      }
-    }
-    // Topic: Acids, Bases, and Salts
-    if (topic.includes('acid') || topic.includes('base') || topic.includes('salt')) {
-      if (/\b(rutherford atomic model|bohr's postulates|catenation|hydrocarbon|alkane|fractional distillation)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated chemistry chapter outside Acids, Bases, and Salts' };
-      }
-    }
-    // Topic: Organic Chemistry / Hydrocarbons
-    if (topic.includes('organic') || topic.includes('hydrocarbon')) {
-      if (/\b(rutherford alpha scattering|bohr radius|flame test lilac|titration indicator|paper chromatography rf)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated chemistry chapter outside Organic Chemistry' };
       }
     }
   }
 
   // 5. BIOLOGY Topic Scoping
   if (subject.includes('bio')) {
-    // Topic: The Cell
     if (topic.includes('the cell') || topic.includes('cell organelle')) {
       if (/\b(flower double fertilization|endosperm 3n|mendel's ratio|darwin natural selection|fossil paleontology|transpiration pull)\b/i.test(fullText)) {
         return { valid: false, reason: 'Question belongs to an unrelated biology chapter outside The Cell' };
-      }
-    }
-    // Topic: Biodiversity
-    if (topic.includes('biodiversity') || topic.includes('classification')) {
-      if (/\b(mitosis anaphase|calvin cycle|glycolysis|lock and key model|double fertilization)\b/i.test(fullText)) {
-        return { valid: false, reason: 'Question belongs to an unrelated biology chapter outside Biodiversity' };
       }
     }
   }
@@ -304,29 +349,44 @@ export function validateMCQQuestion(q: any, context?: ValidationContext): { vali
 }
 
 /**
- * Validates a list of questions, filters out invalid/generic/off-topic ones,
+ * Validates a list of questions, filters out invalid/generic/off-topic/duplicate ones,
  * and backfills from a fallback pool if needed to guarantee the required count of valid questions.
  */
 export function filterAndValidateMCQs(
   questions: MCQQuestion[],
   requiredCount: number,
   fallbackPool: MCQQuestion[] = [],
-  context?: ValidationContext
+  context?: ValidationContext,
+  excludeTexts: string[] = []
 ): MCQQuestion[] {
   const validQuestions: MCQQuestion[] = [];
-  const seenQuestionTexts = new Set<string>();
+
+  // Exclude initial passed strings from previous tests/history
+  const initialExcludeQuestions: MCQQuestion[] = excludeTexts.map((text, idx) => ({
+    id: `ex_${idx}`,
+    question: text,
+    options: { A: '', B: '', C: '', D: '' },
+    correctAnswer: 'A',
+    explanation: '',
+  }));
 
   for (const q of questions) {
     const check = validateMCQQuestion(q, context);
-    const qKey = q.question.trim().toLowerCase();
-    if (check.valid && !seenQuestionTexts.has(qKey)) {
-      validQuestions.push(q);
-      seenQuestionTexts.add(qKey);
-      if (validQuestions.length >= requiredCount) {
-        break;
-      }
-    } else if (!check.valid) {
+    if (!check.valid) {
       console.warn(`[MCQ Validator] Rejected invalid/off-topic question: "${q.question}" -> Reason: ${check.reason}`);
+      continue;
+    }
+
+    // Check duplicate against initial excludes and already accepted questions
+    const dupCheck = checkQuestionDuplicate(q, [...initialExcludeQuestions, ...validQuestions], 0.65);
+    if (dupCheck.isDuplicate) {
+      console.warn(`[MCQ Validator] Rejected duplicate question: "${q.question}" -> Reason: ${dupCheck.reason}`);
+      continue;
+    }
+
+    validQuestions.push(q);
+    if (validQuestions.length >= requiredCount) {
+      break;
     }
   }
 
@@ -334,17 +394,19 @@ export function filterAndValidateMCQs(
   if (validQuestions.length < requiredCount && fallbackPool.length > 0) {
     for (const fb of fallbackPool) {
       const check = validateMCQQuestion(fb, context);
-      const qKey = fb.question.trim().toLowerCase();
-      if (check.valid && !seenQuestionTexts.has(qKey)) {
-        validQuestions.push(fb);
-        seenQuestionTexts.add(qKey);
-        if (validQuestions.length >= requiredCount) {
-          break;
-        }
+      if (!check.valid) continue;
+
+      const dupCheck = checkQuestionDuplicate(fb, [...initialExcludeQuestions, ...validQuestions], 0.65);
+      if (dupCheck.isDuplicate) continue;
+
+      validQuestions.push(fb);
+      if (validQuestions.length >= requiredCount) {
+        break;
       }
     }
   }
 
   return validQuestions;
 }
+
 
