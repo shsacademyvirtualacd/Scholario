@@ -153,19 +153,114 @@ export function generateCurriculumFallbackMCQs(
           topic: scope.chapter,
           chapter: scope.chapter,
         });
-      } else {
-        // General physics concept faithful to chapter name
+      } else if (normTop.includes('atomic') || normTop.includes('nuclear') || normTop.includes('radioactiv')) {
+        const halfLifeDays = [2, 4, 5, 8, 10, 15][dynIdx % 6];
+        const halfLifeSteps = (dynIdx % 3) + 2; // 2, 3, 4
+        const totalDays = halfLifeDays * halfLifeSteps;
+        const remainingFraction = `1/${Math.pow(2, halfLifeSteps)}`;
+        const qType = dynIdx % 3;
+
+        if (qType === 0) {
+          addSafeQuestion({
+            id: `cur_phy_nuc_hl_${dynIdx}`,
+            question: `A radioactive isotope has a half-life of $${halfLifeDays}\\text{ days}$. What fraction of the original radioactive nuclei remains undecayed after $${totalDays}\\text{ days}$?`,
+            options: {
+              A: `$${remainingFraction}$`,
+              B: `$1/${Math.pow(2, halfLifeSteps - 1)}$`,
+              C: `$1/${Math.pow(2, halfLifeSteps + 1)}$`,
+              D: `$1/${halfLifeSteps * 2}$`,
+            },
+            correctAnswer: 'A',
+            explanation: `Number of half-lives $n = \\frac{${totalDays}}{${halfLifeDays}} = ${halfLifeSteps}$. Fraction remaining = $\\left(\\frac{1}{2}\\right)^n = \\left(\\frac{1}{2}\\right)^{${halfLifeSteps}} = ${remainingFraction}$.`,
+            topic: scope.chapter,
+            chapter: scope.chapter,
+          });
+        } else if (qType === 1) {
+          addSafeQuestion({
+            id: `cur_phy_nuc_alpha_${dynIdx}`,
+            question: `During alpha ($\\alpha$) decay of a parent nucleus with atomic number $Z$ and mass number $A$, the daughter nucleus produced has:`,
+            options: {
+              A: `Atomic number $Z-2$ and mass number $A-4$`,
+              B: `Atomic number $Z+1$ and mass number $A$`,
+              C: `Atomic number $Z$ and mass number $A-2$`,
+              D: `Atomic number $Z-1$ and mass number $A-4$`,
+            },
+            correctAnswer: 'A',
+            explanation: `An alpha particle is a Helium nucleus ($^4_2\\text{He}$). Therefore, the atomic number decreases by 2 and the mass number decreases by 4.`,
+            topic: scope.chapter,
+            chapter: scope.chapter,
+          });
+        } else {
+          addSafeQuestion({
+            id: `cur_phy_nuc_rad_${dynIdx}`,
+            question: `Which of the following nuclear radiations possesses the highest ionizing power?`,
+            options: {
+              A: `Alpha ($\\alpha$) particles`,
+              B: `Beta ($\\beta$) particles`,
+              C: `Gamma ($\\gamma$) rays`,
+              D: `Neutrons`,
+            },
+            correctAnswer: 'A',
+            explanation: `Alpha particles have the largest charge ($+2e$) and largest mass, giving them the highest ionizing power compared to beta and gamma radiations.`,
+            topic: scope.chapter,
+            chapter: scope.chapter,
+          });
+        }
+      } else if (normTop.includes('optic') || normTop.includes('mirror') || normTop.includes('lens')) {
+        const f = [10, 15, 20, 30][dynIdx % 4];
+        const p = 2 * f;
         addSafeQuestion({
-          id: `cur_phy_gen_${dynIdx}`,
-          question: `In Grade ${grade} Physics (${scope.chapter}), which SI unit or defining physical law governs standard quantitative problem solving?`,
+          id: `cur_phy_opt_${dynIdx}`,
+          question: `An object is placed at a distance of $p = ${p}\\text{ cm}$ in front of a concave mirror of focal length $f = ${f}\\text{ cm}$. At what image distance $q$ is the real image formed?`,
           options: {
-            A: `Standard SI units and verified physical laws defined in ${scope.chapter}`,
-            B: `Arbitrary uncalibrated measurement units`,
-            C: `Non-standard imperial fractions`,
-            D: `Dimensionless empirical estimates`,
+            A: `$${p}\\text{ cm}$ (at center of curvature $2f$)`,
+            B: `$${f}\\text{ cm}$`,
+            C: `$${f * 3}\\text{ cm}$`,
+            D: `$${f / 2}\\text{ cm}$`,
           },
           correctAnswer: 'A',
-          explanation: `All physical measurements and calculations in ${scope.chapter} are strictly formulated using standard SI units.`,
+          explanation: `Using $\\frac{1}{f} = \\frac{1}{p} + \\frac{1}{q} \\implies \\frac{1}{${f}} - \\frac{1}{${p}} = \\frac{1}{${p}} \\implies q = ${p}\\text{ cm}$.`,
+          topic: scope.chapter,
+          chapter: scope.chapter,
+        });
+      } else if (normTop.includes('electric') || normTop.includes('current')) {
+        const v = [6, 12, 24, 220][dynIdx % 4];
+        const r = [2, 3, 4, 6][dynIdx % 4];
+        const i = v / r;
+        addSafeQuestion({
+          id: `cur_phy_elec_${dynIdx}`,
+          question: `A potential difference of $${v}\\text{ V}$ is applied across a conductor of resistance $${r}\\,\\Omega$. What electric current flows through it according to Ohm's Law ($I = V/R$)?`,
+          options: {
+            A: `$${i}\\text{ A}$`,
+            B: `$${i * 2}\\text{ A}$`,
+            C: `$${(i / 2).toFixed(1)}\\text{ A}$`,
+            D: `$${v + r}\\text{ A}$`,
+          },
+          correctAnswer: 'A',
+          explanation: `According to Ohm's Law, $I = \\frac{V}{R} = \\frac{${v}\\text{ V}}{${r}\\,\\Omega} = ${i}\\text{ A}$.`,
+          topic: scope.chapter,
+          chapter: scope.chapter,
+        });
+      } else {
+        const baseProps = [
+          { q: 'mass', u: 'kilogram (kg)' },
+          { q: 'time', u: 'second (s)' },
+          { q: 'length', u: 'meter (m)' },
+          { q: 'electric current', u: 'ampere (A)' },
+          { q: 'thermodynamic temperature', u: 'kelvin (K)' },
+        ];
+        const bp = baseProps[dynIdx % baseProps.length];
+        addSafeQuestion({
+          id: `cur_phy_base_${dynIdx}`,
+          question: `Which of the following is the standard SI base unit for measuring ${bp.q}?`,
+          options: {
+            A: `${bp.u}`,
+            B: `gram (g)`,
+            C: `dyne (dyn)`,
+            D: `erg`,
+          },
+          correctAnswer: 'A',
+          explanation: `The International System of Units (SI) defines ${bp.u} as the base unit for ${bp.q}.`,
           topic: scope.chapter,
           chapter: scope.chapter,
         });
@@ -189,18 +284,42 @@ export function generateCurriculumFallbackMCQs(
           topic: scope.chapter,
           chapter: scope.chapter,
         });
-      } else {
+      } else if (normTop.includes('equilibrium') || normTop.includes('acid') || normTop.includes('base')) {
+        const phVal = (dynIdx % 6) + 1; // 1 to 6
+        const pohVal = 14 - phVal;
         addSafeQuestion({
-          id: `cur_chem_gen_${dynIdx}`,
-          question: `In Grade ${grade} Chemistry (${scope.chapter}), which foundational chemical principle is standardly applied?`,
+          id: `cur_chem_ph_${dynIdx}`,
+          question: `An aqueous solution has a measured $\\text{pH} = ${phVal}$. What is its $\\text{pOH}$ value at $25^\\circ\\text{C}$ given that $\\text{pH} + \\text{pOH} = 14$?`,
           options: {
-            A: `Syllabus-defined chemical concepts and atomic/molecular principles for ${scope.chapter}`,
-            B: `Non-empirical speculative properties`,
-            C: `Alchemical historical hypotheses`,
-            D: `Arbitrary non-stoichiometric ratios`,
+            A: `${pohVal}`,
+            B: `${phVal}`,
+            C: `${14 + phVal}`,
+            D: `${7}`,
           },
           correctAnswer: 'A',
-          explanation: `Grade ${grade} Chemistry curriculum establishes precise chemical definitions and experimental laws for ${scope.chapter}.`,
+          explanation: `$\\text{pOH} = 14 - \\text{pH} = 14 - ${phVal} = ${pohVal}$. Since $\\text{pH} < 7$, this solution is acidic.`,
+          topic: scope.chapter,
+          chapter: scope.chapter,
+        });
+      } else {
+        const elemProps = [
+          { name: 'Helium (He)', val: '2 electrons (duplet rule)' },
+          { name: 'Neon (Ne)', val: '8 valence electrons (octet rule)' },
+          { name: 'Sodium (Na)', val: '1 valence electron ($[\\text{Ne}] 3s^1$)' },
+          { name: 'Chlorine (Cl)', val: '7 valence electrons ($[\\text{Ne}] 3s^2 3p^5$)' },
+        ];
+        const ep = elemProps[dynIdx % elemProps.length];
+        addSafeQuestion({
+          id: `cur_chem_val_${dynIdx}`,
+          question: `What is the outermost valence shell electron configuration characteristic of ${ep.name}?`,
+          options: {
+            A: `${ep.val}`,
+            B: `3 valence electrons`,
+            C: `5 valence electrons`,
+            D: `Zero outer electrons`,
+          },
+          correctAnswer: 'A',
+          explanation: `${ep.name} has ${ep.val} in its ground state atomic configuration.`,
           topic: scope.chapter,
           chapter: scope.chapter,
         });

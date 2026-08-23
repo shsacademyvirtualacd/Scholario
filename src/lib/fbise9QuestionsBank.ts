@@ -2381,8 +2381,12 @@ export function getGrade9FBISEQuestions(
     }
   }
 
-  // If no chapter matched or selected, pool all subject questions
-  if (rawResults.length === 0) {
+  // If no chapter matched or selected, only pool all subject questions if full syllabus or no chapter was specified
+  const isFullSyllabusOrNoChapter =
+    normalizedSelected.length === 0 ||
+    normalizedSelected.some((sel) => sel === 'all' || sel === 'full syllabus' || sel === 'mixed chapters');
+
+  if (rawResults.length === 0 && isFullSyllabusOrNoChapter) {
     for (const questions of Object.values(subjectBank)) {
       rawResults.push(...questions);
     }

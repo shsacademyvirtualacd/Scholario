@@ -330,6 +330,14 @@ Key Guidelines:
         }
       }
 
+      // Explicit request parameters override student's general enrollment grade/board for practice tests
+      if (req.body?.grade) {
+        effectiveGrade = String(req.body.grade).trim();
+      }
+      if (req.body?.board) {
+        effectiveBoard = String(req.body.board).trim();
+      }
+
       const count = Math.min(Math.max(Number(questionCount) || 10, 1), 30);
       const client = getGeminiClient();
 

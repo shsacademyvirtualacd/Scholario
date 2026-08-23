@@ -22,6 +22,71 @@ export interface FBISEGrade9SubjectCurriculum {
   guidelines: string;
 }
 
+export const FBISE_GRADE_10_CURRICULUM: Record<string, FBISEGrade9SubjectCurriculum> = {
+  Physics: {
+    subject: 'Physics',
+    aliases: ['physics', 'phy'],
+    guidelines: 'Focus on conceptual and numerical problems, formulas ($T=2\\pi\\sqrt{l/g}$, $v=f\\lambda$, $F=k\\frac{q_1q_2}{r^2}$, $V=IR$, $P=VI$, $\\frac{1}{f}=\\frac{1}{p}+\\frac{1}{q}$, $E=mc^2$, $N=N_0(1/2)^n$), ray diagrams, circuits, logic gates, and radioactivity strictly for Grade 10 FBISE & Sindh.',
+    chapters: [
+      { id: 'phy10_ch1', number: 10, name: 'Simple Harmonic Motion and Waves', subtopics: ['Simple Harmonic Motion (SHM)', 'Mass-spring system and Restoring force', 'Simple Pendulum ($T=2\\pi\\sqrt{l/g}$)', 'Damped Oscillations', 'Wave motion (Longitudinal vs Transverse)', 'Wave equation ($v=f\\lambda$)', 'Ripple tank (Reflection, Refraction, Diffraction)'] },
+      { id: 'phy10_ch2', number: 11, name: 'Sound', subtopics: ['Sound Waves and Nature of Sound', 'Speed of Sound in various media', 'Characteristics of Sound (Loudness, Pitch, Quality/Timbre)', 'Sound Intensity and Decibel scale ($\\beta = 10\\log(I/I_0)$)', 'Reflection of sound (Echo)', 'Audible frequency range ($20\\text{ Hz} - 20\\text{ kHz}$)', 'Ultrasound and Applications in medicine/industry'] },
+      { id: 'phy10_ch3', number: 12, name: 'Geometrical Optics', subtopics: ['Reflection of Light and Laws of Reflection', 'Spherical mirrors (Concave and Convex mirrors)', 'Mirror Formula ($\\frac{1}{f} = \\frac{1}{p} + \\frac{1}{q}$)', 'Refraction of Light and Snell’s Law ($n = \\frac{\\sin i}{\\sin r}$)', 'Total Internal Reflection and Critical Angle', 'Lenses (Convex and Concave lens)', 'Lens formula and Power of lens ($P=1/f$)', 'Optical instruments (Simple Microscope, Compound Microscope, Astronomical Telescope)', 'Defects of vision (Myopia and Hypermetropia)'] },
+      { id: 'phy10_ch4', number: 13, name: 'Electrostatics', subtopics: ['Production of electric charge by friction', 'Electrostatic induction and Gold leaf electroscope', 'Coulomb’s Law ($F = k\\frac{q_1 q_2}{r^2}$)', 'Electric Field and Electric Field Intensity ($E = F/q$)', 'Electric Potential ($V = W/q$)', 'Capacitors and Capacitance ($C = Q/V$)', 'Combinations of capacitors (Series and Parallel)', 'Uses of capacitors and Electrostatic hazards/applications (Photocopier, Paint spray)'] },
+      { id: 'phy10_ch5', number: 14, name: 'Current Electricity', subtopics: ['Electric Current ($I = Q/t$)', 'Potential Difference and Electromotive Force (EMF)', 'Ohm’s Law ($V = IR$)', 'Ohmic and Non-ohmic conductors', 'Factors affecting Resistance and Specific Resistance ($R = \\rho L/A$)', 'Series and Parallel combinations of Resistors', 'Electrical energy and Joule’s Law ($W = I^2 Rt$)', 'Electric Power ($P = VI = I^2 R = V^2/R$)', 'Kilowatt-hour (kWh)', 'Hazards of electricity and Safety devices (Fuse, Circuit Breaker, Earth wire)'] },
+      { id: 'phy10_ch6', number: 15, name: 'Electromagnetism', subtopics: ['Magnetic effect of a steady current and Right-hand grip rule', 'Force on a current-carrying conductor in a magnetic field ($F = ILB\\sin\\theta$)', 'Fleming’s Left-Hand Rule and DC Motor', 'Electromagnetic Induction', 'Faraday’s Law and Lenz’s Law', 'AC Generator', 'Mutual Induction and Transformers ($\\frac{V_s}{V_p} = \\frac{N_s}{N_p} = \\frac{I_p}{I_s}$)'] },
+      { id: 'phy10_ch7', number: 16, name: 'Basic Electronics', subtopics: ['Thermionic Emission', 'Cathode Rays and properties of electrons', 'Cathode-Ray Oscilloscope (CRO)', 'Analogue and Digital Electronics', 'Logic Gates (AND, OR, NOT, NAND, NOR) and Truth Tables', 'Applications of logic gates (Burglar alarm, fire alarm)'] },
+      { id: 'phy10_ch8', number: 17, name: 'Information and Communication Technology (ICT)', subtopics: ['Components of ICT', 'Transmission of electrical signals through wires', 'Transmission of light signals through Optical Fibers', 'Transmission of radio waves through space', 'Information storage devices (Hard disk, Optical disc, Flash drive)', 'Applications of ICT (Computer, Internet, Email, Cellular phone)'] },
+      { id: 'phy10_ch9', number: 18, name: 'Atomic & Nuclear Physics', subtopics: ['Atom and Atomic Nucleus (Atomic number $Z$, Mass number $A$, Nucleons)', 'Isotopes and Isotopes of Hydrogen/Carbon', 'Natural Radioactivity and Background Radiation', 'Alpha ($\\alpha$), Beta ($\\beta$), and Gamma ($\\gamma$) radiation properties', 'Nuclear Transmutation and Decay Equations', 'Half-life of radioactive elements ($N = N_0(1/2)^n$)', 'Radioisotopes and uses in medicine, agriculture, and carbon dating', 'Nuclear Fission and Nuclear Fusion', 'Einstein’s Mass-Energy equation ($E = mc^2$)', 'Radiation Hazards and Safety precautions'] },
+    ],
+  },
+  Chemistry: {
+    subject: 'Chemistry',
+    aliases: ['chemistry', 'chem'],
+    guidelines: 'Focus on chemical equilibria ($K_c$), pH/pOH calculations, organic functional groups, hydrocarbons, biochemical molecules, and industrial processes strictly for Grade 10 FBISE & Sindh.',
+    chapters: [
+      { id: 'chem10_ch1', number: 9, name: 'Chemical Equilibrium', subtopics: ['Reversible reactions and Dynamic Equilibrium', 'Law of Mass Action and equilibrium constant ($K_c$)', 'Derivation of $K_c$ for general reactions', 'Importance and units of Equilibrium Constant', 'Le Chatelier’s principle'] },
+      { id: 'chem10_ch2', number: 10, name: 'Acids, Bases, and Salts', subtopics: ['Arrhenius, Bronsted-Lowry, and Lewis concepts of acids and bases', 'Self-ionization of water and $K_w$', 'pH and pOH scale ($pH = -\\log[H^+]$)', 'Indicators and pH measurement', 'Neutralization reaction', 'Preparation and classification of salts (Normal, Acidic, Basic)'] },
+      { id: 'chem10_ch3', number: 11, name: 'Organic Chemistry', subtopics: ['Origin and characteristics of organic compounds', 'Diversity of organic compounds (Catenation, Isomerism)', 'Structural formulas, condensed formulas, and dot-cross formulas', 'Classification of organic compounds (Open-chain, Closed-chain/Cyclic)', 'Functional groups (Alcohols, Ethers, Aldehydes, Ketones, Carboxylic acids, Esters, Amines)'] },
+      { id: 'chem10_ch4', number: 12, name: 'Hydrocarbons', subtopics: ['Classification of Hydrocarbons', 'Alkanes (Preparation, Combustion, Halogenation substitution)', 'Alkenes (Preparation, Addition of halogen, hydrogenation, oxidation with $\\text{KMnO}_4$)', 'Alkynes (Preparation, Addition reactions)', 'Industrial uses of methane, ethene, and ethyne'] },
+      { id: 'chem10_ch5', number: 13, name: 'Biochemistry', subtopics: ['Carbohydrates (Monosaccharides, Disaccharides, Polysaccharides) and photosynthesis', 'Proteins and Amino acids as building blocks', 'Lipids, Fatty acids, and Oils vs Fats', 'Nucleic Acids (DNA and RNA structure)', 'Vitamins (Fat-soluble vs Water-soluble) and deficiencies'] },
+      { id: 'chem10_ch6', number: 14, name: 'Environmental Chemistry I: The Atmosphere', subtopics: ['Layers of Atmosphere (Troposphere, Stratosphere)', 'Major air pollutants ($\\text{CO}, \\text{SO}_2, \\text{NO}_x$, Lead)', 'Greenhouse effect and Global Warming', 'Acid rain causes, reactions, and destructive effects', 'Ozone layer depletion by CFCs'] },
+      { id: 'chem10_ch7', number: 15, name: 'Environmental Chemistry II: Water', subtopics: ['Properties of water and hydrogen bonding', 'Soft and Hard water', 'Temporary and Permanent hardness of water', 'Methods of removing temporary and permanent hardness (Boiling, Clark’s method, Washing soda, Ion exchange)', 'Waterborne infectious diseases'] },
+      { id: 'chem10_ch8', number: 16, name: 'Chemical Industries', subtopics: ['Basic metallurgical operations (Crushing, Concentration, Roasting, Smelting, Bessemerization)', 'Extraction of Copper', 'Manufacture of Sodium Carbonate by Solvay’s Process', 'Manufacture of Urea (Reactions and flow sheet diagram)', 'Petroleum refining and fractional distillation'] },
+    ],
+  },
+  Biology: {
+    subject: 'Biology',
+    aliases: ['biology', 'bio'],
+    guidelines: 'Focus on human anatomy, physiological systems, genetic inheritance, biotechnology, and pharmacology strictly for Grade 10 FBISE & Sindh.',
+    chapters: [
+      { id: 'bio10_ch1', number: 10, name: 'Gaseous Exchange', subtopics: ['Gaseous exchange in plants (Stomata, Lenticels)', 'Human respiratory system (Air passageway, Lungs, Alveoli)', 'Mechanism of breathing (Inhalation vs Exhalation)', 'Respiratory disorders (Bronchitis, Emphysema, Pneumonia, Asthma, Lung Cancer)', 'Effects of smoking on respiratory system'] },
+      { id: 'bio10_ch2', number: 11, name: 'Homeostasis', subtopics: ['Homeostasis mechanisms (Osmoregulation, Thermoregulation, Excretion)', 'Homeostasis in plants (Removal of extra water, metabolic wastes)', 'Human urinary system (Kidney structure, Nephron histology and physiology)', 'Urine formation (Filtration, Selective reabsorption, Secretion)', 'Kidney disorders (Kidney stones, Renal failure)', 'Treatments: Lithotripsy, Peritoneal Dialysis, Hemodialysis, Kidney Transplant'] },
+      { id: 'bio10_ch3', number: 12, name: 'Coordination and Control', subtopics: ['Types of coordination (Nervous vs Chemical)', 'Neurons (Structure, Sensory, Motor, Interneurons)', 'Human Nervous System (Central: Brain, Spinal Cord; Peripheral: Somatic, Autonomic)', 'Reflex arc', 'Endocrine System (Pituitary, Thyroid, Pancreas, Adrenal, Gonads) and hormones', 'Disorders of nervous system (Paralysis, Epilepsy)'] },
+      { id: 'bio10_ch4', number: 13, name: 'Support and Movement', subtopics: ['Human skeleton (Axial skeleton, Appendicular skeleton)', 'Bone and Cartilage histology', 'Types of Joints (Immovable, Slightly movable, Synovial/Movable)', 'Muscles and movement (Antagonistic muscles: Biceps and Triceps)', 'Disorders of skeletal system (Osteoporosis, Arthritis)'] },
+      { id: 'bio10_ch5', number: 14, name: 'Reproduction', subtopics: ['Methods of Asexual reproduction (Binary fission, Budding, Spore formation, Vegetative propagation)', 'Sexual reproduction in flowering plants (Pollination, Double fertilization, Seed germination)', 'Sexual reproduction in animals', 'Sexually transmitted diseases (AIDS)'] },
+      { id: 'bio10_ch6', number: 15, name: 'Inheritance', subtopics: ['Chromosomes and Genes', 'Structure of DNA and Watson-Crick model', 'Mendel’s Laws of Inheritance (Law of Segregation, Law of Independent Assortment)', 'Co-dominance and Incomplete dominance', 'Variations (Continuous vs Discontinuous) and Natural Selection'] },
+      { id: 'bio10_ch7', number: 16, name: 'Man and His Environment', subtopics: ['Ecosystem components (Biotic and Abiotic)', 'Food chains and Food webs', 'Biogeochemical cycles (Carbon cycle, Nitrogen cycle)', 'Interactions in ecosystems (Competition, Predation, Symbiosis: Mutualism, Commensalism, Parasitism)', 'Global environmental problems and Conservation'] },
+      { id: 'bio10_ch8', number: 17, name: 'Biotechnology', subtopics: ['Introduction and scope of biotechnology', 'Fermentation and Fermenters (Alcoholic, Lactic acid)', 'Genetic Engineering steps and tools (Restriction enzymes, Plasmids, Recombinant DNA)', 'Achievements of genetic engineering (Insulin, Human growth hormone, Golden rice)', 'Single Cell Protein (SCP)'] },
+      { id: 'bio10_ch9', number: 18, name: 'Pharmacology', subtopics: ['Medicinal drugs and sources (Plants, Animals, Microorganisms, Synthetic)', 'Antibiotics and Antibiotic resistance', 'Vaccines and Immunization mechanism', 'Sedatives, Narcotics, Hallucinogens', 'Drug addiction and social problems'] },
+    ],
+  },
+  Mathematics: {
+    subject: 'Mathematics',
+    aliases: ['mathematics', 'math', 'maths'],
+    guidelines: 'Focus on quadratic equations, theory of quadratic roots, variations, trigonometry, statistics, and circle theorems strictly for Grade 10 FBISE & Sindh.',
+    chapters: [
+      { id: 'math10_ch1', number: 1, name: 'Quadratic Equations', subtopics: ['Standard form of quadratic equation ($ax^2+bx+c=0$)', 'Solution by Factorization', 'Solution by Completing the Square', 'Quadratic Formula ($x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}$)', 'Equations reducible to quadratic form'] },
+      { id: 'math10_ch2', number: 2, name: 'Theory of Quadratic Equations', subtopics: ['Nature of roots and Discriminant ($\\Delta = b^2-4ac$)', 'Cube roots of unity ($1, \\omega, \\omega^2$) and properties ($1+\\omega+\\omega^2=0, \\omega^3=1$)', 'Relations between roots and coefficients ($\\alpha+\\beta = -b/a, \\alpha\\beta = c/a$)', 'Formation of quadratic equation ($x^2 - S x + P = 0$)', 'Synthetic Division', 'Simultaneous equations involving linear and quadratic equations'] },
+      { id: 'math10_ch3', number: 3, name: 'Variations', subtopics: ['Ratio, Proportion, and Fourth/Mean proportional', 'Direct Variation and Inverse Variation', 'Joint Variation', 'Theorems on Proportions (Invertendo, Alternando, Componendo, Dividendo, Componendo-Dividendo)', 'Application problems on variations'] },
+      { id: 'math10_ch4', number: 4, name: 'Partial Fractions', subtopics: ['Proper and Improper rational fractions', 'Resolution into partial fractions: non-repeated linear factors', 'Resolution: repeated linear factors', 'Resolution: non-repeated quadratic factors'] },
+      { id: 'math10_ch5', number: 5, name: 'Sets and Functions', subtopics: ['Operations on sets (Union, Intersection, Difference, Symmetric difference)', 'De Morgan’s Laws', 'Venn Diagrams', 'Binary Relations and Cartesian product ($A \\times B$)', 'Domain and Range of relations', 'Functions (Injective, Surjective, Bijective)'] },
+      { id: 'math10_ch6', number: 6, name: 'Basic Statistics', subtopics: ['Frequency distribution and Cumulative frequency', 'Measures of Central Tendency (Arithmetic Mean, Median, Mode, Geometric Mean, Harmonic Mean)', 'Measures of Dispersion (Range, Variance, Standard Deviation)'] },
+      { id: 'math10_ch7', number: 7, name: 'Introduction to Trigonometry', subtopics: ['Measurement of angles (Sexagesimal system vs Radian system, $\\theta = l/r$)', 'Trigonometric ratios ($\\sin, \\cos, \\tan, \\csc, \\sec, \\cot$)', 'Trigonometric identities ($\\sin^2\\theta+\\cos^2\\theta=1, 1+\\tan^2\\theta=\\sec^2\\theta, 1+\\cot^2\\theta=\\csc^2\\theta$)', 'Signs of trigonometric functions in quadrants', 'Angles of elevation and depression'] },
+      { id: 'math10_ch8', number: 8, name: 'Practical Geometry – Circles', subtopics: ['Construction of circles and tangents', 'Inscribed, Circumscribed, and Escribed circles to triangles', 'Tangents from an external point to a circle'] },
+    ],
+  },
+};
+
 export const FBISE_GRADE_9_CURRICULUM: Record<string, FBISEGrade9SubjectCurriculum> = {
   Physics: {
     subject: 'Physics',
@@ -233,19 +298,31 @@ export function getChapterSyllabusScope(
     };
   }
 
-  const subjectData = FBISE_GRADE_9_CURRICULUM[canonicalSubject];
+  const subjectData9 = FBISE_GRADE_9_CURRICULUM[canonicalSubject];
+  const subjectData10 = FBISE_GRADE_10_CURRICULUM[canonicalSubject];
   let matchedChapter: ChapterDef | undefined;
+  let matchedSubjectData = subjectData9 || subjectData10;
 
-  if (subjectData) {
-    matchedChapter = subjectData.chapters.find((ch) => {
+  if (subjectData9) {
+    matchedChapter = subjectData9.chapters.find((ch) => {
       const chNorm = ch.name.toLowerCase();
       return chNorm === normTopic || chNorm.includes(normTopic) || normTopic.includes(chNorm);
     });
   }
 
+  if (!matchedChapter && subjectData10) {
+    matchedChapter = subjectData10.chapters.find((ch) => {
+      const chNorm = ch.name.toLowerCase();
+      return chNorm === normTopic || chNorm.includes(normTopic) || normTopic.includes(chNorm);
+    });
+    if (matchedChapter) {
+      matchedSubjectData = subjectData10;
+    }
+  }
+
   const chapterName = matchedChapter?.name || rawTopic;
   const subtopics = matchedChapter?.subtopics || [chapterName];
-  const guidelines = subjectData?.guidelines || '';
+  const guidelines = matchedSubjectData?.guidelines || '';
 
   // Subject-specific keyword scopes and anti-bleed forbidden patterns
   const normSub = canonicalSubject.toLowerCase();
@@ -253,7 +330,109 @@ export function getChapterSyllabusScope(
   const forbiddenCrossChapterPatterns: { pattern: RegExp; reason: string }[] = [];
 
   if (normSub.includes('phys')) {
-    if (normTopic.includes('measurement') || normTopic.includes('physical quantit')) {
+    if (normTopic.includes('atomic') || normTopic.includes('nuclear') || normTopic.includes('radioactiv')) {
+      requiredKeywords.push(
+        'radioactiv', 'radiation', 'alpha', 'beta', 'gamma', 'half-life', 'nucleus', 'decay',
+        'fission', 'fusion', 'isotope', 'geiger', 'radioisotope', 'curie', 'becquerel',
+        'mass-energy', 'einstein', 'carbon-14', 'nucleon', 'e=mc^2', 'e = mc^2', 'atomic number',
+        'mass number', 'background radiation', 'scintillation', 'cloud chamber', 'transmutation',
+        'penetrating power', 'ionizing power', 'daughter nucleus', 'parent nucleus'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|micrometer screw gauge|least count of \d+|positive zero error|significant figures in \d+|pitch of \d+)\b/i, reason: 'Measuring instruments belong to Chapter 1 (Measurements), not Nuclear Physics.' },
+        { pattern: /\b(equations of motion|speed-time graph|distance-time graph|uniform acceleration|initial velocity|final velocity|free fall|v\s*=\s*u\s*\+\s*at|s\s*=\s*ut)\b/i, reason: 'Kinematics belongs to Chapter 2, not Nuclear Physics.' },
+        { pattern: /\b(newton's (first|second|third) law|law of inertia|f\s*=\s*ma|net force of|mass of \d+\s*kg accelerates|momentum p\s*=\s*mv|conservation of momentum|centripetal force)\b/i, reason: 'Dynamics & forces belong to Chapters 3 & 4.' },
+        { pattern: /\b(density of (solid|liquid|water)|density \\rho\s*=\s*m\/v|thermal expansion|specific heat capacity|thermometer|celsius scale)\b/i, reason: 'Thermal physics & density belong to earlier chapters.' },
+        { pattern: /\b(pascal's law|hydraulic lift|archimedes|upthrust|young's modulus|hooke's law)\b/i, reason: 'Fluids & pressure belong to Chapter 5.' },
+        { pattern: /\b(concave mirror|convex mirror|mirror formula|snell's law|total internal reflection|myopia|hypermetropia|focal length of mirror)\b/i, reason: 'Geometrical optics belongs to Optics chapter.' },
+        { pattern: /\b(ohm's law|resistor carrying|electric current of \d+\s*a|potential difference of \d+\s*v|coulomb's law f\s*=\s*k)\b/i, reason: 'Current electricity belongs to Electricity chapters.' }
+      );
+    } else if (normTopic.includes('optic') || normTopic.includes('mirror') || normTopic.includes('lens')) {
+      requiredKeywords.push(
+        'mirror', 'lens', 'concave', 'convex', 'focal length', 'refraction', 'reflection', 'snell',
+        'index of refraction', 'critical angle', 'total internal reflection', 'optical fiber', 'microscope',
+        'telescope', 'myopia', 'hypermetropia', 'magnification', 'ray diagram', 'real image', 'virtual image',
+        'power of lens', 'dioptre', 'diopter', 'center of curvature', 'principal focus', 'pole'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|micrometer screw gauge|least count of \d+|significant figures)\b/i, reason: 'Measuring instruments belong to Chapter 1.' },
+        { pattern: /\b(alpha particle|beta decay|gamma radiation|half-life of|nuclear fission|nuclear fusion|radioactiv)\b/i, reason: 'Radioactivity belongs to Nuclear Physics.' },
+        { pattern: /\b(f\s*=\s*ma|newton's second law|momentum p\s*=\s*mv|centripetal force)\b/i, reason: 'Forces and dynamics belong to Dynamics chapters.' },
+        { pattern: /\b(specific heat capacity|latent heat of|thermal expansion)\b/i, reason: 'Thermal physics belongs to Thermal chapters.' }
+      );
+    } else if (normTopic.includes('current electric') || (normTopic.includes('electric') && !normTopic.includes('electrostat'))) {
+      requiredKeywords.push(
+        'electric current', 'ohm\'s law', 'resistor', 'resistance', 'resistivity', 'series circuit',
+        'parallel circuit', 'potential difference', 'electromotive force', 'emf', 'joule\'s law',
+        'electric power', 'kilowatt-hour', 'kwh', 'fuse', 'circuit breaker', 'earth wire', 'ammeter', 'voltmeter',
+        'specific resistance', 'ohmic conductor', 'non-ohmic'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|micrometer screw gauge|least count)\b/i, reason: 'Measuring instruments belong to Chapter 1.' },
+        { pattern: /\b(alpha radiation|beta decay|half-life of|nuclear fission|nuclear fusion)\b/i, reason: 'Belongs to Nuclear Physics.' },
+        { pattern: /\b(concave mirror|convex lens|snell's law|telescope|microscope)\b/i, reason: 'Belongs to Geometrical Optics.' }
+      );
+    } else if (normTopic.includes('electrostat') || normTopic.includes('charge')) {
+      requiredKeywords.push(
+        'coulomb', 'electrostatic', 'electric charge', 'electric field', 'field intensity', 'electric potential',
+        'potential difference', 'capacitor', 'capacitance', 'dielectric', 'farad', 'gold leaf electroscope', 'point charge',
+        'photocopier', 'electrostatic induction'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|micrometer screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(alpha radiation|half-life of|nuclear fission)\b/i, reason: 'Belongs to Nuclear Physics.' },
+        { pattern: /\b(concave mirror|convex lens|snell's law)\b/i, reason: 'Belongs to Optics.' }
+      );
+    } else if (normTopic.includes('electromagnet') || normTopic.includes('induction')) {
+      requiredKeywords.push(
+        'magnetic effect', 'right-hand grip rule', 'fleming\'s left-hand rule', 'dc motor', 'electromagnetic induction',
+        'faraday\'s law', 'lenz\'s law', 'ac generator', 'transformer', 'step-up', 'step-down', 'mutual induction', 'magnetic flux'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(half-life of|nuclear fission|alpha decay)\b/i, reason: 'Belongs to Nuclear Physics.' },
+        { pattern: /\b(concave mirror|convex lens|snell's law)\b/i, reason: 'Belongs to Optics.' }
+      );
+    } else if (normTopic.includes('electronic') || normTopic.includes('logic gate')) {
+      requiredKeywords.push(
+        'thermionic emission', 'cathode ray', 'cro', 'logic gate', 'truth table', 'and gate', 'or gate',
+        'not gate', 'nand gate', 'nor gate', 'boolean', 'electron gun', 'oscilloscope'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(half-life of|nuclear fission|alpha decay)\b/i, reason: 'Belongs to Nuclear Physics.' }
+      );
+    } else if (normTopic.includes('wave') || normTopic.includes('harmonic') || normTopic.includes('shm') || normTopic.includes('pendulum')) {
+      requiredKeywords.push(
+        'simple harmonic motion', 'shm', 'restoring force', 'mass-spring', 'simple pendulum', 'time period',
+        'damped oscillation', 'wave motion', 'longitudinal', 'transverse', 'wavelength', 'frequency', 'wave speed',
+        'ripple tank', 'diffraction', 'crest', 'trough', 'compression', 'rarefaction'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(half-life|alpha particle|nuclear fission)\b/i, reason: 'Belongs to Nuclear Physics.' },
+        { pattern: /\b(concave mirror|snell's law|telescope)\b/i, reason: 'Belongs to Optics.' }
+      );
+    } else if (normTopic.includes('sound')) {
+      requiredKeywords.push(
+        'sound wave', 'speed of sound', 'loudness', 'pitch', 'quality', 'timbre', 'sound intensity',
+        'decibel', 'echo', 'audible frequency', '20 hz', 'ultrasound', 'sonar', 'compression'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(half-life|alpha particle|nuclear fission)\b/i, reason: 'Belongs to Nuclear Physics.' },
+        { pattern: /\b(concave mirror|snell's law|telescope)\b/i, reason: 'Belongs to Optics.' }
+      );
+    } else if (normTopic.includes('ict') || normTopic.includes('information and communication')) {
+      requiredKeywords.push(
+        'ict', 'optical fiber', 'radio wave', 'hard disk', 'flash drive', 'computer network',
+        'telecommunication', 'transmission of signals', 'internet', 'data storage'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(half-life|nuclear fission)\b/i, reason: 'Belongs to Nuclear Physics.' }
+      );
+    } else if (normTopic.includes('measurement') || normTopic.includes('physical quantit')) {
       requiredKeywords.push(
         'base unit', 'derived unit', 'vernier', 'screw gauge', 'least count', 'zero error',
         'significant figure', 'prefix', 'scientific notation', 'measuring cylinder', 'kelvin',
