@@ -4,28 +4,31 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import {
-  Sparkles,
   Send,
   Trash2,
   Copy,
   Check,
-  Bot,
   User,
   RotateCcw,
   BookOpen,
-  HelpCircle,
   Lightbulb,
   FileQuestion,
   Square,
+  AlertTriangle,
+  Smile,
+  Brain,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
+import { SageAvatar } from './SageAvatar';
+import { SageEmotion, SAGE_EMOTIONS, detectSageEmotion } from './sageEmotion';
 
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  emotion?: SageEmotion;
 }
 
 interface SageChatViewProps {
@@ -136,71 +139,83 @@ const SageMarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
-const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: string; text: string; icon: any }>> = {
+const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: string; text: string; icon: any; tone?: string }>> = {
   student: [
     {
-      label: 'Explain a Concept',
-      text: 'Explain Newton’s Laws of Motion with real-life FBISE physics examples and formulas.',
+      label: 'Celebrate High Attendance',
+      text: 'Assalam-o-Alaikum Sage! I just maintained 100% attendance this month in Physics and Math, thank you!',
+      icon: Smile,
+      tone: 'positive',
+    },
+    {
+      label: 'Attendance & Absence Alert',
+      text: 'I missed 3 consecutive classes this week due to fever. Is my attendance in danger of FBISE exam suspension?',
+      icon: AlertTriangle,
+      tone: 'concerned',
+    },
+    {
+      label: 'Derive Physics Formula',
+      text: 'Explain Newton’s Laws of Motion with real-life FBISE physics examples and step-by-step formula derivations.',
       icon: Lightbulb,
+      tone: 'neutral',
     },
     {
-      label: 'Summarize Notes',
-      text: 'Summarize the key concepts, definitions, and equations of Organic Chemistry (Hydrocarbons).',
-      icon: BookOpen,
-    },
-    {
-      label: 'Exam Prep Tips',
-      text: 'What are the top 5 high-yield questions for FBISE Class 11 Mathematics Chapter 1?',
-      icon: FileQuestion,
-    },
-    {
-      label: 'Study Schedule',
+      label: '7-Day Study Schedule',
       text: 'Create a 7-day revision schedule for upcoming FBISE board exams balancing Science and English.',
-      icon: HelpCircle,
+      icon: BookOpen,
+      tone: 'neutral',
     },
   ],
   teacher: [
     {
+      label: 'Praise Top Performers',
+      text: 'Draft a warm congratulatory note for Class 10 students who scored above 90% in the recent Biology assessment!',
+      icon: Smile,
+      tone: 'positive',
+    },
+    {
+      label: 'Low Attendance Notice',
+      text: 'Draft an urgent reminder notice for students with unexcused absences and attendance below 75% before board exam cutoff.',
+      icon: AlertTriangle,
+      tone: 'concerned',
+    },
+    {
       label: 'Generate Quiz Questions',
       text: 'Create 5 conceptual Multiple Choice Questions (MCQs) with answer keys for Class 10 Biology Genetics.',
       icon: FileQuestion,
+      tone: 'neutral',
     },
     {
       label: 'Lesson Plan Outline',
       text: 'Draft a 45-minute lesson plan outline for teaching Calculus Differentiation basics to 12th graders.',
       icon: Lightbulb,
-    },
-    {
-      label: 'Draft Announcement',
-      text: 'Draft a motivating announcement reminding students about their upcoming chemistry lab practical test.',
-      icon: BookOpen,
-    },
-    {
-      label: 'Pedagogical Tips',
-      text: 'Suggest active learning techniques to help students grasp computer programming recursion concepts.',
-      icon: HelpCircle,
+      tone: 'neutral',
     },
   ],
   admin: [
     {
+      label: 'Academy Performance',
+      text: 'Greetings Sage! Share our weekly enrollment milestones and celebrate faculty attendance achievements across boards.',
+      icon: Smile,
+      tone: 'positive',
+    },
+    {
+      label: 'Fee & Absence Alerts',
+      text: 'What are our current critical alerts regarding student fee payment arrears, unpaid invoices, and chronic absences?',
+      icon: AlertTriangle,
+      tone: 'concerned',
+    },
+    {
       label: 'Live Platform Overview',
       text: 'Provide a real-time summary of total enrolled students, faculty members, class offerings, and test submissions across the academy.',
       icon: Lightbulb,
+      tone: 'neutral',
     },
     {
-      label: 'Student Distribution',
+      label: 'Board & Grade Breakdown',
       text: 'How many students are currently registered in Federal Board vs Sindh Board, broken down by class grade and stream?',
       icon: BookOpen,
-    },
-    {
-      label: 'Pricing & Fee Summary',
-      text: 'What are the current tuition fee rates configured per class, and what is our student fee payment status breakdown?',
-      icon: FileQuestion,
-    },
-    {
-      label: 'Tests & Grading Progress',
-      text: 'Show all published assessments across subjects and recent student submission grading progress.',
-      icon: HelpCircle,
+      tone: 'neutral',
     },
   ],
 };
@@ -236,6 +251,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [manualEmotion, setManualEmotion] = useState<SageEmotion | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -244,6 +260,17 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
   useEffect(() => {
     sessionStorage.setItem(`sage_chat_${role}`, JSON.stringify(messages));
   }, [messages, role]);
+
+  // Derive current overall Sage emotional state
+  const latestAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
+  const activeEmotion: SageEmotion = manualEmotion
+    ? manualEmotion
+    : isLoading
+    ? 'thinking'
+    : latestAssistantMsg
+    ? detectSageEmotion(latestAssistantMsg.content, false, role)
+    : 'idle';
+  const activeEmotionMeta = SAGE_EMOTIONS[activeEmotion] || SAGE_EMOTIONS.idle;
 
   // Scroll to bottom smoothly
   const scrollToBottom = () => {
@@ -463,11 +490,14 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white rounded-3xl border border-[#E5E5E5] shadow-xs overflow-hidden">
       {/* ── Top Header ── */}
-      <div className="bg-gradient-to-r from-[#111111] via-[#1A1A1A] to-[#111111] px-6 py-4 text-white flex items-center justify-between border-b border-[#262626] shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[#F4C430] flex items-center justify-center text-[#111111] shadow-sm">
-            <Sparkles size={20} className="animate-pulse" />
-          </div>
+      <div className="bg-gradient-to-r from-[#111111] via-[#1A1A1A] to-[#111111] px-5 sm:px-6 py-3.5 text-white flex items-center justify-between border-b border-[#262626] shrink-0">
+        <div className="flex items-center gap-3.5">
+          <SageAvatar
+            emotion={activeEmotion}
+            size="md"
+            showBadge={true}
+            interactive={true}
+          />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5">
@@ -476,15 +506,55 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#2B2B2B] text-[#F4C430] border border-[#3D3D3D]">
                 {role === 'student' ? 'Study Companion' : role === 'teacher' ? 'Faculty Assistant' : 'Admin Copilot'}
               </span>
+              <span
+                className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${activeEmotionMeta.badgeBg} ${activeEmotionMeta.badgeTextColor}`}
+                title={activeEmotionMeta.description}
+              >
+                {activeEmotionMeta.badgeLabel}
+              </span>
             </div>
             <p className="text-[11px] text-[#A3A3A3] flex items-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-[#22C55E] inline-block" />
-              Markdown & Math Enabled
+              <span
+                className={`w-2 h-2 rounded-full inline-block ${
+                  activeEmotion === 'thinking'
+                    ? 'bg-purple-400 animate-ping'
+                    : activeEmotion === 'concerned'
+                    ? 'bg-red-500 animate-pulse'
+                    : activeEmotion === 'positive'
+                    ? 'bg-emerald-400'
+                    : 'bg-[#22C55E]'
+                }`}
+              />
+              <span>{activeEmotionMeta.statusText}</span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Interactive Mood Mode Selector */}
+          <div className="hidden md:flex items-center gap-1 bg-[#1C1C1E] p-1 rounded-xl border border-[#2B2B2B]">
+            {(['idle', 'thinking', 'positive', 'neutral', 'concerned'] as SageEmotion[]).map((emo) => {
+              const eMeta = SAGE_EMOTIONS[emo];
+              const Icon = eMeta.icon;
+              const isSelected = activeEmotion === emo;
+              return (
+                <button
+                  key={emo}
+                  onClick={() => setManualEmotion(emo === manualEmotion ? null : emo)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                    isSelected
+                      ? `${eMeta.badgeBg} ${eMeta.badgeTextColor} shadow-xs scale-102`
+                      : 'text-[#A3A3A3] hover:text-white hover:bg-[#2A2A2A]'
+                  }`}
+                  title={`${eMeta.label}: ${eMeta.description} (Click to toggle)`}
+                >
+                  <Icon size={11} />
+                  <span className="hidden xl:inline">{eMeta.badgeLabel}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <button
             id="clear-chat-btn"
             onClick={handleClear}
@@ -503,28 +573,28 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
           const isUser = msg.role === 'user';
           const isCurrentStreaming = msg.id === streamingId;
           const isPendingFirstToken = isCurrentStreaming && !msg.content;
+          const msgEmotion: SageEmotion = isCurrentStreaming
+            ? 'thinking'
+            : msg.emotion || detectSageEmotion(msg.content, false, role);
 
           return (
             <div
               key={msg.id}
               className={`flex gap-3 max-w-3xl ${isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
             >
-              {/* Avatar */}
-              <div
-                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
-                  isUser
-                    ? 'bg-[#111111] text-white'
-                    : 'bg-[#F4C430] text-[#111111] shadow-2xs'
-                }`}
-              >
-                {isUser ? (
-                  <User size={15} />
-                ) : isCurrentStreaming ? (
-                  <Sparkles size={16} className="animate-spin" />
-                ) : (
-                  <Bot size={16} />
-                )}
-              </div>
+              {/* Avatar: Animated Sage Avatar or User Icon */}
+              {isUser ? (
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold bg-[#111111] text-white shadow-xs">
+                  <User size={16} />
+                </div>
+              ) : (
+                <SageAvatar
+                  emotion={msgEmotion}
+                  size="sm"
+                  showBadge={true}
+                  pulseOnThinking={isCurrentStreaming}
+                />
+              )}
 
               {/* Message Bubble */}
               <div className="space-y-1 min-w-0 max-w-[85%] sm:max-w-[78%]">
@@ -542,15 +612,15 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                       <span>Sage is thinking</span>
                       <div className="flex items-center gap-1">
                         <div
-                          className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce"
+                          className="w-1.5 h-1.5 bg-[#8B5CF6] rounded-full animate-bounce"
                           style={{ animationDelay: '0ms' }}
                         />
                         <div
-                          className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce"
+                          className="w-1.5 h-1.5 bg-[#8B5CF6] rounded-full animate-bounce"
                           style={{ animationDelay: '150ms' }}
                         />
                         <div
-                          className="w-1.5 h-1.5 bg-[#F4C430] rounded-full animate-bounce"
+                          className="w-1.5 h-1.5 bg-[#8B5CF6] rounded-full animate-bounce"
                           style={{ animationDelay: '300ms' }}
                         />
                       </div>
@@ -560,7 +630,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                       <SageMarkdownRenderer content={msg.content} />
                       {isCurrentStreaming && (
                         <span
-                          className="inline-block w-1.5 h-4 bg-[#F4C430] animate-pulse ml-0.5 align-middle rounded-xs"
+                          className="inline-block w-1.5 h-4 bg-[#8B5CF6] animate-pulse ml-0.5 align-middle rounded-xs"
                           title="Streaming..."
                         />
                       )}
@@ -568,7 +638,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                   )}
                 </div>
 
-                {/* Footer info: time & copy */}
+                {/* Footer info: time, tone indicator & copy */}
                 <div
                   className={`flex items-center gap-2 px-1 text-[11px] text-[#A3A3A3] ${
                     isUser ? 'justify-end' : 'justify-start'
@@ -576,22 +646,27 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                 >
                   <span>{msg.timestamp}</span>
                   {!isUser && !isPendingFirstToken && msg.content && (
-                    <button
-                      onClick={() => handleCopy(msg.id, msg.content)}
-                      className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1"
-                      title="Copy response"
-                    >
-                      {copiedId === msg.id ? (
-                        <Check size={12} className="text-green-600" />
-                      ) : (
-                        <Copy size={12} />
-                      )}
-                      <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
-                    </button>
+                    <>
+                      <span className="text-[10px] font-semibold text-[#888888] flex items-center gap-1">
+                        • {SAGE_EMOTIONS[msgEmotion]?.badgeLabel}
+                      </span>
+                      <button
+                        onClick={() => handleCopy(msg.id, msg.content)}
+                        className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1"
+                        title="Copy response"
+                      >
+                        {copiedId === msg.id ? (
+                          <Check size={12} className="text-green-600" />
+                        ) : (
+                          <Copy size={12} />
+                        )}
+                        <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </>
                   )}
                   {isCurrentStreaming && (
-                    <span className="text-[10px] text-[#EAB308] font-bold tracking-wider uppercase ml-1 animate-pulse">
-                      Generating...
+                    <span className="text-[10px] text-[#8B5CF6] font-bold tracking-wider uppercase ml-1 animate-pulse flex items-center gap-1">
+                      <Brain size={11} className="animate-spin" /> Thinking...
                     </span>
                   )}
                 </div>
@@ -618,9 +693,14 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
 
       {/* ── Starter Prompts (if chat is fresh) ── */}
       {messages.length <= 2 && !isLoading && (
-        <div className="px-4 sm:px-6 py-2.5 bg-white border-t border-[#F0F0F0] overflow-x-auto">
-          <div className="text-[11px] font-bold text-[#737373] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Lightbulb size={12} className="text-[#F4C430]" /> Suggested Questions
+        <div className="px-4 sm:px-6 py-3 bg-white border-t border-[#F0F0F0] overflow-x-auto">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[11px] font-bold text-[#737373] uppercase tracking-wider flex items-center gap-1.5">
+              <Lightbulb size={12} className="text-[#F4C430]" /> Suggested Questions & Interactions
+            </div>
+            <span className="text-[10px] text-[#A3A3A3] hidden sm:inline">
+              Try different prompts to see Sage react with dynamic expressions
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             {starters.map((item, idx) => {
@@ -630,10 +710,25 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
                   key={idx}
                   id={`starter-chip-${idx}`}
                   onClick={() => handleSend(item.text)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#FFFBF0] hover:border-[#F4C430] text-xs text-[#525252] hover:text-[#111111] transition-all text-left group interactive shadow-2xs"
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs text-[#525252] hover:text-[#111111] transition-all text-left group interactive shadow-2xs ${
+                    item.tone === 'positive'
+                      ? 'border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-400'
+                      : item.tone === 'concerned'
+                      ? 'border-red-200 bg-red-50/40 hover:bg-red-50 hover:border-red-400'
+                      : 'border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#FFFBF0] hover:border-[#F4C430]'
+                  }`}
                 >
-                  <Icon size={13} className="text-[#F4C430] shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-semibold truncate max-w-[220px]">{item.label}</span>
+                  <Icon
+                    size={13}
+                    className={`shrink-0 group-hover:scale-110 transition-transform ${
+                      item.tone === 'positive'
+                        ? 'text-emerald-600'
+                        : item.tone === 'concerned'
+                        ? 'text-red-500'
+                        : 'text-[#F4C430]'
+                    }`}
+                  />
+                  <span className="font-semibold truncate max-w-[240px]">{item.label}</span>
                 </button>
               );
             })}

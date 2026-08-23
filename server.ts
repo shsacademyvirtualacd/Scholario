@@ -554,6 +554,182 @@ Key Guidelines:
     }
   });
 
+  // ── Notes Upload ────────────────────────────────────
+  app.post('/api/notes/upload', upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const { offering_id, chapter_name, title, file_type = 'pdf' } = req.body;
+
+      if (!file || !offering_id || !chapter_name || !title) {
+        return res.status(400).json({ error: 'Missing required upload parameters' });
+      }
+
+      const noteId = `note_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const mimeType = file.mimetype || (file_type === 'image' ? 'image/jpeg' : 'application/pdf');
+
+      fileStorage.set(noteId, {
+        buffer: file.buffer,
+        mimeType,
+        filename: file.originalname || 'notes.pdf',
+      });
+
+      const nowIso = new Date().toISOString();
+      const noteRecord = {
+        id: noteId,
+        offering_id,
+        chapter_name,
+        title,
+        file_path: `teacher_notes/${noteId}_${file.originalname}`,
+        file_url: `/api/notes/view/${noteId}`,
+        file_type: file_type || 'pdf',
+        file_size_bytes: file.size,
+        created_at: nowIso,
+      };
+
+      try {
+        const { data: dbData, error: dbErr } = await (supabaseServer as any)
+          .from('notes')
+          .insert(noteRecord)
+          .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
+          .single();
+
+        if (dbErr) {
+          console.warn('[server.ts] Note insert warning (fallback to memory):', dbErr.message);
+        }
+
+        return res.json(dbData || noteRecord);
+      } catch (dbErr: any) {
+        console.warn('[server.ts] Note DB insert fallback:', dbErr?.message);
+        return res.json(noteRecord);
+      }
+    } catch (err: any) {
+      console.error('[server.ts Note Upload Error]:', err);
+      return res.status(500).json({ error: err.message || 'Note upload failed' });
+    }
+  });
+
+  // ── Notes View ──────────────────────────────────────
+  app.get('/api/notes/view/:noteId', (req, res) => {
+    const { noteId } = req.params;
+    const stored = fileStorage.get(noteId);
+    if (stored) {
+      res.setHeader('Content-Type', stored.mimeType);
+      res.setHeader('Content-Length', stored.buffer.length);
+      res.setHeader('Accept-Ranges', 'bytes');
+      return res.send(stored.buffer);
+    }
+
+    const samplePdfPath = path.join(process.cwd(), 'real.pdf');
+    if (fs.existsSync(samplePdfPath)) {
+      const buf = fs.readFileSync(samplePdfPath);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', buf.length);
+      res.setHeader('Accept-Ranges', 'bytes');
+      return res.send(buf);
+    }
+
+    return res.status(404).send('Note file not found');
+  });
+
+  // ── Notes Download ──────────────────────────────────
+  app.get('/api/notes/dl/:noteId', (req, res) => {
+    const { noteId } = req.params;
+    const stored = fileStorage.get(noteId);
+    if (stored) {
+      res.setHeader('Content-Type', stored.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${stored.filename}"`);
+      return res.send(stored.buffer);
+    }
+
+    const samplePdfPath = path.join(process.cwd(), 'real.pdf');
+    if (fs.existsSync(samplePdfPath)) {
+      const buf = fs.readFileSync(samplePdfPath);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="notes.pdf"');
+      return res.send(buf);
+    }
+
+    return res.status(404).send('Note file not found');
+  });
+
+  // ── Notes Delete ────────────────────────────────────
+  app.delete('/api/notes/del/:noteId', async (req, res) => {
+    const { noteId } = req.params;
+    fileStorage.delete(noteId);
+    try {
+      await (supabaseServer as any).from('notes').delete().eq('id', noteId);
+    } catch (delErr) {
+      console.warn('[server.ts] Note delete warning:', delErr);
+    }
+    return res.json({ success: true });
+  });
+
+  // ── Test Answer Key Upload ──────────────────────────
+  app.post('/api/tests/answer-key/upload/:testId', upload.single('file'), async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'Missing file payload' });
+      }
+
+      const akKey = `ak_${testId}`;
+      fileStorage.set(akKey, {
+        buffer: file.buffer,
+        mimeType: 'application/pdf',
+        filename: file.originalname || 'answer_key.pdf',
+      });
+
+      return res.json({ success: true, message: 'Answer key uploaded successfully' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Answer key upload failed' });
+    }
+  });
+
+  // ── Test Answer Key View ────────────────────────────
+  app.get('/api/tests/answer-key/view/:testId', (req, res) => {
+    const { testId } = req.params;
+    const stored = fileStorage.get(`ak_${testId}`);
+    if (stored) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', stored.buffer.length);
+      res.setHeader('Accept-Ranges', 'bytes');
+      return res.send(stored.buffer);
+    }
+
+    const samplePdfPath = path.join(process.cwd(), 'real.pdf');
+    if (fs.existsSync(samplePdfPath)) {
+      const buf = fs.readFileSync(samplePdfPath);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', buf.length);
+      res.setHeader('Accept-Ranges', 'bytes');
+      return res.send(buf);
+    }
+
+    return res.status(404).send('Answer key not found');
+  });
+
+  // ── Test Answer Key Download ────────────────────────
+  app.get('/api/tests/answer-key/dl/:testId', (req, res) => {
+    const { testId } = req.params;
+    const stored = fileStorage.get(`ak_${testId}`);
+    if (stored) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${stored.filename}"`);
+      return res.send(stored.buffer);
+    }
+
+    const samplePdfPath = path.join(process.cwd(), 'real.pdf');
+    if (fs.existsSync(samplePdfPath)) {
+      const buf = fs.readFileSync(samplePdfPath);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="answer_key.pdf"');
+      return res.send(buf);
+    }
+
+    return res.status(404).send('Answer key not found');
+  });
+
   // Vite middleware for dev or static serving for production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
