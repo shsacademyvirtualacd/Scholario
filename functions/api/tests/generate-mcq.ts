@@ -187,24 +187,36 @@ Return ONLY a valid JSON object matching this structure:
   ]
 }`;
 
-    const targetModel = 'gemini-2.5-flash';
-    const aiResponse = await ai.models.generateContent({
-      model: targetModel,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: 'application/json',
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    });
-
-    const responseText = aiResponse.text?.trim() || '';
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.7-flash', 'gemini-2.0-flash'];
     let parsedData: any = null;
 
-    try {
-      parsedData = JSON.parse(responseText);
-    } catch {
-      const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-      parsedData = JSON.parse(cleaned);
+    for (const targetModel of candidateModels) {
+      try {
+        const aiResponse = await ai.models.generateContent({
+          model: targetModel,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        });
+
+        const responseText = aiResponse.text?.trim() || '';
+        if (!responseText) continue;
+
+        try {
+          parsedData = JSON.parse(responseText);
+        } catch {
+          const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+          parsedData = JSON.parse(cleaned);
+        }
+
+        if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
+          break;
+        }
+      } catch (modelErr: any) {
+        console.warn(`[Generate MCQ Worker] Model ${targetModel} attempt failed:`, modelErr?.message || modelErr);
+      }
     }
 
     const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 3, difficulty, grade, board, normExcludes);

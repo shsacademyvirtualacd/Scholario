@@ -141,6 +141,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const [generationStatus, setGenerationStatus] = useState<string>('Analyzing Curriculum & Syllabus Standards...');
   const [targetTotalQuestions, setTargetTotalQuestions] = useState<number>(10);
   const [isBackgroundGenerating, setIsBackgroundGenerating] = useState<boolean>(false);
+  const [backgroundGenError, setBackgroundGenError] = useState<string | null>(null);
+  const [pendingWaitSeconds, setPendingWaitSeconds] = useState<number>(0);
+  const [lastActiveConfig, setLastActiveConfig] = useState<SelfTestConfig | null>(null);
   const [activeQuizTopic, setActiveQuizTopic] = useState<string>('Kinematics');
   const [activeQuizChapters, setActiveQuizChapters] = useState<string[]>([]);
   const [questions, setQuestions] = useState<MCQQuestion[]>([]);
@@ -165,6 +168,28 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   useEffect(() => {
     setHistoryItems(getSelfTestHistory());
   }, []);
+
+  // Pending Question Wait Timer: auto-resolves if sitting on a pending question for > 25 seconds
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (viewMode === 'active' && currentIdx >= questions.length && currentIdx < targetTotalQuestions) {
+      interval = setInterval(() => {
+        setPendingWaitSeconds((prev) => {
+          const next = prev + 1;
+          if (next >= 25) {
+            console.warn('[SelfTestingView] Pending question wait exceeded 25s, auto-resolving from syllabus bank...');
+            handleForceResolveQuestions();
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      setPendingWaitSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [viewMode, currentIdx, questions.length, targetTotalQuestions]);
 
   // Timer effect during active quiz
   useEffect(() => {
@@ -260,19 +285,22 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     });
   };
 
-  // Background MCQ Generation Worker
+  // Background MCQ Generation Worker with robust timeout and auto-backfill
   const launchBackgroundGeneration = async (
     activeConfig: SelfTestConfig,
     initialQuestions: MCQQuestion[],
     targetTotal: number
   ) => {
     setIsBackgroundGenerating(true);
+    setBackgroundGenError(null);
+    setLastActiveConfig(activeConfig);
     let currentList = [...initialQuestions];
 
     try {
       while (currentList.length < targetTotal) {
         const remainingCount = targetTotal - currentList.length;
-        const nextBatchCount = Math.min(5, remainingCount);
+        // Batch remaining questions (up to 15 at a time)
+        const nextBatchCount = Math.min(15, remainingCount);
         const excludeTexts = currentList.map((q) => q.question);
 
         const batchConfig: SelfTestConfig = {
@@ -280,7 +308,20 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
           questionCount: nextBatchCount,
         };
 
-        const newBatch = await generateMCQTest(batchConfig, excludeTexts);
+        // Safety timeout of 20 seconds for the background API call
+        const fetchPromise = generateMCQTest(batchConfig, excludeTexts);
+        const timeoutPromise = new Promise<MCQQuestion[]>((_, reject) =>
+          setTimeout(() => reject(new Error('Background generation timed out after 20s')), 20000)
+        );
+
+        let newBatch: MCQQuestion[] = [];
+        try {
+          newBatch = await Promise.race([fetchPromise, timeoutPromise]);
+        } catch (callErr: any) {
+          console.warn('[Background Generation] API call failed or timed out:', callErr?.message || callErr);
+          setBackgroundGenError('AI generation took longer than expected. Using syllabus question bank.');
+          break;
+        }
 
         if (!newBatch || newBatch.length === 0) {
           console.warn('[Background Generation] No new questions returned for batch.');
@@ -308,19 +349,6 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
         if (validNew.length === 0) {
           console.warn('[Background Generation] Zero valid non-duplicate questions in batch, supplementing from curriculum bank.');
-          const fbQuestions = generateCurriculumFallbackMCQs(
-            activeConfig.subject,
-            activeConfig.topic,
-            remainingCount,
-            activeConfig.difficulty,
-            activeConfig.grade,
-            activeConfig.board,
-            excludeTexts
-          );
-          if (fbQuestions && fbQuestions.length > 0) {
-            currentList = [...currentList, ...fbQuestions.slice(0, remainingCount)];
-            setQuestions([...currentList]);
-          }
           break;
         }
 
@@ -328,16 +356,132 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         setQuestions([...currentList]);
         console.log(`[Background Generation] Progressive questions updated: ${currentList.length}/${targetTotal}`);
 
-        // Small delay between background calls
+        // Brief delay between background calls if more needed
         if (currentList.length < targetTotal) {
-          await new Promise((resolve) => setTimeout(resolve, 400));
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
       }
-    } catch (bgErr) {
+
+      // If still short of targetTotal (due to duplicates, error, or shortfall), backfill immediately from curriculum bank
+      if (currentList.length < targetTotal) {
+        const stillNeeded = targetTotal - currentList.length;
+        const currentExcludes = currentList.map((q) => q.question);
+        const fbQuestions = generateCurriculumFallbackMCQs(
+          activeConfig.subject,
+          activeConfig.topic,
+          stillNeeded * 2,
+          activeConfig.difficulty,
+          activeConfig.grade,
+          activeConfig.board,
+          currentExcludes
+        );
+
+        if (fbQuestions && fbQuestions.length > 0) {
+          const validFb = fbQuestions.filter((fq) => {
+            const isDup = currentList.some(
+              (cq) =>
+                cq.id === fq.id ||
+                cq.question.trim().toLowerCase() === fq.question.trim().toLowerCase()
+            );
+            return (
+              !isDup &&
+              fq.question &&
+              fq.options &&
+              fq.options.A &&
+              fq.options.B &&
+              fq.options.C &&
+              fq.options.D &&
+              ['A', 'B', 'C', 'D'].includes(fq.correctAnswer)
+            );
+          });
+
+          if (validFb.length > 0) {
+            currentList = [...currentList, ...validFb.slice(0, stillNeeded)];
+            setQuestions([...currentList]);
+          }
+        }
+      }
+    } catch (bgErr: any) {
       console.warn('[Background Generation] Background generation encountered error:', bgErr);
+      setBackgroundGenError(bgErr?.message || 'Background generation error');
+      if (currentList.length < targetTotal) {
+        const stillNeeded = targetTotal - currentList.length;
+        const currentExcludes = currentList.map((q) => q.question);
+        const fbQuestions = generateCurriculumFallbackMCQs(
+          activeConfig.subject,
+          activeConfig.topic,
+          stillNeeded,
+          activeConfig.difficulty,
+          activeConfig.grade,
+          activeConfig.board,
+          currentExcludes
+        );
+        if (fbQuestions && fbQuestions.length > 0) {
+          currentList = [...currentList, ...fbQuestions.slice(0, stillNeeded)];
+          setQuestions([...currentList]);
+        }
+      }
     } finally {
       setIsBackgroundGenerating(false);
     }
+  };
+
+  // Handler: Manual retry for background MCQ generation
+  const handleRetryBackgroundGeneration = () => {
+    if (!lastActiveConfig) return;
+    setBackgroundGenError(null);
+    setPendingWaitSeconds(0);
+    toast.info('Retrying question synthesis in background...');
+    launchBackgroundGeneration(lastActiveConfig, questions, targetTotalQuestions);
+  };
+
+  // Handler: Force resolve remaining questions from syllabus bank immediately
+  const handleForceResolveQuestions = () => {
+    if (questions.length >= targetTotalQuestions) return;
+    const needed = targetTotalQuestions - questions.length;
+    const cfg = lastActiveConfig || {
+      board: activeBoard,
+      grade: activeGrade,
+      subject: activeSubjectName,
+      topic: activeQuizTopic || topic,
+      questionCount: needed,
+      difficulty,
+    };
+    const currentExcludes = questions.map((q) => q.question);
+    const fbQuestions = generateCurriculumFallbackMCQs(
+      cfg.subject,
+      cfg.topic,
+      needed * 2,
+      cfg.difficulty,
+      cfg.grade,
+      cfg.board,
+      currentExcludes
+    );
+
+    const validFb = fbQuestions.filter((fq) => {
+      const isDup = questions.some(
+        (cq) =>
+          cq.id === fq.id ||
+          cq.question.trim().toLowerCase() === fq.question.trim().toLowerCase()
+      );
+      return (
+        !isDup &&
+        fq.question &&
+        fq.options &&
+        fq.options.A &&
+        fq.options.B &&
+        fq.options.C &&
+        fq.options.D &&
+        ['A', 'B', 'C', 'D'].includes(fq.correctAnswer)
+      );
+    });
+
+    const updated = [...questions, ...validFb.slice(0, needed)];
+    setQuestions(updated);
+    setIsBackgroundGenerating(false);
+    setBackgroundGenError(null);
+    setPendingWaitSeconds(0);
+    toast.success(`Loaded verified syllabus questions (${updated.length}/${targetTotalQuestions} ready).`);
   };
 
   // Handler: Start AI Test Generation with deliberate ~10s quality check & progressive delivery
@@ -381,10 +525,13 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     }
 
     const requestedTotal = questionCount;
-    const initialBatchCount = Math.min(5, requestedTotal);
+    // Initial batch takes up to 10 questions during the ~10s quality check
+    const initialBatchCount = Math.min(10, requestedTotal);
     setTargetTotalQuestions(requestedTotal);
     setActiveQuizTopic(finalTopic);
     setActiveQuizChapters(finalChapters);
+    setBackgroundGenError(null);
+    setPendingWaitSeconds(0);
 
     setIsGenerating(true);
     setGenerationProgress(5);
@@ -478,7 +625,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       setViewMode('active');
 
       if (requestedTotal > validated.length) {
-        toast.success(`Starting quiz with first ${validated.length} questions. Remaining questions generating in background!`);
+        toast.success(`Starting quiz with first ${validated.length} questions. Remaining ${requestedTotal - validated.length} questions generating in background!`);
         // Launch progressive background generation
         launchBackgroundGeneration(activeConfig, validated, requestedTotal);
       } else {
@@ -1393,14 +1540,25 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Background Generation Indicator */}
+            {/* Background Generation Indicator & Controls */}
             {isBackgroundGenerating && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-xs font-bold text-[#92400E] animate-pulse">
                 <Sparkles size={13} className="text-[#D97706] animate-spin" />
-                <span>Preparing in background ({questions.length}/{targetTotalQuestions})</span>
+                <span>Background Sync ({questions.length}/{targetTotalQuestions})</span>
               </div>
             )}
-            {!isBackgroundGenerating && targetTotalQuestions > 5 && (
+            {backgroundGenError && !isBackgroundGenerating && questions.length < targetTotalQuestions && (
+              <button
+                type="button"
+                onClick={handleRetryBackgroundGeneration}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs font-bold text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                title="Click to retry background generation"
+              >
+                <AlertTriangle size={13} className="text-[#DC2626]" />
+                <span>Sync Issue — Retry</span>
+              </button>
+            )}
+            {!isBackgroundGenerating && questions.length >= targetTotalQuestions && targetTotalQuestions > 5 && (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-xs font-bold text-[#059669]">
                 <CheckCircle2 size={13} className="text-[#059669]" />
                 <span>All {questions.length} questions ready</span>
@@ -1492,25 +1650,75 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             </div>
           </div>
         ) : (
-          /* Question Loading in Background Card */
-          <div className="bg-white rounded-3xl border border-[#E5E5E5] p-8 sm:p-12 shadow-xs text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center mx-auto">
-              <Sparkles size={24} className="animate-spin" />
+          /* Question Loading in Background Card with Timer and Fallback Actions */
+          <div className="bg-white rounded-3xl border border-[#E5E5E5] p-6 sm:p-10 shadow-xs text-center space-y-5">
+            <div className="relative w-14 h-14 mx-auto">
+              <div className="absolute inset-0 rounded-2xl bg-[#FFFBEB] animate-ping opacity-60" />
+              <div className="relative w-14 h-14 rounded-2xl bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] flex items-center justify-center shadow-xs">
+                <Sparkles size={26} className="animate-spin text-[#D97706]" />
+              </div>
             </div>
-            <div className="space-y-1">
-              <h4 className="text-base font-bold text-[#111111]">
-                Synthesizing Question {currentIdx + 1}...
+
+            <div className="space-y-1.5 max-w-md mx-auto">
+              <div className="flex items-center justify-center gap-2">
+                <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] text-[11px] font-bold">
+                  Background AI Synthesis • {pendingWaitSeconds}s
+                </span>
+                {backgroundGenError && (
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA] text-[11px] font-bold">
+                    API Delay
+                  </span>
+                )}
+              </div>
+              <h4 className="text-base sm:text-lg font-extrabold text-[#111111]">
+                Synthesizing Question {currentIdx + 1} of {targetTotalQuestions}...
               </h4>
-              <p className="text-xs text-[#737373] max-w-md mx-auto leading-relaxed">
-                Our background quality engine is preparing and validating this question. It will appear automatically once generated.
+              <p className="text-xs text-[#737373] leading-relaxed">
+                Our background AI engine is generating and validating this question. It will appear automatically once verified.
               </p>
             </div>
-            <button
-              onClick={() => setCurrentIdx(Math.max(0, questions.length - 1))}
-              className="px-4 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-colors"
-            >
-              Return to Question {questions.length}
-            </button>
+
+            {/* Quick status progress indicator */}
+            <div className="max-w-xs mx-auto space-y-1">
+              <div className="w-full bg-[#F0F0F0] h-2 rounded-full overflow-hidden p-0.5 border border-[#E5E5E5]">
+                <div
+                  className="h-full bg-linear-to-r from-[#D97706] to-[#F4C430] rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.round((questions.length / targetTotalQuestions) * 100))}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-[#737373] font-medium">
+                {questions.length} of {targetTotalQuestions} questions ready
+              </p>
+            </div>
+
+            {/* Action buttons for quick resolution, retry, and navigation */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={handleForceResolveQuestions}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-bold hover:bg-[#222222] transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Zap size={14} className="text-[#F4C430]" />
+                <span>Load from Textbook Bank Now</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRetryBackgroundGeneration}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-all flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw size={13} className="text-[#737373]" />
+                <span>Retry AI Synthesis</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCurrentIdx(Math.max(0, questions.length - 1))}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors"
+              >
+                ← Return to Question {questions.length}
+              </button>
+            </div>
           </div>
         )}
 

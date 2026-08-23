@@ -20,6 +20,9 @@ export async function generateMCQTest(
       excludeQuestionTexts
     );
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -37,11 +40,13 @@ export async function generateMCQTest(
     const response = await fetch('/api/tests/generate-mcq', {
       method: 'POST',
       headers,
+      signal: controller.signal,
       body: JSON.stringify({
         ...config,
         excludeQuestionTexts,
       }),
     });
+    clearTimeout(timeoutId);
 
     const validationContext = {
       subject: config.subject,

@@ -152,7 +152,7 @@ Key Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const targetModel = 'gemini-3.6-flash';
+      const targetModel = 'gemini-2.5-flash';
 
       if (isAdmin) {
         // Admin flow: Call generateContent with read-only tools
@@ -447,7 +447,7 @@ Return ONLY a valid JSON object matching this structure:
   ]
 }`;
 
-      const candidateModels = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.7-flash'];
+      const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.7-flash', 'gemini-2.0-flash'];
       let parsedData: any = null;
 
       for (const targetModel of candidateModels) {
