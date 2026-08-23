@@ -733,7 +733,7 @@ export const CHEM_CHAPTERS_11_TO_19: Record<string, StoredMCQ[]> = {
         D: "Hydride ions ($\\text{H}^-$)"
       },
       correctAnswer: "A",
-      explanation: "Photochemical halogenation follows a free radical mechanism: $\\text{Cl}_2 \\xrightarrow{h\\nu} 2\\text{Cl}^\bullet$, followed by $\\text{CH}_4 + \\text{Cl}^\\bullet \\rightarrow \\text{CH}_3^\\bullet + \\text{HCl}$.",
+      explanation: "Photochemical halogenation follows a free radical mechanism: $\\text{Cl}_2 \\xrightarrow{h\\nu} 2\\text{Cl}^\\bullet$, followed by $\\text{CH}_4 + \\text{Cl}^\\bullet \\rightarrow \\text{CH}_3^\\bullet + \\text{HCl}$.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -934,7 +934,7 @@ export const CHEM_CHAPTERS_11_TO_19: Record<string, StoredMCQ[]> = {
         D: "An ester and an ether group"
       },
       correctAnswer: "A",
-      explanation: "Condensation between the $\alpha$-amino group of one amino acid and the $\alpha$-carboxyl group of another forms an amide peptide bond ($-CO-NH-$), releasing a molecule of water.",
+      explanation: "Condensation between the $\\alpha$-amino group of one amino acid and the $\\alpha$-carboxyl group of another forms an amide peptide bond ($-CO-NH-$), releasing a molecule of water.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1110,7 +1110,7 @@ export const CHEM_CHAPTERS_11_TO_19: Record<string, StoredMCQ[]> = {
         D: "Inulin"
       },
       correctAnswer: "A",
-      explanation: "Glycogen is a highly branched $\alpha$-D-glucose homopolymer stored in the liver and muscles as an accessible energy reservoir.",
+      explanation: "Glycogen is a highly branched $\\alpha$-D-glucose homopolymer stored in the liver and muscles as an accessible energy reservoir.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",

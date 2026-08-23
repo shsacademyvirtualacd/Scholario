@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { FBISE_GRADE_9_CURRICULUM, getChapterSyllabusScope } from '../src/lib/curriculumFBISE9';
 import { FBISE_9_QUESTION_BANK } from '../src/lib/fbise9QuestionsBank';
+import { serializeQuestionBankToJson } from '../src/lib/questionBankSerializer';
 import type { StoredMCQ } from '../src/types/questionBank';
 
 const TARGET_COUNT = 20;
@@ -190,7 +191,7 @@ async function run() {
   }
 
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(bank, null, 2), 'utf-8');
+  fs.writeFileSync(OUTPUT_FILE, serializeQuestionBankToJson(bank, 2), 'utf-8');
 
   console.log(`\n🎉 Generated ${totalQuestions} MCQs across ${totalChapters} chapters!`);
   console.log(`Saved to ${OUTPUT_FILE}`);

@@ -331,7 +331,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH40: Record<string, StoredMCQ[]> = {
         D: "Oxygen atoms lose their valence electrons at $4^\\circ\\text{C}$"
       },
       correctAnswer: "A",
-      explanation: "Ice possesses an open, low-density hexagonal hydrogen-bonded cage. When ice melts to $4^\circ\text{C}$, the cage partially collapses, packing molecules closer together and maximizing density at $4^\circ\text{C}$ ($1.000\text{ g/cm}^3$).",
+      explanation: "Ice possesses an open, low-density hexagonal hydrogen-bonded cage. When ice melts to $4^\\circ\\text{C}$, the cage partially collapses, packing molecules closer together and maximizing density at $4^\\circ\\text{C}$ ($1.000\\text{ g/cm}^3$).",
       difficulty: "hard",
       verified: true,
       source: "curriculum-bank",
@@ -504,7 +504,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH40: Record<string, StoredMCQ[]> = {
       topic: "Canal Rays (Anode Rays) Nature",
       question: "Why did Eugen Goldstein's canal rays (positive rays) exhibit charge-to-mass ($e/m$) ratios that varied with different residual gases in the discharge tube?",
       options: {
-        A: "Canal rays consist of positive residual gas ions ($\text{M}^+$), whose mass depends on the atomic mass of the gas used",
+        A: "Canal rays consist of positive residual gas ions ($\\text{M}^+$), whose mass depends on the atomic mass of the gas used",
         B: "Electrons change their fundamental mass depending on the container",
         C: "The cathode glass dissolved into the gas mixture",
         D: "Positive rays are composed of neutral uncharged photons"
@@ -1110,7 +1110,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH40: Record<string, StoredMCQ[]> = {
         D: "Carbon dioxide exists exclusively as an ionic liquid"
       },
       correctAnswer: "A",
-      explanation: "The linear geometry ($180^\\circ$) of $\\text{CO}_2$ creates two opposing dipole vectors of equal magnitude that cancel out completely, yielding a net dipole moment of zero ($\mu = 0$).",
+      explanation: "The linear geometry ($180^\\circ$) of $\\text{CO}_2$ creates two opposing dipole vectors of equal magnitude that cancel out completely, yielding a net dipole moment of zero ($\\mu = 0$).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1402,7 +1402,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH40: Record<string, StoredMCQ[]> = {
         D: "Convert sodium into solid potassium"
       },
       correctAnswer: "A",
-      explanation: "Adding $\\text{CaCl}_2$ forms a eutectic mixture, lowering the operating temperature of molten $\\text{NaCl}$ from $801^\circ\text{C}$ to $\\sim 600^\circ\text{C}$, saving energy and reducing sodium vaporization.",
+      explanation: "Adding $\\text{CaCl}_2$ forms a eutectic mixture, lowering the operating temperature of molten $\\text{NaCl}$ from $801^\\circ\\text{C}$ to $\\sim 600^\\circ\\text{C}$, saving energy and reducing sodium vaporization.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1556,7 +1556,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH40: Record<string, StoredMCQ[]> = {
         D: "$+0.76\\text{ Volts}$"
       },
       correctAnswer: "A",
-      explanation: "The SHE reaction: $2\\text{H}^+(aq, 1\\text{M}) + 2e^- \\rightleftharpoons \\text{H}_2(g, 1\\text{atm})$ is defined as the universal reference standard with $E^\circ = 0.00\\text{ V}$.",
+      explanation: "The SHE reaction: $2\\text{H}^+(aq, 1\\text{M}) + 2e^- \\rightleftharpoons \\text{H}_2(g, 1\\text{atm})$ is defined as the universal reference standard with $E^\\circ = 0.00\\text{ V}$.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1779,7 +1779,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH40: Record<string, StoredMCQ[]> = {
         D: "The pH of weak acids"
       },
       correctAnswer: "A",
-      explanation: "A bomb calorimeter ignites a sample in pressurized oxygen at constant volume, measuring the heat evolved to determine standard enthalpies of combustion ($\Delta H_c^\circ$).",
+      explanation: "A bomb calorimeter ignites a sample in pressurized oxygen at constant volume, measuring the heat evolved to determine standard enthalpies of combustion ($\Delta H_c^\\circ$).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",

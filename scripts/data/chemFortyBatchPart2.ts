@@ -152,7 +152,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "They cause immediate blindness within seconds"
       },
       correctAnswer: "A",
-      explanation: "Fine particles ($\le 2.5\\,\mu\text{m}$) evade cilia and mucus filters in the respiratory tract, settling in alveoli and triggering cardiovascular and pulmonary disease.",
+      explanation: "Fine particles ($\\le 2.5\\,\\mu\\text{m}$) evade cilia and mucus filters in the respiratory tract, settling in alveoli and triggering cardiovascular and pulmonary disease.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -331,7 +331,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "Immediate lung expansion"
       },
       correctAnswer: "A",
-      explanation: "Lead ($\text{Pb}^{2+}$) mimics calcium and displaces essential zinc in enzymes (e.g., in heme synthesis), crossing the blood-brain barrier to cause neurodevelopmental harm.",
+      explanation: "Lead ($\\text{Pb}^{2+}$) mimics calcium and displaces essential zinc in enzymes (e.g., in heme synthesis), crossing the blood-brain barrier to cause neurodevelopmental harm.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -664,7 +664,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "Combines with nitrogen"
       },
       correctAnswer: "A",
-      explanation: "Removing one hydrogen atom from an alkane ($\text{C}_n\text{H}_{2n+2}$) yields an alkyl radical ($\text{C}_n\text{H}_{2n+1}$, e.g., ethyl $-\text{C}_2\text{H}_5$).",
+      explanation: "Removing one hydrogen atom from an alkane ($\\text{C}_n\\text{H}_{2n+2}$) yields an alkyl radical ($\\text{C}_n\\text{H}_{2n+1}$, e.g., ethyl $-\\text{C}_2\\text{H}_5$).",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -843,7 +843,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "Friedel-Crafts Alkylation"
       },
       correctAnswer: "A",
-      explanation: "The addition of $\\text{H}_2$ to unsaturated hydrocarbons over Raney nickel or finely divided Ni catalyst at $200-300^\circ\text{C}$ is named the Sabatier-Senderens reaction.",
+      explanation: "The addition of $\\text{H}_2$ to unsaturated hydrocarbons over Raney nickel or finely divided Ni catalyst at $200-300^\\circ\\text{C}$ is named the Sabatier-Senderens reaction.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1757,7 +1757,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "It has no effect on any indicator paper"
       },
       correctAnswer: "A",
-      explanation: "Chlorine oxidizes iodide to iodine in starch-iodide paper: $\\text{Cl}_2 + 2\\text{I}^- \\rightarrow 2\\text{Cl}^- + \\text{I}_2$ (blue-black with starch) and bleaches dyes via hypochlorous acid ($\text{HOCl}$).",
+      explanation: "Chlorine oxidizes iodide to iodine in starch-iodide paper: $\\text{Cl}_2 + 2\\text{I}^- \\rightarrow 2\\text{Cl}^- + \\text{I}_2$ (blue-black with starch) and bleaches dyes via hypochlorous acid ($\\text{HOCl}$).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1870,7 +1870,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "Effervescence of carbon dioxide bubbles"
       },
       correctAnswer: "A",
-      explanation: "Ninhydrin reacts with primary $\\alpha$-amino acids to form a conjugated chromophore named Ruhemann's Purple ($\lambda_{\\text{max}} = 570\\text{ nm}$), visualizing the separated spots.",
+      explanation: "Ninhydrin reacts with primary $\\alpha$-amino acids to form a conjugated chromophore named Ruhemann's Purple ($\\lambda_{\\text{max}} = 570\\text{ nm}$), visualizing the separated spots.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1892,7 +1892,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "By using no detector at the column outlet"
       },
       correctAnswer: "A",
-      explanation: "HPLC uses very fine, uniform stationary packing particles ($3-5\\,\mu\text{m}$) requiring high-pressure pumps ($100-400\text{ bar}$) to force mobile phase through, achieving exceptional resolution.",
+      explanation: "HPLC uses very fine, uniform stationary packing particles ($3-5\\,\\mu\\text{m}$) requiring high-pressure pumps ($100-400\\text{ bar}$) to force mobile phase through, achieving exceptional resolution.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -2002,7 +2002,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH40: Record<string, StoredMCQ[]> = {
         D: "The column is packed with solid metallic iron"
       },
       correctAnswer: "A",
-      explanation: "Reversed-phase uses a non-polar stationary phase ($\text{C}_{18}$ bonded silica) and a polar aqueous/organic mobile phase, eluting polar solutes first and retaining non-polar solutes longer.",
+      explanation: "Reversed-phase uses a non-polar stationary phase ($\\text{C}_{18}$ bonded silica) and a polar aqueous/organic mobile phase, eluting polar solutes first and retaining non-polar solutes longer.",
       difficulty: "hard",
       verified: true,
       source: "curriculum-bank",

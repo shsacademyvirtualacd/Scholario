@@ -130,7 +130,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Nitrogen ($\\text{N}_2$)"
       },
       correctAnswer: "A",
-      explanation: "Methane ($\text{CH}_4$) is a potent greenhouse gas that traps infrared radiation much more effectively per molecule than $\text{CO}_2$, with a 100-year GWP of $28-36$.",
+      explanation: "Methane ($\\text{CH}_4$) is a potent greenhouse gas that traps infrared radiation much more effectively per molecule than $\\text{CO}_2$, with a 100-year GWP of $28-36$.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -196,7 +196,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Because they neutralize oxygen"
       },
       correctAnswer: "A",
-      explanation: "Fine particles ($\text{PM}_{2.5}$) penetrate deeply into lung alveoli and enter systemic circulation, causing cardiovascular disease, asthma, and chronic respiratory disorders.",
+      explanation: "Fine particles ($\\text{PM}_{2.5}$) penetrate deeply into lung alveoli and enter systemic circulation, causing cardiovascular disease, asthma, and chronic respiratory disorders.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -243,7 +243,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Increasing water temperature to $100^\\circ\\text{C}$"
       },
       correctAnswer: "A",
-      explanation: "During eutrophication, dense algal blooms die and are decomposed by aerobic microorganisms, consuming dissolved oxygen (DO drops $< 2\text{ mg/L}$), causing massive aquatic suffocation.",
+      explanation: "During eutrophication, dense algal blooms die and are decomposed by aerobic microorganisms, consuming dissolved oxygen (DO drops $< 2\\text{ mg/L}$), causing massive aquatic suffocation.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -265,7 +265,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "The percentage of sodium chloride in oceans"
       },
       correctAnswer: "A",
-      explanation: "High BOD values (e.g., untreated sewage BOD $> 300\text{ mg/L}$) indicate heavy organic pollution requiring vast oxygen for bacterial decomposition, leaving little for aquatic life.",
+      explanation: "High BOD values (e.g., untreated sewage BOD $> 300\\text{ mg/L}$) indicate heavy organic pollution requiring vast oxygen for bacterial decomposition, leaving little for aquatic life.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -419,7 +419,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Sand bed"
       },
       correctAnswer: "A",
-      explanation: "High pressure ($50-80\text{ bar}$) overcomes natural osmotic pressure, forcing pure water through semi-permeable pores while retaining $\sim 99\%$ of dissolved salt ions.",
+      explanation: "High pressure ($50-80\\text{ bar}$) overcomes natural osmotic pressure, forcing pure water through semi-permeable pores while retaining $\sim 99\%$ of dissolved salt ions.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -554,7 +554,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "$sp$ and $sp^2$"
       },
       correctAnswer: "A",
-      explanation: "In ethene, each carbon forms $3\\ \\sigma$-bonds ($sp^2$) and $1\\ \\pi$-bond ($120^\circ$). In ethyne, each carbon forms $2\\ \\sigma$-bonds ($sp$) and $2\\ \\pi$-bonds ($180^\circ$).",
+      explanation: "In ethene, each carbon forms $3\\ \\sigma$-bonds ($sp^2$) and $1\\ \\pi$-bond ($120^\\circ$). In ethyne, each carbon forms $2\\ \\sigma$-bonds ($sp$) and $2\\ \\pi$-bonds ($180^\\circ$).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -843,7 +843,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Nitrogen gas using copper"
       },
       correctAnswer: "A",
-      explanation: "Hydrogenation adds hydrogen across the double bonds of unsaturated fatty acid chains using finely divided nickel at $180^\circ\text{C}$, elevating the melting point to form solid ghee.",
+      explanation: "Hydrogenation adds hydrogen across the double bonds of unsaturated fatty acid chains using finely divided nickel at $180^\\circ\\text{C}$, elevating the melting point to form solid ghee.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -887,7 +887,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Pure liquid mercury"
       },
       correctAnswer: "A",
-      explanation: "Cracking (pyrolysis) uses heat ($500^\circ\text{C}$) and silica-alumina catalysts to break large alkane molecules into higher-demand petrol fractions and monomeric alkenes.",
+      explanation: "Cracking (pyrolysis) uses heat ($500^\\circ\\text{C}$) and silica-alumina catalysts to break large alkane molecules into higher-demand petrol fractions and monomeric alkenes.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1289,7 +1289,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "$\\pm 1.0\\text{ g}$"
       },
       correctAnswer: "A",
-      explanation: "For digital instruments, the absolute reading uncertainty is taken as $\\pm 1$ in the least significant displayed digit ($\pm 0.0001\text{ g}$).",
+      explanation: "For digital instruments, the absolute reading uncertainty is taken as $\\pm 1$ in the least significant displayed digit ($\pm 0.0001\\text{ g}$).",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1311,7 +1311,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Top of the burette clamp"
       },
       correctAnswer: "A",
-      explanation: "For highly colored opaque liquids ($\text{KMnO}_4$), the lower meniscus cannot be seen accurately; hence the top surface / upper meniscus is read consistently.",
+      explanation: "For highly colored opaque liquids ($\\text{KMnO}_4$), the lower meniscus cannot be seen accurately; hence the top surface / upper meniscus is read consistently.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1333,7 +1333,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "To warm the glass flask"
       },
       correctAnswer: "A",
-      explanation: "A blank titration determines the volume of titrant consumed by solvent, indicator, or trace impurities, which is subtracted ($V_{\text{corrected}} = V_{\text{sample}} - V_{\text{blank}}$).",
+      explanation: "A blank titration determines the volume of titrant consumed by solvent, indicator, or trace impurities, which is subtracted ($V_{\\text{corrected}} = V_{\\text{sample}} - V_{\\text{blank}}$).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1402,7 +1402,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Steam is a flammable solvent"
       },
       correctAnswer: "A",
-      explanation: "In steam distillation, co-distillation of two immiscible liquids occurs when the sum of their partial pressures reaches atmospheric pressure, allowing distillation well below $100^\circ\text{C}$.",
+      explanation: "In steam distillation, co-distillation of two immiscible liquids occurs when the sum of their partial pressures reaches atmospheric pressure, allowing distillation well below $100^\\circ\\text{C}$.",
       difficulty: "hard",
       verified: true,
       source: "curriculum-bank",
@@ -1826,7 +1826,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Paraffin wax"
       },
       correctAnswer: "A",
-      explanation: "TLC plates are coated with fine polar adsorbent particles of silica gel ($\text{SiO}_2 \cdot x\text{H}_2\text{O}$) or activated alumina, providing sharp, high-resolution separations.",
+      explanation: "TLC plates are coated with fine polar adsorbent particles of silica gel ($\\text{SiO}_2 \\cdot x\\text{H}_2\\text{O}$) or activated alumina, providing sharp, high-resolution separations.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1958,7 +1958,7 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
         D: "The spots turn into iodine crystals"
       },
       correctAnswer: "A",
-      explanation: "The zinc silicate phosphor in $\text{F}_{254}$ plates fluoresces bright green under UV-254. UV-absorbing analytes quench this fluorescence, appearing as dark spots.",
+      explanation: "The zinc silicate phosphor in $\\text{F}_{254}$ plates fluoresces bright green under UV-254. UV-absorbing analytes quench this fluorescence, appearing as dark spots.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from '../src/lib/curriculumFBISE9';
+import { serializeQuestionBankToJson } from '../src/lib/questionBankSerializer';
 import type { StoredMCQ } from '../src/types/questionBank';
 import type { MCQDifficulty, MCQQuestion } from '../src/types/selfTest';
 
@@ -210,7 +211,7 @@ for (const [subject, subData] of Object.entries(FBISE_GRADE_9_CURRICULUM)) {
 
 // Write JSON file
 fs.mkdirSync(path.dirname(JSON_OUT), { recursive: true });
-fs.writeFileSync(JSON_OUT, JSON.stringify(fullBank, null, 2), 'utf-8');
+fs.writeFileSync(JSON_OUT, serializeQuestionBankToJson(fullBank, 2), 'utf-8');
 console.log(`Saved JSON bank to ${JSON_OUT}`);
 
 // Generate TypeScript file

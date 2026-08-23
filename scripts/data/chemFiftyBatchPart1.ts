@@ -435,9 +435,9 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
       topic: "Pressure Cooker Operation Principle",
       question: "How does an enclosed kitchen Pressure Cooker cook tough meat much faster than an open pot?",
       options: {
-        A: "Trapped steam increases internal pressure ($\sim 2\\text{ atm}$), elevating water's boiling point to $\sim 120^\circ\text{C}$ and delivering higher thermal energy to food",
+        A: "Trapped steam increases internal pressure ($\sim 2\\text{ atm}$), elevating water's boiling point to $\sim 120^\\circ\\text{C}$ and delivering higher thermal energy to food",
         B: "It generates nuclear gamma rays",
-        C: "It lowers water's boiling point to $50^\circ\text{C}$",
+        C: "It lowers water's boiling point to $50^\\circ\\text{C}$",
         D: "It eliminates all water vapor completely"
       },
       correctAnswer: "A",
@@ -1000,7 +1000,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Bond length and energy are completely independent"
       },
       correctAnswer: "A",
-      explanation: "Sharing more electron pairs ($C-C: 154\text{ pm}, 348\text{ kJ/mol}$; $C=C: 134\text{ pm}, 614\text{ kJ/mol}$; $C\equiv C: 120\text{ pm}, 839\text{ kJ/mol}$) draws nuclei closer and requires more energy to break.",
+      explanation: "Sharing more electron pairs ($C-C: 154\\text{ pm}, 348\\text{ kJ/mol}$; $C=C: 134\\text{ pm}, 614\\text{ kJ/mol}$; $C\equiv C: 120\\text{ pm}, 839\\text{ kJ/mol}$) draws nuclei closer and requires more energy to break.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1088,7 +1088,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Decomposition of water into explosive gases"
       },
       correctAnswer: "A",
-      explanation: "Water's negative dipole ($\delta^-$ oxygen) solvates $\text{Na}^+$, while its positive dipole ($\delta^+$ hydrogen) solvates $\text{Cl}^-$, releasing hydration enthalpy that overcomes lattice energy.",
+      explanation: "Water's negative dipole ($\\delta^-$ oxygen) solvates $\\text{Na}^+$, while its positive dipole ($\\delta^+$ hydrogen) solvates $\\text{Cl}^-$, releasing hydration enthalpy that overcomes lattice energy.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1424,7 +1424,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "$+0.76\\text{ Volts}$"
       },
       correctAnswer: "A",
-      explanation: "SHE is the universal zero reference standard against which all other standard reduction electrode potentials ($E^\circ$) are measured at $298\text{ K}$.",
+      explanation: "SHE is the universal zero reference standard against which all other standard reduction electrode potentials ($E^\\circ$) are measured at $298\\text{ K}$.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1446,7 +1446,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Anode is solid iron that rusts"
       },
       correctAnswer: "A",
-      explanation: "Impure copper acts as the anode ($\text{Cu} \rightarrow \text{Cu}^{2+} + 2e^-$), while pure copper sheets act as cathode ($\text{Cu}^{2+} + 2e^- \rightarrow \text{Cu}$). Precious impurities fall as anode mud.",
+      explanation: "Impure copper acts as the anode ($\\text{Cu} \\rightarrow \\text{Cu}^{2+} + 2e^-$), while pure copper sheets act as cathode ($\\text{Cu}^{2+} + 2e^- \\rightarrow \\text{Cu}$). Precious impurities fall as anode mud.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1713,7 +1713,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Calcium chloride in water"
       },
       correctAnswer: "A",
-      explanation: "Dissolving ammonium nitrate absorbs substantial lattice hydration thermal energy from surroundings ($\Delta H > 0$), dropping temperature near $0^\circ\text{C}$.",
+      explanation: "Dissolving ammonium nitrate absorbs substantial lattice hydration thermal energy from surroundings ($\Delta H > 0$), dropping temperature near $0^\\circ\\text{C}$.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -1804,7 +1804,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "$K_c = \\frac{[\\text{CO}_2]}{[\\text{CaCO}_3]}$"
       },
       correctAnswer: "A",
-      explanation: "In heterogeneous equilibria, the concentrations of pure solid phases ($\text{CaCO}_3, \text{CaO}$) are constant and incorporated into the equilibrium constant: $K_c = [\text{CO}_2]$ (or $K_p = P_{\text{CO}_2}$).",
+      explanation: "In heterogeneous equilibria, the concentrations of pure solid phases ($\\text{CaCO}_3, \\text{CaO}$) are constant and incorporated into the equilibrium constant: $K_c = [\\text{CO}_2]$ (or $K_p = P_{\\text{CO}_2}$).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -1892,7 +1892,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Copper sulfate"
       },
       correctAnswer: "A",
-      explanation: "Vanadium pentoxide ($\text{V}_2\text{O}_5$) provides an active surface at $450^\circ\text{C}$ to catalyze the conversion of $\text{SO}_2$ to $\text{SO}_3$ in the manufacture of sulfuric acid.",
+      explanation: "Vanadium pentoxide ($\\text{V}_2\\text{O}_5$) provides an active surface at $450^\\circ\\text{C}$ to catalyze the conversion of $\\text{SO}_2$ to $\\text{SO}_3$ in the manufacture of sulfuric acid.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",
@@ -2027,7 +2027,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "The solution turns into pure sulfuric acid"
       },
       correctAnswer: "A",
-      explanation: "The high concentration of conjugate base ($\text{CH}_3\text{COO}^-$) reacts with added $\text{H}^+$ to form weak undissociated acetic acid, preserving constant $[\text{H}^+]$ and $pH$.",
+      explanation: "The high concentration of conjugate base ($\\text{CH}_3\\text{COO}^-$) reacts with added $\\text{H}^+$ to form weak undissociated acetic acid, preserving constant $[\\text{H}^+]$ and $pH$.",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -2071,7 +2071,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Neither is an acid or base"
       },
       correctAnswer: "A",
-      explanation: "By G.N. Lewis's definition, an acid is an electron pair acceptor ($\text{BF}_3$, sextet on B) and a base is an electron pair donor ($\text{NH}_3$, lone pair on N).",
+      explanation: "By G.N. Lewis's definition, an acid is an electron pair acceptor ($\\text{BF}_3$, sextet on B) and a base is an electron pair donor ($\\text{NH}_3$, lone pair on N).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",
@@ -2137,7 +2137,7 @@ export const CHEM_CHAPTERS_1_TO_10_BATCH50: Record<string, StoredMCQ[]> = {
         D: "Has zero mass"
       },
       correctAnswer: "A",
-      explanation: "Amphoteric substances react with both acids ($\text{Al(OH)}_3 + 3\text{HCl} \rightarrow \text{AlCl}_3 + 3\text{H}_2\text{O}$) and bases ($\text{Al(OH)}_3 + \text{NaOH} \rightarrow \text{Na}[ \text{Al(OH)}_4]$).",
+      explanation: "Amphoteric substances react with both acids ($\\text{Al(OH)}_3 + 3\\text{HCl} \\rightarrow \\text{AlCl}_3 + 3\\text{H}_2\\text{O}$) and bases ($\\text{Al(OH)}_3 + \\text{NaOH} \\rightarrow \\text{Na}[ \\text{Al(OH)}_4]$).",
       difficulty: "medium",
       verified: true,
       source: "curriculum-bank",

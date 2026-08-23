@@ -447,6 +447,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Which of the following standard SI prefixes represents the submultiple factor $10^{-9}$?",
         "options": {
@@ -468,6 +469,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Which base SI unit is defined and used for measuring the amount of a substance in physical sciences?",
         "options": {
@@ -489,6 +491,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "A student multiplies two measured lengths: $2.5\\text{ m} \\times 3.42\\text{ m}$. According to the rules of significant figures, the calculated area should be recorded as:",
         "options": {
@@ -510,6 +513,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "An irregular solid stone is immersed into a graduated measuring cylinder filled with water up to the $40\\text{ cm}^3$ mark. The water level rises to $65\\text{ cm}^3$. What is the volume of the stone?",
         "options": {
@@ -531,6 +535,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Pressure is measured in the derived SI unit Pascal ($\\text{Pa}$). Expressed strictly in fundamental SI base units, $1\\text{ Pa}$ is equivalent to:",
         "options": {
@@ -552,6 +557,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "How many micrometers ($\\mu\\text{m}$) are contained within a length of $1\\text{ kilometer}$ ($1\\text{ km}$)?",
         "options": {
@@ -573,6 +579,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "When using a micrometer screw gauge with least count $0.01\\text{ mm}$, a positive zero error of $+0.04\\text{ mm}$ is observed. If the measured diameter reading is $2.85\\text{ mm}$, what is the true corrected diameter?",
         "options": {
@@ -594,6 +601,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Following standard rounding rules in physics, rounding the measurement $73.450\\text{ m}$ to three significant figures gives:",
         "options": {
@@ -615,6 +623,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "The base SI unit specified for measuring luminous intensity is the:",
         "options": {
@@ -636,6 +645,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "If a meter rule has a minimum scale graduation of $1\\text{ mm}$, the absolute measurement uncertainty associated with a single scale reading is:",
         "options": {
@@ -657,6 +667,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Which of the following is the fundamental SI base unit used to measure electric current?",
         "options": {
@@ -678,6 +689,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "The diameter of a typical hydrogen atom is approximately $0.0000000001\\text{ m}$. In standard scientific notation, this length is correctly written as:",
         "options": {
@@ -699,6 +711,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "How many picoseconds ($\\text{ps}$) are contained within a time interval of $1\\text{ millisecond}$ ($1\\text{ ms}$)?",
         "options": {
@@ -720,6 +733,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "When measuring the volume of mercury in a glass graduated measuring cylinder, parallax error is avoided by reading the scale at the:",
         "options": {
@@ -741,6 +755,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "What is the typical least count (resolution) of a standard digital electronic laboratory stopwatch?",
         "options": {
@@ -762,6 +777,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "According to the standard rules of significant figures, subtracting a measured length of $4.2\\text{ cm}$ from $15.75\\text{ cm}$ yields what value?",
         "options": {
@@ -783,6 +799,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "In the International System of Units (SI), the base unit assigned to quantify the amount of substance is the:",
         "options": {
@@ -804,6 +821,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "When the jaws of a vernier calipers are fully closed, the zero mark of the vernier scale is situated to the left of the main scale zero by 3 divisions (least count $= 0.01\\text{ cm}$). The zero correction ($Z_c$) to apply is:",
         "options": {
@@ -825,6 +843,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "In the International System of Units, the standard decimal multiplier prefix \"Giga\" (symbol $\\text{G}$) represents:",
         "options": {
@@ -846,6 +865,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "What is the primary operational function of the ratchet mechanism located at the end of the thimble on a micrometer screw gauge?",
         "options": {
@@ -867,6 +887,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Which component of a micrometer screw gauge ensures that uniform pressure is exerted on the specimen without over-tightening?",
         "options": {
@@ -888,6 +909,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "When the jaws of a Vernier caliper are brought into contact, the zero mark of the vernier scale lies to the left of the main scale zero mark. The zero error is:",
         "options": {
@@ -909,6 +931,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "A student uses a graduated measuring cylinder to determine the volume of an irregular stone. Initial water volume is $36\\text{ cm}^3$, and after immersing the stone, the level rises to $49\\text{ cm}^3$. What is the volume of the stone?",
         "options": {
@@ -930,6 +953,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "A mass measurement is recorded as $45.0\\text{ g}$ (3 significant figures) and volume as $15.00\\text{ cm}^3$ (4 significant figures). The calculated density recorded to the correct number of significant figures is:",
         "options": {
@@ -951,6 +975,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "An electrical power transmission station produces $500\\text{ MW}$ of power. In terms of Gigawatts ($\\text{GW}$), this is equivalent to:",
         "options": {
@@ -972,6 +997,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Expressed strictly in terms of SI base units, the derived unit Joule ($\\text{J}$) is equal to:",
         "options": {
@@ -993,6 +1019,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Which of the following is exactly equivalent to one litre ($1\\text{ L}$) of volume in standard SI units?",
         "options": {
@@ -1014,6 +1041,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "To avoid parallax error when reading the liquid volume in a graduated measuring cylinder, the observer's line of sight must be:",
         "options": {
@@ -1035,6 +1063,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "When rounding off a measurement to the correct number of significant figures, if the digit dropped is 5 followed by zeros, the preceding digit is:",
         "options": {
@@ -1056,6 +1085,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Physical Quantities and Measurement",
+        "chapterNumber": 1,
         "topic": "Physical Quantities and Measurement",
         "question": "Which of the following pairs contains only derived physical quantities in SI?",
         "options": {
@@ -1519,6 +1549,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A car covers the first half of a total distance at a constant speed of $40\\text{ km/h}$ and the second half at $60\\text{ km/h}$. The average speed of the car for the entire journey is:",
         "options": {
@@ -1540,6 +1571,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A train moving at an initial velocity of $15\\text{ m/s}$ accelerates uniformly at $2\\text{ m/s}^2$ for a time duration of $10\\text{ s}$. The total distance covered by the train during this time is:",
         "options": {
@@ -1561,6 +1593,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A ball is thrown vertically upward with an initial velocity of $20\\text{ m/s}$ ($g = 10\\text{ m/s}^2$). What is the total time of flight before the ball returns to the thrower's hand?",
         "options": {
@@ -1582,6 +1615,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "The continuous spinning motion of the Earth around its own geographic axis is categorized as:",
         "options": {
@@ -1603,6 +1637,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A curved line with increasing slope on a velocity-time graph represents an object undergoing:",
         "options": {
@@ -1624,6 +1659,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "When a stone is thrown straight upward into the air, at the exact instant it reaches its highest vertical altitude, its vertical velocity is:",
         "options": {
@@ -1645,6 +1681,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "An athlete runs one full lap around a circular athletic track of radius $14\\text{ m}$. What are the total distance traveled and net displacement of the athlete?",
         "options": {
@@ -1666,6 +1703,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A vehicle moving at $20\\text{ m/s}$ is brought to a stop by applying brakes that produce a constant deceleration of $4\\text{ m/s}^2$. The minimum stopping distance is:",
         "options": {
@@ -1687,6 +1725,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "The rapid to-and-fro periodic motion of the prongs of a struck tuning fork about its mean equilibrium position is classified as:",
         "options": {
@@ -1708,6 +1747,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "In the International System of Units (SI), the unit for rate of change of velocity per unit time is:",
         "options": {
@@ -1729,6 +1769,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "On a velocity-time graph for a moving body, the geometric area enclosed under the curve represents the:",
         "options": {
@@ -1750,6 +1791,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "The continuous spinning motion of the blades of a rotating ceiling fan about their fixed central pivot axle is classified as:",
         "options": {
@@ -1771,6 +1813,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A flat horizontal line parallel to the time axis on a distance-time graph indicates that the object is:",
         "options": {
@@ -1792,6 +1835,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A stone is dropped from rest ($v_i = 0$) from the top of a tall bridge into a river. If air resistance is negligible ($g = 10\\text{ m/s}^2$), what vertical distance does it fall in $3\\text{ seconds}$?",
         "options": {
@@ -1813,6 +1857,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "The continuous, irregular, and zigzag motion of airborne smoke particles or gas molecules is classified as:",
         "options": {
@@ -1834,6 +1879,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A sports car travels on a highway at a uniform speed of $72\\text{ km/h}$. Expressed in standard SI units ($\\text{m/s}$), its speed is:",
         "options": {
@@ -1855,6 +1901,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A ball is thrown straight up with an initial speed of $30\\text{ m/s}$ ($g = 10\\text{ m/s}^2$). What maximum height above the release point does the ball reach?",
         "options": {
@@ -1876,6 +1923,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "Among the following physical quantities in kinematics, which one is a vector quantity?",
         "options": {
@@ -1897,6 +1945,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "When the velocity of a moving object decreases steadily with time, the acceleration produced is called:",
         "options": {
@@ -1918,6 +1967,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "An object travels $30\\text{ m}$ due East in $4\\text{ s}$ and then $40\\text{ m}$ due North in $6\\text{ s}$. The magnitude of the net displacement of the object is:",
         "options": {
@@ -1939,6 +1989,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A vehicle travelling at $25\\text{ m/s}$ applies brakes and comes uniformly to rest in $5\\text{ s}$. The stopping distance covered during braking is:",
         "options": {
@@ -1960,6 +2011,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A pebble is dropped freely from the top of a bridge and strikes the water below after $3.0\\text{ s}$ ($g = 9.8\\text{ m/s}^2$). What is the height of the bridge?",
         "options": {
@@ -1981,6 +2033,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A ball is released from rest from a tall tower and falls freely under gravity ($g = 9.8\\text{ m/s}^2$). What is its velocity after $4.0\\text{ seconds}$ of descent?",
         "options": {
@@ -2002,6 +2055,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "The to-and-fro repetitive movement of a sewing machine needle about its mean position is an example of:",
         "options": {
@@ -2023,6 +2077,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A cyclist travels at a uniform speed of $12\\text{ m/s}$ for $30\\text{ seconds}$, and then speeds up to $18\\text{ m/s}$ for the next $30\\text{ seconds}$. What is the average speed for the total duration?",
         "options": {
@@ -2044,6 +2099,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "What physical quantity is directly determined from the gradient (slope) of a distance-time graph?",
         "options": {
@@ -2065,6 +2121,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A projectile is launched vertically upwards with an initial speed $u$ and reaches maximum height $H$. If the launch speed is doubled to $2u$, the new maximum height attained will be:",
         "options": {
@@ -2086,6 +2143,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A runner completes two full laps around a circular running track of radius $70\\text{ m}$. What is the magnitude of the runner's net displacement?",
         "options": {
@@ -2107,6 +2165,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "On a distance-time graph, a curved line bending upwards with progressively increasing slope indicates that the object is:",
         "options": {
@@ -2128,6 +2187,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Kinematics",
+        "chapterNumber": 1,
         "topic": "Kinematics",
         "question": "A cart starts from rest and accelerates uniformly at $2.0\\text{ m/s}^2$. What distance does it cover during the 4th second alone?",
         "options": {
@@ -3475,6 +3535,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "In a hydraulic garage lift, an effort force of $50\\text{ N}$ applied to a small piston of cross-sectional area $0.01\\text{ m}^2$ can support a load on a large piston of area $0.2\\text{ m}^2$ up to:",
         "options": {
@@ -3496,6 +3557,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "What is the liquid gauge pressure at a depth of $5\\text{ m}$ in a freshwater pool? (Density of water $= 1000\\text{ kg/m}^3$, $g = 10\\text{ m/s}^2$):",
         "options": {
@@ -3517,6 +3579,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A helical spring extends by $0.04\\text{ m}$ when a $2\\text{ kg}$ weight is suspended from it ($g = 10\\text{ m/s}^2$). What is the spring constant ($k$)?",
         "options": {
@@ -3538,6 +3601,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "If the cross-sectional tube diameter of a Torricellian mercury barometer is doubled, the equilibrium vertical height of the mercury column supporting standard atmospheric pressure will:",
         "options": {
@@ -3559,6 +3623,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Young’s modulus ($Y$) of a wire having initial length $L$, cross-sectional area $A$, stretched by an extension $\\Delta L$ under tensile load $F$, is defined as:",
         "options": {
@@ -3580,6 +3645,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "According to the Law of Flotation, a solid object of density $\\rho_{\\text{obj}}$ will sink when placed into a liquid of density $\\rho_{\\text{liq}}$ whenever:",
         "options": {
@@ -3601,6 +3667,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Drinking through a beverage straw works because sucking removes air from inside the straw, creating a low-pressure region so that:",
         "options": {
@@ -3622,6 +3689,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "When a deforming stretching force applied to a solid wire exceeds its elastic limit, the wire:",
         "options": {
@@ -3643,6 +3711,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A hydrometer is a specialized scientific instrument whose working principle is directly based on the Law of Flotation, used specifically to determine:",
         "options": {
@@ -3664,6 +3733,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A sudden, steep drop in the atmospheric pressure reading on a laboratory barometer is a standard meteorological indication of:",
         "options": {
@@ -3685,6 +3755,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A solid metal block of volume $0.002\\text{ m}^3$ is completely submerged in water (density $= 1000\\text{ kg/m}^3$, $g = 10\\text{ m/s}^2$). According to Archimedes’ Principle, what buoyant upthrust force acts on the block?",
         "options": {
@@ -3706,6 +3777,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A person of weight $600\\text{ N}$ stands on one stiletto heel having a tip area of $1\\text{ cm}^2$ ($10^{-4}\\text{ m}^2$). What pressure is exerted on the floor beneath the heel?",
         "options": {
@@ -3727,6 +3799,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "The hydraulic brake system of an automobile operates based on which fundamental principle of fluid physics?",
         "options": {
@@ -3748,6 +3821,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "In the study of elasticity, tensile stress is defined as:",
         "options": {
@@ -3769,6 +3843,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Tensile strain ($\\Delta L / L_0$) is a physical quantity that has:",
         "options": {
@@ -3790,6 +3865,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Why does atmospheric pressure decrease steadily as altitude above sea level increases?",
         "options": {
@@ -3811,6 +3887,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "In a standard Torricellian mercury barometer, the empty space above the mercury column inside the sealed glass tube is called:",
         "options": {
@@ -3832,6 +3909,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Within the elastic limit of a solid wire, the constant ratio of tensile stress to tensile strain is called:",
         "options": {
@@ -3853,6 +3931,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A large ocean liner made of dense steel floats on seawater because:",
         "options": {
@@ -3874,6 +3953,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Liquid pressure at a given depth $h$ in a stationary fluid depends only on depth, liquid density, and gravity ($P = \\rho gh$). This means liquid pressure is independent of the:",
         "options": {
@@ -3895,6 +3975,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "In a hydraulic press, an input piston of area $0.02\\text{ m}^2$ is pushed down with a force of $100\\text{ N}$. What output lifting force is exerted by the larger piston of area $0.80\\text{ m}^2$?",
         "options": {
@@ -3916,6 +3997,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "According to the Principle of Floatation, an ocean cargo ship floats stably on seawater when the weight of the water it displaces is equal to:",
         "options": {
@@ -3937,6 +4019,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A steel wire of original length $2.0\\text{ m}$ and cross-sectional area $1.0 \\times 10^{-6}\\text{ m}^2$ extends by $2.0\\text{ mm}$ ($2.0 \\times 10^{-3}\\text{ m}$) under a load of $200\\text{ N}$. What is the Young's modulus of the steel?",
         "options": {
@@ -3958,6 +4041,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "The standard sea-level atmospheric pressure of $1.013 \\times 10^5\\text{ Pa}$ supports a vertical column of mercury in a simple Torricellian barometer equal to:",
         "options": {
@@ -3979,6 +4063,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Why does a massive steel ship float on water while a small solid steel needle sinks?",
         "options": {
@@ -4000,6 +4085,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "In a hydraulic lift operating on Pascal's principle, a small piston has a diameter of $2\\text{ cm}$ and a large load piston has a diameter of $20\\text{ cm}$. What is the ideal mechanical force multiplication factor?",
         "options": {
@@ -4021,6 +4107,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "When a metallic wire is stretched beyond its elastic limit, the resulting deformation is characterized as:",
         "options": {
@@ -4042,6 +4129,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "Why is mercury preferred over water in a standard liquid barometer for measuring atmospheric pressure?",
         "options": {
@@ -4063,6 +4151,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "What is the SI unit of tensile strain ($\\Delta L / L_0$)?",
         "options": {
@@ -4084,6 +4173,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Pressure and Deformation in Solids",
+        "chapterNumber": 1,
         "topic": "Pressure and Deformation in Solids",
         "question": "A U-tube manometer filled with liquid is connected to an enclosed gas chamber. The difference in liquid column levels is $\\Delta h$. The gauge pressure of the gas is calculated using:",
         "options": {
@@ -4547,6 +4637,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "A porter carries a heavy bag of mass $20\\text{ kg}$ on his head while walking horizontally across a flat station platform for $50\\text{ m}$. The work done by the gravitational force on the bag is:",
         "options": {
@@ -4568,6 +4659,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "Power is defined as the rate of doing work ($P = \\frac{W}{t}$). The SI derived unit Watt ($\\text{W}$) is equivalent to:",
         "options": {
@@ -4589,6 +4681,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "A cricket ball of mass $0.2\\text{ kg}$ is bowled with a velocity of $30\\text{ m/s}$. The kinetic energy of the cricket ball is:",
         "options": {
@@ -4610,6 +4703,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "In a hydroelectric power station dam, the primary sequence of energy transformations that generates electricity is:",
         "options": {
@@ -4631,6 +4725,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "An electric water heater is rated at $2000\\text{ W}$ ($2\\text{ kW}$). How much electrical energy in kilowatt-hours ($\\text{kWh}$) does it consume when operated for $2\\text{ hours}$?",
         "options": {
@@ -4652,6 +4747,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "The immense radiant heat and light energy continuously emitted by the Sun is produced primarily by the nuclear reaction of:",
         "options": {
@@ -4673,6 +4769,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "Fossil fuels such as coal, crude oil, and natural gas are categorized as non-renewable energy resources because:",
         "options": {
@@ -4694,6 +4791,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "For an ideal oscillating simple pendulum in a vacuum (ignoring air friction), the total mechanical energy ($E_k + E_p$):",
         "options": {
@@ -4715,6 +4813,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "Geothermal energy is a renewable energy resource that harnesses thermal heat extracted from:",
         "options": {
@@ -4736,6 +4835,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "If a car engine exerts a constant driving force $F$ propelling the vehicle at a steady velocity $v$, the instantaneous mechanical power output is given by:",
         "options": {
@@ -4757,6 +4857,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "What is the work done by the centripetal force on an object moving with constant speed in a circular orbit?",
         "options": {
@@ -4778,6 +4879,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "A mass of $4\\text{ kg}$ is lifted vertically through a height of $5\\text{ m}$ above the floor ($g = 10\\text{ m/s}^2$). What gravitational potential energy does it gain?",
         "options": {
@@ -4799,6 +4901,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "Geothermal energy is an important renewable energy resource derived from:",
         "options": {
@@ -4820,6 +4923,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "In Albert Einstein’s mass-energy equivalence equation ($E = mc^2$), the symbol $c$ represents the:",
         "options": {
@@ -4841,6 +4945,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "If the velocity of a moving car is doubled ($v \\rightarrow 2v$), by what factor does its kinetic energy increase?",
         "options": {
@@ -4862,6 +4967,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "In a hydroelectric power station or wind turbine, the electric generator operates by converting:",
         "options": {
@@ -4883,6 +4989,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "An electric crane lifts a heavy construction crate weighing $2000\\text{ N}$ to a height of $15\\text{ m}$ in $10\\text{ seconds}$. What is the average power output of the crane?",
         "options": {
@@ -4904,6 +5011,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "Photovoltaic solar panels directly convert incoming solar radiant energy into:",
         "options": {
@@ -4925,6 +5033,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "The mechanical energy stored in a compressed or stretched spring of spring constant $k$ extended by $x$ is:",
         "options": {
@@ -4946,6 +5055,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "Biomass is a renewable energy resource obtained by utilizing:",
         "options": {
@@ -4967,6 +5077,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "How much energy in Megajoules ($\\text{MJ}$) is consumed when a $1000\\text{ W}$ electric heater operates continuously for $2.0\\text{ hours}$?",
         "options": {
@@ -4988,6 +5099,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "When a constant propelling force $F$ moves an object forward at an instantaneous velocity $v$, the mechanical power output is expressed as:",
         "options": {
@@ -5009,6 +5121,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "A machine is supplied with $500\\text{ J}$ of electrical energy and delivers $350\\text{ J}$ of useful mechanical work. What is its percentage efficiency?",
         "options": {
@@ -5030,6 +5143,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "If the linear momentum $p$ of a moving body of constant mass $m$ is doubled ($p \\to 2p$), its kinetic energy ($E_k = \\frac{p^2}{2m}$) will increase by a factor of:",
         "options": {
@@ -5051,6 +5165,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "A student carries a $20\\text{ kg}$ schoolbag on his back while walking horizontally across a flat classroom floor for $10\\text{ m}$. What is the work done against gravity by the upward supporting force?",
         "options": {
@@ -5072,6 +5187,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "A ball of mass $0.5\\text{ kg}$ is dropped freely from a height of $20\\text{ m}$ above the ground ($g = 10\\text{ m/s}^2$). Neglecting air resistance, its kinetic energy just before striking the ground is:",
         "options": {
@@ -5093,6 +5209,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "One standard imperial horsepower ($1\\text{ hp}$) is defined in electrical terms as equivalent to:",
         "options": {
@@ -5114,6 +5231,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "In a hydroelectric power station, what is the exact chronological sequence of primary energy transformations?",
         "options": {
@@ -5135,6 +5253,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "A motorboat travels through water at a steady speed of $12\\text{ m/s}$ against a total hydrodynamic drag resistance of $500\\text{ N}$. What mechanical power is delivered by the boat engine?",
         "options": {
@@ -5156,6 +5275,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Work and Energy",
+        "chapterNumber": 1,
         "topic": "Work and Energy",
         "question": "Which of the following is classified as a renewable and clean energy source that does not release carbon greenhouse gases during operation?",
         "options": {
@@ -5619,6 +5739,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Specific Latent Heat of Fusion ($L_f$) is defined as the heat energy required to change unit mass of a substance from solid to liquid without a change in temperature. Its SI unit is:",
         "options": {
@@ -5640,6 +5761,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Pure water reaches its maximum density of $1000\\text{ kg/m}^3$ at a temperature of:",
         "options": {
@@ -5661,6 +5783,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A clinical thermometer features a narrow constriction in the glass capillary tube just above the bulb in order to:",
         "options": {
@@ -5682,6 +5805,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "The exact formula used to convert a temperature from the Celsius scale ($C$) to the Fahrenheit scale ($F$) is:",
         "options": {
@@ -5703,6 +5827,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "On the standard Celsius scale, the lower fixed point ($0^\\circ\\text{C}$) and upper fixed point ($100^\\circ\\text{C}$) are defined respectively by the:",
         "options": {
@@ -5724,6 +5849,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "The change in volume ($\\Delta V$) of a solid or liquid of initial volume $V_0$ when heated through temperature change $\\Delta T$ is given by the formula:",
         "options": {
@@ -5745,6 +5871,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "The phase transformation in which a solid changes directly into gas without transitioning through an intermediate liquid state is called:",
         "options": {
@@ -5766,6 +5893,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "How much heat energy ($Q$) is needed to raise the temperature of a $0.5\\text{ kg}$ iron block from $20^\\circ\\text{C}$ to $60^\\circ\\text{C}$? (Specific heat of iron $c = 450\\text{ J}\\cdot\\text{kg}^{-1}\\cdot\\text{K}^{-1}$):",
         "options": {
@@ -5787,6 +5915,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Alcohol is preferred over mercury in thermometers designed for meteorological stations in polar arctic regions because:",
         "options": {
@@ -5808,6 +5937,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Equal volumes ($100\\text{ cm}^3$ each) of two miscible liquids with densities $0.8\\text{ g/cm}^3$ and $1.2\\text{ g/cm}^3$ are mixed thoroughly. The density of the mixture is:",
         "options": {
@@ -5829,6 +5959,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Absolute zero ($0\\text{ K}$ on the Kelvin thermodynamic temperature scale) corresponds on the Celsius scale to:",
         "options": {
@@ -5850,6 +5981,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A section of steel railway track has an initial length of $100\\text{ m}$. When the ambient temperature rises by $20^\\circ\\text{C}$ (coefficient of linear expansion $\\alpha = 1.1 \\times 10^{-5}\\text{ K}^{-1}$), the thermal linear expansion $\\Delta L$ is:",
         "options": {
@@ -5871,6 +6003,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A bimetallic strip used in thermostats and fire alarms bends when heated because:",
         "options": {
@@ -5892,6 +6025,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "The specific latent heat of vaporization of water ($L_v \\approx 2.26 \\times 10^6\\text{ J/kg}$) is the thermal energy required to:",
         "options": {
@@ -5913,6 +6047,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Due to the anomalous thermal expansion of water, when water is cooled from $4^\\circ\\text{C}$ down to $0^\\circ\\text{C}$, its volume:",
         "options": {
@@ -5934,6 +6069,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A clinical mercury-in-glass thermometer is engineered with a sharp capillary constriction (kink) just above the bulb primarily in order to:",
         "options": {
@@ -5955,6 +6091,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "The heat capacity ($C$) of an entire physical body of mass $m$ and specific heat capacity $c$ is given by the formula:",
         "options": {
@@ -5976,6 +6113,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Which of the following environmental factors will INCREASE the rate of evaporation of a liquid from an open container?",
         "options": {
@@ -5997,6 +6135,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A solid copper sample has a measured density of $8.9\\text{ g/cm}^3$. Expressed in standard SI units ($\\text{kg/m}^3$), its density is:",
         "options": {
@@ -6018,6 +6157,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A thermocouple thermometer measures rapid temperature changes based on what thermometric property?",
         "options": {
@@ -6039,6 +6179,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "At what temperature do the Celsius and Fahrenheit temperature scales display the exact same numerical reading?",
         "options": {
@@ -6060,6 +6201,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Which thermometric property is utilized in a standard liquid-in-glass laboratory thermometer?",
         "options": {
@@ -6081,6 +6223,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "How much thermal energy is needed to completely melt $0.5\\text{ kg}$ of ice at $0^\\circ\\text{C}$ into water at $0^\\circ\\text{C}$ ($L_f = 3.36 \\times 10^5\\text{ J/kg}$)?",
         "options": {
@@ -6102,6 +6245,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A bimetallic strip made of brass (larger coefficient $\\alpha$) and iron (smaller coefficient $\\alpha$) is heated uniformly. The strip bends such that:",
         "options": {
@@ -6123,6 +6267,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "A $100\\text{ m}$ long copper pipe expands when its temperature rises by $50^\\circ\\text{C}$. If $\\alpha = 1.7 \\times 10^{-5}\\text{ K}^{-1}$, what is the increase in length $\\Delta L$?",
         "options": {
@@ -6144,6 +6289,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Why does human perspiration cool the body less effectively on a humid, muggy day?",
         "options": {
@@ -6165,6 +6311,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Water is widely utilized as an effective industrial and automotive coolant because of its remarkably high:",
         "options": {
@@ -6186,6 +6333,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Why is water widely utilized as the circulating coolant in automobile engine radiators?",
         "options": {
@@ -6207,6 +6355,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "How is the rate of surface evaporation of a liquid affected by high atmospheric humidity?",
         "options": {
@@ -6228,6 +6377,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Density and Temperature",
+        "chapterNumber": 1,
         "topic": "Density and Temperature",
         "question": "Why are small deliberate gaps left between consecutive steel rail tracks on railway lines?",
         "options": {
@@ -6691,6 +6841,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The fundamental law of magnetic poles states that:",
         "options": {
@@ -6712,6 +6863,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The only definitive and sure experimental test to verify whether a metallic bar is permanently magnetized is:",
         "options": {
@@ -6733,6 +6885,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Geographically, near the Earth’s northern geographic pole lies the Earth’s:",
         "options": {
@@ -6754,6 +6907,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The vertical angle that the total Earth's magnetic field vector makes with the horizontal plane at any location on Earth is termed the:",
         "options": {
@@ -6775,6 +6929,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Steel is chosen over soft iron for manufacturing permanent bar magnets because steel exhibits:",
         "options": {
@@ -6796,6 +6951,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "At the exact geometric center of a flat circular current-carrying coil, the magnetic field lines are:",
         "options": {
@@ -6817,6 +6973,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The critical temperature above which a ferromagnetic substance loses its permanent ferromagnetism and behaves as a paramagnetic material is called the:",
         "options": {
@@ -6838,6 +6995,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "When using the Right-Hand Grip Rule for a solenoid, if the curled fingers point in the direction of conventional electric current, the extended thumb points towards the:",
         "options": {
@@ -6859,6 +7017,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The lifting force of an industrial electromagnet used in scrapyards can be effectively increased by:",
         "options": {
@@ -6880,6 +7039,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Materials like copper, bismuth, and water that are feebly repelled by strong magnetic fields are classified as:",
         "options": {
@@ -6901,6 +7061,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Hans Christian Oersted experimentally discovered that an electric current creates a magnetic field when he observed that:",
         "options": {
@@ -6922,6 +7083,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The angle of dip (or magnetic inclination) made by the Earth’s total magnetic field vector with the horizontal plane at the Earth’s magnetic equator is:",
         "options": {
@@ -6943,6 +7105,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "A permanent bar magnet can be demagnetized effectively using an electrical method by:",
         "options": {
@@ -6964,6 +7127,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "In the magnetic field mapping around a permanent bar magnet placed on a table, \"Neutral Points\" are specific points where:",
         "options": {
@@ -6985,6 +7149,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "When the North pole of a permanent bar magnet is brought close to (without touching) one end of an unmagnetized soft iron bar, the nearer end of the iron bar acquires an:",
         "options": {
@@ -7006,6 +7171,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Which of the following alloys is categorized as a \"hard magnetic material\" suitable for manufacturing strong, long-lasting permanent magnets?",
         "options": {
@@ -7027,6 +7193,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The pattern of magnetic field lines produced around a long, straight conductor carrying a steady electric current consists of:",
         "options": {
@@ -7048,6 +7215,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "In a magnetic field diagram of a permanent bar magnet, as the distance from the magnetic pole increases, the field lines become wider apart, indicating that:",
         "options": {
@@ -7069,6 +7237,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "In an electric bell mechanism, the continuous ringing action when the push-button switch is held down occurs because of the:",
         "options": {
@@ -7090,6 +7259,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Earth’s Magnetic Declination at any geographical location is defined as the angle between the:",
         "options": {
@@ -7111,6 +7281,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Which of the following materials is a ferromagnetic substance strongly attracted by magnetic fields?",
         "options": {
@@ -7132,6 +7303,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Why is soft iron preferred over hard steel for the core of electromagnets and electric bells?",
         "options": {
@@ -7153,6 +7325,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "What is the most effective method for completely demagnetizing a permanent steel bar magnet in the laboratory?",
         "options": {
@@ -7174,6 +7347,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "If a bar magnet is cut into two equal halves transversely through its middle, what is the result?",
         "options": {
@@ -7195,6 +7369,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "In the external region surrounding a permanent bar magnet, magnetic field lines are directed from:",
         "options": {
@@ -7216,6 +7391,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "How can sensitive electronic circuits and mechanical watches be effectively shielded from external stray magnetic fields?",
         "options": {
@@ -7237,6 +7413,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "The strength of the magnetic field produced inside a current-carrying solenoid can be enhanced by:",
         "options": {
@@ -7258,6 +7435,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Which magnetic interaction test is considered the ONLY sure, definitive proof that an unknown metallic specimen is magnetized?",
         "options": {
@@ -7279,6 +7457,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "What is the geometric shape of magnetic field lines in the plane perpendicular to a long straight current-carrying wire?",
         "options": {
@@ -7300,6 +7479,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Magnetism",
+        "chapterNumber": 1,
         "topic": "Magnetism",
         "question": "Permanent magnets are manufactured primarily from hard steel or Alnico alloys because these materials possess:",
         "options": {
@@ -7763,6 +7943,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The renowned 9th-century Muslim polymath Yaqub ibn Ishaq al-Kindi made foundational scientific contributions to the physics of:",
         "options": {
@@ -7784,6 +7965,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The specialized branch of physics that investigates the physical properties, evolution, mechanics, and structure of celestial bodies, stars, and galaxies is:",
         "options": {
@@ -7805,6 +7987,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The branch of physics that investigates the physical, crystalline, electrical, and magnetic properties of solid matter is termed:",
         "options": {
@@ -7826,6 +8009,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "In the empirical scientific method, a \"Scientific Theory\" is fundamentally characterized as:",
         "options": {
@@ -7847,6 +8031,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "In experimental physical measurements, the term \"Precision\" specifically describes:",
         "options": {
@@ -7868,6 +8053,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "An experimental error arising from careless handling, incorrect technique, or biased visual alignment by the human experimenter is classified as a:",
         "options": {
@@ -7889,6 +8075,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The branch of physics that studies the production, propagation, properties, and technological reception of sound waves and ultrasound is:",
         "options": {
@@ -7910,6 +8097,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "When performing experiments in a physics laboratory involving laser beams, what is the most critical personal safety protocol?",
         "options": {
@@ -7931,6 +8119,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The fundamental branch of classical physics dedicated to the study of light generation, reflection, refraction, lenses, and optical instruments is:",
         "options": {
@@ -7952,6 +8141,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The development of Medical Imaging technologies such as X-ray Radiography, CT Scanners, and MRI demonstrate that:",
         "options": {
@@ -7973,6 +8163,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The renowned 11th-century polymath Ibn al-Haytham revolutionized experimental physics primarily through his masterpiece book entitled:",
         "options": {
@@ -7994,6 +8185,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Abu Rayhan Al-Biruni accurately measured the radius of the Earth during the 11th century at Nandana Fort using:",
         "options": {
@@ -8015,6 +8207,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "In modern scientific inquiry, the formal process by which independent domain experts evaluate the validity, methodology, and ethics of a scientific paper before publication is:",
         "options": {
@@ -8036,6 +8229,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Unlike random measurement errors, systematic laboratory errors (such as zero error or miscalibrated scale) can be eliminated or corrected by:",
         "options": {
@@ -8057,6 +8251,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Medical ultrasound diagnostic imaging (Sonography) utilizes which branch and principle of physics to create internal soft tissue images without ionizing radiation?",
         "options": {
@@ -8078,6 +8273,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Plasma physics is the specialized branch of physics that studies:",
         "options": {
@@ -8099,6 +8295,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Abu Ali Sina (Avicenna) and Abu Rayhan Al-Biruni made pioneer contributions to experimental physics in determining the:",
         "options": {
@@ -8120,6 +8317,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "When performing electrical circuit experiments in a physics laboratory, what essential safety precaution must always be observed to prevent electric shocks?",
         "options": {
@@ -8141,6 +8339,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "In the scientific method, a tentative, testable statement formulated to explain an observed natural phenomenon before experimentation is called a:",
         "options": {
@@ -8162,6 +8361,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Modern fiber optic telecommunication systems transmit high-speed data signals through optical glass fibers utilizing the fundamental optical principle of:",
         "options": {
@@ -8183,6 +8383,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Which renowned Muslim scientist is celebrated as the \"Father of Modern Optics\" for introducing rigorous experimental methodology and publishing *Kitab al-Manazir* (Book of Optics)?",
         "options": {
@@ -8204,6 +8405,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Which Muslim scientist authored *Kitab Mizan al-Hikma* (The Book of the Balance of Wisdom), determining the precise specific gravities of various metals and precious gems?",
         "options": {
@@ -8225,6 +8427,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "How does a systematic error in measurement differ fundamentally from a random error?",
         "options": {
@@ -8246,6 +8449,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Which Muslim scholar and physician formulated the precursor concept of momentum (*mayl* or inclination) in his physical treatises?",
         "options": {
@@ -8267,6 +8471,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "In the scientific method, what is the role and definition of a \"hypothesis\"?",
         "options": {
@@ -8288,6 +8493,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Which branch of physics is devoted to the study of the production, properties, and confinement of ionized gases (the fourth state of matter)?",
         "options": {
@@ -8309,6 +8515,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "Parallax error during physical measurements with an analogue ruler or meter rule is avoided by:",
         "options": {
@@ -8330,6 +8537,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "In scientific epistemology, how is a scientific law distinguished from a scientific theory?",
         "options": {
@@ -8351,6 +8559,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "The operational physics of modern silicon semiconductors, integrated microchips, and photovoltaic solar panels is grounded in:",
         "options": {
@@ -8372,6 +8581,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Nature of Science and Physics",
+        "chapterNumber": 1,
         "topic": "Nature of Science and Physics",
         "question": "What is the mandatory primary laboratory safety measure when assembling or modifying an electrical experiment circuit?",
         "options": {
@@ -8395,6 +8605,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "Newton’s First Law of Motion is alternatively referred to as the:",
         "options": {
@@ -8416,6 +8627,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "According to Newton’s Third Law of Motion, action and reaction forces do NOT cancel each other out because they:",
         "options": {
@@ -8437,6 +8649,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A person of mass $60\\text{ kg}$ stands on a spring balance inside an elevator that is accelerating upwards at $2\\text{ m/s}^2$ ($g = 10\\text{ m/s}^2$). The apparent weight registered by the scale is:",
         "options": {
@@ -8458,6 +8671,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "If the elevator carrying the $60\\text{ kg}$ person accelerates downwards at $3\\text{ m/s}^2$ ($g = 10\\text{ m/s}^2$), what is the apparent weight reading?",
         "options": {
@@ -8479,6 +8693,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "In an Atwood machine, two masses $m_1 = 6\\text{ kg}$ and $m_2 = 4\\text{ kg}$ hang vertically over a frictionless pulley ($g = 10\\text{ m/s}^2$). What is the tension ($T$) in the connecting string?",
         "options": {
@@ -8500,6 +8715,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "When a horse pulls a heavy cart along a level road, the forward reaction force that propels the entire horse-cart system forward is exerted by:",
         "options": {
@@ -8521,6 +8737,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A body has a mass of $10\\text{ kg}$. If its weight on the surface of Jupiter is measured to be $250\\text{ N}$, what is the gravitational acceleration ($g$) on Jupiter?",
         "options": {
@@ -8542,6 +8759,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "When a dusty carpet is vigorously beaten with a stick, dust particles separate and fall off primarily due to:",
         "options": {
@@ -8563,6 +8781,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "When a car cruises along a straight horizontal highway at a constant velocity of $80\\text{ km/h}$, the resultant net unbalanced force acting on the car is:",
         "options": {
@@ -8584,6 +8803,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A rifle recoils backward when fired with a significantly smaller velocity than that of the escaping forward bullet because:",
         "options": {
@@ -8605,6 +8825,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "According to Newton’s Second Law of Motion ($F = ma$), what net unbalanced force is required to produce an acceleration of $4\\text{ m/s}^2$ in a cart of mass $5\\text{ kg}$?",
         "options": {
@@ -8626,6 +8847,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A physical body continues in its state of rest or of uniform motion in a straight line unless acted upon by an external net force. This fundamental law is known as:",
         "options": {
@@ -8647,6 +8869,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "If the cable supporting an elevator snaps and the cabin falls freely under Earth's gravity ($a = g$), what apparent weight will a passenger of mass $70\\text{ kg}$ experience?",
         "options": {
@@ -8668,6 +8891,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "Mass of an object is measured using a beam balance, whereas the gravitational weight of an object is measured using a:",
         "options": {
@@ -8689,6 +8913,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "If the net resultant force applied to an object is doubled ($F \\rightarrow 2F$) while its mass is halved ($m \\rightarrow m/2$), the resulting acceleration will:",
         "options": {
@@ -8710,6 +8935,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "The inertia of a physical body (its resistance to changes in its state of rest or uniform motion) depends solely on its:",
         "options": {
@@ -8731,6 +8957,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A rocket propels itself forward in space according to Newton’s Third Law of Motion because:",
         "options": {
@@ -8752,6 +8979,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "When a stone of mass $12\\text{ kg}$ is transported from the surface of Earth to the Moon ($g_{\\text{Moon}} = \\frac{1}{6}g_{\\text{Earth}}$), which of its fundamental physical properties remains completely invariant and unchanged?",
         "options": {
@@ -8773,6 +9001,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "When a passenger steps out of a moving bus onto the ground, he tends to fall forward in the direction of motion primarily because:",
         "options": {
@@ -8794,6 +9023,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A mass $m$ is suspended at rest by a vertical light rope. The tension force ($T$) developed in the rope is:",
         "options": {
@@ -8815,6 +9045,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "Two masses $m_1 = 6\\text{ kg}$ and $m_2 = 4\\text{ kg}$ hang vertically from the ends of a light inextensible string over a frictionless pulley (Atwood machine). Taking $g = 10\\text{ m/s}^2$, the acceleration of the system is:",
         "options": {
@@ -8836,6 +9067,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "When a rifle is fired, the backward recoil force experienced by the shooter is an illustration of:",
         "options": {
@@ -8857,6 +9089,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A body of mass $5\\text{ kg}$ is suspended at rest by a vertical light string. Taking $g = 9.8\\text{ m/s}^2$, the tension in the string is:",
         "options": {
@@ -8878,6 +9111,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "Passengers sitting in a moving bus are jolted forward when the driver suddenly applies brakes. This phenomenon is explained by:",
         "options": {
@@ -8899,6 +9133,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "An object weighs $98\\text{ N}$ on the surface of Earth ($g = 9.8\\text{ m/s}^2$). What is its mass on the Moon where $g = 1.6\\text{ m/s}^2$?",
         "options": {
@@ -8920,6 +9155,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "What is the net resultant force acting on a $1500\\text{ kg}$ helicopter hovering stationary in mid-air at a fixed altitude?",
         "options": {
@@ -8941,6 +9177,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A net force of $20\\text{ N}$ produces an acceleration of $4\\text{ m/s}^2$ in mass $m_1$ and $5\\text{ m/s}^2$ in mass $m_2$. If both masses are tied together, what acceleration will the same $20\\text{ N}$ force produce?",
         "options": {
@@ -8962,6 +9199,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "An elevator of mass $600\\text{ kg}$ is ascending vertically upwards at a constant uniform velocity of $4\\text{ m/s}$. The net resultant force acting on the elevator is:",
         "options": {
@@ -8983,6 +9221,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "A mass of $5\\text{ kg}$ is suspended at rest from the ceiling by a vertical cord. Taking $g = 9.8\\text{ m/s}^2$, what is the tension in the cord?",
         "options": {
@@ -9004,6 +9243,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – I",
+        "chapterNumber": 1,
         "topic": "Dynamics – I",
         "question": "What happens to the acceleration of a body when the net unbalanced force acting on it is tripled while its mass remains constant?",
         "options": {
@@ -9027,6 +9267,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "A constant force of $50\\text{ N}$ acts on a body for a time interval of $0.2\\text{ s}$. The impulse (change in momentum) imparted to the body is:",
         "options": {
@@ -9048,6 +9289,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "In an isolated physical system consisting of two interacting bodies, the total linear momentum is strictly conserved provided that:",
         "options": {
@@ -9069,6 +9311,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "The centripetal acceleration ($a_c$) of an object moving with uniform linear speed $v$ in a circle of radius $r$ is given by:",
         "options": {
@@ -9090,6 +9333,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "When an airplane banks into a coordinated turn during flight, the necessary centripetal force for the circular path is provided by the:",
         "options": {
@@ -9111,6 +9355,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "For any two contacting surfaces, the coefficient of kinetic friction ($\\mu_k$) is generally:",
         "options": {
@@ -9132,6 +9377,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "Why are the outer edges of curved railway tracks or expressway curves banked (tilted at an incline angle)?",
         "options": {
@@ -9153,6 +9399,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "In the spin dryer of a washing machine, water is spun out of wet clothes through wall perforations because:",
         "options": {
@@ -9174,6 +9421,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "Which of the following mechanical methods is widely employed in machinery to substitute high sliding friction with much lower rolling friction?",
         "options": {
@@ -9195,6 +9443,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "If two identical balls of equal mass $m$ travel toward each other along a straight line with identical speeds $v$, the total linear momentum of the two-ball system is:",
         "options": {
@@ -9216,6 +9465,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "High-speed trains, sports cars, and airplanes are designed with tapered \"streamlined\" shapes primarily to:",
         "options": {
@@ -9237,6 +9487,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "Why are the outer tracks of railways and sharp curves of modern high-speed highways banked (elevated):",
         "options": {
@@ -9258,6 +9509,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "An athlete of mass $70\\text{ kg}$ sprints along a straight track at a velocity of $8\\text{ m/s}$. What is the magnitude of the athlete’s linear momentum?",
         "options": {
@@ -9279,6 +9531,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "In SI units, the coefficient of friction ($\\mu = F_s / R$) between two solid surfaces is expressed in:",
         "options": {
@@ -9300,6 +9553,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "A cricket fielder pulls his hands backward while catching a fast-moving ball in order to:",
         "options": {
@@ -9321,6 +9575,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "In a medical laboratory centrifuge or cream separator, denser components separate to the outer perimeter of the spinning bowl because:",
         "options": {
@@ -9342,6 +9597,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "The physical quantity defined as the product of an applied force ($F$) and the brief time duration ($\\Delta t$) for which it acts ($J = F \\times \\Delta t$) is the:",
         "options": {
@@ -9363,6 +9619,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "The relationship connecting the kinetic energy ($E_k$) of a moving body of mass $m$ with its linear momentum ($p$) is:",
         "options": {
@@ -9384,6 +9641,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "When a car navigates a level, unbanked curved road, what physical force supplies the necessary centripetal force to keep it in the turn?",
         "options": {
@@ -9405,6 +9663,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "A bullet of mass $0.02\\text{ kg}$ is fired horizontally at $300\\text{ m/s}$ from a rifle of mass $3\\text{ kg}$. What is the recoil velocity of the rifle?",
         "options": {
@@ -9426,6 +9685,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "Rolling friction is significantly smaller than sliding friction primarily because:",
         "options": {
@@ -9447,6 +9707,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "A rifle of mass $4\\text{ kg}$ fires a bullet of mass $0.02\\text{ kg}$ ($20\\text{ g}$) with a muzzle velocity of $400\\text{ m/s}$. The recoil velocity of the rifle is:",
         "options": {
@@ -9468,6 +9729,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "A horizontal pulling force of $30\\text{ N}$ is just sufficient to initiate sliding of a $100\\text{ N}$ wooden block across a level floor. The coefficient of static friction $\\mu_s$ is:",
         "options": {
@@ -9489,6 +9751,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "A car of mass $1000\\text{ kg}$ navigates a circular track of radius $50\\text{ m}$ at a constant speed of $10\\text{ m/s}$. What is the centripetal force required to keep it on the curve?",
         "options": {
@@ -9510,6 +9773,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "Why are highway turns and railway curves banked (outer edge built higher than the inner edge)?",
         "options": {
@@ -9531,6 +9795,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "In a centrifuge cream separator, why do less dense cream particles separate and collect near the central axis while denser skim milk is forced outwards?",
         "options": {
@@ -9552,6 +9817,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "On a curved circular road bend, why is the outer edge of the road banked higher than the inner edge?",
         "options": {
@@ -9573,6 +9839,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "Rolling friction is significantly smaller (often 100 to 1000 times less) than sliding friction primarily because:",
         "options": {
@@ -9594,6 +9861,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "If the linear speed of a body traversing a circle of constant radius $r$ is tripled ($v \\to 3v$), its centripetal acceleration increases by a factor of:",
         "options": {
@@ -9615,6 +9883,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "A $2.0\\text{ kg}$ trolley moving at $6.0\\text{ m/s}$ collides with and couples to a stationary $4.0\\text{ kg}$ trolley. What is their common velocity immediately after collision?",
         "options": {
@@ -9636,6 +9905,7 @@
         "grade": "9",
         "subject": "Physics",
         "chapter": "Dynamics – II",
+        "chapterNumber": 1,
         "topic": "Dynamics – II",
         "question": "Ball bearings and roller bearings are incorporated into wheels and machine axles to:",
         "options": {
@@ -15063,7 +15333,7 @@
           "D": "Oxygen atoms lose their valence electrons at $4^\\circ\\text{C}$"
         },
         "correctAnswer": "A",
-        "explanation": "Ice possesses an open, low-density hexagonal hydrogen-bonded cage. When ice melts to $4^circ\text{C}$, the cage partially collapses, packing molecules closer together and maximizing density at $4^circ\text{C}$ ($1.000\text{ g/cm}^3$).",
+        "explanation": "Ice possesses an open, low-density hexagonal hydrogen-bonded cage. When ice melts to $4^circ\\ext{C}$, the cage partially collapses, packing molecules closer together and maximizing density at $4^circ\\ext{C}$ ($1.000\\ext{ g/cm}^3$).",
         "difficulty": "hard",
         "verified": true,
         "source": "curriculum-bank",
@@ -15387,9 +15657,9 @@
         "topic": "Pressure Cooker Operation Principle",
         "question": "How does an enclosed kitchen Pressure Cooker cook tough meat much faster than an open pot?",
         "options": {
-          "A": "Trapped steam increases internal pressure ($sim 2\\text{ atm}$), elevating water's boiling point to $sim 120^circ\text{C}$ and delivering higher thermal energy to food",
+          "A": "Trapped steam increases internal pressure ($sim 2\\text{ atm}$), elevating water's boiling point to $sim 120^circ\\ext{C}$ and delivering higher thermal energy to food",
           "B": "It generates nuclear gamma rays",
-          "C": "It lowers water's boiling point to $50^circ\text{C}$",
+          "C": "It lowers water's boiling point to $50^circ\\ext{C}$",
           "D": "It eliminates all water vapor completely"
         },
         "correctAnswer": "A",
@@ -15675,7 +15945,7 @@
         "topic": "Canal Rays (Anode Rays) Nature",
         "question": "Why did Eugen Goldstein's canal rays (positive rays) exhibit charge-to-mass ($e/m$) ratios that varied with different residual gases in the discharge tube?",
         "options": {
-          "A": "Canal rays consist of positive residual gas ions ($\text{M}^+$), whose mass depends on the atomic mass of the gas used",
+          "A": "Canal rays consist of positive residual gas ions ($\\ext{M}^+$), whose mass depends on the atomic mass of the gas used",
           "B": "Electrons change their fundamental mass depending on the container",
           "C": "The cathode glass dissolved into the gas mixture",
           "D": "Positive rays are composed of neutral uncharged photons"
@@ -17269,7 +17539,7 @@
           "D": "Bond length and energy are completely independent"
         },
         "correctAnswer": "A",
-        "explanation": "Sharing more electron pairs ($C-C: 154\text{ pm}, 348\text{ kJ/mol}$; $C=C: 134\text{ pm}, 614\text{ kJ/mol}$; $Cequiv C: 120\text{ pm}, 839\text{ kJ/mol}$) draws nuclei closer and requires more energy to break.",
+        "explanation": "Sharing more electron pairs ($C-C: 154\\ext{ pm}, 348\\ext{ kJ/mol}$; $C=C: 134\\ext{ pm}, 614\\ext{ kJ/mol}$; $Cequiv C: 120\\ext{ pm}, 839\\ext{ kJ/mol}$) draws nuclei closer and requires more energy to break.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -17357,7 +17627,7 @@
           "D": "Decomposition of water into explosive gases"
         },
         "correctAnswer": "A",
-        "explanation": "Water's negative dipole ($delta^-$ oxygen) solvates $\text{Na}^+$, while its positive dipole ($delta^+$ hydrogen) solvates $\text{Cl}^-$, releasing hydration enthalpy that overcomes lattice energy.",
+        "explanation": "Water's negative dipole ($delta^-$ oxygen) solvates $\\ext{Na}^+$, while its positive dipole ($delta^+$ hydrogen) solvates $\\ext{Cl}^-$, releasing hydration enthalpy that overcomes lattice energy.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -18329,7 +18599,7 @@
           "D": "Convert sodium into solid potassium"
         },
         "correctAnswer": "A",
-        "explanation": "Adding $\\text{CaCl}_2$ forms a eutectic mixture, lowering the operating temperature of molten $\\text{NaCl}$ from $801^circ\text{C}$ to $\\sim 600^circ\text{C}$, saving energy and reducing sodium vaporization.",
+        "explanation": "Adding $\\text{CaCl}_2$ forms a eutectic mixture, lowering the operating temperature of molten $\\text{NaCl}$ from $801^circ\\ext{C}$ to $\\sim 600^circ\\ext{C}$, saving energy and reducing sodium vaporization.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -18571,7 +18841,7 @@
           "D": "$+0.76\\text{ Volts}$"
         },
         "correctAnswer": "A",
-        "explanation": "SHE is the universal zero reference standard against which all other standard reduction electrode potentials ($E^circ$) are measured at $298\text{ K}$.",
+        "explanation": "SHE is the universal zero reference standard against which all other standard reduction electrode potentials ($E^circ$) are measured at $298\\ext{ K}$.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -18593,7 +18863,7 @@
           "D": "Anode is solid iron that rusts"
         },
         "correctAnswer": "A",
-        "explanation": "Impure copper acts as the anode ($\text{Cu} \rightarrow \text{Cu}^{2+} + 2e^-$), while pure copper sheets act as cathode ($\text{Cu}^{2+} + 2e^- \rightarrow \text{Cu}$). Precious impurities fall as anode mud.",
+        "explanation": "Impure copper acts as the anode ($\\ext{Cu} \\ightarrow \\ext{Cu}^{2+} + 2e^-$), while pure copper sheets act as cathode ($\\ext{Cu}^{2+} + 2e^- \\ightarrow \\ext{Cu}$). Precious impurities fall as anode mud.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -19299,7 +19569,7 @@
           "D": "Calcium chloride in water"
         },
         "correctAnswer": "A",
-        "explanation": "Dissolving ammonium nitrate absorbs substantial lattice hydration thermal energy from surroundings ($Delta H > 0$), dropping temperature near $0^circ\text{C}$.",
+        "explanation": "Dissolving ammonium nitrate absorbs substantial lattice hydration thermal energy from surroundings ($Delta H > 0$), dropping temperature near $0^circ\\ext{C}$.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -19829,7 +20099,7 @@
           "D": "$K_c = \\frac{[\\text{CO}_2]}{[\\text{CaCO}_3]}$"
         },
         "correctAnswer": "A",
-        "explanation": "In heterogeneous equilibria, the concentrations of pure solid phases ($\text{CaCO}_3, \text{CaO}$) are constant and incorporated into the equilibrium constant: $K_c = [\text{CO}_2]$ (or $K_p = P_{\text{CO}_2}$).",
+        "explanation": "In heterogeneous equilibria, the concentrations of pure solid phases ($\\ext{CaCO}_3, \\ext{CaO}$) are constant and incorporated into the equilibrium constant: $K_c = [\\ext{CO}_2]$ (or $K_p = P_{\\ext{CO}_2}$).",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -19917,7 +20187,7 @@
           "D": "Copper sulfate"
         },
         "correctAnswer": "A",
-        "explanation": "Vanadium pentoxide ($\text{V}_2\text{O}_5$) provides an active surface at $450^circ\text{C}$ to catalyze the conversion of $\text{SO}_2$ to $\text{SO}_3$ in the manufacture of sulfuric acid.",
+        "explanation": "Vanadium pentoxide ($\\ext{V}_2\\ext{O}_5$) provides an active surface at $450^circ\\ext{C}$ to catalyze the conversion of $\\ext{SO}_2$ to $\\ext{SO}_3$ in the manufacture of sulfuric acid.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -20491,7 +20761,7 @@
           "D": "The solution turns into pure sulfuric acid"
         },
         "correctAnswer": "A",
-        "explanation": "The high concentration of conjugate base ($\text{CH}_3\text{COO}^-$) reacts with added $\text{H}^+$ to form weak undissociated acetic acid, preserving constant $[\text{H}^+]$ and $pH$.",
+        "explanation": "The high concentration of conjugate base ($\\ext{CH}_3\\ext{COO}^-$) reacts with added $\\ext{H}^+$ to form weak undissociated acetic acid, preserving constant $[\\ext{H}^+]$ and $pH$.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -20535,7 +20805,7 @@
           "D": "Neither is an acid or base"
         },
         "correctAnswer": "A",
-        "explanation": "By G.N. Lewis's definition, an acid is an electron pair acceptor ($\text{BF}_3$, sextet on B) and a base is an electron pair donor ($\text{NH}_3$, lone pair on N).",
+        "explanation": "By G.N. Lewis's definition, an acid is an electron pair acceptor ($\\ext{BF}_3$, sextet on B) and a base is an electron pair donor ($\\ext{NH}_3$, lone pair on N).",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -20601,7 +20871,7 @@
           "D": "Has zero mass"
         },
         "correctAnswer": "A",
-        "explanation": "Amphoteric substances react with both acids ($\text{Al(OH)}_3 + 3\text{HCl} \rightarrow \text{AlCl}_3 + 3\text{H}_2\text{O}$) and bases ($\text{Al(OH)}_3 + \text{NaOH} \rightarrow \text{Na}[ \text{Al(OH)}_4]$).",
+        "explanation": "Amphoteric substances react with both acids ($\\ext{Al(OH)}_3 + 3\\ext{HCl} \\ightarrow \\ext{AlCl}_3 + 3\\ext{H}_2\\ext{O}$) and bases ($\\ext{Al(OH)}_3 + \\ext{NaOH} \\ightarrow \\ext{Na}[ \\ext{Al(OH)}_4]$).",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -21065,7 +21335,7 @@
           "D": "They cause immediate blindness within seconds"
         },
         "correctAnswer": "A",
-        "explanation": "Fine particles ($le 2.5\\,mu\text{m}$) evade cilia and mucus filters in the respiratory tract, settling in alveoli and triggering cardiovascular and pulmonary disease.",
+        "explanation": "Fine particles ($le 2.5\\,mu\\ext{m}$) evade cilia and mucus filters in the respiratory tract, settling in alveoli and triggering cardiovascular and pulmonary disease.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -21263,7 +21533,7 @@
           "D": "Nitrogen ($\\text{N}_2$)"
         },
         "correctAnswer": "A",
-        "explanation": "Methane ($\text{CH}_4$) is a potent greenhouse gas that traps infrared radiation much more effectively per molecule than $\text{CO}_2$, with a 100-year GWP of $28-36$.",
+        "explanation": "Methane ($\\ext{CH}_4$) is a potent greenhouse gas that traps infrared radiation much more effectively per molecule than $\\ext{CO}_2$, with a 100-year GWP of $28-36$.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -21329,7 +21599,7 @@
           "D": "Because they neutralize oxygen"
         },
         "correctAnswer": "A",
-        "explanation": "Fine particles ($\text{PM}_{2.5}$) penetrate deeply into lung alveoli and enter systemic circulation, causing cardiovascular disease, asthma, and chronic respiratory disorders.",
+        "explanation": "Fine particles ($\\ext{PM}_{2.5}$) penetrate deeply into lung alveoli and enter systemic circulation, causing cardiovascular disease, asthma, and chronic respiratory disorders.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -21683,7 +21953,7 @@
           "D": "Immediate lung expansion"
         },
         "correctAnswer": "A",
-        "explanation": "Lead ($\text{Pb}^{2+}$) mimics calcium and displaces essential zinc in enzymes (e.g., in heme synthesis), crossing the blood-brain barrier to cause neurodevelopmental harm.",
+        "explanation": "Lead ($\\ext{Pb}^{2+}$) mimics calcium and displaces essential zinc in enzymes (e.g., in heme synthesis), crossing the blood-brain barrier to cause neurodevelopmental harm.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -21815,7 +22085,7 @@
           "D": "Increasing water temperature to $100^\\circ\\text{C}$"
         },
         "correctAnswer": "A",
-        "explanation": "During eutrophication, dense algal blooms die and are decomposed by aerobic microorganisms, consuming dissolved oxygen (DO drops $< 2\text{ mg/L}$), causing massive aquatic suffocation.",
+        "explanation": "During eutrophication, dense algal blooms die and are decomposed by aerobic microorganisms, consuming dissolved oxygen (DO drops $< 2\\ext{ mg/L}$), causing massive aquatic suffocation.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -21837,7 +22107,7 @@
           "D": "The percentage of sodium chloride in oceans"
         },
         "correctAnswer": "A",
-        "explanation": "High BOD values (e.g., untreated sewage BOD $> 300\text{ mg/L}$) indicate heavy organic pollution requiring vast oxygen for bacterial decomposition, leaving little for aquatic life.",
+        "explanation": "High BOD values (e.g., untreated sewage BOD $> 300\\ext{ mg/L}$) indicate heavy organic pollution requiring vast oxygen for bacterial decomposition, leaving little for aquatic life.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -21991,7 +22261,7 @@
           "D": "Sand bed"
         },
         "correctAnswer": "A",
-        "explanation": "High pressure ($50-80\text{ bar}$) overcomes natural osmotic pressure, forcing pure water through semi-permeable pores while retaining $sim 99%$ of dissolved salt ions.",
+        "explanation": "High pressure ($50-80\\ext{ bar}$) overcomes natural osmotic pressure, forcing pure water through semi-permeable pores while retaining $sim 99%$ of dissolved salt ions.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -22455,7 +22725,7 @@
           "D": "Combines with nitrogen"
         },
         "correctAnswer": "A",
-        "explanation": "Removing one hydrogen atom from an alkane ($\text{C}_n\text{H}_{2n+2}$) yields an alkyl radical ($\text{C}_n\text{H}_{2n+1}$, e.g., ethyl $-\text{C}_2\text{H}_5$).",
+        "explanation": "Removing one hydrogen atom from an alkane ($\\ext{C}_n\\ext{H}_{2n+2}$) yields an alkyl radical ($\\ext{C}_n\\ext{H}_{2n+1}$, e.g., ethyl $-\\ext{C}_2\\ext{H}_5$).",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -22743,7 +23013,7 @@
           "D": "Hydride ions ($\\text{H}^-$)"
         },
         "correctAnswer": "A",
-        "explanation": "Photochemical halogenation follows a free radical mechanism: $\\text{Cl}_2 \\xrightarrow{h\\nu} 2\\text{Cl}^\bullet$, followed by $\\text{CH}_4 + \\text{Cl}^\\bullet \\rightarrow \\text{CH}_3^\\bullet + \\text{HCl}$.",
+        "explanation": "Photochemical halogenation follows a free radical mechanism: $\\text{Cl}_2 \\xrightarrow{h\\nu} 2\\text{Cl}^ullet$, followed by $\\text{CH}_4 + \\text{Cl}^\\bullet \\rightarrow \\text{CH}_3^\\bullet + \\text{HCl}$.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -23073,7 +23343,7 @@
           "D": "Friedel-Crafts Alkylation"
         },
         "correctAnswer": "A",
-        "explanation": "The addition of $\\text{H}_2$ to unsaturated hydrocarbons over Raney nickel or finely divided Ni catalyst at $200-300^circ\text{C}$ is named the Sabatier-Senderens reaction.",
+        "explanation": "The addition of $\\text{H}_2$ to unsaturated hydrocarbons over Raney nickel or finely divided Ni catalyst at $200-300^circ\\ext{C}$ is named the Sabatier-Senderens reaction.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -23293,7 +23563,7 @@
           "D": "Nitrogen gas using copper"
         },
         "correctAnswer": "A",
-        "explanation": "Hydrogenation adds hydrogen across the double bonds of unsaturated fatty acid chains using finely divided nickel at $180^circ\text{C}$, elevating the melting point to form solid ghee.",
+        "explanation": "Hydrogenation adds hydrogen across the double bonds of unsaturated fatty acid chains using finely divided nickel at $180^circ\\ext{C}$, elevating the melting point to form solid ghee.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -23337,7 +23607,7 @@
           "D": "Pure liquid mercury"
         },
         "correctAnswer": "A",
-        "explanation": "Cracking (pyrolysis) uses heat ($500^circ\text{C}$) and silica-alumina catalysts to break large alkane molecules into higher-demand petrol fractions and monomeric alkenes.",
+        "explanation": "Cracking (pyrolysis) uses heat ($500^circ\\ext{C}$) and silica-alumina catalysts to break large alkane molecules into higher-demand petrol fractions and monomeric alkenes.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -24617,7 +24887,7 @@
           "D": "$\\pm 1.0\\text{ g}$"
         },
         "correctAnswer": "A",
-        "explanation": "For digital instruments, the absolute reading uncertainty is taken as $\\pm 1$ in the least significant displayed digit ($pm 0.0001\text{ g}$).",
+        "explanation": "For digital instruments, the absolute reading uncertainty is taken as $\\pm 1$ in the least significant displayed digit ($pm 0.0001\\ext{ g}$).",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -24639,7 +24909,7 @@
           "D": "Top of the burette clamp"
         },
         "correctAnswer": "A",
-        "explanation": "For highly colored opaque liquids ($\text{KMnO}_4$), the lower meniscus cannot be seen accurately; hence the top surface / upper meniscus is read consistently.",
+        "explanation": "For highly colored opaque liquids ($\\ext{KMnO}_4$), the lower meniscus cannot be seen accurately; hence the top surface / upper meniscus is read consistently.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -24661,7 +24931,7 @@
           "D": "To warm the glass flask"
         },
         "correctAnswer": "A",
-        "explanation": "A blank titration determines the volume of titrant consumed by solvent, indicator, or trace impurities, which is subtracted ($V_{\text{corrected}} = V_{\text{sample}} - V_{\text{blank}}$).",
+        "explanation": "A blank titration determines the volume of titrant consumed by solvent, indicator, or trace impurities, which is subtracted ($V_{\\ext{corrected}} = V_{\\ext{sample}} - V_{\\ext{blank}}$).",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -25169,7 +25439,7 @@
           "D": "Steam is a flammable solvent"
         },
         "correctAnswer": "A",
-        "explanation": "In steam distillation, co-distillation of two immiscible liquids occurs when the sum of their partial pressures reaches atmospheric pressure, allowing distillation well below $100^circ\text{C}$.",
+        "explanation": "In steam distillation, co-distillation of two immiscible liquids occurs when the sum of their partial pressures reaches atmospheric pressure, allowing distillation well below $100^circ\\ext{C}$.",
         "difficulty": "hard",
         "verified": true,
         "source": "curriculum-bank",
@@ -25743,7 +26013,7 @@
           "D": "It has no effect on any indicator paper"
         },
         "correctAnswer": "A",
-        "explanation": "Chlorine oxidizes iodide to iodine in starch-iodide paper: $\\text{Cl}_2 + 2\\text{I}^- \\rightarrow 2\\text{Cl}^- + \\text{I}_2$ (blue-black with starch) and bleaches dyes via hypochlorous acid ($\text{HOCl}$).",
+        "explanation": "Chlorine oxidizes iodide to iodine in starch-iodide paper: $\\text{Cl}_2 + 2\\text{I}^- \\rightarrow 2\\text{Cl}^- + \\text{I}_2$ (blue-black with starch) and bleaches dyes via hypochlorous acid ($\\ext{HOCl}$).",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -26317,7 +26587,7 @@
           "D": "By using no detector at the column outlet"
         },
         "correctAnswer": "A",
-        "explanation": "HPLC uses very fine, uniform stationary packing particles ($3-5\\,mu\text{m}$) requiring high-pressure pumps ($100-400\text{ bar}$) to force mobile phase through, achieving exceptional resolution.",
+        "explanation": "HPLC uses very fine, uniform stationary packing particles ($3-5\\,mu\\ext{m}$) requiring high-pressure pumps ($100-400\\ext{ bar}$) to force mobile phase through, achieving exceptional resolution.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -26427,7 +26697,7 @@
           "D": "The column is packed with solid metallic iron"
         },
         "correctAnswer": "A",
-        "explanation": "Reversed-phase uses a non-polar stationary phase ($\text{C}_{18}$ bonded silica) and a polar aqueous/organic mobile phase, eluting polar solutes first and retaining non-polar solutes longer.",
+        "explanation": "Reversed-phase uses a non-polar stationary phase ($\\ext{C}_{18}$ bonded silica) and a polar aqueous/organic mobile phase, eluting polar solutes first and retaining non-polar solutes longer.",
         "difficulty": "hard",
         "verified": true,
         "source": "curriculum-bank",
@@ -26471,7 +26741,7 @@
           "D": "Paraffin wax"
         },
         "correctAnswer": "A",
-        "explanation": "TLC plates are coated with fine polar adsorbent particles of silica gel ($\text{SiO}_2 cdot x\text{H}_2\text{O}$) or activated alumina, providing sharp, high-resolution separations.",
+        "explanation": "TLC plates are coated with fine polar adsorbent particles of silica gel ($\\ext{SiO}_2 cdot x\\ext{H}_2\\ext{O}$) or activated alumina, providing sharp, high-resolution separations.",
         "difficulty": "easy",
         "verified": true,
         "source": "curriculum-bank",
@@ -26603,7 +26873,7 @@
           "D": "The spots turn into iodine crystals"
         },
         "correctAnswer": "A",
-        "explanation": "The zinc silicate phosphor in $\text{F}_{254}$ plates fluoresces bright green under UV-254. UV-absorbing analytes quench this fluorescence, appearing as dark spots.",
+        "explanation": "The zinc silicate phosphor in $\\ext{F}_{254}$ plates fluoresces bright green under UV-254. UV-absorbing analytes quench this fluorescence, appearing as dark spots.",
         "difficulty": "medium",
         "verified": true,
         "source": "curriculum-bank",
@@ -40365,120 +40635,4 @@
     "باب دوم — ایمانیات و عبادات": [
       {
         "id": "fbise9_isl_ch2_q1",
-        "board": "fbise",
-        "grade": "9",
-        "subject": "Islamiat",
-        "chapter": "باب دوم — ایمانیات و عبادات",
-        "chapterNumber": 2,
-        "topic": "توحید اور اس کے انسانی زندگی پر اثرات",
-        "question": "اسلامیات برائے جماعت نہم، باب \"باب دوم — ایمانیات و عبادات\" (توحید اور اس کے انسانی زندگی پر اثرات) کے مطابق: درج ذیل میں سے کون سی بات درست ہے؟",
-        "options": {
-          "A": "یہ \"توحید اور اس کے انسانی زندگی پر اثرات\" کی صحیح نصابی تعلیمات اور مفاہیم کو واضح کرتا ہے۔",
-          "B": "یہ متن کے عمومی مفہوم کے برعکس ہے۔",
-          "C": "اس کا نصاب سے کوئی تعلق نہیں ہے۔",
-          "D": "یہ غیر مستند قیاس ہے۔"
-        },
-        "correctAnswer": "A",
-        "explanation": "Official learning outcome for Grade 9 Islamiat, Chapter \"باب دوم — ایمانیات و عبادات\" (توحید اور اس کے انسانی زندگی پر اثرات).",
-        "difficulty": "medium",
-        "verified": true,
-        "source": "curriculum-bank",
-        "createdAt": "2026-08-23T21:12:49.136Z"
-      },
-      {
-        "id": "fbise9_isl_ch2_q2",
-        "board": "fbise",
-        "grade": "9",
-        "subject": "Islamiat",
-        "chapter": "باب دوم — ایمانیات و عبادات",
-        "chapterNumber": 2,
-        "topic": "رسالت اور ختمِ نبوتؐ پر پختہ ایمان",
-        "question": "اسلامیات برائے جماعت نہم، باب \"باب دوم — ایمانیات و عبادات\" (رسالت اور ختمِ نبوتؐ پر پختہ ایمان) کے مطابق: درج ذیل میں سے کون سی بات درست ہے؟",
-        "options": {
-          "A": "یہ \"رسالت اور ختمِ نبوتؐ پر پختہ ایمان\" کی صحیح نصابی تعلیمات اور مفاہیم کو واضح کرتا ہے۔",
-          "B": "یہ متن کے عمومی مفہوم کے برعکس ہے۔",
-          "C": "اس کا نصاب سے کوئی تعلق نہیں ہے۔",
-          "D": "یہ غیر مستند قیاس ہے۔"
-        },
-        "correctAnswer": "A",
-        "explanation": "Official learning outcome for Grade 9 Islamiat, Chapter \"باب دوم — ایمانیات و عبادات\" (رسالت اور ختمِ نبوتؐ پر پختہ ایمان).",
-        "difficulty": "medium",
-        "verified": true,
-        "source": "curriculum-bank",
-        "createdAt": "2026-08-23T21:12:49.136Z"
-      },
-      {
-        "id": "fbise9_isl_ch2_q3",
-        "board": "fbise",
-        "grade": "9",
-        "subject": "Islamiat",
-        "chapter": "باب دوم — ایمانیات و عبادات",
-        "chapterNumber": 2,
-        "topic": "آخرت اور جزا و سزا کا تصور",
-        "question": "اسلامیات برائے جماعت نہم، باب \"باب دوم — ایمانیات و عبادات\" (آخرت اور جزا و سزا کا تصور) کے مطابق: درج ذیل میں سے کون سی بات درست ہے؟",
-        "options": {
-          "A": "یہ \"آخرت اور جزا و سزا کا تصور\" کی صحیح نصابی تعلیمات اور مفاہیم کو واضح کرتا ہے۔",
-          "B": "یہ متن کے عمومی مفہوم کے برعکس ہے۔",
-          "C": "اس کا نصاب سے کوئی تعلق نہیں ہے۔",
-          "D": "یہ غیر مستند قیاس ہے۔"
-        },
-        "correctAnswer": "A",
-        "explanation": "Official learning outcome for Grade 9 Islamiat, Chapter \"باب دوم — ایمانیات و عبادات\" (آخرت اور جزا و سزا کا تصور).",
-        "difficulty": "medium",
-        "verified": true,
-        "source": "curriculum-bank",
-        "createdAt": "2026-08-23T21:12:49.136Z"
-      },
-      {
-        "id": "fbise9_isl_ch2_q4",
-        "board": "fbise",
-        "grade": "9",
-        "subject": "Islamiat",
-        "chapter": "باب دوم — ایمانیات و عبادات",
-        "chapterNumber": 2,
-        "topic": "نماز، روزہ، زکوٰۃ اور حج کی روحانی و معاشرتی اہمیت",
-        "question": "اسلامیات برائے جماعت نہم، باب \"باب دوم — ایمانیات و عبادات\" (نماز، روزہ، زکوٰۃ اور حج کی روحانی و معاشرتی اہمیت) کے مطابق: درج ذیل میں سے کون سی بات درست ہے؟",
-        "options": {
-          "A": "یہ \"نماز، روزہ، زکوٰۃ اور حج کی روحانی و معاشرتی اہمیت\" کی صحیح نصابی تعلیمات اور مفاہیم کو واضح کرتا ہے۔",
-          "B": "یہ متن کے عمومی مفہوم کے برعکس ہے۔",
-          "C": "اس کا نصاب سے کوئی تعلق نہیں ہے۔",
-          "D": "یہ غیر مستند قیاس ہے۔"
-        },
-        "correctAnswer": "A",
-        "explanation": "Official learning outcome for Grade 9 Islamiat, Chapter \"باب دوم — ایمانیات و عبادات\" (نماز، روزہ، زکوٰۃ اور حج کی روحانی و معاشرتی اہمیت).",
-        "difficulty": "medium",
-        "verified": true,
-        "source": "curriculum-bank",
-        "createdAt": "2026-08-23T21:12:49.136Z"
-      },
-      {
-        "id": "fbise9_isl_ch2_q5",
-        "board": "fbise",
-        "grade": "9",
-        "subject": "Islamiat",
-        "chapter": "باب دوم — ایمانیات و عبادات",
-        "chapterNumber": 2,
-        "topic": "توحید اور اس کے انسانی زندگی پر اثرات",
-        "question": "اسلامیات برائے جماعت نہم، باب \"باب دوم — ایمانیات و عبادات\" (توحید اور اس کے انسانی زندگی پر اثرات) کے مطابق: درج ذیل میں سے کون سی بات درست ہے؟",
-        "options": {
-          "A": "یہ \"توحید اور اس کے انسانی زندگی پر اثرات\" کی صحیح نصابی تعلیمات اور مفاہیم کو واضح کرتا ہے۔",
-          "B": "یہ متن کے عمومی مفہوم کے برعکس ہے۔",
-          "C": "اس کا نصاب سے کوئی تعلق نہیں ہے۔",
-          "D": "یہ غیر مستند قیاس ہے۔"
-        },
-        "correctAnswer": "A",
-        "explanation": "Official learning outcome for Grade 9 Islamiat, Chapter \"باب دوم — ایمانیات و عبادات\" (توحید اور اس کے انسانی زندگی پر اثرات).",
-        "difficulty": "medium",
-        "verified": true,
-        "source": "curriculum-bank",
-        "createdAt": "2026-08-23T21:12:49.136Z"
-      },
-      {
-        "id": "fbise9_isl_ch2_q6",
-        "board": "fbise",
-        "grade": "9",
-        "subject": "Islamiat",
-        "chapter": "باب دوم — ایمانیات و عبادات",
-        "chapterNumber": 2,
-        "topic": "رسالت اور ختمِ نبوتؐ پر پختہ ایمان",
-        "question": "اسلامیات برائے جماعت نہم، باب \"باب دوم — ایمانیات و عبادات\" (رسالت اور ختمِ نبوتؐ پر پختہ ایمان) کے مطابق: درج ذیل میں سے کون سی ب
+     
