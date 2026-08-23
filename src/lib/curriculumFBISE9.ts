@@ -252,7 +252,104 @@ export function getChapterSyllabusScope(
   const requiredKeywords: string[] = [];
   const forbiddenCrossChapterPatterns: { pattern: RegExp; reason: string }[] = [];
 
-  if (normSub.includes('chem')) {
+  if (normSub.includes('phys')) {
+    if (normTopic.includes('measurement') || normTopic.includes('physical quantit')) {
+      requiredKeywords.push(
+        'base unit', 'derived unit', 'vernier', 'screw gauge', 'least count', 'zero error',
+        'significant figure', 'prefix', 'scientific notation', 'measuring cylinder', 'kelvin',
+        'meter', 'second', 'kilogram', 'ampere', 'mole', 'candela', 'stopwatch', 'physical balance',
+        'digital balance', 'pitch', 'meniscus', 'standard form', 'precision', 'accuracy', 'micro',
+        'pico', 'nano', 'kilo', 'mega', 'giga', 'derived quantity', 'base quantity'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(equations of motion|speed-time graph|distance-time graph|uniform acceleration|initial velocity|final velocity|motion under gravity|free fall|v\s*=\s*u\s*\+\s*at|s\s*=\s*ut)\b/i, reason: 'Kinematics & motion concepts belong to Chapter 2 (Kinematics).' },
+        { pattern: /\b(newton's (first|second|third) law|law of inertia|f\s*=\s*ma|net force of|mass of \d+\s*kg accelerates|momentum p\s*=\s*mv|conservation of momentum|centripetal force|static friction|sliding friction)\b/i, reason: 'Dynamics & forces concepts belong to Chapters 3 & 4 (Dynamics).' },
+        { pattern: /\b(kinetic energy|potential energy|e_k\s*=\s*\\frac\{1\}\{2\}mv\^2|e_p\s*=\s*mgh|work done w\s*=\s*f|power in watts|efficiency of machine|forms of energy)\b/i, reason: 'Work and Energy concepts belong to Chapter 6 (Work and Energy).' },
+        { pattern: /\b(pascal's (law|principle)|hydraulic lift|archimedes|upthrust|hydrostatic pressure|barometer|hooke's law|young's modulus|stress and strain|elasticity)\b/i, reason: 'Pressure and Deformation concepts belong to Chapter 5.' },
+        { pattern: /\b(specific heat capacity|thermal expansion|latent heat of|thermometric property|temperature scale|celsius to fahrenheit|expansion of water)\b/i, reason: 'Thermal physics concepts belong to Chapter 7 (Density and Temperature).' },
+        { pattern: /\b(magnetic pole|magnetic domain|ferromagnetism|solenoid|magnetic field lines|electromagnet)\b/i, reason: 'Magnetism concepts belong to Chapter 8 (Magnetism).' },
+        { pattern: /\b(ohm's law|electric potential difference|resistor carrying|electric current of \d+\s*a|concave mirror|convex mirror|focal length|refraction|snell's law|reflection)\b/i, reason: 'Electricity and Optics belong to Grade 10 Physics.' }
+      );
+    } else if (normTopic.includes('kinematic')) {
+      requiredKeywords.push(
+        'speed', 'velocity', 'acceleration', 'displacement', 'distance', 'scalar', 'vector',
+        'speed-time graph', 'distance-time graph', 'equations of motion', 'free fall', 'gravity',
+        'translatory', 'rotatory', 'vibratory', 'uniform velocity', 'uniform acceleration',
+        'slope of graph', 'area under speed-time graph'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|micrometer screw gauge|least count of \d+|positive zero error|significant figures in \d+)\b/i, reason: 'Measuring instruments belong to Chapter 1 (Measurements).' },
+        { pattern: /\b(newton's (first|second|third) law|law of inertia|f\s*=\s*ma|atwood machine|friction coefficient|tension in string)\b/i, reason: 'Forces and laws of motion belong to Dynamics.' },
+        { pattern: /\b(kinetic energy|potential energy|e_k|e_p|work done|joule|watt)\b/i, reason: 'Work and Energy belongs to Chapter 6.' },
+        { pattern: /\b(pascal's law|hydraulic lift|archimedes|upthrust|hooke's law|young's modulus)\b/i, reason: 'Fluid pressure belongs to Chapter 5.' },
+        { pattern: /\b(magnetic pole|electromagnet|resistor|ohm's law|concave mirror)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('dynamics – i') || (normTopic.includes('dynamics') && !normTopic.includes('ii'))) {
+      requiredKeywords.push(
+        'newton', 'first law', 'second law', 'third law', 'inertia', 'force', 'mass',
+        'weight', 'action and reaction', 'f = ma', 'tension', 'atwood machine', 'pulley'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count|significant figure)\b/i, reason: 'Belongs to Chapter 1 (Measurements).' },
+        { pattern: /\b(kinetic energy|work done|potential energy|joule|watt)\b/i, reason: 'Belongs to Chapter 6 (Work and Energy).' },
+        { pattern: /\b(pascal's law|archimedes|hydraulic lift|hooke's law)\b/i, reason: 'Belongs to Chapter 5.' },
+        { pattern: /\b(concave mirror|resistor|ohm's law|potential difference)\b/i, reason: 'Belongs to Grade 10.' }
+      );
+    } else if (normTopic.includes('dynamics – ii') || normTopic.includes('momentum') || normTopic.includes('circular motion')) {
+      requiredKeywords.push(
+        'momentum', 'conservation of momentum', 'impulse', 'friction', 'static friction',
+        'limiting friction', 'rolling friction', 'centripetal force', 'centripetal acceleration',
+        'banking of roads', 'centrifuge', 'circular motion'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count|significant figure)\b/i, reason: 'Belongs to Chapter 1 (Measurements).' },
+        { pattern: /\b(kinetic energy formula|potential energy formula|work done|joule|watt)\b/i, reason: 'Belongs to Chapter 6 (Work and Energy).' },
+        { pattern: /\b(pascal's law|archimedes|hooke's law|young's modulus)\b/i, reason: 'Belongs to Chapter 5.' }
+      );
+    } else if (normTopic.includes('pressure') || normTopic.includes('deformation')) {
+      requiredKeywords.push(
+        'pressure', 'pascal', 'atmospheric pressure', 'barometer', 'hydraulics', 'hydraulic lift',
+        'archimedes', 'upthrust', 'buoyancy', 'floatation', 'density', 'elasticity', 'hooke',
+        'stress', 'strain', 'young\'s modulus', 'elastic limit'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(equations of motion|speed-time graph|centripetal force)\b/i, reason: 'Belongs to Kinematics / Dynamics.' },
+        { pattern: /\b(kinetic energy|potential energy|work done)\b/i, reason: 'Belongs to Work and Energy.' }
+      );
+    } else if (normTopic.includes('work') || normTopic.includes('energy')) {
+      requiredKeywords.push(
+        'work', 'energy', 'kinetic energy', 'potential energy', 'gravitational potential energy',
+        'joule', 'watt', 'power', 'efficiency', 'conservation of energy', 'forms of energy',
+        'interconversion', 'solar energy', 'fossil fuel'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count|zero error)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(pascal's law|hydraulic lift|archimedes|young's modulus)\b/i, reason: 'Belongs to Chapter 5.' },
+        { pattern: /\b(resistor carrying current|ohm's law|concave mirror)\b/i, reason: 'Belongs to Grade 10.' }
+      );
+    } else if (normTopic.includes('density') || normTopic.includes('temperature') || normTopic.includes('heat')) {
+      requiredKeywords.push(
+        'density', 'temperature', 'heat', 'thermal equilibrium', 'thermometer', 'celsius',
+        'fahrenheit', 'kelvin', 'thermal expansion', 'bimetallic', 'anomalous expansion',
+        'specific heat capacity', 'latent heat', 'fusion', 'vaporization', 'evaporation'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(equations of motion|centripetal force|atwood machine)\b/i, reason: 'Belongs to Kinematics / Dynamics.' }
+      );
+    } else if (normTopic.includes('magnetism') || normTopic.includes('magnetic')) {
+      requiredKeywords.push(
+        'magnet', 'magnetic pole', 'magnetic field', 'field lines', 'north pole', 'south pole',
+        'domain', 'ferromagnet', 'temporary magnet', 'permanent magnet', 'electromagnet',
+        'solenoid', 'demagnetization', 'magnetic shielding'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
+        { pattern: /\b(equations of motion|kinetic energy|work done)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    }
+  } else if (normSub.includes('chem')) {
     if (normTopic.includes('atomic structure') || normTopic.includes('atom')) {
       requiredKeywords.push(
         'atom', 'proton', 'neutron', 'electron', 'nucleus', 'subatomic',
@@ -418,23 +515,44 @@ export function getChapterSyllabusScope(
     } else if (normTopic.includes('عصری') || normTopic.includes('تعلیمات') || normTopic.includes('bab 7') || normTopic.includes('باب ہفتم')) {
       requiredKeywords.push('اتحاد بین المسلمین', 'فرقہ واریت', 'اسلام اور سائنس', 'ماحولیاتی آلودگی', 'شجرکاری', 'سوشل میڈیا', 'طلب العلم فریضۃ');
     }
-  } else if (normSub.includes('phys')) {
-    if (normTopic.includes('measurement') || normTopic.includes('physical quantit')) {
-      requiredKeywords.push('base unit', 'derived unit', 'vernier', 'screw gauge', 'least count', 'zero error', 'significant figure', 'prefix', 'scientific notation', 'measuring cylinder', 'kelvin', 'meter', 'second', 'kilogram');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(equations of motion|speed-time graph|pascal's law|archimedes|magnetic pole)\b/i, reason: 'Belongs to other physics chapters.' }
-      );
-    } else if (normTopic.includes('kinematic')) {
-      requiredKeywords.push('speed', 'velocity', 'acceleration', 'displacement', 'distance', 'scalar', 'vector', 'speed-time graph', 'equations of motion', 'free fall', 'gravity');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(vernier caliper least count|pascal's law|hydraulic lift|magnetic pole|hooke's law)\b/i, reason: 'Belongs to other physics chapters.' }
-      );
-    }
   } else if (normSub.includes('bio')) {
     if (normTopic.includes('cell')) {
-      requiredKeywords.push('cell', 'organelle', 'nucleus', 'mitochondria', 'ribosome', 'chloroplast', 'endoplasmic reticulum', 'golgi', 'cell wall', 'membrane', 'prokaryote', 'eukaryote', 'osmosis', 'diffusion');
+      requiredKeywords.push('cell', 'organelle', 'nucleus', 'mitochondria', 'ribosome', 'chloroplast', 'endoplasmic reticulum', 'golgi', 'cell wall', 'membrane', 'prokaryote', 'eukaryote', 'osmosis', 'diffusion', 'lysosome', 'vacuole', 'centriole');
       forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(flower double fertilization|fossil paleontology|transpiration pull|mendel genetics)\b/i, reason: 'Belongs to other biology chapters.' }
+        { pattern: /\b(flower double fertilization|fossil paleontology|transpiration pull|mendel genetics|synapse|neuron)\b/i, reason: 'Belongs to other biology chapters.' }
+      );
+    } else if (normTopic.includes('enzyme')) {
+      requiredKeywords.push('enzyme', 'substrate', 'active site', 'lock and key', 'induced fit', 'denaturation', 'catalyst', 'activation energy', 'optimum temperature', 'optimum ph', 'inhibitor');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(double fertilization|heart chamber|transpiration pull|fossil)\b/i, reason: 'Belongs to other biology chapters.' }
+      );
+    } else if (normTopic.includes('bioenergetic') || normTopic.includes('photosynthesis') || normTopic.includes('respiration')) {
+      requiredKeywords.push('atp', 'photosynthesis', 'respiration', 'chlorophyll', 'light reaction', 'dark reaction', 'calvin cycle', 'glycolysis', 'krebs cycle', 'aerobic', 'anaerobic', 'fermentation', 'lactic acid');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(mitosis phases|meiosis stages|mendel ratio)\b/i, reason: 'Belongs to other biology chapters.' }
+      );
+    } else if (normTopic.includes('nutrition') || normTopic.includes('digest')) {
+      requiredKeywords.push('nutrition', 'digestion', 'stomach', 'pepsin', 'hydrochloric acid', 'small intestine', 'villi', 'liver', 'bile', 'pancreas', 'carbohydrate', 'protein', 'lipid', 'vitamin', 'mineral', 'malnutrition');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(calvin cycle|glycolysis|electron transport chain)\b/i, reason: 'Belongs to Bioenergetics.' }
+      );
+    } else if (normTopic.includes('transport') || normTopic.includes('cardio') || normTopic.includes('blood')) {
+      requiredKeywords.push('xylem', 'phloem', 'transpiration', 'stomata', 'blood', 'rbc', 'wbc', 'platelet', 'plasma', 'heart', 'atrium', 'ventricle', 'artery', 'vein', 'capillary', 'systole', 'diastole', 'abo blood group');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(stomach pepsin|chloroplast light reaction)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    }
+  } else if (normSub.includes('comp') || normSub.includes('cs')) {
+    if (normTopic.includes('fundamental') || normTopic.includes('hardware') || normTopic.includes('introduction')) {
+      requiredKeywords.push('computer', 'cpu', 'alu', 'cu', 'ram', 'rom', 'input device', 'output device', 'motherboard', 'bus', 'system software', 'application software', 'operating system', 'bit', 'byte');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(sql query|select from where|database table|primary key|foreign key)\b/i, reason: 'Databases belong to Chapter 7/Database chapter.' },
+        { pattern: /\b(loop in c|printf|scanf|int main|pointer in c)\b/i, reason: 'Programming in C belongs to Chapters 5 & 6.' }
+      );
+    } else if (normTopic.includes('network') || normTopic.includes('communication')) {
+      requiredKeywords.push('network', 'lan', 'wan', 'man', 'pan', 'topology', 'star topology', 'bus topology', 'ring topology', 'mesh topology', 'ip address', 'router', 'switch', 'modem', 'transmission media', 'fiber optic', 'twisted pair', 'coaxial');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(c programming syntax|database normalization)\b/i, reason: 'Belongs to other chapters.' }
       );
     }
   }

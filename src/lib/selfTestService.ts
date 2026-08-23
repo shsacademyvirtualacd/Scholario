@@ -21,7 +21,7 @@ export async function generateMCQTest(
     );
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
 
   try {
     const headers: Record<string, string> = {

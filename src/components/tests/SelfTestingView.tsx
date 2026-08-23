@@ -104,7 +104,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     isStudent ? studentBoardId : (defaultBoard || studentBoardId || 'fbise')
   );
   const [grade, setGrade] = useState<string>(
-    isStudent ? studentGrade : (defaultGrade || studentGrade || '10')
+    isStudent ? studentGrade : (defaultGrade || studentGrade || '9')
   );
   const [subject, setSubject] = useState<string>(defaultSubject || 'Physics');
   const [customSubject, setCustomSubject] = useState<string>('');
@@ -308,10 +308,10 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
           questionCount: nextBatchCount,
         };
 
-        // Safety timeout of 20 seconds for the background API call
+        // Safety timeout of 40 seconds for the background API call
         const fetchPromise = generateMCQTest(batchConfig, excludeTexts);
         const timeoutPromise = new Promise<MCQQuestion[]>((_, reject) =>
-          setTimeout(() => reject(new Error('Background generation timed out after 20s')), 20000)
+          setTimeout(() => reject(new Error('Background generation timed out after 40s')), 40000)
         );
 
         let newBatch: MCQQuestion[] = [];

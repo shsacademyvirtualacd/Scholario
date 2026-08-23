@@ -386,23 +386,29 @@ Key Guidelines:
 1. Every single question MUST directly test concrete concepts and principles from "${syllabusScope.chapter}".`;
       }
 
+      // Build strict chapter confinement directives
       if (!isFullSyllabus && topic) {
         const subtopicList = syllabusScope.subtopics.map((s) => `  * ${s}`).join('\n');
-        const forbiddenList = syllabusScope.forbiddenCrossChapterPatterns.map((f) => `  * DO NOT INCLUDE: ${f.reason}`).join('\n');
+        const forbiddenList = syllabusScope.forbiddenCrossChapterPatterns.map((f) => `  * FORBIDDEN: ${f.reason}`).join('\n');
 
         subjectGuidance = `
 ======================================================================
-AUTHORITATIVE SYLLABUS CHAPTER SCOPING (STRICT REQUIREMENT)
+STRICT CHAPTER CONFINEMENT & SYLLABUS BOUNDARIES (MANDATORY)
 ======================================================================
 TARGET SUBJECT: ${syllabusScope.subject}
-OFFICIAL CHAPTER: "${syllabusScope.chapter}"
+OFFICIAL TARGET CHAPTER: "${syllabusScope.chapter}"
 TARGET GRADE: Grade ${effectiveGrade} (${String(effectiveBoard).toUpperCase()} Board)
 DIFFICULTY LEVEL: ${difficulty.replace('_', ' ').toUpperCase()}
 
-ALLOWED / MANDATORY SYLLABUS TOPICS FOR THIS CHAPTER:
+ALLOWED SYLLABUS TOPICS FOR THIS SPECIFIC CHAPTER:
 ${subtopicList || `  * All official textbook concepts for ${syllabusScope.chapter}`}
 
-${forbiddenList ? `STRICTLY FORBIDDEN CONCEPTS FOR THIS TEST:\n${forbiddenList}` : ''}
+${forbiddenList ? `STRICTLY FORBIDDEN CONCEPTS (DO NOT INCLUDE QUESTIONS FROM OTHER CHAPTERS):\n${forbiddenList}` : ''}
+
+CRITICAL CHAPTER ISOLATION RULE:
+Every single question MUST be 100% strictly confined to "${syllabusScope.chapter}".
+Under NO circumstances should questions from other chapters of ${syllabusScope.subject} be generated (e.g., if testing Chapter 1: Physical Quantities & Measurement, NEVER generate questions on kinematics/acceleration, Newton's laws/dynamics, work/energy, electricity, or optics).
+Cross-chapter bleeding is considered a FATAL DEFECT and will fail validation.
 `;
       }
 
@@ -412,7 +418,7 @@ ${forbiddenList ? `STRICTLY FORBIDDEN CONCEPTS FOR THIS TEST:\n${forbiddenList}`
 
       const prompt = `You are a Senior Academic Examiner and Curriculum Assessment Director specializing in Pakistan Secondary and Higher Secondary Education (FBISE and Sindh Board 9th-12th Grade syllabus).
 
-Generate exactly ${count} rigorous, high-quality Multiple Choice Questions (MCQs) for self-testing and exam practice.
+Generate exactly ${count} rigorous, flawless Multiple Choice Questions (MCQs) for student self-testing and exam practice.
 
 Subject: ${syllabusScope.subject || subject}
 Topic / Chapter: ${syllabusScope.chapter || topic}
@@ -422,7 +428,7 @@ Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
 ${subjectGuidance}
 ${subjectMandatoryRequirement}
 ${excludePromptPart}
-STRICT ANTI-META DIRECTIVES:
+STRICT ANTI-META & ACCURACY DIRECTIVES:
 1. STRICTLY FORBIDDEN: NEVER write meta-questions about the curriculum, textbook accuracy, syllabus validity, or generic claims (e.g., 'Which statement is factually accurate according to the textbook', 'verified textbook principle', 'invalid assumption violating syllabus definitions').
 2. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').
 3. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors or misconceptions.
@@ -445,39 +451,36 @@ Return ONLY a valid JSON object matching this structure:
       "explanation": "Step-by-step reasoning explaining why option A is correct..."
     }
   ]
-}`;
+}
 
-      const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.7-flash', 'gemini-2.0-flash'];
+Ensure strictly valid JSON output with zero markdown formatting outside the JSON structure.`;
+
+      const targetModel = 'gemini-3.7-flash';
       let parsedData: any = null;
 
-      for (const targetModel of candidateModels) {
-        try {
-          const aiResponse = await client.models.generateContent({
-            model: targetModel,
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            config: {
-              responseMimeType: 'application/json',
-              temperature: 0.4,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-            },
-          });
+      try {
+        console.log(`[Generate MCQ] Generating ${count} MCQs using ${targetModel} for ${subject} -> "${syllabusScope.chapter || topic}"`);
+        const aiResponse = await client.models.generateContent({
+          model: targetModel,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.3,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        });
 
-          const responseText = aiResponse.text?.trim() || '';
-          if (!responseText) continue;
-
+        const responseText = aiResponse.text?.trim() || '';
+        if (responseText) {
           try {
             parsedData = JSON.parse(responseText);
           } catch {
             const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
             parsedData = JSON.parse(cleaned);
           }
-
-          if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
-            break;
-          }
-        } catch (modelErr: any) {
-          console.warn(`[Generate MCQ] Model ${targetModel} attempt failed:`, modelErr?.message || modelErr);
         }
+      } catch (modelErr: any) {
+        console.warn(`[Generate MCQ] Model ${targetModel} generation failed:`, modelErr?.message || modelErr);
       }
 
       const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 3, difficulty, effectiveGrade, effectiveBoard, normExcludes);
@@ -547,6 +550,7 @@ Return ONLY a valid JSON object matching this structure:
           return res.json({
             success: true,
             source: 'gemini-ai-validated',
+            model: targetModel,
             questions: validatedQuestions.slice(0, count),
           });
         }
