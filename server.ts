@@ -21,8 +21,9 @@ const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename
 
 import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDataTools';
 import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
-import { validateMCQQuestion, filterAndValidateMCQs } from './src/lib/mcqValidator';
-import { getChapterSyllabusScope } from './src/lib/curriculumFBISE9';
+import { validateMCQQuestion, filterAndValidateMCQs, validateQuestionTopicRelevance, checkQuestionDuplicate } from './src/lib/mcqValidator';
+import { getChapterSyllabusScope, FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from './src/lib/curriculumFBISE9';
+import type { StoredMCQ } from './src/types/questionBank';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -587,6 +588,201 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         source: 'curriculum-bank-error-fallback',
         questions: fallback,
       });
+    }
+  });
+
+  // ── Pre-Generated MCQ Question Bank Endpoints ────────
+  let serverCachedBank: Record<string, Record<string, StoredMCQ[]>> | null = null;
+  const BANK_FILE_PATH = path.resolve('src/data/grade9FbiseBank.json');
+
+  function getServerBankData(): Record<string, Record<string, StoredMCQ[]>> {
+    if (serverCachedBank && Object.keys(serverCachedBank).length > 0) {
+      return serverCachedBank;
+    }
+    try {
+      if (fs.existsSync(BANK_FILE_PATH)) {
+        const raw = fs.readFileSync(BANK_FILE_PATH, 'utf-8');
+        serverCachedBank = JSON.parse(raw);
+        return serverCachedBank!;
+      }
+    } catch (err) {
+      console.warn('[Server MCQ Bank] Error loading bank file from disk:', err);
+    }
+    serverCachedBank = {};
+    return serverCachedBank;
+  }
+
+  // 1. Instant Retrieval from Stored MCQ Bank (0ms live API delay)
+  app.post('/api/mcq-bank/fetch', async (req, res) => {
+    try {
+      const {
+        subject = 'Physics',
+        topic,
+        chapter,
+        grade = '9',
+        board = 'fbise',
+        count = 10,
+        difficulty = 'medium',
+        excludeIds = [],
+        excludeTexts = [],
+        selectedChapters = [],
+        examMode = 'single_chapter',
+      } = req.body || {};
+
+      const targetCount = Math.max(1, Number(count) || 10);
+      const normSubject = normalizeFBISEGrade9Subject(subject) || subject;
+      const bank = getServerBankData();
+      const subjectBank = bank[normSubject] || {};
+
+      const excludeSet = new Set<string>(
+        (excludeTexts as string[]).map((t) => t.trim().toLowerCase()).concat(
+          (excludeIds as string[]).map((id) => id.toLowerCase())
+        )
+      );
+
+      let pool: StoredMCQ[] = [];
+      const isFullSyllabus = examMode === 'full_syllabus' || !topic || topic.toLowerCase() === 'full syllabus' || topic.toLowerCase() === 'mixed chapters';
+
+      if (isFullSyllabus) {
+        const allChapters = Object.keys(subjectBank);
+        if (allChapters.length > 0) {
+          const perChap = Math.max(1, Math.ceil(targetCount / allChapters.length));
+          for (const chName of allChapters) {
+            const chQuestions = (subjectBank[chName] || []).filter(
+              (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
+            );
+            // Deterministic or random sampling
+            pool.push(...[...chQuestions].sort(() => 0.5 - Math.random()).slice(0, perChap));
+          }
+        }
+      } else if (examMode === 'multi_chapter' && Array.isArray(selectedChapters) && selectedChapters.length > 0) {
+        const perChap = Math.max(1, Math.ceil(targetCount / selectedChapters.length));
+        for (const chName of selectedChapters) {
+          const chQuestions = (subjectBank[chName] || []).filter(
+            (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
+          );
+          pool.push(...[...chQuestions].sort(() => 0.5 - Math.random()).slice(0, perChap));
+        }
+      } else {
+        // Single chapter matching
+        const targetChapName = (chapter || topic || '').trim();
+        let matchedKey = Object.keys(subjectBank).find(
+          (k) => k.toLowerCase() === targetChapName.toLowerCase()
+        );
+        if (!matchedKey) {
+          matchedKey = Object.keys(subjectBank).find(
+            (k) => k.toLowerCase().includes(targetChapName.toLowerCase()) || targetChapName.toLowerCase().includes(k.toLowerCase())
+          );
+        }
+
+        if (matchedKey && subjectBank[matchedKey]) {
+          pool = subjectBank[matchedKey].filter(
+            (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
+          );
+        }
+      }
+
+      // Shuffle pool
+      const shuffled = [...pool].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, targetCount);
+
+      // If bank has fewer than requested, top up safely with verified curriculum questions
+      if (selected.length < targetCount) {
+        const needed = targetCount - selected.length;
+        const currentExcludes = selected.map((q) => q.question);
+        const fallbackQuestions = generateCurriculumFallbackMCQs(
+          normSubject,
+          chapter || topic || 'Core Curriculum',
+          needed * 2,
+          difficulty,
+          grade,
+          board,
+          currentExcludes
+        );
+
+        for (const fq of fallbackQuestions) {
+          if (selected.length >= targetCount) break;
+          selected.push({
+            id: fq.id || `bank_${Date.now()}_${selected.length + 1}`,
+            board,
+            grade,
+            subject: normSubject,
+            chapter: chapter || topic || 'Core Curriculum',
+            chapterNumber: 1,
+            topic: chapter || topic || 'Core Curriculum',
+            question: fq.question,
+            options: fq.options,
+            correctAnswer: fq.correctAnswer,
+            explanation: fq.explanation,
+            difficulty: fq.difficulty || 'medium',
+            verified: true,
+            source: 'curriculum-bank',
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        source: 'stored-bank',
+        questions: selected,
+        totalAvailableInBank: pool.length,
+        isPartial: selected.length < targetCount,
+      });
+    } catch (err: any) {
+      console.error('[MCQ Bank Fetch Error]:', err);
+      const fallback = generateCurriculumFallbackMCQs(
+        req.body?.subject || 'Physics',
+        req.body?.topic || 'Core Curriculum',
+        Number(req.body?.count) || 10,
+        req.body?.difficulty || 'medium',
+        req.body?.grade || '9',
+        req.body?.board || 'fbise'
+      );
+      return res.json({
+        success: true,
+        source: 'curriculum-bank-error-fallback',
+        questions: fallback,
+        totalAvailableInBank: fallback.length,
+        isPartial: false,
+      });
+    }
+  });
+
+  // 2. Question Bank Stats and Coverage Breakdown
+  app.get('/api/mcq-bank/stats', (_req, res) => {
+    try {
+      const bank = getServerBankData();
+      const stats: Record<string, { totalQuestions: number; chapters: Record<string, number> }> = {};
+      let grandTotal = 0;
+
+      for (const [subjName, subCurriculum] of Object.entries(FBISE_GRADE_9_CURRICULUM)) {
+        const subjBank = bank[subjName] || {};
+        let subjTotal = 0;
+        const chapStats: Record<string, number> = {};
+
+        for (const chap of subCurriculum.chapters) {
+          const count = (subjBank[chap.name] || []).length;
+          chapStats[chap.name] = count;
+          subjTotal += count;
+        }
+
+        stats[subjName] = {
+          totalQuestions: subjTotal,
+          chapters: chapStats,
+        };
+        grandTotal += subjTotal;
+      }
+
+      return res.json({
+        success: true,
+        board: 'fbise',
+        grade: '9',
+        grandTotal,
+        subjects: stats,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message || 'Failed to compute bank stats' });
     }
   });
 

@@ -2,6 +2,7 @@ import type { MCQQuestion, SelfTestConfig, SelfTestResult } from '../types/selfT
 import { generateCurriculumFallbackMCQs } from './curriculumMCQs';
 import { filterAndValidateMCQs } from './mcqValidator';
 import { supabase } from './supabase';
+import { fetchStoredMCQTest } from './questionBankService';
 
 const SELF_TEST_HISTORY_KEY = 'scholario_self_test_history_v1';
 
@@ -20,6 +21,44 @@ export async function generateMCQTest(
       excludeQuestionTexts
     );
 
+  const validationContext = {
+    subject: config.subject,
+    topic: config.topic,
+    grade: config.grade,
+    board: config.board,
+  };
+
+  // 1. PRIMARY PATH: Instant retrieval from pre-generated verified MCQ question bank
+  try {
+    const bankResult = await fetchStoredMCQTest({
+      subject: config.subject,
+      topic: config.topic,
+      grade: config.grade,
+      board: config.board,
+      count: config.questionCount,
+      difficulty: config.difficulty,
+      excludeTexts: excludeQuestionTexts,
+      selectedChapters: config.selectedChapters,
+      examMode: config.examMode,
+    });
+    if (bankResult && Array.isArray(bankResult.questions) && bankResult.questions.length > 0) {
+      const validated = filterAndValidateMCQs(
+        bankResult.questions,
+        config.questionCount,
+        fallback(),
+        validationContext,
+        excludeQuestionTexts
+      );
+      if (validated.length >= config.questionCount) {
+        console.log(`[SelfTest] Served ${validated.length} questions from stored MCQ bank (${bankResult.source}).`);
+        return validated.slice(0, config.questionCount);
+      }
+    }
+  } catch (bankErr) {
+    console.warn('[SelfTest] Stored bank lookup encountered error, proceeding to live endpoint:', bankErr);
+  }
+
+  // 2. SECONDARY PATH: Live API generation with automatic fallback
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 35000);
 
@@ -48,13 +87,6 @@ export async function generateMCQTest(
     });
     clearTimeout(timeoutId);
 
-    const validationContext = {
-      subject: config.subject,
-      topic: config.topic,
-      grade: config.grade,
-      board: config.board,
-    };
-
     if (response.ok) {
       const data = (await response.json()) as { questions?: MCQQuestion[] };
       if (data && Array.isArray(data.questions) && data.questions.length > 0) {
@@ -71,12 +103,7 @@ export async function generateMCQTest(
   } catch (err: any) {
     console.warn('Network issue calling /api/tests/generate-mcq, falling back to curriculum question bank:', err);
     const fbPool = fallback();
-    return filterAndValidateMCQs(fbPool, config.questionCount, undefined, {
-      subject: config.subject,
-      topic: config.topic,
-      grade: config.grade,
-      board: config.board,
-    }, excludeQuestionTexts).slice(0, config.questionCount);
+    return filterAndValidateMCQs(fbPool, config.questionCount, undefined, validationContext, excludeQuestionTexts).slice(0, config.questionCount);
   }
 }
 
