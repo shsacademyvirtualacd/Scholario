@@ -34,7 +34,7 @@ const FORBIDDEN_META_PHRASES: (string | RegExp)[] = [
  * Global out-of-scope topics for Grade 9 & 10 (e.g., Higher Secondary / FSc topics)
  */
 const GRADE_9_10_FORBIDDEN_PATTERNS = [
-  { pattern: /\b(differentiation|differentiate|dy\/dx|f'\(x\)|calculus|integrals?|integration|antiderivative|\blim_{|limit as x approaches|derivative of (a |the )?(function|curve|equation|polynomial|expression|variable))\b/i, reason: 'Calculus/Derivatives is out of scope for Grade 9/10 (taught in FSc Part 1/Grade 11)' },
+  { pattern: /\b(calculus|dy\/dx|f'\(x\)|\b\\int\b|antiderivative|\blim_{|limit as x approaches|derivative of (a |the )?(function|curve|equation|polynomial|expression|variable)|(definite|indefinite) integral|integration by parts|differentiate (the|with respect to))\b/i, reason: 'Calculus/Derivatives is out of scope for Grade 9/10 (taught in FSc Part 1/Grade 11)' },
   { pattern: /\b(eigenvalues?|eigenvectors?|cayley-hamilton|rank of matrix)\b/i, reason: 'Advanced linear algebra is out of scope for Grade 9/10' },
   { pattern: /\b(de moivre's theorem|cube roots of unity (\omega|\w)|euler's formula e\^\{i)\b/i, reason: 'Higher complex analysis is out of scope for Grade 9' },
 ];

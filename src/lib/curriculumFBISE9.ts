@@ -712,31 +712,26 @@ export function getChapterSyllabusScope(
       requiredKeywords.push('اتحاد بین المسلمین', 'فرقہ واریت', 'اسلام اور سائنس', 'ماحولیاتی آلودگی', 'شجرکاری', 'سوشل میڈیا', 'طلب العلم فریضۃ');
     }
   } else if (normSub.includes('bio')) {
-    if (normTopic.includes('cell')) {
-      requiredKeywords.push('cell', 'organelle', 'nucleus', 'mitochondria', 'ribosome', 'chloroplast', 'endoplasmic reticulum', 'golgi', 'cell wall', 'membrane', 'prokaryote', 'eukaryote', 'osmosis', 'diffusion', 'lysosome', 'vacuole', 'centriole');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(flower double fertilization|fossil paleontology|transpiration pull|mendel genetics|synapse|neuron)\b/i, reason: 'Belongs to other biology chapters.' }
-      );
-    } else if (normTopic.includes('enzyme')) {
-      requiredKeywords.push('enzyme', 'substrate', 'active site', 'lock and key', 'induced fit', 'denaturation', 'catalyst', 'activation energy', 'optimum temperature', 'optimum ph', 'inhibitor');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(double fertilization|heart chamber|transpiration pull|fossil)\b/i, reason: 'Belongs to other biology chapters.' }
-      );
-    } else if (normTopic.includes('bioenergetic') || normTopic.includes('photosynthesis') || normTopic.includes('respiration')) {
-      requiredKeywords.push('atp', 'photosynthesis', 'respiration', 'chlorophyll', 'light reaction', 'dark reaction', 'calvin cycle', 'glycolysis', 'krebs cycle', 'aerobic', 'anaerobic', 'fermentation', 'lactic acid');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(mitosis phases|meiosis stages|mendel ratio)\b/i, reason: 'Belongs to other biology chapters.' }
-      );
-    } else if (normTopic.includes('nutrition') || normTopic.includes('digest')) {
-      requiredKeywords.push('nutrition', 'digestion', 'stomach', 'pepsin', 'hydrochloric acid', 'small intestine', 'villi', 'liver', 'bile', 'pancreas', 'carbohydrate', 'protein', 'lipid', 'vitamin', 'mineral', 'malnutrition');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(calvin cycle|glycolysis|electron transport chain)\b/i, reason: 'Belongs to Bioenergetics.' }
-      );
-    } else if (normTopic.includes('transport') || normTopic.includes('cardio') || normTopic.includes('blood')) {
-      requiredKeywords.push('xylem', 'phloem', 'transpiration', 'stomata', 'blood', 'rbc', 'wbc', 'platelet', 'plasma', 'heart', 'atrium', 'ventricle', 'artery', 'vein', 'capillary', 'systole', 'diastole', 'abo blood group');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(stomach pepsin|chloroplast light reaction)\b/i, reason: 'Belongs to other chapters.' }
-      );
+    if (normTopic.includes('cell cycle') || normTopic.includes('mitosis') || normTopic.includes('meiosis')) {
+      requiredKeywords.push('cell cycle', 'interphase', 'mitosis', 'meiosis', 'prophase', 'metaphase', 'anaphase', 'telophase', 'cytokinesis', 'karyokinesis', 'g1', 's phase', 'g2', 'g0', 'spindle', 'centrosome', 'centriole', 'sister chromatid', 'homologous', 'synapsis', 'chiasma', 'crossing over', 'bivalent', 'tetrad', 'apoptosis', 'necrosis', 'cleavage furrow', 'phragmoplast', 'cell plate', 'cancer', 'tumor', 'cyclin');
+    } else if (normTopic.includes('the cell') || normTopic.includes('cell structure')) {
+      requiredKeywords.push('cell', 'organelle', 'nucleus', 'mitochondria', 'ribosome', 'chloroplast', 'endoplasmic reticulum', 'golgi', 'cell wall', 'membrane', 'prokaryote', 'eukaryote', 'osmosis', 'diffusion', 'lysosome', 'vacuole', 'centriole', 'microscope', 'microscopy', 'magnification', 'resolution', 'sem', 'tem', 'cytoplasm', 'cristae', 'granum', 'thylakoid', 'plastid', 'fluid mosaic', 'phospholipid', 'peptidoglycan');
+    } else if (normTopic.includes('molecular biology')) {
+      requiredKeywords.push('dna', 'rna', 'protein', 'lipid', 'carbohydrate', 'nucleotide', 'amino acid', 'peptide', 'polypeptide', 'phospholipid', 'glucose', 'monosaccharide', 'polysaccharide', 'adenine', 'thymine', 'guanine', 'cytosine', 'uracil', 'double helix', 'watson', 'crick', 'ester bond', 'glycosidic', 'triglyceride', 'fatty acid', 'hydrogen bond', 'nitrogenous base', 'vitamin', 'ascorbic', 'scurvy', 'rickets', 'water', 'mineral', 'collagen', 'starch', 'glycogen', 'cellulose');
+    } else if (normTopic.includes('science of biology')) {
+      requiredKeywords.push('biology', 'scientific method', 'hypothesis', 'observation', 'experiment', 'deduction', 'theory', 'law', 'bioeconomics', 'biophysics', 'biochemistry', 'biometry', 'biogeography', 'zoology', 'botany', 'microbiology', 'morphology', 'anatomy', 'histology', 'physiology', 'genetics', 'ecology', 'jabir ibn hayyan', 'abdul malik asmai', 'bu ali sina', 'quantitative', 'qualitative', 'biosphere', 'population', 'community', 'biome', 'organism', 'organization', 'subatomic', 'molecule', 'brassica', 'mustard', 'rana tigrina', 'frog', 'amoeba', 'volvox');
+    } else if (normTopic.includes('tissue') || normTopic.includes('organ')) {
+      requiredKeywords.push('tissue', 'organ', 'organ system', 'epithelial', 'connective', 'muscle', 'nervous', 'xylem', 'phloem', 'meristematic', 'meristem', 'parenchyma', 'collenchyma', 'sclerenchyma', 'epidermal', 'ground tissue', 'stomach', 'heart', 'liver', 'root', 'stem', 'leaf', 'neuron', 'axon', 'dendrite', 'matrix');
+    } else if (normTopic.includes('biodiversity')) {
+      requiredKeywords.push('biodiversity', 'classification', 'species', 'genus', 'family', 'order', 'class', 'phylum', 'kingdom', 'monera', 'protista', 'fungi', 'plantae', 'animalia', 'linnaeus', 'whittaker', 'binomial nomenclature', 'scientific name', 'deforestation', 'endangered', 'conservation', 'taxa', 'taxonomy', 'flora', 'fauna', 'virus', 'viruses', 'prion', 'viroid', 'acellular', 'crystalliz', 'three kingdom', 'two kingdom', 'five kingdom', 'markhor', 'indus dolphin', 'snow leopard', 'houbara', 'chakor', 'national animal', 'national bird', 'habitat loss', 'poaching', 'wwf');
+    } else if (normTopic.includes('metabolism') || normTopic.includes('enzyme')) {
+      requiredKeywords.push('metabolism', 'anabolism', 'catabolism', 'enzyme', 'substrate', 'active site', 'lock and key', 'induced fit', 'koshland', 'fischer', 'activation energy', 'denaturation', 'inhibitor', 'coenzyme', 'cofactor', 'prosthetic group', 'temperature', 'ph', 'atp', 'adenosine triphosphate');
+    } else if (normTopic.includes('plant physiology') || normTopic.includes('photosynthesis') || normTopic.includes('respiration')) {
+      requiredKeywords.push('photosynthesis', 'respiration', 'chlorophyll', 'light reaction', 'dark reaction', 'calvin cycle', 'glycolysis', 'krebs cycle', 'atp', 'transpiration', 'stomata', 'guard cell', 'xylem', 'phloem', 'cohesion-tension', 'potometer', 'osmosis', 'turgor', 'aerobic', 'anaerobic', 'fermentation', 'electron transport');
+    } else if (normTopic.includes('plant reproduction')) {
+      requiredKeywords.push('reproduction', 'flower', 'stamen', 'carpel', 'pistil', 'anther', 'pollen', 'ovule', 'ovary', 'pollination', 'fertilization', 'double fertilization', 'endosperm', 'zygote', 'seed', 'fruit', 'germination', 'hypogeal', 'epigeal', 'asexual', 'sexual', 'vegetative', 'cutting', 'grafting', 'microspore', 'megaspore', 'corm', 'bulb', 'rhizome', 'tuber', 'runner', 'sucker', 'propagation');
+    } else if (normTopic.includes('evolution')) {
+      requiredKeywords.push('evolution', 'natural selection', 'darwin', 'lamarck', 'adaptation', 'speciation', 'fossil', 'paleontology', 'homologous', 'analogous', 'vestigial', 'variation', 'origin of species', 'fitness', 'gene pool', 'geological time', 'ancestor');
     }
   } else if (normSub.includes('comp') || normSub.includes('cs')) {
     if (normTopic.includes('fundamental') || normTopic.includes('hardware') || normTopic.includes('introduction')) {
