@@ -15,8 +15,14 @@ export interface MCQQuestion {
   explanation: string;
   topic?: string;
   chapter?: string;
+  chapterNumber?: number;
   subject?: string;
+  board?: string;
+  grade?: string;
   difficulty?: MCQDifficulty;
+  verified?: boolean;
+  source?: string;
+  createdAt?: string;
 }
 
 export interface SelfTestConfig {
