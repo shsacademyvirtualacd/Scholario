@@ -234,25 +234,34 @@ export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[])
 export function getStudentBoardLabel(
   student: {
     board_id?: string | null;
-    board?: { id?: string; name?: string } | null;
-    class?: { board_id?: string; grade?: string; display_name?: string; board?: { id?: string; name?: string } } | null;
+    board?: { id?: string; name?: string } | string | null;
+    class?: { board_id?: string; grade?: string; display_name?: string; board?: { id?: string; name?: string } | string } | null;
     id?: string;
   },
   enrollments?: Array<{ student_id: string; offering_id: string }>,
-  offerings?: Array<{ id: string; grade?: string; board?: string; class_id?: string; class?: { board_id?: string; board?: { name?: string } } }>
+  offerings?: Array<{ id: string; grade?: string; board?: string; class_id?: string; class?: { board_id?: string; board?: { id?: string; name?: string } | string } }>
 ): string {
-  // 1. Check direct board_id or joined board on student profile
-  const boardId = student.board_id || student.board?.id || student.class?.board_id || student.class?.board?.id;
-  if (boardId) {
-    if (boardId === 'sindh') return 'Sindh Board';
-    if (boardId === 'fbise') return 'Federal Board (FBISE)';
-    const bDef = BOARDS.find((b) => b.id === boardId);
+  // 1. Check direct board_id or board on student profile
+  const rawBoardId =
+    student.board_id ||
+    (typeof student.board === 'string' ? student.board : student.board?.id) ||
+    student.class?.board_id ||
+    (typeof student.class?.board === 'string' ? student.class?.board : (student.class?.board as { id?: string })?.id);
+
+  if (rawBoardId) {
+    const bIdNorm = String(rawBoardId).trim().toLowerCase();
+    if (bIdNorm === 'sindh') return 'Sindh Board';
+    if (bIdNorm === 'fbise') return 'Federal Board (FBISE)';
+    const bDef = BOARDS.find((b) => b.id.toLowerCase() === bIdNorm);
     if (bDef) return bDef.name;
   }
 
-  // 2. Check joined board name on student class
-  if (student.class?.board?.name) {
+  // 2. Check joined board name on student class or profile
+  if (student.class?.board && typeof student.class.board === 'object' && student.class.board.name) {
     return student.class.board.name;
+  }
+  if (student.board && typeof student.board === 'object' && student.board.name) {
+    return student.board.name;
   }
 
   // 3. Check enrollments and corresponding class offerings
@@ -261,10 +270,20 @@ export function getStudentBoardLabel(
     for (const en of studentEnrollments) {
       const off = offerings.find((o) => o.id === en.offering_id);
       if (off) {
-        const offBoard = off.board || off.class?.board_id;
-        if (offBoard === 'sindh') return 'Sindh Board';
-        if (offBoard === 'fbise') return 'Federal Board (FBISE)';
-        if (off.class?.board?.name) return off.class.board.name;
+        const offBoard =
+          off.board ||
+          off.class?.board_id ||
+          (typeof off.class?.board === 'string' ? off.class.board : (off.class?.board as { id?: string })?.id);
+        if (offBoard) {
+          const offNorm = String(offBoard).trim().toLowerCase();
+          if (offNorm === 'sindh') return 'Sindh Board';
+          if (offNorm === 'fbise') return 'Federal Board (FBISE)';
+          const bDef = BOARDS.find((b) => b.id.toLowerCase() === offNorm);
+          if (bDef) return bDef.name;
+        }
+        if (off.class?.board && typeof off.class.board === 'object' && off.class.board.name) {
+          return off.class.board.name;
+        }
       }
     }
   }
@@ -276,6 +295,7 @@ export function getStudentBoardLabel(
 /** Resolves the grade label for a student (e.g. 'Grade 9', 'Grade 10') */
 export function getStudentGradeLabel(
   student: {
+    grade?: string | null;
     class?: { grade?: string; display_name?: string } | null;
     id?: string;
   },
@@ -284,6 +304,9 @@ export function getStudentGradeLabel(
 ): string {
   if (student.class?.grade) {
     return `Grade ${student.class.grade}`;
+  }
+  if (student.grade) {
+    return `Grade ${student.grade}`;
   }
   if (student.class?.display_name) {
     return student.class.display_name.startsWith('Grade')

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Profile } from '../../../types';
-import { GRADES, getStreamsForGrade } from '../../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
 
 interface StudentFormProps {
   student?: Profile | null;
@@ -8,7 +8,7 @@ interface StudentFormProps {
     full_name: string;
     phone: string;
     stream: string;
-    board: 'fbise';
+    board: 'fbise' | 'sindh';
     grade: string;
   }) => void;
   onCancel: () => void;
@@ -21,34 +21,47 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 }) => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [stream, setStream] = useState<string>('');
+  const [board, setBoard] = useState<'fbise' | 'sindh'>('fbise');
   const [grade, setGrade] = useState('10');
+  const [stream, setStream] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
+  const availableGrades = getGradesForBoard(board);
+
   const getStreamsList = () => {
-    return getStreamsForGrade(grade).map(s => ({
+    return getStreamsForGrade(grade, board).map(s => ({
       value: s.name.toLowerCase().replace(/\s+/g, '-'),
       label: s.name,
     }));
   };
 
   useEffect(() => {
+    const grades = getGradesForBoard(board);
+    if (!grades.some(g => g.grade === grade)) {
+      setGrade(grades[0]?.grade || '9');
+    }
+  }, [board]);
+
+  useEffect(() => {
     const valid = getStreamsList();
     if (!valid.some(s => s.value === stream)) {
       setStream(valid[0]?.value || '');
     }
-  }, [grade]);
+  }, [grade, board]);
 
   useEffect(() => {
     if (student) {
       setFullName(student.full_name);
       setPhone(student.phone || '');
       setStream(student.stream || '');
-      setGrade('10');
+      const rawBoard = (student.board_id || (typeof student.board === 'string' ? student.board : student.board?.id) || 'fbise').toLowerCase();
+      setBoard(rawBoard === 'sindh' ? 'sindh' : 'fbise');
+      setGrade(student.class?.grade || (student as any).grade || '10');
     } else {
       setFullName('');
       setPhone('');
       setStream('');
+      setBoard('fbise');
       setGrade('10');
     }
     setError(null);
@@ -75,7 +88,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
       full_name: fullName.trim(),
       phone: phone.trim(),
       stream,
-      board: 'fbise',
+      board,
       grade,
     });
   };
@@ -112,6 +125,20 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         />
       </div>
 
+      {/* Board */}
+      <div className="space-y-1">
+        <label className="text-xs font-bold text-[#525252] block">Examination Board</label>
+        <select
+          value={board}
+          onChange={(e) => setBoard(e.target.value as 'fbise' | 'sindh')}
+          className="input py-2 text-sm w-full bg-white border-[#E5E5E5] rounded-xl"
+        >
+          {BOARDS.map(b => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Grade */}
       <div className="space-y-1">
         <label className="text-xs font-bold text-[#525252] block">Grade</label>
@@ -120,7 +147,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           onChange={(e) => setGrade(e.target.value)}
           className="input py-2 text-sm w-full bg-white border-[#E5E5E5] rounded-xl"
         >
-          {GRADES.map(g => (
+          {availableGrades.map(g => (
             <option key={g.grade} value={g.grade}>{g.displayName}</option>
           ))}
         </select>
