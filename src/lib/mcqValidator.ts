@@ -216,10 +216,14 @@ export function validateQuestionTopicRelevance(q: any, context?: ValidationConte
   // Positive grounding check for specific single chapters
   if (scope.requiredKeywords.length > 0) {
     const fullTextNorm = fullText.toLowerCase();
-    const hasMatch = scope.requiredKeywords.some((kw) => {
-      const kwNorm = kw.toLowerCase();
-      return fullTextNorm.includes(kwNorm);
-    });
+    const topicWords = (scope.chapter || context.topic || '')
+      .toLowerCase()
+      .split(/[\s,–—\-:/()]+/)
+      .filter((w) => w.length > 3);
+
+    const hasMatch =
+      scope.requiredKeywords.some((kw) => fullTextNorm.includes(kw.toLowerCase())) ||
+      topicWords.some((w) => fullTextNorm.includes(w));
 
     if (!hasMatch) {
       return {

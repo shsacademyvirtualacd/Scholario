@@ -464,32 +464,41 @@ Return ONLY a valid JSON object matching this structure:
 
 Ensure strictly valid JSON output with zero markdown formatting outside the JSON structure.`;
 
-      const targetModel = 'gemini-3.7-flash';
+      const modelsToTry = ['gemini-3.6-flash', 'gemini-3.7-flash'];
       let parsedData: any = null;
+      let usedModel = 'gemini-3.6-flash';
+      let lastModelError: string | null = null;
 
-      try {
-        console.log(`[Generate MCQ] Generating ${count} MCQs using ${targetModel} for ${subject} -> "${syllabusScope.chapter || topic}"`);
-        const aiResponse = await client.models.generateContent({
-          model: targetModel,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: {
-            responseMimeType: 'application/json',
-            temperature: 0.3,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          },
-        });
+      for (const targetModel of modelsToTry) {
+        try {
+          console.log(`[Generate MCQ] Attempting ${count} MCQs with ${targetModel} for ${subject} -> "${syllabusScope.chapter || topic}"`);
+          const aiResponse = await client.models.generateContent({
+            model: targetModel,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            },
+          });
 
-        const responseText = aiResponse.text?.trim() || '';
-        if (responseText) {
-          try {
-            parsedData = JSON.parse(responseText);
-          } catch {
-            const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-            parsedData = JSON.parse(cleaned);
+          const responseText = aiResponse.text?.trim() || '';
+          if (responseText) {
+            try {
+              parsedData = JSON.parse(responseText);
+            } catch {
+              const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+              parsedData = JSON.parse(cleaned);
+            }
           }
+
+          if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
+            usedModel = targetModel;
+            break;
+          }
+        } catch (modelErr: any) {
+          lastModelError = modelErr?.message || String(modelErr);
+          console.warn(`[Generate MCQ] Model ${targetModel} generation failed:`, lastModelError);
         }
-      } catch (modelErr: any) {
-        console.warn(`[Generate MCQ] Model ${targetModel} generation failed:`, modelErr?.message || modelErr);
       }
 
       const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 3, difficulty, effectiveGrade, effectiveBoard, normExcludes);
@@ -559,8 +568,23 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           return res.json({
             success: true,
             source: 'gemini-ai-validated',
-            model: targetModel,
+            model: usedModel,
             questions: validatedQuestions.slice(0, count),
+          });
+        } else if (validatedQuestions.length > 0) {
+          // Combine partial AI questions with guaranteed curriculum fallback questions
+          const combined = [...validatedQuestions];
+          for (const fb of fallbackPool) {
+            if (combined.length >= count) break;
+            if (!combined.some((c) => c.question.toLowerCase() === fb.question.toLowerCase())) {
+              combined.push(fb);
+            }
+          }
+          return res.json({
+            success: true,
+            source: 'hybrid-ai-curriculum',
+            model: usedModel,
+            questions: combined.slice(0, count),
           });
         }
       }
@@ -570,10 +594,11 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         success: true,
         source: 'curriculum-bank',
         questions: fallbackPool.slice(0, count),
+        diagnostic: lastModelError ? { lastModelError } : undefined,
       });
     } catch (err: any) {
       console.error('[Generate MCQ Error]:', err);
-      // Return safe fallback so user's experience is not broken
+      // Return safe fallback so user's experience is never broken
       const {
         subject = 'Physics',
         topic = 'General Science',
@@ -581,12 +606,14 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         difficulty = 'medium',
         board = 'fbise',
         grade = '10',
+        excludeQuestionTexts = [],
       } = req.body || {};
-      const fallback = generateCurriculumFallbackMCQs(subject, topic, Number(questionCount) || 10, difficulty, grade, board);
+      const fallback = generateCurriculumFallbackMCQs(subject, topic, Number(questionCount) || 10, difficulty, grade, board, excludeQuestionTexts);
       return res.json({
         success: true,
-        source: 'curriculum-bank-error-fallback',
-        questions: fallback,
+        source: 'emergency-curriculum-bank',
+        questions: fallback.slice(0, Number(questionCount) || 10),
+        error: err?.message || String(err),
       });
     }
   });

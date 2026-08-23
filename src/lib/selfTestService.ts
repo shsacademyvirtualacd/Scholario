@@ -10,16 +10,9 @@ export async function generateMCQTest(
   config: SelfTestConfig,
   excludeQuestionTexts: string[] = []
 ): Promise<MCQQuestion[]> {
-  const fallback = () =>
-    generateCurriculumFallbackMCQs(
-      config.subject,
-      config.topic,
-      config.questionCount * 2,
-      config.difficulty,
-      config.grade,
-      config.board,
-      excludeQuestionTexts
-    );
+  const targetCount = Math.min(Math.max(Number(config.questionCount) || 10, 1), 30);
+  const accumulatedQuestions: MCQQuestion[] = [];
+  const allExcludes = [...excludeQuestionTexts];
 
   const validationContext = {
     subject: config.subject,
@@ -28,83 +21,152 @@ export async function generateMCQTest(
     board: config.board,
   };
 
-  // 1. PRIMARY PATH: Instant retrieval from pre-generated verified MCQ question bank
+  const getFallbackPool = (count: number) =>
+    generateCurriculumFallbackMCQs(
+      config.subject,
+      config.topic,
+      count,
+      config.difficulty,
+      config.grade,
+      config.board,
+      allExcludes
+    );
+
+  // ── 1. PRIMARY PATH: Stored Pre-Generated MCQ Question Bank ─────────────────
   try {
     const bankResult = await fetchStoredMCQTest({
       subject: config.subject,
       topic: config.topic,
       grade: config.grade,
       board: config.board,
-      count: config.questionCount,
+      count: targetCount,
       difficulty: config.difficulty,
-      excludeTexts: excludeQuestionTexts,
+      excludeTexts: allExcludes,
       selectedChapters: config.selectedChapters,
       examMode: config.examMode,
     });
+
     if (bankResult && Array.isArray(bankResult.questions) && bankResult.questions.length > 0) {
-      const validated = filterAndValidateMCQs(
+      const validatedFromBank = filterAndValidateMCQs(
         bankResult.questions,
-        config.questionCount,
-        fallback(),
+        targetCount,
+        undefined, // Don't backfill here, keep pure bank items first
         validationContext,
-        excludeQuestionTexts
+        allExcludes
       );
-      if (validated.length >= config.questionCount) {
-        console.log(`[SelfTest] Served ${validated.length} questions from stored MCQ bank (${bankResult.source}).`);
-        return validated.slice(0, config.questionCount);
+
+      for (const q of validatedFromBank) {
+        if (!accumulatedQuestions.some((ex) => ex.id === q.id || ex.question.toLowerCase() === q.question.toLowerCase())) {
+          accumulatedQuestions.push(q);
+          allExcludes.push(q.question.toLowerCase());
+        }
+      }
+
+      if (accumulatedQuestions.length >= targetCount) {
+        console.log(`[SelfTest] Instant generation success from pre-generated MCQ bank (${accumulatedQuestions.length} questions).`);
+        return accumulatedQuestions.slice(0, targetCount);
       }
     }
   } catch (bankErr) {
-    console.warn('[SelfTest] Stored bank lookup encountered error, proceeding to live endpoint:', bankErr);
+    console.warn('[SelfTest] Stored question bank retrieval failed or was partial; proceeding with secondary API path:', bankErr);
   }
 
-  // 2. SECONDARY PATH: Live API generation with automatic fallback
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000);
+  // ── 2. SECONDARY PATH: Live API Generation with Automatic Retry ──────────────
+  const remainingNeeded = targetCount - accumulatedQuestions.length;
+  const maxApiRetries = 2;
 
-  try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+  for (let attempt = 1; attempt <= maxApiRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout per attempt
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-    } catch {
-      // Session retrieval is optional; endpoint handles unauthenticated gracefully
-    }
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
 
-    const response = await fetch('/api/tests/generate-mcq', {
-      method: 'POST',
-      headers,
-      signal: controller.signal,
-      body: JSON.stringify({
-        ...config,
-        excludeQuestionTexts,
-      }),
-    });
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const data = (await response.json()) as { questions?: MCQQuestion[] };
-      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-        const validated = filterAndValidateMCQs(data.questions, config.questionCount, fallback(), validationContext, excludeQuestionTexts);
-        if (validated.length >= config.questionCount) {
-          return validated.slice(0, config.questionCount);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
         }
+      } catch {
+        // Session retrieval is optional
       }
+
+      console.log(`[SelfTest] Calling /api/tests/generate-mcq (Attempt ${attempt}/${maxApiRetries}) for ${remainingNeeded} questions...`);
+
+      const response = await fetch('/api/tests/generate-mcq', {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          ...config,
+          questionCount: remainingNeeded,
+          excludeQuestionTexts: allExcludes,
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = (await response.json()) as { questions?: MCQQuestion[]; source?: string; model?: string; error?: string };
+        if (data && Array.isArray(data.questions) && data.questions.length > 0) {
+          const validated = filterAndValidateMCQs(
+            data.questions,
+            remainingNeeded,
+            undefined,
+            validationContext,
+            allExcludes
+          );
+
+          for (const q of validated) {
+            if (!accumulatedQuestions.some((ex) => ex.id === q.id || ex.question.toLowerCase() === q.question.toLowerCase())) {
+              accumulatedQuestions.push(q);
+              allExcludes.push(q.question.toLowerCase());
+            }
+          }
+
+          if (accumulatedQuestions.length >= targetCount) {
+            console.log(`[SelfTest] Successfully assembled ${accumulatedQuestions.length} questions (source: ${data.source || 'api'}, model: ${data.model || 'unknown'}).`);
+            return accumulatedQuestions.slice(0, targetCount);
+          }
+        }
+      } else {
+        const errorText = await response.text().catch(() => 'Unknown server error');
+        console.warn(`[SelfTest] API attempt ${attempt} returned status ${response.status}:`, errorText);
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      console.warn(`[SelfTest] API attempt ${attempt} error (${err.name === 'AbortError' ? 'Timeout' : err.message}):`, err);
     }
 
-    console.warn(`[SelfTest] API response status ${response.status}. Using high-quality curriculum fallback.`);
-    const fbPool = fallback();
-    return filterAndValidateMCQs(fbPool, config.questionCount, undefined, validationContext, excludeQuestionTexts).slice(0, config.questionCount);
-  } catch (err: any) {
-    console.warn('Network issue calling /api/tests/generate-mcq, falling back to curriculum question bank:', err);
-    const fbPool = fallback();
-    return filterAndValidateMCQs(fbPool, config.questionCount, undefined, validationContext, excludeQuestionTexts).slice(0, config.questionCount);
+    // Small delay before next retry if not last attempt
+    if (attempt < maxApiRetries && accumulatedQuestions.length < targetCount) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
   }
+
+  // ── 3. TERTIARY PATH: Guaranteed Curriculum Bank Backfill ───────────────────
+  if (accumulatedQuestions.length < targetCount) {
+    const needed = targetCount - accumulatedQuestions.length;
+    console.log(`[SelfTest] Backfilling remaining ${needed} questions from verified curriculum bank.`);
+    const fallbackPool = getFallbackPool(needed * 2);
+
+    for (const q of fallbackPool) {
+      if (accumulatedQuestions.length >= targetCount) break;
+      if (!accumulatedQuestions.some((ex) => ex.id === q.id || ex.question.toLowerCase() === q.question.toLowerCase())) {
+        accumulatedQuestions.push(q);
+      }
+    }
+  }
+
+  if (accumulatedQuestions.length >= targetCount) {
+    return accumulatedQuestions.slice(0, targetCount);
+  }
+
+  // Final safety check: if still short, generate fresh non-duplicate questions
+  const finalPool = getFallbackPool(targetCount);
+  return finalPool.slice(0, targetCount);
 }
 
 export function getSelfTestHistory(): SelfTestResult[] {
@@ -147,70 +209,61 @@ export function clearSelfTestHistory(): void {
   }
 }
 
-export interface WeakTopicStat {
+export interface WeakTopicInfo {
   topic: string;
   chapter?: string;
-  scorePercentage: number;
-  accuracy?: number;
+  accuracy: number;
+  scorePercentage?: number;
   totalAttempts: number;
   attempts?: number;
-  totalQuestions: number;
 }
 
 export function getWeakTopicsForStudent(
   subject?: string,
-  _board?: string,
-  _grade?: string
-): WeakTopicStat[] {
-  const history = getSelfTestHistory();
-  if (history.length === 0) return [];
+  board?: string,
+  grade?: string
+): WeakTopicInfo[] {
+  try {
+    const history = getSelfTestHistory();
+    const topicStats: Record<string, { correct: number; total: number; chapter?: string }> = {};
 
-  const statsByTopic: Record<string, { correct: number; total: number; attempts: number }> = {};
+    for (const test of history) {
+      const cfg = test.config;
+      if (!cfg) continue;
+      if (subject && cfg.subject && cfg.subject.toLowerCase() !== subject.toLowerCase()) continue;
+      if (board && cfg.board && cfg.board.toLowerCase() !== board.toLowerCase()) continue;
+      if (grade && cfg.grade && cfg.grade.toString() !== grade.toString()) continue;
 
-  for (const item of history) {
-    if (subject && item.config.subject.toLowerCase() !== subject.toLowerCase()) {
-      continue;
-    }
-
-    // Process per question if topic/chapter is available on questions
-    if (item.questions && item.questions.length > 0) {
-      item.questions.forEach((q) => {
-        const t = q.chapter || q.topic || item.config.topic;
-        if (!t || t === 'Mixed Chapters' || t === 'Full Syllabus') return;
-        if (!statsByTopic[t]) {
-          statsByTopic[t] = { correct: 0, total: 0, attempts: 0 };
-        }
-        statsByTopic[t].total += 1;
-        if (item.userAnswers[q.id] === q.correctAnswer) {
-          statsByTopic[t].correct += 1;
-        }
-      });
-    } else {
-      const t = item.config.topic;
-      if (!t || t === 'Mixed Chapters' || t === 'Full Syllabus') continue;
-      if (!statsByTopic[t]) {
-        statsByTopic[t] = { correct: 0, total: 0, attempts: 0 };
+      const topicKey = cfg.topic || 'General';
+      if (!topicStats[topicKey]) {
+        topicStats[topicKey] = { correct: 0, total: 0, chapter: cfg.topic };
       }
-      statsByTopic[t].total += item.totalQuestions || 1;
-      statsByTopic[t].correct += item.score || 0;
-      statsByTopic[t].attempts += 1;
+
+      topicStats[topicKey].correct += (test.score || 0);
+      topicStats[topicKey].total += (test.totalQuestions || 0);
     }
+
+    const result: WeakTopicInfo[] = [];
+    for (const [topic, stats] of Object.entries(topicStats)) {
+      if (stats.total >= 3) {
+        const accuracy = Math.round((stats.correct / stats.total) * 100);
+        if (accuracy < 70) {
+          result.push({
+            topic,
+            chapter: stats.chapter,
+            accuracy,
+            scorePercentage: accuracy,
+            totalAttempts: stats.total,
+            attempts: stats.total,
+          });
+        }
+      }
+    }
+
+    return result.sort((a, b) => a.accuracy - b.accuracy);
+  } catch (err) {
+    console.error('Error calculating weak topics:', err);
+    return [];
   }
-
-  const results: WeakTopicStat[] = Object.entries(statsByTopic).map(([topic, stat]) => {
-    const pct = stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0;
-    return {
-      topic,
-      chapter: topic,
-      scorePercentage: pct,
-      accuracy: pct,
-      totalAttempts: stat.attempts || 1,
-      attempts: stat.attempts || 1,
-      totalQuestions: stat.total,
-    };
-  });
-
-  // Sort by lowest percentage first (weakest first)
-  return results.sort((a, b) => a.scorePercentage - b.scorePercentage);
 }
 

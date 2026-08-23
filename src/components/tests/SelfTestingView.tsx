@@ -578,28 +578,50 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     };
 
     try {
-      const initialPromise = generateMCQTest(activeConfig, []);
+      let initialBatch: MCQQuestion[] = [];
+      try {
+        const initialPromise = generateMCQTest(activeConfig, []);
 
-      // Wait for both the AI API generation and the deliberate 10s quality timer
-      const [initialBatch] = await Promise.all([
-        initialPromise,
-        new Promise((resolve) => {
-          const remaining = Math.max(0, minDurationMs - (Date.now() - startTime));
-          setTimeout(resolve, remaining);
-        }),
-      ]);
+        // Wait for both the AI API generation and the deliberate 10s quality timer
+        const [batchResult] = await Promise.all([
+          initialPromise,
+          new Promise((resolve) => {
+            const remaining = Math.max(0, minDurationMs - (Date.now() - startTime));
+            setTimeout(resolve, remaining);
+          }),
+        ]);
+        initialBatch = batchResult || [];
+      } catch (innerErr: any) {
+        console.warn('[SelfTestingView] Primary generation threw error, attempting immediate safety rescue:', innerErr);
+        initialBatch = generateCurriculumFallbackMCQs(
+          activeConfig.subject,
+          activeConfig.topic,
+          initialBatchCount,
+          activeConfig.difficulty,
+          activeConfig.grade,
+          activeConfig.board
+        );
+      }
 
       clearInterval(progressInterval);
       setGenerationProgress(100);
       setGenerationStep(5);
       setGenerationStatus('Questions verified and ready!');
 
+      // If initialBatch is empty or invalid, rescue with curriculum fallback
       if (!initialBatch || initialBatch.length === 0) {
-        throw new Error('No questions could be generated. Please try again.');
+        initialBatch = generateCurriculumFallbackMCQs(
+          activeConfig.subject,
+          activeConfig.topic,
+          initialBatchCount,
+          activeConfig.difficulty,
+          activeConfig.grade,
+          activeConfig.board
+        );
       }
 
       // Validate questions strictly: ensure 4 distinct options and one valid correct answer
-      const validated = initialBatch.filter((q) => {
+      let validated = initialBatch.filter((q) => {
         return (
           q.question &&
           q.options &&
@@ -612,7 +634,19 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       });
 
       if (validated.length === 0) {
-        throw new Error('Generated questions failed validation. Please try again.');
+        // Last-mile guaranteed backfill
+        validated = generateCurriculumFallbackMCQs(
+          activeConfig.subject,
+          activeConfig.topic,
+          initialBatchCount,
+          activeConfig.difficulty,
+          activeConfig.grade,
+          activeConfig.board
+        );
+      }
+
+      if (validated.length === 0) {
+        throw new Error('No questions could be assembled. Please check your topic selection.');
       }
 
       setQuestions(validated);
@@ -634,7 +668,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     } catch (err: any) {
       clearInterval(progressInterval);
       setIsGenerating(false);
-      console.error('MCQ Generation error:', err);
+      console.error('[SelfTestingView] Fatal MCQ Generation error:', { error: err, config: activeConfig });
       toast.error(err.message || 'Failed to generate MCQs. Please try again.');
     }
   };
