@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Sparkles,
   Play,
@@ -17,12 +17,13 @@ import {
   Zap,
   Pause,
   Check,
-  X
+  X,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { MCQQuestion, MCQDifficulty, SelfTestConfig, SelfTestResult } from '../../types/selfTest';
 import { generateMCQTest, saveSelfTestResult, getSelfTestHistory, deleteSelfTestResult, clearSelfTestHistory } from '../../lib/selfTestService';
-import { BOARDS, FBISE_GRADES, SINDH_GRADES } from '../../lib/taxonomy';
+import { BOARDS, FBISE_GRADES, SINDH_GRADES, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 
 interface SelfTestingViewProps {
@@ -55,18 +56,55 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const { profile } = useAuth();
   console.debug('SelfTestingView mounted for role:', userRole);
 
+  const isStudent = userRole === 'student' || profile?.role === 'student';
+
+  // Resolved enrolled board for students
+  const studentBoardId =
+    profile?.board_id ||
+    (typeof profile?.board === 'string' ? profile.board : profile?.board?.id) ||
+    profile?.class?.board_id ||
+    defaultBoard ||
+    'fbise';
+
+  // Resolved enrolled grade for students
+  const studentGrade =
+    profile?.class?.grade ||
+    (profile as any)?.grade ||
+    defaultGrade ||
+    '10';
+
+  const studentStream =
+    profile?.stream_obj?.name ||
+    (profile as any)?.stream ||
+    '';
+
   // Initial config state
   const [board, setBoard] = useState<string>(
-    defaultBoard || profile?.board_id || profile?.board?.id || 'fbise'
+    isStudent ? studentBoardId : (defaultBoard || studentBoardId || 'fbise')
   );
   const [grade, setGrade] = useState<string>(
-    defaultGrade || profile?.class?.grade || (profile as any)?.grade || '10'
+    isStudent ? studentGrade : (defaultGrade || studentGrade || '10')
   );
   const [subject, setSubject] = useState<string>(defaultSubject || 'Physics');
   const [customSubject, setCustomSubject] = useState<string>('');
   const [topic, setTopic] = useState<string>('Kinematics & Motion');
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [difficulty, setDifficulty] = useState<MCQDifficulty>('medium');
+
+  // Keep student board and grade strictly locked to enrollment when profile loads
+  useEffect(() => {
+    if (isStudent) {
+      if (studentBoardId && board !== studentBoardId) {
+        setBoard(studentBoardId);
+      }
+      if (studentGrade && grade !== studentGrade) {
+        setGrade(studentGrade);
+      }
+    }
+  }, [isStudent, studentBoardId, studentGrade]);
+
+  const activeBoard = isStudent ? studentBoardId : board;
+  const activeGrade = isStudent ? studentGrade : grade;
 
   // Runtime quiz state
   const [viewMode, setViewMode] = useState<ViewMode>('config');
@@ -109,23 +147,35 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   }, [viewMode, isPaused]);
 
   // Available subjects for selected board/grade
-  const availableGrades = board === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
-  const currentGradeDef = availableGrades.find((g) => g.grade === grade) || availableGrades[0];
-  const allSubjectsForGrade = Array.from(
-    new Set([
-      ...(currentGradeDef?.commonSubjects || []),
-      ...(currentGradeDef?.streams?.flatMap((s) => s.subjects) || []),
-      'Physics',
-      'Chemistry',
-      'Mathematics',
-      'Biology',
-      'Computer Science',
-      'English',
-      'Urdu',
-      'Islamiat',
-      'Pakistan Studies',
-    ])
-  );
+  const availableGrades = activeBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+  const currentGradeDef = availableGrades.find((g) => g.grade === activeGrade) || availableGrades[0];
+
+  const studentEnrolledSubjects = useMemo(() => {
+    if (isStudent && profile) {
+      const list = getEnrolledSubjectsForStudent(profile);
+      if (list && list.length > 0) return list;
+    }
+    return [];
+  }, [isStudent, profile]);
+
+  const allSubjectsForGrade = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...studentEnrolledSubjects,
+        ...(currentGradeDef?.commonSubjects || []),
+        ...(currentGradeDef?.streams?.flatMap((s) => s.subjects) || []),
+        'Physics',
+        'Chemistry',
+        'Mathematics',
+        'Biology',
+        'Computer Science',
+        'English',
+        'Urdu',
+        'Islamiat',
+        'Pakistan Studies',
+      ])
+    );
+  }, [studentEnrolledSubjects, currentGradeDef]);
 
   const activeSubjectName = subject === 'Other' ? (customSubject.trim() || 'General Subject') : subject;
 
@@ -139,8 +189,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     try {
       setIsGenerating(true);
       const activeConfig: SelfTestConfig = {
-        board,
-        grade,
+        board: activeBoard,
+        grade: activeGrade,
         subject: activeSubjectName,
         topic: topic.trim(),
         questionCount,
@@ -192,8 +242,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   // Handler: Submit Quiz
   const handleSubmitQuiz = () => {
     const activeConfig: SelfTestConfig = {
-      board,
-      grade,
+      board: activeBoard,
+      grade: activeGrade,
       subject: activeSubjectName,
       topic: topic.trim(),
       questionCount: questions.length,
@@ -306,60 +356,119 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Board & Grade Selectors */}
+            {/* Board & Grade Configuration */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1.5">
-                  Educational Board
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {BOARDS.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => setBoard(b.id)}
-                      className={`p-3 rounded-2xl border text-xs font-bold text-left transition-all ${
-                        board === b.id
-                          ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
-                          : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
-                      }`}
-                    >
-                      <div className="font-extrabold">{b.shortName}</div>
-                      <div className={`text-[10px] mt-0.5 truncate ${board === b.id ? 'text-[#D4D4D4]' : 'text-[#737373]'}`}>
-                        {b.name}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {isStudent ? (
+                /* Locked / Read-Only Enrolled Scope for Students */
+                <div className="p-4 bg-[#FAFAFA] rounded-2xl border border-[#E5E5E5] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-[#737373] uppercase tracking-wider">
+                      Academic Scope
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#111111]/5 border border-[#E5E5E5] text-[11px] font-bold text-[#525252]">
+                      <Lock size={11} className="text-[#737373]" />
+                      <span>Enrolled & Verified</span>
+                    </span>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1.5">
-                  Target Grade
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {availableGrades.map((g) => (
-                    <button
-                      key={g.grade}
-                      type="button"
-                      onClick={() => setGrade(g.grade)}
-                      className={`py-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
-                        grade === g.grade
-                          ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
-                          : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
-                      }`}
-                    >
-                      {g.displayName} Grade
-                    </button>
-                  ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Locked Educational Board */}
+                    <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] shadow-2xs">
+                      <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wide flex items-center gap-1">
+                        <Lock size={10} className="text-[#A3A3A3]" />
+                        <span>Educational Board</span>
+                      </div>
+                      <div className="text-xs font-black text-[#111111] mt-0.5">
+                        {activeBoard === 'sindh' ? 'Sindh Board (BSEK / BIEK)' : 'Federal Board (FBISE)'}
+                      </div>
+                      <div className="text-[10px] text-[#737373] mt-0.5 truncate">
+                        {activeBoard === 'sindh' ? 'BSEK / BIEK Karachi & Sindh' : 'Federal Board of Inter & Secondary Education'}
+                      </div>
+                    </div>
+
+                    {/* Locked Target Grade */}
+                    <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] shadow-2xs">
+                      <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wide flex items-center gap-1">
+                        <Lock size={10} className="text-[#A3A3A3]" />
+                        <span>Target Grade</span>
+                      </div>
+                      <div className="text-xs font-black text-[#111111] mt-0.5">
+                        Grade {activeGrade} {studentStream ? `• ${studentStream}` : ''}
+                      </div>
+                      <div className="text-[10px] text-[#737373] mt-0.5 truncate">
+                        {profile?.class?.display_name || `Class ${activeGrade}th Roster`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-[#737373] leading-relaxed">
+                    Practice questions are locked to your official enrolled syllabus. Customize your subject, chapter, question count, and difficulty level below.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                /* Freely Selectable Board & Grade for Teachers / Admins */
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                      Educational Board
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {BOARDS.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setBoard(b.id)}
+                          className={`p-3 rounded-2xl border text-xs font-bold text-left transition-all ${
+                            board === b.id
+                              ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
+                              : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
+                          }`}
+                        >
+                          <div className="font-extrabold">{b.shortName}</div>
+                          <div className={`text-[10px] mt-0.5 truncate ${board === b.id ? 'text-[#D4D4D4]' : 'text-[#737373]'}`}>
+                            {b.name}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                      Target Grade
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {availableGrades.map((g) => (
+                        <button
+                          key={g.grade}
+                          type="button"
+                          onClick={() => setGrade(g.grade)}
+                          className={`py-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
+                            grade === g.grade
+                              ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
+                              : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
+                          }`}
+                        >
+                          {g.displayName} Grade
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Subject Selector */}
               <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1.5">
-                  Subject
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-[#111111]">
+                    Subject
+                  </label>
+                  {isStudent && studentStream && (
+                    <span className="text-[10px] font-semibold text-[#737373]">
+                      {studentStream} Stream
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {allSubjectsForGrade.slice(0, 9).map((sub) => (
                     <button
@@ -491,7 +600,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             <div className="text-xs text-[#737373] flex items-center gap-2">
               <Zap size={15} className="text-[#F4C430]" />
               <span>
-                Generates {questionCount} questions on <strong>{topic || 'Selected Topic'}</strong> ({activeSubjectName} • Grade {grade})
+                Generates {questionCount} questions on <strong>{topic || 'Selected Topic'}</strong> ({activeSubjectName} • Grade {activeGrade} • {activeBoard.toUpperCase()})
               </span>
             </div>
 

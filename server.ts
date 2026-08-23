@@ -288,12 +288,47 @@ Key Guidelines:
         grade = '10',
       } = req.body;
 
+      let effectiveBoard = board;
+      let effectiveGrade = grade;
+
+      // Check auth header and enforce student's enrolled board/grade if calling user is a student
+      const authHeader = (req.headers.authorization || req.headers['authorization']) as string | undefined;
+      if (authHeader) {
+        try {
+          const requestSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { headers: { Authorization: authHeader } },
+          });
+          const { data: { user } } = await requestSupabase.auth.getUser();
+          if (user) {
+            const { data: userProfile } = await requestSupabase
+              .from('profiles')
+              .select('*, class:classes(*, board:boards(*))')
+              .eq('id', user.id)
+              .maybeSingle();
+
+            if (userProfile && userProfile.role === 'student') {
+              const enrolledBoard =
+                userProfile.board_id ||
+                userProfile.class?.board_id ||
+                userProfile.board?.id ||
+                (typeof userProfile.board === 'string' ? userProfile.board : 'fbise');
+              const enrolledGrade = userProfile.class?.grade || userProfile.grade || '10';
+
+              effectiveBoard = enrolledBoard;
+              effectiveGrade = enrolledGrade;
+            }
+          }
+        } catch (authErr) {
+          console.warn('[Generate MCQ] Auth check error:', authErr);
+        }
+      }
+
       const count = Math.min(Math.max(Number(questionCount) || 10, 1), 30);
       const client = getGeminiClient();
 
       if (!client) {
         // High quality curriculum fallback questions if no GEMINI_API_KEY is configured
-        const fallbackQuestions = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, grade, board);
+        const fallbackQuestions = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, effectiveGrade, effectiveBoard);
         return res.json({
           success: true,
           source: 'curriculum-bank',
@@ -307,7 +342,7 @@ Generate exactly ${count} rigorous, flawless Multiple Choice Questions (MCQs) fo
 
 Subject: ${subject}
 Topic / Chapter: ${topic}
-Target Grade: Grade ${grade} (${board.toUpperCase()} Board)
+Target Grade: Grade ${effectiveGrade} (${effectiveBoard.toUpperCase()} Board)
 Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
 
 STRICT CRITERIA:

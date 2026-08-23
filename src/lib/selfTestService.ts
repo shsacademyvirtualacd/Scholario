@@ -1,15 +1,27 @@
 import type { MCQQuestion, SelfTestConfig, SelfTestResult } from '../types/selfTest';
 import { generateCurriculumFallbackMCQs } from './curriculumMCQs';
+import { supabase } from './supabase';
 
 const SELF_TEST_HISTORY_KEY = 'scholario_self_test_history_v1';
 
 export async function generateMCQTest(config: SelfTestConfig): Promise<MCQQuestion[]> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+    } catch {
+      // Session retrieval is optional; endpoint handles unauthenticated gracefully
+    }
+
     const response = await fetch('/api/tests/generate-mcq', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(config),
     });
 
