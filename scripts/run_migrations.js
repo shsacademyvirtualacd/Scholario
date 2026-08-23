@@ -450,6 +450,12 @@ async function main() {
     await run('index: ' + idx.split('EXISTS ')[1].split(' ')[0], idx);
   }
 
+  // Ensure Sunday (day_of_week = 6) is permitted in class_slots_day_of_week_check constraint
+  await run('class_slots day_of_week constraint update for Sunday support', `
+    ALTER TABLE public.class_slots DROP CONSTRAINT IF EXISTS class_slots_day_of_week_check;
+    ALTER TABLE public.class_slots ADD CONSTRAINT class_slots_day_of_week_check CHECK (day_of_week >= 0 AND day_of_week <= 6);
+  `);
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PHASE 14: Final verification
   // ═══════════════════════════════════════════════════════════════════════════

@@ -7,7 +7,7 @@ export type Role = 'student' | 'admin' | 'teacher';
 export type Board = 'fbise' | 'sindh';
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'pending';
 export type NoteFileType = 'pdf' | 'image';
-export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5; // 0=Mon … 5=Sat
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Mon … 6=Sun
 
 // ─── taxonomy reference tables ───────────────
 export interface BoardEntry {
