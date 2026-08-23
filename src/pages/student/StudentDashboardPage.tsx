@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookMarked, CheckCircle2, ChevronRight, ArrowRight, GraduationCap,
-  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, Check, X, XCircle
+  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, Check, X, XCircle,
+  ClipboardCheck
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import StatusPill from '../../components/ui/StatusPill';
@@ -642,6 +643,84 @@ const StudentDashboardPage: React.FC = () => {
   const streakMetrics = computeAttendanceStreak(attendanceRecords);
   const todayStr = getPKTNow().dateString || new Date().toISOString().slice(0, 10);
 
+  // ── Attendance section state & calculations ────────────────────────
+  const [showAllAttendanceHistory, setShowAllAttendanceHistory] = useState(false);
+
+  // Only consider classes as 'present' if verified by teacher/admin
+  const totalClassesHeld = attendanceRecords.length;
+  const totalClassesAttended = attendanceRecords.filter(
+    (r) => (r.marked_by === 'teacher' || r.marked_by === 'admin') && (r.status === 'present' || r.status === 'late')
+  ).length;
+  const attendanceRate = totalClassesHeld > 0
+    ? Math.round((totalClassesAttended / totalClassesHeld) * 100)
+    : 0;
+
+  // Sorted with most recent date first
+  const sortedAttendanceRecords = [...attendanceRecords].sort((a, b) => {
+    const dateA = a.session_date || '';
+    const dateB = b.session_date || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const timeA = a.slot?.start_time || '';
+    const timeB = b.slot?.start_time || '';
+    return timeB.localeCompare(timeA);
+  });
+
+  const thirtyDaysAgoDate = new Date();
+  thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 30);
+  const thirtyDaysAgoStr = thirtyDaysAgoDate.toISOString().slice(0, 10);
+
+  const last30DaysRecords = sortedAttendanceRecords.filter(
+    (r) => (r.session_date || '') >= thirtyDaysAgoStr
+  );
+
+  const displayedAttendanceRecords = showAllAttendanceHistory
+    ? sortedAttendanceRecords
+    : last30DaysRecords;
+
+  const formatSessionDate = (dStr?: string) => {
+    if (!dStr) return '—';
+    try {
+      const [y, m, d] = dStr.split('-').map(Number);
+      if (!y || !m || !d) return dStr;
+      const dateObj = new Date(y, m - 1, d);
+      return dateObj.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return dStr;
+    }
+  };
+
+  const getAttendanceStatusBadge = (rec: Attendance) => {
+    const isTeacherMarked = rec.marked_by === 'teacher' || rec.marked_by === 'admin';
+    if (isTeacherMarked) {
+      if (rec.status === 'present' || rec.status === 'late') {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+            <span>Present</span>
+          </span>
+        );
+      }
+      if (rec.status === 'absent') {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+            <XCircle size={12} className="text-rose-600 shrink-0" />
+            <span>Absent</span>
+          </span>
+        );
+      }
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
+        <Clock size={12} className="text-amber-600 shrink-0" />
+        <span>Not Marked</span>
+      </span>
+    );
+  };
+
   const handleMarkTodayAttendance = async (slotId: string) => {
     if (!studentId) return;
     try {
@@ -803,6 +882,141 @@ const StudentDashboardPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* ── Attendance Section & Session History ── */}
+      <div id="student-attendance-section" className="card card-elevated p-5 interactive">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-[#F4C430] flex items-center justify-center shrink-0">
+              <ClipboardCheck size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-[#111111]">Attendance</h2>
+              <p className="text-xs text-[#737373] font-medium">
+                Verified class attendance records marked by teachers
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/student/attendance')}
+            className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors font-semibold"
+          >
+            Full details <ChevronRight size={12} />
+          </button>
+        </div>
+
+        {/* Summary Line */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl mb-4">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-[#737373]">Total Classes Attended:</span>
+              <span className="text-xs font-extrabold text-[#111111]">
+                {loading ? '—' : `${totalClassesAttended} of ${totalClassesHeld} held`}
+              </span>
+            </div>
+            <span className="text-[#D4D4D4] hidden sm:inline">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-[#737373] font-medium">Attendance Rate:</span>
+              <span className={`text-xs font-black px-2 py-0.5 rounded-full border ${
+                totalClassesHeld === 0
+                  ? 'bg-gray-100 text-gray-500 border-gray-200'
+                  : attendanceRate >= 85
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : attendanceRate >= 75
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}>
+                {loading ? '—' : totalClassesHeld === 0 ? '0%' : `${attendanceRate}%`}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-[11px] text-[#737373] font-medium">
+              Showing: <strong className="text-[#111111]">{showAllAttendanceHistory ? 'All History' : 'Last 30 Days'}</strong> ({displayedAttendanceRecords.length})
+            </span>
+            {sortedAttendanceRecords.length > 0 && (
+              <button
+                onClick={() => setShowAllAttendanceHistory(prev => !prev)}
+                className="text-[11px] font-bold text-[#111111] hover:text-[#B38E1B] bg-white border border-[#E5E5E5] px-2.5 py-1 rounded-md transition-colors shadow-2xs hover:bg-[#F5F5F5] cursor-pointer"
+              >
+                {showAllAttendanceHistory ? 'Show last 30 days' : 'View all'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Attendance Table */}
+        {loading ? (
+          <div className="space-y-2 animate-pulse">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="h-12 bg-gray-100 rounded-xl" />
+            ))}
+          </div>
+        ) : displayedAttendanceRecords.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
+            <CheckCircle2 size={28} className="text-[#D4D4D4] mb-2" />
+            <p className="text-xs text-[#737373] font-semibold">
+              {showAllAttendanceHistory
+                ? 'No class attendance records stored yet.'
+                : 'No attendance records in the last 30 days.'}
+            </p>
+            <p className="text-[10px] text-[#A3A3A3] mt-0.5">
+              Attendance records will appear here as your teachers conduct and mark class sessions.
+            </p>
+            {!showAllAttendanceHistory && sortedAttendanceRecords.length > 0 && (
+              <button
+                onClick={() => setShowAllAttendanceHistory(true)}
+                className="mt-3 text-xs font-bold text-[#111111] hover:text-[#F4C430] underline underline-offset-2"
+              >
+                View all past records ({sortedAttendanceRecords.length})
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[#F0F0F0]">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#F0F0F0] bg-[#FAFAFA] text-[#737373] uppercase tracking-wider text-[10px] font-bold">
+                  <th className="py-3 px-3.5">Date</th>
+                  <th className="py-3 px-3.5">Subject</th>
+                  <th className="py-3 px-3.5">Teacher</th>
+                  <th className="py-3 px-3.5">Time</th>
+                  <th className="py-3 px-3.5 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F5F5F5] bg-white">
+                {displayedAttendanceRecords.map((rec) => {
+                  const rawSubj = rec.subject || (rec.slot?.offering as any)?.subject_name || (rec.slot?.offering as any)?.subject?.name || (rec.slot?.offering as any)?.subject || 'Class Session';
+                  const subj = typeof rawSubj === 'string' ? rawSubj : (rawSubj?.name || 'Class Session');
+                  const teacherName = rec.teacher?.full_name || (rec.slot?.offering as any)?.teacher?.full_name || 'Staff';
+                  const timeStr = rec.slot?.start_time ? `${formatTime12h(rec.slot.start_time)} – ${formatTime12h(rec.slot.end_time)}` : '—';
+                  const dateStr = formatSessionDate(rec.session_date);
+
+                  return (
+                    <tr key={rec.id} className="hover:bg-[#FAFAFA] transition-colors">
+                      <td className="py-3 px-3.5 font-semibold text-[#111111] whitespace-nowrap">
+                        {dateStr}
+                      </td>
+                      <td className="py-3 px-3.5 font-bold text-[#111111] whitespace-nowrap">
+                        {subj}
+                      </td>
+                      <td className="py-3 px-3.5 text-[#737373] whitespace-nowrap">
+                        {teacherName}
+                      </td>
+                      <td className="py-3 px-3.5 text-[#737373] whitespace-nowrap">
+                        {timeStr}
+                      </td>
+                      <td className="py-3 px-3.5 text-center whitespace-nowrap">
+                        {getAttendanceStatusBadge(rec)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* ── Today's Classes + Recent Notes ── */}
       <div className={`${isMobile ? 'flex flex-col gap-5' : 'grid lg:grid-cols-2 gap-5'}`}>
