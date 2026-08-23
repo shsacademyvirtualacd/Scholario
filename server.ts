@@ -287,7 +287,12 @@ Key Guidelines:
         difficulty = 'medium',
         board = 'fbise',
         grade = '10',
+        excludeQuestionTexts = [],
       } = req.body;
+
+      const normExcludes: string[] = Array.isArray(excludeQuestionTexts)
+        ? excludeQuestionTexts.map((s: any) => String(s || '').trim()).filter(Boolean)
+        : [];
 
       let effectiveBoard = board;
       let effectiveGrade = grade;
@@ -457,6 +462,10 @@ CRITICAL SUBJECT RULES FOR ${subject.toUpperCase()} (${topic}):
 - Never generate generic abstract placeholder text.`;
       }
 
+      const excludePromptPart = normExcludes.length > 0
+        ? `\nCRITICAL ANTI-DUPLICATION RULE:\nDO NOT repeat or test the same concept/scenario as these already generated questions:\n${normExcludes.slice(-15).map((t) => `- "${t.slice(0, 100)}..."`).join('\n')}\nGenerate fresh, distinct questions.\n`
+        : '';
+
       const prompt = `You are a Senior Academic Examiner and Curriculum Assessment Director specializing in Pakistan Secondary and Higher Secondary Education (FBISE and Sindh Board 9th-12th Grade syllabus).
 
 Generate exactly ${count} rigorous, high-quality Multiple Choice Questions (MCQs) for self-testing and exam practice.
@@ -467,7 +476,7 @@ Target Grade: Grade ${effectiveGrade} (${effectiveBoard.toUpperCase()} Board)
 Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
 
 ${subjectGuidance}
-
+${excludePromptPart}
 STRICT ANTI-META DIRECTIVES:
 1. STRICTLY FORBIDDEN: NEVER write meta-questions about the curriculum, textbook accuracy, syllabus validity, or generic claims (e.g., 'Which statement is factually accurate according to the textbook', 'verified textbook principle', 'invalid assumption violating syllabus definitions').
 2. MANDATORY: Every single question MUST directly ask a real problem or question testing specific concepts: concrete quantities, numerical values, SI units, formulas, chemical equations, physical laws, measuring instruments, biological processes, or Urdu/Islamiat textual analysis.
@@ -528,7 +537,7 @@ Return ONLY a valid JSON object matching this structure:
         }
       }
 
-      const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 2, difficulty, effectiveGrade, effectiveBoard);
+      const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 3, difficulty, effectiveGrade, effectiveBoard, normExcludes);
 
       if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
         // Normalize IDs, options structure, and answers

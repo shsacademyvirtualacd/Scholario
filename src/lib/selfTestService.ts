@@ -5,7 +5,10 @@ import { supabase } from './supabase';
 
 const SELF_TEST_HISTORY_KEY = 'scholario_self_test_history_v1';
 
-export async function generateMCQTest(config: SelfTestConfig): Promise<MCQQuestion[]> {
+export async function generateMCQTest(
+  config: SelfTestConfig,
+  excludeQuestionTexts: string[] = []
+): Promise<MCQQuestion[]> {
   const fallback = () =>
     generateCurriculumFallbackMCQs(
       config.subject,
@@ -13,7 +16,8 @@ export async function generateMCQTest(config: SelfTestConfig): Promise<MCQQuesti
       config.questionCount * 2,
       config.difficulty,
       config.grade,
-      config.board
+      config.board,
+      excludeQuestionTexts
     );
 
   try {
@@ -33,7 +37,10 @@ export async function generateMCQTest(config: SelfTestConfig): Promise<MCQQuesti
     const response = await fetch('/api/tests/generate-mcq', {
       method: 'POST',
       headers,
-      body: JSON.stringify(config),
+      body: JSON.stringify({
+        ...config,
+        excludeQuestionTexts,
+      }),
     });
 
     if (response.ok) {

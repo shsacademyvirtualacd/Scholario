@@ -135,6 +135,13 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   // Runtime quiz state
   const [viewMode, setViewMode] = useState<ViewMode>('config');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationProgress, setGenerationProgress] = useState<number>(0);
+  const [generationStep, setGenerationStep] = useState<number>(1);
+  const [generationStatus, setGenerationStatus] = useState<string>('Analyzing Curriculum & Syllabus Standards...');
+  const [targetTotalQuestions, setTargetTotalQuestions] = useState<number>(10);
+  const [isBackgroundGenerating, setIsBackgroundGenerating] = useState<boolean>(false);
+  const [activeQuizTopic, setActiveQuizTopic] = useState<string>('Kinematics');
+  const [activeQuizChapters, setActiveQuizChapters] = useState<string[]>([]);
   const [questions, setQuestions] = useState<MCQQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
@@ -252,7 +259,74 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     });
   };
 
-  // Handler: Start AI Test Generation
+  // Background MCQ Generation Worker
+  const launchBackgroundGeneration = async (
+    activeConfig: SelfTestConfig,
+    initialQuestions: MCQQuestion[],
+    targetTotal: number
+  ) => {
+    setIsBackgroundGenerating(true);
+    let currentList = [...initialQuestions];
+
+    try {
+      while (currentList.length < targetTotal) {
+        const remainingCount = targetTotal - currentList.length;
+        const nextBatchCount = Math.min(5, remainingCount);
+        const excludeTexts = currentList.map((q) => q.question);
+
+        const batchConfig: SelfTestConfig = {
+          ...activeConfig,
+          questionCount: nextBatchCount,
+        };
+
+        const newBatch = await generateMCQTest(batchConfig, excludeTexts);
+
+        if (!newBatch || newBatch.length === 0) {
+          console.warn('[Background Generation] No new questions returned for batch.');
+          break;
+        }
+
+        // Filter out any duplicates against existing questions
+        const validNew = newBatch.filter((nq) => {
+          const isDuplicate = currentList.some(
+            (cq) =>
+              cq.id === nq.id ||
+              cq.question.trim().toLowerCase() === nq.question.trim().toLowerCase()
+          );
+          return (
+            !isDuplicate &&
+            nq.question &&
+            nq.options &&
+            nq.options.A &&
+            nq.options.B &&
+            nq.options.C &&
+            nq.options.D &&
+            ['A', 'B', 'C', 'D'].includes(nq.correctAnswer)
+          );
+        });
+
+        if (validNew.length === 0) {
+          console.warn('[Background Generation] Zero valid non-duplicate questions in batch.');
+          break;
+        }
+
+        currentList = [...currentList, ...validNew];
+        setQuestions([...currentList]);
+        console.log(`[Background Generation] Progressive questions updated: ${currentList.length}/${targetTotal}`);
+
+        // Small delay between background calls
+        if (currentList.length < targetTotal) {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+      }
+    } catch (bgErr) {
+      console.warn('[Background Generation] Background generation encountered error:', bgErr);
+    } finally {
+      setIsBackgroundGenerating(false);
+    }
+  };
+
+  // Handler: Start AI Test Generation with deliberate ~10s quality check & progressive delivery
   const handleStartGeneration = async () => {
     let finalTopic = topic.trim();
     let finalChapters = selectedChapters;
@@ -292,27 +366,79 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       return;
     }
 
+    const requestedTotal = questionCount;
+    const initialBatchCount = Math.min(5, requestedTotal);
+    setTargetTotalQuestions(requestedTotal);
+    setActiveQuizTopic(finalTopic);
+    setActiveQuizChapters(finalChapters);
+
+    setIsGenerating(true);
+    setGenerationProgress(5);
+    setGenerationStep(1);
+    setGenerationStatus('Analyzing Curriculum & Syllabus Standards...');
+
+    const startTime = Date.now();
+    const minDurationMs = 10000; // 10-second deliberate quality check time
+
+    // Smooth progress bar animation over 10s
+    const progressInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const fraction = Math.min(elapsed / minDurationMs, 0.95);
+      const progressVal = Math.round(fraction * 100);
+      setGenerationProgress(progressVal);
+
+      if (elapsed < 2500) {
+        setGenerationStep(1);
+        setGenerationStatus('Analyzing Curriculum & Syllabus Standards...');
+      } else if (elapsed < 5000) {
+        setGenerationStep(2);
+        setGenerationStatus(`Synthesizing concept-specific MCQs on "${finalTopic}"...`);
+      } else if (elapsed < 7500) {
+        setGenerationStep(3);
+        setGenerationStatus('Verifying equations, LaTeX formulas & distractor options...');
+      } else if (elapsed < 9500) {
+        setGenerationStep(4);
+        setGenerationStatus('Running strict 100% quality & anti-meta verification checks...');
+      } else {
+        setGenerationStep(5);
+        setGenerationStatus('Preparing question workspace and answer palette...');
+      }
+    }, 100);
+
+    const activeConfig: SelfTestConfig = {
+      board: activeBoard,
+      grade: activeGrade,
+      subject: activeSubjectName,
+      topic: finalTopic,
+      questionCount: initialBatchCount,
+      difficulty,
+      examMode: isFbise9 ? examMode : undefined,
+      selectedChapters: isFbise9 ? finalChapters : undefined,
+    };
+
     try {
-      setIsGenerating(true);
-      const activeConfig: SelfTestConfig = {
-        board: activeBoard,
-        grade: activeGrade,
-        subject: activeSubjectName,
-        topic: finalTopic,
-        questionCount,
-        difficulty,
-        examMode: isFbise9 ? examMode : undefined,
-        selectedChapters: isFbise9 ? finalChapters : undefined,
-      };
+      const initialPromise = generateMCQTest(activeConfig, []);
 
-      const generatedQuestions = await generateMCQTest(activeConfig);
+      // Wait for both the AI API generation and the deliberate 10s quality timer
+      const [initialBatch] = await Promise.all([
+        initialPromise,
+        new Promise((resolve) => {
+          const remaining = Math.max(0, minDurationMs - (Date.now() - startTime));
+          setTimeout(resolve, remaining);
+        }),
+      ]);
 
-      if (!generatedQuestions || generatedQuestions.length === 0) {
-        throw new Error('No questions generated. Please try again.');
+      clearInterval(progressInterval);
+      setGenerationProgress(100);
+      setGenerationStep(5);
+      setGenerationStatus('Questions verified and ready!');
+
+      if (!initialBatch || initialBatch.length === 0) {
+        throw new Error('No questions could be generated. Please try again.');
       }
 
       // Validate questions strictly: ensure 4 distinct options and one valid correct answer
-      const validated = generatedQuestions.filter((q) => {
+      const validated = initialBatch.filter((q) => {
         return (
           q.question &&
           q.options &&
@@ -334,13 +460,21 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       setFlaggedQuestions(new Set());
       setTimeElapsed(0);
       setIsPaused(false);
+      setIsGenerating(false);
       setViewMode('active');
-      toast.success(`Generated ${validated.length} syllabus-accurate MCQs on "${finalTopic}"!`);
+
+      if (requestedTotal > validated.length) {
+        toast.success(`Starting quiz with first ${validated.length} questions. Remaining questions generating in background!`);
+        // Launch progressive background generation
+        launchBackgroundGeneration(activeConfig, validated, requestedTotal);
+      } else {
+        toast.success(`Generated ${validated.length} syllabus-accurate MCQs on "${finalTopic}"!`);
+      }
     } catch (err: any) {
+      clearInterval(progressInterval);
+      setIsGenerating(false);
       console.error('MCQ Generation error:', err);
       toast.error(err.message || 'Failed to generate MCQs. Please try again.');
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -370,11 +504,11 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       board: activeBoard,
       grade: activeGrade,
       subject: activeSubjectName,
-      topic: topic.trim(),
+      topic: activeQuizTopic || topic.trim(),
       questionCount: questions.length,
       difficulty,
       examMode: isFbise9 ? examMode : undefined,
-      selectedChapters: isFbise9 ? selectedChapters : undefined,
+      selectedChapters: isFbise9 ? activeQuizChapters : undefined,
     };
 
     let score = 0;
@@ -385,7 +519,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       }
     });
 
-    const percentage = Math.round((score / questions.length) * 100);
+    const totalEvaluated = questions.length;
+    const percentage = totalEvaluated > 0 ? Math.round((score / totalEvaluated) * 100) : 0;
 
     const result: SelfTestResult = {
       id: `st_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -394,7 +529,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       questions,
       userAnswers,
       score,
-      totalQuestions: questions.length,
+      totalQuestions: totalEvaluated,
       percentage,
       timeSpentSeconds: timeElapsed,
     };
@@ -405,7 +540,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     setCompletedResult(result);
     setViewMode('results');
     setShowConfirmSubmit(false);
-    toast.success(`Quiz completed! You scored ${score}/${questions.length} (${percentage}%)`);
+    toast.success(`Quiz completed! You scored ${score}/${totalEvaluated} (${percentage}%)`);
   };
 
   // Format seconds to mm:ss
@@ -417,6 +552,108 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   // ── RENDER 1: Generator Setup View ───────────────────────
   if (viewMode === 'config') {
+    if (isGenerating) {
+      return (
+        <div className="space-y-6 max-w-2xl mx-auto py-8">
+          <div className="bg-white rounded-3xl border border-[#E5E5E5] p-8 sm:p-12 shadow-sm text-center space-y-8">
+            <div className="relative w-20 h-20 mx-auto">
+              <div className="absolute inset-0 rounded-3xl bg-[#F4C430]/20 animate-ping opacity-75" />
+              <div className="relative w-20 h-20 rounded-3xl bg-[#111111] text-[#F4C430] flex items-center justify-center shadow-lg">
+                <Sparkles size={36} className="animate-spin" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#525252]">
+                <Clock size={13} className="text-[#F4C430]" />
+                <span>Academic Quality Validation in Progress</span>
+              </div>
+              <h3 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+                Generating your quiz...
+              </h3>
+              <p className="text-xs sm:text-sm text-[#737373] max-w-md mx-auto leading-relaxed">
+                Synthesizing syllabus-accurate questions for <strong>{topic}</strong> ({activeSubjectName} • Grade {activeGrade} • {activeBoard.toUpperCase()}).
+              </p>
+            </div>
+
+            {/* Progress Bar with Percentage */}
+            <div className="space-y-2 max-w-md mx-auto">
+              <div className="flex justify-between text-xs font-bold text-[#525252]">
+                <span>Step {generationStep} of 5</span>
+                <span>{generationProgress}%</span>
+              </div>
+              <div className="w-full h-3 bg-[#F0F0F0] rounded-full overflow-hidden p-0.5 border border-[#E5E5E5]">
+                <div
+                  className="h-full bg-linear-to-r from-[#111111] via-[#333333] to-[#F4C430] rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${generationProgress}%` }}
+                />
+              </div>
+              <p className="text-xs font-semibold text-[#111111] pt-1 transition-all">
+                {generationStatus}
+              </p>
+            </div>
+
+            {/* Step indicators */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left max-w-md mx-auto pt-2 border-t border-[#F0F0F0]">
+              <div className="flex items-center gap-2 text-[11px]">
+                {generationStep > 1 ? (
+                  <CheckCircle2 size={15} className="text-[#10B981] shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-[#D4D4D4] shrink-0" />
+                )}
+                <span className={generationStep >= 1 ? 'font-bold text-[#111111]' : 'text-[#A3A3A3]'}>
+                  Curriculum & Chapter Scope
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                {generationStep > 2 ? (
+                  <CheckCircle2 size={15} className="text-[#10B981] shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-[#D4D4D4] shrink-0" />
+                )}
+                <span className={generationStep >= 2 ? 'font-bold text-[#111111]' : 'text-[#A3A3A3]'}>
+                  Concept-Specific Formulations
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                {generationStep > 3 ? (
+                  <CheckCircle2 size={15} className="text-[#10B981] shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-[#D4D4D4] shrink-0" />
+                )}
+                <span className={generationStep >= 3 ? 'font-bold text-[#111111]' : 'text-[#A3A3A3]'}>
+                  LaTeX Formulas & Distractors
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                {generationStep > 4 ? (
+                  <CheckCircle2 size={15} className="text-[#10B981] shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-[#D4D4D4] shrink-0" />
+                )}
+                <span className={generationStep >= 4 ? 'font-bold text-[#111111]' : 'text-[#A3A3A3]'}>
+                  Strict Anti-Meta Verification
+                </span>
+              </div>
+            </div>
+
+            {/* Progressive delivery note */}
+            {targetTotalQuestions > 5 && (
+              <div className="p-3.5 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#92400E] max-w-md mx-auto text-left flex items-start gap-2.5">
+                <Sparkles size={16} className="text-[#D97706] shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Progressive Generation Active</p>
+                  <p className="text-[11px] text-[#B45309] mt-0.5">
+                    The first 5 verified questions will display once ready so you can start right away. Remaining {targetTotalQuestions - 5} questions will generate seamlessly in the background.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     const popularTopics = isFbise9
       ? getFBISEGrade9PopularTopics(activeSubjectName)
       : SUGGESTED_TOPICS[activeSubjectName] || [
@@ -1108,7 +1345,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     const currentQ = questions[currentIdx];
     const isFlagged = flaggedQuestions.has(currentIdx);
     const answeredCount = Object.keys(userAnswers).length;
-    const progressPercent = Math.round(((currentIdx + 1) / questions.length) * 100);
+    const progressPercent = Math.round(((currentIdx + 1) / targetTotalQuestions) * 100);
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -1129,19 +1366,33 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="badge badge-gold text-[10px] font-bold px-2 py-0.5">
-                  <MathText text={topic} />
+                  <MathText text={activeQuizTopic || topic} />
                 </span>
                 <span className="text-xs font-extrabold text-[#111111]">
                   {activeSubjectName} (Grade {grade})
                 </span>
               </div>
               <p className="text-[11px] text-[#737373] mt-0.5">
-                Question {currentIdx + 1} of {questions.length} • {answeredCount} Answered
+                Question {currentIdx + 1} of {targetTotalQuestions} • {answeredCount} Answered
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Background Generation Indicator */}
+            {isBackgroundGenerating && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-xs font-bold text-[#92400E] animate-pulse">
+                <Sparkles size={13} className="text-[#D97706] animate-spin" />
+                <span>Preparing in background ({questions.length}/{targetTotalQuestions})</span>
+              </div>
+            )}
+            {!isBackgroundGenerating && targetTotalQuestions > 5 && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-xs font-bold text-[#059669]">
+                <CheckCircle2 size={13} className="text-[#059669]" />
+                <span>All {questions.length} questions ready</span>
+              </div>
+            )}
+
             {/* Timer */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-mono font-bold text-[#111111]">
               <Clock size={14} className="text-[#F4C430]" />
@@ -1179,12 +1430,12 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         </div>
 
         {/* Main Question Card */}
-        {currentQ && (
+        {currentQ ? (
           <div className="bg-white rounded-3xl border border-[#E5E5E5] p-6 sm:p-8 shadow-xs space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <span className="inline-block px-2.5 py-1 rounded-lg bg-[#F5F5F5] text-xs font-extrabold text-[#737373]">
-                  Question {currentIdx + 1}
+                  Question {currentIdx + 1} of {targetTotalQuestions}
                 </span>
                 <h3 className="text-base sm:text-lg font-bold text-[#111111] leading-relaxed">
                   <MathText text={currentQ.question} />
@@ -1226,6 +1477,27 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
               })}
             </div>
           </div>
+        ) : (
+          /* Question Loading in Background Card */
+          <div className="bg-white rounded-3xl border border-[#E5E5E5] p-8 sm:p-12 shadow-xs text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center mx-auto">
+              <Sparkles size={24} className="animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-base font-bold text-[#111111]">
+                Synthesizing Question {currentIdx + 1}...
+              </h4>
+              <p className="text-xs text-[#737373] max-w-md mx-auto leading-relaxed">
+                Our background quality engine is preparing and validating this question. It will appear automatically once generated.
+              </p>
+            </div>
+            <button
+              onClick={() => setCurrentIdx(Math.max(0, questions.length - 1))}
+              className="px-4 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-colors"
+            >
+              Return to Question {questions.length}
+            </button>
+          </div>
         )}
 
         {/* Question Palette & Bottom Navigation */}
@@ -1239,16 +1511,35 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
               Previous
             </button>
 
-            {/* Question navigator chips */}
+            {/* Question navigator chips for all target questions */}
             <div className="flex items-center gap-1.5 overflow-x-auto max-w-[200px] sm:max-w-[320px] py-1 no-scrollbar px-1">
-              {questions.map((q, idx) => {
+              {Array.from({ length: targetTotalQuestions }, (_, i) => i).map((idx) => {
+                const isReady = idx < questions.length;
                 const isCurrent = idx === currentIdx;
-                const isAns = !!userAnswers[q.id];
+                const q = isReady ? questions[idx] : null;
+                const isAns = q ? !!userAnswers[q.id] : false;
                 const isFlag = flaggedQuestions.has(idx);
+
+                if (!isReady) {
+                  return (
+                    <button
+                      key={`pending_${idx}`}
+                      onClick={() => setCurrentIdx(idx)}
+                      title={`Question ${idx + 1} generating in background...`}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold shrink-0 transition-all ${
+                        isCurrent
+                          ? 'ring-2 ring-[#F59E0B] bg-[#FFFBEB] text-[#D97706]'
+                          : 'bg-[#FAFAFA] text-[#A3A3A3] border border-dashed border-[#D4D4D4] hover:border-[#A3A3A3]'
+                      }`}
+                    >
+                      <span className="opacity-60">{idx + 1}</span>
+                    </button>
+                  );
+                }
 
                 return (
                   <button
-                    key={q.id}
+                    key={q?.id || idx}
                     onClick={() => setCurrentIdx(idx)}
                     className={`w-7 h-7 rounded-lg text-xs font-bold shrink-0 transition-all ${
                       isCurrent
@@ -1267,17 +1558,20 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             </div>
 
             <button
-              onClick={() => setCurrentIdx((prev) => Math.min(questions.length - 1, prev + 1))}
-              disabled={currentIdx === questions.length - 1}
-              className="px-4 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setCurrentIdx((prev) => Math.min(targetTotalQuestions - 1, prev + 1))}
+              disabled={currentIdx >= targetTotalQuestions - 1}
+              className="px-4 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
             >
-              Next
+              <span>Next</span>
+              {currentIdx + 1 >= questions.length && isBackgroundGenerating && (
+                <Sparkles size={11} className="text-[#D97706] animate-spin" />
+              )}
             </button>
           </div>
 
           <button
             onClick={() => {
-              if (answeredCount < questions.length) {
+              if (answeredCount < targetTotalQuestions) {
                 setShowConfirmSubmit(true);
               } else {
                 handleSubmitQuiz();
@@ -1300,7 +1594,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
               <div className="text-center space-y-1">
                 <h3 className="text-base font-extrabold text-[#111111]">Unanswered Questions</h3>
                 <p className="text-xs text-[#737373]">
-                  You have answered <strong>{answeredCount}</strong> out of <strong>{questions.length}</strong> questions ({questions.length - answeredCount} remaining). Are you sure you want to submit now?
+                  You have answered <strong>{answeredCount}</strong> out of <strong>{targetTotalQuestions}</strong> questions ({targetTotalQuestions - answeredCount} remaining). Are you sure you want to submit now?
                 </p>
               </div>
 

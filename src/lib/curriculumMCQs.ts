@@ -12,12 +12,13 @@ export function generateCurriculumFallbackMCQs(
   count: number,
   difficulty: MCQDifficulty = 'medium',
   grade: string = '10',
-  board: string = 'fbise'
+  board: string = 'fbise',
+  excludeTexts: string[] = []
 ): MCQQuestion[] {
   // Check if this is Grade 9 FBISE
   if (isGrade9FBISE(board, grade)) {
     const selectedChaps = topic && topic !== 'Full Syllabus' && topic !== 'Mixed Chapters' ? [topic] : [];
-    const fbise9Questions = getGrade9FBISEQuestions(subject, selectedChaps, count, difficulty);
+    const fbise9Questions = getGrade9FBISEQuestions(subject, selectedChaps, count, difficulty, excludeTexts);
     if (fbise9Questions.length > 0) {
       return fbise9Questions;
     }
@@ -25,6 +26,7 @@ export function generateCurriculumFallbackMCQs(
 
   const normSubject = (subject || '').toLowerCase();
   const normTopic = (topic || '').toLowerCase();
+  const normExcludes = (excludeTexts || []).map((t) => t.trim().toLowerCase());
 
   const questions: MCQQuestion[] = [];
 
@@ -696,23 +698,64 @@ export function generateCurriculumFallbackMCQs(
         explanation: `By Newton's second law: $a = \\frac{F}{m} = \\frac{${force}\\text{ N}}{${mass}\\text{ kg}} = ${acc}\\text{ m/s}^2$.`,
         topic: topic || 'Dynamics & Motion',
       });
+    } else if (normSubject.includes('chem')) {
+      const moles = (dynamicCount % 4) + 1;
+      const mass = moles * 18;
+      questions.push({
+        id: `chem_dyn_${dynamicCount}`,
+        question: `Calculate the mass in grams of $${moles}\\text{ mol}$ of water ($\\text{H}_2\\text{O}$) having a molar mass of $18\\text{ g/mol}$:`,
+        options: {
+          A: `$${mass}\\text{ g}$`,
+          B: `$${mass + 18}\\text{ g}$`,
+          C: `$${(mass / 2).toFixed(1)}\\text{ g}$`,
+          D: `$${mass * 2}\\text{ g}$`,
+        },
+        correctAnswer: 'A',
+        explanation: `$\\text{Mass} = \\text{Moles} \\times \\text{Molar mass} = ${moles} \\times 18\\text{ g/mol} = ${mass}\\text{ g}$.`,
+        topic: topic || 'Stoichiometry & Solutions',
+      });
+    } else if (normSubject.includes('bio')) {
+      questions.push({
+        id: `bio_dyn_${dynamicCount}`,
+        question: `Which cellular organelle is primarily responsible for ATP synthesis via aerobic cellular respiration in Grade ${grade} Biology?`,
+        options: {
+          A: `Mitochondria`,
+          B: `Ribosomes`,
+          C: `Endoplasmic Reticulum`,
+          D: `Lysosomes`,
+        },
+        correctAnswer: 'A',
+        explanation: `Mitochondria are the powerhouses of eukaryotic cells, synthesizing ATP through cellular respiration.`,
+        topic: topic || 'Cell Biology',
+      });
     } else {
       questions.push({
         id: `dyn_${dynamicCount}`,
-        question: `In ${subject} (${topic}), which of the following is the standard textbook definition and application of this concept for Grade ${grade}?`,
+        question: `In ${subject} (${topic}), which standard SI unit or fundamental definition is universally used for quantitative analysis in Grade ${grade}?`,
         options: {
-          A: `A verified curriculum principle grounded in empirical observation and standard formula applications.`,
-          B: `A non-verifiable assumption that ignores standard boundary conditions.`,
-          C: `An arbitrary approximation that lacks dimensional consistency.`,
-          D: `A variable with no defined mathematical or physical relationship.`,
+          A: `Standard SI derived or base metric established in the curriculum`,
+          B: `Non-standard arbitrary unit`,
+          C: `CGS scale multiplied by an uncalibrated scalar`,
+          D: `Dimensionless unverified parameter`,
         },
         correctAnswer: 'A',
-        explanation: `Standard syllabus frameworks for ${subject} Grade ${grade} define this concept through verified textbook principles and exact formula definitions.`,
+        explanation: `Grade ${grade} curriculum standards establish standard SI units and validated quantitative metrics for ${topic}.`,
         topic: topic,
       });
     }
     dynamicCount++;
   }
 
-  return questions.slice(0, count);
+  // Filter out any excluded questions
+  const filtered = questions.filter((q) => {
+    if (normExcludes.length > 0) {
+      const qText = q.question.trim().toLowerCase();
+      if (normExcludes.some((ex) => qText === ex || (q.id && ex === q.id.toLowerCase()))) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  return filtered.slice(0, count);
 }

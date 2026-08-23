@@ -50,7 +50,12 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     difficulty = 'medium',
     board = 'fbise',
     grade = '10',
+    excludeQuestionTexts = [],
   } = body || {};
+
+  const normExcludes: string[] = Array.isArray(excludeQuestionTexts)
+    ? excludeQuestionTexts.map((s: any) => String(s || '').trim()).filter(Boolean)
+    : [];
 
   const count = Math.min(Math.max(Number(questionCount) || 10, 1), 30);
   const apiKey =
@@ -58,7 +63,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
 
   if (!apiKey) {
-    const fallbackQuestions = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, grade, board);
+    const fallbackQuestions = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, grade, board, normExcludes);
     return new Response(
       JSON.stringify({
         success: true,
@@ -102,6 +107,10 @@ Never invent generic or made-up topics.
 Ensure questions test actual curriculum formulas, definitions, calculations, Quranic/Hadith facts, or literary comprehension.`;
     }
 
+    const excludePromptPart = normExcludes.length > 0
+      ? `\nCRITICAL ANTI-DUPLICATION RULE:\nDO NOT repeat or test the same concept/scenario as these already generated questions:\n${normExcludes.slice(-15).map((t) => `- "${t.slice(0, 100)}..."`).join('\n')}\nGenerate fresh, distinct questions.\n`
+      : '';
+
     const prompt = `You are a Senior Academic Examiner and Curriculum Assessment Director specializing in Pakistan Secondary and Higher Secondary Education (FBISE and Sindh Board 9th-12th Grade syllabus).
 
 Generate exactly ${count} rigorous, flawless Multiple Choice Questions (MCQs) for self-testing and exam practice.
@@ -112,7 +121,7 @@ Target Grade: Grade ${grade} (${board.toUpperCase()} Board)
 Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
 
 ${customSyllabusGuidance}
-
+${excludePromptPart}
 STRICT ANTI-META DIRECTIVES:
 1. STRICTLY FORBIDDEN: NEVER write meta-questions about the curriculum, textbook accuracy, syllabus validity, or generic claims (e.g., 'Which statement is factually accurate according to the textbook', 'verified textbook principle', 'invalid assumption violating syllabus definitions').
 2. MANDATORY: Every single question MUST directly ask a real problem or question testing specific concepts: concrete quantities, numerical values, SI units, formulas, chemical equations, physical laws, measuring instruments, biological processes, or Urdu/Islamiat textual analysis.
@@ -160,7 +169,7 @@ Return ONLY a valid JSON object matching this structure:
       parsedData = JSON.parse(cleaned);
     }
 
-    const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 2, difficulty, grade, board);
+    const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 3, difficulty, grade, board, normExcludes);
 
     if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
       const rawNormalized = parsedData.questions.map((q: any, idx: number) => ({

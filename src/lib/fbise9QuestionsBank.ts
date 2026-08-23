@@ -1439,18 +1439,82 @@ function generateConcreteDynamicMCQ(subject: string, chapter: string, index: num
     };
   }
 
+  // Biology dynamic concrete questions
+  if (normSub.includes('bio')) {
+    const organelleIndex = (index % 4);
+    const organelles = [
+      { name: 'Mitochondria', func: 'Aerobic cellular respiration and ATP synthesis', dist: 'Protein packaging and secretion' },
+      { name: 'Ribosomes', func: 'Protein synthesis through translation of mRNA', dist: 'Lipid storage and breakdown' },
+      { name: 'Chloroplasts', func: 'Photosynthesis and chlorophyll pigment containment', dist: 'Cellular waste degradation' },
+      { name: 'Golgi Apparatus', func: 'Modifying, sorting, and packaging proteins into vesicles', dist: 'DNA replication and transcription' },
+    ];
+    const organelle = organelles[organelleIndex];
+    return {
+      id: `fbise9_dyn_bio_${index}`,
+      question: `What is the primary cellular function of ${organelle.name} in eukaryotic cells?`,
+      options: {
+        A: organelle.func,
+        B: organelle.dist,
+        C: 'Regulating osmotic potential and cell wall synthesis',
+        D: 'Anchoring spindle fibers during cytokinesis',
+      },
+      correctAnswer: 'A',
+      explanation: `${organelle.name} are specialized membrane-bound organelles primarily responsible for ${organelle.func.toLowerCase()}.`,
+      chapter,
+      topic: chapter,
+    };
+  }
+
+  // Computer Science dynamic concrete questions
+  if (normSub.includes('comp') || normSub.includes('cs')) {
+    const bytes = Math.pow(2, (index % 4) + 1);
+    const bits = bytes * 8;
+    return {
+      id: `fbise9_dyn_cs_${index}`,
+      question: `How many bits are contained in a data payload of $${bytes}\\text{ bytes}$?`,
+      options: {
+        A: `$${bits}\\text{ bits}$`,
+        B: `$${bits / 2}\\text{ bits}$`,
+        C: `$${bits * 2}\\text{ bits}$`,
+        D: `$${bytes * 10}\\text{ bits}$`,
+      },
+      correctAnswer: 'A',
+      explanation: `Since $1\\text{ byte} = 8\\text{ bits}$, $${bytes}\\text{ bytes} = ${bytes} \\times 8 = ${bits}\\text{ bits}$.`,
+      chapter,
+      topic: chapter,
+    };
+  }
+
+  // English dynamic concrete questions
+  if (normSub.includes('eng')) {
+    return {
+      id: `fbise9_dyn_eng_${index}`,
+      question: `Identify the correct passive voice construction: "The teacher delivered an insightful lecture on ${chapter}."`,
+      options: {
+        A: `An insightful lecture on ${chapter} was delivered by the teacher.`,
+        B: `An insightful lecture on ${chapter} has been delivered by the teacher.`,
+        C: `An insightful lecture on ${chapter} is delivered by the teacher.`,
+        D: `An insightful lecture on ${chapter} had delivered by the teacher.`,
+      },
+      correctAnswer: 'A',
+      explanation: 'In Simple Past active sentences ("delivered"), the passive form requires "was/were + past participle" ("was delivered").',
+      chapter,
+      topic: chapter,
+    };
+  }
+
   // General subject fallback with authentic concrete question
   return {
     id: `fbise9_dyn_gen_${index}`,
-    question: `In ${subject}, which parameter directly characterizes the core physical/conceptual property in ${chapter}?`,
+    question: `In Grade 9 ${subject} (${chapter}), which foundational standard SI unit or defining metric is universally utilized for measurements?`,
     options: {
-      A: `Specific quantitative measure defined for ${chapter}`,
-      B: `Arbitrary non-standard unit`,
-      C: `Scalar magnitude without reference point`,
-      D: `Undefined variable`,
+      A: `Standard SI derived or base unit specified in the curriculum`,
+      B: `Arbitrary non-standard measurement without dimensional basis`,
+      C: `CGS unit multiplied by arbitrary scalar`,
+      D: `Dimensionless non-reproducible quantity`,
     },
     correctAnswer: 'A',
-    explanation: `Calculations and definitions in ${chapter} rely directly on standard quantitative measures.`,
+    explanation: `Grade 9 ${subject} curriculum standards require all measurements in ${chapter} to be expressed in standard SI units.`,
     chapter,
     topic: chapter,
   };
@@ -1464,7 +1528,8 @@ export function getGrade9FBISEQuestions(
   subject: string,
   selectedChapters: string[] = [],
   count: number = 10,
-  _difficulty: MCQDifficulty = 'medium'
+  _difficulty: MCQDifficulty = 'medium',
+  excludeTexts: string[] = []
 ): MCQQuestion[] {
   const normSub = (subject || 'Physics').trim();
   let subjectBank = FBISE_9_QUESTION_BANK[normSub];
@@ -1484,6 +1549,7 @@ export function getGrade9FBISEQuestions(
 
   const rawResults: MCQQuestion[] = [];
   const normalizedSelected = selectedChapters.map((c) => c.trim().toLowerCase());
+  const normExcludes = (excludeTexts || []).map((t) => t.trim().toLowerCase());
 
   // Filter questions for the selected chapters
   for (const [chapterName, chapterQuestions] of Object.entries(subjectBank)) {
@@ -1510,8 +1576,17 @@ export function getGrade9FBISEQuestions(
     }
   }
 
-  // Filter out any invalid/generic questions
-  const validPool = rawResults.filter((q) => validateMCQQuestion(q).valid);
+  // Filter out any invalid/generic questions and excluded questions
+  const validPool = rawResults.filter((q) => {
+    if (!validateMCQQuestion(q).valid) return false;
+    if (normExcludes.length > 0) {
+      const qText = q.question.trim().toLowerCase();
+      if (normExcludes.some((ex) => qText === ex || (q.id && ex === q.id.toLowerCase()))) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   // If we have enough valid questions, shuffle and return
   if (validPool.length >= count) {
@@ -1525,10 +1600,13 @@ export function getGrade9FBISEQuestions(
   const targetChapter = selectedChapters[0] || Object.keys(subjectBank)[0] || 'Core Curriculum';
   let dynCounter = 1;
 
-  while (finalResults.length < count && dynCounter <= count * 2) {
+  while (finalResults.length < count && dynCounter <= count * 5) {
     const dynQ = generateConcreteDynamicMCQ(normSub, targetChapter, dynCounter);
     if (validateMCQQuestion(dynQ).valid) {
-      finalResults.push(dynQ);
+      const qText = dynQ.question.trim().toLowerCase();
+      if (!normExcludes.some((ex) => qText === ex) && !finalResults.some((r) => r.question.trim().toLowerCase() === qText)) {
+        finalResults.push(dynQ);
+      }
     }
     dynCounter++;
   }
