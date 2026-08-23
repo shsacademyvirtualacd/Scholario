@@ -368,6 +368,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
 
+    // Safety fallback: ensure loading never hangs indefinitely if network is slow/unreachable
+    const safetyTimer = setTimeout(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 2000);
+
     // Check for an existing session on mount (e.g. after OAuth redirect)
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
       if (!mounted) return;
@@ -378,6 +385,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setLoading(false);
       }
+    }).catch((err) => {
+      console.warn('[Auth] getSession error:', err);
+      if (mounted) setLoading(false);
+    }).finally(() => {
+      clearTimeout(safetyTimer);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

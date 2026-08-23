@@ -463,18 +463,7 @@ export function getChapterSyllabusScope(
         { pattern: /\b(pascal's law|hydraulic lift|archimedes|upthrust|hooke's law|young's modulus)\b/i, reason: 'Fluid pressure belongs to Chapter 5.' },
         { pattern: /\b(magnetic pole|electromagnet|resistor|ohm's law|concave mirror)\b/i, reason: 'Belongs to other chapters.' }
       );
-    } else if (normTopic.includes('dynamics – i') || (normTopic.includes('dynamics') && !normTopic.includes('ii'))) {
-      requiredKeywords.push(
-        'newton', 'first law', 'second law', 'third law', 'inertia', 'force', 'mass',
-        'weight', 'action and reaction', 'f = ma', 'tension', 'atwood machine', 'pulley'
-      );
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(vernier caliper|screw gauge|least count|significant figure)\b/i, reason: 'Belongs to Chapter 1 (Measurements).' },
-        { pattern: /\b(kinetic energy|work done|potential energy|joule|watt)\b/i, reason: 'Belongs to Chapter 6 (Work and Energy).' },
-        { pattern: /\b(pascal's law|archimedes|hydraulic lift|hooke's law)\b/i, reason: 'Belongs to Chapter 5.' },
-        { pattern: /\b(concave mirror|resistor|ohm's law|potential difference)\b/i, reason: 'Belongs to Grade 10.' }
-      );
-    } else if (normTopic.includes('dynamics – ii') || normTopic.includes('momentum') || normTopic.includes('circular motion')) {
+    } else if (normTopic.includes('dynamics – ii') || normTopic.includes('dynamics-ii') || normTopic.includes('dynamics ii') || normTopic.includes('momentum') || normTopic.includes('circular motion')) {
       requiredKeywords.push(
         'momentum', 'conservation of momentum', 'impulse', 'friction', 'static friction',
         'limiting friction', 'rolling friction', 'centripetal force', 'centripetal acceleration',
@@ -484,6 +473,17 @@ export function getChapterSyllabusScope(
         { pattern: /\b(vernier caliper|screw gauge|least count|significant figure)\b/i, reason: 'Belongs to Chapter 1 (Measurements).' },
         { pattern: /\b(kinetic energy formula|potential energy formula|work done|joule|watt)\b/i, reason: 'Belongs to Chapter 6 (Work and Energy).' },
         { pattern: /\b(pascal's law|archimedes|hooke's law|young's modulus)\b/i, reason: 'Belongs to Chapter 5.' }
+      );
+    } else if (normTopic.includes('dynamics – i') || normTopic.includes('dynamics-i') || (normTopic.includes('dynamics') && !normTopic.includes('ii'))) {
+      requiredKeywords.push(
+        'newton', 'first law', 'second law', 'third law', 'inertia', 'force', 'mass',
+        'weight', 'action and reaction', 'f = ma', 'tension', 'atwood machine', 'pulley'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper|screw gauge|least count|significant figure)\b/i, reason: 'Belongs to Chapter 1 (Measurements).' },
+        { pattern: /\b(kinetic energy|work done|potential energy|joule|watt)\b/i, reason: 'Belongs to Chapter 6 (Work and Energy).' },
+        { pattern: /\b(pascal's law|archimedes|hydraulic lift|hooke's law)\b/i, reason: 'Belongs to Chapter 5.' },
+        { pattern: /\b(concave mirror|resistor|ohm's law|potential difference)\b/i, reason: 'Belongs to Grade 10.' }
       );
     } else if (normTopic.includes('pressure') || normTopic.includes('deformation')) {
       requiredKeywords.push(
