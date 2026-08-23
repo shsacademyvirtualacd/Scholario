@@ -1,4 +1,5 @@
 import type { MCQQuestion, SelfTestConfig, SelfTestResult } from '../types/selfTest';
+import { generateCurriculumFallbackMCQs } from './curriculumMCQs';
 
 const SELF_TEST_HISTORY_KEY = 'scholario_self_test_history_v1';
 
@@ -12,19 +13,32 @@ export async function generateMCQTest(config: SelfTestConfig): Promise<MCQQuesti
       body: JSON.stringify(config),
     });
 
-    if (!response.ok) {
-      throw new Error(`Server returned status ${response.status}`);
+    if (response.ok) {
+      const data = (await response.json()) as { questions?: MCQQuestion[] };
+      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
+        return data.questions;
+      }
     }
 
-    const data = (await response.json()) as { questions?: MCQQuestion[] };
-    if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-      return data.questions;
-    }
-
-    throw new Error('No questions returned from generator');
+    console.warn(`[SelfTest] API response status ${response.status}. Using high-quality curriculum fallback.`);
+    return generateCurriculumFallbackMCQs(
+      config.subject,
+      config.topic,
+      config.questionCount,
+      config.difficulty,
+      config.grade,
+      config.board
+    );
   } catch (err: any) {
-    console.error('Failed to generate MCQs via API:', err);
-    throw err;
+    console.warn('Network issue calling /api/tests/generate-mcq, falling back to curriculum question bank:', err);
+    return generateCurriculumFallbackMCQs(
+      config.subject,
+      config.topic,
+      config.questionCount,
+      config.difficulty,
+      config.grade,
+      config.board
+    );
   }
 }
 
