@@ -5,6 +5,7 @@ import { downloadNoteBlob } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
 import { useMobile } from '../../hooks/useMobile';
 import PdfViewer from '../ui/PdfViewer';
+import { MathText } from '../common/MathText';
 
 interface NoteViewerModalProps {
   note: Note | null;
@@ -74,8 +75,12 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
         {/* Header */}
         <div className="h-14 border-b border-[#E5E5E5] px-4 md:px-6 flex items-center justify-between bg-[#FAFAFA] shrink-0">
           <div className="min-w-0 pr-4">
-            <h3 className="text-sm font-bold text-[#111111] truncate">{note.chapter_name}</h3>
-            <p className="text-xs text-[#737373] truncate font-medium mt-0.5">{note.title}</p>
+            <h3 className="text-sm font-bold text-[#111111] truncate">
+              <MathText text={note.chapter_name} />
+            </h3>
+            <p className="text-xs text-[#737373] truncate font-medium mt-0.5">
+              <MathText text={note.title} />
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {activeUrl ? (

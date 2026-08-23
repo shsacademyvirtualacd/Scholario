@@ -3,6 +3,7 @@ import { Megaphone, Calendar, Filter, Search, ShieldAlert } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import { getAnnouncements } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
+import { MathText } from '../../components/common/MathText';
 import { pageCache } from '../../lib/pageCache';
 import type { Announcement } from '../../types';
 
@@ -192,7 +193,9 @@ export const StudentAnnouncementsPage: React.FC = () => {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <h3 className="font-bold text-[#111111] text-sm md:text-base truncate">{ann.title}</h3>
+                      <h3 className="font-bold text-[#111111] text-sm md:text-base truncate">
+                        <MathText text={ann.title} />
+                      </h3>
                       <span
                         className={`badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2.5 rounded-full border ${
                           ann.severity === 'crucial'
@@ -209,9 +212,9 @@ export const StudentAnnouncementsPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <p className="text-xs md:text-sm text-[#525252] mt-2 leading-relaxed font-medium whitespace-pre-wrap">
-                      {ann.body}
-                    </p>
+                    <div className="text-xs md:text-sm text-[#525252] mt-2 leading-relaxed font-medium whitespace-pre-wrap">
+                      <MathText text={ann.body} />
+                    </div>
 
                     <div className="flex items-center gap-3 mt-3.5 text-[11px] text-[#A3A3A3] font-bold">
                       <span className="flex items-center gap-1 text-[#737373]">

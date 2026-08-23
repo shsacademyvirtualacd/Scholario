@@ -16,6 +16,7 @@ import {
 import type { TestPaper, TestSubmission } from '../../types';
 import { uploadTestSubmissionToR2, downloadSubmissionBlob } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
+import { MathText } from '../common/MathText';
 
 interface StudentSubmissionPanelProps {
   selectedTest: TestPaper | null;
@@ -176,7 +177,9 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
           </button>
         </div>
 
-        <h3 className="text-lg font-extrabold text-[#111111] mb-2">{selectedTest.title}</h3>
+        <h3 className="text-lg font-extrabold text-[#111111] mb-2">
+          <MathText text={selectedTest.title} />
+        </h3>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0] text-xs">
           <div>
@@ -202,7 +205,9 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
         {selectedTest.instructions && (
           <div className="mt-3 text-xs text-[#525252] bg-[#FFFBEB] border border-[#FDE68A] p-3 rounded-xl">
             <strong className="text-[#92400E] block font-bold mb-0.5">Teacher Instructions:</strong>
-            <p className="text-[#78350F]">{selectedTest.instructions}</p>
+            <div className="text-[#78350F]">
+              <MathText text={selectedTest.instructions} />
+            </div>
           </div>
         )}
       </div>
@@ -252,7 +257,7 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
             {submission.teacher_feedback && (
               <div className="pt-2 border-t border-[#DCFCE7] text-xs text-[#1F2937]">
                 <strong className="text-[#15803D]">Teacher's Remark: </strong>
-                <span>{submission.teacher_feedback}</span>
+                <span><MathText text={submission.teacher_feedback} /></span>
               </div>
             )}
           </div>

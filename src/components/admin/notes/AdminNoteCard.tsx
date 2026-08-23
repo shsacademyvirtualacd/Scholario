@@ -3,6 +3,7 @@ import { FileText, Image as ImageIcon, Eye, Download, Trash2, Loader2 } from 'lu
 import type { Note } from '../../../types';
 import { downloadNoteBlob } from '../../../lib/db';
 import { useMobile } from '../../../hooks/useMobile';
+import { MathText } from '../../common/MathText';
 
 interface AdminNoteCardProps {
   note: Note;
@@ -94,8 +95,12 @@ export const AdminNoteCard: React.FC<AdminNoteCardProps> = ({
         </div>
 
         {/* Content */}
-        <h3 className="text-sm font-bold text-[#111111] line-clamp-1">{note.chapter_name || '—'}</h3>
-        <p className="text-xs text-[#737373] mt-1 font-semibold line-clamp-1">{note.title || '—'}</p>
+        <h3 className="text-sm font-bold text-[#111111] line-clamp-1">
+          <MathText text={note.chapter_name || '—'} />
+        </h3>
+        <p className="text-xs text-[#737373] mt-1 font-semibold line-clamp-1">
+          <MathText text={note.title || '—'} />
+        </p>
         <p className="text-[10px] text-[#A3A3A3] font-bold mt-2 truncate">Uploaded by: {teacherName}</p>
       </div>
 

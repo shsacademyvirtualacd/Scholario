@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
 import { downloadTestBlob } from '../../lib/db';
+import { MathText } from '../common/MathText';
 
 interface StudentTestCardProps {
   test: TestPaper;
@@ -119,7 +120,9 @@ export const StudentTestCard: React.FC<StudentTestCardProps> = ({
         </div>
 
         {/* Test Title */}
-        <h4 className="text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">{test.title}</h4>
+        <h4 className="text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">
+          <MathText text={test.title} />
+        </h4>
 
         {/* Teacher & Total Marks */}
         <div className="flex items-center gap-3 text-xs text-[#737373] mb-3 flex-wrap">
@@ -135,9 +138,9 @@ export const StudentTestCard: React.FC<StudentTestCardProps> = ({
 
         {/* Instructions preview */}
         {test.instructions && (
-          <p className="text-[11px] text-[#737373] line-clamp-2 mb-3 bg-[#FAFAFA] p-2 rounded-xl border border-[#F0F0F0]">
-            {test.instructions}
-          </p>
+          <div className="text-[11px] text-[#737373] line-clamp-2 mb-3 bg-[#FAFAFA] p-2 rounded-xl border border-[#F0F0F0]">
+            <MathText text={test.instructions} />
+          </div>
         )}
       </div>
 

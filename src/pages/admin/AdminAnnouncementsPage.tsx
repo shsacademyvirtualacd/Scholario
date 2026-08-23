@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, getTaxonomy } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useMobile } from '../../hooks/useMobile';
+import { MathText } from '../../components/common/MathText';
 import type { Announcement, ClassEntry, StreamEntry } from '../../types';
 
 export const AdminAnnouncementsPage: React.FC = () => {
@@ -391,7 +392,9 @@ export const AdminAnnouncementsPage: React.FC = () => {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-[#111111] text-sm truncate">{ann.title}</h3>
+                          <h3 className="font-bold text-[#111111] text-sm truncate">
+                            <MathText text={ann.title} />
+                          </h3>
                           <span
                             className={`badge text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full border ${
                               ann.severity === 'crucial'
@@ -408,9 +411,9 @@ export const AdminAnnouncementsPage: React.FC = () => {
                           </span>
                         </div>
 
-                        <p className="text-xs text-[#525252] mt-1.5 leading-relaxed font-medium whitespace-pre-wrap">
-                          {ann.body}
-                        </p>
+                        <div className="text-xs text-[#525252] mt-1.5 leading-relaxed font-medium whitespace-pre-wrap">
+                          <MathText text={ann.body} />
+                        </div>
 
                         <div className="flex items-center gap-3 mt-3 text-[10px] text-[#A3A3A3] font-bold">
                           <span className="flex items-center gap-1 text-[#A3A3A3]">

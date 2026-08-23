@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { TestPaper } from '../../types';
 import { downloadTestBlob, deleteTestPaper } from '../../lib/db';
+import { MathText } from '../common/MathText';
 
 interface TeacherTestCardProps {
   test: TestPaper;
@@ -96,7 +97,9 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
         </div>
 
         {/* Title */}
-        <h4 className="text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">{test.title}</h4>
+        <h4 className="text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">
+          <MathText text={test.title} />
+        </h4>
 
         {/* Info row */}
         <div className="flex items-center gap-3 text-xs text-[#737373] mb-3 flex-wrap">
@@ -116,9 +119,9 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
 
         {/* Instructions snippet */}
         {test.instructions && (
-          <p className="text-[11px] text-[#737373] line-clamp-2 mb-3 bg-[#FAFAFA] p-2 rounded-xl border border-[#F0F0F0]">
-            {test.instructions}
-          </p>
+          <div className="text-[11px] text-[#737373] line-clamp-2 mb-3 bg-[#FAFAFA] p-2 rounded-xl border border-[#F0F0F0]">
+            <MathText text={test.instructions} />
+          </div>
         )}
       </div>
 

@@ -44,6 +44,7 @@ import {
   getFBISEGrade9Chapters,
   getFBISEGrade9PopularTopics,
 } from '../../lib/curriculumFBISE9';
+import { MathText } from '../common/MathText';
 
 interface SelfTestingViewProps {
   defaultSubject?: string;
@@ -1128,7 +1129,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="badge badge-gold text-[10px] font-bold px-2 py-0.5">
-                  {topic}
+                  <MathText text={topic} />
                 </span>
                 <span className="text-xs font-extrabold text-[#111111]">
                   {activeSubjectName} (Grade {grade})
@@ -1186,7 +1187,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                   Question {currentIdx + 1}
                 </span>
                 <h3 className="text-base sm:text-lg font-bold text-[#111111] leading-relaxed">
-                  {currentQ.question}
+                  <MathText text={currentQ.question} />
                 </h3>
               </div>
             </div>
@@ -1217,9 +1218,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                     >
                       {optKey}
                     </div>
-                    <span className="text-xs sm:text-sm font-semibold flex-1 leading-normal">
-                      {optText}
-                    </span>
+                    <div className="text-xs sm:text-sm font-semibold flex-1 leading-normal">
+                      <MathText text={optText} />
+                    </div>
                   </button>
                 );
               })}
@@ -1362,7 +1363,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FAFAFA] border border-[#E5E5E5] text-[11px] font-bold text-[#737373]">
                   <span>{config.subject}</span>
                   <span>•</span>
-                  <span>{config.topic}</span>
+                  <span><MathText text={config.topic} /></span>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-extrabold text-[#111111]">
                   {percentage >= 80
@@ -1507,7 +1508,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                         </span>
                       </div>
                       <h5 className="text-sm sm:text-base font-bold text-[#111111] leading-relaxed">
-                        {q.question}
+                        <MathText text={q.question} />
                       </h5>
                     </div>
                   </div>
@@ -1535,11 +1536,13 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                           key={optKey}
                           className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-3 ${styleClass}`}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <span className="w-5 h-5 rounded-md bg-black/5 flex items-center justify-center font-extrabold text-[11px] shrink-0">
                               {optKey}
                             </span>
-                            <span className="truncate">{optText}</span>
+                            <div className="flex-1 min-w-0 leading-normal">
+                              <MathText text={optText} />
+                            </div>
                           </div>
                           {icon}
                         </div>
@@ -1553,9 +1556,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       <HelpCircle size={14} />
                       <span>Explanation & Solution</span>
                     </p>
-                    <p className="text-[#78350F] leading-relaxed font-medium">
-                      {q.explanation}
-                    </p>
+                    <div className="text-[#78350F] leading-relaxed font-medium">
+                      <MathText text={q.explanation} />
+                    </div>
                   </div>
                 </div>
               );
@@ -1631,7 +1634,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                     <span className="badge badge-gold text-[10px] font-bold px-2 py-0.5">
                       {item.config.subject}
                     </span>
-                    <h4 className="text-sm font-extrabold text-[#111111]">{item.config.topic}</h4>
+                    <h4 className="text-sm font-extrabold text-[#111111]"><MathText text={item.config.topic} /></h4>
                     <p className="text-[11px] text-[#737373]">
                       Grade {item.config.grade || '10'} • {item.totalQuestions} Questions • {formatTime(item.timeSpentSeconds)}
                     </p>

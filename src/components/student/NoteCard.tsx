@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FileText, Image as ImageIcon, Eye, Download, Loader2 } from 'lucide-react';
 import type { Note } from '../../types';
 import { downloadNoteBlob } from '../../lib/db';
+import { MathText } from '../common/MathText';
 
 interface NoteCardProps {
   note: Note;
@@ -74,8 +75,12 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
           </span>
         </div>
         
-        <h3 className="text-sm font-bold text-[#111111] line-clamp-1">{note.chapter_name}</h3>
-        <p className="text-xs text-[#737373] mt-1 font-medium line-clamp-2">{note.title}</p>
+        <h3 className="text-sm font-bold text-[#111111] line-clamp-1">
+          <MathText text={note.chapter_name} />
+        </h3>
+        <p className="text-xs text-[#737373] mt-1 font-medium line-clamp-2">
+          <MathText text={note.title} />
+        </p>
       </div>
 
       <div className="flex items-center justify-between pt-3 mt-4 border-t border-[#F5F5F5]">

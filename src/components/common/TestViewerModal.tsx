@@ -5,6 +5,7 @@ import { downloadTestBlob, downloadSubmissionBlob } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../features/auth/AuthContext';
 import PdfViewer from '../ui/PdfViewer';
+import { MathText } from './MathText';
 
 interface TestViewerModalProps {
   test?: TestPaper | null;
@@ -136,7 +137,9 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-extrabold text-[#111111] truncate">{title}</h3>
+                <h3 className="text-base font-extrabold text-[#111111] truncate">
+                  <MathText text={title} />
+                </h3>
                 {isTest && test?.subject && (
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F0F0F0] text-[#111111] border border-[#E0E0E0]">
                     {test.subject}
@@ -234,7 +237,7 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
             <AlertCircle size={15} className="shrink-0 mt-0.5 text-[#D97706]" />
             <div>
               <strong className="font-bold">Instructions: </strong>
-              {test.instructions}
+              <MathText text={test.instructions} />
             </div>
           </div>
         )}
@@ -252,7 +255,8 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
             </div>
             {submission.teacher_feedback && (
               <div className="text-[#374151]">
-                <strong className="font-bold text-[#1F2937]">Teacher's Remark:</strong> {submission.teacher_feedback}
+                <strong className="font-bold text-[#1F2937]">Teacher's Remark: </strong>
+                <MathText text={submission.teacher_feedback} />
               </div>
             )}
           </div>

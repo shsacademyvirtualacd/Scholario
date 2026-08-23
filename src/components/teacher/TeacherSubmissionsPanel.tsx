@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
 import { getSubmissionsForTest, gradeTestSubmission, downloadSubmissionBlob } from '../../lib/db';
+import { MathText } from '../common/MathText';
 
 interface TeacherSubmissionsPanelProps {
   selectedTest: TestPaper | null;
@@ -197,7 +198,9 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
           </div>
         </div>
 
-        <h3 className="text-lg font-extrabold text-[#111111] mb-2">{selectedTest.title}</h3>
+        <h3 className="text-lg font-extrabold text-[#111111] mb-2">
+          <MathText text={selectedTest.title} />
+        </h3>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0] text-xs">
           <div>
@@ -361,7 +364,7 @@ export const TeacherSubmissionsPanel: React.FC<TeacherSubmissionsPanelProps> = (
                   {isGraded && !isGradingActive && sub.teacher_feedback && (
                     <div className="mt-3 text-xs bg-[#F0FDF4] p-2.5 rounded-xl border border-[#BBF7D0] text-[#1F2937]">
                       <strong className="text-[#15803D]">Teacher's Remark: </strong>
-                      <span>{sub.teacher_feedback}</span>
+                      <span><MathText text={sub.teacher_feedback} /></span>
                     </div>
                   )}
 
