@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/student' },
   { icon: ClipboardCheck,  label: 'Attendance', path: '/student/attendance' },
   { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
-  { icon: FileCheck2,      label: 'Tests',      path: '/student/tests' },
+  { icon: FileCheck2,      label: 'Testing Center', path: '/student/tests' },
   { icon: Calendar,        label: 'Schedule',   path: '/student/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/student/announcements' },
   { icon: Sparkles,        label: 'Sage',       path: '/student/sage' },

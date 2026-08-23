@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: GraduationCap,   label: 'Teachers',   path: '/admin/teachers' },
   { icon: Users,           label: 'Students',   path: '/admin/students' },
   { icon: BookMarked,      label: 'Notes',      path: '/admin/notes' },
-  { icon: FileCheck2,      label: 'Tests',      path: '/admin/tests' },
+  { icon: FileCheck2,      label: 'Testing Center', path: '/admin/tests' },
   { icon: Bell,            label: 'Announcements', path: '/admin/announcements' },
   { icon: Sparkles,        label: 'Sage',       path: '/admin/sage' },
   { icon: DollarSign,      label: 'Prices',     path: '/admin/prices' },

@@ -20,6 +20,7 @@ const upload = multer({
 const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename: string }>();
 
 import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDataTools';
+import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -272,6 +273,136 @@ Key Guidelines:
       res.write(`data: ${JSON.stringify({ error: err.message || 'Failed to process AI chat stream' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
+    }
+  });
+
+  // ── AI Self-Testing MCQ Generator Endpoint ───────────
+  app.post('/api/tests/generate-mcq', async (req, res) => {
+    try {
+      const {
+        subject = 'Physics',
+        topic = 'General Science',
+        questionCount = 10,
+        difficulty = 'medium',
+        board = 'fbise',
+        grade = '10',
+      } = req.body;
+
+      const count = Math.min(Math.max(Number(questionCount) || 10, 1), 30);
+      const client = getGeminiClient();
+
+      if (!client) {
+        // High quality curriculum fallback questions if no GEMINI_API_KEY is configured
+        const fallbackQuestions = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, grade, board);
+        return res.json({
+          success: true,
+          source: 'curriculum-bank',
+          questions: fallbackQuestions,
+        });
+      }
+
+      const prompt = `You are a Senior Academic Examiner and Curriculum Assessment Director specializing in Pakistan Secondary and Higher Secondary Education (FBISE and Sindh Board 9th-12th Grade syllabus).
+
+Generate exactly ${count} rigorous, flawless Multiple Choice Questions (MCQs) for self-testing and exam practice.
+
+Subject: ${subject}
+Topic / Chapter: ${topic}
+Target Grade: Grade ${grade} (${board.toUpperCase()} Board)
+Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
+
+STRICT CRITERIA:
+1. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').
+2. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors.
+3. No duplicate questions, no factual errors, and no ambiguous questions.
+4. For all math, chemical, or physics equations, use clean standard notation or inline LaTeX ($...$).
+5. Each question must include a clear, educational explanation detailing why the correct option is right.
+
+Return ONLY a valid JSON object matching this structure:
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Question text...",
+      "options": {
+        "A": "Option A text",
+        "B": "Option B text",
+        "C": "Option C text",
+        "D": "Option D text"
+      },
+      "correctAnswer": "A",
+      "explanation": "Step-by-step reasoning explaining why option A is correct..."
+    }
+  ]
+}`;
+
+      const targetModel = 'gemini-2.5-flash';
+      const aiResponse = await client.models.generateContent({
+        model: targetModel,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      });
+
+      const responseText = aiResponse.text?.trim() || '';
+      let parsedData: any = null;
+
+      try {
+        parsedData = JSON.parse(responseText);
+      } catch (parseErr) {
+        // Attempt to clean JSON codeblocks
+        const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        parsedData = JSON.parse(cleaned);
+      }
+
+      if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
+        // Normalize IDs and format
+        const normalized = parsedData.questions.slice(0, count).map((q: any, idx: number) => ({
+          id: q.id || `q_${Date.now()}_${idx + 1}`,
+          question: q.question || `Question ${idx + 1}`,
+          options: {
+            A: q.options?.A || 'Option A',
+            B: q.options?.B || 'Option B',
+            C: q.options?.C || 'Option C',
+            D: q.options?.D || 'Option D',
+          },
+          correctAnswer: (['A', 'B', 'C', 'D'].includes(q.correctAnswer) ? q.correctAnswer : 'A') as 'A' | 'B' | 'C' | 'D',
+          explanation: q.explanation || 'Refer to the textbook syllabus chapter for comprehensive details.',
+          topic,
+        }));
+
+        return res.json({
+          success: true,
+          source: 'gemini-ai',
+          questions: normalized,
+        });
+      }
+
+      // Fallback if AI response was empty or malformed
+      const fallback = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, grade, board);
+      return res.json({
+        success: true,
+        source: 'curriculum-bank',
+        questions: fallback,
+      });
+    } catch (err: any) {
+      console.error('[Generate MCQ Error]:', err);
+      // Return safe fallback so user's experience is not broken
+      const {
+        subject = 'Physics',
+        topic = 'General Science',
+        questionCount = 10,
+        difficulty = 'medium',
+        board = 'fbise',
+        grade = '10',
+      } = req.body || {};
+      const fallback = generateCurriculumFallbackMCQs(subject, topic, Number(questionCount) || 10, difficulty, grade, board);
+      return res.json({
+        success: true,
+        source: 'curriculum-bank-error-fallback',
+        questions: fallback,
+      });
     }
   });
 
