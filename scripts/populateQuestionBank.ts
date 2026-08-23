@@ -12,6 +12,7 @@ import { FBISE_GRADE_9_CURRICULUM, getChapterSyllabusScope } from '../src/lib/cu
 import { FBISE_9_QUESTION_BANK } from '../src/lib/fbise9QuestionsBank';
 import { generateCurriculumFallbackMCQs } from '../src/lib/curriculumMCQs';
 import { validateMCQQuestion, validateQuestionTopicRelevance, checkQuestionDuplicate } from '../src/lib/mcqValidator';
+import { serializeQuestionBankToJson } from '../src/lib/questionBankSerializer';
 import type { StoredMCQ } from '../src/types/questionBank';
 
 const TARGET_PER_CHAPTER = 20;
@@ -349,7 +350,7 @@ async function main() {
 
   // Write full verified question bank
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(storedBank, null, 2), 'utf-8');
+  fs.writeFileSync(OUTPUT_FILE, serializeQuestionBankToJson(storedBank, 2), 'utf-8');
 
   console.log('\n===============================================================');
   console.log('🎉 QUESTION BANK POPULATION COMPLETE!');

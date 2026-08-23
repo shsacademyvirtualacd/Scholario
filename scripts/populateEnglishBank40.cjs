@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { safeWriteQuestionBank } = require('./utils/safeJsonWriter.cjs');
 
 const part1 = require('./data/englishPart1.cjs');
 const part2 = require('./data/englishPart2.cjs');
@@ -84,5 +85,5 @@ for (const meta of englishChaptersMeta) {
   totalAdded += bank.English[chapName].length;
 }
 
-fs.writeFileSync(JSON_PATH, JSON.stringify(bank, null, 2), 'utf-8');
+safeWriteQuestionBank(JSON_PATH, bank);
 console.log(`Successfully updated English bank with ${totalAdded} questions across ${englishChaptersMeta.length} chapters (40 MCQs each)!`);

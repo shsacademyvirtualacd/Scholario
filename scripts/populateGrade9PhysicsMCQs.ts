@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { serializeQuestionBankToJson } from '../src/lib/questionBankSerializer';
 
 export interface StoredMCQ {
   id: string;
@@ -2304,7 +2305,7 @@ async function execute() {
   }
 
   // Save to src/data/grade9FbiseBank.json
-  fs.writeFileSync(jsonPath, JSON.stringify(bank, null, 2), 'utf-8');
+  fs.writeFileSync(jsonPath, serializeQuestionBankToJson(bank, 2), 'utf-8');
   console.log(`Saved updated JSON to ${jsonPath}`);
 }
 

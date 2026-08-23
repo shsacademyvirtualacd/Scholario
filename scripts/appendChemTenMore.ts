@@ -4,6 +4,7 @@ import { CHEM_CHAPTERS_1_TO_10 } from './data/chemTenMoreDataPart1';
 import { CHEM_CHAPTERS_11_TO_19 } from './data/chemTenMoreDataPart2';
 import { validateMCQQuestion, checkQuestionDuplicate, calculateQuestionSimilarity } from '../src/lib/mcqValidator';
 import type { StoredMCQ } from '../src/types/questionBank';
+import { serializeQuestionBankToJson } from '../src/lib/questionBankSerializer';
 
 const JSON_PATH = path.resolve(process.cwd(), 'src/data/grade9FbiseBank.json');
 const TS_PATH = path.resolve(process.cwd(), 'src/lib/fbise9QuestionsBank.ts');
@@ -156,62 +157,9 @@ async function run() {
     throw new Error(`Expected 570 total Chemistry questions, got ${finalJsonChemCount}`);
   }
 
-  // Write to JSON file
-  fs.writeFileSync(JSON_PATH, JSON.stringify(updatedBank, null, 2), 'utf-8');
+  // Write to JSON file safely
+  fs.writeFileSync(JSON_PATH, serializeQuestionBankToJson(updatedBank, 2), 'utf-8');
   console.log(`✓ Successfully updated ${JSON_PATH}`);
-
-  // Step 5: Update TypeScript question bank file fbise9QuestionsBank.ts
-  console.log('\nStep 5: Updating TypeScript question bank file src/lib/fbise9QuestionsBank.ts...');
-  
-  // Format the full bank object for the TS file
-  const tsContent = `// Auto-generated FBISE Grade 9 Question Bank
-import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
-
-export const FBISE_9_QUESTION_BANK: Record<string, Record<string, MCQQuestion[]>> = ${JSON.stringify(updatedBank, null, 2)};
-
-export function getFbise9QuestionCount(subject?: string): number {
-  if (subject && FBISE_9_QUESTION_BANK[subject]) {
-    return Object.values(FBISE_9_QUESTION_BANK[subject]).reduce(
-      (sum, list) => sum + list.length,
-      0
-    );
-  }
-  return Object.values(FBISE_9_QUESTION_BANK).reduce(
-    (subjSum, chapters) =>
-      subjSum +
-      Object.values(chapters).reduce((chSum, list) => chSum + list.length, 0),
-    0
-  );
-}
-
-export function getFbise9QuestionsByChapter(
-  subject: string,
-  chapter: string
-): MCQQuestion[] {
-  return FBISE_9_QUESTION_BANK[subject]?.[chapter] || [];
-}
-
-export function getRandomFbise9Questions(
-  subject: string,
-  chapter: string,
-  count: number,
-  difficulty?: MCQDifficulty | 'mixed'
-): MCQQuestion[] {
-  const all = getFbise9QuestionsByChapter(subject, chapter);
-  let pool = all;
-  if (difficulty && difficulty !== 'mixed') {
-    const diffFiltered = pool.filter((q) => q.difficulty === difficulty);
-    if (diffFiltered.length >= count) {
-      pool = diffFiltered;
-    }
-  }
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
-}
-`;
-
-  fs.writeFileSync(TS_PATH, tsContent, 'utf-8');
-  console.log(`✓ Successfully updated ${TS_PATH}`);
 
   console.log('\n========================================================');
   console.log('=== APPEND-ONLY TASK COMPLETED SUCCESSFULLY ===');

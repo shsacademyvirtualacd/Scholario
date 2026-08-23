@@ -9,6 +9,7 @@ import { FBISE_GRADE_9_CURRICULUM, getChapterSyllabusScope } from '../src/lib/cu
 import { FBISE_9_QUESTION_BANK } from '../src/lib/fbise9QuestionsBank';
 import { generateCurriculumFallbackMCQs } from '../src/lib/curriculumMCQs';
 import { validateMCQQuestion, validateQuestionTopicRelevance, checkQuestionDuplicate } from '../src/lib/mcqValidator';
+import { serializeQuestionBankToJson } from '../src/lib/questionBankSerializer';
 import type { StoredMCQ } from '../src/types/questionBank';
 
 const TARGET_COUNT = 20;
@@ -157,7 +158,7 @@ async function main() {
   }
 
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(fullBank, null, 2), 'utf-8');
+  fs.writeFileSync(OUTPUT_FILE, serializeQuestionBankToJson(fullBank, 2), 'utf-8');
 
   console.log(`\nSuccessfully built bank with ${totalStored} questions across ${totalChapters} chapters!`);
   console.log(`Saved to ${OUTPUT_FILE}`);
