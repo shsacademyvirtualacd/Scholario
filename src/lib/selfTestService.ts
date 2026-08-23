@@ -93,3 +93,71 @@ export function clearSelfTestHistory(): void {
     console.error('Error clearing self test history:', err);
   }
 }
+
+export interface WeakTopicStat {
+  topic: string;
+  chapter?: string;
+  scorePercentage: number;
+  accuracy?: number;
+  totalAttempts: number;
+  attempts?: number;
+  totalQuestions: number;
+}
+
+export function getWeakTopicsForStudent(
+  subject?: string,
+  _board?: string,
+  _grade?: string
+): WeakTopicStat[] {
+  const history = getSelfTestHistory();
+  if (history.length === 0) return [];
+
+  const statsByTopic: Record<string, { correct: number; total: number; attempts: number }> = {};
+
+  for (const item of history) {
+    if (subject && item.config.subject.toLowerCase() !== subject.toLowerCase()) {
+      continue;
+    }
+
+    // Process per question if topic/chapter is available on questions
+    if (item.questions && item.questions.length > 0) {
+      item.questions.forEach((q) => {
+        const t = q.chapter || q.topic || item.config.topic;
+        if (!t || t === 'Mixed Chapters' || t === 'Full Syllabus') return;
+        if (!statsByTopic[t]) {
+          statsByTopic[t] = { correct: 0, total: 0, attempts: 0 };
+        }
+        statsByTopic[t].total += 1;
+        if (item.userAnswers[q.id] === q.correctAnswer) {
+          statsByTopic[t].correct += 1;
+        }
+      });
+    } else {
+      const t = item.config.topic;
+      if (!t || t === 'Mixed Chapters' || t === 'Full Syllabus') continue;
+      if (!statsByTopic[t]) {
+        statsByTopic[t] = { correct: 0, total: 0, attempts: 0 };
+      }
+      statsByTopic[t].total += item.totalQuestions || 1;
+      statsByTopic[t].correct += item.score || 0;
+      statsByTopic[t].attempts += 1;
+    }
+  }
+
+  const results: WeakTopicStat[] = Object.entries(statsByTopic).map(([topic, stat]) => {
+    const pct = stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0;
+    return {
+      topic,
+      chapter: topic,
+      scorePercentage: pct,
+      accuracy: pct,
+      totalAttempts: stat.attempts || 1,
+      attempts: stat.attempts || 1,
+      totalQuestions: stat.total,
+    };
+  });
+
+  // Sort by lowest percentage first (weakest first)
+  return results.sort((a, b) => a.scorePercentage - b.scorePercentage);
+}
+

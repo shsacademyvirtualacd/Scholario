@@ -336,11 +336,52 @@ Key Guidelines:
         });
       }
 
+      // Check if this is Grade 9 FBISE
+      const isFbise9 =
+        (effectiveBoard === 'fbise' || effectiveBoard === 'federal' || String(effectiveBoard).toLowerCase().includes('fbise')) &&
+        (String(effectiveGrade) === '9' || String(effectiveGrade) === '9th');
+
       // Build tailored subject-specific pedagogical instructions
       const normSub = (subject || '').toLowerCase();
       let subjectGuidance = '';
 
-      if (normSub.includes('eng')) {
+      if (isFbise9) {
+        subjectGuidance = `
+================================
+AUTHORITATIVE GRADE 9 FBISE CURRICULUM ENFORCEMENT
+================================
+You MUST strictly follow the official Grade 9 FBISE (Federal Board) Curriculum.
+Selected Subject: ${subject}
+Selected Chapter / Topic: ${topic}
+
+CRITICAL RULES FOR GRADE 9 FBISE:
+1. Every generated question MUST belong strictly to "${subject}" and the selected chapter "${topic}".
+2. NEVER mix chapters unless topic is explicitly "Full Syllabus" or "Mixed Chapters".
+3. NEVER invent generic, made-up chapters or subject-agnostic questions (NO "General Physics", NO "Algebra Concepts", NO "General Science", NO "Random Trivia").
+4. Difficulty Level: ${difficulty.toUpperCase()}. Difficulty must affect actual problem complexity, multi-step calculation, and reasoning depth — NOT merely sentence length. Must stay strictly within Grade 9 FBISE syllabus.
+
+SUBJECT-SPECIFIC SYLLABUS CONSTRAINTS:
+- PHYSICS (Grade 9 FBISE Chapters: 1. Physical Quantities and Measurement, 2. Kinematics, 3. Dynamics – I, 4. Dynamics – II, 5. Pressure and Deformation in Solids, 6. Work and Energy, 7. Density and Temperature, 8. Magnetism, 9. Nature of Science and Physics):
+  Generate authentic conceptual questions, formulas ($v=u+at, s=ut+\\frac{1}{2}at^2, 2as=v_f^2-v_i^2, F=ma, W=Fd, P=F/A, \\rho=m/V, E_k=\\frac{1}{2}mv^2, E_p=mgh, P=W/t$), SI units, graphs, numerical word problems, Newton's laws, Hooke's law, Pascal's law, specific heat capacity ($Q=mc\\Delta T$), Archimedes upthrust, or magnetism according to the selected chapter.
+
+- CHEMISTRY (Grade 9 FBISE Chapters: 1. Nature of Science in Chemistry, 2. Matter, 3. Atomic Structure, 4. Periodic Table and Periodicity of Properties, 5. Chemical Bonding, 6. Stoichiometry, 7. Electrochemistry, 8. Energetics, 9. Chemical Equilibrium, 10. Acids, Bases, and Salts, 11. Environmental Chemistry – Air, 12. Environmental Chemistry – Water, 13. Organic Chemistry, 14. Hydrocarbons, 15. Biochemistry, 16. Empirical Data Collection and Analysis, 17. Separation Techniques, 18. Qualitative Analysis, 19. Chromatography):
+  Generate questions testing subatomic particles, Rutherford/Bohr models, electronic configuration ($1s^2 2s^2...$), periodic trends, ionic/covalent/dative bonds, mole calculations ($n=m/M$), Avogadro's constant ($6.022\\times 10^{23}$), oxidation numbers, electrolytic cells, exothermic/endothermic $\\Delta H$, Le Chatelier's equilibrium, pH ($-\\log[H^+]$), acid rain ($\\text{SO}_2, \\text{NO}_x$), water hardness, alkane formulas ($\\text{C}_n\\text{H}_{2n+2}$), biomolecules, qualitative flame tests, or $R_f$ values strictly for the chosen chapter.
+
+- BIOLOGY (Grade 9 FBISE Chapters: 1. The Science of Biology, 2. Molecular Biology, 3. The Cell, 4. Tissues, Organs and Organ Systems, 5. Cell Cycle, 6. Biodiversity, 7. Metabolism, 8. Plant Physiology, 9. Plant Reproduction, 10. Evolution):
+  Generate questions testing biological terminology, Muslim scientists (Jabir ibn Hayyan, Abdul Malik Asmai, Bu Ali Sina), light vs electron microscopy, cell organelles (Mitochondria, Ribosomes, Golgi), membrane transport, mitosis/meiosis stages, Five Kingdoms, photosynthesis light reactions/Calvin cycle, cellular respiration, transpiration, xylem/phloem, flower double fertilization ($3n$ endosperm), or natural selection evidences.
+
+- MATHEMATICS (Grade 9 FBISE Chapters: 1. Real Numbers, 2. Logarithms, 3. Sets and Relations, 4. Factorization and Algebraic Manipulation, 5. Linear Equations and Inequalities, 6. Trigonometry and Bearing, 7. Coordinate Geometry, 8. Geometry of Straight Lines, 9. Geometry and Polygons, 10. Practical Geometry, 11. Basic Statistics):
+  Generate real mathematical calculations, radical operations ($\\sqrt{a}$), laws of logarithms ($\\log(ab), \\log(a/b), \\log(a^n)$), characteristic/mantissa, set intersections/Venn diagrams, algebraic factoring ($a^2-b^2, a^3\\pm b^3$), Remainder Theorem, trigonometric values ($\sin 45^\\circ, \\tan 60^\\circ$), distance formula ($d=\\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}$), midpoints, transversal angle theorems, polygon angle sums ($(n-2)\\times 180^\\circ$), or arithmetic mean/median/mode. Ensure mathematically verified options.
+
+- URDU (Grade 9 FBISE Curriculum):
+  - NASR: اخلاقِ حسنہ (مولانا شبلی نعمانی), کتبہ, بھیڑیا, آرام و سکون (امتیاز علی تاج), حکیم اور مرزا غالب, نام دیوہالی (مولوی عبدالحق), ابتدائی حباب, لڑی میں پروئے ہوئے منظر, اپنی مدد آپ (سر سید احمد خان).
+  - NAZM: حمد, نعت, جاوید کے نام (علامہ اقبال), محنت کی برکات, کرکٹ اور مشاعرہ, پیامِ لطیف.
+  - GHAZAL: فقیرانہ آئے صدا کر چلے (میر تقی میر), سن تو سہی جہاں میں ہے تیرا افسانہ کیا (خواجہ حیدر علی آتش), غم یا خوشی ہے تو (مرزا غالب), کاش طوفاں میں سفینے کو اتار ہوتا.
+  Questions must test actual text comprehension, vocabulary meanings, central idea (مرکزی خیال), tashreeh, characters, references, and poetic devices of the selected lesson/poem/ghazal.
+
+- ISLAMIYAT (Grade 9 FBISE Chapters: 1. باب اول — قرآن مجید کی تدوین و حفاظت، حفاظتِ حدیث نبویؐ, 2. باب دوم — ایمانیات و عبادات, 3. باب سوم — سیرتِ نبویؐ کا مدنی دور اور اسوۂ رسولؐ, 4. باب چہارم — اخلاق و آداب, 5. باب پنجم — حسنِ معاملات و معاشرت, 6. باب ششم — ہدایت کے سرچشمے اور مشاہیرِ اسلام, 7. باب ہفتم — اسلامی تعلیمات اور عصرِ حاضر کے تقاضے):
+  Questions must be strictly grounded in the official Grade 9 FBISE Islamiat chapters. Test authentic Quranic/Hadith references, events of the Madani era (Muwakhat, Badr, Uhud, Khandaq, Hudaibiya, Fatah Makkah, Hajjat-ul-Wida), ethical principles, socio-economic transactions (Zakat, prohibition of usury/cheating), and prominent Islamic personalities (Khulafa-e-Rashideen, Sahaba/Sahabiat). Do NOT invent references.`;
+      } else if (normSub.includes('eng')) {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR ENGLISH (${topic}):
 - Write REAL, concrete English sentences and authentic linguistic tasks standard in FBISE / Sindh Board Grade ${effectiveGrade} English examinations.

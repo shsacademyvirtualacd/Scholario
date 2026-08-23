@@ -19,12 +19,31 @@ import {
   Check,
   X,
   Lock,
+  Search,
+  BookOpen,
+  Layers,
+  Target,
+  CheckSquare,
+  Square,
+  Flame,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { MCQQuestion, MCQDifficulty, SelfTestConfig, SelfTestResult } from '../../types/selfTest';
-import { generateMCQTest, saveSelfTestResult, getSelfTestHistory, deleteSelfTestResult, clearSelfTestHistory } from '../../lib/selfTestService';
+import type { MCQQuestion, MCQDifficulty, SelfTestConfig, SelfTestResult, ExamMode } from '../../types/selfTest';
+import {
+  generateMCQTest,
+  saveSelfTestResult,
+  getSelfTestHistory,
+  deleteSelfTestResult,
+  clearSelfTestHistory,
+  getWeakTopicsForStudent,
+} from '../../lib/selfTestService';
 import { BOARDS, FBISE_GRADES, SINDH_GRADES, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
+import {
+  isGrade9FBISE,
+  getFBISEGrade9Chapters,
+  getFBISEGrade9PopularTopics,
+} from '../../lib/curriculumFBISE9';
 
 interface SelfTestingViewProps {
   defaultSubject?: string;
@@ -87,9 +106,14 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   );
   const [subject, setSubject] = useState<string>(defaultSubject || 'Physics');
   const [customSubject, setCustomSubject] = useState<string>('');
-  const [topic, setTopic] = useState<string>('Kinematics & Motion');
+  const [topic, setTopic] = useState<string>('Kinematics');
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [difficulty, setDifficulty] = useState<MCQDifficulty>('medium');
+
+  // Exam generator mode & selection for Grade 9 FBISE
+  const [examMode, setExamMode] = useState<ExamMode>('chapter');
+  const [selectedChapters, setSelectedChapters] = useState<string[]>([]);
+  const [chapterSearchQuery, setChapterSearchQuery] = useState<string>('');
 
   // Keep student board and grade strictly locked to enrollment when profile loads
   useEffect(() => {
@@ -105,6 +129,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   const activeBoard = isStudent ? studentBoardId : board;
   const activeGrade = isStudent ? studentGrade : grade;
+  const isFbise9 = isGrade9FBISE(activeBoard, activeGrade);
 
   // Runtime quiz state
   const [viewMode, setViewMode] = useState<ViewMode>('config');
@@ -159,6 +184,10 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   }, [isStudent, profile]);
 
   const allSubjectsForGrade = useMemo(() => {
+    if (isFbise9) {
+      // Official FBISE Grade 9 Subjects
+      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu', 'Islamiat'];
+    }
     return Array.from(
       new Set([
         ...studentEnrolledSubjects,
@@ -175,13 +204,89 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         'Pakistan Studies',
       ])
     );
-  }, [studentEnrolledSubjects, currentGradeDef]);
+  }, [isFbise9, studentEnrolledSubjects, currentGradeDef]);
 
   const activeSubjectName = subject === 'Other' ? (customSubject.trim() || 'General Subject') : subject;
 
+  // FBISE Grade 9 Chapters & Weak topics
+  const fbise9Chapters = useMemo(() => {
+    if (!isFbise9) return [];
+    return getFBISEGrade9Chapters(activeSubjectName);
+  }, [isFbise9, activeSubjectName]);
+
+  const weakTopics = useMemo(() => {
+    return getWeakTopicsForStudent(activeSubjectName, activeBoard, activeGrade);
+  }, [activeSubjectName, activeBoard, activeGrade, historyItems]);
+
+  // Set default topic whenever subject changes
+  useEffect(() => {
+    if (isFbise9) {
+      const chaps = getFBISEGrade9Chapters(activeSubjectName);
+      if (chaps.length > 0) {
+        setTopic(chaps[0].name);
+        setSelectedChapters([chaps[0].name]);
+      }
+    } else {
+      if (SUGGESTED_TOPICS[activeSubjectName]?.[0]) {
+        setTopic(SUGGESTED_TOPICS[activeSubjectName][0]);
+      }
+    }
+  }, [activeSubjectName, isFbise9]);
+
+  // Handle Chapter multi-select toggle
+  const handleToggleChapter = (chapterName: string) => {
+    setSelectedChapters((prev) => {
+      let updated: string[];
+      if (prev.includes(chapterName)) {
+        updated = prev.filter((c) => c !== chapterName);
+      } else {
+        updated = [...prev, chapterName];
+      }
+      if (updated.length === 1) {
+        setTopic(updated[0]);
+      } else if (updated.length > 1) {
+        setTopic(`${updated.length} Chapters (${updated.slice(0, 2).join(', ')}${updated.length > 2 ? '...' : ''})`);
+      }
+      return updated;
+    });
+  };
+
   // Handler: Start AI Test Generation
   const handleStartGeneration = async () => {
-    if (!topic.trim()) {
+    let finalTopic = topic.trim();
+    let finalChapters = selectedChapters;
+
+    if (isFbise9) {
+      if (examMode === 'full_syllabus') {
+        finalTopic = 'Full Syllabus';
+        finalChapters = fbise9Chapters.map((c) => c.name);
+      } else if (examMode === 'weak_topics') {
+        if (weakTopics.length > 0) {
+          const validChapters = weakTopics.map((w) => w.chapter || w.topic).filter(Boolean) as string[];
+          finalTopic = `Weak Topics (${validChapters.join(', ')})`;
+          finalChapters = validChapters;
+        } else {
+          finalTopic = fbise9Chapters[0]?.name || 'Kinematics';
+          finalChapters = [finalTopic];
+        }
+      } else if (examMode === 'multi_chapter') {
+        if (selectedChapters.length === 0) {
+          toast.error('Please select at least one chapter for the test.');
+          return;
+        }
+        finalTopic = selectedChapters.join(', ');
+        finalChapters = selectedChapters;
+      } else {
+        // Single chapter
+        if (!finalTopic) {
+          toast.error('Please select a chapter name.');
+          return;
+        }
+        finalChapters = [finalTopic];
+      }
+    }
+
+    if (!finalTopic) {
       toast.error('Please enter or select a topic/chapter name.');
       return;
     }
@@ -192,9 +297,11 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         board: activeBoard,
         grade: activeGrade,
         subject: activeSubjectName,
-        topic: topic.trim(),
+        topic: finalTopic,
         questionCount,
         difficulty,
+        examMode: isFbise9 ? examMode : undefined,
+        selectedChapters: isFbise9 ? finalChapters : undefined,
       };
 
       const generatedQuestions = await generateMCQTest(activeConfig);
@@ -203,14 +310,31 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         throw new Error('No questions generated. Please try again.');
       }
 
-      setQuestions(generatedQuestions);
+      // Validate questions strictly: ensure 4 distinct options and one valid correct answer
+      const validated = generatedQuestions.filter((q) => {
+        return (
+          q.question &&
+          q.options &&
+          q.options.A &&
+          q.options.B &&
+          q.options.C &&
+          q.options.D &&
+          ['A', 'B', 'C', 'D'].includes(q.correctAnswer)
+        );
+      });
+
+      if (validated.length === 0) {
+        throw new Error('Generated questions failed validation. Please try again.');
+      }
+
+      setQuestions(validated);
       setCurrentIdx(0);
       setUserAnswers({});
       setFlaggedQuestions(new Set());
       setTimeElapsed(0);
       setIsPaused(false);
       setViewMode('active');
-      toast.success(`Generated ${generatedQuestions.length} AI MCQs on "${topic.trim()}"!`);
+      toast.success(`Generated ${validated.length} syllabus-accurate MCQs on "${finalTopic}"!`);
     } catch (err: any) {
       console.error('MCQ Generation error:', err);
       toast.error(err.message || 'Failed to generate MCQs. Please try again.');
@@ -248,6 +372,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       topic: topic.trim(),
       questionCount: questions.length,
       difficulty,
+      examMode: isFbise9 ? examMode : undefined,
+      selectedChapters: isFbise9 ? selectedChapters : undefined,
     };
 
     let score = 0;
@@ -290,12 +416,25 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   // ── RENDER 1: Generator Setup View ───────────────────────
   if (viewMode === 'config') {
-    const popularTopics = SUGGESTED_TOPICS[activeSubjectName] || [
-      'Foundations & Core Principles',
-      'Key Definitions & Laws',
-      'Analytical Problem Solving',
-      'Board Exam Model Questions',
-    ];
+    const popularTopics = isFbise9
+      ? getFBISEGrade9PopularTopics(activeSubjectName)
+      : SUGGESTED_TOPICS[activeSubjectName] || [
+          'Foundations & Core Principles',
+          'Key Definitions & Laws',
+          'Analytical Problem Solving',
+          'Board Exam Model Questions',
+        ];
+
+    const filteredFBISEChapters = fbise9Chapters.filter((ch) => {
+      if (!chapterSearchQuery.trim()) return true;
+      const q = chapterSearchQuery.toLowerCase();
+      const numStr = (ch.chapterNumber ?? ch.number)?.toString() || '';
+      return (
+        ch.name.toLowerCase().includes(q) ||
+        numStr.includes(q) ||
+        (ch.category && ch.category.toLowerCase().includes(q))
+      );
+    });
 
     return (
       <div className="space-y-6">
@@ -305,27 +444,31 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
           <div className="relative z-10 max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F4C430]/20 text-[#F4C430] border border-[#F4C430]/30 text-xs font-bold">
               <Sparkles size={14} className="animate-spin" />
-              <span>AI Self-Assessment Engine</span>
+              <span>
+                {isFbise9 ? 'Grade 9 FBISE Curriculum Assessment Engine' : 'AI Self-Assessment Engine'}
+              </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Interactive Self-Testing Center
+              {isFbise9 ? 'Grade 9 FBISE Self-Testing & Exam Generator' : 'Interactive Self-Testing Center'}
             </h2>
             <p className="text-xs sm:text-sm text-[#A3A3A3] leading-relaxed">
-              Generate 100% curriculum-accurate, syllabus-aligned multiple choice practice questions on any subject or topic. Your practice scores are private to you and help identify weak spots before official assessments.
+              {isFbise9
+                ? 'Practice with 100% official FBISE Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
+                : 'Generate 100% curriculum-accurate, syllabus-aligned multiple choice practice questions on any subject or topic. Your practice scores are private to you.'}
             </p>
 
             <div className="flex flex-wrap gap-4 pt-2">
               <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
                 <CheckCircle2 size={15} className="text-[#10B981]" />
-                <span>Instant Explanations</span>
+                <span>Verified Curriculum Chapters</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
+                <CheckCircle2 size={15} className="text-[#10B981]" />
+                <span>Instant Explanations & Solutions</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
                 <CheckCircle2 size={15} className="text-[#10B981]" />
                 <span>Private & Zero Impact on GPA</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
-                <CheckCircle2 size={15} className="text-[#10B981]" />
-                <span>Custom Question Counts & Difficulties</span>
               </div>
             </div>
           </div>
@@ -340,7 +483,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 <span>Configure Practice Quiz</span>
               </h3>
               <p className="text-xs text-[#737373] mt-0.5">
-                Customize syllabus parameters to target specific chapters or concepts.
+                {isFbise9
+                  ? 'Official FBISE Grade 9 chapters — select single chapter, multiple chapters, or full subject exam.'
+                  : 'Customize syllabus parameters to target specific chapters or concepts.'}
               </p>
             </div>
 
@@ -372,7 +517,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* Locked Educational Board */}
+                    {/* Educational Board */}
                     <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] shadow-2xs">
                       <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wide flex items-center gap-1">
                         <Lock size={10} className="text-[#A3A3A3]" />
@@ -386,7 +531,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Locked Target Grade */}
+                    {/* Target Grade */}
                     <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] shadow-2xs">
                       <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wide flex items-center gap-1">
                         <Lock size={10} className="text-[#A3A3A3]" />
@@ -401,12 +546,15 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-[#737373] leading-relaxed">
-                    Practice questions are locked to your official enrolled syllabus. Customize your subject, chapter, question count, and difficulty level below.
-                  </p>
+                  {isFbise9 && (
+                    <div className="p-2.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-[11px] text-[#92400E] flex items-center gap-2">
+                      <Flame size={14} className="shrink-0 text-[#D97706]" />
+                      <span><strong>FBISE Grade 9 Active:</strong> Powered by official textbook chapter banks.</span>
+                    </div>
+                  )}
                 </div>
               ) : (
-                /* Freely Selectable Board & Grade for Teachers / Admins */
+                /* Selectable Board & Grade for Teachers / Admins */
                 <>
                   <div>
                     <label className="block text-xs font-bold text-[#111111] mb-1.5">
@@ -476,7 +624,13 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       type="button"
                       onClick={() => {
                         setSubject(sub);
-                        if (SUGGESTED_TOPICS[sub]?.[0]) {
+                        if (isFbise9) {
+                          const chaps = getFBISEGrade9Chapters(sub);
+                          if (chaps.length > 0) {
+                            setTopic(chaps[0].name);
+                            setSelectedChapters([chaps[0].name]);
+                          }
+                        } else if (SUGGESTED_TOPICS[sub]?.[0]) {
                           setTopic(SUGGESTED_TOPICS[sub][0]);
                         }
                       }}
@@ -489,20 +643,22 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       {sub}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => setSubject('Other')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
-                      subject === 'Other'
-                        ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
-                        : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
-                    }`}
-                  >
-                    Custom Subject
-                  </button>
+                  {!isFbise9 && (
+                    <button
+                      type="button"
+                      onClick={() => setSubject('Other')}
+                      className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
+                        subject === 'Other'
+                          ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
+                          : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
+                      }`}
+                    >
+                      Custom Subject
+                    </button>
+                  )}
                 </div>
 
-                {subject === 'Other' && (
+                {subject === 'Other' && !isFbise9 && (
                   <input
                     type="text"
                     placeholder="Enter custom subject name..."
@@ -516,41 +672,315 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
             {/* Topic & Parameters */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-[#111111] mb-1.5">
-                  Topic or Chapter Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Kinematics, Chemical Bonding, Matrices, Cell Biology..."
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
-                />
+              {/* If Grade 9 FBISE: Show Exam Generator Modes */}
+              {isFbise9 ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                      Exam Generation Mode
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {[
+                        { id: 'chapter', label: 'Single Chapter', icon: BookOpen },
+                        { id: 'multi_chapter', label: 'Multi-Chapter', icon: Layers },
+                        { id: 'full_syllabus', label: 'Full Syllabus', icon: Target },
+                        { id: 'weak_topics', label: 'Weak Topics', icon: Flame },
+                      ].map((mode) => {
+                        const Icon = mode.icon;
+                        const isSelected = examMode === mode.id;
+                        return (
+                          <button
+                            key={mode.id}
+                            type="button"
+                            onClick={() => {
+                              const newMode = mode.id as ExamMode;
+                              setExamMode(newMode);
+                              if (newMode === 'full_syllabus') {
+                                setTopic('Full Syllabus');
+                                setSelectedChapters(fbise9Chapters.map((c) => c.name));
+                              } else if (newMode === 'weak_topics') {
+                                if (weakTopics.length > 0) {
+                                  const validWeak = weakTopics.map((w) => w.chapter || w.topic).filter(Boolean) as string[];
+                                  setTopic(`Weak Topics (${validWeak[0] || 'Targeted'})`);
+                                  setSelectedChapters(validWeak);
+                                } else {
+                                  setTopic(fbise9Chapters[0]?.name || 'Kinematics');
+                                  setSelectedChapters([fbise9Chapters[0]?.name || 'Kinematics']);
+                                }
+                              } else if (newMode === 'chapter') {
+                                const firstCh = fbise9Chapters[0]?.name || 'Kinematics';
+                                setTopic(firstCh);
+                                setSelectedChapters([firstCh]);
+                              }
+                            }}
+                            className={`p-2.5 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 transition-all ${
+                              isSelected
+                                ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
+                                : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
+                            }`}
+                          >
+                            <Icon size={14} className={isSelected ? 'text-[#F4C430]' : 'text-[#737373]'} />
+                            <span>{mode.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                {/* Topic quick chips */}
-                <div className="mt-2.5">
-                  <span className="text-[11px] font-bold text-[#737373] block mb-1.5">
-                    Popular topics in {activeSubjectName}:
-                  </span>
-                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                    {popularTopics.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTopic(t)}
-                        className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium transition-colors ${
-                          topic === t
-                            ? 'bg-[#F4C430] text-[#111111] border-[#E5B520] font-bold'
-                            : 'bg-[#FAFAFA] text-[#525252] border-[#E5E5E5] hover:bg-[#F0F0F0]'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                  {/* Mode-Specific Chapter UI */}
+                  {examMode === 'chapter' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-[#111111]">
+                          Select Chapter <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-[#737373]">
+                          {fbise9Chapters.length} Official Chapters
+                        </span>
+                      </div>
+
+                      {/* Chapter search */}
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]" />
+                        <input
+                          type="text"
+                          placeholder="Search chapter name or number..."
+                          value={chapterSearchQuery}
+                          onChange={(e) => setChapterSearchQuery(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
+                        />
+                      </div>
+
+                      {/* Chapters Grid / List */}
+                      <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                        {filteredFBISEChapters.map((ch) => {
+                          const isSelected = topic === ch.name;
+                          return (
+                            <button
+                              key={ch.chapterNumber}
+                              type="button"
+                              onClick={() => {
+                                setTopic(ch.name);
+                                setSelectedChapters([ch.name]);
+                              }}
+                              className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                                isSelected
+                                  ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
+                                  : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#333333] hover:bg-[#F5F5F5]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center font-extrabold text-[10px] shrink-0 ${
+                                    isSelected ? 'bg-[#F4C430] text-[#111111]' : 'bg-[#E5E5E5] text-[#525252]'
+                                  }`}
+                                >
+                                  {ch.chapterNumber}
+                                </span>
+                                <span className="text-xs font-bold truncate">{ch.name}</span>
+                              </div>
+                              {ch.category && (
+                                <span
+                                  className={`text-[9px] px-2 py-0.5 rounded-md font-extrabold shrink-0 ${
+                                    isSelected
+                                      ? 'bg-white/20 text-white'
+                                      : 'bg-[#E5E5E5] text-[#525252]'
+                                  }`}
+                                >
+                                  {ch.category}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {examMode === 'multi_chapter' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-[#111111]">
+                          Select Multiple Chapters ({selectedChapters.length} Selected)
+                        </label>
+                        <div className="flex gap-2 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const all = fbise9Chapters.map((c) => c.name);
+                              setSelectedChapters(all);
+                              setTopic(`${all.length} Chapters (All)`);
+                            }}
+                            className="text-[#111111] font-bold hover:underline"
+                          >
+                            Select All
+                          </button>
+                          <span>•</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedChapters([]);
+                              setTopic('');
+                            }}
+                            className="text-[#737373] hover:underline"
+                          >
+                            Deselect All
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                        {fbise9Chapters.map((ch) => {
+                          const isChecked = selectedChapters.includes(ch.name);
+                          return (
+                            <button
+                              key={ch.chapterNumber}
+                              type="button"
+                              onClick={() => handleToggleChapter(ch.name)}
+                              className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                                isChecked
+                                  ? 'border-[#111111] bg-[#111111] text-white'
+                                  : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#333333] hover:bg-[#F5F5F5]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {isChecked ? (
+                                  <CheckSquare size={16} className="text-[#F4C430] shrink-0" />
+                                ) : (
+                                  <Square size={16} className="text-[#A3A3A3] shrink-0" />
+                                )}
+                                <span className="text-xs font-bold truncate">
+                                  {ch.chapterNumber}. {ch.name}
+                                </span>
+                              </div>
+                              {ch.category && (
+                                <span
+                                  className={`text-[9px] px-2 py-0.5 rounded-md font-extrabold shrink-0 ${
+                                    isChecked ? 'bg-white/20 text-white' : 'bg-[#E5E5E5] text-[#525252]'
+                                  }`}
+                                >
+                                  {ch.category}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {examMode === 'full_syllabus' && (
+                    <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#111111]">
+                        <Target size={16} className="text-[#F4C430]" />
+                        <span>Full Subject Exam Mode</span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] leading-relaxed">
+                        Questions will be dynamically synthesized across all <strong>{fbise9Chapters.length} chapters</strong> of Grade 9 FBISE {activeSubjectName} in balanced proportions reflecting official board model exams.
+                      </p>
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {fbise9Chapters.slice(0, 5).map((c) => (
+                          <span key={c.chapterNumber} className="text-[10px] px-2 py-0.5 rounded-md bg-white border border-[#E5E5E5] text-[#525252]">
+                            {c.name}
+                          </span>
+                        ))}
+                        {fbise9Chapters.length > 5 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-white border border-[#E5E5E5] text-[#737373]">
+                            +{fbise9Chapters.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {examMode === 'weak_topics' && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-[#111111]">
+                        Diagnosed Weak Topics for {activeSubjectName}
+                      </label>
+                      {weakTopics.length === 0 ? (
+                        <div className="p-4 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#92400E] space-y-1">
+                          <p className="font-bold flex items-center gap-1.5">
+                            <Flame size={14} className="text-[#D97706]" />
+                            <span>No Weak Topics Recorded Yet</span>
+                          </p>
+                          <p className="text-[11px] text-[#B45309]">
+                            Take practice tests on individual chapters to track weak spots. For now, we will test across key core chapters.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {weakTopics.map((w, idx) => {
+                            const chName = w.chapter || w.topic;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setTopic(chName);
+                                  setSelectedChapters([chName]);
+                                }}
+                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between ${
+                                  topic === chName
+                                    ? 'border-[#DC2626] bg-[#FEF2F2] text-[#991B1B]'
+                                    : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#333333]'
+                                }`}
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <p className="text-xs font-bold truncate">{chName}</p>
+                                  <p className="text-[10px] text-[#737373]">
+                                    Accuracy: {w.scorePercentage ?? w.accuracy ?? 0}% ({w.totalAttempts ?? w.attempts ?? 1} attempts)
+                                  </p>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-md bg-[#DC2626] text-white text-[10px] font-extrabold shrink-0">
+                                  Target Weakness
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Standard Topic Selection for Other Grades / Boards */
+                <div>
+                  <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                    Topic or Chapter Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Kinematics, Chemical Bonding, Matrices, Cell Biology..."
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
+                  />
+
+                  {/* Topic quick chips */}
+                  <div className="mt-2.5">
+                    <span className="text-[11px] font-bold text-[#737373] block mb-1.5">
+                      Popular topics in {activeSubjectName}:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                      {popularTopics.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setTopic(t)}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                            topic === t
+                              ? 'bg-[#F4C430] text-[#111111] border-[#E5B520] font-bold'
+                              : 'bg-[#FAFAFA] text-[#525252] border-[#E5E5E5] hover:bg-[#F0F0F0]'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Number of Questions & Difficulty */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -585,9 +1015,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                     onChange={(e) => setDifficulty(e.target.value as MCQDifficulty)}
                     className="w-full h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
                   >
-                    <option value="easy">Easy (Foundational)</option>
+                    <option value="easy">Easy (Foundational Concepts)</option>
                     <option value="medium">Medium (Standard Syllabus)</option>
-                    <option value="hard">Hard (Advanced / Complex)</option>
+                    <option value="hard">Hard (Multi-step / Complex)</option>
                     <option value="board_exam">Board Exam Standard (Model Paper)</option>
                   </select>
                 </div>
@@ -600,13 +1030,13 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             <div className="text-xs text-[#737373] flex items-center gap-2">
               <Zap size={15} className="text-[#F4C430]" />
               <span>
-                Generates {questionCount} questions on <strong>{topic || 'Selected Topic'}</strong> ({activeSubjectName} • Grade {activeGrade} • {activeBoard.toUpperCase()})
+                Generates {questionCount} questions on <strong>{topic || 'Selected Chapters'}</strong> ({activeSubjectName} • Grade {activeGrade} • {activeBoard.toUpperCase()})
               </span>
             </div>
 
             <button
               onClick={handleStartGeneration}
-              disabled={isGenerating || !topic.trim()}
+              disabled={isGenerating || (!topic.trim() && selectedChapters.length === 0)}
               className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#111111] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2.5 hover:bg-[#222222] active:scale-[0.98] transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed interactive"
             >
               {isGenerating ? (

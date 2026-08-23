@@ -81,6 +81,26 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       },
     });
 
+    const isFbise9 =
+      (String(board).toLowerCase() === 'fbise' || String(board).toLowerCase() === 'federal' || String(board).toLowerCase().includes('fbise')) &&
+      (String(grade) === '9' || String(grade) === '9th');
+
+    let customSyllabusGuidance = '';
+    if (isFbise9) {
+      customSyllabusGuidance = `
+AUTHORITATIVE GRADE 9 FBISE SYLLABUS ENFORCEMENT:
+Every generated question MUST strictly belong to the selected subject (${subject}) and chapter (${topic}) of the official Grade 9 FBISE Curriculum.
+Never mix chapters unless topic is explicitly Full Syllabus or Mixed Chapters.
+Never invent generic or made-up topics.
+- Physics: Questions from 9 FBISE chapters (Physical Quantities, Kinematics, Dynamics I/II, Pressure, Work & Energy, Density & Temp, Magnetism, Nature of Science).
+- Chemistry: Questions from 19 FBISE chapters (Nature of Science, Matter, Atomic Structure, Periodic Table, Bonding, Stoichiometry, Electrochemistry, Energetics, Equilibrium, Acids & Bases, Env Chem Air/Water, Organic Chem, Hydrocarbons, Biochemistry, Empirical Data, Separation Techniques, Qualitative Analysis, Chromatography).
+- Biology: Questions from 10 FBISE chapters (Science of Biology, Molecular Biology, The Cell, Tissues/Organs, Cell Cycle, Biodiversity, Metabolism, Plant Physiology, Plant Reproduction, Evolution).
+- Mathematics: 11 FBISE chapters (Real Numbers, Logarithms, Sets & Relations, Factorization, Linear Equations, Trigonometry & Bearing, Coordinate Geometry, Straight Lines, Polygons, Practical Geometry, Statistics).
+- Urdu: Specific lessons (اخلاقِ حسنہ, کتبہ, بھیڑیا, آرام و سکون, نام دیوہالی, اپنی مدد آپ, حمد, نعت, جاوید کے نام, فقیرانہ آئے صدا کر چلے, etc.).
+- Islamiyat: Official 7 chapters (تدوینِ قرآن و حدیث, ایمانیات و عبادات, سیرتِ نبویؐ مدنی دور, اخلاق و آداب, حسنِ معاملات, مشاہیرِ اسلام, عصری تقاضے).
+Ensure questions test actual curriculum formulas, definitions, calculations, Quranic/Hadith facts, or literary comprehension.`;
+    }
+
     const prompt = `You are a Senior Academic Examiner and Curriculum Assessment Director specializing in Pakistan Secondary and Higher Secondary Education (FBISE and Sindh Board 9th-12th Grade syllabus).
 
 Generate exactly ${count} rigorous, flawless Multiple Choice Questions (MCQs) for self-testing and exam practice.
@@ -89,6 +109,8 @@ Subject: ${subject}
 Topic / Chapter: ${topic}
 Target Grade: Grade ${grade} (${board.toUpperCase()} Board)
 Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
+
+${customSyllabusGuidance}
 
 STRICT CRITERIA:
 1. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').

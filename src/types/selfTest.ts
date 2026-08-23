@@ -1,5 +1,7 @@
 export type MCQDifficulty = 'easy' | 'medium' | 'hard' | 'board_exam';
 
+export type ExamMode = 'chapter' | 'multi_chapter' | 'full_syllabus' | 'weak_topics';
+
 export interface MCQQuestion {
   id: string;
   question: string;
@@ -12,6 +14,9 @@ export interface MCQQuestion {
   correctAnswer: 'A' | 'B' | 'C' | 'D';
   explanation: string;
   topic?: string;
+  chapter?: string;
+  subject?: string;
+  difficulty?: MCQDifficulty;
 }
 
 export interface SelfTestConfig {
@@ -20,6 +25,8 @@ export interface SelfTestConfig {
   stream?: string;
   subject: string;
   topic: string;
+  selectedChapters?: string[];
+  examMode?: ExamMode;
   questionCount: number;
   difficulty: MCQDifficulty;
 }
@@ -34,4 +41,6 @@ export interface SelfTestResult {
   totalQuestions: number;
   percentage: number;
   timeSpentSeconds: number;
+  topicScores?: Record<string, { correct: number; total: number }>;
 }
+

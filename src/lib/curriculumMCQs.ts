@@ -1,4 +1,6 @@
 import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
+import { isGrade9FBISE } from './curriculumFBISE9';
+import { getGrade9FBISEQuestions } from './fbise9QuestionsBank';
 
 /**
  * High-quality curriculum-aligned MCQ questions
@@ -8,10 +10,19 @@ export function generateCurriculumFallbackMCQs(
   subject: string,
   topic: string,
   count: number,
-  _difficulty: MCQDifficulty = 'medium',
+  difficulty: MCQDifficulty = 'medium',
   grade: string = '10',
-  _board: string = 'fbise'
+  board: string = 'fbise'
 ): MCQQuestion[] {
+  // Check if this is Grade 9 FBISE
+  if (isGrade9FBISE(board, grade)) {
+    const selectedChaps = topic && topic !== 'Full Syllabus' && topic !== 'Mixed Chapters' ? [topic] : [];
+    const fbise9Questions = getGrade9FBISEQuestions(subject, selectedChaps, count, difficulty);
+    if (fbise9Questions.length > 0) {
+      return fbise9Questions;
+    }
+  }
+
   const normSubject = (subject || '').toLowerCase();
   const normTopic = (topic || '').toLowerCase();
 
