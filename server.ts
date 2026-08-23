@@ -21,6 +21,7 @@ const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename
 
 import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDataTools';
 import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
+import { validateMCQQuestion, filterAndValidateMCQs } from './src/lib/mcqValidator';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -467,12 +468,14 @@ Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
 
 ${subjectGuidance}
 
-STRICT GENERAL CRITERIA:
-1. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').
-2. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors or misconceptions.
-3. No duplicate questions, no factual errors, and no ambiguous questions.
-4. For all math, chemical, or physics equations, use clean standard notation or inline LaTeX ($...$).
-5. Each question must include a clear, educational explanation detailing the exact reasoning why the correct option is right.
+STRICT ANTI-META DIRECTIVES:
+1. STRICTLY FORBIDDEN: NEVER write meta-questions about the curriculum, textbook accuracy, syllabus validity, or generic claims (e.g., 'Which statement is factually accurate according to the textbook', 'verified textbook principle', 'invalid assumption violating syllabus definitions').
+2. MANDATORY: Every single question MUST directly ask a real problem or question testing specific concepts: concrete quantities, numerical values, SI units, formulas, chemical equations, physical laws, measuring instruments, biological processes, or Urdu/Islamiat textual analysis.
+3. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').
+4. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors or misconceptions.
+5. No duplicate questions, no factual errors, and no ambiguous questions.
+6. For all math, chemical, or physics equations, use clean standard notation or inline LaTeX ($...$).
+7. Each question must include a clear, educational explanation detailing the exact reasoning why the correct option is right.
 
 Return ONLY a valid JSON object matching this structure:
 {
@@ -525,9 +528,11 @@ Return ONLY a valid JSON object matching this structure:
         }
       }
 
+      const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 2, difficulty, effectiveGrade, effectiveBoard);
+
       if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
         // Normalize IDs, options structure, and answers
-        const normalized = parsedData.questions.slice(0, count).map((q: any, idx: number) => {
+        const rawNormalized = parsedData.questions.map((q: any, idx: number) => {
           let opts: { A: string; B: string; C: string; D: string } = {
             A: 'Option A',
             B: 'Option B',
@@ -577,19 +582,23 @@ Return ONLY a valid JSON object matching this structure:
           };
         });
 
-        return res.json({
-          success: true,
-          source: 'gemini-ai',
-          questions: normalized,
-        });
+        // Run through strict MCQ validator and backfill with curriculum bank if any question is invalid/generic
+        const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool);
+
+        if (validatedQuestions.length >= count) {
+          return res.json({
+            success: true,
+            source: 'gemini-ai-validated',
+            questions: validatedQuestions.slice(0, count),
+          });
+        }
       }
 
-      // Fallback if AI response was empty or malformed
-      const fallback = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, grade, board);
+      // Fallback if AI response was empty, malformed, or failed validation
       return res.json({
         success: true,
         source: 'curriculum-bank',
-        questions: fallback,
+        questions: fallbackPool.slice(0, count),
       });
     } catch (err: any) {
       console.error('[Generate MCQ Error]:', err);

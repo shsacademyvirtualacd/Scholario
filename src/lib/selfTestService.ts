@@ -1,10 +1,21 @@
 import type { MCQQuestion, SelfTestConfig, SelfTestResult } from '../types/selfTest';
 import { generateCurriculumFallbackMCQs } from './curriculumMCQs';
+import { filterAndValidateMCQs } from './mcqValidator';
 import { supabase } from './supabase';
 
 const SELF_TEST_HISTORY_KEY = 'scholario_self_test_history_v1';
 
 export async function generateMCQTest(config: SelfTestConfig): Promise<MCQQuestion[]> {
+  const fallback = () =>
+    generateCurriculumFallbackMCQs(
+      config.subject,
+      config.topic,
+      config.questionCount * 2,
+      config.difficulty,
+      config.grade,
+      config.board
+    );
+
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -28,29 +39,20 @@ export async function generateMCQTest(config: SelfTestConfig): Promise<MCQQuesti
     if (response.ok) {
       const data = (await response.json()) as { questions?: MCQQuestion[] };
       if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-        return data.questions;
+        const validated = filterAndValidateMCQs(data.questions, config.questionCount, fallback());
+        if (validated.length >= config.questionCount) {
+          return validated.slice(0, config.questionCount);
+        }
       }
     }
 
     console.warn(`[SelfTest] API response status ${response.status}. Using high-quality curriculum fallback.`);
-    return generateCurriculumFallbackMCQs(
-      config.subject,
-      config.topic,
-      config.questionCount,
-      config.difficulty,
-      config.grade,
-      config.board
-    );
+    const fbPool = fallback();
+    return filterAndValidateMCQs(fbPool, config.questionCount).slice(0, config.questionCount);
   } catch (err: any) {
     console.warn('Network issue calling /api/tests/generate-mcq, falling back to curriculum question bank:', err);
-    return generateCurriculumFallbackMCQs(
-      config.subject,
-      config.topic,
-      config.questionCount,
-      config.difficulty,
-      config.grade,
-      config.board
-    );
+    const fbPool = fallback();
+    return filterAndValidateMCQs(fbPool, config.questionCount).slice(0, config.questionCount);
   }
 }
 

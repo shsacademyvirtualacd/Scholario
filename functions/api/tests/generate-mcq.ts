@@ -2,6 +2,7 @@ import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../env';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { generateCurriculumFallbackMCQs } from '../../../src/lib/curriculumMCQs';
+import { filterAndValidateMCQs } from '../../../src/lib/mcqValidator';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -112,12 +113,14 @@ Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
 
 ${customSyllabusGuidance}
 
-STRICT CRITERIA:
-1. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').
-2. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors.
-3. No duplicate questions, no factual errors, and no ambiguous questions.
-4. For all math, chemical, or physics equations, use clean standard notation or inline LaTeX ($...$).
-5. Each question must include a clear, educational explanation detailing why the correct option is right.
+STRICT ANTI-META DIRECTIVES:
+1. STRICTLY FORBIDDEN: NEVER write meta-questions about the curriculum, textbook accuracy, syllabus validity, or generic claims (e.g., 'Which statement is factually accurate according to the textbook', 'verified textbook principle', 'invalid assumption violating syllabus definitions').
+2. MANDATORY: Every single question MUST directly ask a real problem or question testing specific concepts: concrete quantities, numerical values, SI units, formulas, chemical equations, physical laws, measuring instruments, biological processes, or Urdu/Islamiat textual analysis.
+3. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').
+4. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors.
+5. No duplicate questions, no factual errors, and no ambiguous questions.
+6. For all math, chemical, or physics equations, use clean standard notation or inline LaTeX ($...$).
+7. Each question must include a clear, educational explanation detailing why the correct option is right.
 
 Return ONLY a valid JSON object matching this structure:
 {
@@ -157,8 +160,10 @@ Return ONLY a valid JSON object matching this structure:
       parsedData = JSON.parse(cleaned);
     }
 
+    const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 2, difficulty, grade, board);
+
     if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
-      const normalized = parsedData.questions.slice(0, count).map((q: any, idx: number) => ({
+      const rawNormalized = parsedData.questions.map((q: any, idx: number) => ({
         id: q.id || `q_${Date.now()}_${idx + 1}`,
         question: q.question || `Question ${idx + 1}`,
         options: {
@@ -172,25 +177,28 @@ Return ONLY a valid JSON object matching this structure:
         topic,
       }));
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          source: 'gemini-ai',
-          questions: normalized,
-        }),
-        {
-          status: 200,
-          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-        }
-      );
+      const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool);
+
+      if (validatedQuestions.length >= count) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            source: 'gemini-ai-validated',
+            questions: validatedQuestions.slice(0, count),
+          }),
+          {
+            status: 200,
+            headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+          }
+        );
+      }
     }
 
-    const fallback = generateCurriculumFallbackMCQs(subject, topic, count, difficulty, grade, board);
     return new Response(
       JSON.stringify({
         success: true,
         source: 'curriculum-bank',
-        questions: fallback,
+        questions: fallbackPool.slice(0, count),
       }),
       {
         status: 200,
