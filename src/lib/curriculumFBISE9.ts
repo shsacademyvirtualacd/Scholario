@@ -451,7 +451,7 @@ export function getChapterSyllabusScope(
       );
     } else if (normTopic.includes('kinematic')) {
       requiredKeywords.push(
-        'speed', 'velocity', 'acceleration', 'displacement', 'distance', 'scalar', 'vector',
+        'speed', 'velocity', 'acceleration', 'deceleration', 'retardation', 'displacement', 'distance', 'scalar', 'vector',
         'speed-time graph', 'distance-time graph', 'equations of motion', 'free fall', 'gravity',
         'translatory', 'rotatory', 'vibratory', 'uniform velocity', 'uniform acceleration',
         'slope of graph', 'area under speed-time graph'
@@ -500,7 +500,8 @@ export function getChapterSyllabusScope(
       requiredKeywords.push(
         'work', 'energy', 'kinetic energy', 'potential energy', 'gravitational potential energy',
         'joule', 'watt', 'power', 'efficiency', 'conservation of energy', 'forms of energy',
-        'interconversion', 'solar energy', 'fossil fuel'
+        'interconversion', 'solar energy', 'fossil fuel', 'biogas', 'biomass', 'wind energy',
+        'hydroelectric', 'geothermal', 'mass-energy'
       );
       forbiddenCrossChapterPatterns.push(
         { pattern: /\b(vernier caliper|screw gauge|least count|zero error)\b/i, reason: 'Belongs to Chapter 1.' },
@@ -509,9 +510,10 @@ export function getChapterSyllabusScope(
       );
     } else if (normTopic.includes('density') || normTopic.includes('temperature') || normTopic.includes('heat')) {
       requiredKeywords.push(
-        'density', 'temperature', 'heat', 'thermal equilibrium', 'thermometer', 'celsius',
-        'fahrenheit', 'kelvin', 'thermal expansion', 'bimetallic', 'anomalous expansion',
-        'specific heat capacity', 'latent heat', 'fusion', 'vaporization', 'evaporation'
+        'density', 'temperature', 'heat', 'thermal', 'thermal energy', 'thermal equilibrium', 'thermometer', 'celsius',
+        'fahrenheit', 'kelvin', 'thermal expansion', 'linear expansion', 'volume expansion', 'expansion',
+        'bimetallic', 'anomalous expansion', 'specific heat capacity', 'latent heat', 'fusion', 'vaporization', 'evaporation',
+        'steam', 'boiling', 'melting', 'absolute zero', 'internal energy', 'kinetic theory'
       );
       forbiddenCrossChapterPatterns.push(
         { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
@@ -526,6 +528,21 @@ export function getChapterSyllabusScope(
       forbiddenCrossChapterPatterns.push(
         { pattern: /\b(vernier caliper|screw gauge|least count)\b/i, reason: 'Belongs to Chapter 1.' },
         { pattern: /\b(equations of motion|kinetic energy|work done)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('nature of science') || normTopic.includes('science and physics')) {
+      requiredKeywords.push(
+        'hypothesis', 'scientific method', 'theory', 'law', 'experiment', 'observation',
+        'falsifiability', 'peer review', 'scientific inquiry', 'scientific knowledge',
+        'measurement', 'error', 'uncertainty', 'precision', 'accuracy', 'laser', 'radiation',
+        'hazard', 'safety', 'ethics', 'nobel', 'technology', 'frontiers of physics',
+        'al-haytham', 'ibn al-haytham', 'al-khwarizmi', 'al-biruni', 'dr. abdus salam',
+        'abdus salam', 'pinhole camera', 'camera obscura', 'branches of physics',
+        'biophysics', 'geophysics', 'thermodynamics', 'nuclear physics', 'astrophysics',
+        'solid state physics', 'plasma physics', 'parallax error', 'fire extinguisher',
+        'scientific calculation', 'mri', 'random error', 'systematic error'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(equations of motion|speed-time graph|centripetal force)\b/i, reason: 'Belongs to Kinematics / Dynamics.' }
       );
     }
   } else if (normSub.includes('chem')) {
