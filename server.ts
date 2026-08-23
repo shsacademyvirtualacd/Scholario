@@ -336,28 +336,109 @@ Key Guidelines:
         });
       }
 
+      // Build tailored subject-specific pedagogical instructions
+      const normSub = (subject || '').toLowerCase();
+      let subjectGuidance = '';
+
+      if (normSub.includes('eng')) {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR ENGLISH (${topic}):
+- Write REAL, concrete English sentences and authentic linguistic tasks standard in FBISE / Sindh Board Grade ${effectiveGrade} English examinations.
+- If the topic relates to Grammar, Tenses, Voice, or Narration:
+  1. Fill-in-the-blank with the correct verb tense/aspect (e.g., "By the time we arrived at the station, the train ______ (leave).").
+  2. Tense Identification (e.g., "Identify the grammatical tense of the sentence: 'She will have been teaching here for a decade by December.'").
+  3. Sentence Conversion (e.g., "Which is the correct Passive Voice conversion of: 'The architect has designed a modern auditorium'?", or Direct to Indirect speech).
+  4. Identifying grammatical errors in subject-verb agreement, pronoun cases, or conditional structures (e.g., Zero, First, Second, Third conditionals).
+  5. Correct preposition, article, conjunction, or modal auxiliary verb usage in complete sentences.
+- If the topic relates to Vocabulary, Figurative Language, or Comprehension:
+  1. Contextual vocabulary, synonyms, and antonyms in a provided sentence.
+  2. Identifying figures of speech (Simile, Metaphor, Personification, Alliteration, Hyperbole, Oxymoron).
+  3. Identifying parts of speech of an italicized/bracketed word (e.g., Gerund vs. Present Participle).
+- ABSOLUTELY PROHIBITED: Do NOT generate abstract, vague pseudo-questions like "Which of the following statements is academically accurate" or choices like "the core governing principle". EVERY SINGLE question MUST contain a real sentence, phrase, or specific linguistic rule.`;
+      } else if (normSub.includes('math')) {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR MATHEMATICS (${topic}):
+- Write concrete numerical, algebraic, geometric, or calculus problems with real numbers, equations, and expressions for Grade ${effectiveGrade}.
+- Formats:
+  1. Solving equations (e.g., roots/discriminant of quadratic equations, systems of linear equations).
+  2. Matrix calculations (determinants, adjoint, inverse, matrix multiplication).
+  3. Trigonometric expressions and identities (e.g., simplifying $\\sin(2\\theta)$, finding $\\sec^2\\theta - \\tan^2\\theta$).
+  4. Geometry and coordinate geometry (distance, slopes, midpoints, angles in circles, area formulas).
+  5. Differentiation, integration, logarithms, or polynomial factoring.
+- Use standard LaTeX notation ($...$) for mathematical formulas and expressions.`;
+      } else if (normSub.includes('phys')) {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR PHYSICS (${topic}):
+- Write concrete numerical word problems with realistic values and SI units, or clear conceptual application questions for Grade ${effectiveGrade}.
+- Formats:
+  1. Calculating numerical quantities using standard formulas (e.g., $F=ma$, $v=u+at$, $W=Fd$, $V=IR$, $E_k=\\frac{1}{2}mv^2$, $T=2\\pi\\sqrt{l/g}$).
+  2. Physical laws and conceptual scenarios (Newton's laws, Pascal's law, Coulomb's law, Snell's law, Faraday's law).
+  3. Unit conversions, dimensional analysis, and vector operations.
+  4. Circuit behavior, wave properties ($v = f\\lambda$), optics, and electromagnetism.`;
+      } else if (normSub.includes('chem')) {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR CHEMISTRY (${topic}):
+- Write questions using real chemical formulas, balanced chemical equations, periodic trends, and IUPAC nomenclature for Grade ${effectiveGrade}.
+- Formats:
+  1. Oxidation numbers, balancing redox reactions, and valence electron configurations.
+  2. Chemical bonding types (ionic, covalent, coordinate, hydrogen bonding) and molecular geometries.
+  3. Stoichiometry, molar masses, mole-to-gram conversions, and gas laws ($PV=nRT$).
+  4. Acids, bases, pH calculations, equilibrium constants ($K_c$), and organic functional groups.`;
+      } else if (normSub.includes('bio')) {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR BIOLOGY (${topic}):
+- Write questions on specific anatomical structures, biological terms, physiological mechanisms, and genetics for Grade ${effectiveGrade}.
+- Formats:
+  1. Organelle functions and cellular division phases (Mitosis, Meiosis).
+  2. Enzymes, activation energy, and biochemical pathways (Glycolysis, Krebs cycle, Calvin cycle).
+  3. Genetics (Mendel's laws, Punnett square ratios, dominant/recessive traits).
+  4. Human organ systems (cardiovascular, nervous, respiratory, excretory).`;
+      } else if (normSub.includes('comp') || normSub.includes('cs') || normSub.includes('it')) {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR COMPUTER SCIENCE (${topic}):
+- Provide concrete code snippets (C++, Python, pseudocode), algorithm trace problems, data structure operations, and networking concepts for Grade ${effectiveGrade}.
+- Formats:
+  1. Output prediction of loops, arrays, conditionals, and functions.
+  2. Data structure mechanics: Stack (LIFO), Queue (FIFO), Linked List, Binary Trees.
+  3. Time complexity ($O(1)$, $O(\\log n)$, $O(n)$, $O(n^2)$) and searching/sorting algorithms.
+  4. SQL database queries (SELECT, WHERE, JOIN, GROUP BY) and normalization rules.
+  5. OSI model layers, IP addressing, and networking protocols.`;
+      } else if (normSub.includes('pak') || normSub.includes('isl') || normSub.includes('urdu') || normSub.includes('hist')) {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR ${subject.toUpperCase()} (${topic}):
+- Write specific, syllabus-aligned questions with real dates, events, constitutional clauses, terms, or linguistic definitions for Grade ${effectiveGrade}.
+- Avoid vague generic questions. Every question must test a verifiable curriculum concept.`;
+      } else {
+        subjectGuidance = `
+CRITICAL SUBJECT RULES FOR ${subject.toUpperCase()} (${topic}):
+- Write concrete, high-precision questions specifically testing the actual concepts, formulas, terminology, or rules of "${topic}".
+- Never generate generic abstract placeholder text.`;
+      }
+
       const prompt = `You are a Senior Academic Examiner and Curriculum Assessment Director specializing in Pakistan Secondary and Higher Secondary Education (FBISE and Sindh Board 9th-12th Grade syllabus).
 
-Generate exactly ${count} rigorous, flawless Multiple Choice Questions (MCQs) for self-testing and exam practice.
+Generate exactly ${count} rigorous, high-quality Multiple Choice Questions (MCQs) for self-testing and exam practice.
 
 Subject: ${subject}
-Topic / Chapter: ${topic}
+Topic / Chapter: ${topic || 'Core Syllabus'}
 Target Grade: Grade ${effectiveGrade} (${effectiveBoard.toUpperCase()} Board)
 Difficulty Level: ${difficulty.replace('_', ' ').toUpperCase()}
 
-STRICT CRITERIA:
+${subjectGuidance}
+
+STRICT GENERAL CRITERIA:
 1. Every question must have EXACTLY ONE unambiguously correct answer ('A', 'B', 'C', or 'D').
-2. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors.
+2. The other 3 options ('distractors') must be realistic, plausible, and academically meaningful based on common student errors or misconceptions.
 3. No duplicate questions, no factual errors, and no ambiguous questions.
 4. For all math, chemical, or physics equations, use clean standard notation or inline LaTeX ($...$).
-5. Each question must include a clear, educational explanation detailing why the correct option is right.
+5. Each question must include a clear, educational explanation detailing the exact reasoning why the correct option is right.
 
 Return ONLY a valid JSON object matching this structure:
 {
   "questions": [
     {
       "id": "q1",
-      "question": "Question text...",
+      "question": "Question text with concrete sentence, equation, or scenario...",
       "options": {
         "A": "Option A text",
         "B": "Option B text",
@@ -370,42 +451,90 @@ Return ONLY a valid JSON object matching this structure:
   ]
 }`;
 
-      const targetModel = 'gemini-2.5-flash';
-      const aiResponse = await client.models.generateContent({
-        model: targetModel,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: 'application/json',
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        },
-      });
-
-      const responseText = aiResponse.text?.trim() || '';
+      const candidateModels = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.7-flash'];
       let parsedData: any = null;
 
-      try {
-        parsedData = JSON.parse(responseText);
-      } catch (parseErr) {
-        // Attempt to clean JSON codeblocks
-        const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-        parsedData = JSON.parse(cleaned);
+      for (const targetModel of candidateModels) {
+        try {
+          const aiResponse = await client.models.generateContent({
+            model: targetModel,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.4,
+              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            },
+          });
+
+          const responseText = aiResponse.text?.trim() || '';
+          if (!responseText) continue;
+
+          try {
+            parsedData = JSON.parse(responseText);
+          } catch {
+            const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+            parsedData = JSON.parse(cleaned);
+          }
+
+          if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
+            break;
+          }
+        } catch (modelErr: any) {
+          console.warn(`[Generate MCQ] Model ${targetModel} attempt failed:`, modelErr?.message || modelErr);
+        }
       }
 
       if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
-        // Normalize IDs and format
-        const normalized = parsedData.questions.slice(0, count).map((q: any, idx: number) => ({
-          id: q.id || `q_${Date.now()}_${idx + 1}`,
-          question: q.question || `Question ${idx + 1}`,
-          options: {
-            A: q.options?.A || 'Option A',
-            B: q.options?.B || 'Option B',
-            C: q.options?.C || 'Option C',
-            D: q.options?.D || 'Option D',
-          },
-          correctAnswer: (['A', 'B', 'C', 'D'].includes(q.correctAnswer) ? q.correctAnswer : 'A') as 'A' | 'B' | 'C' | 'D',
-          explanation: q.explanation || 'Refer to the textbook syllabus chapter for comprehensive details.',
-          topic,
-        }));
+        // Normalize IDs, options structure, and answers
+        const normalized = parsedData.questions.slice(0, count).map((q: any, idx: number) => {
+          let opts: { A: string; B: string; C: string; D: string } = {
+            A: 'Option A',
+            B: 'Option B',
+            C: 'Option C',
+            D: 'Option D',
+          };
+
+          if (Array.isArray(q.options)) {
+            opts = {
+              A: String(q.options[0] || 'Option A'),
+              B: String(q.options[1] || 'Option B'),
+              C: String(q.options[2] || 'Option C'),
+              D: String(q.options[3] || 'Option D'),
+            };
+          } else if (q.options && typeof q.options === 'object') {
+            opts = {
+              A: String(q.options.A || q.options.a || 'Option A'),
+              B: String(q.options.B || q.options.b || 'Option B'),
+              C: String(q.options.C || q.options.c || 'Option C'),
+              D: String(q.options.D || q.options.d || 'Option D'),
+            };
+          }
+
+          let ans: 'A' | 'B' | 'C' | 'D' = 'A';
+          const rawAns = String(q.correctAnswer || q.answer || q.correct_answer || q.correctOption || '').trim();
+          const rawUpper = rawAns.toUpperCase();
+
+          if (['A', 'B', 'C', 'D'].includes(rawUpper)) {
+            ans = rawUpper as 'A' | 'B' | 'C' | 'D';
+          } else if (rawAns === opts.A) {
+            ans = 'A';
+          } else if (rawAns === opts.B) {
+            ans = 'B';
+          } else if (rawAns === opts.C) {
+            ans = 'C';
+          } else if (rawAns === opts.D) {
+            ans = 'D';
+          }
+
+          return {
+            id: q.id ? String(q.id) : `q_${Date.now()}_${idx + 1}`,
+            question: q.question || `Question ${idx + 1}`,
+            options: opts,
+            correctAnswer: ans,
+            explanation: q.explanation || 'Refer to the textbook syllabus chapter for comprehensive details.',
+            topic: topic || 'General Topic',
+          };
+        });
 
         return res.json({
           success: true,
