@@ -568,7 +568,7 @@ export function getChapterSyllabusScope(
         { pattern: /\b(paper chromatography|retention factor|rf value|fractional distillation|crystallization)\b/i, reason: 'Separation techniques belong to Chapters 17 & 19, not Atomic Structure.' }
       );
     } else if (normTopic.includes('stoichiometr') || normTopic.includes('mole')) {
-      requiredKeywords.push('mole', 'molar mass', 'avogadro', 'amu', 'formula mass', 'empirical formula', 'percentage composition', 'limiting reactant', 'stoichiometric');
+      requiredKeywords.push('mole', 'molar mass', 'avogadro', 'amu', 'formula mass', 'empirical formula', 'percentage composition', 'limiting reactant', 'stoichiometric', 'stoichiometry', 'yield', 'percentage yield', 'theoretical yield', 'actual yield');
       forbiddenCrossChapterPatterns.push(
         { pattern: /\b(bohr's postulates|rutherford alpha scattering|cathode ray discharge)\b/i, reason: 'Atomic models belong to Atomic Structure chapter.' },
         { pattern: /\b(alkane|alkene|functional group|catenation)\b/i, reason: 'Organic chemistry belongs to Chapters 13 & 14.' }
@@ -598,7 +598,7 @@ export function getChapterSyllabusScope(
         { pattern: /\b(galvanic cell|electrolysis of molten nacl)\b/i, reason: 'Belongs to Electrochemistry.' }
       );
     } else if (normTopic.includes('electrochemistry')) {
-      requiredKeywords.push('oxidation', 'reduction', 'redox', 'oxidation state', 'oxidizing agent', 'reducing agent', 'electrolytic cell', 'galvanic cell', 'voltaic cell', 'anode', 'cathode', 'electrolysis', 'electroplating', 'corrosion');
+      requiredKeywords.push('oxidation', 'reduction', 'redox', 'oxidation state', 'oxidizing agent', 'reducing agent', 'electrolytic cell', 'galvanic cell', 'voltaic cell', 'anode', 'cathode', 'electrolysis', 'electroplating', 'corrosion', 'cell', 'downs', 'nelson', 'electrode', 'electrolyte', 'potential', 'she');
       forbiddenCrossChapterPatterns.push(
         { pattern: /\b(rutherford|bohr model|energy level mvr)\b/i, reason: 'Belongs to Atomic Structure.' },
         { pattern: /\b(alkane|alkene|catenation)\b/i, reason: 'Belongs to Organic Chemistry.' }
