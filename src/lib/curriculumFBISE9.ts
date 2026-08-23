@@ -311,6 +311,132 @@ export function getChapterSyllabusScope(
         { pattern: /\b(alkane|alkene|catenation)\b/i, reason: 'Belongs to Organic Chemistry.' }
       );
     }
+  } else if (normSub.includes('math')) {
+    if (normTopic.includes('real number') || normTopic.includes('radical')) {
+      requiredKeywords.push(
+        'real number', 'rational', 'irrational', 'integer', 'natural number', 'whole number',
+        'surd', 'radical', 'radicand', 'index', 'laws of exponents', 'laws of radicals',
+        'conjugate', 'rationaliz', 'closure property', 'commutative property', 'associative property',
+        'distributive property', 'additive identity', 'multiplicative identity', 'additive inverse',
+        'multiplicative inverse', 'trichotomy', 'transitive', 'imaginary unit', 'complex number',
+        'real part', 'imaginary part', 'terminating decimal', 'non-terminating', 'recurring',
+        'sqrt', 'cube root', 'power', 'fraction', 'simplest radical form'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(logarithm|log_|\blog\b|mantissa|characteristic of log|antilog)\b/i, reason: 'Logarithms concepts belong to Chapter 2 (Logarithms), not Real Numbers.' },
+        { pattern: /\b(cartesian product|subset|universal set|venn diagram|null set|\bunion\b|\bintersection\b of sets)\b/i, reason: 'Set operations belong to Chapter 3 (Sets and Relations).' },
+        { pattern: /\b(sin |cos |tan |trigonometr|bearing of|angle of elevation)\b/i, reason: 'Trigonometric ratios belong to Chapter 6 (Trigonometry and Bearing).' },
+        { pattern: /\b(distance between the (two )?points|midpoint formula|collinear points in cartesian)\b/i, reason: 'Coordinate geometry belongs to Chapter 7 (Coordinate Geometry).' },
+        { pattern: /\b(arithmetic mean|median of data|mode of data|standard deviation|frequency distribution|histogram)\b/i, reason: 'Statistics concepts belong to Chapter 11 (Basic Statistics).' },
+        { pattern: /\b(factorize the polynomial|remainder theorem|factor theorem|hcf and lcm of polynomials)\b/i, reason: 'Polynomial factoring belongs to Chapter 4.' },
+        { pattern: /\b(si base unit|velocity|acceleration|chemical equation|electron|cell organelle|surah|hadith|newton|joule)\b/i, reason: 'Cross-subject content (Science/Islamiat) is forbidden in Mathematics.' }
+      );
+    } else if (normTopic.includes('logarithm')) {
+      requiredKeywords.push('logarithm', 'log', 'characteristic', 'mantissa', 'base', 'laws of logarithms', 'common logarithm', 'natural logarithm', 'antilogarithm', 'scientific notation');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(sin |cos |tan |trigonometr|bearing)\b/i, reason: 'Trigonometry belongs to Chapter 6.' },
+        { pattern: /\b(matrix|determinant|distance between points)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('set') || normTopic.includes('relation')) {
+      requiredKeywords.push('set', 'subset', 'union', 'intersection', 'complement', 'difference', 'cartesian product', 'relation', 'domain', 'range', 'function', 'venn diagram', 'de morgan');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(logarithm|trigonometr|surds|radicals)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('factoriz') || normTopic.includes('algebraic')) {
+      requiredKeywords.push('factor', 'factorize', 'algebraic expression', 'remainder theorem', 'factor theorem', 'hcf', 'lcm', 'middle term', 'difference of squares', 'sum of cubes', 'difference of cubes', 'identity');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(logarithm|trigonometr|bearing|distance formula|arithmetic mean)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('linear equation') || normTopic.includes('inequalit')) {
+      requiredKeywords.push('linear equation', 'inequality', 'absolute value', 'solution set', 'root', 'variable', 'number line');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(logarithm|trigonometr|cartesian distance)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('trigonometr') || normTopic.includes('bearing')) {
+      requiredKeywords.push('trigonometry', 'sine', 'cosine', 'tangent', 'sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'hypotenuse', 'bearing', 'angle of elevation', 'angle of depression', 'pythagorean identity');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(logarithm|surds|remainder theorem|frequency distribution)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('coordinate')) {
+      requiredKeywords.push('coordinate', 'cartesian', 'distance formula', 'midpoint formula', 'origin', 'quadrant', 'abscissa', 'ordinate', 'collinear');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(logarithm|trigonometr|remainder theorem)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('statistic')) {
+      requiredKeywords.push('statistics', 'frequency', 'mean', 'median', 'mode', 'range', 'variance', 'standard deviation', 'histogram', 'frequency polygon', 'cumulative frequency');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(logarithm|trigonometr|surds|cartesian)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    }
+  } else if (normSub.includes('isl')) {
+    // Islamiyat anti-science / anti-cross-subject patterns
+    forbiddenCrossChapterPatterns.push(
+      { pattern: /\b(si unit|newton|joule|pascal|molar mass|stoichiometr|chemical reaction|velocity|acceleration|polynomial|quadratic|logarithm|mitosis|chloroplast|organelle|quantitative analysis|titration|gravitational)\b/i, reason: 'Science/Math concepts are completely invalid in Islamiat.' }
+    );
+
+    if (normTopic.includes('ایمانیات') || normTopic.includes('عبادات') || normTopic.includes('iman') || normTopic.includes('ibad') || normTopic.includes('bab 2') || normTopic.includes('باب دوم')) {
+      requiredKeywords.push(
+        'ایمان', 'توحید', 'شرک', 'رسالت', 'ختم نبوت', 'ملائکہ', 'فرشتے', 'کتب', 'تورات', 'زبور', 'انجیل', 'قرآن',
+        'آخرت', 'قیامت', 'جزا و سزا', 'برزخ', 'بعث', 'میزان', 'صراط', 'جنت', 'جہنم', 'نماز', 'صلوٰۃ', 'روزہ', 'صوم',
+        'زکوٰۃ', 'نصاب', 'حج', 'احرام', 'طواف', 'وقوف عرفات', 'تولہ سونا', 'تولہ چاندی', 'مصارف زکوٰۃ', 'تقویٰ', 'ارکان اسلام',
+        'عبادت', 'دعاء', 'جبرائیل', 'میکائیل', 'اسرافیل', 'عزرائیل', 'کلمہ',
+        'tauheed', 'shirk', 'risalat', 'khatam-un-nabiyyin', 'malaika', 'angels', 'jibreel', 'mikaeel', 'israfeel', 'izraeel',
+        'books', 'torah', 'zabur', 'injeel', 'quran', 'akhirah', 'hereafter', 'day of judgment', 'paradise', 'hell',
+        'salat', 'namaz', 'prayer', 'sawm', 'roza', 'fasting', 'zakat', 'nisab', 'hajj', 'pilgrimage', 'arafat', 'tawaf', 'ihram', 'pillars of islam', 'worship'
+      );
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(غزوہ بدر|غزوہ احد|غزوہ خندق|صلح حدیبیہ|فتح مکہ|میثاق مدینہ|مواخات|ہجرت مدینہ)\b/i, reason: 'Ghazwat and Seerat-un-Nabi belong to Bab 3 (Seerat-un-Nabi).' },
+        { pattern: /\b(حضرت ابوبکر|حضرت عمر|حضرت عثمان|حضرت علی|خلفائے راشدین|جامع القرآن|فاتح ایران)\b/i, reason: 'Khulafa-e-Rashideen belong to Bab 6 (Mashahir).' },
+        { pattern: /\b(کسبِ حلال|ناپ تول|سود کی ممانعت|ذخیرہ اندوزی|تجارت کے اصول)\b/i, reason: 'Muamlat and commerce belong to Bab 5.' },
+        { pattern: /\b(صدق و دیانت|حیا و پاکدامنی|عفو و درگزر|ایفائے عہد|غیبت و تکبر)\b/i, reason: 'Akhlaq and moral etiquette belong to Bab 4.' }
+      );
+    } else if (normTopic.includes('قرآن') || normTopic.includes('حدیث') || normTopic.includes('bab 1') || normTopic.includes('باب اول')) {
+      requiredKeywords.push('قرآن', 'حدیث', 'وحی', 'نزول', 'کتابت وحی', 'تدوین قرآن', 'حضرت زید بن ثابت', 'عہد صدیقی', 'عہد عثمانی', 'حفاظت حدیث', 'صحاح ستہ', 'بخاری', 'مسلم', 'ترمذی', 'ابوداؤد', 'نسائی', 'ابن ماجہ');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(نماز کے ارکان|زکوٰۃ کا نصاب|حج کا طریقہ|غزوہ بدر)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('سیرت') || normTopic.includes('مدنی') || normTopic.includes('bab 3') || normTopic.includes('باب سوم')) {
+      requiredKeywords.push('ہجرت مدینہ', 'میثاق مدینہ', 'مواخات', 'غزوہ بدر', 'غزوہ احد', 'غزوہ خندق', 'احزاب', 'صلح حدیبیہ', 'بیعت رضوان', 'فتح مکہ', 'حجۃ الوداع', 'رحمت للعالمین', 'اسوہ حسنہ');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(زکوٰۃ کا نصاب|صحاح ستہ کے نام|تدوین قرآن کمیٹی)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('اخلاق') || normTopic.includes('آداب') || normTopic.includes('bab 4') || normTopic.includes('باب چہارم')) {
+      requiredKeywords.push('اخلاق', 'آداب', 'صدق', 'دیانت', 'حیا', 'پاکدامنی', 'عفو', 'درگزر', 'بردباری', 'ایفائے عہد', 'امانت', 'تکبر', 'غیبت', 'جھوٹ', 'حسد');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(غزوہ بدر|زکوٰۃ کے مصارف|تدوین حدیث)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('معاملات') || normTopic.includes('معاشرت') || normTopic.includes('bab 5') || normTopic.includes('باب پنجم')) {
+      requiredKeywords.push('والدین کے حقوق', 'اساتذہ کے حقوق', 'صلہ رحمی', 'پڑوسیوں کے حقوق', 'کسب حلال', 'تجارت کے اصول', 'سود کی ممانعت', 'ذخیرہ اندوزی', 'ناپ تول میں کمی', 'مطففین');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(غزوہ احد|تدوین قرآن|نماز کے فرائض)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('مشاہیر') || normTopic.includes('سرچشمے') || normTopic.includes('bab 6') || normTopic.includes('باب ششم')) {
+      requiredKeywords.push('حضرت ابوبکر صدیق', 'حضرت عمر فاروق', 'حضرت عثمان غنی', 'حضرت علی المرتضی', 'امہات المؤمنین', 'حضرت خدیجہ', 'حضرت عائشہ', 'حضرت فاطمہ', 'خلفائے راشدین', 'جامع القرآن', 'ذوالنورین', 'فاتح خیبر');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(زکوٰۃ کا نصاب|نماز کے ارکان|سود کی حرمت)\b/i, reason: 'Belongs to other chapters.' }
+      );
+    } else if (normTopic.includes('عصری') || normTopic.includes('تعلیمات') || normTopic.includes('bab 7') || normTopic.includes('باب ہفتم')) {
+      requiredKeywords.push('اتحاد بین المسلمین', 'فرقہ واریت', 'اسلام اور سائنس', 'ماحولیاتی آلودگی', 'شجرکاری', 'سوشل میڈیا', 'طلب العلم فریضۃ');
+    }
+  } else if (normSub.includes('phys')) {
+    if (normTopic.includes('measurement') || normTopic.includes('physical quantit')) {
+      requiredKeywords.push('base unit', 'derived unit', 'vernier', 'screw gauge', 'least count', 'zero error', 'significant figure', 'prefix', 'scientific notation', 'measuring cylinder', 'kelvin', 'meter', 'second', 'kilogram');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(equations of motion|speed-time graph|pascal's law|archimedes|magnetic pole)\b/i, reason: 'Belongs to other physics chapters.' }
+      );
+    } else if (normTopic.includes('kinematic')) {
+      requiredKeywords.push('speed', 'velocity', 'acceleration', 'displacement', 'distance', 'scalar', 'vector', 'speed-time graph', 'equations of motion', 'free fall', 'gravity');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(vernier caliper least count|pascal's law|hydraulic lift|magnetic pole|hooke's law)\b/i, reason: 'Belongs to other physics chapters.' }
+      );
+    }
+  } else if (normSub.includes('bio')) {
+    if (normTopic.includes('cell')) {
+      requiredKeywords.push('cell', 'organelle', 'nucleus', 'mitochondria', 'ribosome', 'chloroplast', 'endoplasmic reticulum', 'golgi', 'cell wall', 'membrane', 'prokaryote', 'eukaryote', 'osmosis', 'diffusion');
+      forbiddenCrossChapterPatterns.push(
+        { pattern: /\b(flower double fertilization|fossil paleontology|transpiration pull|mendel genetics)\b/i, reason: 'Belongs to other biology chapters.' }
+      );
+    }
   }
 
   return {

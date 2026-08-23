@@ -44,6 +44,7 @@ import {
   getFBISEGrade9Chapters,
   getFBISEGrade9PopularTopics,
 } from '../../lib/curriculumFBISE9';
+import { generateCurriculumFallbackMCQs } from '../../lib/curriculumMCQs';
 import { MathText } from '../common/MathText';
 
 interface SelfTestingViewProps {
@@ -306,7 +307,20 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         });
 
         if (validNew.length === 0) {
-          console.warn('[Background Generation] Zero valid non-duplicate questions in batch.');
+          console.warn('[Background Generation] Zero valid non-duplicate questions in batch, supplementing from curriculum bank.');
+          const fbQuestions = generateCurriculumFallbackMCQs(
+            activeConfig.subject,
+            activeConfig.topic,
+            remainingCount,
+            activeConfig.difficulty,
+            activeConfig.grade,
+            activeConfig.board,
+            excludeTexts
+          );
+          if (fbQuestions && fbQuestions.length > 0) {
+            currentList = [...currentList, ...fbQuestions.slice(0, remainingCount)];
+            setQuestions([...currentList]);
+          }
           break;
         }
 
