@@ -124,7 +124,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const [grade, setGrade] = useState<string>(
     isStudent ? studentGrade : (defaultGrade || studentGrade || '9')
   );
-  const [subject, setSubject] = useState<string>(defaultSubject || 'Physics');
+  const [subject, setSubject] = useState<string>(
+    defaultSubject && defaultSubject !== 'Islamiat' ? defaultSubject : 'Physics'
+  );
   const [customSubject, setCustomSubject] = useState<string>('');
   const [topic, setTopic] = useState<string>('Kinematics');
   const [questionCount, setQuestionCount] = useState<number>(10);
@@ -237,8 +239,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   const allSubjectsForGrade = useMemo(() => {
     if (isFbise9) {
-      // Official FBISE Grade 9 Subjects
-      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu', 'Islamiat'];
+      // Official FBISE Grade 9 Subjects (Islamiat excluded from Self Testing UI)
+      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu'];
     }
     return Array.from(
       new Set([
@@ -252,11 +254,18 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         'Computer Science',
         'English',
         'Urdu',
-        'Islamiat',
         'Pakistan Studies',
       ])
-    );
+    ).filter((s) => s !== 'Islamiat');
   }, [isFbise9, studentEnrolledSubjects, currentGradeDef]);
+
+  // Safety fallback if subject is set to Islamiat
+  useEffect(() => {
+    if (subject === 'Islamiat') {
+      const fallback = allSubjectsForGrade[0] || 'Physics';
+      setSubject(fallback);
+    }
+  }, [subject, allSubjectsForGrade]);
 
   const activeSubjectName = subject === 'Other' ? (customSubject.trim() || 'General Subject') : subject;
 
