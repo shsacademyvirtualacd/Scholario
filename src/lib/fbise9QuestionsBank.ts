@@ -983,6 +983,15 @@ export const FBISE_9_QUESTION_BANK: Record<string, Record<string, MCQQuestion[]>
         chapter: 'Sets and Relations',
         topic: 'Sets and Relations',
       },
+      {
+        id: 'fbise9_math_3_2',
+        question: 'If set $A = \\{1, 2\\}$ and set $B = \\{3, 4\\}$, how many ordered pairs are in the Cartesian product $A \\times B$?',
+        options: { A: '$4$', B: '$2$', C: '$6$', D: '$8$' },
+        correctAnswer: 'A',
+        explanation: 'The number of elements in $A \\times B$ is $n(A) \\times n(B) = 2 \\times 2 = 4$.',
+        chapter: 'Sets and Relations',
+        topic: 'Sets and Relations',
+      },
     ],
     'Factorization and Algebraic Manipulation': [
       {
@@ -1000,6 +1009,191 @@ export const FBISE_9_QUESTION_BANK: Record<string, Record<string, MCQQuestion[]>
         options: { A: '$1$', B: '$-5$', C: '$3$', D: '$0$' },
         correctAnswer: 'A',
         explanation: 'By Remainder Theorem, remainder $= P(2) = (2)^3 - 2(2)^2 + 3(2) - 5 = 8 - 8 + 6 - 5 = 1$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_3',
+        question: 'Factorize completely by middle-term breaking: $x^2 + 7x + 12$:',
+        options: { A: '$(x + 3)(x + 4)$', B: '$(x + 2)(x + 6)$', C: '$(x - 3)(x - 4)$', D: '$(x + 1)(x + 12)$' },
+        correctAnswer: 'A',
+        explanation: 'We look for two numbers that multiply to $12$ and add to $7$, which are $3$ and $4$: $(x + 3)(x + 4)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_4',
+        question: 'Factorize the sum of cubes expression $x^3 + 27$:',
+        options: { A: '$(x + 3)(x^2 - 3x + 9)$', B: '$(x + 3)(x^2 + 3x + 9)$', C: '$(x - 3)(x^2 + 3x + 9)$', D: '$(x + 3)^3$' },
+        correctAnswer: 'A',
+        explanation: 'Using the sum of cubes formula $a^3 + b^3 = (a + b)(a^2 - ab + b^2)$, with $a = x, b = 3$: $(x + 3)(x^2 - 3x + 9)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_5',
+        question: 'Factorize the difference of cubes expression $8x^3 - 1$:',
+        options: { A: '$(2x - 1)(4x^2 + 2x + 1)$', B: '$(2x - 1)(4x^2 - 2x + 1)$', C: '$(2x + 1)(4x^2 - 2x + 1)$', D: '$(2x - 1)^3$' },
+        correctAnswer: 'A',
+        explanation: 'Using $a^3 - b^3 = (a - b)(a^2 + ab + b^2)$ where $a = 2x, b = 1$: $(2x - 1)(4x^2 + 2x + 1)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_6',
+        question: 'By Factor Theorem, $(x - 3)$ is a factor of $P(x) = x^3 - kx^2 + 2x - 6$ if the value of $k$ is:',
+        options: { A: '$3$', B: '$1$', C: '$2$', D: '$-3$' },
+        correctAnswer: 'A',
+        explanation: 'For $(x - 3)$ to be a factor, $P(3) = 0 \\implies (3)^3 - k(3)^2 + 2(3) - 6 = 0 \\implies 27 - 9k = 0 \\implies k = 3$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_7',
+        question: 'Factorize by grouping terms: $ax + ay + bx + by$:',
+        options: { A: '$(a + b)(x + y)$', B: '$(a - b)(x - y)$', C: '$(ax + by)(a + b)$', D: '$ab(x + y)$' },
+        correctAnswer: 'A',
+        explanation: '$a(x + y) + b(x + y) = (a + b)(x + y)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_8',
+        question: 'Find the Highest Common Factor (HCF) of $(x^2 - 4)$ and $(x^2 + 5x + 6)$:',
+        options: { A: '$(x + 2)$', B: '$(x - 2)$', C: '$(x + 3)$', D: '$(x^2 - 4)(x + 3)$' },
+        correctAnswer: 'A',
+        explanation: '$x^2 - 4 = (x - 2)(x + 2)$ and $x^2 + 5x + 6 = (x + 2)(x + 3)$. Common factor is $(x + 2)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_9',
+        question: 'Simplify the rational algebraic expression to lowest terms: $\\frac{x^2 - 16}{x^2 + 4x}$:',
+        options: { A: '$\\frac{x - 4}{x}$', B: '$\\frac{x + 4}{x}$', C: '$\\frac{x - 4}{4}$', D: '$x - 4$' },
+        correctAnswer: 'A',
+        explanation: '$\\frac{x^2 - 16}{x^2 + 4x} = \\frac{(x - 4)(x + 4)}{x(x + 4)} = \\frac{x - 4}{x}$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_10',
+        question: 'If $x + \\frac{1}{x} = 5$, find the value of $x^2 + \\frac{1}{x^2}$:',
+        options: { A: '$23$', B: '$25$', C: '$27$', D: '$21$' },
+        correctAnswer: 'A',
+        explanation: 'Squaring both sides: $(x + \\frac{1}{x})^2 = 5^2 \\implies x^2 + 2 + \\frac{1}{x^2} = 25 \\implies x^2 + \\frac{1}{x^2} = 23$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_11',
+        question: 'Factorize the expression $4x^2 - 12x + 9$:',
+        options: { A: '$(2x - 3)^2$', B: '$(2x + 3)^2$', C: '$(4x - 3)(x - 3)$', D: '$(2x - 9)(2x - 1)$' },
+        correctAnswer: 'A',
+        explanation: 'Recognizing perfect square trinomial $(2x)^2 - 2(2x)(3) + (3)^2 = (2x - 3)^2$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_12',
+        question: 'Factorize $6x^2 + 11x - 10$ using middle-term break:',
+        options: { A: '$(2x + 5)(3x - 2)$', B: '$(3x + 5)(2x - 2)$', C: '$(6x - 5)(x + 2)$', D: '$(2x - 5)(3x + 2)$' },
+        correctAnswer: 'A',
+        explanation: 'Product $= 6 \\times (-10) = -60$, sum $= 11$. $6x^2 + 15x - 4x - 10 = 3x(2x + 5) - 2(2x + 5) = (2x + 5)(3x - 2)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_13',
+        question: 'Find the Least Common Multiple (LCM) of $(x - 1)$ and $(x^2 - 1)$:',
+        options: { A: '$x^2 - 1$', B: '$x - 1$', C: '$(x - 1)^2$', D: '$(x^2 - 1)(x - 1)$' },
+        correctAnswer: 'A',
+        explanation: 'Since $x^2 - 1 = (x - 1)(x + 1)$, it already contains $(x - 1)$. Thus $\\text{LCM} = x^2 - 1$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_14',
+        question: 'What is the expansion of the algebraic identity $(a + b + c)^2$?',
+        options: {
+          A: '$a^2 + b^2 + c^2 + 2ab + 2bc + 2ca$',
+          B: '$a^2 + b^2 + c^2 + ab + bc + ca$',
+          C: '$a^2 + b^2 + c^2 - 2ab - 2bc - 2ca$',
+          D: '$a^3 + b^3 + c^3 + 3abc$'
+        },
+        correctAnswer: 'A',
+        explanation: '$(a + b + c)^2 = a^2 + b^2 + c^2 + 2(ab + bc + ca) = a^2 + b^2 + c^2 + 2ab + 2bc + 2ca$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_15',
+        question: 'Simplify the algebraic difference: $\\frac{1}{x - 2} - \\frac{1}{x + 2}$:',
+        options: { A: '$\\frac{4}{x^2 - 4}$', B: '$\\frac{2x}{x^2 - 4}$', C: '$\\frac{-4}{x^2 - 4}$', D: '$\\frac{2}{x^2 - 4}$' },
+        correctAnswer: 'A',
+        explanation: '$\\frac{(x + 2) - (x - 2)}{(x - 2)(x + 2)} = \\frac{x + 2 - x + 2}{x^2 - 4} = \\frac{4}{x^2 - 4}$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_16',
+        question: 'If $P(x) = 2x^3 - 5x^2 + ax - 4$ is exactly divisible by $(x - 1)$, find the value of $a$:',
+        options: { A: '$7$', B: '$3$', C: '$-7$', D: '$5$' },
+        correctAnswer: 'A',
+        explanation: 'By Factor Theorem, $P(1) = 0 \\implies 2(1)^3 - 5(1)^2 + a(1) - 4 = 0 \\implies 2 - 5 + a - 4 = 0 \\implies a = 7$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_17',
+        question: 'Factorize completely: $16x^4 - 81$:',
+        options: { A: '$(4x^2 + 9)(2x - 3)(2x + 3)$', B: '$(4x^2 - 9)^2$', C: '$(2x - 3)^4$', D: '$(4x^2 + 9)(4x^2 - 9)$' },
+        correctAnswer: 'A',
+        explanation: '$16x^4 - 81 = (4x^2)^2 - (9)^2 = (4x^2 + 9)(4x^2 - 9) = (4x^2 + 9)(2x - 3)(2x + 3)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_18',
+        question: 'Factorize the trinomial $x^2 - 5x + 6$:',
+        options: { A: '$(x - 2)(x - 3)$', B: '$(x - 1)(x - 6)$', C: '$(x + 2)(x + 3)$', D: '$(x + 1)(x - 6)$' },
+        correctAnswer: 'A',
+        explanation: 'Numbers multiplying to $+6$ and adding to $-5$ are $-2$ and $-3$: $(x - 2)(x - 3)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_19',
+        question: 'If $a + b = 6$ and $ab = 8$, find the value of $a^2 + b^2$:',
+        options: { A: '$20$', B: '$28$', C: '$36$', D: '$16$' },
+        correctAnswer: 'A',
+        explanation: '$a^2 + b^2 = (a + b)^2 - 2ab = (6)^2 - 2(8) = 36 - 16 = 20$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_20',
+        question: 'What is the relationship between the product of two polynomials $P(x), Q(x)$ and their HCF and LCM?',
+        options: { A: '$\\text{HCF} \\times \\text{LCM} = P(x) \\times Q(x)$', B: '$\\text{HCF} + \\text{LCM} = P(x) + Q(x)$', C: '$\\frac{\\text{HCF}}{\\text{LCM}} = \\frac{P(x)}{Q(x)}$', D: '$\\text{HCF} \\times \\text{LCM} = [P(x)]^2$' },
+        correctAnswer: 'A',
+        explanation: 'Fundamental algebraic identity: $\\text{HCF}(P, Q) \\times \\text{LCM}(P, Q) = P(x) \\times Q(x)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_21',
+        question: 'Factorize the polynomial $x^3 - x^2 + x - 1$ by grouping:',
+        options: { A: '$(x - 1)(x^2 + 1)$', B: '$(x + 1)(x^2 - 1)$', C: '$(x - 1)^3$', D: '$(x + 1)(x^2 + 1)$' },
+        correctAnswer: 'A',
+        explanation: '$x^2(x - 1) + 1(x - 1) = (x - 1)(x^2 + 1)$.',
+        chapter: 'Factorization and Algebraic Manipulation',
+        topic: 'Factorization and Algebraic Manipulation',
+      },
+      {
+        id: 'fbise9_math_4_22',
+        question: 'Find the remainder when $P(x) = 3x^3 + x^2 - 5x + 2$ is divided by $(x + 1)$:',
+        options: { A: '$5$', B: '$-1$', C: '$3$', D: '$0$' },
+        correctAnswer: 'A',
+        explanation: 'By Remainder Theorem, $R = P(-1) = 3(-1)^3 + (-1)^2 - 5(-1) + 2 = -3 + 1 + 5 + 2 = 5$.',
         chapter: 'Factorization and Algebraic Manipulation',
         topic: 'Factorization and Algebraic Manipulation',
       },
@@ -1401,6 +1595,191 @@ function generateConcreteDynamicMCQ(subject: string, chapter: string, index: num
 
   // Mathematics dynamic concrete questions
   if (normSub.includes('math')) {
+    if (normChap.includes('factoriz') || normChap.includes('algebraic')) {
+      const variant = index % 5;
+      if (variant === 0) {
+        const k = (index % 5) + 3;
+        const kSq = k * k;
+        return {
+          id: `fbise9_dyn_math_fact_diffsq_${index}`,
+          question: `Factorize the algebraic expression $x^2 - ${kSq}$ into linear factors:`,
+          options: {
+            A: `$(x - ${k})(x + ${k})$`,
+            B: `$(x - ${k})^2$`,
+            C: `$(x + ${k})^2$`,
+            D: `$x(x - ${kSq})$`,
+          },
+          correctAnswer: 'A',
+          explanation: `Using the difference of squares identity $a^2 - b^2 = (a - b)(a + b)$, $x^2 - ${k}^2 = (x - ${k})(x + ${k})$.`,
+          chapter,
+          topic: chapter,
+        };
+      } else if (variant === 1) {
+        const p = (index % 4) + 2;
+        const q = p + 1;
+        const sum = p + q;
+        const prod = p * q;
+        return {
+          id: `fbise9_dyn_math_fact_tri_${index}`,
+          question: `Factorize the quadratic trinomial $x^2 + ${sum}x + ${prod}$ by middle-term breaking:`,
+          options: {
+            A: `$(x + ${p})(x + ${q})$`,
+            B: `$(x - ${p})(x - ${q})$`,
+            C: `$(x + 1)(x + ${prod})$`,
+            D: `$(x + ${p})^2$`,
+          },
+          correctAnswer: 'A',
+          explanation: `The numbers multiplying to $${prod}$ and adding to $${sum}$ are $${p}$ and $${q}$, giving $(x + ${p})(x + ${q})$.`,
+          chapter,
+          topic: chapter,
+        };
+      } else if (variant === 2) {
+        const c = (index % 3) + 2;
+        const cCubed = c * c * c;
+        const cSq = c * c;
+        return {
+          id: `fbise9_dyn_math_fact_cube_${index}`,
+          question: `Factorize the sum of cubes $x^3 + ${cCubed}$ using algebraic identities:`,
+          options: {
+            A: `$(x + ${c})(x^2 - ${c}x + ${cSq})$`,
+            B: `$(x + ${c})(x^2 + ${c}x + ${cSq})$`,
+            C: `$(x - ${c})(x^2 + ${c}x + ${cSq})$`,
+            D: `$(x + ${c})^3$`,
+          },
+          correctAnswer: 'A',
+          explanation: `Using $a^3 + b^3 = (a + b)(a^2 - ab + b^2)$ with $a = x, b = ${c}$: $(x + ${c})(x^2 - ${c}x + ${cSq})$.`,
+          chapter,
+          topic: chapter,
+        };
+      } else if (variant === 3) {
+        const root = (index % 3) + 1;
+        // P(x) = x^2 - (root + 3)x + R
+        const bCoeff = root + 3;
+        const constTerm = root * 3 + 2; // R will be 2
+        const remainder = 2;
+        return {
+          id: `fbise9_dyn_math_fact_rem_${index}`,
+          question: `What is the remainder when the polynomial $P(x) = x^2 - ${bCoeff}x + ${constTerm}$ is divided by $(x - ${root})$?`,
+          options: {
+            A: `$${remainder}$`,
+            B: `$${remainder + 3}$`,
+            C: `$0$`,
+            D: `$${remainder - 4}$`,
+          },
+          correctAnswer: 'A',
+          explanation: `By Remainder Theorem, $R = P(${root}) = (${root})^2 - ${bCoeff}(${root}) + ${constTerm} = ${remainder}$.`,
+          chapter,
+          topic: chapter,
+        };
+      } else {
+        const v = (index % 5) + 3;
+        const vSq = v * v;
+        const ans = vSq - 2;
+        return {
+          id: `fbise9_dyn_math_fact_id_${index}`,
+          question: `If $x + \\frac{1}{x} = ${v}$, evaluate the algebraic expression $x^2 + \\frac{1}{x^2}$ using identities:`,
+          options: {
+            A: `$${ans}$`,
+            B: `$${vSq}$`,
+            C: `$${vSq + 2}$`,
+            D: `$${ans - 2}$`,
+          },
+          correctAnswer: 'A',
+          explanation: `$(x + \\frac{1}{x})^2 = ${v}^2 = ${vSq} \\implies x^2 + \\frac{1}{x^2} + 2 = ${vSq} \\implies x^2 + \\frac{1}{x^2} = ${ans}$.`,
+          chapter,
+          topic: chapter,
+        };
+      }
+    }
+
+    if (normChap.includes('logarithm')) {
+      const base = 2;
+      const exp = (index % 4) + 3;
+      const num = Math.pow(base, exp);
+      return {
+        id: `fbise9_dyn_math_log_${index}`,
+        question: `Evaluate the logarithmic expression $\\log_{${base}}(${num})$:`,
+        options: {
+          A: `$${exp}$`,
+          B: `$${exp - 1}$`,
+          C: `$${exp + 1}$`,
+          D: `$${num / base}$`,
+        },
+        correctAnswer: 'A',
+        explanation: `Since $${base}^{${exp}} = ${num}$, $\\log_{${base}}(${num}) = ${exp}$.`,
+        chapter,
+        topic: chapter,
+      };
+    }
+
+    if (normChap.includes('trigonometr') || normChap.includes('bearing')) {
+      const trigAngles = [
+        { name: '\\sin 30^\\circ', val: '\\frac{1}{2}' },
+        { name: '\\cos 60^\\circ', val: '\\frac{1}{2}' },
+        { name: '\\tan 45^\\circ', val: '1' },
+        { name: '\\sin 90^\\circ', val: '1' },
+        { name: '\\cos 0^\\circ', val: '1' },
+      ];
+      const trig = trigAngles[index % trigAngles.length];
+      return {
+        id: `fbise9_dyn_math_trig_${index}`,
+        question: `What is the exact trigonometric value of $${trig.name}$?`,
+        options: {
+          A: `$${trig.val}$`,
+          B: `$\\frac{\\sqrt{3}}{2}$`,
+          C: `$\\frac{1}{\\sqrt{2}}$`,
+          D: `$0$`,
+        },
+        correctAnswer: 'A',
+        explanation: `The exact standard trigonometric ratio for $${trig.name} = ${trig.val}$.`,
+        chapter,
+        topic: chapter,
+      };
+    }
+
+    if (normChap.includes('coordinate')) {
+      const x = (index % 4) + 3;
+      const y = (index % 3) + 4;
+      const dSq = x * x + y * y;
+      const d = Math.sqrt(dSq);
+      const isInt = Number.isInteger(d);
+      const dStr = isInt ? `${d}\\text{ units}` : `\\sqrt{${dSq}}\\text{ units}`;
+      return {
+        id: `fbise9_dyn_math_coord_${index}`,
+        question: `Calculate the distance between the origin $(0, 0)$ and the point $P(${x}, ${y})$:`,
+        options: {
+          A: `$${dStr}$`,
+          B: `$${x + y}\\text{ units}$`,
+          C: `$${dSq}\\text{ units}$`,
+          D: `$${Math.abs(x - y)}\\text{ units}$`,
+        },
+        correctAnswer: 'A',
+        explanation: `Using distance formula $d = \\sqrt{(${x}-0)^2 + (${y}-0)^2} = \\sqrt{${x*x} + ${y*y}} = ${dStr}$.`,
+        chapter,
+        topic: chapter,
+      };
+    }
+
+    if (normChap.includes('statistic')) {
+      const baseVal = (index % 5) * 2 + 10;
+      const nums = [baseVal, baseVal + 2, baseVal + 4, baseVal + 6, baseVal + 8];
+      const mean = baseVal + 4;
+      return {
+        id: `fbise9_dyn_math_stat_${index}`,
+        question: `Calculate the arithmetic mean of the numbers $\\{${nums.join(', ')}\\}$:`,
+        options: {
+          A: `$${mean}$`,
+          B: `$${mean - 2}$`,
+          C: `$${mean + 2}$`,
+          D: `$${nums.reduce((a, b) => a + b, 0)}$`,
+        },
+        correctAnswer: 'A',
+        explanation: `$\\text{Mean} = \\frac{${nums.join(' + ')}}{5} = \\frac{${nums.reduce((a, b) => a + b, 0)}}{5} = ${mean}$.`,
+        chapter,
+        topic: chapter,
+      };
+    }
+
     const a = (index % 6) + 2;
     const sq = a * a;
     return {

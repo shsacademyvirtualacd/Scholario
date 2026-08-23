@@ -347,119 +347,207 @@ Key Guidelines:
         (effectiveBoard === 'fbise' || effectiveBoard === 'federal' || String(effectiveBoard).toLowerCase().includes('fbise')) &&
         (String(effectiveGrade) === '9' || String(effectiveGrade) === '9th');
 
-      // Build tailored subject-specific pedagogical instructions
+      // Build tailored, strictly chapter-scoped pedagogical instructions
       const normSub = (subject || '').toLowerCase();
+      const normTop = (topic || '').toLowerCase();
+
       let subjectGuidance = '';
 
-      if (isFbise9) {
+      // Build strict chapter scoping directive
+      const isFullSyllabus = normTop === 'full syllabus' || normTop === 'mixed chapters' || normTop === 'all';
+      
+      if (!isFullSyllabus && topic) {
+        subjectGuidance = `
+======================================================================
+MANDATORY SINGLE-CHAPTER SCOPING CONSTRAINT (HARD REQUIREMENT)
+======================================================================
+TARGET SUBJECT: ${subject}
+EXACT SELECTED CHAPTER: "${topic}"
+TARGET GRADE: Grade ${effectiveGrade} (${String(effectiveBoard).toUpperCase()} Board)
+DIFFICULTY LEVEL: ${difficulty.replace('_', ' ').toUpperCase()}
+
+STRICT SCOPE DIRECTIVES:
+1. EVERY SINGLE ONE of the ${count} questions MUST strictly, exclusively test concepts, formulas, rules, and problem types from "${topic}".
+2. ZERO TOLERANCE FOR CROSS-CHAPTER BLEED: You are strictly forbidden from including questions from any other chapter or topic of ${subject}.
+3. STRICT GRADE-LEVEL SYLLABUS BOUNDARY:
+   - Calculus, derivatives (dy/dx, differentiation of polynomials), integrals (antiderivatives, integration), and limits are strictly Grade 11/12 (FSc Part 1/2). They DO NOT exist in Grade 9 or Grade 10 and MUST NEVER appear in any question or option!
+`;
+
+        if (normSub.includes('math')) {
+          if (normTop.includes('factoriz') || normTop.includes('algebraic manipulation') || normTop.includes('algebraic expression')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Factorization and Algebraic Manipulation":
+- MUST TEST ONLY:
+  * Algebraic formulas & identities: $(a\\pm b)^2, a^2-b^2, a^3\\pm b^3, (a+b+c)^2, (a\\pm b)^3$.
+  * Evaluating expressions: e.g. finding $x^2 + \\frac{1}{x^2}$ given $x + \\frac{1}{x} = k$, finding $a^2+b^2$ given $a+b$ and $ab$.
+  * Factoring quadratic trinomials by middle-term breaking: $ax^2 + bx + c = (px+q)(rx+s)$.
+  * Factoring by grouping terms: $ax + ay + bx + by = (a+b)(x+y)$.
+  * Sum and difference of cubes factoring: $a^3 \\pm b^3 = (a\\pm b)(a^2 \\mp ab + b^2)$.
+  * Remainder Theorem: finding remainder $R = P(a)$ when polynomial $P(x)$ is divided by $(x - a)$.
+  * Factor Theorem: determining unknown coefficients (e.g., find $k$ if $(x-a)$ is a factor of $P(x)$).
+  * HCF and LCM of algebraic expressions: finding common factors, relationship $\\text{HCF} \\times \\text{LCM} = P(x) \\times Q(x)$.
+  * Simplifying rational algebraic fractions: $\\frac{x^2-16}{x^2+4x} = \\frac{x-4}{x}$, $\\frac{1}{x-2} - \\frac{1}{x+2} = \\frac{4}{x^2-4}$.
+- ABSOLUTELY FORBIDDEN FOR THIS TEST:
+  * NO Matrix operations or determinants (matrices are in another chapter).
+  * NO Trigonometric functions ($\\sin, \\cos, \\tan$) or identities (trigonometry is in another chapter).
+  * NO Coordinate geometry (distance formula, midpoint formula are in Coordinate Geometry).
+  * NO Logarithms (log laws, characteristic, mantissa are in Logarithms).
+  * NO Set theory or Venn diagrams (in Sets chapter).
+  * NO Geometry of lines, transversal angles, or polygon angle sums.
+  * NO Statistics (mean, median, mode).
+  * NO Calculus, derivatives of polynomials, or integrals.
+`;
+          } else if (normTop.includes('logarithm')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Logarithms":
+- MUST TEST: Laws of logarithms ($\\log(ab) = \\log a + \\log b$, $\\log(a/b) = \\log a - \\log b$, $\\log(a^n) = n\\log a$, change of base), scientific notation, characteristic and mantissa, common log vs natural log.
+- STRICTLY FORBIDDEN: Matrices, trigonometry, coordinate geometry, remainder theorem, factoring, calculus.
+`;
+          } else if (normTop.includes('real number') || normTop.includes('radical')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Real Numbers":
+- MUST TEST: Rational and irrational numbers, radical operations ($\\sqrt{a}$), laws of exponents/indices, properties of real numbers (closure, associative, commutative, distributive).
+- STRICTLY FORBIDDEN: Matrices, trigonometry, coordinates, remainder theorem, calculus.
+`;
+          } else if (normTop.includes('set') || normTop.includes('relation')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Sets and Relations":
+- MUST TEST: Set operations (union $A \\cup B$, intersection $A \\cap B$, complement $A'$, difference $A \\setminus B$), Venn diagrams, De Morgan's laws, Cartesian product $A \\times B$, binary relations, functions.
+- STRICTLY FORBIDDEN: Matrices, trigonometry, coordinate distance, logarithms, calculus.
+`;
+          } else if (normTop.includes('linear equation') || normTop.includes('inequalit')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Linear Equations and Inequalities":
+- MUST TEST: Linear equations in one variable ($ax+b=c$), equations involving absolute value ($|x-a|=b$), linear inequalities ($ax+b < c$), number line representations.
+- STRICTLY FORBIDDEN: Matrices, trigonometry, logarithms, remainder theorem, calculus.
+`;
+          } else if (normTop.includes('trigonometr') || normTop.includes('bearing')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Trigonometry and Bearing":
+- MUST TEST: Right-triangle trigonometric ratios ($\\sin, \\cos, \\tan, \\csc, \\sec, \\cot$), standard angles ($30^\\circ, 45^\\circ, 60^\\circ$), fundamental identity $\\sin^2\\theta + \\cos^2\\theta = 1$, angles of elevation and depression, bearings.
+- STRICTLY FORBIDDEN: Matrices, logarithms, remainder theorem, statistics, calculus.
+`;
+          } else if (normTop.includes('coordinate geometry')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Coordinate Geometry":
+- MUST TEST: Cartesian plane coordinates, Distance Formula $d = \\sqrt{(x_2-x_1)^2 + (y_2-y_1)^2}$, Midpoint Formula $(\\frac{x_1+x_2}{2}, \\frac{y_1+y_2}{2})$, collinear points.
+- STRICTLY FORBIDDEN: Matrices, logarithms, remainder theorem, trigonometry, calculus.
+`;
+          } else if (normTop.includes('statistic') || normTop.includes('mean') || normTop.includes('median')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Basic Statistics":
+- MUST TEST: Frequency distribution, histograms, arithmetic mean ($\\bar{x} = \\frac{\\sum x}{n}$), median, mode, range.
+- STRICTLY FORBIDDEN: Matrices, trigonometry, logarithms, remainder theorem, calculus.
+`;
+          } else if (normTop.includes('matri') || normTop.includes('determinant')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Matrices and Determinants":
+- MUST TEST: Order of matrices, types (row, column, square, rectangular, diagonal, scalar, identity, null), transpose, matrix addition/multiplication, determinant of 2x2 matrix ($ad-bc$), singular/non-singular, adjoint, inverse $A^{-1}$, Cramer's rule.
+- STRICTLY FORBIDDEN: Trigonometry, coordinates, logarithms, statistics, calculus.
+`;
+          }
+        } else if (normSub.includes('phys')) {
+          if (normTop.includes('kinematic')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Kinematics":
+- MUST TEST: Rest and motion, types of motion, scalars vs vectors, distance vs displacement, speed vs velocity, acceleration, distance-time and speed-time graphs, equations of motion ($v=u+at, s=ut+\\frac{1}{2}at^2, 2as=v^2-u^2$), gravity ($g=9.8\\text{ or }10\\text{ m/s}^2$).
+- STRICTLY FORBIDDEN: Pascal's law, Archimedes upthrust, magnetic poles, specific heat, nuclear physics.
+`;
+          } else if (normTop.includes('measurement') || normTop.includes('physical quantit')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Physical Quantities and Measurement":
+- MUST TEST: Base vs derived SI units, standard prefixes, scientific notation, Vernier Calipers (least count, zero error), Screw Gauge, significant figures.
+- STRICTLY FORBIDDEN: Kinematics equations, magnetic poles, nuclear decay.
+`;
+          } else if (normTop.includes('pressure') || normTop.includes('deformation')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Pressure and Deformation in Solids":
+- MUST TEST: Pressure $P=F/A$, liquid pressure $P=\\rho gh$, Pascal's law & hydraulic lifts, Archimedes principle & upthrust, Hooke's law ($F=kx$), Young's modulus.
+- STRICTLY FORBIDDEN: Equations of motion, magnetic poles, heat capacity.
+`;
+          } else if (normTop.includes('work') || normTop.includes('energy')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Work and Energy":
+- MUST TEST: Work $W=Fs\\cos\\theta$, kinetic energy $E_k=\\frac{1}{2}mv^2$, potential energy $E_p=mgh$, law of conservation of energy, power $P=W/t$, efficiency.
+- STRICTLY FORBIDDEN: Vernier caliper least count, Pascal's law, magnetic poles.
+`;
+          } else if (normTop.includes('magnet')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Magnetism":
+- MUST TEST: Magnetic poles, field lines, magnetic domain theory, induced magnetism, electromagnets, magnetic shielding.
+- STRICTLY FORBIDDEN: Equations of motion, Archimedes upthrust, specific heat capacity.
+`;
+          }
+        } else if (normSub.includes('chem')) {
+          if (normTop.includes('atomic structure') || normTop.includes('atom')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Atomic Structure":
+- MUST TEST: Protons, neutrons, electrons, atomic number $Z$, mass number $A$, Rutherford model & defects, Bohr model & postulates, electronic configuration ($1s^2 2s^2...$), isotopes ($^{12}\\text{C}, ^{14}\\text{C}, ^{235}\\text{U}$).
+- STRICTLY FORBIDDEN: Organic functional groups, alkanes/alkenes, fractional distillation, acid rain, titrations.
+`;
+          } else if (normTop.includes('acid') || normTop.includes('base') || normTop.includes('salt')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "Acids, Bases, and Salts":
+- MUST TEST: Arrhenius acid/base theory, pH and pOH scale ($pH = -\\log[H^+]$), indicators, neutralization, normal/acidic/basic salts.
+- STRICTLY FORBIDDEN: Rutherford atomic model, Bohr postulates, catenation/alkanes.
+`;
+          }
+        } else if (normSub.includes('bio')) {
+          if (normTop.includes('the cell') || normTop.includes('cell organelle')) {
+            subjectGuidance += `
+EXACT CONTENT BLUEPRINT FOR "The Cell":
+- MUST TEST: Cell theory, light vs electron microscope, prokaryotic vs eukaryotic cells, organelles (Nucleus, Mitochondria, Ribosomes, ER, Golgi, Chloroplasts), membrane transport (diffusion, osmosis, active transport).
+- STRICTLY FORBIDDEN: Flower double fertilization, Mendel genetics ratios, Darwin natural selection.
+`;
+          }
+        }
+        subjectGuidance += `======================================================================\n`;
+      } else if (isFbise9) {
         subjectGuidance = `
 ================================
 AUTHORITATIVE GRADE 9 FBISE CURRICULUM ENFORCEMENT
 ================================
 You MUST strictly follow the official Grade 9 FBISE (Federal Board) Curriculum.
 Selected Subject: ${subject}
-Selected Chapter / Topic: ${topic}
+Selected Topic: ${topic}
 
 CRITICAL RULES FOR GRADE 9 FBISE:
-1. Every generated question MUST belong strictly to "${subject}" and the selected chapter "${topic}".
-2. NEVER mix chapters unless topic is explicitly "Full Syllabus" or "Mixed Chapters".
-3. NEVER invent generic, made-up chapters or subject-agnostic questions (NO "General Physics", NO "Algebra Concepts", NO "General Science", NO "Random Trivia").
-4. Difficulty Level: ${difficulty.toUpperCase()}. Difficulty must affect actual problem complexity, multi-step calculation, and reasoning depth — NOT merely sentence length. Must stay strictly within Grade 9 FBISE syllabus.
-
-SUBJECT-SPECIFIC SYLLABUS CONSTRAINTS:
-- PHYSICS (Grade 9 FBISE Chapters: 1. Physical Quantities and Measurement, 2. Kinematics, 3. Dynamics – I, 4. Dynamics – II, 5. Pressure and Deformation in Solids, 6. Work and Energy, 7. Density and Temperature, 8. Magnetism, 9. Nature of Science and Physics):
-  Generate authentic conceptual questions, formulas ($v=u+at, s=ut+\\frac{1}{2}at^2, 2as=v_f^2-v_i^2, F=ma, W=Fd, P=F/A, \\rho=m/V, E_k=\\frac{1}{2}mv^2, E_p=mgh, P=W/t$), SI units, graphs, numerical word problems, Newton's laws, Hooke's law, Pascal's law, specific heat capacity ($Q=mc\\Delta T$), Archimedes upthrust, or magnetism according to the selected chapter.
-
-- CHEMISTRY (Grade 9 FBISE Chapters: 1. Nature of Science in Chemistry, 2. Matter, 3. Atomic Structure, 4. Periodic Table and Periodicity of Properties, 5. Chemical Bonding, 6. Stoichiometry, 7. Electrochemistry, 8. Energetics, 9. Chemical Equilibrium, 10. Acids, Bases, and Salts, 11. Environmental Chemistry – Air, 12. Environmental Chemistry – Water, 13. Organic Chemistry, 14. Hydrocarbons, 15. Biochemistry, 16. Empirical Data Collection and Analysis, 17. Separation Techniques, 18. Qualitative Analysis, 19. Chromatography):
-  Generate questions testing subatomic particles, Rutherford/Bohr models, electronic configuration ($1s^2 2s^2...$), periodic trends, ionic/covalent/dative bonds, mole calculations ($n=m/M$), Avogadro's constant ($6.022\\times 10^{23}$), oxidation numbers, electrolytic cells, exothermic/endothermic $\\Delta H$, Le Chatelier's equilibrium, pH ($-\\log[H^+]$), acid rain ($\\text{SO}_2, \\text{NO}_x$), water hardness, alkane formulas ($\\text{C}_n\\text{H}_{2n+2}$), biomolecules, qualitative flame tests, or $R_f$ values strictly for the chosen chapter.
-
-- BIOLOGY (Grade 9 FBISE Chapters: 1. The Science of Biology, 2. Molecular Biology, 3. The Cell, 4. Tissues, Organs and Organ Systems, 5. Cell Cycle, 6. Biodiversity, 7. Metabolism, 8. Plant Physiology, 9. Plant Reproduction, 10. Evolution):
-  Generate questions testing biological terminology, Muslim scientists (Jabir ibn Hayyan, Abdul Malik Asmai, Bu Ali Sina), light vs electron microscopy, cell organelles (Mitochondria, Ribosomes, Golgi), membrane transport, mitosis/meiosis stages, Five Kingdoms, photosynthesis light reactions/Calvin cycle, cellular respiration, transpiration, xylem/phloem, flower double fertilization ($3n$ endosperm), or natural selection evidences.
-
-- MATHEMATICS (Grade 9 FBISE Chapters: 1. Real Numbers, 2. Logarithms, 3. Sets and Relations, 4. Factorization and Algebraic Manipulation, 5. Linear Equations and Inequalities, 6. Trigonometry and Bearing, 7. Coordinate Geometry, 8. Geometry of Straight Lines, 9. Geometry and Polygons, 10. Practical Geometry, 11. Basic Statistics):
-  Generate real mathematical calculations, radical operations ($\\sqrt{a}$), laws of logarithms ($\\log(ab), \\log(a/b), \\log(a^n)$), characteristic/mantissa, set intersections/Venn diagrams, algebraic factoring ($a^2-b^2, a^3\\pm b^3$), Remainder Theorem, trigonometric values ($\sin 45^\\circ, \\tan 60^\\circ$), distance formula ($d=\\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}$), midpoints, transversal angle theorems, polygon angle sums ($(n-2)\\times 180^\\circ$), or arithmetic mean/median/mode. Ensure mathematically verified options.
-
-- URDU (Grade 9 FBISE Curriculum):
-  - NASR: اخلاقِ حسنہ (مولانا شبلی نعمانی), کتبہ, بھیڑیا, آرام و سکون (امتیاز علی تاج), حکیم اور مرزا غالب, نام دیوہالی (مولوی عبدالحق), ابتدائی حباب, لڑی میں پروئے ہوئے منظر, اپنی مدد آپ (سر سید احمد خان).
-  - NAZM: حمد, نعت, جاوید کے نام (علامہ اقبال), محنت کی برکات, کرکٹ اور مشاعرہ, پیامِ لطیف.
-  - GHAZAL: فقیرانہ آئے صدا کر چلے (میر تقی میر), سن تو سہی جہاں میں ہے تیرا افسانہ کیا (خواجہ حیدر علی آتش), غم یا خوشی ہے تو (مرزا غالب), کاش طوفاں میں سفینے کو اتار ہوتا.
-  Questions must test actual text comprehension, vocabulary meanings, central idea (مرکزی خیال), tashreeh, characters, references, and poetic devices of the selected lesson/poem/ghazal.
-
-- ISLAMIYAT (Grade 9 FBISE Chapters: 1. باب اول — قرآن مجید کی تدوین و حفاظت، حفاظتِ حدیث نبویؐ, 2. باب دوم — ایمانیات و عبادات, 3. باب سوم — سیرتِ نبویؐ کا مدنی دور اور اسوۂ رسولؐ, 4. باب چہارم — اخلاق و آداب, 5. باب پنجم — حسنِ معاملات و معاشرت, 6. باب ششم — ہدایت کے سرچشمے اور مشاہیرِ اسلام, 7. باب ہفتم — اسلامی تعلیمات اور عصرِ حاضر کے تقاضے):
-  Questions must be strictly grounded in the official Grade 9 FBISE Islamiat chapters. Test authentic Quranic/Hadith references, events of the Madani era (Muwakhat, Badr, Uhud, Khandaq, Hudaibiya, Fatah Makkah, Hajjat-ul-Wida), ethical principles, socio-economic transactions (Zakat, prohibition of usury/cheating), and prominent Islamic personalities (Khulafa-e-Rashideen, Sahaba/Sahabiat). Do NOT invent references.`;
+1. Every generated question MUST belong strictly to "${subject}" for Grade 9.
+2. Difficulty Level: ${difficulty.toUpperCase()}. Must stay strictly within Grade 9 FBISE syllabus.
+3. NEVER include Calculus, derivatives (dy/dx), integrals, or advanced college-level math.
+`;
       } else if (normSub.includes('eng')) {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR ENGLISH (${topic}):
 - Write REAL, concrete English sentences and authentic linguistic tasks standard in FBISE / Sindh Board Grade ${effectiveGrade} English examinations.
-- If the topic relates to Grammar, Tenses, Voice, or Narration:
-  1. Fill-in-the-blank with the correct verb tense/aspect (e.g., "By the time we arrived at the station, the train ______ (leave).").
-  2. Tense Identification (e.g., "Identify the grammatical tense of the sentence: 'She will have been teaching here for a decade by December.'").
-  3. Sentence Conversion (e.g., "Which is the correct Passive Voice conversion of: 'The architect has designed a modern auditorium'?", or Direct to Indirect speech).
-  4. Identifying grammatical errors in subject-verb agreement, pronoun cases, or conditional structures (e.g., Zero, First, Second, Third conditionals).
-  5. Correct preposition, article, conjunction, or modal auxiliary verb usage in complete sentences.
-- If the topic relates to Vocabulary, Figurative Language, or Comprehension:
-  1. Contextual vocabulary, synonyms, and antonyms in a provided sentence.
-  2. Identifying figures of speech (Simile, Metaphor, Personification, Alliteration, Hyperbole, Oxymoron).
-  3. Identifying parts of speech of an italicized/bracketed word (e.g., Gerund vs. Present Participle).
-- ABSOLUTELY PROHIBITED: Do NOT generate abstract, vague pseudo-questions like "Which of the following statements is academically accurate" or choices like "the core governing principle". EVERY SINGLE question MUST contain a real sentence, phrase, or specific linguistic rule.`;
+- Formats: Verb tenses, active/passive voice, direct/indirect narration, conditionals, prepositions, figures of speech, vocabulary.
+- ABSOLUTELY PROHIBITED: Do NOT generate abstract, vague pseudo-questions like "Which statement is academically accurate".`;
       } else if (normSub.includes('math')) {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR MATHEMATICS (${topic}):
-- Write concrete numerical, algebraic, geometric, or calculus problems with real numbers, equations, and expressions for Grade ${effectiveGrade}.
-- Formats:
-  1. Solving equations (e.g., roots/discriminant of quadratic equations, systems of linear equations).
-  2. Matrix calculations (determinants, adjoint, inverse, matrix multiplication).
-  3. Trigonometric expressions and identities (e.g., simplifying $\\sin(2\\theta)$, finding $\\sec^2\\theta - \\tan^2\\theta$).
-  4. Geometry and coordinate geometry (distance, slopes, midpoints, angles in circles, area formulas).
-  5. Differentiation, integration, logarithms, or polynomial factoring.
+- Write concrete numerical and algebraic problems with real numbers, equations, and expressions for Grade ${effectiveGrade} (${topic}).
+- STRICT RULE: Stay strictly within "${topic}". Do NOT generate calculus/derivatives for Grade 9 or 10.
 - Use standard LaTeX notation ($...$) for mathematical formulas and expressions.`;
       } else if (normSub.includes('phys')) {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR PHYSICS (${topic}):
-- Write concrete numerical word problems with realistic values and SI units, or clear conceptual application questions for Grade ${effectiveGrade}.
-- Formats:
-  1. Calculating numerical quantities using standard formulas (e.g., $F=ma$, $v=u+at$, $W=Fd$, $V=IR$, $E_k=\\frac{1}{2}mv^2$, $T=2\\pi\\sqrt{l/g}$).
-  2. Physical laws and conceptual scenarios (Newton's laws, Pascal's law, Coulomb's law, Snell's law, Faraday's law).
-  3. Unit conversions, dimensional analysis, and vector operations.
-  4. Circuit behavior, wave properties ($v = f\\lambda$), optics, and electromagnetism.`;
+- Write concrete numerical word problems with realistic values and SI units, or clear conceptual application questions for Grade ${effectiveGrade} strictly for "${topic}".`;
       } else if (normSub.includes('chem')) {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR CHEMISTRY (${topic}):
-- Write questions using real chemical formulas, balanced chemical equations, periodic trends, and IUPAC nomenclature for Grade ${effectiveGrade}.
-- Formats:
-  1. Oxidation numbers, balancing redox reactions, and valence electron configurations.
-  2. Chemical bonding types (ionic, covalent, coordinate, hydrogen bonding) and molecular geometries.
-  3. Stoichiometry, molar masses, mole-to-gram conversions, and gas laws ($PV=nRT$).
-  4. Acids, bases, pH calculations, equilibrium constants ($K_c$), and organic functional groups.`;
+- Write questions using real chemical formulas, balanced chemical equations, and principles strictly for Grade ${effectiveGrade} "${topic}".`;
       } else if (normSub.includes('bio')) {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR BIOLOGY (${topic}):
-- Write questions on specific anatomical structures, biological terms, physiological mechanisms, and genetics for Grade ${effectiveGrade}.
-- Formats:
-  1. Organelle functions and cellular division phases (Mitosis, Meiosis).
-  2. Enzymes, activation energy, and biochemical pathways (Glycolysis, Krebs cycle, Calvin cycle).
-  3. Genetics (Mendel's laws, Punnett square ratios, dominant/recessive traits).
-  4. Human organ systems (cardiovascular, nervous, respiratory, excretory).`;
+- Write questions on specific anatomical structures, biological terms, and mechanisms strictly for Grade ${effectiveGrade} "${topic}".`;
       } else if (normSub.includes('comp') || normSub.includes('cs') || normSub.includes('it')) {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR COMPUTER SCIENCE (${topic}):
-- Provide concrete code snippets (C++, Python, pseudocode), algorithm trace problems, data structure operations, and networking concepts for Grade ${effectiveGrade}.
-- Formats:
-  1. Output prediction of loops, arrays, conditionals, and functions.
-  2. Data structure mechanics: Stack (LIFO), Queue (FIFO), Linked List, Binary Trees.
-  3. Time complexity ($O(1)$, $O(\\log n)$, $O(n)$, $O(n^2)$) and searching/sorting algorithms.
-  4. SQL database queries (SELECT, WHERE, JOIN, GROUP BY) and normalization rules.
-  5. OSI model layers, IP addressing, and networking protocols.`;
-      } else if (normSub.includes('pak') || normSub.includes('isl') || normSub.includes('urdu') || normSub.includes('hist')) {
-        subjectGuidance = `
-CRITICAL SUBJECT RULES FOR ${subject.toUpperCase()} (${topic}):
-- Write specific, syllabus-aligned questions with real dates, events, constitutional clauses, terms, or linguistic definitions for Grade ${effectiveGrade}.
-- Avoid vague generic questions. Every question must test a verifiable curriculum concept.`;
+- Provide concrete code snippets, number system conversions, and networking concepts for Grade ${effectiveGrade} "${topic}".`;
       } else {
         subjectGuidance = `
 CRITICAL SUBJECT RULES FOR ${subject.toUpperCase()} (${topic}):
-- Write concrete, high-precision questions specifically testing the actual concepts, formulas, terminology, or rules of "${topic}".
-- Never generate generic abstract placeholder text.`;
+- Write concrete, high-precision questions specifically testing the actual concepts, formulas, terminology, or rules of "${topic}".`;
       }
 
       const excludePromptPart = normExcludes.length > 0
@@ -591,8 +679,14 @@ Return ONLY a valid JSON object matching this structure:
           };
         });
 
-        // Run through strict MCQ validator and backfill with curriculum bank if any question is invalid/generic
-        const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool);
+        // Run through strict MCQ validator and backfill with curriculum bank if any question is invalid, generic, or off-topic
+        const validationContext = {
+          subject,
+          topic,
+          grade: String(effectiveGrade),
+          board: String(effectiveBoard),
+        };
+        const validatedQuestions = filterAndValidateMCQs(rawNormalized, count, fallbackPool, validationContext);
 
         if (validatedQuestions.length >= count) {
           return res.json({

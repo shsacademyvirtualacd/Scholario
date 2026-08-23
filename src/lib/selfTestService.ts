@@ -43,10 +43,17 @@ export async function generateMCQTest(
       }),
     });
 
+    const validationContext = {
+      subject: config.subject,
+      topic: config.topic,
+      grade: config.grade,
+      board: config.board,
+    };
+
     if (response.ok) {
       const data = (await response.json()) as { questions?: MCQQuestion[] };
       if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-        const validated = filterAndValidateMCQs(data.questions, config.questionCount, fallback());
+        const validated = filterAndValidateMCQs(data.questions, config.questionCount, fallback(), validationContext);
         if (validated.length >= config.questionCount) {
           return validated.slice(0, config.questionCount);
         }
@@ -55,11 +62,16 @@ export async function generateMCQTest(
 
     console.warn(`[SelfTest] API response status ${response.status}. Using high-quality curriculum fallback.`);
     const fbPool = fallback();
-    return filterAndValidateMCQs(fbPool, config.questionCount).slice(0, config.questionCount);
+    return filterAndValidateMCQs(fbPool, config.questionCount, undefined, validationContext).slice(0, config.questionCount);
   } catch (err: any) {
     console.warn('Network issue calling /api/tests/generate-mcq, falling back to curriculum question bank:', err);
     const fbPool = fallback();
-    return filterAndValidateMCQs(fbPool, config.questionCount).slice(0, config.questionCount);
+    return filterAndValidateMCQs(fbPool, config.questionCount, undefined, {
+      subject: config.subject,
+      topic: config.topic,
+      grade: config.grade,
+      board: config.board,
+    }).slice(0, config.questionCount);
   }
 }
 
