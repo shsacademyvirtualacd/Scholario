@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Sparkles } from 'lucide-react';
+import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Sparkles, Database } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
 import TestUploadModal from '../../components/teacher/TestUploadModal';
 import TestViewerModal from '../../components/common/TestViewerModal';
 import SelfTestingView from '../../components/tests/SelfTestingView';
+import AdminMCQVerificationView from '../../components/admin/mcq/AdminMCQVerificationView';
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -15,15 +16,21 @@ import type { TestPaper, TestSubmission } from '../../types';
 export const AdminTestsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Tab navigation: 'class-test' vs 'self-test'
-  const activeTab = searchParams.get('tab') === 'self-test' ? 'self-test' : 'class-test';
+  // Tab navigation: 'class-test' vs 'self-test' vs 'question-bank'
+  const rawTab = searchParams.get('tab');
+  const activeTab: 'class-test' | 'self-test' | 'question-bank' =
+    rawTab === 'self-test'
+      ? 'self-test'
+      : rawTab === 'question-bank' || rawTab === 'mcq-verification' || rawTab === 'bank'
+      ? 'question-bank'
+      : 'class-test';
 
-  const setActiveTab = (tab: 'class-test' | 'self-test') => {
+  const setActiveTab = (tab: 'class-test' | 'self-test' | 'question-bank') => {
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'class-test') {
       newParams.delete('tab');
     } else {
-      newParams.set('tab', 'self-test');
+      newParams.set('tab', tab);
     }
     setSearchParams(newParams);
   };
@@ -155,7 +162,7 @@ export const AdminTestsPage: React.FC = () => {
       <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6">
         <button
           onClick={() => setActiveTab('class-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'class-test'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
@@ -172,7 +179,7 @@ export const AdminTestsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('self-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'self-test'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
@@ -184,9 +191,32 @@ export const AdminTestsPage: React.FC = () => {
             AI
           </span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('question-bank')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'question-bank'
+              ? 'bg-[#111111] text-white shadow-xs'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+          }`}
+        >
+          <Database size={15} className={activeTab === 'question-bank' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <span>Question Bank</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+            activeTab === 'question-bank' ? 'bg-[#F4C430] text-[#111111]' : 'bg-black/5 text-[#737373]'
+          }`}>
+            Live Bank
+          </span>
+        </button>
       </div>
 
-      {activeTab === 'self-test' ? (
+      {activeTab === 'question-bank' ? (
+        <AdminMCQVerificationView
+          initialBoard={selectedBoard}
+          initialGrade="9"
+          initialSubject="Physics"
+        />
+      ) : activeTab === 'self-test' ? (
         <SelfTestingView
           defaultBoard={selectedBoard}
           userRole="admin"

@@ -813,6 +813,29 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     }
   });
 
+  // 3. Live Question Bank Full Retrieval (Admin & Direct Storage Access)
+  app.get('/api/mcq-bank/all', (_req, res) => {
+    try {
+      // Force fresh read from disk file
+      const BANK_FILE_PATH = path.resolve('src/data/grade9FbiseBank.json');
+      if (fs.existsSync(BANK_FILE_PATH)) {
+        const raw = fs.readFileSync(BANK_FILE_PATH, 'utf-8');
+        const data = JSON.parse(raw);
+        // Refresh cache
+        serverCachedBank = data;
+        return res.json({
+          success: true,
+          board: 'fbise',
+          grade: '9',
+          data,
+        });
+      }
+      return res.json({ success: true, board: 'fbise', grade: '9', data: {} });
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message || 'Failed to load question bank data from storage' });
+    }
+  });
+
   // ── Tests Upload (Express Dev Handler) ──────────────
   app.post('/api/tests/upload', upload.single('file'), async (req, res) => {
     try {

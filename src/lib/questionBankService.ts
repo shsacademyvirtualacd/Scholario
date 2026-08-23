@@ -12,11 +12,25 @@ import { supabase } from './supabase';
 let cachedBankData: Record<string, Record<string, StoredMCQ[]>> | null = null;
 
 /**
- * Loads the stored bank data dynamically or from memory
+ * Loads the stored bank data dynamically or from live server API
  */
-export async function loadBankData(): Promise<Record<string, Record<string, StoredMCQ[]>>> {
-  if (cachedBankData && Object.keys(cachedBankData).length > 0) {
+export async function loadBankData(forceRefresh = false): Promise<Record<string, Record<string, StoredMCQ[]>>> {
+  if (!forceRefresh && cachedBankData && Object.keys(cachedBankData).length > 0) {
     return cachedBankData;
+  }
+
+  // 1. Try live API first for real-time storage state
+  try {
+    const res = await fetch('/api/mcq-bank/all', { cache: 'no-store' });
+    if (res.ok) {
+      const json: any = await res.json();
+      if (json && json.data && typeof json.data === 'object') {
+        cachedBankData = json.data;
+        return cachedBankData!;
+      }
+    }
+  } catch {
+    // API not reachable or client-side fallback
   }
 
   try {
@@ -29,6 +43,54 @@ export async function loadBankData(): Promise<Record<string, Record<string, Stor
     if (!cachedBankData) cachedBankData = {};
     return cachedBankData;
   }
+}
+
+/**
+ * Explicitly forces a fresh reload of the question bank from live storage
+ */
+export async function refreshLiveBankData(): Promise<Record<string, Record<string, StoredMCQ[]>>> {
+  cachedBankData = null;
+  return loadBankData(true);
+}
+
+/**
+ * Returns the exact stored MCQs for a specific chapter from real live storage.
+ * Returns an empty array if none are stored (no mock data).
+ */
+export async function getStoredMCQsForChapter(
+  subject: string,
+  chapter: string,
+  grade = '9',
+  board = 'fbise'
+): Promise<StoredMCQ[]> {
+  const isGrade9 = String(grade).trim() === '9' || String(grade).trim().toLowerCase() === '9th';
+  const isFbise = (board || '').toLowerCase().includes('fbise') || (board || '').toLowerCase() === 'fbise';
+
+  // Only Grade 9 FBISE has stored MCQs in the current live bank
+  if (!isGrade9 || !isFbise) {
+    return [];
+  }
+
+  const bank = await loadBankData();
+  const normalizedSubject = normalizeFBISEGrade9Subject(subject) || subject;
+  const subjectData = bank[normalizedSubject];
+  if (!subjectData) return [];
+
+  // Find exact or normalized chapter match
+  const exactMatch = subjectData[chapter];
+  if (exactMatch && Array.isArray(exactMatch)) {
+    return exactMatch;
+  }
+
+  // Fallback case-insensitive key search
+  const foundKey = Object.keys(subjectData).find(
+    (k) => k.toLowerCase().trim() === chapter.toLowerCase().trim()
+  );
+  if (foundKey && Array.isArray(subjectData[foundKey])) {
+    return subjectData[foundKey];
+  }
+
+  return [];
 }
 
 /**
