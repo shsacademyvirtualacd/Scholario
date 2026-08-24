@@ -8,8 +8,8 @@ const JSON_PATH = path.resolve(process.cwd(), 'src/data/grade9FbiseBank.json');
 const CHAPTERS = [
   'Physical Quantities and Measurement',
   'Kinematics',
-  'Dynamics-I',
-  'Dynamics-II',
+  'Dynamics – I',
+  'Dynamics – II',
   'Pressure and Deformation in Solids',
   'Work and Energy',
   'Density and Temperature',
@@ -20,8 +20,8 @@ const CHAPTERS = [
 const JSON_KEYS: Record<string, string> = {
   'Physical Quantities and Measurement': 'Physical Quantities and Measurement',
   'Kinematics': 'Kinematics',
-  'Dynamics-I': 'Dynamics – I',
-  'Dynamics-II': 'Dynamics – II',
+  'Dynamics – I': 'Dynamics – I',
+  'Dynamics – II': 'Dynamics – II',
   'Pressure and Deformation in Solids': 'Pressure and Deformation in Solids',
   'Work and Energy': 'Work and Energy',
   'Density and Temperature': 'Density and Temperature',
