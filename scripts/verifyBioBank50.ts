@@ -3,7 +3,7 @@ import path from 'path';
 import { FBISE_9_QUESTION_BANK } from '../src/lib/fbise9QuestionsBank';
 import { validateMCQQuestion, checkQuestionDuplicate, calculateQuestionSimilarity } from '../src/lib/mcqValidator';
 
-const JSON_PATH = path.resolve(process.cwd(), 'src/data/grade9FbiseBank.json');
+const JSON_PATH = path.resolve(process.cwd(), 'src/data/banks/biology.json');
 
 const BIO_CHAPTERS = [
   "The Science of Biology",
@@ -22,9 +22,6 @@ async function verifyBiology() {
   console.log('=== Starting Comprehensive Biology Bank Verification (50 MCQs / Chapter) ===');
   const jsonContent = JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
 
-  if (!jsonContent.Biology) {
-    throw new Error('Biology subject missing in JSON bank');
-  }
   if (!FBISE_9_QUESTION_BANK.Biology) {
     throw new Error('Biology subject missing in TS bank');
   }
@@ -37,7 +34,7 @@ async function verifyBiology() {
     const ch = BIO_CHAPTERS[chIdx];
 
     const tsList = FBISE_9_QUESTION_BANK.Biology[ch];
-    const jsonList = jsonContent.Biology[ch];
+    const jsonList = jsonContent[ch];
 
     if (!tsList) throw new Error(`Missing Biology chapter "${ch}" in TS bank`);
     if (!jsonList) throw new Error(`Missing Biology chapter "${ch}" in JSON bank`);

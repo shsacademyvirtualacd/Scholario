@@ -368,7 +368,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                 </span>
               </div>
               <p className="text-xs text-[#737373] mt-0.5 font-medium">
-                Direct read from runtime storage <code className="px-1.5 py-0.5 bg-[#F5F5F5] rounded text-[11px] font-mono text-[#111111]">src/data/grade9FbiseBank.json</code>. Zero mock or sample data.
+                Direct read from modular runtime storage <code className="px-1.5 py-0.5 bg-[#F5F5F5] rounded text-[11px] font-mono text-[#111111]">src/data/banks/*.json</code>. Zero mock or sample data.
               </p>
             </div>
           </div>

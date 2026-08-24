@@ -3,7 +3,7 @@ import path from 'path';
 import { FBISE_9_QUESTION_BANK } from '../src/lib/fbise9QuestionsBank';
 import { validateMCQQuestion, checkQuestionDuplicate, calculateQuestionSimilarity } from '../src/lib/mcqValidator';
 
-const JSON_PATH = path.resolve(process.cwd(), 'src/data/grade9FbiseBank.json');
+const JSON_PATH = path.resolve(process.cwd(), 'src/data/banks/physics.json');
 
 const CHAPTERS = [
   'Physical Quantities and Measurement',
@@ -42,7 +42,7 @@ async function verify() {
     const jsonKey = JSON_KEYS[ch];
 
     const tsList = FBISE_9_QUESTION_BANK.Physics[ch];
-    const jsonList = jsonContent.Physics[jsonKey];
+    const jsonList = jsonContent[jsonKey];
 
     if (!tsList) throw new Error(`Missing Physics chapter "${ch}" in TS bank`);
     if (!jsonList) throw new Error(`Missing Physics chapter "${jsonKey}" in JSON bank`);

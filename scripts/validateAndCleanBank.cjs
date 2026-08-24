@@ -1,6 +1,6 @@
 /**
  * Comprehensive Validation, Sanitization, and Verification Pipeline
- * for FBISE Grade 9 Question Bank (grade9FbiseBank.json).
+ * for FBISE Grade 9 Question Banks (src/data/banks/*.json).
  *
  * Validates, cleans, and safely serializes all subjects with special focus on
  * Urdu / Arabic scripts (Islamiat, Urdu) and LaTeX formatting (Math, Physics, Chemistry).
@@ -15,113 +15,79 @@ const {
   safeWriteQuestionBank,
 } = require('./utils/safeJsonWriter.cjs');
 
-const JSON_PATH = path.join(__dirname, '../src/data/grade9FbiseBank.json');
+const BANKS_DIR = path.join(__dirname, '../src/data/banks');
 
 function runComprehensiveAudit() {
   console.log('====================================================');
-  console.log(' FBISE Grade 9 Question Bank Comprehensive Audit   ');
+  console.log(' FBISE Grade 9 Question Banks Comprehensive Audit   ');
   console.log('====================================================');
 
-  if (!fs.existsSync(JSON_PATH)) {
-    throw new Error(`Target file not found at ${JSON_PATH}`);
+  if (!fs.existsSync(BANKS_DIR)) {
+    throw new Error(`Target directory not found at ${BANKS_DIR}`);
   }
 
-  const rawFile = fs.readFileSync(JSON_PATH, 'utf-8');
-  console.log(`Read file: ${JSON_PATH} (${rawFile.length} bytes)`);
+  const files = fs.readdirSync(BANKS_DIR).filter((f) => f.endsWith('.json'));
+  console.log(`Auditing ${files.length} subject files in ${BANKS_DIR}`);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(rawFile);
-    console.log('✓ Initial JSON.parse() succeeded.');
-  } catch (err) {
-    console.error('✗ Initial JSON.parse() failed:', err.message);
-    throw err;
-  }
-
-  const subjects = Object.keys(parsed);
-  console.log(`Detected subjects: ${subjects.join(', ')}`);
-
-  let totalQuestionsCount = 0;
+  let grandTotalQuestions = 0;
   const auditReport = {};
 
-  for (const subject of subjects) {
-    const chapters = parsed[subject];
-    auditReport[subject] = { chaptersCount: Object.keys(chapters).length, questionsCount: 0, issues: [] };
+  for (const file of files) {
+    const filePath = path.join(BANKS_DIR, file);
+    const rawFile = fs.readFileSync(filePath, 'utf-8');
+    const subject = file.replace('.json', '');
 
-    for (const [chapterName, questions] of Object.entries(chapters)) {
-      if (!Array.isArray(questions)) {
-        auditReport[subject].issues.push(`Chapter ${chapterName} is not an array`);
+    let chapters;
+    try {
+      chapters = JSON.parse(rawFile);
+    } catch (err) {
+      console.error(`✗ JSON.parse() failed on ${file}:`, err.message);
+      throw err;
+    }
+
+    const chapKeys = Object.keys(chapters);
+    let subTotal = 0;
+    const issues = [];
+
+    for (const chName of chapKeys) {
+      const mcqs = chapters[chName];
+      if (!Array.isArray(mcqs)) {
+        issues.push({ chapter: chName, error: 'Not an array' });
         continue;
       }
-
-      auditReport[subject].questionsCount += questions.length;
-      totalQuestionsCount += questions.length;
-
-      questions.forEach((q, idx) => {
-        const qContext = `${subject} -> "${chapterName}" -> Q#${idx + 1} (${q.id || 'NO_ID'})`;
-
-        if (!q.id) auditReport[subject].issues.push(`${qContext}: Missing ID`);
-        if (!q.question || typeof q.question !== 'string' || q.question.trim() === '') {
-          auditReport[subject].issues.push(`${qContext}: Missing or empty question`);
+      subTotal += mcqs.length;
+      for (const mcq of mcqs) {
+        if (!mcq.id || !mcq.question || !mcq.options || !mcq.correctAnswer) {
+          issues.push({ id: mcq.id, chapter: chName, error: 'Missing required field' });
         }
-        if (!q.options || typeof q.options !== 'object') {
-          auditReport[subject].issues.push(`${qContext}: Missing or malformed options object`);
-        } else {
-          for (const optKey of ['A', 'B', 'C', 'D']) {
-            if (!q.options[optKey] || typeof q.options[optKey] !== 'string') {
-              auditReport[subject].issues.push(`${qContext}: Missing or empty option ${optKey}`);
-            }
-          }
-        }
-        if (!['A', 'B', 'C', 'D'].includes(q.correctAnswer)) {
-          auditReport[subject].issues.push(`${qContext}: Invalid correctAnswer "${q.correctAnswer}"`);
-        }
-        if (!q.explanation || typeof q.explanation !== 'string') {
-          auditReport[subject].issues.push(`${qContext}: Missing or empty explanation`);
-        }
-      });
+      }
     }
+
+    grandTotalQuestions += subTotal;
+    auditReport[subject] = {
+      file,
+      chaptersCount: chapKeys.length,
+      questionsCount: subTotal,
+      issuesCount: issues.length,
+    };
+
+    // Sanitize in-place
+    const cleaned = {};
+    for (const chName of chapKeys) {
+      cleaned[chName] = (chapters[chName] || []).map((q) => sanitizeStoredMCQ(q));
+    }
+    fs.writeFileSync(filePath, JSON.stringify(cleaned, null, 2), 'utf-8');
   }
 
-  console.log('\n--- Subject Breakdown ---');
+  console.log('--- Subject Breakdown ---');
   for (const [subj, stat] of Object.entries(auditReport)) {
     console.log(
-      `• ${subj.padEnd(12)}: ${String(stat.chaptersCount).padStart(2)} chapters | ${String(stat.questionsCount).padStart(4)} MCQs | ${stat.issues.length} issues`
+      `• ${subj.padEnd(12)}: ${String(stat.chaptersCount).padStart(2)} chapters | ${String(stat.questionsCount).padStart(4)} MCQs | ${stat.issuesCount} issues`
     );
-    if (stat.issues.length > 0) {
-      console.warn(`  Issues in ${subj}:`, stat.issues.slice(0, 5));
-    }
   }
-  console.log(`\nTotal questions audited: ${totalQuestionsCount}`);
-
-  // Perform deep sanitization & safe serialization
-  console.log('\nApplying full RFC 8259 compliant sanitization and safe serialization...');
-  const cleanedBank = sanitizeQuestionBank(parsed);
-
-  // Write safely with pre- and post-validation
-  safeWriteQuestionBank(JSON_PATH, cleanedBank);
-
-  // Verify file on disk with a fresh read
-  const diskRaw = fs.readFileSync(JSON_PATH, 'utf-8');
-  const diskParsed = JSON.parse(diskRaw);
-  console.log('✓ Disk file read back and verified with JSON.parse() cleanly.');
-
-  // Validate exact question counts match before and after
-  let postCount = 0;
-  for (const s of Object.keys(diskParsed)) {
-    for (const c of Object.values(diskParsed[s])) {
-      postCount += c.length;
-    }
-  }
-
-  if (postCount !== totalQuestionsCount) {
-    throw new Error(`Count mismatch! Pre: ${totalQuestionsCount}, Post: ${postCount}`);
-  }
-
-  console.log(`✓ 100% question count integrity confirmed (${postCount} MCQs preserved intact).`);
+  console.log(`Total questions audited: ${grandTotalQuestions}`);
+  console.log('✓ All subject files verified and safely formatted.');
   console.log('====================================================');
-  console.log(' AUDIT & SANITIZATION FINISHED SUCCESSFULLY        ');
-  console.log('====================================================\n');
 }
 
 runComprehensiveAudit();

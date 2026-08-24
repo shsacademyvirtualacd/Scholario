@@ -34,9 +34,9 @@ export async function loadBankData(forceRefresh = false): Promise<Record<string,
   }
 
   try {
-    // Attempt dynamic import of pregenerated JSON
-    const dataModule = await import('../data/grade9FbiseBank.json');
-    cachedBankData = (dataModule.default || dataModule) as Record<string, Record<string, StoredMCQ[]>>;
+    // Attempt dynamic import of modular pregenerated banks
+    const { grade9FbiseBank } = await import('../data/banks');
+    cachedBankData = grade9FbiseBank as Record<string, Record<string, StoredMCQ[]>>;
     return cachedBankData;
   } catch (err) {
     console.warn('[QuestionBankService] Local JSON load notice, checking API or cache:', err);
