@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookMarked, CheckCircle2, ChevronRight, ArrowRight, GraduationCap,
+  BookMarked, CheckCircle2, ChevronRight, ArrowRight,
   Clock, Play, Pause, RotateCcw, Zap, Lock, Video, Check, X, XCircle,
   ClipboardCheck
 } from 'lucide-react';
@@ -655,6 +655,10 @@ const StudentDashboardPage: React.FC = () => {
     ? Math.round((totalClassesAttended / totalClassesHeld) * 100)
     : 0;
 
+  // Total term classes and remaining calculation (from offerings or baseline term total)
+  const classesTotal = offerings.reduce((acc, curr) => acc + (curr.total_classes || 0), 0) || (totalClassesHeld > 0 ? Math.max(totalClassesHeld, 48) : 48);
+  const classesLeft = Math.max(0, classesTotal - totalClassesAttended);
+
   // Sorted with most recent date first
   const sortedAttendanceRecords = [...attendanceRecords].sort((a, b) => {
     const dateA = a.session_date || '';
@@ -817,21 +821,55 @@ const StudentDashboardPage: React.FC = () => {
                 </span>
               </div>
             </div>
-            {/* Academic Program */}
-            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+            {/* Attendance Card with Circular Ring */}
+            <div 
+              onClick={() => navigate('/student/attendance')}
+              className="stat-card flex flex-col justify-between min-h-[140px] interactive relative cursor-pointer"
+            >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide block">Academic Program</span>
-                <div className="w-7 h-7 rounded-lg bg-amber-50 text-[#F4C430] flex items-center justify-center">
-                  <GraduationCap size={14} />
+                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Attendance</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                  Verified
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 my-1">
+                {/* Left: Percentage & Attended classes */}
+                <div>
+                  <div className="stat-value">{loading ? '—' : `${attendanceRate}%`}</div>
+                  <div className="stat-label">
+                    {loading ? '—' : `${totalClassesAttended} attended`}
+                  </div>
+                </div>
+
+                {/* Right: Circular Progress Ring with attended count inside */}
+                <div className="flex flex-col items-center shrink-0">
+                  <div className="relative w-11 h-11 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 40 40">
+                      <circle cx="20" cy="20" r="16" stroke="#F5F5F5" strokeWidth="3.5" fill="transparent" />
+                      <circle
+                        cx="20"
+                        cy="20"
+                        r="16"
+                        stroke={attendanceRate >= 75 ? '#22c55e' : '#F4C430'}
+                        strokeWidth="3.5"
+                        fill="transparent"
+                        strokeDasharray={2 * Math.PI * 16}
+                        strokeDashoffset={2 * Math.PI * 16 * (1 - Math.min(attendanceRate, 100) / 100)}
+                        strokeLinecap="round"
+                        style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
+                      />
+                    </svg>
+                    <span className="absolute text-xs font-extrabold text-[#111111]">
+                      {loading ? '—' : totalClassesAttended}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="stat-value text-lg leading-tight truncate">{profile?.class?.display_name || offerings[0]?.class?.display_name || 'Grade Setup'}</div>
-                <div className="stat-label truncate mt-0.5">{profile?.class?.board?.name || offerings[0]?.class?.board?.name || 'FBISE'}</div>
-              </div>
-              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
-                <span className="truncate">{profile?.stream_obj?.name || profile?.stream || offerings[0]?.stream || 'General'} Stream</span>
-                <span className="text-emerald-600 shrink-0">Enrolled</span>
+
+              <div className="flex items-center justify-between text-xs text-[#737373] font-medium pt-2 border-t border-[#F5F5F5]">
+                <span>{loading ? '—' : `${classesLeft} classes left`}</span>
+                <span className="font-bold text-[#111111]">{loading ? '—' : `${classesTotal} Total`}</span>
               </div>
             </div>
 
