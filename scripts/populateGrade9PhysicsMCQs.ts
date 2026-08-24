@@ -2309,4 +2309,6 @@ async function execute() {
   console.log(`Saved updated JSON to ${jsonPath}`);
 }
 
-execute().catch(console.error);
+if (process.argv[1] && process.argv[1].endsWith('populateGrade9PhysicsMCQs.ts')) {
+  execute().catch(console.error);
+}
