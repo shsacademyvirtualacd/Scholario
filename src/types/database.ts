@@ -222,6 +222,29 @@ export interface TestSubmission {
   student?: Profile;
 }
 
+export interface StudentMCQAttempt {
+  id: string;
+  student_id: string;
+  student_name: string;
+  student_email?: string | null;
+  board: string;
+  grade: string;
+  stream?: string | null;
+  subject: string;
+  topic: string;
+  chapters?: string[];
+  score: number;
+  total_questions: number;
+  percentage: number;
+  time_spent_seconds: number;
+  exam_mode?: string;
+  difficulty?: string;
+  created_at: string;
+  user_answers?: Record<string, string>;
+  // joined
+  student?: Profile;
+}
+
 // ─── study_sessions ─────────────────────────
 export interface StudySession {
   id: string;

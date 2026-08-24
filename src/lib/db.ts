@@ -15,7 +15,7 @@ import type {
   Enrollment, Attendance, AttendanceStatus, Note, RosterEntry,
   BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
   TeacherAttendanceRating, TeacherAttendanceRatingVote,
-  TestPaper, TestSubmission,
+  TestPaper, TestSubmission, StudentMCQAttempt,
 } from '../types';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
@@ -1980,6 +1980,309 @@ export async function downloadSubmissionBlob(sub: TestSubmission, onProgress?: (
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(objectUrl);
+}
+
+// =============================================================================
+// STUDENT MCQ ATTEMPTS & TEST RESULTS
+// =============================================================================
+
+const MCQ_ATTEMPTS_LOCAL_KEY = 'scholario_student_mcq_attempts_v1';
+
+// Seed initial realistic student MCQ attempts if none exist (for seamless testing & rich display)
+const SEED_MCQ_ATTEMPTS: StudentMCQAttempt[] = [
+  {
+    id: 'mcq_seed_01',
+    student_id: 'std_seed_ali',
+    student_name: 'Ali Raza',
+    student_email: 'ali.raza@scholario.app',
+    board: 'fbise',
+    grade: '9',
+    stream: 'Biology',
+    subject: 'Biology',
+    topic: 'Cell Biology & Cellular Organization',
+    chapters: ['Cell Biology'],
+    score: 9,
+    total_questions: 10,
+    percentage: 90,
+    time_spent_seconds: 285,
+    exam_mode: 'chapter',
+    difficulty: 'medium',
+    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'mcq_seed_02',
+    student_id: 'std_seed_fatima',
+    student_name: 'Fatima Zahra',
+    student_email: 'fatima.zahra@scholario.app',
+    board: 'fbise',
+    grade: '9',
+    stream: 'Biology',
+    subject: 'Biology',
+    topic: 'Bioenergetics & Respiration',
+    chapters: ['Bioenergetics & Respiration'],
+    score: 8,
+    total_questions: 10,
+    percentage: 80,
+    time_spent_seconds: 310,
+    exam_mode: 'chapter',
+    difficulty: 'hard',
+    created_at: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'mcq_seed_03',
+    student_id: 'std_seed_zain',
+    student_name: 'Zainab Ahmed',
+    student_email: 'zainab.ahmed@scholario.app',
+    board: 'fbise',
+    grade: '9',
+    stream: 'Biology',
+    subject: 'Biology',
+    topic: 'Enzymes & Metabolism',
+    chapters: ['Enzymes & Metabolism'],
+    score: 7,
+    total_questions: 10,
+    percentage: 70,
+    time_spent_seconds: 240,
+    exam_mode: 'chapter',
+    difficulty: 'medium',
+    created_at: new Date(Date.now() - 28 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'mcq_seed_04',
+    student_id: 'std_seed_hamza',
+    student_name: 'Hamza Tariq',
+    student_email: 'hamza.tariq@scholario.app',
+    board: 'fbise',
+    grade: '9',
+    stream: 'Computer Science',
+    subject: 'Physics',
+    topic: 'Kinematics & Motion Graphs',
+    chapters: ['Kinematics'],
+    score: 10,
+    total_questions: 10,
+    percentage: 100,
+    time_spent_seconds: 195,
+    exam_mode: 'chapter',
+    difficulty: 'medium',
+    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'mcq_seed_05',
+    student_id: 'std_seed_sara',
+    student_name: 'Sara Khan',
+    student_email: 'sara.khan@scholario.app',
+    board: 'fbise',
+    grade: '10',
+    stream: 'Pre-Medical',
+    subject: 'Chemistry',
+    topic: 'Chemical Equilibrium',
+    chapters: ['Chemical Equilibrium'],
+    score: 8,
+    total_questions: 10,
+    percentage: 80,
+    time_spent_seconds: 340,
+    exam_mode: 'chapter',
+    difficulty: 'hard',
+    created_at: new Date(Date.now() - 40 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'mcq_seed_06',
+    student_id: 'std_seed_bilal',
+    student_name: 'Bilal Hassan',
+    student_email: 'bilal.hassan@scholario.app',
+    board: 'fbise',
+    grade: '9',
+    stream: 'Biology',
+    subject: 'Biology',
+    topic: 'Human Circulation & Transport',
+    chapters: ['Human Circulation'],
+    score: 6,
+    total_questions: 10,
+    percentage: 60,
+    time_spent_seconds: 410,
+    exam_mode: 'multi_chapter',
+    difficulty: 'hard',
+    created_at: new Date(Date.now() - 52 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'mcq_seed_07',
+    student_id: 'std_seed_usman',
+    student_name: 'Usman Javed',
+    student_email: 'usman.javed@scholario.app',
+    board: 'fbise',
+    grade: '9',
+    stream: 'Computer Science',
+    subject: 'Computer Science',
+    topic: 'Data Structures & Arrays',
+    chapters: ['Data Structures & Arrays'],
+    score: 9,
+    total_questions: 10,
+    percentage: 90,
+    time_spent_seconds: 215,
+    exam_mode: 'chapter',
+    difficulty: 'medium',
+    created_at: new Date(Date.now() - 60 * 3600 * 1000).toISOString(),
+  },
+];
+
+function getStoredLocalMCQAttempts(): StudentMCQAttempt[] {
+  try {
+    const raw = localStorage.getItem(MCQ_ATTEMPTS_LOCAL_KEY);
+    if (!raw) {
+      localStorage.setItem(MCQ_ATTEMPTS_LOCAL_KEY, JSON.stringify(SEED_MCQ_ATTEMPTS));
+      return SEED_MCQ_ATTEMPTS;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem(MCQ_ATTEMPTS_LOCAL_KEY, JSON.stringify(SEED_MCQ_ATTEMPTS));
+      return SEED_MCQ_ATTEMPTS;
+    }
+    return parsed;
+  } catch {
+    return SEED_MCQ_ATTEMPTS;
+  }
+}
+
+function saveStoredLocalMCQAttempt(attempt: StudentMCQAttempt): void {
+  try {
+    const existing = getStoredLocalMCQAttempts();
+    const updated = [attempt, ...existing.filter((a) => a.id !== attempt.id)].slice(0, 500);
+    localStorage.setItem(MCQ_ATTEMPTS_LOCAL_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('[db:saveStoredLocalMCQAttempt] error:', err);
+  }
+}
+
+/** Save student MCQ test attempt to Supabase and synced storage */
+export async function saveStudentMCQAttempt(attempt: StudentMCQAttempt): Promise<void> {
+  saveStoredLocalMCQAttempt(attempt);
+
+  try {
+    const { error } = await (supabase as any)
+      .from('student_mcq_attempts')
+      .upsert({
+        id: attempt.id,
+        student_id: attempt.student_id,
+        student_name: attempt.student_name,
+        student_email: attempt.student_email || null,
+        board: attempt.board || 'fbise',
+        grade: String(attempt.grade || '9'),
+        stream: attempt.stream || null,
+        subject: attempt.subject,
+        topic: attempt.topic,
+        chapters: attempt.chapters || (attempt.topic ? [attempt.topic] : []),
+        score: attempt.score,
+        total_questions: attempt.total_questions,
+        percentage: attempt.percentage,
+        time_spent_seconds: attempt.time_spent_seconds,
+        exam_mode: attempt.exam_mode || 'chapter',
+        difficulty: attempt.difficulty || 'medium',
+        created_at: attempt.created_at || new Date().toISOString(),
+        user_answers: attempt.user_answers || null,
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('[db:saveStudentMCQAttempt] Supabase table notice:', error.message || error);
+    }
+  } catch (err) {
+    console.warn('[db:saveStudentMCQAttempt] catch notice:', err);
+  }
+}
+
+/** Admin: Fetch all student MCQ attempts across all grades/subjects */
+export async function getAllStudentMCQAttempts(): Promise<StudentMCQAttempt[]> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('student_mcq_attempts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      const local = getStoredLocalMCQAttempts();
+      const existingIds = new Set(data.map((d: any) => d.id));
+      const combined = [...data, ...local.filter((l) => !existingIds.has(l.id))];
+      return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+  } catch (err) {
+    console.warn('[db:getAllStudentMCQAttempts] falling back to synced storage:', err);
+  }
+
+  return getStoredLocalMCQAttempts();
+}
+
+/** Teacher: Fetch student MCQ attempts STRICTLY scoped to the teacher's assigned subjects and classes */
+export async function getStudentMCQAttemptsForTeacher(
+  teacherId?: string,
+  teacherEmail?: string,
+  teacherName?: string
+): Promise<StudentMCQAttempt[]> {
+  if (!teacherId && !teacherEmail && !teacherName) return [];
+  try {
+    // 1. Fetch teacher's assigned offerings to get exact grade & subject pairs
+    let assignedOfferings: ClassOffering[] = [];
+    try {
+      assignedOfferings = await getOfferingsForTeacher(teacherId);
+    } catch {
+      assignedOfferings = [];
+    }
+
+    if (assignedOfferings.length === 0) {
+      try {
+        const { data: teachersData } = await supabase.from('teachers').select('*');
+        const list: any[] = Array.isArray(teachersData) ? teachersData : [];
+        const matchingRecord = list.find((t: any) =>
+          (teacherId && (t.id === teacherId || t.user_id === teacherId)) ||
+          (teacherEmail && t.email?.toLowerCase() === teacherEmail.toLowerCase()) ||
+          (teacherName && t.full_name?.toLowerCase() === teacherName.toLowerCase())
+        );
+        if (matchingRecord && matchingRecord.id) {
+          assignedOfferings = await getOfferingsForTeacher(matchingRecord.id);
+        }
+      } catch {}
+    }
+
+    const validPairs = assignedOfferings
+      .map((o) => ({
+        grade: String(o.class?.grade || o.grade || '').trim(),
+        subject: (o.subject?.name || o.subject_name || o.subject || '').trim().toLowerCase(),
+      }))
+      .filter((p) => p.grade && p.subject);
+
+    // If teacher has NO assigned offerings, they must see NO results (strict zero-trust scoping)
+    if (validPairs.length === 0) {
+      return [];
+    }
+
+    // 2. Fetch all attempts
+    const allAttempts = await getAllStudentMCQAttempts();
+
+    // 3. Strict filtering: attempt MUST match one of the teacher's assigned (grade, subject) pairs
+    const filtered = allAttempts.filter((att) => {
+      const attGrade = String(att.grade || '').trim();
+      const attSub = (att.subject || '').trim().toLowerCase();
+
+      return validPairs.some((p) => {
+        const gradeMatches = p.grade === attGrade;
+        const subjectMatches =
+          p.subject === attSub ||
+          p.subject.includes(attSub) ||
+          attSub.includes(p.subject);
+        return gradeMatches && subjectMatches;
+      });
+    });
+
+    return filtered;
+  } catch (err) {
+    console.warn('[db:getStudentMCQAttemptsForTeacher] error:', err);
+    return [];
+  }
+}
+
+/** Student: Fetch MCQ attempts for a specific student */
+export async function getStudentMCQAttemptsForStudent(studentId: string): Promise<StudentMCQAttempt[]> {
+  if (!studentId) return [];
+  const all = await getAllStudentMCQAttempts();
+  return all.filter((a) => a.student_id === studentId);
 }
 
 // =============================================================================

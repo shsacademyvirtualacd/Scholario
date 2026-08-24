@@ -37,6 +37,7 @@ import {
   clearSelfTestHistory,
   getWeakTopicsForStudent,
 } from '../../lib/selfTestService';
+import { saveStudentMCQAttempt } from '../../lib/db';
 import { BOARDS, FBISE_GRADES, SINDH_GRADES, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
@@ -775,6 +776,28 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
     // Save strictly private local history
     saveSelfTestResult(result);
+    // Also save attempt to database / synced storage for Teacher & Admin analytics
+    saveStudentMCQAttempt({
+      id: result.id,
+      student_id: profile?.id || 'std_student',
+      student_name: profile?.full_name || 'Student',
+      student_email: (profile as any)?.email || null,
+      board: activeConfig.board || profile?.board_id || 'fbise',
+      grade: String(activeConfig.grade || (profile as any)?.grade || '9'),
+      stream: (profile as any)?.stream || activeConfig.stream || null,
+      subject: activeConfig.subject,
+      topic: activeConfig.topic || 'General Practice',
+      chapters: activeConfig.selectedChapters && activeConfig.selectedChapters.length > 0 ? activeConfig.selectedChapters : [activeConfig.topic || 'General Practice'],
+      score: score,
+      total_questions: totalEvaluated,
+      percentage: percentage,
+      time_spent_seconds: timeElapsed,
+      exam_mode: activeConfig.examMode || 'chapter',
+      difficulty: activeConfig.difficulty || 'medium',
+      created_at: result.timestamp,
+      user_answers: userAnswers,
+    }).catch((err) => console.warn('[SelfTestingView] sync attempt notice:', err));
+
     setHistoryItems(getSelfTestHistory());
     setCompletedResult(result);
     setViewMode('results');

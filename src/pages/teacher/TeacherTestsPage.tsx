@@ -1,34 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, BookOpen, FileCheck2, Sparkles } from 'lucide-react';
+import { Search, BookOpen, FileCheck2, GraduationCap } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
 import TestViewerModal from '../../components/common/TestViewerModal';
-import SelfTestingView from '../../components/tests/SelfTestingView';
-import { getTestsForTeacher } from '../../lib/db';
+import StudentResultsView from '../../components/tests/StudentResultsView';
+import { getTestsForTeacher, getOfferingsForTeacher } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
-import type { TestPaper, TestSubmission } from '../../types';
+import type { TestPaper, TestSubmission, ClassOffering } from '../../types';
 
 export const TeacherTestsPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Tab navigation: 'class-test' vs 'self-test'
-  const activeTab = searchParams.get('tab') === 'self-test' ? 'self-test' : 'class-test';
+  // Tab navigation: 'class-test' vs 'student-results'
+  const rawTab = searchParams.get('tab');
+  const activeTab: 'class-test' | 'student-results' =
+    rawTab === 'student-results' || rawTab === 'results' ? 'student-results' : 'class-test';
 
-  const setActiveTab = (tab: 'class-test' | 'self-test') => {
+  const setActiveTab = (tab: 'class-test' | 'student-results') => {
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'class-test') {
       newParams.delete('tab');
     } else {
-      newParams.set('tab', 'self-test');
+      newParams.set('tab', 'student-results');
     }
     setSearchParams(newParams);
   };
 
   const [tests, setTests] = useState<TestPaper[]>([]);
+  const [offerings, setOfferings] = useState<ClassOffering[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
@@ -46,8 +49,13 @@ export const TeacherTestsPage: React.FC = () => {
       const teacherEmail = user?.email || (profile as any)?.email;
       const teacherName = profile?.full_name;
 
-      const teacherTests = await getTestsForTeacher(teacherId, teacherEmail, teacherName);
+      const [teacherTests, teacherOfferings] = await Promise.all([
+        getTestsForTeacher(teacherId, teacherEmail, teacherName),
+        getOfferingsForTeacher(teacherId).catch(() => []),
+      ]);
+
       setTests(teacherTests);
+      setOfferings(teacherOfferings);
       if (!selectedTestId && teacherTests.length > 0) {
         setSelectedTestId(teacherTests[0].id);
       }
@@ -107,7 +115,7 @@ export const TeacherTestsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-[#111111] tracking-tight">Testing Center</h1>
           <p className="text-xs text-[#737373] mt-1">
-            Evaluate assigned class tests and generate AI-powered multiple choice question sets for prep & self-testing.
+            Evaluate assigned class tests and review student MCQ practice & exam performance across your assigned classes.
           </p>
         </div>
       </div>
@@ -116,7 +124,7 @@ export const TeacherTestsPage: React.FC = () => {
       <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6">
         <button
           onClick={() => setActiveTab('class-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'class-test'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
@@ -124,33 +132,38 @@ export const TeacherTestsPage: React.FC = () => {
         >
           <FileCheck2 size={15} className={activeTab === 'class-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Class Test</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-            activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
-          }`}>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
+            }`}
+          >
             {tests.length}
           </span>
         </button>
 
         <button
-          onClick={() => setActiveTab('self-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'self-test'
+          onClick={() => setActiveTab('student-results')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'student-results'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
           }`}
         >
-          <Sparkles size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Self Testing</span>
+          <GraduationCap size={15} className={activeTab === 'student-results' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <span>Student Results</span>
           <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5">
-            AI
+            MCQ
           </span>
         </button>
       </div>
 
-      {activeTab === 'self-test' ? (
-        <SelfTestingView
-          defaultBoard={profile?.board_id || profile?.board?.id || 'fbise'}
-          userRole="teacher"
+      {activeTab === 'student-results' ? (
+        <StudentResultsView
+          isTeacher={true}
+          teacherOfferings={offerings}
+          teacherId={profile?.id}
+          teacherEmail={user?.email || (profile as any)?.email}
+          teacherName={profile?.full_name}
         />
       ) : (
         <>

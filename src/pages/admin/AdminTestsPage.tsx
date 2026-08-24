@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Sparkles, Database } from 'lucide-react';
+import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Sparkles, Database, GraduationCap } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
@@ -8,6 +8,7 @@ import TestUploadModal from '../../components/teacher/TestUploadModal';
 import TestViewerModal from '../../components/common/TestViewerModal';
 import SelfTestingView from '../../components/tests/SelfTestingView';
 import AdminMCQVerificationView from '../../components/admin/mcq/AdminMCQVerificationView';
+import StudentResultsView from '../../components/tests/StudentResultsView';
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -16,16 +17,18 @@ import type { TestPaper, TestSubmission } from '../../types';
 export const AdminTestsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Tab navigation: 'class-test' vs 'self-test' vs 'question-bank'
+  // Tab navigation: 'class-test' vs 'self-test' vs 'question-bank' vs 'student-results'
   const rawTab = searchParams.get('tab');
-  const activeTab: 'class-test' | 'self-test' | 'question-bank' =
+  const activeTab: 'class-test' | 'self-test' | 'question-bank' | 'student-results' =
     rawTab === 'self-test'
       ? 'self-test'
       : rawTab === 'question-bank' || rawTab === 'mcq-verification' || rawTab === 'bank'
       ? 'question-bank'
+      : rawTab === 'student-results' || rawTab === 'results'
+      ? 'student-results'
       : 'class-test';
 
-  const setActiveTab = (tab: 'class-test' | 'self-test' | 'question-bank') => {
+  const setActiveTab = (tab: 'class-test' | 'self-test' | 'question-bank' | 'student-results') => {
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'class-test') {
       newParams.delete('tab');
@@ -142,7 +145,7 @@ export const AdminTestsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-[#111111] tracking-tight">Testing Center</h1>
           <p className="text-xs text-[#737373] mt-1">
-            Institutional test management across Grades 9–12 and AI-powered custom MCQ test generator.
+            Institutional test management across Grades 9–12, AI question bank, and school-wide student MCQ performance.
           </p>
         </div>
 
@@ -159,7 +162,7 @@ export const AdminTestsPage: React.FC = () => {
       </div>
 
       {/* Subsection Tab Switcher */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6">
+      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6 flex-wrap">
         <button
           onClick={() => setActiveTab('class-test')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -170,9 +173,11 @@ export const AdminTestsPage: React.FC = () => {
         >
           <FileCheck2 size={15} className={activeTab === 'class-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Class Test</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-            activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
-          }`}>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
+            }`}
+          >
             {tests.length}
           </span>
         </button>
@@ -202,15 +207,34 @@ export const AdminTestsPage: React.FC = () => {
         >
           <Database size={15} className={activeTab === 'question-bank' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Question Bank</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-            activeTab === 'question-bank' ? 'bg-[#F4C430] text-[#111111]' : 'bg-black/5 text-[#737373]'
-          }`}>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              activeTab === 'question-bank' ? 'bg-[#F4C430] text-[#111111]' : 'bg-black/5 text-[#737373]'
+            }`}
+          >
             Live Bank
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('student-results')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'student-results'
+              ? 'bg-[#111111] text-white shadow-xs'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+          }`}
+        >
+          <GraduationCap size={15} className={activeTab === 'student-results' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <span>Student Results</span>
+          <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5">
+            MCQ
           </span>
         </button>
       </div>
 
-      {activeTab === 'question-bank' ? (
+      {activeTab === 'student-results' ? (
+        <StudentResultsView isTeacher={false} />
+      ) : activeTab === 'question-bank' ? (
         <AdminMCQVerificationView
           initialBoard={selectedBoard}
           initialGrade="9"
