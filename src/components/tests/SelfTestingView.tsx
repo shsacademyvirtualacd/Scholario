@@ -82,7 +82,6 @@ const SUGGESTED_TOPICS: Record<string, string[]> = {
     'Word Formation (Prefixes/Suffixes)',
   ],
   Urdu: ['Qawaid-o-Insha', 'Tashreeh & Nazm', 'Asbaaq & Khulasa', 'Muhawraat & Imla'],
-  Islamiat: ['Quranic Surahs & Ayaat', 'Hadith Nabawi (PBUH)', 'Pillars of Islam', 'Seerat-un-Nabi (PBUH)', 'Islamic Ethics'],
   'Pakistan Studies': ['Ideology of Pakistan', 'Pakistan Movement (1857-1947)', 'Geography & Resources', 'Constitutional Development', 'Foreign Policy of Pakistan'],
 };
 
@@ -240,7 +239,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const allSubjectsForGrade = useMemo(() => {
     if (isFbise9) {
       // Official FBISE Grade 9 Subjects (Islamiat excluded from Self Testing UI)
-      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu'];
+      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu', 'English'];
     }
     return Array.from(
       new Set([
