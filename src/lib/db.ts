@@ -1988,162 +1988,37 @@ export async function downloadSubmissionBlob(sub: TestSubmission, onProgress?: (
 
 const MCQ_ATTEMPTS_LOCAL_KEY = 'scholario_student_mcq_attempts_v1';
 
-// Seed initial realistic student MCQ attempts if none exist (for seamless testing & rich display)
-const SEED_MCQ_ATTEMPTS: StudentMCQAttempt[] = [
-  {
-    id: 'mcq_seed_01',
-    student_id: 'std_seed_ali',
-    student_name: 'Ali Raza',
-    student_email: 'ali.raza@scholario.app',
-    board: 'fbise',
-    grade: '9',
-    stream: 'Biology',
-    subject: 'Biology',
-    topic: 'Cell Biology & Cellular Organization',
-    chapters: ['Cell Biology'],
-    score: 9,
-    total_questions: 10,
-    percentage: 90,
-    time_spent_seconds: 285,
-    exam_mode: 'chapter',
-    difficulty: 'medium',
-    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'mcq_seed_02',
-    student_id: 'std_seed_fatima',
-    student_name: 'Fatima Zahra',
-    student_email: 'fatima.zahra@scholario.app',
-    board: 'fbise',
-    grade: '9',
-    stream: 'Biology',
-    subject: 'Biology',
-    topic: 'Bioenergetics & Respiration',
-    chapters: ['Bioenergetics & Respiration'],
-    score: 8,
-    total_questions: 10,
-    percentage: 80,
-    time_spent_seconds: 310,
-    exam_mode: 'chapter',
-    difficulty: 'hard',
-    created_at: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'mcq_seed_03',
-    student_id: 'std_seed_zain',
-    student_name: 'Zainab Ahmed',
-    student_email: 'zainab.ahmed@scholario.app',
-    board: 'fbise',
-    grade: '9',
-    stream: 'Biology',
-    subject: 'Biology',
-    topic: 'Enzymes & Metabolism',
-    chapters: ['Enzymes & Metabolism'],
-    score: 7,
-    total_questions: 10,
-    percentage: 70,
-    time_spent_seconds: 240,
-    exam_mode: 'chapter',
-    difficulty: 'medium',
-    created_at: new Date(Date.now() - 28 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'mcq_seed_04',
-    student_id: 'std_seed_hamza',
-    student_name: 'Hamza Tariq',
-    student_email: 'hamza.tariq@scholario.app',
-    board: 'fbise',
-    grade: '9',
-    stream: 'Computer Science',
-    subject: 'Physics',
-    topic: 'Kinematics & Motion Graphs',
-    chapters: ['Kinematics'],
-    score: 10,
-    total_questions: 10,
-    percentage: 100,
-    time_spent_seconds: 195,
-    exam_mode: 'chapter',
-    difficulty: 'medium',
-    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'mcq_seed_05',
-    student_id: 'std_seed_sara',
-    student_name: 'Sara Khan',
-    student_email: 'sara.khan@scholario.app',
-    board: 'fbise',
-    grade: '10',
-    stream: 'Pre-Medical',
-    subject: 'Chemistry',
-    topic: 'Chemical Equilibrium',
-    chapters: ['Chemical Equilibrium'],
-    score: 8,
-    total_questions: 10,
-    percentage: 80,
-    time_spent_seconds: 340,
-    exam_mode: 'chapter',
-    difficulty: 'hard',
-    created_at: new Date(Date.now() - 40 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'mcq_seed_06',
-    student_id: 'std_seed_bilal',
-    student_name: 'Bilal Hassan',
-    student_email: 'bilal.hassan@scholario.app',
-    board: 'fbise',
-    grade: '9',
-    stream: 'Biology',
-    subject: 'Biology',
-    topic: 'Human Circulation & Transport',
-    chapters: ['Human Circulation'],
-    score: 6,
-    total_questions: 10,
-    percentage: 60,
-    time_spent_seconds: 410,
-    exam_mode: 'multi_chapter',
-    difficulty: 'hard',
-    created_at: new Date(Date.now() - 52 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'mcq_seed_07',
-    student_id: 'std_seed_usman',
-    student_name: 'Usman Javed',
-    student_email: 'usman.javed@scholario.app',
-    board: 'fbise',
-    grade: '9',
-    stream: 'Computer Science',
-    subject: 'Computer Science',
-    topic: 'Data Structures & Arrays',
-    chapters: ['Data Structures & Arrays'],
-    score: 9,
-    total_questions: 10,
-    percentage: 90,
-    time_spent_seconds: 215,
-    exam_mode: 'chapter',
-    difficulty: 'medium',
-    created_at: new Date(Date.now() - 60 * 3600 * 1000).toISOString(),
-  },
-];
-
 function getStoredLocalMCQAttempts(): StudentMCQAttempt[] {
   try {
     const raw = localStorage.getItem(MCQ_ATTEMPTS_LOCAL_KEY);
-    if (!raw) {
-      localStorage.setItem(MCQ_ATTEMPTS_LOCAL_KEY, JSON.stringify(SEED_MCQ_ATTEMPTS));
-      return SEED_MCQ_ATTEMPTS;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(MCQ_ATTEMPTS_LOCAL_KEY, JSON.stringify(SEED_MCQ_ATTEMPTS));
-      return SEED_MCQ_ATTEMPTS;
+    if (!Array.isArray(parsed)) return [];
+    // Purge any legacy mock/seed items
+    const clean = parsed.filter(
+      (item: any) =>
+        !item?.id?.startsWith('mcq_seed_') &&
+        !item?.student_id?.startsWith('std_seed_') &&
+        !item?.student_email?.includes('@scholario.app')
+    );
+    if (clean.length !== parsed.length) {
+      localStorage.setItem(MCQ_ATTEMPTS_LOCAL_KEY, JSON.stringify(clean));
     }
-    return parsed;
+    return clean;
   } catch {
-    return SEED_MCQ_ATTEMPTS;
+    return [];
   }
 }
 
 function saveStoredLocalMCQAttempt(attempt: StudentMCQAttempt): void {
+  // Discard any mock records
+  if (
+    attempt.id?.startsWith('mcq_seed_') ||
+    attempt.student_id?.startsWith('std_seed_') ||
+    attempt.student_email?.includes('@scholario.app')
+  ) {
+    return;
+  }
   try {
     const existing = getStoredLocalMCQAttempts();
     const updated = [attempt, ...existing.filter((a) => a.id !== attempt.id)].slice(0, 500);
@@ -2153,8 +2028,17 @@ function saveStoredLocalMCQAttempt(attempt: StudentMCQAttempt): void {
   }
 }
 
-/** Save student MCQ test attempt to Supabase and synced storage */
+/** Save real student MCQ test attempt to Supabase student_mcq_attempts table */
 export async function saveStudentMCQAttempt(attempt: StudentMCQAttempt): Promise<void> {
+  // Reject mock records
+  if (
+    attempt.id?.startsWith('mcq_seed_') ||
+    attempt.student_id?.startsWith('std_seed_') ||
+    attempt.student_email?.includes('@scholario.app')
+  ) {
+    return;
+  }
+
   saveStoredLocalMCQAttempt(attempt);
 
   try {
@@ -2182,32 +2066,68 @@ export async function saveStudentMCQAttempt(attempt: StudentMCQAttempt): Promise
       }, { onConflict: 'id' });
 
     if (error) {
-      console.warn('[db:saveStudentMCQAttempt] Supabase table notice:', error.message || error);
+      console.warn('[db:saveStudentMCQAttempt] Supabase table error:', error.message || error);
     }
   } catch (err) {
-    console.warn('[db:saveStudentMCQAttempt] catch notice:', err);
+    console.warn('[db:saveStudentMCQAttempt] catch error:', err);
   }
 }
 
-/** Admin: Fetch all student MCQ attempts across all grades/subjects */
+/** Admin: Fetch all real student MCQ attempts from Supabase student_mcq_attempts cross-referenced with profiles */
 export async function getAllStudentMCQAttempts(): Promise<StudentMCQAttempt[]> {
   try {
-    const { data, error } = await (supabase as any)
+    // 1. Fetch real student profiles from Supabase to enrich student metadata
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name, email:phone, phone, board_id, class_id, stream, role, class:classes(grade, board:boards(name, code))')
+      .eq('role', 'student');
+
+    const profileMap = new Map<string, any>();
+    if (Array.isArray(profilesData)) {
+      profilesData.forEach((p: any) => {
+        profileMap.set(p.id, p);
+      });
+    }
+
+    // 2. Fetch real test attempts from Supabase student_mcq_attempts table
+    const { data: attemptsData, error } = await (supabase as any)
       .from('student_mcq_attempts')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && Array.isArray(data) && data.length > 0) {
-      const local = getStoredLocalMCQAttempts();
-      const existingIds = new Set(data.map((d: any) => d.id));
-      const combined = [...data, ...local.filter((l) => !existingIds.has(l.id))];
-      return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    let supabaseAttempts: StudentMCQAttempt[] = [];
+    if (!error && Array.isArray(attemptsData)) {
+      // Filter out any mock/seed entries
+      supabaseAttempts = attemptsData
+        .filter(
+          (d: any) =>
+            !d.id?.startsWith('mcq_seed_') &&
+            !d.student_id?.startsWith('std_seed_') &&
+            !d.student_email?.includes('@scholario.app')
+        )
+        .map((d: any) => {
+          const prof = profileMap.get(d.student_id);
+          return {
+            ...d,
+            student_name: prof?.full_name || d.student_name || 'Enrolled Student',
+            student_email: prof?.email || d.student_email || null,
+            grade: String(d.grade || prof?.class?.grade || '9'),
+            board: d.board || prof?.class?.board?.code || prof?.board_id || 'fbise',
+            stream: d.stream || prof?.stream || null,
+          };
+        });
     }
-  } catch (err) {
-    console.warn('[db:getAllStudentMCQAttempts] falling back to synced storage:', err);
-  }
 
-  return getStoredLocalMCQAttempts();
+    // 3. Merge with clean local attempts saved during the active real session (zero mock items)
+    const local = getStoredLocalMCQAttempts();
+    const existingIds = new Set(supabaseAttempts.map((a) => a.id));
+    const combined = [...supabaseAttempts, ...local.filter((l) => !existingIds.has(l.id))];
+
+    return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  } catch (err) {
+    console.warn('[db:getAllStudentMCQAttempts] query error:', err);
+    return getStoredLocalMCQAttempts();
+  }
 }
 
 /** Teacher: Fetch student MCQ attempts STRICTLY scoped to the teacher's assigned subjects and classes */
