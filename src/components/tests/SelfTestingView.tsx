@@ -239,7 +239,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const allSubjectsForGrade = useMemo(() => {
     if (isFbise9) {
       // Official FBISE Grade 9 Subjects (Islamiat excluded from Self Testing UI)
-      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu', 'English'];
+      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu'];
     }
     return Array.from(
       new Set([
@@ -251,16 +251,27 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         'Mathematics',
         'Biology',
         'Computer Science',
-        'English',
         'Urdu',
+        'English',
         'Pakistan Studies',
       ])
-    ).filter((s) => s !== 'Islamiat');
+    ).filter(
+      (s) =>
+        s !== 'Islamiat' &&
+        s.toLowerCase() !== 'islamiat' &&
+        s.toLowerCase() !== 'islamiyat' &&
+        !s.toLowerCase().includes('islam')
+    );
   }, [isFbise9, studentEnrolledSubjects, currentGradeDef]);
 
   // Safety fallback if subject is set to Islamiat
   useEffect(() => {
-    if (subject === 'Islamiat') {
+    if (
+      subject === 'Islamiat' ||
+      subject.toLowerCase() === 'islamiat' ||
+      subject.toLowerCase() === 'islamiyat' ||
+      subject.toLowerCase().includes('islam')
+    ) {
       const fallback = allSubjectsForGrade[0] || 'Physics';
       setSubject(fallback);
     }
@@ -268,9 +279,16 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   const activeSubjectName = subject === 'Other' ? (customSubject.trim() || 'General Subject') : subject;
 
-  // FBISE Grade 9 Chapters & Weak topics
+  // FBISE Grade 9 Chapters & Weak topics (guaranteed empty for Islamiat)
   const fbise9Chapters = useMemo(() => {
-    if (!isFbise9) return [];
+    if (
+      !isFbise9 ||
+      activeSubjectName === 'Islamiat' ||
+      activeSubjectName.toLowerCase() === 'islamiat' ||
+      activeSubjectName.toLowerCase().includes('islam')
+    ) {
+      return [];
+    }
     return getFBISEGrade9Chapters(activeSubjectName);
   }, [isFbise9, activeSubjectName]);
 
