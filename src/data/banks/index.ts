@@ -5,7 +5,6 @@ import chemistry from './chemistry.json';
 import mathematics from './mathematics.json';
 import urdu from './urdu.json';
 import english from './english.json';
-import islamiat from './islamiat.json';
 
 export type SubjectMCQBank = Record<string, StoredMCQ[]>;
 export type FullGrade9Bank = Record<string, SubjectMCQBank>;
@@ -22,7 +21,6 @@ export const grade9FbiseBank: FullGrade9Bank = {
   Mathematics: mathematics as unknown as SubjectMCQBank,
   Urdu: urdu as unknown as SubjectMCQBank,
   English: english as unknown as SubjectMCQBank,
-  Islamiat: islamiat as unknown as SubjectMCQBank,
 };
 
 export {
@@ -32,7 +30,6 @@ export {
   mathematics,
   urdu,
   english,
-  islamiat,
 };
 
 export default grade9FbiseBank;

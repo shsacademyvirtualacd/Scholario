@@ -238,8 +238,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   const allSubjectsForGrade = useMemo(() => {
     if (isFbise9) {
-      // Official FBISE Grade 9 Subjects (Islamiat excluded from Self Testing UI)
-      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Urdu'];
+      // Official FBISE Grade 9 Subjects
+      return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science', 'English', 'Urdu'];
     }
     return Array.from(
       new Set([

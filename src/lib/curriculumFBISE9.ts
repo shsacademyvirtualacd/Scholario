@@ -194,20 +194,6 @@ export const FBISE_GRADE_9_CURRICULUM: Record<string, FBISEGrade9SubjectCurricul
       { id: 'urdu_ghazal_4', number: 19, name: 'کاش طوفاں میں سفینے کو اتار ہوتا', category: 'Ghazal', description: 'غزل: کاش طوفاں میں سفینے کو اتار ہوتا' },
     ],
   },
-  Islamiat: {
-    subject: 'Islamiat',
-    aliases: ['islamiat', 'islamiyat', 'islamic studies', 'isl'],
-    guidelines: 'Questions must be strictly grounded in the official Grade 9 FBISE Islamiat curriculum chapters. Test genuine Quranic/Hadith references, historical events of the Madani era, Seerat-un-Nabi (PBUH), Islamic ethics, societal transactions, and prominent Islamic personalities. Do NOT invent references.',
-    chapters: [
-      { id: 'isl_ch1', number: 1, name: 'باب اول — قرآن مجید کی تدوین و حفاظت، حفاظتِ حدیث نبویؐ', subtopics: ['نزولِ قرآن اور کتابتِ وحی', 'عہدِ صدیقی اور عہدِ عثمانی میں تدوین و حفاظتِ قرآن', 'حفاظتِ حدیث اور صحابہ کرام کی مساعی', 'کتبِ احادیث (صحاحِ ستہ تعارف)'] },
-      { id: 'isl_ch2', number: 2, name: 'باب دوم — ایمانیات و عبادات', subtopics: ['توحید اور اس کے انسانی زندگی پر اثرات', 'رسالت اور ختمِ نبوتؐ پر پختہ ایمان', 'آخرت اور جزا و سزا کا تصور', 'نماز، روزہ، زکوٰۃ اور حج کی روحانی و معاشرتی اہمیت'] },
-      { id: 'isl_ch3', number: 3, name: 'باب سوم — سیرتِ نبویؐ کا مدنی دور اور اسوۂ رسولؐ', subtopics: ['ہجرتِ مدینہ اور میثاقِ مدینہ', 'مواخاتِ مدینہ کی اہمیت', 'غزوہ بدر، غزوہ احد، غزوہ خندق، صلح حدیبیہ اور فتح مکہ', 'حجۃ الوداع کا خطبہ اور انسانی حقوق کا اولین چارٹر', 'رسول اللہؐ کا اسوۂ حسنہ (رحمت للعالمین)'] },
-      { id: 'isl_ch4', number: 4, name: 'باب چہارم — اخلاق و آداب', subtopics: ['صدق و دیانت داری', 'حیا اور پاکدامنی', 'عفو و درگزر اور بردباری', 'ایفائے عہد اور امانت داری', 'تکبر، غیبت، جھوٹ اور حسد کی ممانعت'] },
-      { id: 'isl_ch5', number: 5, name: 'باب پنجم — حسنِ معاملات و معاشرت', subtopics: ['والدین اور اساتذہ کے حقوق و آداب', 'صلہ رحمی اور پڑوسیوں کے حقوق', 'کسبِ حلال اور تجارت کے اسلامی اصول', 'سود، ذخیرہ اندوزی اور ناپ تول میں کمی کی ممانعت'] },
-      { id: 'isl_ch6', number: 6, name: 'باب ششم — ہدایت کے سرچشمے اور مشاہیرِ اسلام', subtopics: ['حضرت ابوبکر صدیقؓ کی سیرت و کارنامے', 'حضرت عمر فاروقؓ کی سیرت و فتوحات', 'حضرت عثمان غنیؓ کی سیرت و جود و سخا', 'حضرت علی المرتضیٰؓ کی شجاعت و علم', 'امہات المؤمنینؓ اور صحابیاتؓ کا اسوہ', 'ائمہ اربعہ اور مسلم سائنسدان'] },
-      { id: 'isl_ch7', number: 7, name: 'باب ہفتم — اسلامی تعلیمات اور عصرِ حاضر کے تقاضے', subtopics: ['اتحاد بین المسلمین اور فرقہ واریت کا خاتمہ', 'اسلام اور سائنس و ٹیکنالوجی', 'ماحولیاتی آلودگی اور شجرکاری کی اسلامی تعلیمات', 'سوشل میڈیا کا ذمہ دارانہ استعمال اور اسلامی آداب'] },
-    ],
-  },
   English: {
     subject: 'English',
     aliases: ['english', 'eng', 'english compulsory', 'english 9', 'english grammar'],
@@ -684,56 +670,6 @@ export function getChapterSyllabusScope(
       forbiddenCrossChapterPatterns.push(
         { pattern: /\b(logarithm|trigonometr|surds|cartesian)\b/i, reason: 'Belongs to other chapters.' }
       );
-    }
-  } else if (normSub.includes('isl')) {
-    // Islamiyat anti-science / anti-cross-subject patterns
-    forbiddenCrossChapterPatterns.push(
-      { pattern: /\b(si unit|newton|joule|pascal|molar mass|stoichiometr|chemical reaction|velocity|acceleration|polynomial|quadratic|logarithm|mitosis|chloroplast|organelle|quantitative analysis|titration|gravitational)\b/i, reason: 'Science/Math concepts are completely invalid in Islamiat.' }
-    );
-
-    if (normTopic.includes('ایمانیات') || normTopic.includes('عبادات') || normTopic.includes('iman') || normTopic.includes('ibad') || normTopic.includes('bab 2') || normTopic.includes('باب دوم')) {
-      requiredKeywords.push(
-        'ایمان', 'توحید', 'شرک', 'رسالت', 'ختم نبوت', 'ملائکہ', 'فرشتے', 'کتب', 'تورات', 'زبور', 'انجیل', 'قرآن',
-        'آخرت', 'قیامت', 'جزا و سزا', 'برزخ', 'بعث', 'میزان', 'صراط', 'جنت', 'جہنم', 'نماز', 'صلوٰۃ', 'روزہ', 'صوم',
-        'زکوٰۃ', 'نصاب', 'حج', 'احرام', 'طواف', 'وقوف عرفات', 'تولہ سونا', 'تولہ چاندی', 'مصارف زکوٰۃ', 'تقویٰ', 'ارکان اسلام',
-        'عبادت', 'دعاء', 'جبرائیل', 'میکائیل', 'اسرافیل', 'عزرائیل', 'کلمہ',
-        'tauheed', 'shirk', 'risalat', 'khatam-un-nabiyyin', 'malaika', 'angels', 'jibreel', 'mikaeel', 'israfeel', 'izraeel',
-        'books', 'torah', 'zabur', 'injeel', 'quran', 'akhirah', 'hereafter', 'day of judgment', 'paradise', 'hell',
-        'salat', 'namaz', 'prayer', 'sawm', 'roza', 'fasting', 'zakat', 'nisab', 'hajj', 'pilgrimage', 'arafat', 'tawaf', 'ihram', 'pillars of islam', 'worship'
-      );
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(غزوہ بدر|غزوہ احد|غزوہ خندق|صلح حدیبیہ|فتح مکہ|میثاق مدینہ|مواخات|ہجرت مدینہ)\b/i, reason: 'Ghazwat and Seerat-un-Nabi belong to Bab 3 (Seerat-un-Nabi).' },
-        { pattern: /\b(حضرت ابوبکر|حضرت عمر|حضرت عثمان|حضرت علی|خلفائے راشدین|جامع القرآن|فاتح ایران)\b/i, reason: 'Khulafa-e-Rashideen belong to Bab 6 (Mashahir).' },
-        { pattern: /\b(کسبِ حلال|ناپ تول|سود کی ممانعت|ذخیرہ اندوزی|تجارت کے اصول)\b/i, reason: 'Muamlat and commerce belong to Bab 5.' },
-        { pattern: /\b(صدق و دیانت|حیا و پاکدامنی|عفو و درگزر|ایفائے عہد|غیبت و تکبر)\b/i, reason: 'Akhlaq and moral etiquette belong to Bab 4.' }
-      );
-    } else if (normTopic.includes('قرآن') || normTopic.includes('حدیث') || normTopic.includes('bab 1') || normTopic.includes('باب اول')) {
-      requiredKeywords.push('قرآن', 'حدیث', 'وحی', 'نزول', 'کتابت وحی', 'تدوین قرآن', 'حضرت زید بن ثابت', 'عہد صدیقی', 'عہد عثمانی', 'حفاظت حدیث', 'صحاح ستہ', 'بخاری', 'مسلم', 'ترمذی', 'ابوداؤد', 'نسائی', 'ابن ماجہ');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(نماز کے ارکان|زکوٰۃ کا نصاب|حج کا طریقہ|غزوہ بدر)\b/i, reason: 'Belongs to other chapters.' }
-      );
-    } else if (normTopic.includes('سیرت') || normTopic.includes('مدنی') || normTopic.includes('bab 3') || normTopic.includes('باب سوم')) {
-      requiredKeywords.push('ہجرت مدینہ', 'میثاق مدینہ', 'مواخات', 'غزوہ بدر', 'غزوہ احد', 'غزوہ خندق', 'احزاب', 'صلح حدیبیہ', 'بیعت رضوان', 'فتح مکہ', 'حجۃ الوداع', 'رحمت للعالمین', 'اسوہ حسنہ');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(زکوٰۃ کا نصاب|صحاح ستہ کے نام|تدوین قرآن کمیٹی)\b/i, reason: 'Belongs to other chapters.' }
-      );
-    } else if (normTopic.includes('اخلاق') || normTopic.includes('آداب') || normTopic.includes('bab 4') || normTopic.includes('باب چہارم')) {
-      requiredKeywords.push('اخلاق', 'آداب', 'صدق', 'دیانت', 'حیا', 'پاکدامنی', 'عفو', 'درگزر', 'بردباری', 'ایفائے عہد', 'امانت', 'تکبر', 'غیبت', 'جھوٹ', 'حسد');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(غزوہ بدر|زکوٰۃ کے مصارف|تدوین حدیث)\b/i, reason: 'Belongs to other chapters.' }
-      );
-    } else if (normTopic.includes('معاملات') || normTopic.includes('معاشرت') || normTopic.includes('bab 5') || normTopic.includes('باب پنجم')) {
-      requiredKeywords.push('والدین کے حقوق', 'اساتذہ کے حقوق', 'صلہ رحمی', 'پڑوسیوں کے حقوق', 'کسب حلال', 'تجارت کے اصول', 'سود کی ممانعت', 'ذخیرہ اندوزی', 'ناپ تول میں کمی', 'مطففین');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(غزوہ احد|تدوین قرآن|نماز کے فرائض)\b/i, reason: 'Belongs to other chapters.' }
-      );
-    } else if (normTopic.includes('مشاہیر') || normTopic.includes('سرچشمے') || normTopic.includes('bab 6') || normTopic.includes('باب ششم')) {
-      requiredKeywords.push('حضرت ابوبکر صدیق', 'حضرت عمر فاروق', 'حضرت عثمان غنی', 'حضرت علی المرتضی', 'امہات المؤمنین', 'حضرت خدیجہ', 'حضرت عائشہ', 'حضرت فاطمہ', 'خلفائے راشدین', 'جامع القرآن', 'ذوالنورین', 'فاتح خیبر');
-      forbiddenCrossChapterPatterns.push(
-        { pattern: /\b(زکوٰۃ کا نصاب|نماز کے ارکان|سود کی حرمت)\b/i, reason: 'Belongs to other chapters.' }
-      );
-    } else if (normTopic.includes('عصری') || normTopic.includes('تعلیمات') || normTopic.includes('bab 7') || normTopic.includes('باب ہفتم')) {
-      requiredKeywords.push('اتحاد بین المسلمین', 'فرقہ واریت', 'اسلام اور سائنس', 'ماحولیاتی آلودگی', 'شجرکاری', 'سوشل میڈیا', 'طلب العلم فریضۃ');
     }
   } else if (normSub.includes('bio')) {
     if (normTopic.includes('cell cycle') || normTopic.includes('mitosis') || normTopic.includes('meiosis')) {

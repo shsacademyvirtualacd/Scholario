@@ -98,10 +98,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     let subjectGuidance = '';
     let subjectMandatoryRequirement = '';
 
-    if (normSub.includes('isl')) {
-      subjectMandatoryRequirement = `MANDATORY ISLAMIAT DIRECTIVE:
-1. Every single question MUST directly test authentic Islamic concepts from official Grade ${grade} Islamiyat: Quranic verses, Hadith narrations, Islamic beliefs (Tauheed, Shirk, Risalat, Khatam-un-Nabiyyin, Malaika, Divine Books, Akhirat), or Islamic worship (Salat, Sawm, Zakat, Hajj, Nisab).
-2. STRICTLY FORBIDDEN: NEVER mention science, physics, SI units, chemistry, chemical formulas, mathematics, biology, or English grammar. Science concepts in Islamiyat are considered FATAL HALLUCINATIONS.`;
+    if (normSub.includes('eng')) {
+      subjectMandatoryRequirement = `MANDATORY ENGLISH DIRECTIVE:
+1. Every single question MUST directly test English grammar rules, mechanics, tenses, active/passive voice, narration, sentence correction, or vocabulary from "${syllabusScope.chapter}".
+2. STRICTLY FORBIDDEN: Cross-subject bleed or general science concepts.`;
     } else if (normSub.includes('math')) {
       subjectMandatoryRequirement = `MANDATORY MATHEMATICS DIRECTIVE:
 1. Every single question MUST directly be a concrete mathematical, algebraic, geometric, or statistical problem testing specific equations, properties, or calculations from "${syllabusScope.chapter}".
