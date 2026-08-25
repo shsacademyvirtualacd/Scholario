@@ -360,13 +360,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
               <Database size={20} />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-black text-[#111111]">MCQ Question Bank & Verification</h2>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Storage Source Active
-                </span>
-              </div>
+              <h2 className="text-base font-black text-[#111111]">MCQ Question Bank & Verification</h2>
               <p className="text-xs text-[#737373] mt-0.5 font-medium">
                 Direct read from modular runtime storage <code className="px-1.5 py-0.5 bg-[#F5F5F5] rounded text-[11px] font-mono text-[#111111]">src/data/banks/*.json</code>. Zero mock or sample data.
               </p>

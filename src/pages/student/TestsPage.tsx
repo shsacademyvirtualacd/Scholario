@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, BookOpen, FileCheck2, Sparkles } from 'lucide-react';
+import { Search, BookOpen, FileCheck2, Target } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StudentTestCard from '../../components/student/StudentTestCard';
@@ -133,7 +133,7 @@ export const TestsPage: React.FC = () => {
       {/* Page Header */}
       <SectionHeader
         title="Testing Center"
-        description="Access scheduled class assessments and generate custom AI multiple choice quizzes for self-testing."
+        description="Access scheduled class assessments and practice curriculum multiple choice quizzes for self-testing."
       />
 
       {/* Subsection Tab Switcher */}
@@ -163,10 +163,10 @@ export const TestsPage: React.FC = () => {
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
           }`}
         >
-          <Sparkles size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <Target size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Self Testing</span>
-          <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5">
-            AI
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430]/20 text-[#111111]">
+            MCQ
           </span>
         </button>
       </div>

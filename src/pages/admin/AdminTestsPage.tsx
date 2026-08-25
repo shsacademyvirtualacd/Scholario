@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Sparkles, Database, GraduationCap } from 'lucide-react';
+import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Database, GraduationCap, Target } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
@@ -145,7 +145,7 @@ export const AdminTestsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-[#111111] tracking-tight">Testing Center</h1>
           <p className="text-xs text-[#737373] mt-1">
-            Institutional test management across Grades 9–12, AI question bank, and school-wide student MCQ performance.
+            Institutional test management across Grades 9–12, curriculum question bank, and school-wide student MCQ performance.
           </p>
         </div>
 
@@ -190,10 +190,10 @@ export const AdminTestsPage: React.FC = () => {
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
           }`}
         >
-          <Sparkles size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <Target size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Self Testing</span>
-          <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5">
-            AI
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430]/20 text-[#111111]">
+            MCQ
           </span>
         </button>
 
