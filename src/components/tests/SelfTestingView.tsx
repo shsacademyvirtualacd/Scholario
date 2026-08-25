@@ -26,8 +26,6 @@ import {
   CheckSquare,
   Square,
   Flame,
-  BarChart3,
-  GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { MCQQuestion, MCQDifficulty, SelfTestConfig, SelfTestResult, ExamMode } from '../../types/selfTest';
@@ -39,12 +37,7 @@ import {
   clearSelfTestHistory,
   getWeakTopicsForStudent,
 } from '../../lib/selfTestService';
-import {
-  saveStudentMCQAttempt,
-  getAllStudentMCQAttempts,
-  getStudentMCQAttemptsForTeacher,
-  getStudentMCQAttemptsForStudent,
-} from '../../lib/db';
+import { saveStudentMCQAttempt } from '../../lib/db';
 import { BOARDS, FBISE_GRADES, SINDH_GRADES, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
@@ -195,136 +188,6 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   useEffect(() => {
     setHistoryItems(getSelfTestHistory());
   }, []);
-
-  // Role-specific real analytics stats state
-  const [roleStats, setRoleStats] = useState<{
-    totalAttempts: number;
-    averageScore: number;
-    bestScore?: number;
-    mostActiveGrade?: string;
-    topSubject?: string;
-    activeStudentsCount?: number;
-    lastPracticedTopic?: string;
-    lastPracticedTime?: string;
-    loading: boolean;
-  }>({
-    totalAttempts: 0,
-    averageScore: 0,
-    loading: true,
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-    async function loadRoleStats() {
-      try {
-        if (userRole === 'admin') {
-          const attempts = await getAllStudentMCQAttempts();
-          if (!isMounted) return;
-          const total = attempts.length;
-          const avg = total > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / total) : 0;
-
-          // Count grades and subjects from real attempts
-          const gradeCounts: Record<string, number> = {};
-          const subjectCounts: Record<string, number> = {};
-          attempts.forEach((a) => {
-            const g = a.grade ? `Grade ${a.grade}` : 'Grade 9';
-            gradeCounts[g] = (gradeCounts[g] || 0) + 1;
-            if (a.subject) {
-              subjectCounts[a.subject] = (subjectCounts[a.subject] || 0) + 1;
-            }
-          });
-          const topGrade = Object.entries(gradeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Grade 9';
-          const topSub = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Physics';
-
-          setRoleStats({
-            totalAttempts: total,
-            averageScore: avg,
-            mostActiveGrade: topGrade,
-            topSubject: topSub,
-            loading: false,
-          });
-        } else if (userRole === 'teacher') {
-          const teacherId = profile?.id || '';
-          const attempts = await getStudentMCQAttemptsForTeacher(teacherId);
-          if (!isMounted) return;
-          const total = attempts.length;
-          const avg = total > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / total) : 0;
-          const distinctStudents = new Set(attempts.map((a) => a.student_id)).size;
-
-          const subjectCounts: Record<string, number> = {};
-          attempts.forEach((a) => {
-            if (a.subject) {
-              subjectCounts[a.subject] = (subjectCounts[a.subject] || 0) + 1;
-            }
-          });
-          const topSub = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'All Assigned';
-
-          setRoleStats({
-            totalAttempts: total,
-            averageScore: avg,
-            activeStudentsCount: distinctStudents,
-            topSubject: topSub,
-            loading: false,
-          });
-        } else {
-          // Student role
-          const studentId = profile?.id || '';
-          const dbAttempts = studentId ? await getStudentMCQAttemptsForStudent(studentId) : [];
-          const localHistory = getSelfTestHistory();
-
-          // Combine unique attempts
-          const combinedMap = new Map<string, any>();
-          dbAttempts.forEach((a) => combinedMap.set(a.id, a));
-          localHistory.forEach((h) => {
-            if (!combinedMap.has(h.id)) {
-              combinedMap.set(h.id, {
-                id: h.id,
-                subject: h.config?.subject,
-                topic: h.config?.topic,
-                percentage: h.percentage,
-                score: h.score,
-                total_questions: h.totalQuestions,
-                created_at: h.timestamp ? new Date(h.timestamp).toISOString() : new Date().toISOString(),
-              });
-            }
-          });
-
-          const studentAttempts = Array.from(combinedMap.values()).sort(
-            (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-          );
-
-          if (!isMounted) return;
-          const total = studentAttempts.length;
-          const avg = total > 0 ? Math.round(studentAttempts.reduce((sum, a) => sum + (a.percentage ?? 0), 0) / total) : 0;
-          const best = total > 0 ? Math.max(...studentAttempts.map((a) => a.percentage ?? 0)) : 0;
-          const latest = studentAttempts[0];
-          const latestTopic = latest
-            ? `${latest.subject || 'Practice'}${latest.topic ? ` - ${latest.topic}` : ''}`
-            : 'None yet';
-          const latestTime = latest?.created_at
-            ? new Date(latest.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-            : undefined;
-
-          setRoleStats({
-            totalAttempts: total,
-            averageScore: avg,
-            bestScore: best,
-            lastPracticedTopic: latestTopic,
-            lastPracticedTime: latestTime,
-            loading: false,
-          });
-        }
-      } catch (err) {
-        console.warn('Error loading role stats in SelfTestingView:', err);
-        if (isMounted) setRoleStats((prev) => ({ ...prev, loading: false }));
-      }
-    }
-
-    loadRoleStats();
-    return () => {
-      isMounted = false;
-    };
-  }, [userRole, profile?.id, historyItems.length]);
 
   // Pending Question Wait Timer: auto-resolves if sitting on a pending question for > 25 seconds
   useEffect(() => {
@@ -1075,150 +938,32 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
     return (
       <div className="space-y-6">
-        {/* Role-Specific Self-Testing Overview & Analytics Card */}
-        <div className="bg-linear-to-r from-[#111111] via-[#1A1A1A] to-[#141414] text-white p-6 sm:p-7 rounded-3xl relative overflow-hidden border border-[#2A2A2A] shadow-md">
+        {/* Intro Card */}
+        <div className="bg-linear-to-r from-[#111111] to-[#1F1F1F] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#2A2A2A] shadow-md">
           <div className="absolute right-0 top-0 w-80 h-80 bg-[#F4C430]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10 space-y-4">
-            {/* Role-specific header & badge */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4C430]/20 text-[#F4C430] border border-[#F4C430]/30 text-xs font-bold mb-1">
-                  {userRole === 'admin' ? (
-                    <>
-                      <BarChart3 size={13} />
-                      <span>Institutional Practice Analytics</span>
-                    </>
-                  ) : userRole === 'teacher' ? (
-                    <>
-                      <GraduationCap size={13} />
-                      <span>Assigned Classes Practice Scope</span>
-                    </>
-                  ) : (
-                    <>
-                      <Target size={13} />
-                      <span>Personal Practice Analytics</span>
-                    </>
-                  )}
-                </div>
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  {userRole === 'admin'
-                    ? 'School-Wide Self-Testing & Practice Analytics'
-                    : userRole === 'teacher'
-                    ? 'Assigned Classes Practice Performance'
-                    : isFbise9
-                    ? 'Grade 9 FBISE Self-Testing & Practice'
-                    : 'Your Self-Testing & Practice Overview'}
-                </h2>
-                <p className="text-xs sm:text-sm text-[#A3A3A3] max-w-2xl leading-relaxed">
-                  {userRole === 'admin'
-                    ? 'Real-time overview of student self-assessment sessions, subject practice coverage, and accuracy benchmarks across all grades.'
-                    : userRole === 'teacher'
-                    ? 'Real-time self-testing activity and topic practice scoped strictly to your assigned subjects and class offerings.'
-                    : isFbise9
-                    ? 'Practice with official FBISE Grade 9 curriculum questions. Track your accuracy and target single chapters or full syllabus exams.'
-                    : 'Track your syllabus practice tests, benchmark your accuracy, and target specific chapters or weak concepts.'}
-                </p>
-              </div>
-            </div>
+          <div className="relative z-10 max-w-2xl space-y-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              {isFbise9 ? 'Grade 9 FBISE Self-Testing & Exam Generator' : 'Interactive Self-Testing Center'}
+            </h2>
+            <p className="text-xs sm:text-sm text-[#A3A3A3] leading-relaxed">
+              {isFbise9
+                ? 'Practice with 100% official FBISE Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
+                : 'Generate 100% curriculum-accurate, syllabus-aligned multiple choice practice questions on any subject or topic. Your practice scores are private to you.'}
+            </p>
 
-            {/* Real Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/10">
-              {userRole === 'admin' ? (
-                <>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Total Attempts</div>
-                    <div className="text-xl sm:text-2xl font-black text-white mt-1">
-                      {roleStats.loading ? '...' : roleStats.totalAttempts}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">School-wide sessions</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Average Score</div>
-                    <div className="text-xl sm:text-2xl font-black text-[#F4C430] mt-1">
-                      {roleStats.loading ? '...' : roleStats.totalAttempts > 0 ? `${roleStats.averageScore}%` : '—'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Across all subjects</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Most Active Grade</div>
-                    <div className="text-sm sm:text-base font-extrabold text-white mt-1 truncate">
-                      {roleStats.loading ? '...' : roleStats.mostActiveGrade || 'Grade 9'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Top practice volume</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Top Subject</div>
-                    <div className="text-sm sm:text-base font-extrabold text-white mt-1 truncate">
-                      {roleStats.loading ? '...' : roleStats.topSubject || 'Physics'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Most practiced</div>
-                  </div>
-                </>
-              ) : userRole === 'teacher' ? (
-                <>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Class Attempts</div>
-                    <div className="text-xl sm:text-2xl font-black text-white mt-1">
-                      {roleStats.loading ? '...' : roleStats.totalAttempts}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">In your subjects</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Class Average</div>
-                    <div className="text-xl sm:text-2xl font-black text-[#F4C430] mt-1">
-                      {roleStats.loading ? '...' : roleStats.totalAttempts > 0 ? `${roleStats.averageScore}%` : '—'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Assigned offerings</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Active Students</div>
-                    <div className="text-xl sm:text-2xl font-black text-white mt-1">
-                      {roleStats.loading ? '...' : roleStats.activeStudentsCount ?? 0}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Practicing cohort</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Top Subject</div>
-                    <div className="text-sm sm:text-base font-extrabold text-white mt-1 truncate">
-                      {roleStats.loading ? '...' : roleStats.topSubject || 'All Assigned'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Highest activity</div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Tests Taken</div>
-                    <div className="text-xl sm:text-2xl font-black text-white mt-1">
-                      {roleStats.loading ? '...' : roleStats.totalAttempts}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Self-assessments</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Average Score</div>
-                    <div className="text-xl sm:text-2xl font-black text-[#F4C430] mt-1">
-                      {roleStats.loading ? '...' : roleStats.totalAttempts > 0 ? `${roleStats.averageScore}%` : '—'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Overall accuracy</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Best Score</div>
-                    <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-                      {roleStats.loading ? '...' : roleStats.totalAttempts > 0 ? `${roleStats.bestScore}%` : '—'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5">Personal record</div>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between">
-                    <div className="text-[11px] font-bold text-[#A3A3A3] uppercase tracking-wider">Last Practiced</div>
-                    <div className="text-xs sm:text-sm font-extrabold text-white mt-1 truncate" title={roleStats.lastPracticedTopic}>
-                      {roleStats.loading ? '...' : roleStats.lastPracticedTopic || 'None yet'}
-                    </div>
-                    <div className="text-[10px] text-[#737373] mt-0.5 truncate">
-                      {roleStats.lastPracticedTime ? `On ${roleStats.lastPracticedTime}` : 'Start below'}
-                    </div>
-                  </div>
-                </>
-              )}
+            <div className="flex flex-wrap gap-4 pt-2">
+              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
+                <CheckCircle2 size={15} className="text-[#10B981]" />
+                <span>Verified Curriculum Chapters</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
+                <CheckCircle2 size={15} className="text-[#10B981]" />
+                <span>Instant Explanations & Solutions</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
+                <CheckCircle2 size={15} className="text-[#10B981]" />
+                <span>Private & Zero Impact on GPA</span>
+              </div>
             </div>
           </div>
         </div>
