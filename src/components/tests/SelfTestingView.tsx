@@ -1039,13 +1039,6 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       </div>
                     </div>
                   </div>
-
-                  {isFbise9 && (
-                    <div className="p-2.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-[11px] text-[#92400E] flex items-center gap-2">
-                      <Flame size={14} className="shrink-0 text-[#D97706]" />
-                      <span><strong>FBISE Grade 9 Active:</strong> Pre-generated verified bank (1,500+ MCQs across all 75 chapters) with 0ms live API delays and 100% chapter accuracy.</span>
-                    </div>
-                  )}
                 </div>
               ) : (
                 /* Selectable Board & Grade for Teachers / Admins */
