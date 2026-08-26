@@ -10,7 +10,7 @@ export interface ChapterDef {
   number: number;
   chapterNumber?: number;
   name: string;
-  category?: 'Nasr' | 'Nazm' | 'Ghazal' | 'Core';
+  category?: 'Nasr' | 'Nazm' | 'Ghazal' | 'Core' | 'قواعد' | 'صنائع' | string;
   subtopics?: string[];
   description?: string;
 }
@@ -167,31 +167,33 @@ export const FBISE_GRADE_9_CURRICULUM: Record<string, FBISEGrade9SubjectCurricul
   },
   Urdu: {
     subject: 'Urdu',
-    aliases: ['urdu', 'urd'],
-    guidelines: 'Questions must use the actual selected Grade 9 FBISE textbook lesson, poem, or ghazal. Test text comprehension, meanings of words, central idea (مرکزی خیال), tashreeh (تشریح), characters/events, references (سیاق و سباق), and poet/author info. Never generate random or invented Urdu passages.',
+    aliases: ['urdu', 'urd', 'urdu compulsory', 'urdu 9', 'urdu grammar'],
+    guidelines: 'Questions must be strictly grounded in the Grade 9 FBISE Urdu Grammar (قواعد) and Literary Devices (صنائع بدائع / علمِ بیان و بدیع) curriculum. Test parts of speech, gender rules, singular/plural, synonyms, antonyms, idioms, proverbs, sentence types, orthography, conjunctions, and literary devices (تشبیہ, استعارہ, تلمیح, مبالغہ, تضاد, تجنیس, مراعات النظیر, حسنِ تعلیل, لف و نشر, تجاہلِ عارفانہ, سوال و جواب, ایہام).',
     chapters: [
-      // NASR (نثر)
-      { id: 'urdu_nasr_1', number: 1, name: 'اخلاقِ حسنہ', category: 'Nasr', description: 'نثر: اخلاقِ حسنہ — مصنف: مولانا شبلی نعمانی' },
-      { id: 'urdu_nasr_2', number: 2, name: 'کتبہ', category: 'Nasr', description: 'نثر: کتبہ — افسانہ' },
-      { id: 'urdu_nasr_3', number: 3, name: 'بھیڑیا', category: 'Nasr', description: 'نثر: بھیڑیا' },
-      { id: 'urdu_nasr_4', number: 4, name: 'آرام و سکون', category: 'Nasr', description: 'نثر: آرام و سکون — ڈراما از امتیاز علی تاج' },
-      { id: 'urdu_nasr_5', number: 5, name: 'حکیم اور مرزا غالب', category: 'Nasr', description: 'نثر: حکیم اور مرزا غالب' },
-      { id: 'urdu_nasr_6', number: 6, name: 'نام دیوہالی', category: 'Nasr', description: 'نثر: نام دیوہالی — خاکہ از مولوی عبدالحق' },
-      { id: 'urdu_nasr_7', number: 7, name: 'ابتدائی حباب', category: 'Nasr', description: 'نثر: ابتدائی حباب' },
-      { id: 'urdu_nasr_8', number: 8, name: 'لڑی میں پروئے ہوئے منظر', category: 'Nasr', description: 'نثر: لڑی میں پروئے ہوئے منظر — سفرنامہ' },
-      { id: 'urdu_nasr_9', number: 9, name: 'اپنی مدد آپ', category: 'Nasr', description: 'نثر: اپنی مدد آپ — سر سید احمد خان' },
-      // NAZM (نظم)
-      { id: 'urdu_nazm_1', number: 10, name: 'حمد', category: 'Nazm', description: 'نظم: حمد — الطاف حسین حالی / حفیظ جالندھری' },
-      { id: 'urdu_nazm_2', number: 11, name: 'نعت', category: 'Nazm', description: 'نظم: نعت — احسان دانش / ماہر القادری' },
-      { id: 'urdu_nazm_3', number: 12, name: 'جاوید کے نام', category: 'Nazm', description: 'نظم: جاوید کے نام — علامہ محمد اقبال' },
-      { id: 'urdu_nazm_4', number: 13, name: 'محنت کی برکات', category: 'Nazm', description: 'نظم: محنت کی برکات' },
-      { id: 'urdu_nazm_5', number: 14, name: 'کرکٹ اور مشاعرہ', category: 'Nazm', description: 'نظم: کرکٹ اور مشاعرہ — ظریفانہ نظم' },
-      { id: 'urdu_nazm_6', number: 15, name: 'پیامِ لطیف', category: 'Nazm', description: 'نظم: پیامِ لطیف' },
-      // GHAZAL (غزل)
-      { id: 'urdu_ghazal_1', number: 16, name: 'فقیرانہ آئے صدا کر چلے', category: 'Ghazal', description: 'غزل: فقیرانہ آئے صدا کر چلے — میر تقی میر' },
-      { id: 'urdu_ghazal_2', number: 17, name: 'سن تو سہی جہاں میں ہے تیرا افسانہ کیا', category: 'Ghazal', description: 'غزل: سن تو سہی جہاں میں ہے تیرا افسانہ کیا — خواجہ حیدر علی آتش' },
-      { id: 'urdu_ghazal_3', number: 18, name: 'غم یا خوشی ہے تو', category: 'Ghazal', description: 'غزل: غم یا خوشی ہے تو — مرزا اسد اللہ خان غالب' },
-      { id: 'urdu_ghazal_4', number: 19, name: 'کاش طوفاں میں سفینے کو اتار ہوتا', category: 'Ghazal', description: 'غزل: کاش طوفاں میں سفینے کو اتار ہوتا' },
+      // قواعد (Grammar)
+      { id: 'urdu_ch1', number: 1, name: 'الفاظ کی اقسام', category: 'قواعد', description: 'قواعد: الفاظ کی اقسام (اسم، فعل، حرف، صفت، ضمیر، متعلق فعل وغیرہ)' },
+      { id: 'urdu_ch2', number: 2, name: 'تذکیر و تانیث', category: 'قواعد', description: 'قواعد: تذکیر و تانیث کے اصول اور غیر جاندار و جاندار اسما کی جنس' },
+      { id: 'urdu_ch3', number: 3, name: 'واحد و جمع', category: 'قواعد', description: 'قواعد: واحد اور جمع کے قواعد (جمع سالم، جمع مکسر، عربی و فارسی جمعیں)' },
+      { id: 'urdu_ch4', number: 4, name: 'مترادف الفاظ', category: 'قواعد', description: 'قواعد: ہم معنی و مترادف الفاظ کا کلام میں برتاؤ' },
+      { id: 'urdu_ch5', number: 5, name: 'متضاد الفاظ', category: 'قواعد', description: 'قواعد: متضاد و باہم الٹ معنی رکھنے والے الفاظ' },
+      { id: 'urdu_ch6', number: 6, name: 'محاورات', category: 'قواعد', description: 'قواعد: اردو زبان کے مستند محاورات اور ان کا صحیح جملوں میں استعمال' },
+      { id: 'urdu_ch7', number: 7, name: 'ضرب الامثال', category: 'قواعد', description: 'قواعد: مشہور ضرب الامثال اور کہاوتوں کے معانی و محلِ استعمال' },
+      { id: 'urdu_ch8', number: 8, name: 'جملوں کی اقسام', category: 'قواعد', description: 'قواعد: جملہ اسمیہ، جملہ فعلیہ، مفرد، مرکب اور معطوف جملے' },
+      { id: 'urdu_ch9', number: 9, name: 'قواعد املا', category: 'قواعد', description: 'قواعد: درست املا، ہائے مخلوط، الف ممدودہ و مقصورہ اور اعراب' },
+      { id: 'urdu_ch10', number: 10, name: 'حروفِ ربط اور حروفِ عطف', category: 'قواعد', description: 'قواعد: حروف کی اقسام، حروفِ جار، حروفِ عطف، حروفِ تخصیص و علت' },
+      // صنائع بدائع (Literary Devices / Sanaten)
+      { id: 'urdu_ch11', number: 11, name: 'تشبیہ', category: 'صنائع', description: 'صنائع بدائع: تشبیہ کی تعریف، ارکانِ تشبیہ اور اشعار میں شناخت' },
+      { id: 'urdu_ch12', number: 12, name: 'استعارہ', category: 'صنائع', description: 'صنائع بدائع: استعارہ کا مفہوم، ارکانِ استعارہ اور تشبیہ سے فرق' },
+      { id: 'urdu_ch13', number: 13, name: 'تلمیح', category: 'صنائع', description: 'صنائع بدائع: تاریخی، قرآنی اور داستانی اشارات (تلمیحات)' },
+      { id: 'urdu_ch14', number: 14, name: 'مبالغہ', category: 'صنائع', description: 'صنائع بدائع: صنعتِ مبالغہ کے درجات (تبلیغ، اغراق، غلو)' },
+      { id: 'urdu_ch15', number: 15, name: 'تضاد', category: 'صنائع', description: 'صنائع بدائع: صنعتِ تضاد (طباق) اور اشعار میں الٹ معانی' },
+      { id: 'urdu_ch16', number: 16, name: 'تجنیس تام و ناقص', category: 'صنائع', description: 'صنائع بدائع: تجنیسِ تام، تجنیسِ ناقص، محرف اور زاید' },
+      { id: 'urdu_ch17', number: 17, name: 'مراعات النظیر', category: 'صنائع', description: 'صنائع بدائع: صنعتِ تناسب / مراعات النظیر کا فکری حسن' },
+      { id: 'urdu_ch18', number: 18, name: 'حسنِ تعلیل', category: 'صنائع', description: 'صنائع بدائع: تخیلاتی اور لطیف شاعرانہ علت کا بیان' },
+      { id: 'urdu_ch19', number: 19, name: 'لف و نشر', category: 'صنائع', description: 'صنائع بدائع: لف و نشرِ مرتب اور لف و نشرِ مشوش / غیر مرتب' },
+      { id: 'urdu_ch20', number: 20, name: 'تجاہلِ عارفانہ', category: 'صنائع', description: 'صنائع بدائع: جان بوجھ کر انجان بننے کا شاعرانہ وصف' },
+      { id: 'urdu_ch21', number: 21, name: 'سوال و جواب', category: 'صنائع', description: 'صنائع بدائع: صنعتِ مراجعہ / مکالماتی انداز' },
+      { id: 'urdu_ch22', number: 22, name: 'ایہام', category: 'صنائع', description: 'صنائع بدائع: ذو معنی لفظ، معنیِ قریب بمقابلہ معنیِ بعید' },
     ],
   },
   English: {
