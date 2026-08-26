@@ -1438,15 +1438,15 @@ export const CHEM_CHAPTERS_11_TO_19_BATCH50: Record<string, StoredMCQ[]> = {
       chapter: "Separation Techniques",
       chapterNumber: 17,
       topic: "Centrifugation Separation Principle",
-      question: "A high-speed laboratory Centrifuge separates blood cellular components (erythrocytes, leukocytes) from liquid blood plasma based on:",
+      question: "In clinical diagnostic laboratories, a centrifuge machine separates blood cells from liquid plasma by utilizing:",
       options: {
-        A: "Differences in particle mass and density accelerated by centrifugal rotational force thousands of times greater than gravity ($g$)",
-        B: "Boiling point differences",
-        C: "Solubility in alcohol",
-        D: "Magnetic attraction"
+        A: "High-speed rotational force that separates components based on differences in their density and mass",
+        B: "Differences in boiling point between cellular proteins and water",
+        C: "Differential solubility of cellular components in organic solvents",
+        D: "Differences in magnetic permeability of blood cells"
       },
       correctAnswer: "A",
-      explanation: "Centrifugation applies artificial high radial acceleration ($>10,000\\times g$), rapidly forcing denser cellular particles to pellet at the bottom of the centrifuge tube.",
+      explanation: "Centrifugation works on the principle of sedimentation under accelerated centrifugal force. Denser cellular particles settle rapidly to the bottom of the tube to form a pellet, while the lighter liquid plasma remains as the supernatant layer.",
       difficulty: "easy",
       verified: true,
       source: "curriculum-bank",

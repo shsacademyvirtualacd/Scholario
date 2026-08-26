@@ -111,8 +111,10 @@ function safeWriteQuestionBank(filePath, bankData) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  fs.writeFileSync(filePath, jsonContent, 'utf8');
-  console.log(`✓ Safely wrote validated question bank to: ${filePath}`);
+  const tempPath = filePath + '.' + Date.now() + '.tmp';
+  fs.writeFileSync(tempPath, jsonContent, 'utf8');
+  fs.renameSync(tempPath, filePath);
+  console.log(`✓ Safely and atomically wrote validated question bank to: ${filePath}`);
 }
 
 module.exports = {
