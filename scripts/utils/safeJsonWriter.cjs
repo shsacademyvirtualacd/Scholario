@@ -117,9 +117,47 @@ function safeWriteQuestionBank(filePath, bankData) {
   console.log(`✓ Safely and atomically wrote validated question bank to: ${filePath}`);
 }
 
+function safeWriteChapterMCQs(filePath, questionList) {
+  if (!Array.isArray(questionList)) {
+    throw new Error('safeWriteChapterMCQs expects an array of MCQ objects');
+  }
+
+  const cleanQuestions = questionList.map(q => sanitizeStoredMCQ(q));
+  const jsonContent = JSON.stringify(cleanQuestions, null, 2) + '\n';
+
+  // Validate parsing and strict UTF-8 serialization before writing to disk
+  try {
+    const reparsed = JSON.parse(jsonContent);
+    if (!Array.isArray(reparsed)) throw new Error('Reparsed data is not an array');
+    const buf = Buffer.from(jsonContent, 'utf8');
+    const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+    utf8Decoder.decode(buf);
+  } catch (err) {
+    throw new Error(`Sanitized chapter MCQs failed JSON.parse / UTF-8 validation: ${err.message}`);
+  }
+
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  const tempPath = filePath + '.' + Date.now() + '.tmp';
+  fs.writeFileSync(tempPath, jsonContent, 'utf8');
+  fs.renameSync(tempPath, filePath);
+
+  // Read back and verify byte-for-byte parse
+  const verified = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  if (verified.length !== cleanQuestions.length) {
+    throw new Error(`Read-back count mismatch: wrote ${cleanQuestions.length}, read ${verified.length}`);
+  }
+
+  console.log(`✓ Safely and atomically wrote validated chapter to: ${filePath} (${cleanQuestions.length} MCQs)`);
+}
+
 module.exports = {
   sanitizeMCQString,
   sanitizeStoredMCQ,
   sanitizeQuestionBank,
   safeWriteQuestionBank,
+  safeWriteChapterMCQs,
 };

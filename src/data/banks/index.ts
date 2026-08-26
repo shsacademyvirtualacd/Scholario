@@ -1,10 +1,10 @@
 import type { StoredMCQ } from '../../types/questionBank';
-import physics from './physics.json';
-import biology from './biology.json';
+import physics from './physics';
+import biology from './biology';
 import chemistry from './chemistry';
-import mathematics from './mathematics.json';
+import mathematics from './mathematics';
 import urdu from './urdu';
-import english from './english.json';
+import english from './english';
 
 export type SubjectMCQBank = Record<string, StoredMCQ[]>;
 export type FullGrade9Bank = Record<string, SubjectMCQBank>;
