@@ -1382,7 +1382,7 @@
         "D": "Nitrogen"
       },
       "correctAnswer": "A",
-      "explanation": "Oxygen accounts for ~65% of human body mass, predominantly due to the abundance of cellular water ($\text{H}_2\text{O}$) and organic macromolecules.",
+      "explanation": "Oxygen accounts for ~65% of human body mass, predominantly due to the abundance of cellular water ($\\ext{H}_2\\ext{O}$) and organic macromolecules.",
       "difficulty": "easy",
       "verified": true,
       "source": "curriculum-bank",
@@ -1712,7 +1712,7 @@
         "D": "Lipid fatty acid chains contain a significantly higher proportion of high-energy $\\text{C}-\\text{H}$ bonds and less oxygen"
       },
       "correctAnswer": "D",
-      "explanation": "Fatty acids are highly reduced hydrocarbon chains rich in $\text{C}-\text{H}$ bonds with low oxygen content, yielding more ATP per gram upon oxidative catabolism than carbohydrates.",
+      "explanation": "Fatty acids are highly reduced hydrocarbon chains rich in $\\ext{C}-\\ext{H}$ bonds with low oxygen content, yielding more ATP per gram upon oxidative catabolism than carbohydrates.",
       "difficulty": "hard",
       "verified": true,
       "source": "curriculum-bank",
@@ -1932,7 +1932,7 @@
         "D": "$\\text{pH } 7.8 - 8.5$"
       },
       "correctAnswer": "D",
-      "explanation": "Pepsin requires an acidic environment ($\text{pH } 1.5-2$) provided by stomach HCl, while intestinal trypsin functions optimally in alkaline conditions ($\text{pH } 7.8-8.5$) neutralized by pancreatic bicarbonate.",
+      "explanation": "Pepsin requires an acidic environment ($\\ext{pH } 1.5-2$) provided by stomach HCl, while intestinal trypsin functions optimally in alkaline conditions ($\\ext{pH } 7.8-8.5$) neutralized by pancreatic bicarbonate.",
       "difficulty": "hard",
       "verified": true,
       "source": "curriculum-bank",
@@ -1954,7 +1954,7 @@
         "D": "Cellulose microfibrils"
       },
       "correctAnswer": "A",
-      "explanation": "Secondary protein structures ($alpha$-helices and $\beta$-pleated sheets) are maintained by repeating hydrogen bonds between backbone $C=O$ and $N-H$ groups.",
+      "explanation": "Secondary protein structures ($alpha$-helices and $\\beta$-pleated sheets) are maintained by repeating hydrogen bonds between backbone $C=O$ and $N-H$ groups.",
       "difficulty": "board_exam",
       "verified": true,
       "source": "curriculum-bank",
@@ -1998,7 +1998,7 @@
         "D": "Ribose and Deoxyribose"
       },
       "correctAnswer": "C",
-      "explanation": "Sucrose is formed by an $alpha-1,2$-glycosidic bond between one molecule of $alpha$-D-glucose and one molecule of $\beta$-D-fructose.",
+      "explanation": "Sucrose is formed by an $alpha-1,2$-glycosidic bond between one molecule of $alpha$-D-glucose and one molecule of $\\beta$-D-fructose.",
       "difficulty": "easy",
       "verified": true,
       "source": "curriculum-bank",
@@ -2196,7 +2196,7 @@
         "D": "Four polypeptide subunits ($2\\alpha$ and $2\\beta$ chains), each associated with an iron-containing heme prosthetic group"
       },
       "correctAnswer": "D",
-      "explanation": "Quaternary protein structure involves multiple folded polypeptide subunits. Hemoglobin is a tetramer of two $alpha$-globin and two $\beta$-globin chains, binding up to four $O_2$ molecules via iron heme groups.",
+      "explanation": "Quaternary protein structure involves multiple folded polypeptide subunits. Hemoglobin is a tetramer of two $alpha$-globin and two $\\beta$-globin chains, binding up to four $O_2$ molecules via iron heme groups.",
       "difficulty": "board_exam",
       "verified": true,
       "source": "curriculum-bank",
@@ -6694,7 +6694,7 @@
         "D": "Ethyl alcohol (Ethanol) and Carbon dioxide ($\\text{CO}_2$)"
       },
       "correctAnswer": "D",
-      "explanation": "Alcoholic fermentation by yeast (*Saccharomyces*) decarboxylates pyruvate into acetaldehyde, which is reduced to ethanol ($\text{C}_2\text{H}_5\text{OH}$) while releasing $\text{CO}_2$ and regenerating $NAD^+$.",
+      "explanation": "Alcoholic fermentation by yeast (*Saccharomyces*) decarboxylates pyruvate into acetaldehyde, which is reduced to ethanol ($\\ext{C}_2\\ext{H}_5\\ext{OH}$) while releasing $\\ext{CO}_2$ and regenerating $NAD^+$.",
       "difficulty": "medium",
       "verified": true,
       "source": "curriculum-bank",
@@ -6760,7 +6760,7 @@
         "D": "Pyruvate"
       },
       "correctAnswer": "C",
-      "explanation": "Molecular oxygen acts as the final electron acceptor in the electron transport chain, combining with electrons and protons ($H^+$) to form water ($\text{H}_2\text{O}$).",
+      "explanation": "Molecular oxygen acts as the final electron acceptor in the electron transport chain, combining with electrons and protons ($H^+$) to form water ($\\ext{H}_2\\ext{O}$).",
       "difficulty": "hard",
       "verified": true,
       "source": "curriculum-bank",
@@ -6870,7 +6870,7 @@
         "D": "Lactic acid"
       },
       "correctAnswer": "D",
-      "explanation": "Under anaerobic hypoxia, muscle cells perform lactic acid fermentation: lactate dehydrogenase reduces pyruvate to lactic acid to regenerate $\text{NAD}^+$ for glycolysis.",
+      "explanation": "Under anaerobic hypoxia, muscle cells perform lactic acid fermentation: lactate dehydrogenase reduces pyruvate to lactic acid to regenerate $\\ext{NAD}^+$ for glycolysis.",
       "difficulty": "easy",
       "verified": true,
       "source": "curriculum-bank",
@@ -6958,7 +6958,7 @@
         "D": "Acetyl-CoA, releasing $1\\text{ CO}_2$ and $1\\text{ NADH}$"
       },
       "correctAnswer": "D",
-      "explanation": "In the link reaction (oxidative decarboxylation), pyruvate dehydrogenase converts pyruvate ($3C$) into Acetyl-CoA ($2C$), releasing $\text{CO}_2$ and reducing $\text{NAD}^+$ to $\text{NADH}$.",
+      "explanation": "In the link reaction (oxidative decarboxylation), pyruvate dehydrogenase converts pyruvate ($3C$) into Acetyl-CoA ($2C$), releasing $\\ext{CO}_2$ and reducing $\\ext{NAD}^+$ to $\\ext{NADH}$.",
       "difficulty": "medium",
       "verified": true,
       "source": "curriculum-bank",
@@ -7024,7 +7024,7 @@
         "D": "Plastoquinone"
       },
       "correctAnswer": "C",
-      "explanation": "Electrons energized at PSI pass through ferredoxin to NADP+ reductase, reducing $\text{NADP}^+ + 2e^- + H^+ \\rightarrow \\text{NADPH}$, which provides high-energy electrons for the dark reactions.",
+      "explanation": "Electrons energized at PSI pass through ferredoxin to NADP+ reductase, reducing $\\ext{NADP}^+ + 2e^- + H^+ \\rightarrow \\text{NADPH}$, which provides high-energy electrons for the dark reactions.",
       "difficulty": "board_exam",
       "verified": true,
       "source": "curriculum-bank",
@@ -7090,7 +7090,7 @@
         "D": "Uric acid crystals"
       },
       "correctAnswer": "B",
-      "explanation": "In yeast fermentation, pyruvate decarboxylase converts pyruvate to acetaldehyde (releasing $\text{CO}_2$), which alcohol dehydrogenase reduces to ethanol using NADH.",
+      "explanation": "In yeast fermentation, pyruvate decarboxylase converts pyruvate to acetaldehyde (releasing $\\ext{CO}_2$), which alcohol dehydrogenase reduces to ethanol using NADH.",
       "difficulty": "easy",
       "verified": true,
       "source": "curriculum-bank",
@@ -7156,7 +7156,7 @@
         "D": "Amylase"
       },
       "correctAnswer": "A",
-      "explanation": "RuBisCO is the primary carbon-fixing enzyme in photosynthetic stroma, carboxylating RuBP ($5C$) with $\text{CO}_2$ to generate an unstable $6C$ intermediate that splits into two 3-PGA ($3C$) molecules.",
+      "explanation": "RuBisCO is the primary carbon-fixing enzyme in photosynthetic stroma, carboxylating RuBP ($5C$) with $\\ext{CO}_2$ to generate an unstable $6C$ intermediate that splits into two 3-PGA ($3C$) molecules.",
       "difficulty": "medium",
       "verified": true,
       "source": "curriculum-bank",
@@ -7200,7 +7200,7 @@
         "D": "$2\\text{H}_2\\text{O} \\rightarrow 2\\text{OH}^- + 2\\text{H}^+$"
       },
       "correctAnswer": "C",
-      "explanation": "Photolysis of two water molecules generates 4 protons ($H^+$) in the thylakoid lumen, 4 electrons ($e^-$) to replace those lost by P680, and one molecule of released oxygen gas ($\text{O}_2$).",
+      "explanation": "Photolysis of two water molecules generates 4 protons ($H^+$) in the thylakoid lumen, 4 electrons ($e^-$) to replace those lost by P680, and one molecule of released oxygen gas ($\\ext{O}_2$).",
       "difficulty": "hard",
       "verified": true,
       "source": "curriculum-bank",
@@ -7464,7 +7464,7 @@
         "D": "Remains strictly unaffected by temperature"
       },
       "correctAnswer": "A",
-      "explanation": "Blackman's Law states that when a process depends on multiple factors (light, $\text{CO}_2$, temperature), the rate is governed by the factor that is nearest its minimal physiological limit.",
+      "explanation": "Blackman's Law states that when a process depends on multiple factors (light, $\\ext{CO}_2$, temperature), the rate is governed by the factor that is nearest its minimal physiological limit.",
       "difficulty": "board_exam",
       "verified": true,
       "source": "curriculum-bank",
@@ -7486,7 +7486,7 @@
         "D": "Both processes release oxygen gas into the atmosphere"
       },
       "correctAnswer": "B",
-      "explanation": "Photosynthesis synthesizes organic sugars by reducing $\text{CO}_2$ using solar photon energy (anabolic), while cellular respiration oxidizes sugars into $\text{CO}_2$ and $\text{H}_2\text{O}$ to produce ATP (catabolic).",
+      "explanation": "Photosynthesis synthesizes organic sugars by reducing $\\ext{CO}_2$ using solar photon energy (anabolic), while cellular respiration oxidizes sugars into $\\ext{CO}_2$ and $\\ext{H}_2\\ext{O}$ to produce ATP (catabolic).",
       "difficulty": "board_exam",
       "verified": true,
       "source": "curriculum-bank",
@@ -7508,7 +7508,7 @@
         "D": "ATP is frozen into crystal ice"
       },
       "correctAnswer": "C",
-      "explanation": "Hydrolysis of ATP's terminal phosphoanhydride bond ($\text{ATP} + \text{H}_2\text{O} \rightarrow \text{ADP} + \text{P}_i$) releases ~7.3 kcal/mol of standard free energy to drive endergonic cellular work.",
+      "explanation": "Hydrolysis of ATP's terminal phosphoanhydride bond ($\\ext{ATP} + \\ext{H}_2\\ext{O} \\ightarrow \\ext{ADP} + \\ext{P}_i$) releases ~7.3 kcal/mol of standard free energy to drive endergonic cellular work.",
       "difficulty": "easy",
       "verified": true,
       "source": "curriculum-bank",
@@ -7574,7 +7574,7 @@
         "D": "Cytochrome oxidase"
       },
       "correctAnswer": "B",
-      "explanation": "RuBisCO fixes atmospheric $\text{CO}_2$ onto the 5-carbon acceptor ribulose-1,5-bisphosphate (RuBP) to yield 3-phosphoglycerate (3-PGA).",
+      "explanation": "RuBisCO fixes atmospheric $\\ext{CO}_2$ onto the 5-carbon acceptor ribulose-1,5-bisphosphate (RuBP) to yield 3-phosphoglycerate (3-PGA).",
       "difficulty": "medium",
       "verified": true,
       "source": "curriculum-bank",
@@ -7618,7 +7618,7 @@
         "D": "Ethanol (ethyl alcohol) and Carbon dioxide ($\\text{CO}_2$)"
       },
       "correctAnswer": "D",
-      "explanation": "Yeast decarboxylates pyruvate to acetaldehyde (releasing $\text{CO}_2$, which rises dough) and reduces acetaldehyde to ethanol using NADH.",
+      "explanation": "Yeast decarboxylates pyruvate to acetaldehyde (releasing $\\ext{CO}_2$, which rises dough) and reduces acetaldehyde to ethanol using NADH.",
       "difficulty": "medium",
       "verified": true,
       "source": "curriculum-bank",
@@ -7640,7 +7640,7 @@
         "D": "$12\\text{ FADH}_2$ and zero carbon dioxide"
       },
       "correctAnswer": "A",
-      "explanation": "Because one glucose produces two acetyl-CoA molecules, two turns of the Krebs cycle generate $6\text{ NADH} + 2\text{ FADH}_2 + 2\text{ ATP} + 4\text{ CO}_2$.",
+      "explanation": "Because one glucose produces two acetyl-CoA molecules, two turns of the Krebs cycle generate $6\\ext{ NADH} + 2\\ext{ FADH}_2 + 2\\ext{ ATP} + 4\\ext{ CO}_2$.",
       "difficulty": "hard",
       "verified": true,
       "source": "curriculum-bank",
@@ -7706,7 +7706,7 @@
         "D": "The rate of photosynthetic carbon dioxide uptake equals the rate of respiratory carbon dioxide evolution (Net gas exchange is zero)"
       },
       "correctAnswer": "D",
-      "explanation": "At the compensation point (low light intensity at twilight), the rate of $\text{CO}_2$ consumed by photosynthesis exactly matches the rate of $\text{CO}_2$ released by cellular respiration.",
+      "explanation": "At the compensation point (low light intensity at twilight), the rate of $\\ext{CO}_2$ consumed by photosynthesis exactly matches the rate of $\\ext{CO}_2$ released by cellular respiration.",
       "difficulty": "board_exam",
       "verified": true,
       "source": "curriculum-bank",
@@ -8566,7 +8566,7 @@
         "D": "It creates toxic acid byproducts in root tips"
       },
       "correctAnswer": "A",
-      "explanation": "Stomata must open to allow $\text{CO}_2$ entry for photosynthesis, unavoidably losing water vapor. This transpiration pull is essential for pulling water and soil minerals upwards and cooling leaves.",
+      "explanation": "Stomata must open to allow $\\ext{CO}_2$ entry for photosynthesis, unavoidably losing water vapor. This transpiration pull is essential for pulling water and soil minerals upwards and cooling leaves.",
       "difficulty": "board_exam",
       "verified": true,
       "source": "curriculum-bank",
@@ -10748,7 +10748,7 @@
         "D": "Organic archaeological and biological fossil specimens up to approximately $50,000-60,000\\text{ years}$ old"
       },
       "correctAnswer": "D",
-      "explanation": "Radiocarbon dating measures the remaining $^{14}\text{C}$ activity in once-living organic remains, providing accurate absolute ages for specimens up to ~50,000–60,000 years.",
+      "explanation": "Radiocarbon dating measures the remaining $^{14}\\ext{C}$ activity in once-living organic remains, providing accurate absolute ages for specimens up to ~50,000–60,000 years.",
       "difficulty": "hard",
       "verified": true,
       "source": "curriculum-bank",

@@ -42,7 +42,8 @@ function sanitizeMCQString(input) {
   // 5. Repair unintended literal CR/LF (\r, \n) before common LaTeX keywords
   s = s.replace(/[\r\n](ight|ho|ightarrow|u\{)/g, '\\$1');
 
-  // 6. Clean any remaining non-printable control characters (< 0x20) except standard whitespace (\n, \r, \t)
+  // 6. Clean any replacement characters (\uFFFD) and non-printable control characters (< 0x20) except standard whitespace (\n, \r, \t)
+  s = s.replace(/\uFFFD/g, '');
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
   return s;
@@ -93,13 +94,16 @@ function sanitizeQuestionBank(bank) {
 
 function safeWriteQuestionBank(filePath, bankData) {
   const cleanBank = sanitizeQuestionBank(bankData);
-  const jsonContent = JSON.stringify(cleanBank, null, 2);
+  const jsonContent = JSON.stringify(cleanBank, null, 2) + '\n';
 
-  // Validate parsing before writing to disk
+  // Validate parsing and strict UTF-8 serialization before writing to disk
   try {
-    JSON.parse(jsonContent);
+    const reparsed = JSON.parse(jsonContent);
+    const buf = Buffer.from(jsonContent, 'utf8');
+    const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+    utf8Decoder.decode(buf);
   } catch (err) {
-    throw new Error(`Sanitized bank failed JSON.parse validation: ${err.message}`);
+    throw new Error(`Sanitized bank failed JSON.parse / UTF-8 validation: ${err.message}`);
   }
 
   const dir = path.dirname(filePath);
@@ -107,7 +111,7 @@ function safeWriteQuestionBank(filePath, bankData) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  fs.writeFileSync(filePath, jsonContent, 'utf-8');
+  fs.writeFileSync(filePath, jsonContent, 'utf8');
   console.log(`✓ Safely wrote validated question bank to: ${filePath}`);
 }
 
