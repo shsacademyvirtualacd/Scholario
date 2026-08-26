@@ -66,7 +66,7 @@ function sanitizeStoredMCQ(q) {
     },
     correctAnswer: (['A', 'B', 'C', 'D'].includes(q.correctAnswer) ? q.correctAnswer : 'A'),
     explanation: sanitizeMCQString(q.explanation ?? '').trim(),
-    difficulty: (['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium'),
+    difficulty: (['easy', 'medium', 'hard', 'board_exam'].includes(q.difficulty) ? q.difficulty : 'medium'),
     verified: Boolean(q.verified ?? true),
     source: sanitizeMCQString(q.source || 'curriculum-bank').trim(),
     createdAt: q.createdAt || new Date().toISOString(),
