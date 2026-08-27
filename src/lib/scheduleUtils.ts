@@ -335,12 +335,25 @@ export function getLinkAvailabilityStatus(
   sessionLinkUrl?: string | null,
   targetSessionDate?: string
 ): LinkAvailabilityStatus {
-  const link = (sessionLinkUrl !== undefined ? sessionLinkUrl : slot?.room_or_link)?.trim();
-  if (!link) {
+  // Check session-specific link first, fallback to slot's room_or_link
+  const effectiveLink = (sessionLinkUrl && sessionLinkUrl.trim().length > 0)
+    ? sessionLinkUrl.trim()
+    : (slot?.room_or_link && slot.room_or_link.trim().length > 0 ? slot.room_or_link.trim() : null);
+
+  if (!effectiveLink) {
     return {
       isAvailable: false,
       status: 'no_link',
-      message: 'No link added',
+      message: 'Class link not available yet',
+    };
+  }
+
+  // If class is cancelled
+  if (slot.is_cancelled) {
+    return {
+      isAvailable: false,
+      status: 'ended',
+      message: 'Class cancelled',
     };
   }
 

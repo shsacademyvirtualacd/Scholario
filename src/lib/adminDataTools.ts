@@ -7,7 +7,7 @@ const { Pool } = pg;
 const DB_URL =
   process.env.SUPABASE_DB_URL ||
   process.env.DATABASE_URL ||
-  'postgresql://postgres:Marcelmmm23155@@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres';
+  '';
 
 let pgPool: pg.Pool | null = null;
 

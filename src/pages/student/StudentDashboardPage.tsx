@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookMarked, CheckCircle2, ChevronRight, ArrowRight,
-  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, Check, X, XCircle,
+  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, VideoOff, Check, X, XCircle,
   ClipboardCheck
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
@@ -167,6 +167,7 @@ const StudentLiveLink: React.FC<{
   const [isMarking, setIsMarking] = useState(false);
   const [localAttendance, setLocalAttendance] = useState<Attendance | null>(propAttendance || null);
   const [sessionLinkUrl, setSessionLinkUrl] = useState<string | null>(null);
+  const [isLoadingLink, setIsLoadingLink] = useState<boolean>(true);
 
   const effectiveSessionDate = sessionDate || (
     slot.day_of_week === pktnow.dayIndex
@@ -175,12 +176,18 @@ const StudentLiveLink: React.FC<{
   );
 
   const fetchSessionLink = async () => {
-    if (!slot?.id || !effectiveSessionDate) return;
+    if (!slot?.id || !effectiveSessionDate) {
+      setIsLoadingLink(false);
+      return;
+    }
     try {
       const rec = await getSessionLink(slot.id, effectiveSessionDate);
       setSessionLinkUrl(rec?.link_url || null);
     } catch (err) {
       console.warn('[StudentLiveLink] fetch link err:', err);
+      setSessionLinkUrl(null);
+    } finally {
+      setIsLoadingLink(false);
     }
   };
 
@@ -189,6 +196,7 @@ const StudentLiveLink: React.FC<{
   }, [propAttendance]);
 
   useEffect(() => {
+    setIsLoadingLink(true);
     fetchSessionLink();
   }, [slot?.id, effectiveSessionDate]);
 
@@ -206,8 +214,18 @@ const StudentLiveLink: React.FC<{
   }, []);
 
   const isOngoing = isSlotOngoing(slot, pktnow);
-  const linkStatus = getLinkAvailabilityStatus(slot, pktnow, sessionLinkUrl, effectiveSessionDate);
-  const hasLink = Boolean(sessionLinkUrl && sessionLinkUrl.trim().length > 0);
+  const effectiveLink = (sessionLinkUrl && sessionLinkUrl.trim().length > 0)
+    ? sessionLinkUrl.trim()
+    : (slot.room_or_link && slot.room_or_link.trim().length > 0 ? slot.room_or_link.trim() : null);
+
+  const linkStatus = getLinkAvailabilityStatus(slot, pktnow, effectiveLink, effectiveSessionDate);
+  const hasLink = Boolean(effectiveLink);
+
+  const targetUrl = effectiveLink
+    ? (effectiveLink.startsWith('http://') || effectiveLink.startsWith('https://')
+        ? effectiveLink
+        : `https://${effectiveLink}`)
+    : '';
 
   const handleMarkAttendance = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -235,13 +253,18 @@ const StudentLiveLink: React.FC<{
     }
   };
 
-  const handleJoinClass = async () => {
+  const handleJoinClick = () => {
+    // If student attendance is not yet marked and class is ongoing, trigger background attendance marking
     if (isOngoing && (!localAttendance || localAttendance.status === 'absent')) {
       handleMarkAttendance();
     }
-    if (linkStatus.isAvailable && sessionLinkUrl) {
-      const url = sessionLinkUrl.startsWith('http') ? sessionLinkUrl : `https://${sessionLinkUrl}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
+    // Also perform window.open fallback if anchor is clicked via keyboard or specialized context
+    if (targetUrl) {
+      try {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.warn('Window open fallback error:', err);
+      }
     }
   };
 
@@ -301,14 +324,24 @@ const StudentLiveLink: React.FC<{
         );
       })()}
 
-      {/* Video link */}
-      {linkStatus.isAvailable ? (
-        <button
-          onClick={handleJoinClass}
-          className="flex items-center justify-center gap-1.5 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-xs interactive"
+      {/* Video link / Status indicators / Missing link fallback */}
+      {isLoadingLink ? (
+        <div className="flex items-center justify-center gap-1.5 w-full bg-gray-50 border border-gray-200 text-gray-400 text-[11px] font-medium py-2 rounded-md animate-pulse">
+          <Clock size={12} />
+          <span>Checking class link...</span>
+        </div>
+      ) : linkStatus.isAvailable && targetUrl ? (
+        <a
+          href={targetUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleJoinClick}
+          className="flex items-center justify-center gap-1.5 w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold py-2 rounded-md transition-all hover:scale-[1.02] shadow-xs interactive cursor-pointer"
+          title={`Join Live Class: ${targetUrl}`}
         >
-          <Video size={13} /> Join Live Class
-        </button>
+          <Video size={13} />
+          <span>Join Live Class</span>
+        </a>
       ) : linkStatus.status === 'locked' ? (
         <div 
           className="flex items-center justify-center gap-1.5 w-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold py-1.5 px-2 rounded-md"
@@ -322,12 +355,20 @@ const StudentLiveLink: React.FC<{
           <Clock size={12} className="text-gray-400 shrink-0" />
           <span>Class Session Ended</span>
         </div>
-      ) : hasLink ? (
+      ) : !hasLink ? (
+        <div 
+          className="flex items-center justify-center gap-1.5 w-full bg-amber-50/70 border border-dashed border-amber-200 text-amber-800 text-[11px] font-semibold py-1.5 px-2 rounded-md"
+          title="The teacher has not added a live class link for this session yet. It will appear here once added."
+        >
+          <VideoOff size={12} className="text-amber-600 shrink-0" />
+          <span>Class link not available yet</span>
+        </div>
+      ) : (
         <div className="flex items-center justify-center gap-1.5 w-full bg-gray-50 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
           <Lock size={12} className="text-gray-400 shrink-0" />
           <span>Unlocks 10m Before Class</span>
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

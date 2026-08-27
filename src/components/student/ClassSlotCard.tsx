@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Video, MapPin, Clock, Lock, CheckCircle2, Check, XCircle, X } from 'lucide-react';
+import { Video, VideoOff, Clock, Lock, CheckCircle2, Check, XCircle, X } from 'lucide-react';
 import StatusPill from '../ui/StatusPill';
 import { calcDuration, formatTime12h, getPKTNow, getLinkAvailabilityStatus, isSlotOngoing, getClosestDateForDayOfWeek } from '../../lib/scheduleUtils';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -56,7 +56,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     onAny: fetchLink,
   });
 
-  const effectiveLink = propSessionLinkUrl !== undefined ? propSessionLinkUrl : fetchedLink;
+  const rawEffectiveLink = propSessionLinkUrl !== undefined ? propSessionLinkUrl : (fetchedLink || slot?.room_or_link || null);
+  const effectiveLink = (rawEffectiveLink && rawEffectiveLink.trim().length > 0) ? rawEffectiveLink.trim() : null;
 
   // Re-evaluate PKT clock and link availability every 5 seconds
   useEffect(() => {
@@ -113,8 +114,14 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
 
   // 10-minute timing restriction status
   const linkStatus = getLinkAvailabilityStatus(slot, pktnow, effectiveLink, effectiveSessionDate);
-  const hasLink = Boolean(effectiveLink && effectiveLink.trim().length > 0);
+  const hasLink = Boolean(effectiveLink);
   const isOngoing = isSlotOngoing(slot, pktnow);
+
+  const targetUrl = effectiveLink
+    ? (effectiveLink.startsWith('http://') || effectiveLink.startsWith('https://')
+        ? effectiveLink
+        : `https://${effectiveLink}`)
+    : '';
 
   const handleMarkAttendance = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -143,13 +150,16 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     }
   };
 
-  const handleJoinClass = async () => {
+  const handleJoinClass = () => {
     if (isOngoing && (!localAttendance || localAttendance.status === 'absent')) {
       handleMarkAttendance();
     }
-    if (linkStatus.isAvailable && effectiveLink) {
-      const url = effectiveLink.startsWith('http') ? effectiveLink : `https://${effectiveLink}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
+    if (targetUrl) {
+      try {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.warn('Window open fallback error:', err);
+      }
     }
   };
 
@@ -262,14 +272,18 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
         })()}
 
         {/* Location / Join links with 10m timing restriction */}
-        {linkStatus.isAvailable ? (
-          <button
+        {linkStatus.isAvailable && targetUrl ? (
+          <a
+            href={targetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={handleJoinClass}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs hover:scale-105 interactive"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white transition-all shadow-xs hover:scale-105 interactive cursor-pointer"
+            title={`Open live class: ${targetUrl}`}
           >
             <Video size={13} className="text-white" />
             <span>Join Class</span>
-          </button>
+          </a>
         ) : linkStatus.status === 'locked' ? (
           <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border bg-amber-50 border-amber-200 text-amber-700" title="Link opens 10 minutes before class start time">
             <Lock size={12} className="text-amber-600 shrink-0" />
@@ -280,15 +294,15 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
             <Clock size={12} className="text-gray-400 shrink-0" />
             <span>Session Ended</span>
           </div>
-        ) : hasLink ? (
+        ) : !hasLink ? (
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-dashed border-amber-200 bg-amber-50/70 text-amber-800" title="The teacher has not added a live class link for this session yet">
+            <VideoOff size={12} className="text-amber-600 shrink-0" />
+            <span className="truncate max-w-[150px]">Class link not available yet</span>
+          </div>
+        ) : (
           <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500" title="Link accessible 10 minutes before class">
             <Lock size={12} className="text-gray-400 shrink-0" />
             <span>Unlocks 10m before</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-[#F5F5F5] border-[#E5E5E5] text-[#525252]">
-            <MapPin size={13} className="text-[#737373]" />
-            <span className="truncate max-w-[120px]">TBD</span>
           </div>
         )}
         

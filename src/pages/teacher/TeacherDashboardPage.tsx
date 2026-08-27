@@ -966,6 +966,15 @@ export const TeacherDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Per-session Live Link for this active class slot */}
+                <div className="w-full max-w-md">
+                  <LiveLinkEditor 
+                    slot={activeTodaySlot} 
+                    sessionDate={todayDateStr} 
+                    teacherId={profile?.id} 
+                  />
+                </div>
+
                 {/* Real-time Status Counts for Today's Class */}
                 {rosterStudents.length > 0 && (
                   <div className="space-y-2 pt-2">
