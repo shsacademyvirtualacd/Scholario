@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 
 interface MathTextProps {
   text?: string | null;
@@ -152,7 +153,10 @@ export const MathText: React.FC<MathTextProps> = React.memo(({ text, className =
         }
 
         const isBlock = seg.type === 'block-math';
-        const html = renderKatexToString(seg.content, isBlock);
+        const rawHtml = renderKatexToString(seg.content, isBlock);
+        // Sanitize the HTML rendered by KaTeX. Although KaTeX is generally safe, this provides defense-in-depth against XSS.
+        // We explicitly enable MathML to ensure correct rendering if output uses MathML, and HTML for the standard KaTeX markup.
+        const html = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { mathMl: true, html: true } });
 
         if (isBlock) {
           return (
