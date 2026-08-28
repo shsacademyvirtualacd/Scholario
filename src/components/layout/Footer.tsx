@@ -150,7 +150,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
       <div className="border-t border-[#1F1F1F]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-[#525252]">
-            © 2025 Scholario. All rights reserved. Made with ❤️ in Pakistan.
+            © 2026 Scholario. All rights reserved. Made with ❤️ in Pakistan.
           </div>
           <div className="flex items-center gap-2">
             {[

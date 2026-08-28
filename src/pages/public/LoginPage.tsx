@@ -162,7 +162,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Bottom */}
-        <p className="text-xs text-[#404040]">© 2025 Scholario · Made in Pakistan 🇵🇰</p>
+        <p className="text-xs text-[#404040]">© 2026 Scholario · Made in Pakistan 🇵🇰</p>
       </div>
     </div>
   );
