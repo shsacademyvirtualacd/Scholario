@@ -977,12 +977,12 @@ function diffCalendarDays(dateA: string, dateB: string): number {
 /** Compute live attendance streak metrics for a student based strictly on verified attendance */
 export function computeAttendanceStreak(records: Attendance[]): {
   currentStreak: number;
-  personalBest: number;
+  longestStreak: number;
   last7Days: boolean[];
 } {
   const emptyResult = {
     currentStreak: 0,
-    personalBest: 0,
+    longestStreak: 0,
     last7Days: [false, false, false, false, false, false, false],
   };
 
@@ -1006,7 +1006,7 @@ export function computeAttendanceStreak(records: Attendance[]): {
   }
 
   // 2. Compute Personal Best: max consecutive calendar day streak across all history
-  let personalBest = 1;
+  let longestStreak = 1;
   let runningPBStreak = 1;
   for (let i = 1; i < sortedAttendedDates.length; i++) {
     const diff = diffCalendarDays(sortedAttendedDates[i - 1], sortedAttendedDates[i]);
@@ -1015,8 +1015,8 @@ export function computeAttendanceStreak(records: Attendance[]): {
     } else {
       runningPBStreak = 1;
     }
-    if (runningPBStreak > personalBest) {
-      personalBest = runningPBStreak;
+    if (runningPBStreak > longestStreak) {
+      longestStreak = runningPBStreak;
     }
   }
 
@@ -1055,7 +1055,7 @@ export function computeAttendanceStreak(records: Attendance[]): {
     last7Days.push(attendedDatesSet.has(targetDateStr));
   }
 
-  return { currentStreak, personalBest, last7Days };
+  return { currentStreak, longestStreak, last7Days };
 }
 
 /** Admin / Teacher: bulk upsert attendance records for a session */

@@ -858,7 +858,7 @@ const StudentDashboardPage: React.FC = () => {
                   ))}
                 </div>
                 <span className="text-[10px] text-[#737373] font-bold">
-                  {streakMetrics.personalBest > 0 ? `PB: ${streakMetrics.personalBest}d` : 'PB: —'}
+                  {streakMetrics.longestStreak > 0 ? `PB: ${streakMetrics.longestStreak}d` : 'PB: —'}
                 </span>
               </div>
             </div>
