@@ -3,8 +3,7 @@ import { User, Phone, Mail, Award, Book, Edit3, Check, X, Camera, Loader2 } from
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
-import { updateProfile, getEnrollmentsForStudent, getFeeStatus } from '../../lib/db';
-import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { updateProfile, getEnrollmentsForStudent, getFeeStatus, getEnrolledSubjectsForStudent } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
 import type { Enrollment } from '../../types';

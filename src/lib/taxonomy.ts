@@ -171,65 +171,6 @@ export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[]
   return gradeList.find((g) => g.grade === grade)?.streams ?? [];
 }
 
-/**
- * @deprecated Import getSubjectsForStream from 'src/lib/db' instead.
- * That version reads authoritative subject names directly from the DB via
- * cachedTaxonomy (stream_subjects → subjects join), eliminating static-string
- * drift. This stub is kept only so that getEnrolledSubjectsForStudent (which
- * calls it internally) continues to build until it is separately migrated.
- */
-export function getSubjectsForStream(grade: string, streamName: string): string[] {
-  if (typeof console !== 'undefined') {
-    console.warn(
-      '[taxonomy] getSubjectsForStream called from taxonomy.ts (static shadow data). ' +
-      'Import from db.ts for the DB-backed version.'
-    );
-  }
-  const g = GRADES.find((gr) => gr.grade === grade);
-  if (!g) return [];
-  if (!streamName) return g.commonSubjects || [];
-
-  const norm = streamName.trim().toLowerCase();
-  const s = g.streams.find(
-    (st) =>
-      st.name.toLowerCase() === norm ||
-      norm.includes(st.name.toLowerCase()) ||
-      st.name.toLowerCase().includes(norm)
-  );
-  if (s) return s.subjects;
-
-  // Fallback to first stream or common subjects if stream not recognized
-  return g.streams[0]?.subjects ?? g.commonSubjects ?? [];
-}
-
-/** Derive exact enrolled taxonomy subjects for a student profile and enrollments */
-export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[]): string[] {
-  let grade = '10';
-  let streamName = '';
-
-  if (enrollments && enrollments.length > 0) {
-    const off = enrollments[0].offering;
-    if (off?.class?.grade || off?.grade) {
-      grade = off?.class?.grade || off?.grade;
-    }
-    // Check if enrollment or profile specifies stream
-    const foundStream = enrollments.find((e) => e.stream)?.stream || off?.stream || off?.class?.stream;
-    if (foundStream) streamName = foundStream;
-  }
-
-  if (profile) {
-    if ((!grade || grade === '10') && (profile.class?.grade || profile.grade)) {
-      grade = profile.class?.grade || profile.grade;
-    }
-    if (!streamName) {
-      streamName = profile.stream_obj?.name || profile.stream || '';
-    }
-  }
-
-  const subjects = getSubjectsForStream(grade, streamName);
-  return Array.from(new Set(subjects)).sort();
-}
-
 /** Resolves the human-readable board name for a student (e.g. 'Federal Board (FBISE)' or 'Sindh Board') */
 export function getStudentBoardLabel(
   student: {
