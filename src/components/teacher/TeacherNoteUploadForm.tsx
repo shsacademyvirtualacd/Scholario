@@ -8,7 +8,7 @@ import { getStreamsForGrade, GRADES } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 
 interface TeacherNoteUploadFormProps {
-  offerings: ClassOffering[];
+  offerings: (ClassOffering & { class?: { grade?: string, board_id?: string } })[];
   onUpload: (data: {
     offering_id: string;
     chapter_name: string;
@@ -35,7 +35,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
   const [taxonomy, setTaxonomy] = useState<any>(null);
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>(
-    initialGrade && initialGrade !== 'all' ? initialGrade : (offerings[0]?.grade || (offerings[0] as any)?.class?.grade || '10')
+    initialGrade && initialGrade !== 'all' ? initialGrade : (offerings[0]?.grade || offerings[0]?.class?.grade || '10')
   );
   const [selectedStream, setSelectedStream] = useState<string>(
     initialStream && initialStream !== 'all' ? initialStream : 'all'
@@ -85,13 +85,13 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
   // Scope offerings by selected Board, Grade, and Stream
   const scopedOfferings = offerings.filter((offering) => {
     const offGrade = String(
-      offering.grade || (offering as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.grade || ''
+      offering.grade || offering.class?.grade || taxonomy?.classes?.find((c: any) => c.id === offering.class_id)?.grade || ''
     );
     if (selectedGrade && selectedGrade !== 'all' && offGrade !== String(selectedGrade)) {
       return false;
     }
 
-    const offBoard = offering.board || (offering as any).class?.board_id || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.board_id || 'fbise';
+    const offBoard = offering.board || offering.class?.board_id || taxonomy?.classes?.find((c: any) => c.id === offering.class_id)?.board_id || 'fbise';
     if (selectedBoard && selectedBoard !== 'all' && offBoard !== selectedBoard) {
       return false;
     }
@@ -181,7 +181,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
 
       setUploadPct(100);
       setDone(true);
-      await onUpload(createdNote as any);
+      await onUpload(createdNote);
       toast.success(`"${title.trim()}" uploaded successfully.`);
     } catch (err: any) {
       console.error('Upload error:', err);
@@ -340,7 +340,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
           </option>
           {scopedOfferings.map((offering) => {
             const subjName = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || 'Class';
-            const gr = offering.grade || (offering as any).class?.grade || '10';
+            const gr = offering.grade || offering.class?.grade || '10';
             const st = typeof offering.stream === 'string' ? offering.stream : offering.stream?.name || 'All Streams';
             return (
               <option key={offering.id} value={offering.id}>
