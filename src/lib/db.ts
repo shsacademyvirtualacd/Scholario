@@ -3054,6 +3054,8 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
     return g ? (g.streams[0]?.subjects || g.commonSubjects || []) : [];
   }
 
+  const subjectMap = new Map(cachedTaxonomy.subjects.map((sub: any) => [sub.id, sub.name]));
+
   if (!streamName) {
     // "All Streams" — return every subject across all streams for this grade, deduplicated
     const gradeStreamIds = new Set(
@@ -3063,7 +3065,7 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
     );
     const subjects = cachedTaxonomy.streamSubjects
       .filter((ss: any) => gradeStreamIds.has(ss.stream_id))
-      .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+      .map((ss: any) => subjectMap.get(ss.subject_id))
       .filter(Boolean) as string[];
 
     if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
@@ -3086,7 +3088,7 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
   if (stream) {
     const subjects = cachedTaxonomy.streamSubjects
       .filter((ss: any) => ss.stream_id === stream.id)
-      .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+      .map((ss: any) => subjectMap.get(ss.subject_id))
       .filter(Boolean) as string[];
     if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
   }
