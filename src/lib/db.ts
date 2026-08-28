@@ -2957,6 +2957,7 @@ export async function getTaxonomy(): Promise<{
   streams: StreamEntry[];
   subjects: SubjectEntry[];
   streamSubjects: { stream_id: string; subject_id: string }[];
+  subjectMap?: Map<string, string>;
 }> {
   if (cachedTaxonomy) return cachedTaxonomy;
 
@@ -3018,12 +3019,18 @@ export async function getTaxonomy(): Promise<{
   const subjectsData: SubjectEntry[] = [...(sub.data || [])];
   const streamSubjectsData = [...(ss.data || [])];
 
+  const subjectMap = new Map<string, string>();
+  for (const subject of subjectsData) {
+    subjectMap.set(subject.id, subject.name);
+  }
+
   cachedTaxonomy = {
     boards: boardsList,
     classes: classesData,
     streams: streamsData,
     subjects: subjectsData,
     streamSubjects: streamSubjectsData,
+    subjectMap,
   };
   return cachedTaxonomy;
 }
@@ -3063,7 +3070,11 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
     );
     const subjects = cachedTaxonomy.streamSubjects
       .filter((ss: any) => gradeStreamIds.has(ss.stream_id))
-      .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+      .map((ss: any) =>
+        cachedTaxonomy.subjectMap
+          ? cachedTaxonomy.subjectMap.get(ss.subject_id)
+          : cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name
+      )
       .filter(Boolean) as string[];
 
     if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
@@ -3086,7 +3097,11 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
   if (stream) {
     const subjects = cachedTaxonomy.streamSubjects
       .filter((ss: any) => ss.stream_id === stream.id)
-      .map((ss: any) => cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+      .map((ss: any) =>
+        cachedTaxonomy.subjectMap
+          ? cachedTaxonomy.subjectMap.get(ss.subject_id)
+          : cachedTaxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name
+      )
       .filter(Boolean) as string[];
     if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
   }
