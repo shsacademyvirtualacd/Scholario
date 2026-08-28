@@ -1089,9 +1089,13 @@ export async function upsertAttendanceBatch(records: Array<{
     .upsert(recordsWithTimestamp, { onConflict: 'student_id,slot_id,session_date' });
     
   if (error) {
-    console.warn('[upsertAttendanceBatch] batch upsert failed, executing sequential updates:', error);
-    for (const rec of recordsWithTimestamp) {
-      await recordAttendance(rec).catch(console.error);
+    console.warn('[upsertAttendanceBatch] batch upsert failed, executing chunked updates:', error);
+    const chunkSize = 10;
+    for (let i = 0; i < recordsWithTimestamp.length; i += chunkSize) {
+      const chunk = recordsWithTimestamp.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map(rec => recordAttendance(rec).catch(console.error))
+      );
     }
   }
 }
