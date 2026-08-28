@@ -134,10 +134,12 @@ export const AdminFeesPage: React.FC = () => {
         ? classesList
         : classesList.filter((c) => c.board_id === selectedBoardFilter);
 
-      for (const cls of targetClasses) {
-        const amount = classPrices[cls.id] || 0;
-        await syncPricingToFeeConfigs(cls.id, amount);
-      }
+      await Promise.all(
+        targetClasses.map((cls) => {
+          const amount = classPrices[cls.id] || 0;
+          return syncPricingToFeeConfigs(cls.id, amount);
+        })
+      );
 
       showNotification('All class tuition fee rates saved and synced to database!');
       const updatedClasses = await getClassesWithFeeConfigs();
