@@ -130,7 +130,7 @@ export const AttendancePage: React.FC = () => {
           </div>
           <div className="flex items-center justify-between mt-3 text-[11px] text-[#737373] font-semibold">
             <span>Personal Best</span>
-            <span className="font-bold text-[#111111]">{streakMetrics.personalBest > 0 ? `${streakMetrics.personalBest} days` : '—'}</span>
+            <span className="font-bold text-[#111111]">{streakMetrics.longestStreak > 0 ? `${streakMetrics.longestStreak} days` : '—'}</span>
           </div>
         </div>
       </div>
