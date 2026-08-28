@@ -44,6 +44,7 @@ export interface Profile {
   phone: string | null;
   created_at: string;
   stream?: string | null;
+  grade?: string | null;
   board_id?: string | null;
   class_id?: string | null;
   stream_id?: string | null;
