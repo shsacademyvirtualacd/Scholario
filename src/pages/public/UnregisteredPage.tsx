@@ -598,16 +598,24 @@ export const UnregisteredPage: React.FC = () => {
                     </div>
 
                     <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-3'}>
-                      {streamsForClass.map((s: any) => {
-                        let streamSubjects: string[] = [];
-                        if (Array.isArray(s.subjects) && s.subjects.length > 0) {
-                          streamSubjects = s.subjects;
-                        } else if (taxonomy.streamSubjects) {
-                          streamSubjects = taxonomy.streamSubjects
-                            .filter((ss: any) => ss.stream_id === s.id)
-                            .map((ss: any) => taxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
-                            .filter(Boolean);
+                      {(() => {
+                        const subjectsMap = new Map<string, string>();
+                        if (taxonomy.subjects) {
+                          taxonomy.subjects.forEach((sub: any) => {
+                            subjectsMap.set(sub.id, sub.name);
+                          });
                         }
+
+                        return streamsForClass.map((s: any) => {
+                          let streamSubjects: string[] = [];
+                          if (Array.isArray(s.subjects) && s.subjects.length > 0) {
+                            streamSubjects = s.subjects;
+                          } else if (taxonomy.streamSubjects) {
+                            streamSubjects = taxonomy.streamSubjects
+                              .filter((ss: any) => ss.stream_id === s.id)
+                              .map((ss: any) => subjectsMap.get(ss.subject_id))
+                              .filter(Boolean);
+                          }
                         if (streamSubjects.length === 0 && selectedClassObj) {
                           const boardGrades = getGradesForBoard(selectedBoardId);
                           const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
@@ -645,7 +653,7 @@ export const UnregisteredPage: React.FC = () => {
                             </div>
                           </button>
                         );
-                      })}
+                      })})()}
                     </div>
                   </div>
                 )}
