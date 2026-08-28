@@ -75,10 +75,12 @@ export const PriceManagerPage: React.FC = () => {
         ? classesList 
         : classesList.filter((c) => c.board_id === selectedBoardId);
 
-      for (const cls of targetClasses) {
-        const price = prices[cls.id] || 0;
-        await syncPricingToFeeConfigs(cls.id, price);
-      }
+      await Promise.all(
+        targetClasses.map((cls) => {
+          const price = prices[cls.id] || 0;
+          return syncPricingToFeeConfigs(cls.id, price);
+        })
+      );
 
       triggerNotification('success', 'All class fee rates saved successfully!');
       await loadData();
