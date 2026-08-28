@@ -16,9 +16,12 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
   const isMobile = useMobile();
   const [activeUrl, setActiveUrl] = useState<string>('');
   const [authToken, setAuthToken] = useState<string>('');
+  const [objectUrl, setObjectUrl] = useState<string>('');
   const [loadingUrl, setLoadingUrl] = useState<boolean>(false);
   const [downloading, setDownloading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
+
+  const isPdf = note?.file_type.toLowerCase() === 'pdf';
 
   useEffect(() => {
     let mounted = true;
@@ -26,6 +29,7 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
       if (!note) {
         setActiveUrl('');
         setAuthToken('');
+        setObjectUrl('');
         return;
       }
       setLoadingUrl(true);
@@ -33,8 +37,26 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
       const token = session?.access_token || '';
       if (mounted) {
         setAuthToken(token);
-        const viewUrl = `/api/notes/view/${note.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+        const viewUrl = `/api/notes/view/${note.id}`;
         setActiveUrl(viewUrl);
+
+        if (!isPdf) {
+            // Load image as blob
+            try {
+                const res = await fetch(viewUrl, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    if (mounted) {
+                        setObjectUrl(URL.createObjectURL(blob));
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load image blob", e);
+            }
+        }
+
         setLoadingUrl(false);
       }
     };
@@ -42,12 +64,44 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
     return () => {
       mounted = false;
     };
-  }, [note]);
+  }, [note, isPdf]);
+
+  useEffect(() => {
+    return () => {
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+        }
+    };
+  }, [objectUrl]);
 
 
   if (!note) return null;
 
-  const isPdf = note.file_type.toLowerCase() === 'pdf';
+  const handleOpenTab = async (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (objectUrl) {
+          window.open(objectUrl, '_blank');
+      } else if (isPdf && activeUrl) {
+          try {
+              setLoadingUrl(true);
+              const res = await fetch(activeUrl, {
+                  headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+              });
+              if (res.ok) {
+                  const blob = await res.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  window.open(blobUrl, '_blank');
+                  // Do not revoke immediately as the new tab needs it
+              } else {
+                  console.error("Failed to fetch pdf for new tab");
+              }
+          } catch(err) {
+              console.error("Error opening tab", err);
+          } finally {
+              setLoadingUrl(false);
+          }
+      }
+  };
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,15 +138,13 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
           </div>
           <div className="flex items-center gap-2">
             {activeUrl ? (
-              <a
-                href={activeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] transition-colors flex items-center gap-1 text-[11px] font-bold"
+              <button
+                onClick={handleOpenTab}
+                className="p-1.5 rounded-lg border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
               >
                 <ExternalLink size={12} />
                 {!isMobile && 'Open Tab'}
-              </a>
+              </button>
             ) : (
               <span className="p-1.5 rounded-lg border border-[#E5E5E5] text-[#A3A3A3] text-[11px] font-bold flex items-center gap-1 opacity-50">
                 <ExternalLink size={12} />
@@ -141,7 +193,7 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
           ) : (
             <div className="max-w-full max-h-full flex items-center justify-center">
               <img
-                src={activeUrl || note.file_url}
+                src={objectUrl || activeUrl || note.file_url}
                 alt={note.title}
                 className="max-w-full max-h-[70vh] rounded-xl shadow-md border border-[#E5E5E5] object-contain"
               />
