@@ -290,11 +290,11 @@
      ANIMATIONS
   ======================== */
   .animate-fade-up {
-    animation: fadeUp 0.5s ease forwards;
+    animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .animate-fade-in {
-    animation: fadeIn 0.4s ease forwards;
+    animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   @keyframes fadeUp {
