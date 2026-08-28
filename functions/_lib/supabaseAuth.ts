@@ -20,12 +20,6 @@ export function getAuthenticatedSupabaseClient(request: any, env: Env): AuthHelp
     token = authHeader.slice(7).trim();
   }
   if (!token) {
-    try {
-      const url = new URL(request.url);
-      token = url.searchParams.get('token') || '';
-    } catch {}
-  }
-  if (!token) {
     return null;
   }
 

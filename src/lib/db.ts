@@ -1279,13 +1279,11 @@ export async function getAllTeacherAttendanceRatings(): Promise<TeacherAttendanc
 // =============================================================================
 
 async function enrichNotesUrls(notes: any[]): Promise<Note[]> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
   return Promise.all(
     notes.map(async (r: any) => {
       let url = r.file_url || '';
       if (r.id) {
-        url = `/api/notes/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+        url = `/api/notes/view/${r.id}`;
       }
       return { ...r, file_url: url, offering: mapOffering(r.offering) };
     })
@@ -1294,10 +1292,8 @@ async function enrichNotesUrls(notes: any[]): Promise<Note[]> {
 
 /** Get view URL for a note via Cloudflare R2 /api/notes/view endpoint */
 export async function getNoteSignedUrl(_filePath: string, noteId?: string): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
   if (noteId) {
-    return `/api/notes/view/${noteId}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    return `/api/notes/view/${noteId}`;
   }
   return '';
 }
@@ -1485,12 +1481,10 @@ export async function deleteNote(noteId: string): Promise<void> {
 // =============================================================================
 
 async function enrichTestsUrls(tests: any[]): Promise<TestPaper[]> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
   return tests.map((r: any) => {
     let url = r.file_url || '';
     if (r.id) {
-      url = `/api/tests/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+      url = `/api/tests/view/${r.id}`;
     }
     return {
       ...r,
@@ -1504,12 +1498,10 @@ async function enrichTestsUrls(tests: any[]): Promise<TestPaper[]> {
 }
 
 async function enrichSubmissionsUrls(subs: any[]): Promise<TestSubmission[]> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
   return subs.map((r: any) => {
     let url = r.file_url || '';
     if (r.id) {
-      url = `/api/submissions/view/${r.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+      url = `/api/submissions/view/${r.id}`;
     }
     return {
       ...r,

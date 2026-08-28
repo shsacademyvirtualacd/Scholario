@@ -23,6 +23,7 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [authToken, setAuthToken] = useState<string>('');
   const [activeUrl, setActiveUrl] = useState<string>('');
+  const [objectUrl, setObjectUrl] = useState<string>('');
   const [loadingUrl, setLoadingUrl] = useState<boolean>(true);
 
   const item = test || submission;
@@ -36,6 +37,8 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  const isImage = item?.file_type === 'image' || activeUrl?.match(/\.(jpeg|jpg|png|webp|gif)/i);
+
   useEffect(() => {
     let mounted = true;
 
@@ -43,6 +46,7 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
       if (!item) {
         setActiveUrl('');
         setAuthToken('');
+        setObjectUrl('');
         setLoadingUrl(false);
         return;
       }
@@ -61,11 +65,21 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
           baseUrl = `/api/submissions/view/${submission.id}`;
         }
 
-        const authenticatedUrl = baseUrl
-          ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
-          : '';
+        setActiveUrl(baseUrl);
 
-        setActiveUrl(authenticatedUrl);
+        if (isImage || item.file_type === 'image') {
+           try {
+               const res = await fetch(baseUrl, {
+                   headers: token ? { Authorization: `Bearer ${token}` } : {}
+               });
+               if (res.ok) {
+                   const blob = await res.blob();
+                   if (mounted) setObjectUrl(URL.createObjectURL(blob));
+               }
+           } catch (e) {
+               console.error("Failed to load image blob", e);
+           }
+        }
       } catch (err) {
         console.error('Error getting auth session for test preview:', err);
         if (mounted && item) {
@@ -80,7 +94,16 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
     return () => {
       mounted = false;
     };
-  }, [item, isTest, test?.id, submission?.id, profile?.role]);
+  }, [item, isTest, test?.id, submission?.id, profile?.role, isImage]);
+
+  useEffect(() => {
+    return () => {
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+        }
+    };
+  }, [objectUrl]);
+
 
   if (!item) return null;
 
@@ -88,7 +111,30 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
     ? test?.title
     : `${submission?.student_name || 'Student'}'s Submission`;
 
-  const isImage = item.file_type === 'image' || activeUrl?.match(/\.(jpeg|jpg|png|webp|gif)/i);
+  const handleOpenTab = async (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (objectUrl) {
+          window.open(objectUrl, '_blank');
+      } else if (!isImage && activeUrl) {
+          try {
+              setLoadingUrl(true);
+              const res = await fetch(activeUrl, {
+                  headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+              });
+              if (res.ok) {
+                  const blob = await res.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  window.open(blobUrl, '_blank');
+              } else {
+                  console.error("Failed to fetch document for new tab");
+              }
+          } catch(err) {
+              console.error("Error opening tab", err);
+          } finally {
+              setLoadingUrl(false);
+          }
+      }
+  };
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -189,16 +235,14 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             {activeUrl && (
-              <a
-                href={activeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] text-xs font-bold transition-colors"
+              <button
+                onClick={handleOpenTab}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5E5E5] hover:bg-white text-[#525252] hover:text-[#111111] text-xs font-bold transition-colors cursor-pointer"
                 title="Open in new browser tab"
               >
                 <ExternalLink size={14} />
                 <span>Open Tab</span>
-              </a>
+              </button>
             )}
 
             <button
@@ -273,7 +317,7 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
             isImage ? (
               <div className="w-full h-full flex items-center justify-center overflow-auto p-4 bg-white rounded-xl border border-[#E5E5E5]">
                 <img
-                  src={activeUrl}
+                  src={objectUrl || activeUrl}
                   alt={title}
                   className="max-w-full max-h-full object-contain rounded-lg shadow-md"
                 />
