@@ -384,8 +384,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
           messages: payloadMessages,
           userRole: role,
           userName: profile?.full_name || '',
-          grade: (profile as any)?.grade || '',
-          stream: (profile as any)?.stream || '',
+          grade: profile?.grade || '',
+          stream: profile?.stream || '',
         }),
         signal: abortController.signal,
       });
