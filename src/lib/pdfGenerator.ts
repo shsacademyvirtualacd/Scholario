@@ -15,6 +15,11 @@ interface TestGenerationParams {
 // Convert image URL to Base64 to be used with jsPDF
 async function getBase64ImageFromUrl(imageUrl: string): Promise<string> {
   const res = await fetch(imageUrl);
+  if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`);
+  const contentType = res.headers.get('content-type');
+  if (!contentType || !contentType.startsWith('image/')) {
+    throw new Error(`Invalid content type: ${contentType}`);
+  }
   const blob = await res.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
