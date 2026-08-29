@@ -42,7 +42,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   const offering_id = formData.get('offering_id') as string | null;
   const chapter_name = formData.get('chapter_name') as string | null;
   const title = formData.get('title') as string | null;
-  const file_type = (formData.get('file_type') as 'pdf' | 'image' | null) || 'pdf';
+  const file_type = (formData.get('file_type') as 'pdf' | 'image' | 'doc' | 'docx' | 'ppt' | 'pptx' | 'xls' | 'xlsx' | 'txt' | null) || 'pdf';
 
   if (!file || !offering_id || !chapter_name || !title) {
     return new Response(JSON.stringify({ error: 'Missing required upload parameters' }), {
@@ -92,6 +92,20 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     if (isJpeg || isPng || isWebp) {
       isValid = true;
     }
+  } else if (['docx', 'pptx', 'xlsx'].includes(file_type)) {
+    // ZIP magic bytes for OpenXML: PK\x03\x04
+    if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) {
+      isValid = true;
+    }
+  } else if (['doc', 'ppt', 'xls'].includes(file_type)) {
+    // OLE magic bytes: \xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1
+    if (bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0 &&
+        bytes[4] === 0xA1 && bytes[5] === 0xB1 && bytes[6] === 0x1A && bytes[7] === 0xE1) {
+      isValid = true;
+    }
+  } else if (file_type === 'txt') {
+    // For txt we just assume it's valid
+    isValid = true;
   }
 
   if (!isValid) {
@@ -102,10 +116,24 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   }
 
   // 1. Upload bytes to R2
+  let contentType = file.type;
+  if (!contentType) {
+    if (file_type === 'pdf') contentType = 'application/pdf';
+    else if (file_type === 'image') contentType = 'image/jpeg';
+    else if (file_type === 'docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    else if (file_type === 'doc') contentType = 'application/msword';
+    else if (file_type === 'pptx') contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    else if (file_type === 'ppt') contentType = 'application/vnd.ms-powerpoint';
+    else if (file_type === 'xlsx') contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    else if (file_type === 'xls') contentType = 'application/vnd.ms-excel';
+    else if (file_type === 'txt') contentType = 'text/plain';
+    else contentType = 'application/octet-stream';
+  }
+
   try {
     await env.NOTES_BUCKET.put(storageKey, arrayBuffer, {
       httpMetadata: {
-        contentType: file.type || (file_type === 'pdf' ? 'application/pdf' : 'image/jpeg'),
+        contentType,
       },
     });
   } catch (err: any) {

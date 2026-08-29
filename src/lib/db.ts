@@ -15,7 +15,7 @@ import type {
   Enrollment, Attendance, AttendanceStatus, Note, RosterEntry,
   BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
   TeacherAttendanceRating, TeacherAttendanceRatingVote,
-  TestPaper, TestSubmission, StudentMCQAttempt,
+  TestPaper, TestSubmission, StudentMCQAttempt, NoteFileType,
 } from '../types';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
@@ -1309,7 +1309,7 @@ export async function uploadNoteFileToR2(
     offering_id: string;
     chapter_name: string;
     title: string;
-    file_type: 'pdf' | 'image';
+    file_type: NoteFileType;
   },
   onProgress?: (pct: number) => void
 ): Promise<any> {
