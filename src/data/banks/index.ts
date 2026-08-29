@@ -1,4 +1,4 @@
-import type { StoredMCQ } from '../../types/questionBank';
+import type { StoredMCQ, StoredShortQuestion, StoredLongQuestion } from '../../types/questionBank';
 import physics from './physics';
 import biology from './biology';
 import chemistry from './chemistry';
@@ -33,3 +33,11 @@ export {
 };
 
 export default grade9FbiseBank;
+
+export type SubjectShortBank = Record<string, StoredShortQuestion[]>;
+export type FullGrade9ShortBank = Record<string, SubjectShortBank>;
+export const grade9FbiseShortBank: FullGrade9ShortBank = {};
+
+export type SubjectLongBank = Record<string, StoredLongQuestion[]>;
+export type FullGrade9LongBank = Record<string, SubjectLongBank>;
+export const grade9FbiseLongBank: FullGrade9LongBank = {};

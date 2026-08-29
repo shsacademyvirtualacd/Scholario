@@ -30,6 +30,44 @@ export interface StoredMCQ {
   updatedAt?: string;
 }
 
+
+
+export interface StoredShortQuestion {
+  id: string;
+  board: string;
+  grade: string;
+  subject: string;
+  chapter: string;
+  chapterNumber?: number;
+  topic?: string;
+  question: string;
+  marks: number;
+  expectedAnswer?: string;
+  difficulty: MCQDifficultyLevel | string;
+  verified: boolean;
+  source: 'ai-pregenerated' | 'curriculum-bank' | 'expert-verified';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface StoredLongQuestion {
+  id: string;
+  board: string;
+  grade: string;
+  subject: string;
+  chapter: string;
+  chapterNumber?: number;
+  topic?: string;
+  question: string;
+  marks: number;
+  expectedAnswer?: string;
+  difficulty: MCQDifficultyLevel | string;
+  verified: boolean;
+  source: 'ai-pregenerated' | 'curriculum-bank' | 'expert-verified';
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface BankFetchParams {
   subject: string;
   topic?: string;

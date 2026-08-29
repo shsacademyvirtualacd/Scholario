@@ -4,7 +4,7 @@
  */
 
 import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
-import type { BankFetchParams, StoredMCQ, QuestionBankSummary, SubjectBankStat } from '../types/questionBank';
+import type { BankFetchParams, StoredMCQ, StoredShortQuestion, StoredLongQuestion, QuestionBankSummary, SubjectBankStat } from '../types/questionBank';
 import { FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from './curriculumFBISE9';
 import { supabase } from './supabase';
 
@@ -319,4 +319,90 @@ export async function getQuestionBankStats(): Promise<QuestionBankSummary> {
     : 0;
 
   return summary;
+}
+
+
+export async function getStoredShortQuestionsForChapter(
+  subject: string,
+  chapter: string,
+  _grade = '9',
+  _board = 'fbise'
+): Promise<StoredShortQuestion[]> {
+
+  try {
+    const { grade9FbiseShortBank } = await import('../data/banks');
+    const normalizedSubject = normalizeFBISEGrade9Subject(subject) || subject;
+    const subjectData = grade9FbiseShortBank[normalizedSubject];
+    if (!subjectData) return [];
+
+    if (!chapter) {
+      // Return all questions across all chapters for this subject
+      let allQs: StoredShortQuestion[] = [];
+      for (const key of Object.keys(subjectData)) {
+         if (Array.isArray(subjectData[key])) {
+            allQs = allQs.concat(subjectData[key]);
+         }
+      }
+      return allQs;
+    }
+
+    const exactMatch = subjectData[chapter];
+    if (exactMatch && Array.isArray(exactMatch)) {
+      return exactMatch;
+    }
+
+    const foundKey = Object.keys(subjectData).find(
+      (k) => k.toLowerCase().trim() === chapter.toLowerCase().trim()
+    );
+    if (foundKey && Array.isArray(subjectData[foundKey])) {
+      return subjectData[foundKey];
+    }
+  } catch (err) {
+    console.error('Failed to load short bank', err);
+  }
+
+  return [];
+}
+
+
+export async function getStoredLongQuestionsForChapter(
+  subject: string,
+  chapter: string,
+  _grade = '9',
+  _board = 'fbise'
+): Promise<StoredLongQuestion[]> {
+
+  try {
+    const { grade9FbiseLongBank } = await import('../data/banks');
+    const normalizedSubject = normalizeFBISEGrade9Subject(subject) || subject;
+    const subjectData = grade9FbiseLongBank[normalizedSubject];
+    if (!subjectData) return [];
+
+    if (!chapter) {
+      // Return all questions across all chapters for this subject
+      let allQs: StoredLongQuestion[] = [];
+      for (const key of Object.keys(subjectData)) {
+         if (Array.isArray(subjectData[key])) {
+            allQs = allQs.concat(subjectData[key]);
+         }
+      }
+      return allQs;
+    }
+
+    const exactMatch = subjectData[chapter];
+    if (exactMatch && Array.isArray(exactMatch)) {
+      return exactMatch;
+    }
+
+    const foundKey = Object.keys(subjectData).find(
+      (k) => k.toLowerCase().trim() === chapter.toLowerCase().trim()
+    );
+    if (foundKey && Array.isArray(subjectData[foundKey])) {
+      return subjectData[foundKey];
+    }
+  } catch (err) {
+    console.error('Failed to load long bank', err);
+  }
+
+  return [];
 }

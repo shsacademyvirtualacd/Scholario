@@ -59,6 +59,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Filters and UI State
+  const [bankType, setBankType] = useState<'mcq' | 'short' | 'long'>('mcq');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
   const [chapterSearchQuery, setChapterSearchQuery] = useState<string>('');
@@ -246,8 +247,28 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     return counts;
   }, [currentChapters, selectedSubject, liveBank, selectedGrade, selectedBoard]);
 
-  // 5. Retrieve stored questions for currently selected chapter
-  const rawChapterQuestions: StoredMCQ[] = useMemo(() => {
+
+    const [shortBankData, setShortBankData] = useState<any[]>([]);
+    const [longBankData, setLongBankData] = useState<any[]>([]);
+
+    useEffect(() => {
+      if (bankType === 'short') {
+        import('../../../lib/questionBankService').then(m => {
+          m.getStoredShortQuestionsForChapter(selectedSubject, selectedChapter, selectedGrade, selectedBoard).then(setShortBankData);
+        });
+      } else if (bankType === 'long') {
+        import('../../../lib/questionBankService').then(m => {
+          m.getStoredLongQuestionsForChapter(selectedSubject, selectedChapter, selectedGrade, selectedBoard).then(setLongBankData);
+        });
+      }
+    }, [bankType, selectedSubject, selectedChapter, selectedGrade, selectedBoard]);
+
+    // 5. Retrieve stored questions for currently selected chapter
+    const rawChapterQuestions: any[] = useMemo(() => {
+      if (bankType === 'short') return shortBankData;
+      if (bankType === 'long') return longBankData;
+
+
     if (!selectedChapter) return [];
     if (selectedGrade !== '9' || selectedBoard !== 'fbise') return [];
 
@@ -284,12 +305,13 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
         const inQuestion = q.question.toLowerCase().includes(query);
         const inId = q.id.toLowerCase().includes(query);
         const inExplanation = (q.explanation || '').toLowerCase().includes(query);
-        const inOptions = Object.values(q.options || {}).some((opt) =>
+        const inOptions = q.options ? Object.values(q.options).some((opt) =>
           String(opt).toLowerCase().includes(query)
-        );
+        ) : false;
+        const inExpectedAnswer = ((q as any).expectedAnswer || '').toLowerCase().includes(query);
         const inTopic = (q.topic || '').toLowerCase().includes(query);
 
-        return inQuestion || inId || inExplanation || inOptions || inTopic;
+        return inQuestion || inId || inExplanation || inOptions || inExpectedAnswer || inTopic;
       }
 
       return true;
@@ -356,11 +378,47 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       <div className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center shrink-0">
-              <Database size={20} />
-            </div>
+
+        <div className="flex items-center gap-2 mb-6 bg-[#FAFAFA] p-1.5 rounded-2xl w-fit border border-[#E5E5E5]">
+          <button
+            onClick={() => setBankType('mcq')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              bankType === 'mcq'
+                ? 'bg-[#111111] text-white shadow-xs'
+                : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+            }`}
+          >
+            MCQ Bank
+          </button>
+          <button
+            onClick={() => setBankType('short')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              bankType === 'short'
+                ? 'bg-[#111111] text-white shadow-xs'
+                : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+            }`}
+          >
+            Short Question Bank
+          </button>
+          <button
+            onClick={() => setBankType('long')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              bankType === 'long'
+                ? 'bg-[#111111] text-white shadow-xs'
+                : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+            }`}
+          >
+            Long Question Bank
+          </button>
+        </div>
+
+        <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center shrink-0">
+          <Database size={20} />
+        </div>
             <div>
-              <h2 className="text-base font-black text-[#111111]">MCQ Question Bank & Verification</h2>
+              <h2 className="text-base font-black text-[#111111]">
+                  {bankType === 'mcq' ? 'MCQ Question Bank' : bankType === 'short' ? 'Short Question Bank' : 'Long Question Bank'} & Verification
+                </h2>
               <p className="text-xs text-[#737373] mt-0.5 font-medium">
                 Direct read from modular runtime storage <code className="px-1.5 py-0.5 bg-[#F5F5F5] rounded text-[11px] font-mono text-[#111111]">src/data/banks/*.json</code>. Zero mock or sample data.
               </p>
