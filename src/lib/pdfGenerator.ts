@@ -105,14 +105,25 @@ export async function generateTestPDF(params: TestGenerationParams): Promise<Fil
     doc.addImage(logoBase64, 'JPEG', margin, yPos, 30, 30);
   }
 
+  let scholarioLogoBase64: string | null = null;
+  try {
+    scholarioLogoBase64 = await getBase64ImageFromUrl('/scholario-logo.png'); // assuming scholario logo exists
+  } catch (err) {
+    // skip if missing
+  }
+
+  if (scholarioLogoBase64) {
+    doc.addImage(scholarioLogoBase64, 'PNG', pageWidth - margin - 30, yPos, 30, 8);
+  }
+
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
   doc.setFont("helvetica", "bold");
   const pwrText = "Powered by Scholario LMS";
   const urlText = "scholario.me";
-  doc.text(pwrText, pageWidth - margin - doc.getTextWidth(pwrText), yPos + 5);
+  doc.text(pwrText, pageWidth - margin - doc.getTextWidth(pwrText), yPos + (scholarioLogoBase64 ? 12 : 5));
   doc.setFont("helvetica", "normal");
-  doc.text(urlText, pageWidth - margin - doc.getTextWidth(urlText), yPos + 10);
+  doc.text(urlText, pageWidth - margin - doc.getTextWidth(urlText), yPos + (scholarioLogoBase64 ? 16 : 10));
 
   yPos += 15; // Move down below logo/powered by
 

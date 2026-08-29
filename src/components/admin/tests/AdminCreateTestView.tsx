@@ -88,12 +88,17 @@ const AdminCreateTestView: React.FC = () => {
   // Calculate available MCQs based on filters
   const availableMCQs = useMemo(() => {
     const subjData = liveBank[subject] || {};
+    let mcqs: StoredMCQ[] = [];
+
     if (chapter === 'all') {
-      // Aggregate all chapters
-      return Object.values(subjData).flat();
+      mcqs = Object.values(subjData).flat();
+    } else {
+      mcqs = subjData[chapter] || [];
     }
-    return subjData[chapter] || [];
-  }, [liveBank, subject, chapter]);
+
+    // Filter by board and grade
+    return mcqs.filter(q => q.board === board && q.grade === grade);
+  }, [liveBank, subject, chapter, board, grade]);
 
   const handleGenerateTest = async (e: React.FormEvent) => {
     e.preventDefault();
