@@ -9,6 +9,7 @@ import TestViewerModal from '../../components/common/TestViewerModal';
 import SelfTestingView from '../../components/tests/SelfTestingView';
 import AdminMCQVerificationView from '../../components/admin/mcq/AdminMCQVerificationView';
 import StudentResultsView from '../../components/tests/StudentResultsView';
+import AdminCreateTestView from '../../components/admin/tests/AdminCreateTestView';
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -19,16 +20,18 @@ export const AdminTestsPage: React.FC = () => {
 
   // Tab navigation: 'class-test' vs 'self-test' vs 'question-bank' vs 'student-results'
   const rawTab = searchParams.get('tab');
-  const activeTab: 'class-test' | 'self-test' | 'question-bank' | 'student-results' =
+  const activeTab: 'class-test' | 'self-test' | 'question-bank' | 'student-results' | 'create-test' =
     rawTab === 'self-test'
       ? 'self-test'
       : rawTab === 'question-bank' || rawTab === 'mcq-verification' || rawTab === 'bank'
       ? 'question-bank'
       : rawTab === 'student-results' || rawTab === 'results'
       ? 'student-results'
+      : rawTab === 'create-test'
+      ? 'create-test'
       : 'class-test';
 
-  const setActiveTab = (tab: 'class-test' | 'self-test' | 'question-bank' | 'student-results') => {
+  const setActiveTab = (tab: 'class-test' | 'self-test' | 'question-bank' | 'student-results' | 'create-test') => {
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'class-test') {
       newParams.delete('tab');
@@ -183,6 +186,18 @@ export const AdminTestsPage: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('create-test')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'create-test'
+              ? 'bg-[#111111] text-white shadow-xs'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+          }`}
+        >
+          <Plus size={15} className={activeTab === 'create-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <span>Create Test</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('self-test')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'self-test'
@@ -232,7 +247,9 @@ export const AdminTestsPage: React.FC = () => {
         </button>
       </div>
 
-      {activeTab === 'student-results' ? (
+      {activeTab === 'create-test' ? (
+        <AdminCreateTestView />
+      ) : activeTab === 'student-results' ? (
         <StudentResultsView isTeacher={false} />
       ) : activeTab === 'question-bank' ? (
         <AdminMCQVerificationView
