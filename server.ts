@@ -1126,7 +1126,19 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       }
 
       const noteId = `note_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const mimeType = file.mimetype || (file_type === 'image' ? 'image/jpeg' : 'application/pdf');
+      let mimeType = file.mimetype;
+      if (!mimeType) {
+        if (file_type === 'pdf') mimeType = 'application/pdf';
+        else if (file_type === 'image') mimeType = 'image/jpeg';
+        else if (file_type === 'docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        else if (file_type === 'doc') mimeType = 'application/msword';
+        else if (file_type === 'pptx') mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+        else if (file_type === 'ppt') mimeType = 'application/vnd.ms-powerpoint';
+        else if (file_type === 'xlsx') mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        else if (file_type === 'xls') mimeType = 'application/vnd.ms-excel';
+        else if (file_type === 'txt') mimeType = 'text/plain';
+        else mimeType = 'application/octet-stream';
+      }
 
       fileStorage.set(noteId, {
         buffer: file.buffer,

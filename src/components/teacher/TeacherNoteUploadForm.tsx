@@ -6,6 +6,7 @@ import { uploadNoteFileToR2, getTaxonomy } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
 import { getStreamsForGrade, GRADES } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
+import type { NoteFileType } from '../../types';
 
 interface TeacherNoteUploadFormProps {
   offerings: ClassOffering[];
@@ -15,7 +16,7 @@ interface TeacherNoteUploadFormProps {
     title: string;
     file_url: string;
     file_path: string;
-    file_type: 'pdf' | 'image';
+    file_type: NoteFileType;
   }) => Promise<void>;
   onCancel: () => void;
   initialGrade?: string;
@@ -163,8 +164,16 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
       setDone(false);
       setError(null);
 
-      const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
-      const fileType: 'pdf' | 'image' = isPdf ? 'pdf' : 'image';
+      const name = selectedFile.name.toLowerCase();
+      let fileType: NoteFileType = 'image';
+      if (name.endsWith('.pdf') || selectedFile.type === 'application/pdf') fileType = 'pdf';
+      else if (name.endsWith('.doc')) fileType = 'doc';
+      else if (name.endsWith('.docx')) fileType = 'docx';
+      else if (name.endsWith('.ppt')) fileType = 'ppt';
+      else if (name.endsWith('.pptx')) fileType = 'pptx';
+      else if (name.endsWith('.xls')) fileType = 'xls';
+      else if (name.endsWith('.xlsx')) fileType = 'xlsx';
+      else if (name.endsWith('.txt')) fileType = 'txt';
 
       const createdNote = await uploadNoteFileToR2(
         selectedFile,
@@ -398,7 +407,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
             <div className="relative border-2 border-dashed border-[#E5E5E5] hover:border-[#111111] rounded-2xl p-6 text-center transition-all duration-200 bg-[#FAFAFA] hover:bg-white cursor-pointer group">
               <input
                 type="file"
-                accept=".pdf,image/png,image/jpeg,image/webp"
+                accept=".pdf,image/png,image/jpeg,image/webp,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
                 onChange={handleFileChange}
                 disabled={loading}
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
@@ -407,10 +416,10 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
               {selectedFile ? (
                 <div className="flex flex-col items-center justify-center space-y-2">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    {selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf') ? (
-                      <FileText size={20} />
-                    ) : (
+                    {selectedFile.type.startsWith('image/') ? (
                       <ImageIcon size={20} />
+                    ) : (
+                      <FileText size={20} />
                     )}
                   </div>
                   <div className="text-xs font-bold text-[#111111] truncate max-w-[240px]">
@@ -426,10 +435,10 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
                     <Upload size={18} />
                   </div>
                   <div className="text-xs font-bold text-[#111111]">
-                    Choose a PDF or Image to upload
+                    Choose a Document or Image to upload
                   </div>
                   <div className="text-[10px] font-semibold text-[#737373]">
-                    Supports PDF, PNG, JPG, or WEBP up to 50 MB
+                    Supports PDF, PNG, JPG, WEBP, DOC, PPT, XLS, TXT up to 20 MB
                   </div>
                 </div>
               )}

@@ -14,7 +14,8 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
   const [progress, setProgress] = useState(0);
   const subject = note.offering?.subject || 'General';
   const fileType = note.file_type || 'pdf';
-  const isPdf = fileType.toLowerCase() === 'pdf';
+  const isImage = ['image', 'png', 'jpg', 'jpeg', 'webp', 'gif'].includes(fileType.toLowerCase());
+  const isPdf = fileType === 'pdf';
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -68,9 +69,9 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
             {subject}
           </span>
           <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
-            isPdf ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'
+            isImage ? 'bg-blue-50 text-blue-700' : isPdf ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
           }`}>
-            {isPdf ? <FileText size={10} /> : <ImageIcon size={10} />}
+            {isImage ? <ImageIcon size={10} /> : <FileText size={10} />}
             {fileType.toUpperCase()}
           </span>
         </div>

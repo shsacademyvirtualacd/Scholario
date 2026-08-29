@@ -47,7 +47,10 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
 
   if (!note) return null;
 
-  const isPdf = note.file_type.toLowerCase() === 'pdf';
+  const fileType = note.file_type.toLowerCase();
+  const isPdf = fileType === 'pdf';
+  const isImage = ['image', 'png', 'jpg', 'jpeg', 'webp', 'gif'].includes(fileType);
+  const isPreviewable = isPdf || isImage;
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -134,17 +137,48 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
               <p className="text-xs font-semibold text-[#525252]">Preparing document view...</p>
             </div>
-          ) : isPdf ? (
-            <div className="w-full h-full">
-              <PdfViewer fileUrl={activeUrl} authHeaders={authToken ? { Authorization: `Bearer ${authToken}` } : undefined} />
-            </div>
+          ) : isPreviewable ? (
+            isPdf ? (
+              <div className="w-full h-full">
+                <PdfViewer fileUrl={activeUrl} authHeaders={authToken ? { Authorization: `Bearer ${authToken}` } : undefined} />
+              </div>
+            ) : (
+              <div className="max-w-full max-h-full flex items-center justify-center">
+                <img
+                  src={activeUrl || note.file_url}
+                  alt={note.title}
+                  className="max-w-full max-h-[70vh] rounded-xl shadow-md border border-[#E5E5E5] object-contain"
+                />
+              </div>
+            )
           ) : (
-            <div className="max-w-full max-h-full flex items-center justify-center">
-              <img
-                src={activeUrl || note.file_url}
-                alt={note.title}
-                className="max-w-full max-h-[70vh] rounded-xl shadow-md border border-[#E5E5E5] object-contain"
-              />
+            <div className="flex flex-col items-center justify-center text-center p-6 max-w-sm w-full mx-auto space-y-4">
+               <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center">
+                 <Download size={32} />
+               </div>
+               <div>
+                 <h4 className="text-sm font-bold text-[#111111] mb-1"><MathText text={note.title || note.chapter_name || 'Document'} /></h4>
+                 <p className="text-xs text-[#525252]">
+                   Preview is not supported for <strong>{fileType.toUpperCase()}</strong> files. Please download the file to view its contents.
+                 </p>
+               </div>
+               <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="mt-4 px-6 py-2.5 bg-[#111111] hover:bg-black text-white text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:shadow-none flex items-center gap-2"
+                >
+                  {downloading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {progress > 0 ? `${progress}%` : 'Downloading...'}
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} />
+                      Download {fileType.toUpperCase()}
+                    </>
+                  )}
+                </button>
             </div>
           )}
         </div>
