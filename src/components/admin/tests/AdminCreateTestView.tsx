@@ -171,7 +171,7 @@ const AdminCreateTestView: React.FC = () => {
 
       if (!res.ok) {
         const errorData = (await res.json().catch(() => null)) as any;
-        throw new Error(errorData?.error || 'Failed to upload and create test');
+        throw new Error(errorData?.error || `Upload failed: ${res.status} ${res.statusText}`);
       }
 
       await res.json();
