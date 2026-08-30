@@ -579,6 +579,13 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     await handleGeneratePdfPreview();
   };
 
+  // Ensure PDF is generated if Step 4 is opened directly
+  useEffect(() => {
+    if (step === 4 && !generatedPdfBlob && !generatingPdf && !pdfError) {
+      handleGeneratePdfPreview();
+    }
+  }, [step, generatedPdfBlob, generatingPdf, pdfError]);
+
   // Convert Blob to Base64
   const blobToBase64 = (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {

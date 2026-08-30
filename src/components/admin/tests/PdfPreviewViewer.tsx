@@ -17,8 +17,16 @@ import { containsUrdu } from '../../../lib/urduReshaper';
 import type { GeneratedTestSpecification } from '../../../types/questionBank';
 
 // Configure pdfjs worker source safely
-if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+if (typeof window !== 'undefined') {
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url
+    ).href;
+  } catch (e) {
+    console.warn('[PdfPreviewViewer] Local worker URL resolution error:', e);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  }
 }
 
 interface PdfPreviewViewerProps {
@@ -47,6 +55,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
   const [numPages, setNumPages] = useState<number>(0);
   const [renderingError, setRenderingError] = useState<string | null>(null);
   const [isRenderingPages, setIsRenderingPages] = useState<boolean>(false);
+  const [renderAttempt, setRenderAttempt] = useState<number>(0);
   const [renderedObjectUrl, setRenderedObjectUrl] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +102,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
           data: dataToLoad,
           cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
           cMapPacked: true,
+          standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
         });
 
         const pdf = await loadingTask.promise;
@@ -150,9 +160,10 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         setIsRenderingPages(false);
         onPreviewReady?.(true);
       } catch (err: any) {
-        console.warn('[PdfPreviewViewer] Canvas rendering issue, falling back to Paper View:', err);
+        console.error('[PdfPreviewViewer] Canvas rendering failed with error:', err);
         if (!isCancelled) {
-          setRenderingError(err?.message || 'Could not render PDF canvas');
+          const errMsg = err?.message || 'Could not render PDF canvas';
+          setRenderingError(errMsg);
           setIsRenderingPages(false);
           // If canvas fails, paper view is still a valid visual preview
           onPreviewReady?.(true);
@@ -167,7 +178,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [pdfArrayBuffer, pdfBlob, zoom, isGenerating]);
+  }, [pdfArrayBuffer, pdfBlob, zoom, isGenerating, renderAttempt]);
 
   // Safeguard: If user is on 'canvas' view and for any reason canvas container has 0 children despite ready PDF, trigger re-render
   useEffect(() => {
@@ -385,8 +396,8 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
           </div>
         )}
 
-        {/* State 2: Explicit Error or Timeout State */}
-        {!isGenerating && (error || (renderingError && activeTab === 'canvas' && !pdfBlob)) && (
+        {/* State 2: Explicit PDF Generation Error */}
+        {!isGenerating && error && (
           <div className="m-auto p-6 max-w-md bg-white rounded-2xl border border-amber-300 shadow-xl space-y-4 text-center">
             <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
               <AlertTriangle size={20} />
@@ -395,8 +406,8 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
               <h4 className="text-sm font-extrabold text-neutral-900">
                 PDF Preview Generation Issue
               </h4>
-              <p className="text-xs text-neutral-600">
-                {error || renderingError || 'Unable to render the PDF layout canvas.'}
+              <p className="text-xs text-neutral-600 font-mono bg-neutral-100 p-2 rounded text-left break-all">
+                {error}
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
@@ -441,17 +452,66 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         )}
 
         {/* State 4A: PDF Canvas Render Mode (Actual Compiled PDF Pages) */}
-        {!isGenerating && (pdfBlob || pdfArrayBuffer) && (
+        {!isGenerating && !error && (pdfBlob || pdfArrayBuffer) && (
           <div className={`w-full flex flex-col items-center ${activeTab === 'canvas' ? '' : 'hidden'}`}>
             {isRenderingPages && (
-              <div className="p-4 bg-neutral-900/90 text-white rounded-xl text-xs flex items-center gap-2 mb-3 shadow-lg">
-                <RefreshCw size={14} className="animate-spin text-[#F4C430]" />
-                <span>Rendering High-DPI PDF Pages...</span>
+              <div className="m-auto p-8 max-w-md text-center bg-white rounded-2xl border border-neutral-200 shadow-xl space-y-3 my-8">
+                <div className="w-9 h-9 rounded-full border-3 border-neutral-900 border-t-[#F4C430] animate-spin mx-auto" />
+                <h4 className="text-sm font-extrabold text-neutral-900">
+                  Rendering High-DPI PDF Pages...
+                </h4>
+                <p className="text-xs text-neutral-500">
+                  Rasterizing compiled vector pages for interactive zoom preview.
+                </p>
               </div>
             )}
+
+            {/* Error Boundary inside Canvas Render Mode */}
+            {!isRenderingPages && renderingError && (
+              <div className="m-auto p-6 max-w-md bg-white rounded-2xl border border-amber-300 shadow-xl space-y-4 text-center my-8">
+                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
+                  <AlertTriangle size={20} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-extrabold text-neutral-900">
+                    PDF Canvas Rasterization Issue
+                  </h4>
+                  <p className="text-xs text-neutral-600 font-mono bg-neutral-100 p-2 rounded text-left break-all">
+                    {renderingError}
+                  </p>
+                  <p className="text-[11px] text-neutral-500 pt-1">
+                    The PDF binary is ready for download/print. You can retry rasterization or switch to Document Layout.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRenderingError(null);
+                      setRenderAttempt((a) => a + 1);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-900 text-[#F4C430] hover:bg-black font-extrabold text-xs transition-all cursor-pointer"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Retry Canvas Render</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('paper')}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-neutral-300 bg-neutral-100 hover:bg-neutral-200 font-bold text-xs text-neutral-800 transition-all cursor-pointer"
+                  >
+                    <FileText size={13} />
+                    <span>Switch to Document Layout</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div
               ref={canvasContainerRef}
-              className="w-full flex flex-col items-center justify-center space-y-4"
+              className={`w-full flex flex-col items-center justify-center space-y-4 ${
+                isRenderingPages || renderingError ? 'hidden' : ''
+              }`}
             />
           </div>
         )}

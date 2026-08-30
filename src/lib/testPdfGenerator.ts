@@ -170,10 +170,12 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
   const renderRoot = document.createElement('div');
   renderRoot.id = 'shs-pdf-multi-page-renderer';
   renderRoot.style.position = 'fixed';
-  renderRoot.style.left = '-9999px';
+  renderRoot.style.left = '0';
   renderRoot.style.top = '0';
   renderRoot.style.width = '794px';
   renderRoot.style.backgroundColor = '#ffffff';
+  renderRoot.style.opacity = '0.001';
+  renderRoot.style.pointerEvents = 'none';
   renderRoot.style.zIndex = '-9999';
   document.body.appendChild(renderRoot);
 
@@ -690,6 +692,10 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 794,
+        windowHeight: PAGE_HEIGHT,
       });
 
       const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
