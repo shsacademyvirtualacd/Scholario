@@ -217,7 +217,9 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
 
   const isFullSyllabus =
     params.examMode === 'full_syllabus' ||
-    (!params.chapter && (!params.topic || params.topic.toLowerCase() === 'full syllabus' || params.topic.toLowerCase() === 'mixed chapters'));
+    params.topic?.toLowerCase() === 'full syllabus' ||
+    params.topic?.toLowerCase() === 'mixed chapters' ||
+    !params.topic;
 
   if (isFullSyllabus) {
     // Sample across all available chapters
@@ -236,23 +238,25 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
     const chaps = params.selectedChapters;
     const perChap = Math.max(1, Math.ceil(targetCount / chaps.length));
     for (const ch of chaps) {
-      const normCh = ch.trim().toLowerCase().replace(/[–—]/g, '-');
-      const matchedKey = Object.keys(subjectData).find(
-        (k) => k.trim().toLowerCase().replace(/[–—]/g, '-') === normCh
+      const chQuestions = (subjectData[ch] || []).filter(
+        (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
       );
-      if (matchedKey && subjectData[matchedKey]) {
-        const chQuestions = subjectData[matchedKey].filter(
-          (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
-        );
-        pool.push(...shuffleArray(chQuestions).slice(0, perChap));
-      }
+      pool.push(...shuffleArray(chQuestions).slice(0, perChap));
     }
   } else {
-    // Strict single chapter matching
-    const targetChapterName = (params.chapter || params.topic || '').trim().toLowerCase().replace(/[–—]/g, '-');
-    const matchingKey = Object.keys(subjectData).find(
-      (k) => k.trim().toLowerCase().replace(/[–—]/g, '-') === targetChapterName
+    // Exact single chapter matching
+    const targetChapterName = params.chapter || params.topic || '';
+    // Find matching chapter key (case-insensitive or normalized)
+    let matchingKey = Object.keys(subjectData).find(
+      (k) => k.toLowerCase() === targetChapterName.toLowerCase()
     );
+
+    if (!matchingKey) {
+      // Try partial or keyword match
+      matchingKey = Object.keys(subjectData).find(
+        (k) => k.toLowerCase().includes(targetChapterName.toLowerCase()) || targetChapterName.toLowerCase().includes(k.toLowerCase())
+      );
+    }
 
     if (matchingKey && subjectData[matchingKey]) {
       const chQuestions = subjectData[matchingKey].filter(
@@ -345,13 +349,15 @@ export function getStoredShortQuestions(
     return all;
   }
 
-  // Exact normalized match
-  const targetNorm = chapter.trim().toLowerCase().replace(/[–—]/g, '-');
-  const exactKey = Object.keys(subjData).find(
-    (k) => k.trim().toLowerCase().replace(/[–—]/g, '-') === targetNorm
+  // Exact or partial match
+  const exact = subjData[chapter];
+  if (exact && Array.isArray(exact)) return exact;
+
+  const foundKey = Object.keys(subjData).find(
+    (k) => k.toLowerCase().includes(chapter.toLowerCase()) || chapter.toLowerCase().includes(k.toLowerCase())
   );
-  if (exactKey && subjData[exactKey]) {
-    return subjData[exactKey];
+  if (foundKey && subjData[foundKey]) {
+    return subjData[foundKey];
   }
 
   return [];
@@ -375,13 +381,15 @@ export function getStoredLongQuestions(
     return all;
   }
 
-  // Exact normalized match
-  const targetNorm = chapter.trim().toLowerCase().replace(/[–—]/g, '-');
-  const exactKey = Object.keys(subjData).find(
-    (k) => k.trim().toLowerCase().replace(/[–—]/g, '-') === targetNorm
+  // Exact or partial match
+  const exact = subjData[chapter];
+  if (exact && Array.isArray(exact)) return exact;
+
+  const foundKey = Object.keys(subjData).find(
+    (k) => k.toLowerCase().includes(chapter.toLowerCase()) || chapter.toLowerCase().includes(k.toLowerCase())
   );
-  if (exactKey && subjData[exactKey]) {
-    return subjData[exactKey];
+  if (foundKey && subjData[foundKey]) {
+    return subjData[foundKey];
   }
 
   return [];
@@ -493,11 +501,7 @@ export async function pullTestQuestionsFromBanks(params: {
 
       for (const ch of chapList) {
         if (shortQuestions.length >= shortTarget) break;
-        if (chapter && chapter !== 'All' && chapter !== 'Full Syllabus') {
-          const normCh = ch.name.trim().toLowerCase().replace(/[–—]/g, '-');
-          const normReq = chapter.trim().toLowerCase().replace(/[–—]/g, '-');
-          if (normCh !== normReq) continue;
-        }
+        if (chapter && chapter !== 'All' && ch.name !== chapter && !ch.name.includes(chapter)) continue;
         const subtopics = ch.subtopics || ['Key Concepts', 'Formulas', 'Definitions'];
         for (const topic of subtopics) {
           if (shortQuestions.length >= shortTarget) break;
@@ -538,11 +542,7 @@ export async function pullTestQuestionsFromBanks(params: {
 
       for (const ch of chapList) {
         if (longQuestions.length >= longTarget) break;
-        if (chapter && chapter !== 'All' && chapter !== 'Full Syllabus') {
-          const normCh = ch.name.trim().toLowerCase().replace(/[–—]/g, '-');
-          const normReq = chapter.trim().toLowerCase().replace(/[–—]/g, '-');
-          if (normCh !== normReq) continue;
-        }
+        if (chapter && chapter !== 'All' && ch.name !== chapter && !ch.name.includes(chapter)) continue;
         const subtopics = ch.subtopics || ['Theoretical Principles', 'Analytical Applications'];
         const t1 = subtopics[0] || 'Theoretical Foundations';
         const t2 = subtopics[1] || 'Experimental Analysis';

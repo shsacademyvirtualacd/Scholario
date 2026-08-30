@@ -12,7 +12,6 @@ import { onRequestPost as submissionUploadHandler } from '../functions/api/submi
 import { onRequestGet as submissionViewHandler } from '../functions/api/submissions/view/[submissionId]';
 import { onRequestGet as submissionDlHandler } from '../functions/api/submissions/dl/[submissionId]';
 import { onRequestPost as submissionGradeHandler } from '../functions/api/submissions/grade';
-import { onRequestPost as adminCreateTestHandler } from '../functions/api/admin/tests/create-test';
 
 export interface Env {
   NOTES_BUCKET: any;
@@ -149,21 +148,6 @@ export default {
     }
 
     // ── Test Endpoints ────────────────────────────────
-    if ((url.pathname === '/api/admin/tests/create-test' || url.pathname === '/api/tests/create-test') && request.method === 'POST') {
-      try {
-        return await adminCreateTestHandler({
-          request,
-          env,
-          params: {},
-          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
-          next: () => Promise.resolve(new Response('')),
-          data: {}
-        } as any);
-      } catch (err: any) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-      }
-    }
-
     if (url.pathname === '/api/tests/upload' && request.method === 'POST') {
       try {
         return await testUploadHandler({
