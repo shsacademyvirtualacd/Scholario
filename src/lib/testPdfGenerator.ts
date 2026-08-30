@@ -12,32 +12,14 @@ let cachedLogoDataUrl: string | null = null;
 
 /**
  * Preload the official SHS Academy Logo to a base64 DataURL
- * to guarantee CORS-free, synchronous rendering in html2canvas without black boxes.
+ * to guarantee CORS-free, synchronous rendering in html2canvas without black boxes or missing images.
  */
-async function getShsLogoDataUrl(): Promise<string> {
+export async function getShsLogoDataUrl(): Promise<string> {
   if (cachedLogoDataUrl) {
     return cachedLogoDataUrl;
   }
 
-  // 1. Attempt remote official R2 asset
-  try {
-    const res = await fetch(SHS_OFFICIAL_LOGO_URL, { mode: 'cors' });
-    if (res.ok) {
-      const blob = await res.blob();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      cachedLogoDataUrl = dataUrl;
-      return dataUrl;
-    }
-  } catch (err) {
-    console.warn('[PDFGenerator] Remote logo fetch failed, trying local fallback:', err);
-  }
-
-  // 2. Fallback to local asset
+  // 1. Attempt local asset first (instant same-origin fetch)
   try {
     const res = await fetch(SHS_LOCAL_LOGO_PATH);
     if (res.ok) {
@@ -48,15 +30,65 @@ async function getShsLogoDataUrl(): Promise<string> {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-      cachedLogoDataUrl = dataUrl;
-      return dataUrl;
+      if (dataUrl && dataUrl.startsWith('data:image')) {
+        cachedLogoDataUrl = dataUrl;
+        return dataUrl;
+      }
     }
   } catch (err) {
-    console.warn('[PDFGenerator] Local logo fetch failed:', err);
+    console.warn('[PDFGenerator] Local logo fetch fallback triggered:', err);
   }
 
-  // 3. Fallback to raw URL
-  return SHS_OFFICIAL_LOGO_URL;
+  // 2. Attempt remote official R2 asset with 2.5s timeout
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(SHS_OFFICIAL_LOGO_URL, { mode: 'cors', signal: controller.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const blob = await res.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      if (dataUrl && dataUrl.startsWith('data:image')) {
+        cachedLogoDataUrl = dataUrl;
+        return dataUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('[PDFGenerator] Remote logo fetch failed:', err);
+  }
+
+  // 3. Fallback: Generate inline high-res canvas logo badge
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 120;
+    canvas.height = 120;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#111111';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(0, 0, 120, 120, 24);
+      } else {
+        ctx.rect(0, 0, 120, 120);
+      }
+      ctx.fill();
+      ctx.fillStyle = '#F4C430';
+      ctx.font = '900 44px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('SHS', 60, 60);
+      const fallbackDataUrl = canvas.toDataURL('image/png');
+      cachedLogoDataUrl = fallbackDataUrl;
+      return fallbackDataUrl;
+    }
+  } catch {}
+
+  return SHS_LOCAL_LOGO_PATH;
 }
 
 /**
@@ -175,89 +207,91 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
 
     // 1. Watermark Overlay (Centered on every page)
     const watermarkEl = document.createElement('div');
+    watermarkEl.className = 'shs-pdf-watermark-layer';
     watermarkEl.style.position = 'absolute';
     watermarkEl.style.inset = '0';
     watermarkEl.style.display = 'flex';
     watermarkEl.style.alignItems = 'center';
     watermarkEl.style.justifyContent = 'center';
     watermarkEl.style.pointerEvents = 'none';
-    watermarkEl.style.opacity = '0.04';
+    watermarkEl.style.opacity = '0.045';
     watermarkEl.style.overflow = 'hidden';
     watermarkEl.style.zIndex = '1';
     watermarkEl.innerHTML = `
-      <img src="${logoDataUrl}" alt="SHS Watermark" style="width: 440px; height: 440px; object-fit: contain; filter: grayscale(100%); background: transparent;" crossOrigin="anonymous" />
+      <img src="${logoDataUrl}" alt="SHS Watermark" style="width: 440px; height: 440px; object-fit: contain; filter: grayscale(100%); background: transparent;" />
     `;
     pageEl.appendChild(watermarkEl);
 
-    // 2. Page Header
+    // 2. Page Header (Identical Top Branding on every single page)
     const headerEl = document.createElement('div');
+    headerEl.className = 'shs-pdf-header-layer';
     headerEl.style.position = 'relative';
     headerEl.style.zIndex = '10';
 
-    if (pageNum === 1) {
-      // Full branded header on Page 1
-      headerEl.innerHTML = `
-        <!-- Top Branded Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111111; padding-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: transparent;">
-              <img src="${logoDataUrl}" alt="SHS Logo" style="max-width: 100%; max-height: 100%; object-fit: contain; background: transparent;" crossOrigin="anonymous" />
-            </div>
-            <div>
-              <h1 style="margin: 0; font-size: 16.5px; font-weight: 900; letter-spacing: -0.02em; color: #111111; text-transform: uppercase;">SHS VIRTUAL ACADEMY</h1>
-              <p style="margin: 2px 0 0 0; font-size: 10px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em;">Department of Examinations & Academic Assessments</p>
-            </div>
+    const brandedTopBar = `
+      <!-- Top Branded Header (Universal across all pages) -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111111; padding-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: transparent;">
+            <img src="${logoDataUrl}" alt="SHS Logo" style="max-width: 100%; max-height: 100%; object-fit: contain; background: transparent;" />
           </div>
-          <div style="text-align: right;">
-            <div style="font-size: 14.5px; font-weight: 900; color: #111111;">Scholario</div>
-            <div style="font-size: 9.5px; font-weight: 700; color: #737373;">Powered by Scholario LMS</div>
-            <div style="font-size: 9.5px; font-weight: 800; color: #d97706;">scholario.me</div>
+          <div>
+            <h1 style="margin: 0; font-size: 15px; font-weight: 900; letter-spacing: -0.02em; color: #111111; text-transform: uppercase; line-height: 1.15;">SHS VIRTUAL ACADEMY</h1>
+            <p style="margin: 2px 0 0 0; font-size: 9px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.2;">Department of Examinations & Academic Assessments</p>
           </div>
         </div>
+        <div style="text-align: right;">
+          <div style="font-size: 13.5px; font-weight: 900; color: #111111; line-height: 1.15;">Scholario</div>
+          <div style="font-size: 9px; font-weight: 700; color: #737373;">Powered by Scholario LMS</div>
+          <div style="font-size: 9px; font-weight: 800; color: #d97706;">scholario.me</div>
+        </div>
+      </div>
+    `;
+
+    if (pageNum === 1) {
+      // Full branded header + metadata table on Page 1
+      headerEl.innerHTML = `
+        ${brandedTopBar}
 
         <!-- Title & Curriculum Details -->
-        <div style="text-align: center; padding: 8px 0; border-bottom: 1px solid #e5e5e5;">
-          <h2 style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; color: #111111; letter-spacing: 0.02em;">
+        <div style="text-align: center; padding: 6px 0; border-bottom: 1px solid #e5e5e5;">
+          <h2 style="margin: 0; font-size: 13.5px; font-weight: 900; text-transform: uppercase; color: #111111; letter-spacing: 0.02em;">
             ${test.title}
           </h2>
-          <div style="font-size: 11px; font-weight: 600; color: #525252; margin-top: 2px;">
+          <div style="font-size: 10.5px; font-weight: 600; color: #525252; margin-top: 2px;">
             Grade ${test.grade} (${test.stream || 'Science'}) • ${test.subject} • ${test.board.toUpperCase()} Curriculum ${test.chapter && test.chapter !== 'All' ? '• ' + test.chapter : ''}
           </div>
         </div>
 
         <!-- Student Metadata Table Box -->
-        <div style="margin: 10px 0; padding: 8px 12px; background: #fafafa; border: 1px solid #d4d4d4; border-radius: 6px; font-size: 10.5px;">
-          <div style="display: flex; justify-content: space-between; font-weight: 700; color: #374151; padding-bottom: 5px;">
+        <div style="margin: 8px 0; padding: 6px 10px; background: #fafafa; border: 1px solid #d4d4d4; border-radius: 6px; font-size: 10px;">
+          <div style="display: flex; justify-content: space-between; font-weight: 700; color: #374151; padding-bottom: 4px;">
             <div>Student Name: <span style="font-weight: 400; border-bottom: 1px solid #9ca3af; display: inline-block; width: 140px;">&nbsp;</span></div>
             <div>Roll No: <span style="font-weight: 400; border-bottom: 1px solid #9ca3af; display: inline-block; width: 100px;">&nbsp;</span></div>
             <div>Date: <span style="font-weight: 400;">${test.dueDate || new Date().toISOString().split('T')[0]}</span></div>
           </div>
-          <div style="display: flex; justify-content: space-between; font-weight: 700; color: #374151; padding-top: 5px; border-top: 1px solid #e5e5e5;">
+          <div style="display: flex; justify-content: space-between; font-weight: 700; color: #374151; padding-top: 4px; border-top: 1px solid #e5e5e5;">
             <div>Subject: <span style="color: #111111;">${test.subject}</span></div>
             <div>Time Allowed: <span style="color: #111111;">${test.timeAllowedMinutes} Mins</span></div>
             <div>Total Marks: <span style="color: #111111;">${test.totalMarks}</span></div>
           </div>
           ${
             test.instructions
-              ? `<div style="font-size: 10px; color: #6b7280; font-style: italic; padding-top: 4px; margin-top: 4px; border-top: 1px solid #e5e5e5;">Instructions: ${test.instructions}</div>`
+              ? `<div style="font-size: 9.5px; color: #6b7280; font-style: italic; padding-top: 4px; margin-top: 4px; border-top: 1px solid #e5e5e5;">Instructions: ${test.instructions}</div>`
               : ''
           }
         </div>
       `;
     } else {
-      // Compact official running header on subsequent pages
+      // Identical top header + running continuation bar on subsequent pages
       headerEl.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #111111; padding-bottom: 6px; margin-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <img src="${logoDataUrl}" alt="SHS Logo" style="width: 22px; height: 22px; object-fit: contain; background: transparent;" crossOrigin="anonymous" />
-            <span style="font-size: 11px; font-weight: 900; letter-spacing: -0.01em; color: #111111; text-transform: uppercase;">SHS VIRTUAL ACADEMY</span>
-          </div>
-          <div style="font-size: 10px; font-weight: 700; color: #404040; text-align: center; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            ${test.subject} • Grade ${test.grade} • ${test.title}
-          </div>
-          <div style="font-size: 9.5px; font-weight: 800; color: #d97706;">
-            Scholario • Dept of Examinations
-          </div>
+        ${brandedTopBar}
+
+        <!-- Running Sub-bar on Continuation Pages -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 9.5px; font-weight: 700; color: #475569; margin-top: 4px; margin-bottom: 6px;">
+          <span>${test.subject} • Grade ${test.grade} (${test.stream || 'Science'})</span>
+          <span style="color: #0f172a; font-weight: 800;">${test.title}</span>
+          <span style="color: #94a3b8; font-size: 9px; font-weight: 700; text-transform: uppercase;">Continued</span>
         </div>
       `;
     }
@@ -616,6 +650,26 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
   });
 
   try {
+    // Ensure all images across all pages are fully loaded & decoded before canvas capture
+    const allImages = Array.from(renderRoot.querySelectorAll('img'));
+    await Promise.all(
+      allImages.map(async (img) => {
+        if (!img.complete) {
+          await new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          });
+        }
+        try {
+          if (typeof img.decode === 'function') {
+            await img.decode();
+          }
+        } catch {
+          // non-blocking
+        }
+      })
+    );
+
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',

@@ -169,6 +169,20 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
     };
   }, [pdfArrayBuffer, pdfBlob, zoom, isGenerating]);
 
+  // Safeguard: If user is on 'canvas' view and for any reason canvas container has 0 children despite ready PDF, trigger re-render
+  useEffect(() => {
+    if (
+      activeTab === 'canvas' &&
+      canvasContainerRef.current &&
+      canvasContainerRef.current.children.length === 0 &&
+      !isGenerating &&
+      !isRenderingPages &&
+      (pdfArrayBuffer || pdfBlob)
+    ) {
+      setZoom((z) => (z === 1.0 ? 1.0001 : 1.0));
+    }
+  }, [activeTab, isGenerating, isRenderingPages, pdfArrayBuffer, pdfBlob]);
+
   // Handle Download PDF
   const handleDownload = () => {
     if (!renderedObjectUrl && !pdfDataUrl) return;
@@ -427,8 +441,8 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         )}
 
         {/* State 4A: PDF Canvas Render Mode (Actual Compiled PDF Pages) */}
-        {!isGenerating && (pdfBlob || pdfArrayBuffer) && activeTab === 'canvas' && (
-          <div className="w-full flex flex-col items-center">
+        {!isGenerating && (pdfBlob || pdfArrayBuffer) && (
+          <div className={`w-full flex flex-col items-center ${activeTab === 'canvas' ? '' : 'hidden'}`}>
             {isRenderingPages && (
               <div className="p-4 bg-neutral-900/90 text-white rounded-xl text-xs flex items-center gap-2 mb-3 shadow-lg">
                 <RefreshCw size={14} className="animate-spin text-[#F4C430]" />
@@ -443,16 +457,16 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         )}
 
         {/* State 4B: Document Paper View (High-Fidelity Printable DOM Page) */}
-        {!isGenerating && activeTab === 'paper' && (
-          <div className="w-full max-w-[820px] mx-auto bg-white rounded-sm shadow-2xl border border-neutral-300 p-8 sm:p-12 text-[#111111] font-sans relative my-2 min-h-[1000px]">
+        {!isGenerating && (
+          <div className={`w-full max-w-[820px] mx-auto bg-white rounded-sm shadow-2xl border border-neutral-300 p-8 sm:p-12 text-[#111111] font-sans relative my-2 min-h-[1000px] ${activeTab === 'paper' ? '' : 'hidden'}`}>
             {/* Academy Watermark Overlay */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.045] overflow-hidden select-none">
               <img
-                src="https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png"
+                src="/images/shs-academy-logo.png"
                 alt="SHS Watermark"
                 className="w-[450px] h-[450px] object-contain grayscale bg-transparent"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/shs-academy-logo.png';
+                  (e.target as HTMLImageElement).src = 'https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png';
                 }}
               />
             </div>
@@ -463,11 +477,11 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 flex items-center justify-center shrink-0 bg-transparent">
                   <img
-                    src="https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png"
+                    src="/images/shs-academy-logo.png"
                     alt="SHS Logo"
                     className="max-w-full max-h-full object-contain bg-transparent"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/shs-academy-logo.png';
+                      (e.target as HTMLImageElement).src = 'https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png';
                     }}
                   />
                 </div>

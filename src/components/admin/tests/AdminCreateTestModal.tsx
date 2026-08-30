@@ -15,7 +15,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { pullTestQuestionsFromBanks } from '../../../lib/questionBankService';
-import { generateTestPaperPDF } from '../../../lib/testPdfGenerator';
+import { generateTestPaperPDF, getShsLogoDataUrl } from '../../../lib/testPdfGenerator';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
 import { PdfPreviewViewer } from './PdfPreviewViewer';
 import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
@@ -237,6 +237,13 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
   useEffect(() => {
     setSelectedChapter('All');
   }, [grade, subject]);
+
+  // Preload branding assets when modal opens to ensure instantaneous PDF rendering
+  useEffect(() => {
+    if (isOpen) {
+      getShsLogoDataUrl().catch(() => {});
+    }
+  }, [isOpen]);
 
   // Compute available chapters
   const availableChapters = useMemo(() => {
@@ -512,19 +519,24 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     ]
   );
 
-  // Generate Branded PDF Preview with strict timeout and validation
+  // Generate Branded PDF Preview with generous timeout and validation
   const handleGeneratePdfPreview = async () => {
     setGeneratingPdf(true);
     setPdfError(null);
     setIsPdfPreviewValid(false);
 
+    let timeoutId: any;
     try {
-      // 10-second timeout to prevent indefinite spinning
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('PDF preview compilation timed out. Please try again.')), 10000)
-      );
+      // 40-second timeout to allow full multi-page high-DPI rendering even on initial cold runs
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error('PDF preview compilation timed out. Please try again.')),
+          40000
+        );
+      });
 
       const result = await Promise.race([generateTestPaperPDF(currentTestSpec), timeoutPromise]);
+      clearTimeout(timeoutId);
 
       if (!result.blob || result.blob.size === 0) {
         throw new Error('Compiled PDF is empty or invalid.');
@@ -536,6 +548,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
       setIsPdfPreviewValid(true);
       toast.success('Test Paper PDF generated with official SHS & Scholario branding!');
     } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error('[PDF Gen Error]:', err);
       const errMsg = err?.message || 'Could not compile test paper layout';
       setPdfError(errMsg);
