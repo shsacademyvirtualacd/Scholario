@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   CheckCircle2,
-  Download,
   Eye,
   RefreshCw,
   Check,
@@ -14,6 +13,7 @@ import { supabase } from '../../../lib/supabase';
 import { pullTestQuestionsFromBanks } from '../../../lib/questionBankService';
 import { generateTestPaperPDF } from '../../../lib/testPdfGenerator';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
+import { PdfPreviewViewer } from './PdfPreviewViewer';
 import { BOARDS } from '../../../lib/taxonomy';
 import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM } from '../../../lib/curriculumFBISE9';
 import type {
@@ -48,7 +48,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
   const [dueDate, setDueDate] = useState<string>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
-  const [timeAllowed, setTimeAllowed] = useState<number>(45);
+  const [timeAllowed, setTimeAllowed] = useState<number | string>(45);
   const [instructions, setInstructions] = useState<string>(
     'Read all questions carefully. Electronic calculators are permitted where applicable.'
   );
@@ -63,14 +63,14 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
   const [includeShort, setIncludeShort] = useState<boolean>(true);
   const [includeLong, setIncludeLong] = useState<boolean>(true);
 
-  const [mcqCount, setMcqCount] = useState<number>(10);
-  const [mcqMarksEach, setMcqMarksEach] = useState<number>(1);
-  const [shortCount, setShortCount] = useState<number>(6);
-  const [shortAttemptCount, setShortAttemptCount] = useState<number>(5);
-  const [shortMarksEach, setShortMarksEach] = useState<number>(4);
-  const [longCount, setLongCount] = useState<number>(3);
-  const [longAttemptCount, setLongAttemptCount] = useState<number>(2);
-  const [longMarksEach, setLongMarksEach] = useState<number>(10);
+  const [mcqCount, setMcqCount] = useState<number | string>(10);
+  const [mcqMarksEach, setMcqMarksEach] = useState<number | string>(1);
+  const [shortCount, setShortCount] = useState<number | string>(6);
+  const [shortAttemptCount, setShortAttemptCount] = useState<number | string>(5);
+  const [shortMarksEach, setShortMarksEach] = useState<number | string>(4);
+  const [longCount, setLongCount] = useState<number | string>(3);
+  const [longAttemptCount, setLongAttemptCount] = useState<number | string>(2);
+  const [longMarksEach, setLongMarksEach] = useState<number | string>(10);
 
   // Pulled Questions State
   const [pulledMCQs, setPulledMCQs] = useState<StoredMCQ[]>([]);
@@ -81,7 +81,10 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
   // PDF Preview & Publishing State
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
+  const [pdfArrayBuffer, setPdfArrayBuffer] = useState<ArrayBuffer | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState<boolean>(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [isPdfPreviewValid, setIsPdfPreviewValid] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Toggle question type with minimum 1 requirement
@@ -142,6 +145,13 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     loadTeachers();
   }, []);
 
+  // Safe number parsing helper
+  const safeNum = (val: number | string, fallback: number = 0): number => {
+    if (typeof val === 'number') return isNaN(val) ? fallback : val;
+    const parsed = parseInt(String(val), 10);
+    return isNaN(parsed) ? fallback : parsed;
+  };
+
   // Compute available chapters
   const availableChapters = useMemo(() => {
     const curriculum = grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
@@ -156,13 +166,13 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
   const totalCalculatedMarks = useMemo(() => {
     let total = 0;
     if (includeMCQs) {
-      total += mcqCount * mcqMarksEach;
+      total += safeNum(mcqCount, 10) * safeNum(mcqMarksEach, 1);
     }
     if (includeShort) {
-      total += shortAttemptCount * shortMarksEach;
+      total += safeNum(shortAttemptCount, 5) * safeNum(shortMarksEach, 4);
     }
     if (includeLong) {
-      total += longAttemptCount * longMarksEach;
+      total += safeNum(longAttemptCount, 2) * safeNum(longMarksEach, 10);
     }
     return total;
   }, [includeMCQs, includeShort, includeLong, mcqCount, mcqMarksEach, shortAttemptCount, shortMarksEach, longAttemptCount, longMarksEach]);
@@ -186,9 +196,9 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
         grade,
         subject,
         chapter: selectedChapter,
-        mcqCount: includeMCQs ? mcqCount : 0,
-        shortCount: includeShort ? shortCount : 0,
-        longCount: includeLong ? longCount : 0,
+        mcqCount: includeMCQs ? safeNum(mcqCount, 10) : 0,
+        shortCount: includeShort ? safeNum(shortCount, 6) : 0,
+        longCount: includeLong ? safeNum(longCount, 3) : 0,
       });
 
       setPulledMCQs(includeMCQs ? res.mcqs : []);
@@ -211,42 +221,89 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     }
   }, [step, isOpen]);
 
-  // Generate Branded PDF Preview
+  // Memoized current test specification for generator and preview
+  const currentTestSpec = useMemo<GeneratedTestSpecification>(
+    () => ({
+      title,
+      institutionName: 'SHS Virtual Academy',
+      board,
+      grade,
+      stream,
+      subject,
+      chapter: selectedChapter,
+      teacherId: selectedTeacherId,
+      teacherName: selectedTeacherName,
+      dueDate,
+      timeAllowedMinutes: safeNum(timeAllowed, 45),
+      totalMarks: totalCalculatedMarks,
+      instructions,
+      combination: derivedCombination,
+      mcqs: includeMCQs ? pulledMCQs : [],
+      shortQuestions: includeShort ? pulledShortQuestions : [],
+      longQuestions: includeLong ? pulledLongQuestions : [],
+      mcqMarksEach: safeNum(mcqMarksEach, 1),
+      shortMarksEach: safeNum(shortMarksEach, 4),
+      shortAttemptCount: safeNum(shortAttemptCount, 5),
+      longMarksEach: safeNum(longMarksEach, 10),
+      longAttemptCount: safeNum(longAttemptCount, 2),
+    }),
+    [
+      title,
+      board,
+      grade,
+      stream,
+      subject,
+      selectedChapter,
+      selectedTeacherId,
+      selectedTeacherName,
+      dueDate,
+      timeAllowed,
+      totalCalculatedMarks,
+      instructions,
+      derivedCombination,
+      includeMCQs,
+      pulledMCQs,
+      includeShort,
+      pulledShortQuestions,
+      includeLong,
+      pulledLongQuestions,
+      mcqMarksEach,
+      shortMarksEach,
+      shortAttemptCount,
+      longMarksEach,
+      longAttemptCount,
+    ]
+  );
+
+  // Generate Branded PDF Preview with strict timeout and validation
   const handleGeneratePdfPreview = async () => {
     setGeneratingPdf(true);
-    try {
-      const spec: GeneratedTestSpecification = {
-        title,
-        institutionName: 'SHS Virtual Academy',
-        board,
-        grade,
-        stream,
-        subject,
-        chapter: selectedChapter,
-        teacherId: selectedTeacherId,
-        teacherName: selectedTeacherName,
-        dueDate,
-        timeAllowedMinutes: timeAllowed,
-        totalMarks: totalCalculatedMarks,
-        instructions,
-        combination: derivedCombination,
-        mcqs: includeMCQs ? pulledMCQs : [],
-        shortQuestions: includeShort ? pulledShortQuestions : [],
-        longQuestions: includeLong ? pulledLongQuestions : [],
-        mcqMarksEach,
-        shortMarksEach,
-        shortAttemptCount,
-        longMarksEach,
-        longAttemptCount,
-      };
+    setPdfError(null);
+    setIsPdfPreviewValid(false);
 
-      const result = await generateTestPaperPDF(spec);
+    try {
+      // 10-second timeout to prevent indefinite spinning
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF preview compilation timed out. Please try again.')), 10000)
+      );
+
+      const result = await Promise.race([generateTestPaperPDF(currentTestSpec), timeoutPromise]);
+
+      if (!result.blob || result.blob.size === 0) {
+        throw new Error('Compiled PDF is empty or invalid.');
+      }
+
       setGeneratedPdfBlob(result.blob);
       setPreviewPdfUrl(result.dataUrl);
+      setPdfArrayBuffer(result.arrayBuffer);
+      setIsPdfPreviewValid(true);
       toast.success('Test Paper PDF generated with official SHS & Scholario branding!');
     } catch (err: any) {
       console.error('[PDF Gen Error]:', err);
-      toast.error('Failed to generate PDF preview: ' + (err.message || 'Error'));
+      const errMsg = err?.message || 'Could not compile test paper layout';
+      setPdfError(errMsg);
+      setIsPdfPreviewValid(false);
+      toast.error('Failed to generate PDF preview: ' + errMsg);
     } finally {
       setGeneratingPdf(false);
     }
@@ -287,18 +344,18 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
           teacherId: selectedTeacherId,
           teacherName: selectedTeacherName,
           dueDate,
-          timeAllowedMinutes: timeAllowed,
+          timeAllowedMinutes: safeNum(timeAllowed, 45),
           totalMarks: totalCalculatedMarks,
           instructions,
           combination: derivedCombination,
           mcqs: includeMCQs ? pulledMCQs : [],
           shortQuestions: includeShort ? pulledShortQuestions : [],
           longQuestions: includeLong ? pulledLongQuestions : [],
-          mcqMarksEach,
-          shortMarksEach,
-          shortAttemptCount,
-          longMarksEach,
-          longAttemptCount,
+          mcqMarksEach: safeNum(mcqMarksEach, 1),
+          shortMarksEach: safeNum(shortMarksEach, 4),
+          shortAttemptCount: safeNum(shortAttemptCount, 5),
+          longMarksEach: safeNum(longMarksEach, 10),
+          longAttemptCount: safeNum(longAttemptCount, 2),
         };
         const result = await generateTestPaperPDF(spec);
         pdfBase64 = await blobToBase64(result.blob);
@@ -563,11 +620,30 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                   <label className="block text-xs font-extrabold text-[#111111] mb-1.5">Time Allowed (Minutes)</label>
                   <input
                     type="number"
-                    min="15"
-                    max="180"
+                    min="1"
+                    max="360"
                     step="5"
                     value={timeAllowed}
-                    onChange={(e) => setTimeAllowed(parseInt(e.target.value, 10) || 45)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setTimeAllowed('');
+                      } else {
+                        const num = parseInt(val, 10);
+                        setTimeAllowed(isNaN(num) ? '' : num);
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = safeNum(timeAllowed, 45);
+                      if (num < 1) {
+                        setTimeAllowed(15);
+                      } else if (num > 360) {
+                        setTimeAllowed(360);
+                      } else {
+                        setTimeAllowed(num);
+                      }
+                    }}
+                    placeholder="45"
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
                   />
                 </div>
@@ -653,7 +729,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     </span>
                     {includeMCQs && (
                       <span className="font-bold text-white/90">
-                        {mcqCount} Qs ({mcqCount * mcqMarksEach}M)
+                        {safeNum(mcqCount, 10)} Qs ({safeNum(mcqCount, 10) * safeNum(mcqMarksEach, 1)}M)
                       </span>
                     )}
                   </div>
@@ -709,7 +785,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     </span>
                     {includeShort && (
                       <span className="font-bold text-white/90">
-                        {shortCount} Qs ({shortAttemptCount * shortMarksEach}M)
+                        {safeNum(shortCount, 6)} Qs ({safeNum(shortAttemptCount, 5) * safeNum(shortMarksEach, 4)}M)
                       </span>
                     )}
                   </div>
@@ -765,7 +841,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     </span>
                     {includeLong && (
                       <span className="font-bold text-white/90">
-                        {longCount} Qs ({longAttemptCount * longMarksEach}M)
+                        {safeNum(longCount, 3)} Qs ({safeNum(longAttemptCount, 2) * safeNum(longMarksEach, 10)}M)
                       </span>
                     )}
                   </div>
@@ -797,7 +873,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                         <div className="text-xs font-extrabold text-[#111111] flex items-center justify-between">
                           <span>MCQs Section</span>
                           <span className="text-emerald-700 text-[11px] font-bold">
-                            {mcqCount * mcqMarksEach} M
+                            {safeNum(mcqCount, 10) * safeNum(mcqMarksEach, 1)} M
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -807,7 +883,14 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                             min="1"
                             max="50"
                             value={mcqCount}
-                            onChange={(e) => setMcqCount(parseInt(e.target.value, 10) || 10)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setMcqCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const num = safeNum(mcqCount, 10);
+                              setMcqCount(Math.max(1, Math.min(50, num)));
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -816,9 +899,16 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           <input
                             type="number"
                             min="1"
-                            max="5"
+                            max="10"
                             value={mcqMarksEach}
-                            onChange={(e) => setMcqMarksEach(parseInt(e.target.value, 10) || 1)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setMcqMarksEach(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const num = safeNum(mcqMarksEach, 1);
+                              setMcqMarksEach(Math.max(1, Math.min(10, num)));
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -831,7 +921,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                         <div className="text-xs font-extrabold text-[#111111] flex items-center justify-between">
                           <span>Short Questions</span>
                           <span className="text-emerald-700 text-[11px] font-bold">
-                            {shortAttemptCount * shortMarksEach} M
+                            {safeNum(shortAttemptCount, 5) * safeNum(shortMarksEach, 4)} M
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -839,9 +929,20 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           <input
                             type="number"
                             min="1"
-                            max="20"
+                            max="30"
                             value={shortCount}
-                            onChange={(e) => setShortCount(parseInt(e.target.value, 10) || 5)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setShortCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const num = safeNum(shortCount, 6);
+                              const clamped = Math.max(1, Math.min(30, num));
+                              setShortCount(clamped);
+                              if (safeNum(shortAttemptCount, 5) > clamped) {
+                                setShortAttemptCount(clamped);
+                              }
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -850,9 +951,17 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           <input
                             type="number"
                             min="1"
-                            max={shortCount}
+                            max={safeNum(shortCount, 6)}
                             value={shortAttemptCount}
-                            onChange={(e) => setShortAttemptCount(parseInt(e.target.value, 10) || shortCount)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setShortAttemptCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const maxAllowed = safeNum(shortCount, 6);
+                              const num = safeNum(shortAttemptCount, Math.min(5, maxAllowed));
+                              setShortAttemptCount(Math.max(1, Math.min(maxAllowed, num)));
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -861,9 +970,16 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           <input
                             type="number"
                             min="1"
-                            max="10"
+                            max="20"
                             value={shortMarksEach}
-                            onChange={(e) => setShortMarksEach(parseInt(e.target.value, 10) || 4)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setShortMarksEach(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const num = safeNum(shortMarksEach, 4);
+                              setShortMarksEach(Math.max(1, Math.min(20, num)));
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -876,7 +992,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                         <div className="text-xs font-extrabold text-[#111111] flex items-center justify-between">
                           <span>Long Questions</span>
                           <span className="text-emerald-700 text-[11px] font-bold">
-                            {longAttemptCount * longMarksEach} M
+                            {safeNum(longAttemptCount, 2) * safeNum(longMarksEach, 10)} M
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -884,9 +1000,20 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           <input
                             type="number"
                             min="1"
-                            max="10"
+                            max="15"
                             value={longCount}
-                            onChange={(e) => setLongCount(parseInt(e.target.value, 10) || 3)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setLongCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const num = safeNum(longCount, 3);
+                              const clamped = Math.max(1, Math.min(15, num));
+                              setLongCount(clamped);
+                              if (safeNum(longAttemptCount, 2) > clamped) {
+                                setLongAttemptCount(clamped);
+                              }
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -895,9 +1022,17 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           <input
                             type="number"
                             min="1"
-                            max={longCount}
+                            max={safeNum(longCount, 3)}
                             value={longAttemptCount}
-                            onChange={(e) => setLongAttemptCount(parseInt(e.target.value, 10) || longCount)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setLongAttemptCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const maxAllowed = safeNum(longCount, 3);
+                              const num = safeNum(longAttemptCount, Math.min(2, maxAllowed));
+                              setLongAttemptCount(Math.max(1, Math.min(maxAllowed, num)));
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -906,9 +1041,16 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           <input
                             type="number"
                             min="1"
-                            max="20"
+                            max="30"
                             value={longMarksEach}
-                            onChange={(e) => setLongMarksEach(parseInt(e.target.value, 10) || 10)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setLongMarksEach(val === '' ? '' : (parseInt(val, 10) || ''));
+                            }}
+                            onBlur={() => {
+                              const num = safeNum(longMarksEach, 10);
+                              setLongMarksEach(Math.max(1, Math.min(30, num)));
+                            }}
                             className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
                           />
                         </div>
@@ -963,7 +1105,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     {includeMCQs && pulledMCQs.length > 0 && (
                       <div className="space-y-2">
                         <div className="text-xs font-black uppercase text-[#111111] flex items-center justify-between bg-[#F5F5F5] p-2 rounded-lg">
-                          <span>Section {mcqSec}: {pulledMCQs.length} MCQs ({pulledMCQs.length * mcqMarksEach} Marks)</span>
+                          <span>Section {mcqSec}: {pulledMCQs.length} MCQs ({pulledMCQs.length * safeNum(mcqMarksEach, 1)} Marks)</span>
                           <span className="text-[10px] font-bold text-[#737373]">All Compulsory</span>
                         </div>
                         <div className="space-y-2">
@@ -991,7 +1133,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     {includeShort && pulledShortQuestions.length > 0 && (
                       <div className="space-y-2">
                         <div className="text-xs font-black uppercase text-[#111111] flex items-center justify-between bg-[#F5F5F5] p-2 rounded-lg">
-                          <span>Section {shortSec}: {pulledShortQuestions.length} Short Questions (Attempt {shortAttemptCount} × {shortMarksEach} = {shortAttemptCount * shortMarksEach} Marks)</span>
+                          <span>Section {shortSec}: {pulledShortQuestions.length} Short Questions (Attempt {safeNum(shortAttemptCount, 5)} × {safeNum(shortMarksEach, 4)} = {safeNum(shortAttemptCount, 5) * safeNum(shortMarksEach, 4)} Marks)</span>
                         </div>
                         <div className="space-y-2">
                           {pulledShortQuestions.map((sq, idx) => {
@@ -1003,7 +1145,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                                     {shortQPrefix}.({roman}) {renderLaTeXToText(sq.question)}
                                   </div>
                                   <span className="text-[10px] font-bold text-[#737373] shrink-0">
-                                    [{sq.marks || shortMarksEach} Marks]
+                                    [{sq.marks || safeNum(shortMarksEach, 4)} Marks]
                                   </span>
                                 </div>
                                 {sq.modelAnswer && (
@@ -1022,7 +1164,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     {includeLong && pulledLongQuestions.length > 0 && (
                       <div className="space-y-2">
                         <div className="text-xs font-black uppercase text-[#111111] flex items-center justify-between bg-[#F5F5F5] p-2 rounded-lg">
-                          <span>Section {longSec}: {pulledLongQuestions.length} Long Questions (Attempt {longAttemptCount} × {longMarksEach} = {longAttemptCount * longMarksEach} Marks)</span>
+                          <span>Section {longSec}: {pulledLongQuestions.length} Long Questions (Attempt {safeNum(longAttemptCount, 2)} × {safeNum(longMarksEach, 10)} = {safeNum(longAttemptCount, 2) * safeNum(longMarksEach, 10)} Marks)</span>
                         </div>
                         <div className="space-y-2">
                           {pulledLongQuestions.map((lq, idx) => (
@@ -1032,7 +1174,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                                   Q{longQStart + idx}. {renderLaTeXToText(lq.question)}
                                 </div>
                                 <span className="text-[10px] font-bold text-[#737373] shrink-0">
-                                  [{lq.marks || longMarksEach} Marks]
+                                  [{lq.marks || safeNum(longMarksEach, 10)} Marks]
                                 </span>
                               </div>
                               {lq.parts && lq.parts.length > 0 && (
@@ -1059,45 +1201,16 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
           {/* STEP 4: BRANDED PDF PREVIEW & PUBLISH */}
           {step === 4 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#F0F0F0]">
-                <div>
-                  <h3 className="text-sm font-black text-[#111111]">
-                    Official Examination Paper PDF Preview
-                  </h3>
-                  <p className="text-xs text-[#737373]">
-                    Branded with SHS Academy Logo (Top-Left), Scholario LMS Lockup (Top-Right), and Centered Watermark.
-                  </p>
-                </div>
-                {previewPdfUrl && (
-                  <a
-                    href={previewPdfUrl}
-                    download={`SHS_Test_${subject}_Grade${grade}.pdf`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#F5F5F5] text-xs font-bold text-[#111111] transition-all"
-                  >
-                    <Download size={13} />
-                    <span>Download PDF</span>
-                  </a>
-                )}
-              </div>
-
-              {generatingPdf ? (
-                <div className="p-16 text-center space-y-3 bg-[#FAFAFA] rounded-2xl border border-[#E5E5E5]">
-                  <div className="w-8 h-8 rounded-full border-2 border-[#111111] border-t-transparent animate-spin mx-auto" />
-                  <div className="text-xs font-bold text-[#111111]">Compiling PDF Layout & Watermarks...</div>
-                </div>
-              ) : previewPdfUrl ? (
-                <div className="w-full h-[52vh] rounded-xl border border-[#E5E5E5] overflow-hidden shadow-inner bg-[#525659]">
-                  <iframe
-                    src={previewPdfUrl}
-                    title="Test Paper PDF Preview"
-                    className="w-full h-full border-none"
-                  />
-                </div>
-              ) : (
-                <div className="p-8 text-center bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs text-[#737373]">
-                  Click below to generate the branded PDF preview.
-                </div>
-              )}
+              <PdfPreviewViewer
+                pdfBlob={generatedPdfBlob}
+                pdfDataUrl={previewPdfUrl || undefined}
+                pdfArrayBuffer={pdfArrayBuffer}
+                testSpec={currentTestSpec}
+                isGenerating={generatingPdf}
+                error={pdfError}
+                onRetry={handleGeneratePdfPreview}
+                onPreviewReady={(valid) => setIsPdfPreviewValid(valid)}
+              />
             </div>
           )}
         </div>
@@ -1137,7 +1250,8 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
             {step === 3 && (
               <button
                 onClick={goToPreviewStep}
-                className="px-5 py-2 rounded-xl bg-[#111111] text-white text-xs font-extrabold hover:bg-black transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                disabled={pullingQuestions}
+                className="px-5 py-2 rounded-xl bg-[#111111] text-white text-xs font-extrabold hover:bg-black transition-all flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Eye size={14} className="text-[#F4C430]" />
                 <span>Preview Branded PDF</span>
@@ -1146,23 +1260,35 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
             )}
 
             {step === 4 && (
-              <button
-                onClick={handlePublishTest}
-                disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-xl bg-[#111111] text-[#F4C430] hover:bg-black text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" />
-                    <span>Publishing Test Paper...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 size={14} />
-                    <span>Publish & Deploy Test Paper</span>
-                  </>
+              <div className="flex items-center gap-2">
+                {!isPdfPreviewValid && !generatingPdf && !isSubmitting && (
+                  <span className="text-[11px] text-amber-800 font-bold hidden sm:inline">
+                    ⚠️ Valid preview required to publish
+                  </span>
                 )}
-              </button>
+                <button
+                  onClick={handlePublishTest}
+                  disabled={isSubmitting || generatingPdf || (!generatedPdfBlob && !isPdfPreviewValid)}
+                  title={
+                    !generatedPdfBlob && !isPdfPreviewValid
+                      ? 'Generate a valid PDF preview before publishing'
+                      : 'Publish official test paper'
+                  }
+                  className="px-6 py-2.5 rounded-xl bg-[#111111] text-[#F4C430] hover:bg-black text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Publishing Test Paper...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} />
+                      <span>Publish & Deploy Test Paper</span>
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>

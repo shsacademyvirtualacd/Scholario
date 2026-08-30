@@ -6,21 +6,29 @@ import { renderLaTeXToText } from './latexRenderer';
 let cachedShsLogoBase64: string | null = null;
 
 /**
- * Loads an image from URL or path and converts to Base64 Data URL
+ * Loads an image from URL or path and converts to Base64 Data URL with strict timeout
  */
-async function loadImageAsBase64(url: string): Promise<string | null> {
-  if (cachedShsLogoBase64 && url.includes('shs')) {
+async function loadImageAsBase64(url: string, timeoutMs: number = 2500): Promise<string | null> {
+  if (cachedShsLogoBase64 && (url.includes('shs') || url.includes('logo'))) {
     return cachedShsLogoBase64;
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return null;
     const blob = await response.blob();
-    return new Promise((resolve) => {
+    if (!blob || blob.size === 0 || !blob.type.startsWith('image/')) return null;
+
+    return await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result as string;
-        if (url.includes('shs')) {
+        if (url.includes('shs') || url.includes('logo')) {
           cachedShsLogoBase64 = base64data;
         }
         resolve(base64data);
@@ -29,7 +37,8 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
       reader.readAsDataURL(blob);
     });
   } catch (err) {
-    console.warn('[PDFGenerator] Image fetch error:', err);
+    clearTimeout(timeoutId);
+    console.warn('[PDFGenerator] Image fetch timed out or failed for:', url);
     return null;
   }
 }
@@ -41,6 +50,7 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
 export async function generateTestPaperPDF(test: GeneratedTestSpecification): Promise<{
   blob: Blob;
   dataUrl: string;
+  arrayBuffer: ArrayBuffer;
   filename: string;
 }> {
   const doc = new jsPDF({
@@ -55,10 +65,15 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
   const contentWidth = pageWidth - marginX * 2; // 182mm
   const bottomMargin = 20;
 
-  // Attempt to load SHS Logo
-  let shsLogoData = await loadImageAsBase64('/images/shs-academy-logo.png');
-  if (!shsLogoData) {
-    shsLogoData = await loadImageAsBase64('https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png');
+  // Attempt to load SHS Logo with fast timeout and fallback
+  let shsLogoData: string | null = null;
+  try {
+    shsLogoData = await loadImageAsBase64('/images/shs-academy-logo.png', 2000);
+    if (!shsLogoData) {
+      shsLogoData = await loadImageAsBase64('https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png', 2000);
+    }
+  } catch (e) {
+    console.warn('[PDFGenerator] Non-blocking logo load issue, continuing with fallback:', e);
   }
 
   let currentPage = 1;
@@ -603,6 +618,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
   const pdfBlob = doc.output('blob');
   const pdfDataUrl = doc.output('datauristring');
+  const pdfArrayBuffer = doc.output('arraybuffer');
   const cleanSubject = test.subject.toLowerCase().replace(/[^a-z0-9]/g, '_');
   const cleanTitle = test.title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
   const filename = `SHS_Test_${cleanSubject}_G${test.grade}_${cleanTitle}.pdf`;
@@ -610,6 +626,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
   return {
     blob: pdfBlob,
     dataUrl: pdfDataUrl,
+    arrayBuffer: pdfArrayBuffer,
     filename,
   };
 }
