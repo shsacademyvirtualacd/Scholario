@@ -448,11 +448,11 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
             {/* Academy Watermark Overlay */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.045] overflow-hidden select-none">
               <img
-                src="/images/shs-academy-logo.png"
+                src="https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png"
                 alt="SHS Watermark"
-                className="w-[450px] h-[450px] object-contain grayscale"
+                className="w-[450px] h-[450px] object-contain grayscale bg-transparent"
                 onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+                  (e.target as HTMLImageElement).src = '/images/shs-academy-logo.png';
                 }}
               />
             </div>
@@ -461,16 +461,15 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
             <div className="flex items-start justify-between border-b-2 border-neutral-900 pb-4 relative z-10">
               {/* Left: SHS Academy Logo */}
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 bg-neutral-900 text-[#F4C430] rounded-xl flex items-center justify-center font-black text-xl shadow-xs overflow-hidden">
+                <div className="w-14 h-14 flex items-center justify-center shrink-0 bg-transparent">
                   <img
-                    src="/images/shs-academy-logo.png"
+                    src="https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png"
                     alt="SHS Logo"
-                    className="w-full h-full object-contain"
+                    className="max-w-full max-h-full object-contain bg-transparent"
                     onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
+                      (e.target as HTMLImageElement).src = '/images/shs-academy-logo.png';
                     }}
                   />
-                  <span className="hidden">SHS</span>
                 </div>
                 <div>
                   <h1 className="text-base sm:text-lg font-black tracking-tight text-neutral-900">
