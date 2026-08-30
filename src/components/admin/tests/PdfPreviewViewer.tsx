@@ -9,9 +9,11 @@ import {
   FileText,
   Eye,
   CheckCircle2,
+  Printer,
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
+import { containsUrdu } from '../../../lib/urduReshaper';
 import type { GeneratedTestSpecification } from '../../../types/questionBank';
 
 // Configure pdfjs worker source safely
@@ -195,7 +197,36 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
     }
   };
 
+  // Handle Print Paper
+  const handlePrint = () => {
+    if (renderedObjectUrl) {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.src = renderedObjectUrl;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch {
+          window.print();
+        }
+      };
+    } else {
+      window.print();
+    }
+  };
+
   // Calculate Section Roman Numerals & Numbers
+  const isUrduSubject =
+    testSpec.subject?.toLowerCase().includes('urdu') ||
+    testSpec.subject?.toLowerCase().includes('islam') ||
+    containsUrdu(testSpec.title);
   const mcqs = testSpec.mcqs || [];
   const shortQuestions = testSpec.shortQuestions || [];
   const longQuestions = testSpec.longQuestions || [];
@@ -279,8 +310,19 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
           </div>
         )}
 
-        {/* Right: Actions (Download & Open in New Tab) */}
+        {/* Right: Actions (Print, Open in New Tab & Download) */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            disabled={!pdfBlob && !pdfDataUrl && activeTab !== 'paper'}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-40"
+            title="Print assessment paper"
+          >
+            <Printer size={13} />
+            <span className="hidden sm:inline">Print Paper</span>
+          </button>
+
           {renderedObjectUrl && (
             <button
               type="button"
@@ -493,19 +535,45 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                   Note: Attempt all questions. Each question carries {testSpec.mcqMarksEach || 1} mark.
                 </p>
                 <div className="space-y-3 mt-3">
-                  {mcqs.map((mcq, idx) => (
-                    <div key={mcq.id || idx} className="text-xs space-y-1.5 p-2 bg-neutral-50/50 rounded border border-neutral-200">
-                      <div className="font-extrabold text-neutral-900">
-                        Q1. ({idx + 1}) {renderLaTeXToText(mcq.question)}
+                  {mcqs.map((mcq, idx) => {
+                    const isUrduQ = containsUrdu(mcq.question) || isUrduSubject;
+                    return (
+                      <div
+                        key={mcq.id || idx}
+                        dir={isUrduQ ? 'rtl' : 'ltr'}
+                        className={`text-xs space-y-1.5 p-2.5 bg-neutral-50/50 rounded border border-neutral-200 ${
+                          isUrduQ ? 'font-urdu text-right' : ''
+                        }`}
+                      >
+                        <div className={`font-extrabold text-neutral-900 ${isUrduQ ? 'text-sm leading-relaxed' : ''}`}>
+                          {isUrduQ ? `سوال ۱. (${idx + 1}) ` : `Q1. (${idx + 1}) `}
+                          {renderLaTeXToText(mcq.question)}
+                        </div>
+                        <div
+                          className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[11px] text-neutral-700 ${
+                            isUrduQ ? 'pr-4 text-xs' : 'pl-4'
+                          }`}
+                        >
+                          <div className="flex items-start gap-1.5">
+                            <span className="font-bold shrink-0">{isUrduQ ? '(الف)' : '(A)'}</span>
+                            <span>{renderLaTeXToText(mcq.options?.A || '')}</span>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <span className="font-bold shrink-0">{isUrduQ ? '(ب)' : '(B)'}</span>
+                            <span>{renderLaTeXToText(mcq.options?.B || '')}</span>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <span className="font-bold shrink-0">{isUrduQ ? '(ج)' : '(C)'}</span>
+                            <span>{renderLaTeXToText(mcq.options?.C || '')}</span>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <span className="font-bold shrink-0">{isUrduQ ? '(د)' : '(D)'}</span>
+                            <span>{renderLaTeXToText(mcq.options?.D || '')}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[11px] text-neutral-700 pl-4">
-                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(A)</span> <span>{renderLaTeXToText(mcq.options?.A || '')}</span></div>
-                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(B)</span> <span>{renderLaTeXToText(mcq.options?.B || '')}</span></div>
-                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(C)</span> <span>{renderLaTeXToText(mcq.options?.C || '')}</span></div>
-                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(D)</span> <span>{renderLaTeXToText(mcq.options?.D || '')}</span></div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -523,12 +591,20 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                 <div className="space-y-2.5 mt-3">
                   {shortQuestions.map((sq, idx) => {
                     const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
+                    const isUrduQ = containsUrdu(sq.question) || isUrduSubject;
                     return (
-                      <div key={sq.id || idx} className="text-xs flex items-start justify-between gap-2 p-2 bg-neutral-50/50 rounded border border-neutral-200">
-                        <div className="font-extrabold text-neutral-900">
-                          Q2. ({roman}) {renderLaTeXToText(sq.question)}
+                      <div
+                        key={sq.id || idx}
+                        dir={isUrduQ ? 'rtl' : 'ltr'}
+                        className={`text-xs flex items-start justify-between gap-2 p-2.5 bg-neutral-50/50 rounded border border-neutral-200 ${
+                          isUrduQ ? 'font-urdu text-right' : ''
+                        }`}
+                      >
+                        <div className={`font-extrabold text-neutral-900 ${isUrduQ ? 'text-sm leading-relaxed' : ''}`}>
+                          {isUrduQ ? `سوال ۲. (${roman}) ` : `Q2. (${roman}) `}
+                          {renderLaTeXToText(sq.question)}
                         </div>
-                        <span className="text-[10px] font-bold text-neutral-500 shrink-0">
+                        <span className="text-[10px] font-bold text-neutral-500 shrink-0 mt-0.5">
                           [{sq.marks || testSpec.shortMarksEach || 2} Marks]
                         </span>
                       </div>
@@ -549,26 +625,38 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                   Note: Attempt any {testSpec.longAttemptCount || longQuestions.length} questions. Each question carries {testSpec.longMarksEach || 5} marks.
                 </p>
                 <div className="space-y-3 mt-3">
-                  {longQuestions.map((lq, idx) => (
-                    <div key={lq.id || idx} className="text-xs space-y-1.5 p-2.5 bg-neutral-50/50 rounded border border-neutral-200">
-                      <div className="flex items-start justify-between gap-2 font-extrabold text-neutral-900">
-                        <div>Q{3 + idx}. {renderLaTeXToText(lq.question)}</div>
-                        <span className="text-[10px] font-bold text-neutral-500 shrink-0">
-                          [{lq.marks || testSpec.longMarksEach || 5} Marks]
-                        </span>
-                      </div>
-                      {lq.parts && lq.parts.length > 0 && (
-                        <div className="pl-4 space-y-1 text-[11px] text-neutral-700">
-                          {lq.parts.map((p, pIdx) => (
-                            <div key={pIdx} className="flex justify-between">
-                              <span>{p.label} {renderLaTeXToText(p.text)}</span>
-                              <span className="text-neutral-500 font-medium">({p.marks} Marks)</span>
-                            </div>
-                          ))}
+                  {longQuestions.map((lq, idx) => {
+                    const isUrduQ = containsUrdu(lq.question) || isUrduSubject;
+                    return (
+                      <div
+                        key={lq.id || idx}
+                        dir={isUrduQ ? 'rtl' : 'ltr'}
+                        className={`text-xs space-y-1.5 p-3 bg-neutral-50/50 rounded border border-neutral-200 ${
+                          isUrduQ ? 'font-urdu text-right' : ''
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2 font-extrabold text-neutral-900">
+                          <div className={isUrduQ ? 'text-sm leading-relaxed' : ''}>
+                            {isUrduQ ? `سوال ${3 + idx}. ` : `Q${3 + idx}. `}
+                            {renderLaTeXToText(lq.question)}
+                          </div>
+                          <span className="text-[10px] font-bold text-neutral-500 shrink-0 mt-0.5">
+                            [{lq.marks || testSpec.longMarksEach || 5} Marks]
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {lq.parts && lq.parts.length > 0 && (
+                          <div className={`${isUrduQ ? 'pr-4' : 'pl-4'} space-y-1 text-[11px] text-neutral-700`}>
+                            {lq.parts.map((p, pIdx) => (
+                              <div key={pIdx} className="flex justify-between">
+                                <span>{p.label} {renderLaTeXToText(p.text)}</span>
+                                <span className="text-neutral-500 font-medium">({p.marks} Marks)</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

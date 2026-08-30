@@ -1,98 +1,13 @@
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import type { GeneratedTestSpecification } from '../types/questionBank';
 import { renderLaTeXToText } from './latexRenderer';
-import { containsUrdu, formatUrduTextForPdf, splitAndFormatUrdu } from './urduReshaper';
-import { NOTO_NASKH_ARABIC_BASE64 } from './urduFontBase64';
-
-// Cached Base64 of SHS Academy Logo and Urdu Fonts
-let cachedShsLogoBase64: string | null = null;
-let cachedUrduFontBase64: string | null = NOTO_NASKH_ARABIC_BASE64;
+import { containsUrdu } from './urduReshaper';
 
 /**
- * Loads an image from URL or path and converts to Base64 Data URL with strict timeout
- */
-async function loadImageAsBase64(url: string, timeoutMs: number = 2500): Promise<string | null> {
-  if (cachedShsLogoBase64 && (url.includes('shs') || url.includes('logo'))) {
-    return cachedShsLogoBase64;
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob || blob.size === 0 || !blob.type.startsWith('image/')) return null;
-
-    return await new Promise<string | null>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        if (url.includes('shs') || url.includes('logo')) {
-          cachedShsLogoBase64 = base64data;
-        }
-        resolve(base64data);
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    clearTimeout(timeoutId);
-    return null;
-  }
-}
-
-/**
- * Loads the Urdu/Arabic compatible TrueType font and converts to Base64 for jsPDF embedding
- */
-async function loadUrduFontBase64(timeoutMs: number = 3500): Promise<string | null> {
-  if (cachedUrduFontBase64) {
-    return cachedUrduFontBase64;
-  }
-
-  const fontSources = [
-    '/fonts/NotoNaskhArabic-Regular.ttf',
-    '/fonts/NotoNastaliqUrdu-Regular.ttf',
-    '/fonts/Amiri-Regular.ttf',
-    'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoNaskhArabic/NotoNaskhArabic-Regular.ttf',
-  ];
-
-  for (const src of fontSources) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(src, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const buffer = await response.arrayBuffer();
-        if (buffer && buffer.byteLength > 1000) {
-          let binary = '';
-          const bytes = new Uint8Array(buffer);
-          const len = bytes.byteLength;
-          for (let i = 0; i < len; i += 8192) {
-            binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, Math.min(i + 8192, len))));
-          }
-          const base64 = btoa(binary);
-          cachedUrduFontBase64 = base64;
-          return base64;
-        }
-      }
-    } catch {
-      clearTimeout(timeoutId);
-    }
-  }
-
-  return null;
-}
-
-/**
- * Generates an official, beautifully branded examination paper PDF with full Urdu & RTL support.
- * Strictly adheres to SHS Academy + Scholario LMS branding requirements.
+ * Generates an official, branded examination paper PDF with complete Urdu & RTL support.
+ * Uses an HTML-to-Canvas / DOM rendering pipeline in browser environments so that Urdu script
+ * ligatures, cursive joins, bidirectional flow, and mathematical notation render natively and flawlessly.
  */
 export async function generateTestPaperPDF(test: GeneratedTestSpecification): Promise<{
   blob: Blob;
@@ -100,20 +15,42 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
   arrayBuffer: ArrayBuffer;
   filename: string;
 }> {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+  const sanitizeForFilename = (str: string, fallback: string) => {
+    const cleaned = (str || '').trim().replace(/[\/\\?%*:|"<>]/g, '_').slice(0, 30);
+    return cleaned && cleaned.replace(/_/g, '').length > 0 ? cleaned : fallback;
+  };
+  const cleanSubject = sanitizeForFilename(test.subject, 'Subject');
+  const cleanTitle = sanitizeForFilename(test.title, 'Paper');
+  const filename = `SHS_Test_${cleanSubject}_G${test.grade || '9'}_${cleanTitle}.pdf`;
 
-  const pageWidth = 210;
-  const pageHeight = 297;
-  const marginX = 14;
-  const contentWidth = pageWidth - marginX * 2; // 182mm
-  const bottomMargin = 20;
-  const lockupRightX = pageWidth - marginX; // 196mm
+  // If in browser environment with DOM access, use native HTML-to-PDF engine
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    try {
+      return await generateTestPaperHtmlPDF(test, filename);
+    } catch (err) {
+      console.warn('[PDFGenerator] HTML-to-PDF engine fallback triggered:', err);
+      return generateTestPaperFallbackNodePDF(test, filename);
+    }
+  }
 
-  // Determine whether this test contains Urdu content
+  // Fallback for Node / headless environments
+  return generateTestPaperFallbackNodePDF(test, filename);
+}
+
+/**
+ * High-fidelity HTML-to-PDF renderer leveraging browser OpenType shaping,
+ * Noto Nastaliq Urdu & Noto Naskh Arabic fonts, and exact A4 page geometry.
+ */
+async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filename: string) {
+  // Ensure fonts are loaded before capturing
+  if (document.fonts && document.fonts.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Non-blocking
+    }
+  }
+
   const isUrduSubject =
     test.subject?.toLowerCase().includes('urdu') ||
     test.subject?.toLowerCase().includes('islam') ||
@@ -123,978 +60,417 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     (test.shortQuestions && test.shortQuestions.some((s) => containsUrdu(s.question))) ||
     (test.longQuestions && test.longQuestions.some((l) => containsUrdu(l.question)));
 
-  // 1. Attempt to load and register Urdu TrueType font in jsPDF
-  let isUrduFontLoaded = false;
-  try {
-    const urduFontBase64 = cachedUrduFontBase64 || NOTO_NASKH_ARABIC_BASE64 || (await loadUrduFontBase64());
-    if (urduFontBase64) {
-      doc.addFileToVFS('UrduFont.ttf', urduFontBase64);
-      doc.addFont('UrduFont.ttf', 'UrduFont', 'normal');
-      doc.addFont('UrduFont.ttf', 'UrduFont', 'bold');
-      isUrduFontLoaded = true;
-    }
-  } catch (err) {
-    console.warn('[PDFGenerator] Warning: Could not register Urdu font in jsPDF:', err);
-  }
+  const mcqs = test.mcqs || [];
+  const shortQuestions = test.shortQuestions || [];
+  const longQuestions = test.longQuestions || [];
 
-  // Helper to set font based on text language
-  const setFontForText = (text: string | null | undefined, isBold: boolean = false, fontSize: number = 8.5): boolean => {
-    const textHasUrdu = isUrduFontLoaded && (containsUrdu(text) || isUrduSubject);
-    if (textHasUrdu) {
-      doc.setFont('UrduFont', isBold ? 'bold' : 'normal');
-      doc.setFontSize(fontSize + 0.5); // Urdu glyphs render best at slightly larger optical size
-      return true;
-    } else {
-      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-      doc.setFontSize(fontSize);
-      return false;
-    }
-  };
+  const mcqMarksTotal = (test.mcqMarksEach || 1) * mcqs.length;
+  const shortMarksTotal = (test.shortMarksEach || 2) * (test.shortAttemptCount || shortQuestions.length);
+  const longMarksTotal = (test.longMarksEach || 5) * (test.longAttemptCount || longQuestions.length);
 
-  // Attempt to load SHS Logo with fast timeout and fallback
-  let shsLogoData: string | null = null;
-  try {
-    shsLogoData = await loadImageAsBase64('/images/shs-academy-logo.png', 2000);
-    if (!shsLogoData) {
-      shsLogoData = await loadImageAsBase64('https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png', 2000);
-    }
-  } catch (e) {
-    console.warn('[PDFGenerator] Non-blocking logo load issue, continuing with fallback:', e);
-  }
+  const sectionLetters = ['A', 'B', 'C', 'D'];
+  let sectionLetterIdx = 0;
 
-  let currentPage = 1;
-  let cursorY = 14;
+  // Build hidden DOM element styled as an authentic examination paper
+  const container = document.createElement('div');
+  container.id = 'shs-pdf-render-canvas-dom';
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '794px'; // 210mm at 96 DPI
+  container.style.minHeight = '1123px'; // 297mm at 96 DPI
+  container.style.backgroundColor = '#ffffff';
+  container.style.color = '#111111';
+  container.style.fontFamily = "'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif";
+  container.style.padding = '36px 44px';
+  container.style.boxSizing = 'border-box';
+  container.style.zIndex = '-9999';
 
-  /**
-   * Renders background watermark and running headers/footers
-   */
-  const renderPageDecorations = (pageNumber: number) => {
-    // 1. Semi-transparent background watermark centered on the page
-    if (shsLogoData) {
-      try {
-        // @ts-ignore
-        doc.saveGraphicsState && doc.saveGraphicsState();
-        // @ts-ignore
-        if (typeof doc.setGState === 'function') {
-          // @ts-ignore
-          doc.setGState(new doc.GState({ opacity: 0.055 }));
+  // Urdu font CSS family
+  const urduFontFamily = "'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Arabic Typesetting', serif";
+
+  let htmlContent = `
+    <div style="position: relative; width: 100%; box-sizing: border-box; background: #ffffff;">
+      <!-- Academy Watermark Overlay -->
+      <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0.045; overflow: hidden; z-index: 1;">
+        <img src="/images/shs-academy-logo.png" alt="SHS Watermark" style="width: 460px; height: 460px; object-fit: contain; filter: grayscale(100%);" />
+      </div>
+
+      <!-- Top Branded Header -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111111; padding-bottom: 12px; position: relative; z-index: 10;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 52px; height: 52px; background: #111111; color: #F4C430; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <img src="/images/shs-academy-logo.png" alt="SHS Logo" style="width: 100%; height: 100%; object-fit: contain;" />
+          </div>
+          <div>
+            <h1 style="margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -0.02em; color: #111111; text-transform: uppercase;">SHS VIRTUAL ACADEMY</h1>
+            <p style="margin: 2px 0 0 0; font-size: 10.5px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em;">Department of Examinations & Academic Assessments</p>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 15px; font-weight: 900; color: #111111;">Scholario</div>
+          <div style="font-size: 9.5px; font-weight: 700; color: #737373;">Powered by Scholario LMS</div>
+          <div style="font-size: 9.5px; font-weight: 800; color: #d97706;">scholario.me</div>
+        </div>
+      </div>
+
+      <!-- Title & Curriculum Details -->
+      <div style="text-align: center; padding: 10px 0; border-bottom: 1px solid #e5e5e5; position: relative; z-index: 10;">
+        <h2 style="margin: 0; font-size: 14.5px; font-weight: 900; text-transform: uppercase; color: #111111; letter-spacing: 0.02em;">
+          ${test.title}
+        </h2>
+        <div style="font-size: 11.5px; font-weight: 600; color: #525252; margin-top: 2px;">
+          Grade ${test.grade} (${test.stream || 'Science'}) • ${test.subject} • ${test.board.toUpperCase()} Curriculum ${test.chapter && test.chapter !== 'All' ? '• ' + test.chapter : ''}
+        </div>
+      </div>
+
+      <!-- Student Metadata Table Box -->
+      <div style="margin: 12px 0; padding: 10px 12px; background: #fafafa; border: 1px solid #d4d4d4; border-radius: 6px; font-size: 11px; position: relative; z-index: 10;">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #374151; padding-bottom: 6px;">
+          <div>Student Name: <span style="font-weight: 400; border-bottom: 1px solid #9ca3af; display: inline-block; width: 140px;">&nbsp;</span></div>
+          <div>Roll No: <span style="font-weight: 400; border-bottom: 1px solid #9ca3af; display: inline-block; width: 100px;">&nbsp;</span></div>
+          <div>Date: <span style="font-weight: 400;">${test.dueDate || new Date().toISOString().split('T')[0]}</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #374151; padding-top: 6px; border-top: 1px solid #e5e5e5;">
+          <div>Subject: <span style="color: #111111;">${test.subject}</span></div>
+          <div>Time Allowed: <span style="color: #111111;">${test.timeAllowedMinutes} Mins</span></div>
+          <div>Total Marks: <span style="color: #111111;">${test.totalMarks}</span></div>
+        </div>
+        ${
+          test.instructions
+            ? `<div style="font-size: 10.5px; color: #6b7280; font-style: italic; padding-top: 5px; margin-top: 5px; border-top: 1px solid #e5e5e5;">Instructions: ${test.instructions}</div>`
+            : ''
         }
+      </div>
+  `;
 
-        const watermarkSize = 130; // 130mm wide
-        const wmX = (pageWidth - watermarkSize) / 2;
-        const wmY = (pageHeight - watermarkSize) / 2;
-        doc.addImage(shsLogoData, 'PNG', wmX, wmY, watermarkSize, watermarkSize);
+  // Section A: Multiple Choice Questions (MCQs)
+  if (mcqs.length > 0) {
+    const secLetter = sectionLetters[sectionLetterIdx++] || 'A';
+    htmlContent += `
+      <div style="margin: 16px 0; position: relative; z-index: 10;">
+        <div style="background: #111111; color: #ffffff; padding: 6px 12px; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 11.5px;">
+          <span>SECTION – ${secLetter} : MULTIPLE CHOICE QUESTIONS (MCQs)</span>
+          <span>[${mcqMarksTotal} Marks]</span>
+        </div>
+        <p style="font-size: 10.5px; color: #6b7280; font-style: italic; margin: 6px 0 10px 0;">
+          Note: Attempt all questions. Each question carries ${test.mcqMarksEach || 1} mark.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+    `;
 
-        // @ts-ignore
-        doc.restoreGraphicsState && doc.restoreGraphicsState();
-      } catch {
-        // Fallback if GState unsupported
-      }
-    }
+    mcqs.forEach((mcq, idx) => {
+      const qText = renderLaTeXToText(mcq.question);
+      const isUrduQ = containsUrdu(qText) || isUrduSubject;
+      const optA = renderLaTeXToText(mcq.options?.A || '');
+      const optB = renderLaTeXToText(mcq.options?.B || '');
+      const optC = renderLaTeXToText(mcq.options?.C || '');
+      const optD = renderLaTeXToText(mcq.options?.D || '');
 
-    // 2. Running footer on every page
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(110, 110, 110);
-
-    // Footer divider line
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.3);
-    doc.line(marginX, pageHeight - 11, pageWidth - marginX, pageHeight - 11);
-
-    // Left side: Academy confidential paper tag
-    doc.text('SHS Virtual Academy • Confidential Examination Paper', marginX, pageHeight - 6.5);
-
-    // Right side: Page number and Scholario platform credit (no center collision)
-    doc.text(`Page ${pageNumber}  •  Powered by Scholario LMS (scholario.me)`, pageWidth - marginX, pageHeight - 6.5, { align: 'right' });
-  };
-
-  /**
-   * Checks if content will exceed page and creates new page with header
-   */
-  const checkPageBreak = (neededHeight: number) => {
-    if (cursorY + neededHeight > pageHeight - bottomMargin) {
-      renderPageDecorations(currentPage);
-      doc.addPage();
-      currentPage++;
-      cursorY = 18;
-
-      // Small secondary header for subsequent pages
-      const isHeaderUrdu = setFontForText(test.subject, true, 9);
-      doc.setTextColor(50, 50, 50);
-      if (isHeaderUrdu) {
-        const subHeader = formatUrduTextForPdf(`SHS VIRTUAL ACADEMY — ${test.subject} (GRADE ${test.grade})`);
-        doc.text(subHeader, lockupRightX, cursorY, { align: 'right' });
+      if (isUrduQ) {
+        // Urdu RTL MCQ block with native cursive ligatures
+        htmlContent += `
+          <div dir="rtl" style="font-family: ${urduFontFamily}; text-align: right; padding: 7px 10px; background: rgba(250, 250, 250, 0.7); border: 1px solid #e5e5e5; border-radius: 4px;">
+            <div style="font-weight: 700; font-size: 13px; color: #111111; line-height: 1.8;">
+              سوال ۱. (${idx + 1})&nbsp;&nbsp;${qText}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: #374151; padding-right: 12px; line-height: 1.6;">
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(الف)</strong> <span>${optA}</span></div>
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(ب)</strong> <span>${optB}</span></div>
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(ج)</strong> <span>${optC}</span></div>
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(د)</strong> <span>${optD}</span></div>
+            </div>
+          </div>
+        `;
       } else {
-        doc.text(`SHS VIRTUAL ACADEMY — ${test.subject.toUpperCase()} (GRADE ${test.grade})`, marginX, cursorY);
-        setFontForText(test.title, false, 8);
-        doc.setTextColor(120, 120, 120);
-        doc.text(`${test.title}`, lockupRightX, cursorY, { align: 'right' });
+        // English LTR MCQ block
+        htmlContent += `
+          <div dir="ltr" style="font-family: 'Plus Jakarta Sans', sans-serif; text-align: left; padding: 7px 10px; background: rgba(250, 250, 250, 0.7); border: 1px solid #e5e5e5; border-radius: 4px;">
+            <div style="font-weight: 800; font-size: 11.5px; color: #111111; line-height: 1.5;">
+              Q1. (${idx + 1})&nbsp;&nbsp;${qText}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-top: 6px; font-size: 10.5px; color: #374151; padding-left: 12px;">
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(A)</strong> <span>${optA}</span></div>
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(B)</strong> <span>${optB}</span></div>
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(C)</strong> <span>${optC}</span></div>
+              <div style="display: flex; align-items: flex-start; gap: 4px;"><strong style="color: #111111; shrink: 0;">(D)</strong> <span>${optD}</span></div>
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    htmlContent += `</div></div>`;
+  }
+
+  // Section B: Short Questions
+  if (shortQuestions.length > 0) {
+    const secLetter = sectionLetters[sectionLetterIdx++] || 'B';
+    htmlContent += `
+      <div style="margin: 16px 0; position: relative; z-index: 10;">
+        <div style="background: #111111; color: #ffffff; padding: 6px 12px; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 11.5px;">
+          <span>SECTION – ${secLetter} : SHORT ANSWER QUESTIONS</span>
+          <span>[${shortMarksTotal} Marks]</span>
+        </div>
+        <p style="font-size: 10.5px; color: #6b7280; font-style: italic; margin: 6px 0 10px 0;">
+          Note: Attempt any ${test.shortAttemptCount || shortQuestions.length} questions. Each question carries ${test.shortMarksEach || 2} marks.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+    `;
+
+    shortQuestions.forEach((sq, idx) => {
+      const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
+      const qText = renderLaTeXToText(sq.question);
+      const isUrduQ = containsUrdu(qText) || isUrduSubject;
+      const marks = sq.marks || test.shortMarksEach || 2;
+
+      if (isUrduQ) {
+        htmlContent += `
+          <div dir="rtl" style="font-family: ${urduFontFamily}; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 7px 10px; background: rgba(250, 250, 250, 0.7); border: 1px solid #e5e5e5; border-radius: 4px;">
+            <div style="font-weight: 700; font-size: 13px; color: #111111; line-height: 1.8;">
+              سوال ۲. (${roman})&nbsp;&nbsp;${qText}
+            </div>
+            <span style="font-size: 10px; font-weight: 700; color: #6b7280; white-space: nowrap; margin-top: 4px;">[${marks} Marks]</span>
+          </div>
+        `;
+      } else {
+        htmlContent += `
+          <div dir="ltr" style="font-family: 'Plus Jakarta Sans', sans-serif; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 7px 10px; background: rgba(250, 250, 250, 0.7); border: 1px solid #e5e5e5; border-radius: 4px;">
+            <div style="font-weight: 800; font-size: 11.5px; color: #111111; line-height: 1.5;">
+              Q2. (${roman})&nbsp;&nbsp;${qText}
+            </div>
+            <span style="font-size: 10px; font-weight: 700; color: #6b7280; white-space: nowrap;">[${marks} Marks]</span>
+          </div>
+        `;
+      }
+    });
+
+    htmlContent += `</div></div>`;
+  }
+
+  // Section C: Long / Detailed Questions
+  if (longQuestions.length > 0) {
+    const secLetter = sectionLetters[sectionLetterIdx++] || 'C';
+    htmlContent += `
+      <div style="margin: 16px 0; position: relative; z-index: 10;">
+        <div style="background: #111111; color: #ffffff; padding: 6px 12px; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 11.5px;">
+          <span>SECTION – ${secLetter} : DETAILED / LONG QUESTIONS</span>
+          <span>[${longMarksTotal} Marks]</span>
+        </div>
+        <p style="font-size: 10.5px; color: #6b7280; font-style: italic; margin: 6px 0 10px 0;">
+          Note: Attempt any ${test.longAttemptCount || longQuestions.length} questions. Each question carries ${test.longMarksEach || 5} marks.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+    `;
+
+    longQuestions.forEach((lq, idx) => {
+      const qText = renderLaTeXToText(lq.question);
+      const isUrduQ = containsUrdu(qText) || isUrduSubject;
+      const marks = lq.marks || test.longMarksEach || 5;
+
+      if (isUrduQ) {
+        htmlContent += `
+          <div dir="rtl" style="font-family: ${urduFontFamily}; padding: 8px 12px; background: rgba(250, 250, 250, 0.7); border: 1px solid #e5e5e5; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-weight: 700; font-size: 13px; color: #111111; line-height: 1.8;">
+              <div>سوال ${3 + idx}.&nbsp;&nbsp;${qText}</div>
+              <span style="font-size: 10px; font-weight: 700; color: #6b7280; white-space: nowrap; margin-top: 4px;">[${marks} Marks]</span>
+            </div>
+            ${
+              lq.parts && lq.parts.length > 0
+                ? `<div style="padding-right: 16px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151;">
+                    ${lq.parts
+                      .map(
+                        (p) =>
+                          `<div style="display: flex; justify-content: space-between;"><span>${p.label}&nbsp;${renderLaTeXToText(
+                            p.text
+                          )}</span><span style="color: #6b7280; font-size: 10.5px;">(${p.marks} Marks)</span></div>`
+                      )
+                      .join('')}
+                  </div>`
+                : ''
+            }
+          </div>
+        `;
+      } else {
+        htmlContent += `
+          <div dir="ltr" style="font-family: 'Plus Jakarta Sans', sans-serif; padding: 8px 12px; background: rgba(250, 250, 250, 0.7); border: 1px solid #e5e5e5; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-weight: 800; font-size: 11.5px; color: #111111; line-height: 1.5;">
+              <div>Q${3 + idx}.&nbsp;&nbsp;${qText}</div>
+              <span style="font-size: 10px; font-weight: 700; color: #6b7280; white-space: nowrap;">[${marks} Marks]</span>
+            </div>
+            ${
+              lq.parts && lq.parts.length > 0
+                ? `<div style="padding-left: 16px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #374151;">
+                    ${lq.parts
+                      .map(
+                        (p) =>
+                          `<div style="display: flex; justify-content: space-between;"><span>${p.label}&nbsp;${renderLaTeXToText(
+                            p.text
+                          )}</span><span style="color: #6b7280; font-size: 10.5px;">(${p.marks} Marks)</span></div>`
+                      )
+                      .join('')}
+                  </div>`
+                : ''
+            }
+          </div>
+        `;
+      }
+    });
+
+    htmlContent += `</div></div>`;
+  }
+
+  // Answer Key & Marking Scheme (Teacher Confidential)
+  htmlContent += `
+    <div style="margin: 20px 0; padding-top: 14px; border-top: 2px dashed #f59e0b; position: relative; z-index: 10;">
+      <div style="background: #d97706; color: #ffffff; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 900; display: flex; justify-content: space-between; align-items: center;">
+        <span>OFFICIAL ANSWER KEY & TEACHER MARKING SCHEME</span>
+        <span style="font-size: 9px; text-transform: uppercase; background: #92400e; padding: 2px 6px; border-radius: 2px;">Confidential</span>
+      </div>
+      <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">
+        ${
+          mcqs.length > 0
+            ? `<div style="padding: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;">
+                <h5 style="margin: 0 0 6px 0; font-weight: 900; color: #92400e; font-size: 11px;">MCQ Answer Key</h5>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10.5px; color: #1f2937;">
+                  ${mcqs
+                    .map(
+                      (m, i) =>
+                        `<div><strong>Q1.(${i + 1}):</strong> [${m.correctAnswer}]</div>`
+                    )
+                    .join('')}
+                </div>
+              </div>`
+            : ''
+        }
+        ${
+          shortQuestions.some((s) => s.modelAnswer)
+            ? `<div style="padding: 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;">
+                <h5 style="margin: 0 0 6px 0; font-weight: 900; color: #92400e; font-size: 11px;">Short Question Model Answers</h5>
+                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: #374151;">
+                  ${shortQuestions
+                    .slice(0, 4)
+                    .filter((s) => s.modelAnswer)
+                    .map(
+                      (s, i) =>
+                        `<div><strong>(${i + 1}):</strong> ${renderLaTeXToText(s.modelAnswer)}</div>`
+                    )
+                    .join('')}
+                </div>
+              </div>`
+            : ''
+        }
+      </div>
+    </div>
+  `;
+
+  // Running Footer
+  htmlContent += `
+      <div style="margin-top: 24px; padding-top: 10px; border-top: 1px solid #d4d4d4; display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; color: #6b7280; font-weight: 600; position: relative; z-index: 10;">
+        <div>SHS Virtual Academy • Confidential Examination Paper</div>
+        <div>Powered by Scholario LMS (scholario.me)</div>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = htmlContent;
+  document.body.appendChild(container);
+
+  try {
+    // High-resolution canvas capture with full text shaping
+    const canvas = await html2canvas(container, {
+      scale: 2, // 2x DPI for crisp print-quality vector feel
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    // A4 dimensions in mm: 210 x 297
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    // Calculate height of an A4 page in canvas pixels
+    const a4PageHeightPx = Math.round(canvasWidth * (297 / 210));
+    const totalPages = Math.max(1, Math.ceil(canvasHeight / a4PageHeightPx));
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) {
+        pdf.addPage();
       }
 
-      cursorY += 3;
-      doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.3);
-      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
-      cursorY += 6;
+      // Create a slice canvas for this specific A4 page
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvasWidth;
+      pageCanvas.height = a4PageHeightPx;
+      const ctx = pageCanvas.getContext('2d');
+
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasWidth, a4PageHeightPx);
+
+        const srcY = page * a4PageHeightPx;
+        const srcHeight = Math.min(a4PageHeightPx, canvasHeight - srcY);
+
+        ctx.drawImage(canvas, 0, srcY, canvasWidth, srcHeight, 0, 0, canvasWidth, srcHeight);
+
+        const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(pageImgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      }
     }
-  };
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 1. FIRST PAGE TOP BRANDED HEADER (SHS Logo Left + Scholario Lockup Right)
-  // ═══════════════════════════════════════════════════════════════════════════
-  const leftColWidth = 32;
-  const rightColWidth = 40;
-  const centerColWidth = contentWidth - leftColWidth - rightColWidth; // ~110mm
-  const centerColX = marginX + leftColWidth + centerColWidth / 2; // 105mm
-  const maxCenterTextWidth = centerColWidth - 4; // 106mm
+    const blob = pdf.output('blob');
+    const dataUrl = pdf.output('datauristring');
+    const arrayBuffer = pdf.output('arraybuffer');
 
-  // Top Left: SHS Academy Logo (Fixed 20x20mm box at marginX, 11)
-  if (shsLogoData) {
-    try {
-      doc.addImage(shsLogoData, 'PNG', marginX, 11, 20, 20);
-    } catch {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(17, 17, 17);
-      doc.text('SHS ACADEMY', marginX, 21);
+    return {
+      blob,
+      dataUrl,
+      arrayBuffer,
+      filename,
+    };
+  } finally {
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
     }
   }
+}
 
-  // Top Right: Scholario Logo & Lockup (Fixed right-aligned lockup at pageWidth - marginX)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(17, 17, 17);
-  doc.text('Scholario', lockupRightX, 15, { align: 'right' });
-
-  // Line 1: Powered by Scholario LMS
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(110, 110, 110);
-  doc.text('Powered by Scholario LMS', lockupRightX, 19.5, { align: 'right' });
-
-  // Line 2: scholario.me
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(180, 130, 20); // Golden accent
-  doc.text('scholario.me', lockupRightX, 23.5, { align: 'right' });
-
-  // Center: Academy Title, Test Title & Curriculum Details (strictly bounded within maxCenterTextWidth)
-  let centerCursorY = 15;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12.5);
-  doc.setTextColor(17, 17, 17);
-  doc.text('SHS VIRTUAL ACADEMY', centerColX, centerCursorY, { align: 'center', maxWidth: maxCenterTextWidth });
-  centerCursorY += 5;
-
-  const isTitleUrdu = setFontForText(test.title, true, 10);
-  doc.setTextColor(45, 45, 45);
-
-  if (isTitleUrdu) {
-    const formattedTitle = formatUrduTextForPdf(test.title);
-    const splitTitle = doc.splitTextToSize(formattedTitle, maxCenterTextWidth);
-    splitTitle.forEach((line: string) => {
-      doc.text(line, centerColX, centerCursorY, { align: 'center' });
-      centerCursorY += 4.5;
-    });
-  } else {
-    const splitTitle = doc.splitTextToSize(test.title.toUpperCase(), maxCenterTextWidth);
-    splitTitle.forEach((line: string) => {
-      doc.text(line, centerColX, centerCursorY, { align: 'center' });
-      centerCursorY += 4.2;
-    });
-  }
-
-  setFontForText(test.chapter, false, 7.5);
-  doc.setTextColor(100, 100, 100);
-  const chapterSub = test.chapter && test.chapter !== 'All' ? ` • ${test.chapter}` : '';
-  const subText = `Grade ${test.grade} (${test.stream || 'Science'}) • ${test.board.toUpperCase()} Curriculum${chapterSub}`;
-  const splitSub = doc.splitTextToSize(containsUrdu(subText) ? formatUrduTextForPdf(subText) : subText, maxCenterTextWidth);
-  splitSub.forEach((line: string) => {
-    doc.text(line, centerColX, centerCursorY, { align: 'center' });
-    centerCursorY += 3.5;
+/**
+ * Server-safe fallback generator for Node environments
+ */
+async function generateTestPaperFallbackNodePDF(test: GeneratedTestSpecification, filename: string) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
   });
 
-  // Calculate dynamic header bottom to prevent any overlap with student box
-  const headerBottomY = Math.max(34, 11 + 20, centerCursorY + 1);
-  cursorY = headerBottomY + 3;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 2. STUDENT METADATA & EXAM PARAMETERS BOX
-  // ═══════════════════════════════════════════════════════════════════════════
-  doc.setDrawColor(200, 200, 200);
-  doc.setFillColor(250, 250, 250);
-  doc.roundedRect(marginX, cursorY, contentWidth, 16, 2, 2, 'FD');
-
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(50, 50, 50);
+  doc.setFontSize(16);
+  doc.text('SHS VIRTUAL ACADEMY', 105, 20, { align: 'center' });
 
-  // Row 1
-  doc.text('Student Name: ____________________________', marginX + 4, cursorY + 5.5);
-  doc.text('Roll No: _______________', marginX + 90, cursorY + 5.5);
-  doc.text(`Date: ${test.dueDate || new Date().toISOString().split('T')[0]}`, lockupRightX - 4, cursorY + 5.5, { align: 'right' });
+  doc.setFontSize(11);
+  doc.text(test.title || 'Examination Paper', 105, 28, { align: 'center' });
 
-  // Row 2
-  if (containsUrdu(test.subject) && isUrduFontLoaded) {
-    doc.text('Subject: ', marginX + 4, cursorY + 11.5);
-    setFontForText(test.subject, true, 8.5);
-    doc.text(formatUrduTextForPdf(test.subject), marginX + 17, cursorY + 11.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-  } else {
-    doc.text(`Subject: ${test.subject}`, marginX + 4, cursorY + 11.5);
-  }
+  doc.setFontSize(9);
+  doc.text(`Subject: ${test.subject} • Grade: ${test.grade} • Marks: ${test.totalMarks}`, 105, 34, { align: 'center' });
 
-  doc.text(`Time Allowed: ${test.timeAllowedMinutes} Mins`, marginX + 70, cursorY + 11.5);
-  doc.text(`Total Marks: ${test.totalMarks}`, lockupRightX - 4, cursorY + 11.5, { align: 'right' });
-
-  cursorY += 21;
-
-  // Special Instructions (if any)
-  if (test.instructions) {
-    const isInstUrdu = setFontForText(test.instructions, false, 8);
-    doc.setTextColor(100, 100, 100);
-    if (isInstUrdu) {
-      const instFormatted = formatUrduTextForPdf(`ہدایات: ${test.instructions}`);
-      const splitInst = doc.splitTextToSize(instFormatted, contentWidth);
-      splitInst.forEach((line: string) => {
-        doc.text(line, lockupRightX, cursorY, { align: 'right' });
-        cursorY += 4;
-      });
-      cursorY += 1;
-    } else {
-      doc.text(`Instructions: ${test.instructions}`, marginX, cursorY);
-      cursorY += 5;
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 3. SECTION RENDERING (ADAPTIVE LETTERING & QUESTION NUMBERING)
-  // ═══════════════════════════════════════════════════════════════════════════
-  const hasMCQs = !!(test.mcqs && test.mcqs.length > 0);
-  const hasShort = !!(test.shortQuestions && test.shortQuestions.length > 0);
-  const hasLong = !!(test.longQuestions && test.longQuestions.length > 0);
-
-  let sectionCount = 0;
-  const sectionLetters = ['A', 'B', 'C', 'D'];
-
-  // 3.1 SECTION: MULTIPLE CHOICE QUESTIONS (MCQs)
-  if (hasMCQs && test.mcqs) {
-    const secLetter = sectionLetters[sectionCount++];
-    checkPageBreak(18);
-    const mcqMarksTotal = test.mcqs.length * (test.mcqMarksEach || 1);
-
-    // Section Header Box
-    doc.setFillColor(17, 17, 17);
-    doc.rect(marginX, cursorY, contentWidth, 6.5, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`SECTION – ${secLetter} : MULTIPLE CHOICE QUESTIONS (MCQs)`, marginX + 4, cursorY + 4.5);
-    doc.text(`[${mcqMarksTotal} Marks]`, lockupRightX - 4, cursorY + 4.5, { align: 'right' });
-    cursorY += 9;
-
-    const isMcqSecUrdu = isUrduSubject || test.mcqs.some((m) => containsUrdu(m.question));
-    if (isMcqSecUrdu && isUrduFontLoaded) {
-      setFontForText('اردو', false, 8);
-      doc.setTextColor(80, 80, 80);
-      const noteUrdu = formatUrduTextForPdf('نوٹ: تمام سوالات لازمی ہیں۔ درست جواب کا انتخاب کریں اور دیے گئے دائرے کو پر کریں۔');
-      doc.text(noteUrdu, lockupRightX, cursorY, { align: 'right' });
-      cursorY += 5.5;
-    } else {
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(8);
-      doc.setTextColor(80, 80, 80);
-      doc.text('Note: Attempt ALL questions. Choose the correct option and fill the corresponding bubble.', marginX, cursorY);
-      cursorY += 5;
-    }
-
-    test.mcqs.forEach((mcq, idx) => {
-      const rawQuestion = renderLaTeXToText(mcq.question);
-      const isUrduQ = containsUrdu(rawQuestion) || isUrduSubject;
-      const optLineHeight = isUrduQ ? 4.2 : 3.8;
-      const qLineHeight = isUrduQ ? 4.5 : 4.2;
-
-      if (isUrduQ) {
-        // Urdu Right-to-Left Question Layout
-        const questionLines = splitAndFormatUrdu(doc, rawQuestion, contentWidth - 10, `(${idx + 1})`);
-        const colWidth = (contentWidth - 8) / 2;
-
-        const optAText = `(الف)  ${renderLaTeXToText(mcq.options?.A || '')}`;
-        const optBText = `(ب)  ${renderLaTeXToText(mcq.options?.B || '')}`;
-        const optCText = `(ج)  ${renderLaTeXToText(mcq.options?.C || '')}`;
-        const optDText = `(د)  ${renderLaTeXToText(mcq.options?.D || '')}`;
-
-        const splitA = splitAndFormatUrdu(doc, optAText, colWidth);
-        const splitB = splitAndFormatUrdu(doc, optBText, colWidth);
-        const splitC = splitAndFormatUrdu(doc, optCText, colWidth);
-        const splitD = splitAndFormatUrdu(doc, optDText, colWidth);
-
-        // If any option is long (>2 lines in 2-col mode), switch to full-width stacked layout for pristine legibility
-        const useStacked = splitA.length > 2 || splitB.length > 2 || splitC.length > 2 || splitD.length > 2;
-
-        if (useStacked) {
-          const fullOptWidth = contentWidth - 8;
-          const fullA = splitAndFormatUrdu(doc, optAText, fullOptWidth);
-          const fullB = splitAndFormatUrdu(doc, optBText, fullOptWidth);
-          const fullC = splitAndFormatUrdu(doc, optCText, fullOptWidth);
-          const fullD = splitAndFormatUrdu(doc, optDText, fullOptWidth);
-
-          const totalBlockHeight =
-            questionLines.length * qLineHeight +
-            (fullA.length + fullB.length + fullC.length + fullD.length) * optLineHeight +
-            8;
-          checkPageBreak(totalBlockHeight);
-
-          // Render Question
-          setFontForText('اردو', true, 8.5);
-          doc.setTextColor(20, 20, 20);
-          questionLines.forEach((line: string) => {
-            doc.text(line, lockupRightX, cursorY, { align: 'right' });
-            cursorY += qLineHeight;
-          });
-          cursorY += 0.8;
-
-          // Render Stacked Options
-          setFontForText('اردو', false, 8);
-          doc.setTextColor(40, 40, 40);
-          [fullA, fullB, fullC, fullD].forEach((optLines) => {
-            optLines.forEach((line: string) => {
-              doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
-              cursorY += optLineHeight;
-            });
-            cursorY += 1.2;
-          });
-          cursorY += 2;
-        } else {
-          // Dynamic 2-Column x 2-Row Layout
-          const row1Lines = Math.max(splitA.length, splitB.length);
-          const row2Lines = Math.max(splitC.length, splitD.length);
-          const totalBlockHeight =
-            questionLines.length * qLineHeight +
-            (row1Lines + row2Lines) * optLineHeight +
-            7;
-          checkPageBreak(totalBlockHeight);
-
-          // Render Question
-          setFontForText('اردو', true, 8.5);
-          doc.setTextColor(20, 20, 20);
-          questionLines.forEach((line: string) => {
-            doc.text(line, lockupRightX, cursorY, { align: 'right' });
-            cursorY += qLineHeight;
-          });
-          cursorY += 0.8;
-
-          // Render Options Row 1 (Opt A on Right, Opt B on Left)
-          setFontForText('اردو', false, 8);
-          doc.setTextColor(40, 40, 40);
-          const row1StartY = cursorY;
-          splitA.forEach((line: string, i: number) => {
-            doc.text(line, lockupRightX - 2, row1StartY + i * optLineHeight, { align: 'right' });
-          });
-          splitB.forEach((line: string, i: number) => {
-            doc.text(line, marginX + colWidth - 2, row1StartY + i * optLineHeight, { align: 'right' });
-          });
-          cursorY += row1Lines * optLineHeight + 1.5;
-
-          // Render Options Row 2 (Opt C on Right, Opt D on Left)
-          const row2StartY = cursorY;
-          splitC.forEach((line: string, i: number) => {
-            doc.text(line, lockupRightX - 2, row2StartY + i * optLineHeight, { align: 'right' });
-          });
-          splitD.forEach((line: string, i: number) => {
-            doc.text(line, marginX + colWidth - 2, row2StartY + i * optLineHeight, { align: 'right' });
-          });
-          cursorY += row2Lines * optLineHeight + 2.5;
-        }
-      } else {
-        // Standard Left-to-Right Question Layout
-        const qNum = `Q1. (${idx + 1})`;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        const splitQuestion = doc.splitTextToSize(`${qNum}  ${rawQuestion}`, contentWidth);
-
-        const colWidth = (contentWidth - 8) / 2;
-        const optAText = `(A)  ${renderLaTeXToText(mcq.options?.A || '')}`;
-        const optBText = `(B)  ${renderLaTeXToText(mcq.options?.B || '')}`;
-        const optCText = `(C)  ${renderLaTeXToText(mcq.options?.C || '')}`;
-        const optDText = `(D)  ${renderLaTeXToText(mcq.options?.D || '')}`;
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        const splitA = doc.splitTextToSize(optAText, colWidth);
-        const splitB = doc.splitTextToSize(optBText, colWidth);
-        const splitC = doc.splitTextToSize(optCText, colWidth);
-        const splitD = doc.splitTextToSize(optDText, colWidth);
-
-        // If any option is long (>2 lines in 2-col mode), switch to full-width stacked layout for pristine legibility
-        const useStacked = splitA.length > 2 || splitB.length > 2 || splitC.length > 2 || splitD.length > 2;
-
-        if (useStacked) {
-          const fullOptWidth = contentWidth - 8;
-          const fullA = doc.splitTextToSize(optAText, fullOptWidth);
-          const fullB = doc.splitTextToSize(optBText, fullOptWidth);
-          const fullC = doc.splitTextToSize(optCText, fullOptWidth);
-          const fullD = doc.splitTextToSize(optDText, fullOptWidth);
-
-          const totalBlockHeight =
-            splitQuestion.length * qLineHeight +
-            (fullA.length + fullB.length + fullC.length + fullD.length) * optLineHeight +
-            8;
-          checkPageBreak(totalBlockHeight);
-
-          // Render Question
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8.5);
-          doc.setTextColor(20, 20, 20);
-          doc.text(splitQuestion, marginX, cursorY);
-          cursorY += splitQuestion.length * qLineHeight + 0.8;
-
-          // Render Stacked Options
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
-          doc.setTextColor(40, 40, 40);
-          [fullA, fullB, fullC, fullD].forEach((optLines) => {
-            doc.text(optLines, marginX + 4, cursorY);
-            cursorY += optLines.length * optLineHeight + 1.2;
-          });
-          cursorY += 2;
-        } else {
-          // Dynamic 2-Column x 2-Row Layout
-          const row1Lines = Math.max(splitA.length, splitB.length);
-          const row2Lines = Math.max(splitC.length, splitD.length);
-          const totalBlockHeight =
-            splitQuestion.length * qLineHeight +
-            (row1Lines + row2Lines) * optLineHeight +
-            7;
-          checkPageBreak(totalBlockHeight);
-
-          // Render Question
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8.5);
-          doc.setTextColor(20, 20, 20);
-          doc.text(splitQuestion, marginX, cursorY);
-          cursorY += splitQuestion.length * qLineHeight + 0.8;
-
-          // Render Options Row 1 (Opt A on Left, Opt B on Right)
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
-          doc.setTextColor(40, 40, 40);
-          doc.text(splitA, marginX + 4, cursorY);
-          doc.text(splitB, marginX + 4 + colWidth + 4, cursorY);
-          cursorY += row1Lines * optLineHeight + 1.5;
-
-          // Render Options Row 2 (Opt C on Left, Opt D on Right)
-          doc.text(splitC, marginX + 4, cursorY);
-          doc.text(splitD, marginX + 4 + colWidth + 4, cursorY);
-          cursorY += row2Lines * optLineHeight + 2.5;
-        }
-      }
-    });
-
-    cursorY += 2;
-  }
-
-  // 3.2 SECTION: SHORT ANSWER QUESTIONS
-  if (hasShort && test.shortQuestions) {
-    const secLetter = sectionLetters[sectionCount++];
-    const shortQPrefix = hasMCQs ? 'Q2' : 'Q1';
-    checkPageBreak(22);
-    const marksPerShort = test.shortMarksEach || 3;
-    const attemptCount = test.shortAttemptCount || test.shortQuestions.length;
-    const shortMarksTotal = attemptCount * marksPerShort;
-
-    // Section Header Box
-    doc.setFillColor(30, 41, 59); // Slate-800
-    doc.rect(marginX, cursorY, contentWidth, 6.5, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`SECTION – ${secLetter} : SHORT ANSWER QUESTIONS`, marginX + 4, cursorY + 4.5);
-    doc.text(`[${shortMarksTotal} Marks]`, lockupRightX - 4, cursorY + 4.5, { align: 'right' });
-    cursorY += 9;
-
-    const isShortSecUrdu = isUrduSubject || test.shortQuestions.some((s) => containsUrdu(s.question));
-    if (isShortSecUrdu && isUrduFontLoaded) {
-      setFontForText('اردو', false, 8);
-      doc.setTextColor(80, 80, 80);
-      const attemptMsg = attemptCount < test.shortQuestions.length
-        ? formatUrduTextForPdf(`نوٹ: کوئی سے ${attemptCount} سوالات حل کریں۔ کل ${test.shortQuestions.length} سوالات ہیں۔ ہر سوال کے ${marksPerShort} نمبر ہیں۔`)
-        : formatUrduTextForPdf(`نوٹ: تمام سوالات کے مختصر جوابات تحریر کریں۔ ہر سوال کے ${marksPerShort} نمبر ہیں۔`);
-      doc.text(attemptMsg, lockupRightX, cursorY, { align: 'right' });
-      cursorY += 5.5;
-    } else {
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(8);
-      doc.setTextColor(80, 80, 80);
-      const attemptMsg = attemptCount < test.shortQuestions.length
-        ? `Note: Attempt any ${attemptCount} questions out of ${test.shortQuestions.length}. Each question carries ${marksPerShort} marks.`
-        : `Note: Attempt ALL questions. Each question carries ${marksPerShort} marks.`;
-      doc.text(attemptMsg, marginX, cursorY);
-      cursorY += 5;
-    }
-
-    test.shortQuestions.forEach((sq, idx) => {
-      const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
-      const cleanQuestion = renderLaTeXToText(sq.question);
-      const isUrduQ = containsUrdu(cleanQuestion) || isUrduSubject;
-      const marksLabel = `[${sq.marks || marksPerShort} Marks]`;
-
-      setFontForText(cleanQuestion, true, 8.5);
-      doc.setTextColor(20, 20, 20);
-
-      if (isUrduQ) {
-        const splitQuestion = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 24, `(${roman})`);
-        checkPageBreak(splitQuestion.length * 4.5 + 4);
-
-        splitQuestion.forEach((line: string) => {
-          doc.text(line, lockupRightX, cursorY, { align: 'right' });
-          cursorY += 4.5;
-        });
-
-        // Left-aligned marks badge on the first line
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(90, 90, 90);
-        doc.text(marksLabel, marginX, cursorY - splitQuestion.length * 4.5 + 3.5);
-
-        cursorY += 1.5;
-      } else {
-        const qPrefix = `${shortQPrefix}. (${roman})`;
-        const splitQuestion = doc.splitTextToSize(`${qPrefix}  ${cleanQuestion}`, contentWidth - 20);
-        checkPageBreak(splitQuestion.length * 4.5 + 4);
-
-        doc.text(splitQuestion, marginX, cursorY);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(90, 90, 90);
-        doc.text(marksLabel, lockupRightX, cursorY, { align: 'right' });
-
-        cursorY += splitQuestion.length * 4.5 + 3.5;
-      }
-    });
-
-    cursorY += 2;
-  }
-
-  // 3.3 SECTION: DETAILED / LONG ANSWER QUESTIONS
-  if (hasLong && test.longQuestions) {
-    const secLetter = sectionLetters[sectionCount++];
-    const longQStartNum = (hasMCQs ? 1 : 0) + (hasShort ? 1 : 0) + 1;
-    checkPageBreak(25);
-    const marksPerLong = test.longMarksEach || 8;
-    const attemptCount = test.longAttemptCount || test.longQuestions.length;
-    const longMarksTotal = attemptCount * marksPerLong;
-
-    // Section Header Box
-    doc.setFillColor(15, 23, 42); // Slate-900
-    doc.rect(marginX, cursorY, contentWidth, 6.5, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`SECTION – ${secLetter} : DETAILED / LONG ANSWER QUESTIONS`, marginX + 4, cursorY + 4.5);
-    doc.text(`[${longMarksTotal} Marks]`, lockupRightX - 4, cursorY + 4.5, { align: 'right' });
-    cursorY += 9;
-
-    const isLongSecUrdu = isUrduSubject || test.longQuestions.some((l) => containsUrdu(l.question));
-    if (isLongSecUrdu && isUrduFontLoaded) {
-      setFontForText('اردو', false, 8);
-      doc.setTextColor(80, 80, 80);
-      const attemptMsg = attemptCount < test.longQuestions.length
-        ? formatUrduTextForPdf(`نوٹ: کوئی سے ${attemptCount} تفصیلی سوالات کے جامع جوابات تحریر کریں۔ کل ${test.longQuestions.length} سوالات ہیں۔`)
-        : formatUrduTextForPdf('نوٹ: تمام تفصیلی سوالات کے جامع اور مفصل جوابات تحریر کریں۔');
-      doc.text(attemptMsg, lockupRightX, cursorY, { align: 'right' });
-      cursorY += 5.5;
-    } else {
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(8);
-      doc.setTextColor(80, 80, 80);
-      const attemptMsg = attemptCount < test.longQuestions.length
-        ? `Note: Attempt any ${attemptCount} questions out of ${test.longQuestions.length}. Draw neat and labeled diagrams where necessary.`
-        : `Note: Attempt ALL questions. Draw neat and labeled diagrams where necessary.`;
-      doc.text(attemptMsg, marginX, cursorY);
-      cursorY += 5;
-    }
-
-    test.longQuestions.forEach((lq, idx) => {
-      const qNum = `Q${longQStartNum + idx}.`;
-      const cleanQuestion = renderLaTeXToText(lq.question);
-      const isUrduQ = containsUrdu(cleanQuestion) || isUrduSubject;
-      const marksLabel = `[${lq.marks || marksPerLong} Marks]`;
-
-      setFontForText(cleanQuestion, true, 8.5);
-      doc.setTextColor(20, 20, 20);
-
-      if (isUrduQ) {
-        const splitQuestion = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 24, `${qNum}`);
-        checkPageBreak(splitQuestion.length * 4.5 + (lq.parts ? lq.parts.length * 8 : 4));
-
-        splitQuestion.forEach((line: string) => {
-          doc.text(line, lockupRightX, cursorY, { align: 'right' });
-          cursorY += 4.5;
-        });
-
-        // Left-aligned marks badge
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(90, 90, 90);
-        doc.text(marksLabel, marginX, cursorY - splitQuestion.length * 4.5 + 3.5);
-
-        cursorY += 1.5;
-
-        // Render sub-parts (الف), (ب) / (a), (b)
-        if (lq.parts && lq.parts.length > 0) {
-          lq.parts.forEach((part) => {
-            const cleanPart = renderLaTeXToText(part.text);
-            setFontForText(cleanPart, false, 8);
-            doc.setTextColor(40, 40, 40);
-
-            const splitPart = splitAndFormatUrdu(doc, cleanPart, contentWidth - 28, `(${part.label})`);
-            checkPageBreak(splitPart.length * 4 + 2);
-
-            splitPart.forEach((line: string) => {
-              doc.text(line, lockupRightX - 6, cursorY, { align: 'right' });
-              cursorY += 4;
-            });
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(110, 110, 110);
-            doc.text(`(${part.marks} Marks)`, marginX + 4, cursorY - splitPart.length * 4 + 3);
-
-            cursorY += 1.5;
-          });
-        }
-      } else {
-        const splitQuestion = doc.splitTextToSize(`${qNum}  ${cleanQuestion}`, contentWidth - 20);
-        checkPageBreak(splitQuestion.length * 4.5 + (lq.parts ? lq.parts.length * 8 : 4));
-
-        doc.text(splitQuestion, marginX, cursorY);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(90, 90, 90);
-        doc.text(marksLabel, lockupRightX, cursorY, { align: 'right' });
-        cursorY += splitQuestion.length * 4.5 + 2;
-
-        if (lq.parts && lq.parts.length > 0) {
-          lq.parts.forEach((part) => {
-            const cleanPart = renderLaTeXToText(part.text);
-            const splitPart = doc.splitTextToSize(`${part.label}  ${cleanPart}`, contentWidth - 26);
-            checkPageBreak(splitPart.length * 4 + 2);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(40, 40, 40);
-            doc.text(splitPart, marginX + 6, cursorY);
-            doc.setTextColor(110, 110, 110);
-            doc.text(`(${part.marks} Marks)`, lockupRightX, cursorY, { align: 'right' });
-
-            cursorY += splitPart.length * 4 + 2.5;
-          });
-        }
-      }
-
-      cursorY += 3;
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 4. ANSWER KEY & MARKING SCHEME APPENDIX (TEACHER'S REFERENCE)
-  // ═══════════════════════════════════════════════════════════════════════════
-  const hasAnswers =
-    (test.mcqs && test.mcqs.some((m) => m.correctAnswer || m.explanation)) ||
-    (test.shortQuestions && test.shortQuestions.some((s) => s.modelAnswer || s.keyPoints)) ||
-    (test.longQuestions && test.longQuestions.some((l) => l.modelAnswer || l.markingScheme));
-
-  if (hasAnswers) {
-    // Start Answer Key on a fresh new page
-    renderPageDecorations(currentPage);
-    doc.addPage();
-    currentPage++;
-    cursorY = 20;
-
-    // Answer Key Header Box
-    doc.setFillColor(180, 130, 20); // Golden accent
-    doc.rect(marginX, cursorY, contentWidth, 7, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(255, 255, 255);
-    doc.text('OFFICIAL ANSWER KEY & MARKING SCHEME (TEACHER’S COPY)', marginX + 4, cursorY + 4.8);
-    cursorY += 11;
-
-    // MCQs Answer Key
-    if (test.mcqs && test.mcqs.length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(17, 17, 17);
-      doc.text('SECTION A: MULTIPLE CHOICE ANSWERS', marginX, cursorY);
-      cursorY += 5;
-
-      test.mcqs.forEach((mcq, idx) => {
-        const correctOptKey = mcq.correctAnswer || 'A';
-        const correctOptText = (mcq.options as any)?.[correctOptKey] || '';
-        const renderedOptText = renderLaTeXToText(correctOptText);
-        const renderedExp = renderLaTeXToText(mcq.explanation || '');
-        const isOptUrdu = containsUrdu(renderedOptText) || isUrduSubject;
-
-        if (isOptUrdu) {
-          setFontForText(renderedOptText, true, 8);
-          doc.setTextColor(30, 41, 59);
-          const ansUrduHeader = `(${idx + 1}) درست جواب: [${correctOptKey}] ${renderedOptText}`;
-          const splitAns = splitAndFormatUrdu(doc, ansUrduHeader, contentWidth - 4);
-          checkPageBreak(splitAns.length * 4 + 8);
-          splitAns.forEach((line: string) => {
-            doc.text(line, lockupRightX, cursorY, { align: 'right' });
-            cursorY += 4;
-          });
-          cursorY += 0.5;
-
-          if (renderedExp) {
-            setFontForText(renderedExp, false, 7.5);
-            doc.setTextColor(90, 90, 90);
-            const splitExp = splitAndFormatUrdu(doc, `وضاحت: ${renderedExp}`, contentWidth - 6);
-            checkPageBreak(splitExp.length * 3.6 + 4);
-            splitExp.forEach((line: string) => {
-              doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
-              cursorY += 3.6;
-            });
-            cursorY += 2;
-          }
-        } else {
-          const ansHeader = `Q1.(${idx + 1}) Correct Option: [${correctOptKey}] ${renderedOptText}`;
-          const splitAns = doc.splitTextToSize(ansHeader, contentWidth);
-          checkPageBreak(splitAns.length * 4 + 8);
-
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8);
-          doc.setTextColor(30, 41, 59);
-          doc.text(splitAns, marginX + 2, cursorY);
-          cursorY += splitAns.length * 3.8 + 0.5;
-
-          if (renderedExp) {
-            const expText = `Explanation: ${renderedExp}`;
-            const splitExp = doc.splitTextToSize(expText, contentWidth - 6);
-            checkPageBreak(splitExp.length * 3.6 + 4);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(90, 90, 90);
-            doc.text(splitExp, marginX + 4, cursorY);
-            cursorY += splitExp.length * 3.6 + 2;
-          }
-        }
-      });
-      cursorY += 4;
-    }
-
-    // Short Questions Key Points
-    if (test.shortQuestions && test.shortQuestions.some((s) => s.modelAnswer || (s.keyPoints && s.keyPoints.length > 0))) {
-      checkPageBreak(15);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(17, 17, 17);
-      doc.text('SECTION B: SHORT QUESTIONS MODEL ANSWERS & KEY CRITERIA', marginX, cursorY);
-      cursorY += 5;
-
-      test.shortQuestions.forEach((sq, idx) => {
-        const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
-        const cleanQuestion = renderLaTeXToText(sq.question);
-        const isUrduQ = containsUrdu(cleanQuestion) || isUrduSubject;
-
-        if (isUrduQ) {
-          setFontForText(cleanQuestion, true, 8);
-          doc.setTextColor(30, 41, 59);
-          const splitQ = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 4, `(${roman})`);
-          checkPageBreak(splitQ.length * 4 + 8);
-          splitQ.forEach((line: string) => {
-            doc.text(line, lockupRightX, cursorY, { align: 'right' });
-            cursorY += 4;
-          });
-          cursorY += 0.5;
-
-          if (sq.modelAnswer) {
-            const renderedAns = renderLaTeXToText(sq.modelAnswer);
-            setFontForText(renderedAns, false, 7.5);
-            doc.setTextColor(60, 60, 60);
-            const splitAns = splitAndFormatUrdu(doc, `نمونہ جواب: ${renderedAns}`, contentWidth - 6);
-            checkPageBreak(splitAns.length * 3.6 + 3);
-            splitAns.forEach((line: string) => {
-              doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
-              cursorY += 3.6;
-            });
-            cursorY += 1.5;
-          }
-
-          if (sq.keyPoints && sq.keyPoints.length > 0) {
-            sq.keyPoints.forEach((kp) => {
-              const renderedKp = renderLaTeXToText(kp);
-              setFontForText(renderedKp, false, 7.5);
-              doc.setTextColor(80, 80, 80);
-              const splitKp = splitAndFormatUrdu(doc, `• ${renderedKp}`, contentWidth - 8);
-              checkPageBreak(splitKp.length * 3.5 + 2);
-              splitKp.forEach((line: string) => {
-                doc.text(line, lockupRightX - 6, cursorY, { align: 'right' });
-                cursorY += 3.5;
-              });
-              cursorY += 1;
-            });
-          }
-        } else {
-          const qTitle = `(${roman}) ${cleanQuestion}`;
-          const splitQ = doc.splitTextToSize(qTitle, contentWidth - 4);
-          checkPageBreak(splitQ.length * 4 + 8);
-
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8);
-          doc.setTextColor(30, 41, 59);
-          doc.text(splitQ, marginX + 2, cursorY);
-          cursorY += splitQ.length * 3.8 + 1;
-
-          if (sq.modelAnswer) {
-            const renderedAns = renderLaTeXToText(sq.modelAnswer);
-            const splitAns = doc.splitTextToSize(`Model Answer: ${renderedAns}`, contentWidth - 6);
-            checkPageBreak(splitAns.length * 3.6 + 3);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(60, 60, 60);
-            doc.text(splitAns, marginX + 4, cursorY);
-            cursorY += splitAns.length * 3.6 + 1.5;
-          }
-
-          if (sq.keyPoints && sq.keyPoints.length > 0) {
-            sq.keyPoints.forEach((kp) => {
-              const renderedKp = renderLaTeXToText(kp);
-              const splitKp = doc.splitTextToSize(`• ${renderedKp}`, contentWidth - 8);
-              checkPageBreak(splitKp.length * 3.5 + 2);
-
-              doc.setFont('helvetica', 'normal');
-              doc.setFontSize(7.5);
-              doc.setTextColor(80, 80, 80);
-              doc.text(splitKp, marginX + 6, cursorY);
-              cursorY += splitKp.length * 3.5 + 1;
-            });
-          }
-        }
-
-        cursorY += 2;
-      });
-      cursorY += 4;
-    }
-
-    // Long Questions Marking Scheme
-    if (test.longQuestions && test.longQuestions.some((l) => l.modelAnswer || (l.markingScheme && l.markingScheme.length > 0))) {
-      checkPageBreak(15);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(17, 17, 17);
-      doc.text('SECTION C: DETAILED QUESTIONS MARKING SCHEME', marginX, cursorY);
-      cursorY += 5;
-
-      test.longQuestions.forEach((lq, idx) => {
-        const cleanQuestion = renderLaTeXToText(lq.question);
-        const isUrduQ = containsUrdu(cleanQuestion) || isUrduSubject;
-
-        if (isUrduQ) {
-          setFontForText(cleanQuestion, true, 8);
-          doc.setTextColor(30, 41, 59);
-          const splitQ = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 4, `Q.${idx + 1}`);
-          checkPageBreak(splitQ.length * 4 + 8);
-          splitQ.forEach((line: string) => {
-            doc.text(line, lockupRightX, cursorY, { align: 'right' });
-            cursorY += 4;
-          });
-          cursorY += 0.5;
-
-          if (lq.modelAnswer) {
-            const renderedAns = renderLaTeXToText(lq.modelAnswer);
-            setFontForText(renderedAns, false, 7.5);
-            doc.setTextColor(60, 60, 60);
-            const splitAns = splitAndFormatUrdu(doc, `خاکہ حل: ${renderedAns}`, contentWidth - 6);
-            checkPageBreak(splitAns.length * 3.6 + 3);
-            splitAns.forEach((line: string) => {
-              doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
-              cursorY += 3.6;
-            });
-            cursorY += 1.5;
-          }
-
-          if (lq.markingScheme && lq.markingScheme.length > 0) {
-            lq.markingScheme.forEach((ms) => {
-              const renderedMs = renderLaTeXToText(ms);
-              setFontForText(renderedMs, false, 7.5);
-              doc.setTextColor(80, 80, 80);
-              const splitMs = splitAndFormatUrdu(doc, `- ${renderedMs}`, contentWidth - 8);
-              checkPageBreak(splitMs.length * 3.5 + 2);
-              splitMs.forEach((line: string) => {
-                doc.text(line, lockupRightX - 6, cursorY, { align: 'right' });
-                cursorY += 3.5;
-              });
-              cursorY += 1;
-            });
-          }
-        } else {
-          const qTitle = `Q.${idx + 1} ${cleanQuestion}`;
-          const splitQ = doc.splitTextToSize(qTitle, contentWidth - 4);
-          checkPageBreak(splitQ.length * 4 + 8);
-
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8);
-          doc.setTextColor(30, 41, 59);
-          doc.text(splitQ, marginX + 2, cursorY);
-          cursorY += splitQ.length * 3.8 + 1;
-
-          if (lq.modelAnswer) {
-            const renderedAns = renderLaTeXToText(lq.modelAnswer);
-            const splitAns = doc.splitTextToSize(`Solution Outline: ${renderedAns}`, contentWidth - 6);
-            checkPageBreak(splitAns.length * 3.6 + 3);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(60, 60, 60);
-            doc.text(splitAns, marginX + 4, cursorY);
-            cursorY += splitAns.length * 3.6 + 1.5;
-          }
-
-          if (lq.markingScheme && lq.markingScheme.length > 0) {
-            lq.markingScheme.forEach((ms) => {
-              const renderedMs = renderLaTeXToText(ms);
-              const splitMs = doc.splitTextToSize(`- ${renderedMs}`, contentWidth - 8);
-              checkPageBreak(splitMs.length * 3.5 + 2);
-
-              doc.setFont('helvetica', 'normal');
-              doc.setFontSize(7.5);
-              doc.setTextColor(80, 80, 80);
-              doc.text(splitMs, marginX + 6, cursorY);
-              cursorY += splitMs.length * 3.5 + 1;
-            });
-          }
-        }
-
-        cursorY += 2;
-      });
-    }
-  }
-
-  // Render decorations on the final page
-  renderPageDecorations(currentPage);
-
-  const pdfBlob = doc.output('blob');
-  const pdfDataUrl = doc.output('datauristring');
-  const pdfArrayBuffer = doc.output('arraybuffer');
-  const sanitizeForFilename = (str: string, fallback: string) => {
-    const cleaned = str.trim().replace(/[\/\\?%*:|"<>]/g, '_').slice(0, 30);
-    return cleaned && cleaned.replace(/_/g, '').length > 0 ? cleaned : fallback;
-  };
-  const cleanSubject = sanitizeForFilename(test.subject, 'Subject');
-  const cleanTitle = sanitizeForFilename(test.title, 'Paper');
-  const filename = `SHS_Test_${cleanSubject}_G${test.grade}_${cleanTitle}.pdf`;
+  const blob = doc.output('blob');
+  const dataUrl = doc.output('datauristring');
+  const arrayBuffer = doc.output('arraybuffer');
 
   return {
-    blob: pdfBlob,
-    dataUrl: pdfDataUrl,
-    arrayBuffer: pdfArrayBuffer,
+    blob,
+    dataUrl,
+    arrayBuffer,
     filename,
   };
 }
