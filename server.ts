@@ -1453,9 +1453,62 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.json({ success: true });
   });
 
+  // ── Helper to verify Teacher or Admin Role ─────────
+  const verifyTeacherOrAdminRole = async (req: express.Request): Promise<{ authorized: boolean; error?: string; status?: number; user?: any }> => {
+    try {
+      const authHeader = (req.headers.authorization || req.headers['authorization']) as string | undefined;
+      if (!authHeader) {
+        return { authorized: false, status: 401, error: 'Unauthorized: Authentication token is missing.' };
+      }
+
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      let user: any = null;
+
+      const { data: authData, error: authErr } = await supabaseServer.auth.getUser(token);
+      if (!authErr && authData?.user) {
+        user = authData.user;
+      } else {
+        const requestSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: fallbackAuth, error: fallbackErr } = await requestSupabase.auth.getUser();
+        if (fallbackErr || !fallbackAuth?.user) {
+          return { authorized: false, status: 401, error: 'Unauthorized: Invalid or expired session.' };
+        }
+        user = fallbackAuth.user;
+      }
+
+      const { data: profile } = await (supabaseServer as any)
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const userRole = (profile?.role || user.user_metadata?.role || user.app_metadata?.role || '').toLowerCase();
+      const isStaff =
+        userRole === 'admin' ||
+        userRole === 'teacher' ||
+        userRole === 'faculty' ||
+        (user.email && (user.email.toLowerCase().includes('admin') || user.email.toLowerCase().includes('teacher') || user.email === 'shsvirtualadmin@gmail.com'));
+
+      if (!isStaff) {
+        return { authorized: false, status: 403, error: 'Forbidden: Official Answer Key is restricted to Teachers and Administrators only.' };
+      }
+
+      return { authorized: true, user };
+    } catch (err: any) {
+      return { authorized: false, status: 500, error: err.message || 'Authentication error' };
+    }
+  };
+
   // ── Test Answer Key Upload ──────────────────────────
   app.post('/api/tests/answer-key/upload/:testId', upload.single('file'), async (req, res) => {
     try {
+      const authCheck = await verifyTeacherOrAdminRole(req);
+      if (!authCheck.authorized) {
+        return res.status(authCheck.status || 403).json({ error: authCheck.error });
+      }
+
       const { testId } = req.params;
       const file = req.file;
       if (!file) {
@@ -1476,7 +1529,12 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   });
 
   // ── Test Answer Key View ────────────────────────────
-  app.get('/api/tests/answer-key/view/:testId', (req, res) => {
+  app.get('/api/tests/answer-key/view/:testId', async (req, res) => {
+    const authCheck = await verifyTeacherOrAdminRole(req);
+    if (!authCheck.authorized) {
+      return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    }
+
     const { testId } = req.params;
     const stored = fileStorage.get(`ak_${testId}`);
     if (stored) {
@@ -1486,34 +1544,22 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       return res.send(stored.buffer);
     }
 
-    const samplePdfPath = path.join(process.cwd(), 'real.pdf');
-    if (fs.existsSync(samplePdfPath)) {
-      const buf = fs.readFileSync(samplePdfPath);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Length', buf.length);
-      res.setHeader('Accept-Ranges', 'bytes');
-      return res.send(buf);
-    }
-
     return res.status(404).send('Answer key not found');
   });
 
   // ── Test Answer Key Download ────────────────────────
-  app.get('/api/tests/answer-key/dl/:testId', (req, res) => {
+  app.get('/api/tests/answer-key/dl/:testId', async (req, res) => {
+    const authCheck = await verifyTeacherOrAdminRole(req);
+    if (!authCheck.authorized) {
+      return res.status(authCheck.status || 403).json({ error: authCheck.error });
+    }
+
     const { testId } = req.params;
     const stored = fileStorage.get(`ak_${testId}`);
     if (stored) {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${stored.filename}"`);
       return res.send(stored.buffer);
-    }
-
-    const samplePdfPath = path.join(process.cwd(), 'real.pdf');
-    if (fs.existsSync(samplePdfPath)) {
-      const buf = fs.readFileSync(samplePdfPath);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename="answer_key.pdf"');
-      return res.send(buf);
     }
 
     return res.status(404).send('Answer key not found');

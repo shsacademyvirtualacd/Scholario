@@ -15,7 +15,12 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { pullTestQuestionsFromBanks } from '../../../lib/questionBankService';
-import { generateTestPaperPDF, getShsLogoDataUrl } from '../../../lib/testPdfGenerator';
+import {
+  generateTestPaperPDF,
+  generateStudentCopyPDF,
+  generateTeacherCopyPDF,
+  getShsLogoDataUrl,
+} from '../../../lib/testPdfGenerator';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
 import { PdfPreviewViewer } from './PdfPreviewViewer';
 import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
@@ -596,41 +601,15 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     });
   };
 
-  // Submit and Publish Test via Admin Endpoint
+  // Submit and Publish Test via Admin Endpoint (Sanitizes student copy & secures teacher scheme)
   const handlePublishTest = async () => {
     setIsSubmitting(true);
     try {
-      let pdfBase64 = '';
-      if (generatedPdfBlob) {
-        pdfBase64 = await blobToBase64(generatedPdfBlob);
-      } else {
-        const spec: GeneratedTestSpecification = {
-          title,
-          institutionName: 'SHS Virtual Academy',
-          board,
-          grade,
-          stream,
-          subject,
-          chapter: selectedChapter,
-          teacherId: selectedTeacherId,
-          teacherName: selectedTeacherName,
-          dueDate,
-          timeAllowedMinutes: safeNum(timeAllowed, 45),
-          totalMarks: totalCalculatedMarks,
-          instructions,
-          combination: derivedCombination,
-          mcqs: includeMCQs ? pulledMCQs : [],
-          shortQuestions: includeShort ? pulledShortQuestions : [],
-          longQuestions: includeLong ? pulledLongQuestions : [],
-          mcqMarksEach: safeNum(mcqMarksEach, 1),
-          shortMarksEach: safeNum(shortMarksEach, 4),
-          shortAttemptCount: safeNum(shortAttemptCount, 5),
-          longMarksEach: safeNum(longMarksEach, 10),
-          longAttemptCount: safeNum(longAttemptCount, 2),
-        };
-        const result = await generateTestPaperPDF(spec);
-        pdfBase64 = await blobToBase64(result.blob);
-      }
+      // 1. ALWAYS generate the sanitized Student Copy for the student in-app test payload
+      // This strictly excludes the Official Answer Key and Teacher Marking Scheme from student access
+      toast.loading('Compiling student test paper...', { id: 'publish-toast' });
+      const studentPdfResult = await generateStudentCopyPDF(currentTestSpec);
+      const pdfBase64 = await blobToBase64(studentPdfResult.blob);
 
       // Get user auth session
       const { data: { session } } = await supabase.auth.getSession();
@@ -638,6 +617,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
         throw new Error('Authentication session not found. Please log in again.');
       }
 
+      toast.loading('Publishing test paper to class assessments...', { id: 'publish-toast' });
       const response = await fetch('/api/admin/tests/create-test', {
         method: 'POST',
         headers: {
@@ -684,12 +664,35 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
         throw new Error(errMessage);
       }
 
-      const result = await response.json();
-      console.log('[Create Test] Test published successfully:', result);
+      const result: any = await response.json();
+      const createdTestId = result?.test?.id || result?.testId;
+
+      // 2. If test was created and has answer scheme, upload confidential teacher scheme to secured endpoint
+      if (createdTestId && (currentTestSpec.mcqs.length > 0 || currentTestSpec.shortQuestions.some(q => q.modelAnswer))) {
+        try {
+          toast.loading('Securing teacher marking scheme & answer key...', { id: 'publish-toast' });
+          const teacherPdfResult = await generateTeacherCopyPDF(currentTestSpec);
+          const teacherFormData = new FormData();
+          teacherFormData.append('file', teacherPdfResult.blob, `SHS_Answer_Key_${subject}_Grade${grade}.pdf`);
+          
+          await fetch(`/api/tests/answer-key/upload/${createdTestId}`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: teacherFormData,
+          });
+        } catch (schemeErr) {
+          console.warn('[Teacher Answer Key Upload Note]:', schemeErr);
+        }
+      }
+
+      toast.dismiss('publish-toast');
       toast.success('Test Paper successfully created, branded, and published to Class Tests!');
       onTestCreated();
       onClose();
     } catch (err: any) {
+      toast.dismiss('publish-toast');
       console.error('[Create Test Error]:', err);
       const detailedMessage = err?.message || 'Could not publish test';
       toast.error(`Test Creation Error: ${detailedMessage}`);

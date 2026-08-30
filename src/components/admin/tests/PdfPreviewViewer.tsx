@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   Download,
   ExternalLink,
@@ -10,10 +10,14 @@ import {
   Eye,
   CheckCircle2,
   Printer,
+  UserCheck,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
 import { containsUrdu } from '../../../lib/urduReshaper';
+import { generateTestPaperPDF } from '../../../lib/testPdfGenerator';
 import type { GeneratedTestSpecification } from '../../../types/questionBank';
 
 // Configure pdfjs worker source safely
@@ -38,6 +42,15 @@ interface PdfPreviewViewerProps {
   error: string | null;
   onRetry: () => void;
   onPreviewReady?: (isValid: boolean) => void;
+  activeCopyMode?: 'student' | 'teacher';
+  onCopyModeChange?: (mode: 'student' | 'teacher') => void;
+}
+
+interface GeneratedPdfCache {
+  blob: Blob;
+  dataUrl: string;
+  arrayBuffer: ArrayBuffer;
+  filename: string;
 }
 
 export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
@@ -49,22 +62,68 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
   error,
   onRetry,
   onPreviewReady,
+  activeCopyMode,
+  onCopyModeChange,
 }) => {
   const [zoom, setZoom] = useState<number>(1.0);
   const [activeTab, setActiveTab] = useState<'canvas' | 'paper'>('canvas');
+  const [copyMode, setCopyMode] = useState<'student' | 'teacher'>(activeCopyMode || 'student');
   const [numPages, setNumPages] = useState<number>(0);
   const [renderingError, setRenderingError] = useState<string | null>(null);
   const [isRenderingPages, setIsRenderingPages] = useState<boolean>(false);
   const [renderAttempt, setRenderAttempt] = useState<number>(0);
-  const [renderedObjectUrl, setRenderedObjectUrl] = useState<string | null>(null);
+  const [isSwitchingCopy, setIsSwitchingCopy] = useState<boolean>(false);
+
+  // Cached copies for instant switching
+  const [studentCopy, setStudentCopy] = useState<GeneratedPdfCache | null>(null);
+  const [teacherCopy, setTeacherCopy] = useState<GeneratedPdfCache | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-  // Manage Blob Object URL for opening in new tab or download
+  // Sync external activeCopyMode if provided
   useEffect(() => {
-    if (pdfBlob) {
-      const url = URL.createObjectURL(pdfBlob);
+    if (activeCopyMode && activeCopyMode !== copyMode) {
+      setCopyMode(activeCopyMode);
+    }
+  }, [activeCopyMode]);
+
+  const handleSetCopyMode = (newMode: 'student' | 'teacher') => {
+    setCopyMode(newMode);
+    onCopyModeChange?.(newMode);
+  };
+
+  // Determine active binary based on copyMode
+  const currentActivePdf = useMemo(() => {
+    if (copyMode === 'student' && studentCopy) {
+      return {
+        blob: studentCopy.blob,
+        dataUrl: studentCopy.dataUrl,
+        arrayBuffer: studentCopy.arrayBuffer,
+        filename: studentCopy.filename,
+      };
+    }
+    if (copyMode === 'teacher' && teacherCopy) {
+      return {
+        blob: teacherCopy.blob,
+        dataUrl: teacherCopy.dataUrl,
+        arrayBuffer: teacherCopy.arrayBuffer,
+        filename: teacherCopy.filename,
+      };
+    }
+    return {
+      blob: pdfBlob,
+      dataUrl: pdfDataUrl,
+      arrayBuffer: pdfArrayBuffer,
+      filename: `SHS_Test_${testSpec.subject || 'Assessment'}_Grade${testSpec.grade || 'Paper'}.pdf`,
+    };
+  }, [copyMode, studentCopy, teacherCopy, pdfBlob, pdfDataUrl, pdfArrayBuffer, testSpec]);
+
+  // Manage Blob Object URL for current copy
+  const [renderedObjectUrl, setRenderedObjectUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (currentActivePdf.blob) {
+      const url = URL.createObjectURL(currentActivePdf.blob);
       setRenderedObjectUrl(url);
       return () => {
         URL.revokeObjectURL(url);
@@ -72,7 +131,85 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
     } else {
       setRenderedObjectUrl(null);
     }
-  }, [pdfBlob]);
+  }, [currentActivePdf.blob]);
+
+  // Compile specific copy on demand if not cached
+  const ensureCopyGenerated = useCallback(
+    async (targetMode: 'student' | 'teacher'): Promise<GeneratedPdfCache | null> => {
+      if (targetMode === 'student' && studentCopy) return studentCopy;
+      if (targetMode === 'teacher' && teacherCopy) return teacherCopy;
+
+      try {
+        setIsSwitchingCopy(true);
+        const result = await generateTestPaperPDF(testSpec, {
+          includeAnswerKey: targetMode === 'teacher',
+          targetRole: targetMode,
+        });
+
+        const cacheObj: GeneratedPdfCache = {
+          blob: result.blob,
+          dataUrl: result.dataUrl,
+          arrayBuffer: result.arrayBuffer,
+          filename: result.filename,
+        };
+
+        if (targetMode === 'student') {
+          setStudentCopy(cacheObj);
+        } else {
+          setTeacherCopy(cacheObj);
+        }
+        return cacheObj;
+      } catch (err) {
+        console.error(`[PdfPreviewViewer] Failed to generate ${targetMode} copy:`, err);
+        return null;
+      } finally {
+        setIsSwitchingCopy(false);
+      }
+    },
+    [testSpec, studentCopy, teacherCopy]
+  );
+
+  // Pre-generate / update both copies when testSpec changes
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function generateBothVersions() {
+      if (isGenerating) return;
+      try {
+        const studentRes = await generateTestPaperPDF(testSpec, {
+          includeAnswerKey: false,
+          targetRole: 'student',
+        });
+        if (isCancelled) return;
+        setStudentCopy({
+          blob: studentRes.blob,
+          dataUrl: studentRes.dataUrl,
+          arrayBuffer: studentRes.arrayBuffer,
+          filename: studentRes.filename,
+        });
+
+        const teacherRes = await generateTestPaperPDF(testSpec, {
+          includeAnswerKey: true,
+          targetRole: 'teacher',
+        });
+        if (isCancelled) return;
+        setTeacherCopy({
+          blob: teacherRes.blob,
+          dataUrl: teacherRes.dataUrl,
+          arrayBuffer: teacherRes.arrayBuffer,
+          filename: teacherRes.filename,
+        });
+      } catch (e) {
+        console.warn('[PdfPreviewViewer] Background copy pre-compilation note:', e);
+      }
+    }
+
+    generateBothVersions();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [testSpec, isGenerating]);
 
   // Render PDF pages onto HTML5 Canvases using pdfjs-dist
   useEffect(() => {
@@ -81,7 +218,11 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
     let loadedPdfDoc: any = null;
 
     async function renderPdfDocument() {
-      if (!pdfArrayBuffer && !pdfBlob && !pdfDataUrl) {
+      const activeBlob = currentActivePdf.blob;
+      const activeArrayBuffer = currentActivePdf.arrayBuffer;
+      const activeDataUrl = currentActivePdf.dataUrl;
+
+      if (!activeArrayBuffer && !activeBlob && !activeDataUrl) {
         onPreviewReady?.(false);
         return;
       }
@@ -93,14 +234,14 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         let rawBuffer: ArrayBuffer;
 
         // Prioritize Blob as it generates a fresh, non-detached ArrayBuffer on every call
-        if (pdfBlob) {
-          rawBuffer = await pdfBlob.arrayBuffer();
-        } else if (pdfArrayBuffer && pdfArrayBuffer.byteLength > 0) {
+        if (activeBlob) {
+          rawBuffer = await activeBlob.arrayBuffer();
+        } else if (activeArrayBuffer && activeArrayBuffer.byteLength > 0) {
           // Clone the ArrayBuffer to prevent transfer/detachment by Web Worker
-          rawBuffer = pdfArrayBuffer.slice(0);
-        } else if (pdfDataUrl) {
+          rawBuffer = activeArrayBuffer.slice(0);
+        } else if (activeDataUrl) {
           // Decode DataURL if ArrayBuffer is detached or missing
-          const base64Data = pdfDataUrl.includes(',') ? pdfDataUrl.split(',')[1] : pdfDataUrl;
+          const base64Data = activeDataUrl.includes(',') ? activeDataUrl.split(',')[1] : activeDataUrl;
           const binaryString = atob(base64Data);
           const len = binaryString.length;
           const bytes = new Uint8Array(len);
@@ -189,7 +330,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       }
     }
 
-    if (!isGenerating && (pdfArrayBuffer || pdfBlob || pdfDataUrl)) {
+    if (!isGenerating && (currentActivePdf.arrayBuffer || currentActivePdf.blob || currentActivePdf.dataUrl)) {
       renderPdfDocument();
     }
 
@@ -202,7 +343,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         loadedPdfDoc.destroy().catch(() => {});
       }
     };
-  }, [pdfArrayBuffer, pdfBlob, pdfDataUrl, zoom, isGenerating, renderAttempt]);
+  }, [currentActivePdf, zoom, isGenerating, renderAttempt]);
 
   // Safeguard: If user is on 'canvas' view and for any reason canvas container has 0 children despite ready PDF, trigger re-render
   useEffect(() => {
@@ -213,7 +354,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       !isGenerating &&
       !isRenderingPages &&
       !renderingError &&
-      (pdfArrayBuffer || pdfBlob || pdfDataUrl)
+      (currentActivePdf.arrayBuffer || currentActivePdf.blob || currentActivePdf.dataUrl)
     ) {
       const timer = setTimeout(() => {
         if (
@@ -226,59 +367,74 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, isGenerating, isRenderingPages, renderingError, pdfArrayBuffer, pdfBlob, pdfDataUrl]);
+  }, [activeTab, isGenerating, isRenderingPages, renderingError, currentActivePdf]);
 
-  // Handle Download PDF (completely independent of canvas state)
-  const handleDownload = () => {
-    let downloadUrl = renderedObjectUrl || pdfDataUrl;
-    let tempUrl: string | null = null;
-
-    if (!downloadUrl && pdfBlob) {
-      tempUrl = URL.createObjectURL(pdfBlob);
-      downloadUrl = tempUrl;
+  // Download Student Copy (Questions only, zero answer key)
+  const handleDownloadStudentCopy = async () => {
+    let copy = studentCopy;
+    if (!copy) {
+      copy = await ensureCopyGenerated('student');
     }
-
-    if (!downloadUrl) {
-      console.warn('[PdfPreviewViewer] No download URL or Blob available.');
+    if (!copy?.blob) {
+      console.warn('[PdfPreviewViewer] Student copy is not available');
       return;
     }
 
+    const tempUrl = URL.createObjectURL(copy.blob);
     const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `SHS_Test_${testSpec.subject || 'Assessment'}_Grade${testSpec.grade || 'Paper'}.pdf`;
+    link.href = tempUrl;
+    link.download = copy.filename || `SHS_Test_${testSpec.subject || 'Subject'}_Grade${testSpec.grade || 'Paper'}_Student_Copy.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(tempUrl), 2000);
+  };
 
-    if (tempUrl) {
-      setTimeout(() => URL.revokeObjectURL(tempUrl!), 2000);
+  // Download Teacher/Admin Copy (Includes full Answer Key & Marking Scheme)
+  const handleDownloadTeacherCopy = async () => {
+    let copy = teacherCopy;
+    if (!copy) {
+      copy = await ensureCopyGenerated('teacher');
     }
+    if (!copy?.blob) {
+      console.warn('[PdfPreviewViewer] Teacher copy is not available');
+      return;
+    }
+
+    const tempUrl = URL.createObjectURL(copy.blob);
+    const link = document.createElement('a');
+    link.href = tempUrl;
+    link.download = copy.filename || `SHS_Test_${testSpec.subject || 'Subject'}_Grade${testSpec.grade || 'Paper'}_Teacher_Copy.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(tempUrl), 2000);
   };
 
   // Handle Open in New Tab
   const handleOpenNewTab = () => {
     if (renderedObjectUrl) {
       window.open(renderedObjectUrl, '_blank');
-    } else if (pdfDataUrl) {
+    } else if (currentActivePdf.dataUrl) {
       const win = window.open();
       if (win) {
         win.document.write(
-          `<iframe src="${pdfDataUrl}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+          `<iframe src="${currentActivePdf.dataUrl}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
         );
       }
-    } else if (pdfBlob) {
-      const tempUrl = URL.createObjectURL(pdfBlob);
+    } else if (currentActivePdf.blob) {
+      const tempUrl = URL.createObjectURL(currentActivePdf.blob);
       window.open(tempUrl, '_blank');
     }
   };
 
   // Handle Print Paper (completely independent of canvas state)
   const handlePrint = () => {
-    let printUrl = renderedObjectUrl || pdfDataUrl;
+    let printUrl = renderedObjectUrl || currentActivePdf.dataUrl;
     let tempUrl: string | null = null;
 
-    if (!printUrl && pdfBlob) {
-      tempUrl = URL.createObjectURL(pdfBlob);
+    if (!printUrl && currentActivePdf.blob) {
+      tempUrl = URL.createObjectURL(currentActivePdf.blob);
       printUrl = tempUrl;
     }
 
@@ -328,40 +484,73 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
   return (
     <div className="flex flex-col h-full space-y-3">
       {/* Action and Control Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-neutral-900 text-white rounded-xl text-xs shrink-0 shadow-sm">
-        {/* Left: View Mode Tabs */}
-        <div className="flex items-center gap-1 bg-neutral-800 p-1 rounded-lg">
-          <button
-            type="button"
-            onClick={() => setActiveTab('canvas')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-bold transition-all ${
-              activeTab === 'canvas'
-                ? 'bg-[#F4C430] text-black shadow-xs'
-                : 'text-neutral-300 hover:text-white'
-            }`}
-          >
-            <Eye size={13} />
-            <span>PDF Print Canvas</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('paper')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-bold transition-all ${
-              activeTab === 'paper'
-                ? 'bg-[#F4C430] text-black shadow-xs'
-                : 'text-neutral-300 hover:text-white'
-            }`}
-          >
-            <FileText size={13} />
-            <span>Document Layout</span>
-          </button>
+      <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 bg-neutral-900 text-white rounded-xl text-xs shrink-0 shadow-sm border border-neutral-800">
+        {/* Left: View Mode Tabs & Copy Selector */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View Mode Tabs */}
+          <div className="flex items-center gap-1 bg-neutral-800 p-1 rounded-lg border border-neutral-700">
+            <button
+              type="button"
+              onClick={() => setActiveTab('canvas')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                activeTab === 'canvas'
+                  ? 'bg-[#F4C430] text-black shadow-xs'
+                  : 'text-neutral-300 hover:text-white'
+              }`}
+            >
+              <Eye size={13} />
+              <span>PDF Print Canvas</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('paper')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                activeTab === 'paper'
+                  ? 'bg-[#F4C430] text-black shadow-xs'
+                  : 'text-neutral-300 hover:text-white'
+              }`}
+            >
+              <FileText size={13} />
+              <span>Document Layout</span>
+            </button>
+          </div>
+
+          {/* Copy Selector: Student Copy vs Teacher Copy */}
+          <div className="flex items-center gap-1 bg-neutral-800/90 p-1 rounded-lg border border-neutral-700">
+            <button
+              type="button"
+              onClick={() => handleSetCopyMode('student')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-bold text-[11px] transition-all cursor-pointer ${
+                copyMode === 'student'
+                  ? 'bg-emerald-500 text-white shadow-xs font-black'
+                  : 'text-neutral-300 hover:text-white'
+              }`}
+              title="Student Question Paper (Zero answer key in file or view)"
+            >
+              <UserCheck size={13} />
+              <span>Student Copy</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetCopyMode('teacher')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-bold text-[11px] transition-all cursor-pointer ${
+                copyMode === 'teacher'
+                  ? 'bg-amber-600 text-white shadow-xs font-black'
+                  : 'text-neutral-300 hover:text-white'
+              }`}
+              title="Teacher / Admin Copy (Includes Official Marking Scheme)"
+            >
+              <ShieldCheck size={13} />
+              <span>Teacher Copy (With Key)</span>
+            </button>
+          </div>
         </div>
 
         {/* Center: Zoom and Page Indicator (Canvas Mode) */}
         {activeTab === 'canvas' && numPages > 0 && (
           <div className="flex items-center gap-2 text-neutral-300">
             <span className="text-[11px] font-semibold text-neutral-400">
-              {numPages} {numPages === 1 ? 'Page' : 'Pages'} Compiled
+              {numPages} {numPages === 1 ? 'Page' : 'Pages'} ({copyMode === 'student' ? 'Student' : 'Teacher'})
             </span>
             <div className="h-3 w-px bg-neutral-700" />
             <div className="flex items-center gap-1">
@@ -398,39 +587,53 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
           </div>
         )}
 
-        {/* Right: Actions (Print, Open in New Tab & Download) */}
-        <div className="flex items-center gap-2">
+        {/* Right: Actions (Print, Open in New Tab & Dual Download Buttons) */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handlePrint}
-            disabled={!pdfBlob && !pdfDataUrl && activeTab !== 'paper'}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-40"
-            title="Print assessment paper"
+            disabled={!currentActivePdf.blob && !currentActivePdf.dataUrl && activeTab !== 'paper'}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-40 border border-neutral-700"
+            title={`Print ${copyMode === 'student' ? 'Student' : 'Teacher'} copy`}
           >
             <Printer size={13} />
-            <span className="hidden sm:inline">Print Paper</span>
+            <span className="hidden sm:inline">Print {copyMode === 'student' ? 'Student' : 'Teacher'}</span>
           </button>
 
           {renderedObjectUrl && (
             <button
               type="button"
               onClick={handleOpenNewTab}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-all cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-all cursor-pointer border border-neutral-700"
               title="Open raw PDF in new browser window"
             >
               <ExternalLink size={13} />
-              <span className="hidden sm:inline">Open New Tab</span>
+              <span className="hidden md:inline">Open Tab</span>
             </button>
           )}
 
+          {/* Dedicated Download Student Copy Button */}
           <button
             type="button"
-            onClick={handleDownload}
-            disabled={!pdfBlob && !pdfDataUrl}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#F4C430] hover:bg-[#E5B520] text-black font-extrabold text-xs transition-all cursor-pointer disabled:opacity-40"
+            onClick={handleDownloadStudentCopy}
+            disabled={isGenerating || isSwitchingCopy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all cursor-pointer disabled:opacity-40 shadow-xs"
+            title="Download Student Copy (Questions only, zero answer key anywhere in file)"
           >
             <Download size={13} />
-            <span>Download PDF</span>
+            <span>Download Student Copy</span>
+          </button>
+
+          {/* Dedicated Download Teacher Copy Button */}
+          <button
+            type="button"
+            onClick={handleDownloadTeacherCopy}
+            disabled={isGenerating || isSwitchingCopy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F4C430] hover:bg-[#E5B520] text-black font-black text-xs transition-all cursor-pointer disabled:opacity-40 shadow-xs"
+            title="Download Teacher/Admin Copy (Includes full Official Marking Scheme)"
+          >
+            <Download size={13} />
+            <span>Download Teacher Copy</span>
           </button>
         </div>
       </div>
@@ -560,11 +763,11 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={handleDownload}
+                    onClick={copyMode === 'student' ? handleDownloadStudentCopy : handleDownloadTeacherCopy}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F4C430] hover:bg-[#E5B520] text-black font-extrabold text-xs transition-all cursor-pointer"
                   >
                     <Download size={13} />
-                    <span>Download PDF</span>
+                    <span>Download {copyMode === 'student' ? 'Student' : 'Teacher'} Copy</span>
                   </button>
                   <button
                     type="button"
@@ -805,40 +1008,48 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
               </div>
             )}
 
-            {/* Teacher's Reference & Marking Scheme Box */}
-            <div className="my-6 pt-4 border-t-2 border-dashed border-amber-300 relative z-10">
-              <div className="bg-amber-600 text-white px-3 py-1 rounded-sm text-xs font-black flex items-center justify-between">
-                <span>OFFICIAL ANSWER KEY & TEACHER MARKING SCHEME</span>
-                <span className="text-[10px] uppercase bg-amber-800 px-1.5 py-0.5 rounded">Confidential</span>
-              </div>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {mcqs.length > 0 && (
-                  <div className="p-3 bg-amber-50 rounded border border-amber-200">
-                    <h5 className="font-black text-amber-900 mb-2">MCQ Answers</h5>
-                    <div className="grid grid-cols-2 gap-1 text-[11px]">
-                      {mcqs.map((m, i) => (
-                        <div key={i} className="text-neutral-800">
-                          <strong className="text-neutral-900">Q1.({i + 1}):</strong> [{m.correctAnswer}]
-                        </div>
-                      ))}
-                    </div>
+            {/* Teacher's Reference & Marking Scheme Box (Strictly visible ONLY in Teacher Copy mode) */}
+            {copyMode === 'teacher' && (
+              <div className="my-6 pt-4 border-t-2 border-dashed border-amber-300 relative z-10">
+                <div className="bg-amber-600 text-white px-3 py-1 rounded-sm text-xs font-black flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck size={14} />
+                    <span>OFFICIAL ANSWER KEY & TEACHER MARKING SCHEME</span>
                   </div>
-                )}
+                  <span className="text-[10px] uppercase bg-amber-800 px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <Lock size={10} />
+                    <span>Confidential Teacher Scheme</span>
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {mcqs.length > 0 && (
+                    <div className="p-3 bg-amber-50 rounded border border-amber-200">
+                      <h5 className="font-black text-amber-900 mb-2">MCQ Answers</h5>
+                      <div className="grid grid-cols-2 gap-1 text-[11px]">
+                        {mcqs.map((m, i) => (
+                          <div key={i} className="text-neutral-800">
+                            <strong className="text-neutral-900">Q1.({i + 1}):</strong> [{m.correctAnswer}]
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                {shortQuestions.some((s) => s.modelAnswer) && (
-                  <div className="p-3 bg-amber-50 rounded border border-amber-200">
-                    <h5 className="font-black text-amber-900 mb-2">Short Question Model Answers</h5>
-                    <div className="space-y-1.5 text-[11px] text-neutral-700">
-                      {shortQuestions.slice(0, 3).map((s, i) => s.modelAnswer && (
-                        <div key={i}>
-                          <strong>({i + 1}):</strong> {renderLaTeXToText(s.modelAnswer)}
-                        </div>
-                      ))}
+                  {shortQuestions.some((s) => s.modelAnswer) && (
+                    <div className="p-3 bg-amber-50 rounded border border-amber-200">
+                      <h5 className="font-black text-amber-900 mb-2">Short Question Model Answers</h5>
+                      <div className="space-y-1.5 text-[11px] text-neutral-700">
+                        {shortQuestions.slice(0, 4).map((s, i) => s.modelAnswer && (
+                          <div key={i}>
+                            <strong>({i + 1}):</strong> {renderLaTeXToText(s.modelAnswer)}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Running Footer Line */}
             <div className="mt-8 pt-3 border-t border-neutral-300 flex items-center justify-between text-[10px] text-neutral-500 font-semibold relative z-10">

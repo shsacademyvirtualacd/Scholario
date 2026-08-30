@@ -8,6 +8,22 @@ export const SHS_OFFICIAL_LOGO_URL =
   'https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png';
 export const SHS_LOCAL_LOGO_PATH = '/images/shs-academy-logo.png';
 
+export interface GenerateTestPdfOptions {
+  /**
+   * Whether to include the Official Answer Key & Teacher Marking Scheme section.
+   * - `false`: Generates the sanitized Student Copy (Questions only, zero answer key in DOM/data).
+   * - `true`: Generates the Teacher/Admin Copy with the complete Marking Scheme.
+   * Default: `true` (Teacher Copy).
+   */
+  includeAnswerKey?: boolean;
+  /**
+   * Explicit target role for the PDF export.
+   * - `'student'`: Automatically strips all answer keys and marking scheme sections.
+   * - `'teacher'`: Retains full marking scheme.
+   */
+  targetRole?: 'teacher' | 'student';
+}
+
 let cachedLogoDataUrl: string | null = null;
 
 /**
@@ -96,32 +112,52 @@ export async function getShsLogoDataUrl(): Promise<string> {
  * block-level page-break pagination (keeping MCQs, questions, and the answer key atomic and unbroken),
  * and high-resolution vector capture.
  */
-export async function generateTestPaperPDF(test: GeneratedTestSpecification): Promise<{
+export async function generateTestPaperPDF(
+  test: GeneratedTestSpecification,
+  options?: GenerateTestPdfOptions
+): Promise<{
   blob: Blob;
   dataUrl: string;
   arrayBuffer: ArrayBuffer;
   filename: string;
 }> {
+  const isStudentCopy = options?.includeAnswerKey === false || options?.targetRole === 'student';
+  const copySuffix = isStudentCopy ? 'Student_Copy' : 'Teacher_Copy';
+
   const sanitizeForFilename = (str: string, fallback: string) => {
     const cleaned = (str || '').trim().replace(/[\/\\?%*:|"<>]/g, '_').slice(0, 30);
     return cleaned && cleaned.replace(/_/g, '').length > 0 ? cleaned : fallback;
   };
   const cleanSubject = sanitizeForFilename(test.subject, 'Subject');
   const cleanTitle = sanitizeForFilename(test.title, 'Paper');
-  const filename = `SHS_Test_${cleanSubject}_G${test.grade || '9'}_${cleanTitle}.pdf`;
+  const filename = `SHS_Test_${cleanSubject}_G${test.grade || '9'}_${cleanTitle}_${copySuffix}.pdf`;
 
   // If in browser environment with DOM access, use native HTML-to-PDF engine with pagination
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     try {
-      return await generateTestPaperHtmlPDF(test, filename);
+      return await generateTestPaperHtmlPDF(test, filename, options);
     } catch (err) {
       console.warn('[PDFGenerator] HTML-to-PDF engine fallback triggered:', err);
-      return generateTestPaperFallbackNodePDF(test, filename);
+      return generateTestPaperFallbackNodePDF(test, filename, options);
     }
   }
 
   // Fallback for Node / headless environments
-  return generateTestPaperFallbackNodePDF(test, filename);
+  return generateTestPaperFallbackNodePDF(test, filename, options);
+}
+
+/**
+ * Generate sanitized Student Copy PDF (Question paper only, strictly zero answer key).
+ */
+export async function generateStudentCopyPDF(test: GeneratedTestSpecification) {
+  return generateTestPaperPDF(test, { includeAnswerKey: false, targetRole: 'student' });
+}
+
+/**
+ * Generate full Teacher / Admin Copy PDF (Includes Official Answer Key & Marking Scheme).
+ */
+export async function generateTeacherCopyPDF(test: GeneratedTestSpecification) {
+  return generateTestPaperPDF(test, { includeAnswerKey: true, targetRole: 'teacher' });
 }
 
 /**
@@ -129,7 +165,13 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
  * Renders discrete A4 pages (794x1123px) with atomic block measurement,
  * preventing any question or answer-key panel from being split across page boundaries.
  */
-async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filename: string) {
+async function generateTestPaperHtmlPDF(
+  test: GeneratedTestSpecification,
+  filename: string,
+  options?: GenerateTestPdfOptions
+) {
+  const isStudentCopy = options?.includeAnswerKey === false || options?.targetRole === 'student';
+
   // Ensure fonts and logo are ready before measuring & capturing
   if (document.fonts && document.fonts.ready) {
     try {
@@ -590,55 +632,57 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
 
   // ==========================================
   // ANSWER KEY & MARKING SCHEME (Atomic Panel)
+  // Only included in Teacher / Admin Copy - strictly omitted in Student Copy
   // ==========================================
-  // Treated as an atomic unit: either fits entirely on current page or is pushed cleanly to a new page
-  const answerKeyEl = document.createElement('div');
-  answerKeyEl.className = 'pdf-atomic-answerkey-block';
-  answerKeyEl.style.marginTop = '14px';
-  answerKeyEl.style.paddingTop = '10px';
-  answerKeyEl.style.borderTop = '2px dashed #f59e0b';
-  answerKeyEl.style.boxSizing = 'border-box';
-  answerKeyEl.innerHTML = `
-    <div style="background: #d97706; color: #ffffff; padding: 4px 10px; border-radius: 3px; font-size: 10.5px; font-weight: 900; display: flex; justify-content: space-between; align-items: center;">
-      <span>OFFICIAL ANSWER KEY & TEACHER MARKING SCHEME</span>
-      <span style="font-size: 8.5px; text-transform: uppercase; background: #92400e; padding: 2px 6px; border-radius: 2px;">Confidential</span>
-    </div>
-    <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10.5px;">
-      ${
-        mcqs.length > 0
-          ? `<div style="padding: 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;">
-              <h5 style="margin: 0 0 5px 0; font-weight: 900; color: #92400e; font-size: 10.5px;">MCQ Answer Key</h5>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px; font-size: 10px; color: #1f2937;">
-                ${mcqs
-                  .map(
-                    (m, i) =>
-                      `<div><strong>Q1.(${i + 1}):</strong> [${m.correctAnswer}]</div>`
-                  )
-                  .join('')}
-              </div>
-            </div>`
-          : ''
-      }
-      ${
-        shortQuestions.some((s) => s.modelAnswer)
-          ? `<div style="padding: 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;">
-              <h5 style="margin: 0 0 5px 0; font-weight: 900; color: #92400e; font-size: 10.5px;">Short Question Model Answers</h5>
-              <div style="display: flex; flex-direction: column; gap: 3px; font-size: 9.5px; color: #374151;">
-                ${shortQuestions
-                  .slice(0, 4)
-                  .filter((s) => s.modelAnswer)
-                  .map(
-                    (s, i) =>
-                      `<div><strong>(${i + 1}):</strong> ${renderLaTeXToText(s.modelAnswer)}</div>`
-                  )
-                  .join('')}
-              </div>
-            </div>`
-          : ''
-      }
-    </div>
-  `;
-  appendAtomicBlock(answerKeyEl);
+  if (!isStudentCopy && (mcqs.length > 0 || shortQuestions.some((s) => s.modelAnswer))) {
+    const answerKeyEl = document.createElement('div');
+    answerKeyEl.className = 'pdf-atomic-answerkey-block';
+    answerKeyEl.style.marginTop = '14px';
+    answerKeyEl.style.paddingTop = '10px';
+    answerKeyEl.style.borderTop = '2px dashed #f59e0b';
+    answerKeyEl.style.boxSizing = 'border-box';
+    answerKeyEl.innerHTML = `
+      <div style="background: #d97706; color: #ffffff; padding: 4px 10px; border-radius: 3px; font-size: 10.5px; font-weight: 900; display: flex; justify-content: space-between; align-items: center;">
+        <span>OFFICIAL ANSWER KEY & TEACHER MARKING SCHEME</span>
+        <span style="font-size: 8.5px; text-transform: uppercase; background: #92400e; padding: 2px 6px; border-radius: 2px;">Confidential</span>
+      </div>
+      <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10.5px;">
+        ${
+          mcqs.length > 0
+            ? `<div style="padding: 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;">
+                <h5 style="margin: 0 0 5px 0; font-weight: 900; color: #92400e; font-size: 10.5px;">MCQ Answer Key</h5>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px; font-size: 10px; color: #1f2937;">
+                  ${mcqs
+                    .map(
+                      (m, i) =>
+                        `<div><strong>Q1.(${i + 1}):</strong> [${m.correctAnswer}]</div>`
+                    )
+                    .join('')}
+                </div>
+              </div>`
+            : ''
+        }
+        ${
+          shortQuestions.some((s) => s.modelAnswer)
+            ? `<div style="padding: 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;">
+                <h5 style="margin: 0 0 5px 0; font-weight: 900; color: #92400e; font-size: 10.5px;">Short Question Model Answers</h5>
+                <div style="display: flex; flex-direction: column; gap: 3px; font-size: 9.5px; color: #374151;">
+                  ${shortQuestions
+                    .slice(0, 4)
+                    .filter((s) => s.modelAnswer)
+                    .map(
+                      (s, i) =>
+                        `<div><strong>(${i + 1}):</strong> ${renderLaTeXToText(s.modelAnswer)}</div>`
+                    )
+                    .join('')}
+                </div>
+              </div>`
+            : ''
+        }
+      </div>
+    `;
+    appendAtomicBlock(answerKeyEl);
+  }
 
   // ==========================================
   // Update Running Page Counts on all Footers
@@ -722,7 +766,11 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
 /**
  * Server-safe fallback generator for Node environments
  */
-async function generateTestPaperFallbackNodePDF(test: GeneratedTestSpecification, filename: string) {
+async function generateTestPaperFallbackNodePDF(
+  test: GeneratedTestSpecification,
+  filename: string,
+  options?: GenerateTestPdfOptions
+) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -738,6 +786,11 @@ async function generateTestPaperFallbackNodePDF(test: GeneratedTestSpecification
 
   doc.setFontSize(9);
   doc.text(`Subject: ${test.subject} • Grade: ${test.grade} • Marks: ${test.totalMarks}`, 105, 34, { align: 'center' });
+
+  if (options?.includeAnswerKey) {
+    doc.setFontSize(8);
+    doc.text('Official Answer Key attached (Teacher/Admin Copy)', 105, 42, { align: 'center' });
+  }
 
   const blob = doc.output('blob');
   const dataUrl = doc.output('datauristring');
