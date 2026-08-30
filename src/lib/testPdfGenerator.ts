@@ -324,7 +324,7 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
     footerEl.style.fontWeight = '600';
     footerEl.style.zIndex = '10';
     footerEl.innerHTML = `
-      <div>SHS Virtual Academy • Confidential Examination Paper</div>
+      <div>SHS Virtual Academy • Student Assessment</div>
       <div class="pdf-page-number-indicator" data-page="${pageNum}">Page ${pageNum}</div>
       <div>Powered by Scholario LMS (scholario.me)</div>
     `;

@@ -842,7 +842,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
 
             {/* Running Footer Line */}
             <div className="mt-8 pt-3 border-t border-neutral-300 flex items-center justify-between text-[10px] text-neutral-500 font-semibold relative z-10">
-              <div>SHS Virtual Academy • Confidential Examination Paper</div>
+              <div>SHS Virtual Academy • Student Assessment</div>
               <div>Powered by Scholario LMS (scholario.me)</div>
             </div>
           </div>
