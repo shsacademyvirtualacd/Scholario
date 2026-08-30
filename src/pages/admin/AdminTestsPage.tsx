@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Database, GraduationCap, Target } from 'lucide-react';
+import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Database, GraduationCap, Target, ChevronDown, Upload, Sparkles, X } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
@@ -44,8 +44,24 @@ export const AdminTestsPage: React.FC = () => {
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [isChoiceModalOpen, setIsChoiceModalOpen] = useState<boolean>(false);
+  const [showActionDropdown, setShowActionDropdown] = useState<boolean>(false);
+  const actionDropdownRef = useRef<HTMLDivElement>(null);
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionDropdownRef.current && !actionDropdownRef.current.contains(event.target as Node)) {
+        setShowActionDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Filters
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
@@ -153,22 +169,73 @@ export const AdminTestsPage: React.FC = () => {
 
         {activeTab === 'class-test' && (
           <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-            <button
-              id="admin-create-test-btn"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all shadow-sm cursor-pointer border border-[#111111]"
-            >
-              <FileCheck2 size={16} />
-              <span>Create Test (Bank)</span>
-            </button>
-            <button
-              id="admin-open-test-upload-btn"
-              onClick={() => setIsUploadModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-[#FAFAFA] text-[#111111] text-xs font-extrabold transition-all border border-[#E5E5E5] shadow-xs cursor-pointer"
-            >
-              <Plus size={16} />
-              <span>Upload Manual PDF</span>
-            </button>
+            {/* Primary Unified Action Button with Dropdown */}
+            <div className="relative" ref={actionDropdownRef}>
+              <button
+                id="admin-upload-create-test-btn"
+                onClick={() => setShowActionDropdown((prev) => !prev)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all shadow-sm cursor-pointer border border-[#111111]"
+              >
+                <Plus size={16} />
+                <span>Upload / Create Test Paper</span>
+                <ChevronDown size={14} className={`text-[#A3A3A3] transition-transform duration-200 ${showActionDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Action Dropdown Menu */}
+              {showActionDropdown && (
+                <div className="absolute right-0 mt-2 w-84 bg-white rounded-2xl border border-[#E5E5E5] shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-3 py-2 border-b border-[#F0F0F0] mb-1">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-[#737373]">Select Test Paper Method</p>
+                  </div>
+                  
+                  {/* Option 1: Create from Question Bank */}
+                  <button
+                    id="admin-menu-create-bank-btn"
+                    onClick={() => {
+                      setShowActionDropdown(false);
+                      setIsCreateModalOpen(true);
+                    }}
+                    className="w-full text-left p-3 rounded-xl hover:bg-[#FAF9F5] transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-amber-200/60"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0 group-hover:scale-105 transition-transform">
+                      <FileCheck2 size={18} className="text-[#F4C430]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-[#111111]">Create Class Test Paper</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">AI & Bank</span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug">
+                        Auto-generate structured exam papers with MCQs, short & long questions, custom marks & live PDF layout.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Option 2: Manual Upload */}
+                  <button
+                    id="admin-menu-upload-pdf-btn"
+                    onClick={() => {
+                      setShowActionDropdown(false);
+                      setIsUploadModalOpen(true);
+                    }}
+                    className="w-full text-left p-3 rounded-xl hover:bg-[#F8FAFC] transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-blue-200/60 mt-1"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0 group-hover:scale-105 transition-transform">
+                      <Upload size={18} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-[#111111]">Upload Test Paper (PDF)</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#F0F0F0] text-[#737373]">Manual</span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug">
+                        Upload your own prepared test PDF file, configure due date, and assign to students.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -365,11 +432,12 @@ export const AdminTestsPage: React.FC = () => {
                       : 'Get started by uploading an assessment paper.'}
                   </p>
                   <button
-                    onClick={() => setIsUploadModalOpen(true)}
-                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] text-white text-xs font-bold cursor-pointer"
+                    id="admin-empty-upload-test-btn"
+                    onClick={() => setIsChoiceModalOpen(true)}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all shadow-sm cursor-pointer border border-[#111111]"
                   >
-                    <Plus size={14} />
-                    <span>Upload Test Paper</span>
+                    <Plus size={15} />
+                    <span>Upload / Create Test Paper</span>
                   </button>
                 </div>
               ) : (
@@ -399,6 +467,82 @@ export const AdminTestsPage: React.FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Choice Modal: Create (Bank/AI) vs Manual Upload (PDF) */}
+      {isChoiceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden p-6 sm:p-7">
+            {/* Close Button */}
+            <button
+              onClick={() => setIsChoiceModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/60 text-amber-900 text-[11px] font-black uppercase tracking-wider mb-2">
+                <Sparkles size={13} className="text-[#F4C430]" />
+                <span>Assessment Builder</span>
+              </div>
+              <h2 className="text-xl font-black text-[#111111] tracking-tight">Create or Upload Test Paper</h2>
+              <p className="text-xs text-[#737373] mt-1">
+                Choose how you would like to prepare and publish this class test assessment.
+              </p>
+            </div>
+
+            <div className="space-y-3.5">
+              {/* Option 1: AI / Bank Generator */}
+              <button
+                onClick={() => {
+                  setIsChoiceModalOpen(false);
+                  setIsCreateModalOpen(true);
+                }}
+                className="w-full text-left p-4 rounded-2xl border-2 border-amber-300/80 bg-[#FFFDF7] hover:bg-[#FFF9EB] hover:border-amber-400 transition-all flex items-start gap-4 group cursor-pointer shadow-xs hover:shadow-md"
+              >
+                <div className="w-11 h-11 rounded-2xl bg-amber-100/80 border border-amber-200 flex items-center justify-center text-amber-800 shrink-0 group-hover:scale-105 transition-transform">
+                  <FileCheck2 size={22} className="text-[#F4C430]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-black text-[#111111]">Create Class Test Paper</h3>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#525252] mt-1 leading-relaxed">
+                    Auto-pull verified questions from FBISE / Sindh curriculum question banks. Customize MCQs, Short & Long Qs, marks distribution, and live PDF preview.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Upload PDF */}
+              <button
+                onClick={() => {
+                  setIsChoiceModalOpen(false);
+                  setIsUploadModalOpen(true);
+                }}
+                className="w-full text-left p-4 rounded-2xl border border-[#E5E5E5] bg-white hover:bg-[#F8FAFC] hover:border-blue-300 transition-all flex items-start gap-4 group cursor-pointer shadow-xs hover:shadow-md"
+              >
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0 group-hover:scale-105 transition-transform">
+                  <Upload size={22} className="text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-black text-[#111111]">Upload Test Paper (PDF)</h3>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#F0F0F0] text-[#737373]">
+                      Manual
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#737373] mt-1 leading-relaxed">
+                    Upload an existing prepared question paper PDF, set due date, max marks, and assign directly to teachers and students.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Create Test from Question Bank Modal (Admin-Only) */}

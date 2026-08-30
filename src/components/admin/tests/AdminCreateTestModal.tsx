@@ -14,7 +14,8 @@ import { pullTestQuestionsFromBanks } from '../../../lib/questionBankService';
 import { generateTestPaperPDF } from '../../../lib/testPdfGenerator';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
 import { PdfPreviewViewer } from './PdfPreviewViewer';
-import { BOARDS } from '../../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
+import { getSubjectsForStream } from '../../../lib/db';
 import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM } from '../../../lib/curriculumFBISE9';
 import type {
   TestQuestionTypeCombination,
@@ -152,11 +153,58 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     return isNaN(parsed) ? fallback : parsed;
   };
 
+  // Available grades for selected board
+  const availableGrades = useMemo(() => {
+    return getGradesForBoard(board);
+  }, [board]);
+
+  // Available streams for selected grade and board (strictly scoped per grade taxonomy)
+  const availableStreams = useMemo(() => {
+    return getStreamsForGrade(grade, board);
+  }, [grade, board]);
+
+  // Re-filter or reset stream when availableStreams change
+  useEffect(() => {
+    if (availableStreams.length > 0) {
+      const isCurrentStreamValid = availableStreams.some((s) => s.name === stream);
+      if (!isCurrentStreamValid) {
+        setStream(availableStreams[0].name);
+      }
+    }
+  }, [availableStreams, stream]);
+
+  // Available subjects based on grade + stream + board taxonomy
+  const availableSubjects = useMemo(() => {
+    const streamDef = availableStreams.find((s) => s.name === stream);
+    if (streamDef && streamDef.subjects && streamDef.subjects.length > 0) {
+      return streamDef.subjects;
+    }
+    const gradeDef = availableGrades.find((g) => g.grade === grade);
+    if (gradeDef && gradeDef.commonSubjects && gradeDef.commonSubjects.length > 0) {
+      return gradeDef.commonSubjects;
+    }
+    const dbSubjects = getSubjectsForStream(grade, stream, board);
+    if (dbSubjects && dbSubjects.length > 0) return dbSubjects;
+    return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'English', 'Urdu', 'Computer Science', 'Pakistan Studies'];
+  }, [availableStreams, stream, grade, board, availableGrades]);
+
+  // Re-filter or reset subject when availableSubjects change
+  useEffect(() => {
+    if (availableSubjects.length > 0 && !availableSubjects.includes(subject)) {
+      setSubject(availableSubjects[0]);
+    }
+  }, [availableSubjects, subject]);
+
+  // Reset chapter selection when grade or subject changes
+  useEffect(() => {
+    setSelectedChapter('All');
+  }, [grade, subject]);
+
   // Compute available chapters
   const availableChapters = useMemo(() => {
     const curriculum = grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
-    const subjData = curriculum[subject];
-    if (subjData && subjData.chapters) {
+    const subjData = curriculum ? curriculum[subject] : undefined;
+    if (subjData && subjData.chapters && subjData.chapters.length > 0) {
       return [{ id: 'all', number: 0, name: 'All' }, ...subjData.chapters];
     }
     return [{ id: 'all', number: 0, name: 'All' }];
@@ -508,10 +556,11 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     onChange={(e) => setGrade(e.target.value)}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
                   >
-                    <option value="9">Grade 9 (Matric I)</option>
-                    <option value="10">Grade 10 (Matric II)</option>
-                    <option value="11">Grade 11 (FSc I / Inter I)</option>
-                    <option value="12">Grade 12 (FSc II / Inter II)</option>
+                    {availableGrades.map((g) => (
+                      <option key={g.grade} value={g.grade}>
+                        Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : 'FBISE'})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -523,11 +572,11 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     onChange={(e) => setStream(e.target.value)}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
                   >
-                    <option value="Science">Science (General)</option>
-                    <option value="Pre-Medical">Pre-Medical</option>
-                    <option value="Pre-Engineering">Pre-Engineering</option>
-                    <option value="Computer Science">Computer Science / ICS</option>
-                    <option value="General">General / Humanities</option>
+                    {availableStreams.map((s) => (
+                      <option key={s.name} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -541,14 +590,11 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     onChange={(e) => setSubject(e.target.value)}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
                   >
-                    <option value="Physics">Physics</option>
-                    <option value="Chemistry">Chemistry</option>
-                    <option value="Biology">Biology</option>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="English">English</option>
-                    <option value="Urdu">Urdu</option>
-                    <option value="Islamiat">Islamiat</option>
-                    <option value="Computer Science">Computer Science</option>
+                    {availableSubjects.map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
