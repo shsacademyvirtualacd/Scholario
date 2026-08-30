@@ -6,7 +6,10 @@ import {
   RefreshCw,
   Check,
   ChevronRight,
-  FileCheck
+  FileCheck,
+  PenTool,
+  BookOpen,
+  Edit3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
@@ -73,11 +76,22 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
   const [longAttemptCount, setLongAttemptCount] = useState<number | string>(2);
   const [longMarksEach, setLongMarksEach] = useState<number | string>(10);
 
-  // Pulled Questions State
+  // Question Source State (Short & Long only; MCQs remain Bank-only)
+  const [shortSource, setShortSource] = useState<'bank' | 'manual'>('bank');
+  const [longSource, setLongSource] = useState<'bank' | 'manual'>('bank');
+
+  // Manual Question Text Inputs (One per question item based on count)
+  const [manualShortQuestions, setManualShortQuestions] = useState<string[]>([]);
+  const [manualLongQuestions, setManualLongQuestions] = useState<string[]>([]);
+
+  // Pulled / Configured Questions State
   const [pulledMCQs, setPulledMCQs] = useState<StoredMCQ[]>([]);
   const [pulledShortQuestions, setPulledShortQuestions] = useState<StoredShortQuestion[]>([]);
   const [pulledLongQuestions, setPulledLongQuestions] = useState<StoredLongQuestion[]>([]);
   const [pullingQuestions, setPullingQuestions] = useState<boolean>(false);
+
+  // Inline editing state for Step 3
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
 
   // PDF Preview & Publishing State
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
@@ -123,6 +137,13 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     return 'all_types';
   }, [includeMCQs, includeShort, includeLong]);
 
+  // Safe number parsing helper
+  const safeNum = (val: number | string, fallback: number = 0): number => {
+    if (typeof val === 'number') return isNaN(val) ? fallback : val;
+    const parsed = parseInt(String(val), 10);
+    return isNaN(parsed) ? fallback : parsed;
+  };
+
   // Fetch available teachers from profiles
   useEffect(() => {
     async function loadTeachers() {
@@ -146,11 +167,27 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     loadTeachers();
   }, []);
 
-  // Safe number parsing helper
-  const safeNum = (val: number | string, fallback: number = 0): number => {
-    if (typeof val === 'number') return isNaN(val) ? fallback : val;
-    const parsed = parseInt(String(val), 10);
-    return isNaN(parsed) ? fallback : parsed;
+  // Handle manual question input changes
+  const handleManualShortChange = (index: number, text: string) => {
+    setManualShortQuestions((prev) => {
+      const next = [...prev];
+      while (next.length <= index) {
+        next.push('');
+      }
+      next[index] = text;
+      return next;
+    });
+  };
+
+  const handleManualLongChange = (index: number, text: string) => {
+    setManualLongQuestions((prev) => {
+      const next = [...prev];
+      while (next.length <= index) {
+        next.push('');
+      }
+      next[index] = text;
+      return next;
+    });
   };
 
   // Available grades for selected board
@@ -231,32 +268,162 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     setTitle(`Assessment Test: ${subject}${chapSuffix}`);
   }, [subject, selectedChapter]);
 
-  // Pull Questions From Question Banks
+  // Pull Questions From Question Banks & Assemble Manual Questions
   const handlePullQuestions = async () => {
     setPullingQuestions(true);
     try {
-      const res = await pullTestQuestionsFromBanks({
-        combination: derivedCombination,
-        includeMCQs,
-        includeShort,
-        includeLong,
-        board,
-        grade,
-        subject,
-        chapter: selectedChapter,
-        mcqCount: includeMCQs ? safeNum(mcqCount, 10) : 0,
-        shortCount: includeShort ? safeNum(shortCount, 6) : 0,
-        longCount: includeLong ? safeNum(longCount, 3) : 0,
-      });
+      const targetShortCount = includeShort ? safeNum(shortCount, 6) : 0;
+      const targetLongCount = includeLong ? safeNum(longCount, 3) : 0;
+      const targetMcqCount = includeMCQs ? safeNum(mcqCount, 10) : 0;
 
-      setPulledMCQs(includeMCQs ? res.mcqs : []);
-      setPulledShortQuestions(includeShort ? res.shortQuestions : []);
-      setPulledLongQuestions(includeLong ? res.longQuestions : []);
+      // Count how many short questions need to be pulled from the bank
+      let shortCountToPull = 0;
+      if (includeShort) {
+        if (shortSource === 'bank') {
+          shortCountToPull = targetShortCount;
+        } else {
+          // Manual mode: count empty slots that need bank auto-filling
+          let filled = 0;
+          for (let i = 0; i < targetShortCount; i++) {
+            if (manualShortQuestions[i] && manualShortQuestions[i].trim().length > 0) {
+              filled++;
+            }
+          }
+          shortCountToPull = Math.max(0, targetShortCount - filled);
+        }
+      }
+
+      // Count how many long questions need to be pulled from the bank
+      let longCountToPull = 0;
+      if (includeLong) {
+        if (longSource === 'bank') {
+          longCountToPull = targetLongCount;
+        } else {
+          let filled = 0;
+          for (let i = 0; i < targetLongCount; i++) {
+            if (manualLongQuestions[i] && manualLongQuestions[i].trim().length > 0) {
+              filled++;
+            }
+          }
+          longCountToPull = Math.max(0, targetLongCount - filled);
+        }
+      }
+
+      // Fetch from bank if any question types need bank retrieval
+      let bankRes: { mcqs: StoredMCQ[]; shortQuestions: StoredShortQuestion[]; longQuestions: StoredLongQuestion[] } = {
+        mcqs: [],
+        shortQuestions: [],
+        longQuestions: [],
+      };
+
+      if (targetMcqCount > 0 || shortCountToPull > 0 || longCountToPull > 0) {
+        bankRes = await pullTestQuestionsFromBanks({
+          combination: derivedCombination,
+          includeMCQs: targetMcqCount > 0,
+          includeShort: shortCountToPull > 0,
+          includeLong: longCountToPull > 0,
+          board,
+          grade,
+          subject,
+          chapter: selectedChapter,
+          mcqCount: targetMcqCount,
+          shortCount: shortCountToPull,
+          longCount: longCountToPull,
+        });
+      }
+
+      // Final MCQs list (Bank-only)
+      const finalMCQs = includeMCQs ? bankRes.mcqs : [];
+
+      // Final Short Questions list
+      let finalShorts: StoredShortQuestion[] = [];
+      if (includeShort) {
+        if (shortSource === 'bank') {
+          finalShorts = bankRes.shortQuestions.slice(0, targetShortCount);
+        } else {
+          let bankIndex = 0;
+          for (let i = 0; i < targetShortCount; i++) {
+            const manualText = manualShortQuestions[i]?.trim();
+            if (manualText) {
+              finalShorts.push({
+                id: `manual-sq-${i + 1}`,
+                board,
+                grade,
+                subject,
+                chapter: selectedChapter,
+                question: manualText,
+                marks: safeNum(shortMarksEach, 4),
+                verified: true,
+                source: 'expert-verified',
+              });
+            } else if (bankIndex < bankRes.shortQuestions.length) {
+              finalShorts.push(bankRes.shortQuestions[bankIndex++]);
+            } else {
+              finalShorts.push({
+                id: `sq-${i + 1}`,
+                board,
+                grade,
+                subject,
+                chapter: selectedChapter,
+                question: `Explain the fundamental principles and characteristics of ${selectedChapter && selectedChapter !== 'All' ? selectedChapter : subject}.`,
+                marks: safeNum(shortMarksEach, 4),
+                verified: true,
+                source: 'expert-verified',
+              });
+            }
+          }
+        }
+      }
+
+      // Final Long Questions list
+      let finalLongs: StoredLongQuestion[] = [];
+      if (includeLong) {
+        if (longSource === 'bank') {
+          finalLongs = bankRes.longQuestions.slice(0, targetLongCount);
+        } else {
+          let bankIndex = 0;
+          for (let i = 0; i < targetLongCount; i++) {
+            const manualText = manualLongQuestions[i]?.trim();
+            if (manualText) {
+              finalLongs.push({
+                id: `manual-lq-${i + 1}`,
+                board,
+                grade,
+                subject,
+                chapter: selectedChapter,
+                question: manualText,
+                marks: safeNum(longMarksEach, 10),
+                verified: true,
+                source: 'expert-verified',
+              });
+            } else if (bankIndex < bankRes.longQuestions.length) {
+              finalLongs.push(bankRes.longQuestions[bankIndex++]);
+            } else {
+              finalLongs.push({
+                id: `lq-${i + 1}`,
+                board,
+                grade,
+                subject,
+                chapter: selectedChapter,
+                question: `Discuss comprehensively the key laws, mathematical formulations, and practical applications of ${selectedChapter && selectedChapter !== 'All' ? selectedChapter : subject}.`,
+                marks: safeNum(longMarksEach, 10),
+                verified: true,
+                source: 'expert-verified',
+              });
+            }
+          }
+        }
+      }
+
+      setPulledMCQs(finalMCQs);
+      setPulledShortQuestions(finalShorts);
+      setPulledLongQuestions(finalLongs);
+
       toast.success(
-        `Pulled questions: ${includeMCQs ? res.mcqs.length + ' MCQs, ' : ''}${includeShort ? res.shortQuestions.length + ' Short, ' : ''}${includeLong ? res.longQuestions.length + ' Long' : ''}`
+        `Configured questions: ${includeMCQs ? finalMCQs.length + ' MCQs, ' : ''}${includeShort ? finalShorts.length + ' Short (' + (shortSource === 'manual' ? 'Manual/Mixed' : 'Bank') + '), ' : ''}${includeLong ? finalLongs.length + ' Long (' + (longSource === 'manual' ? 'Manual/Mixed' : 'Bank') + ')' : ''}`
       );
     } catch (err: any) {
-      toast.error('Failed to pull questions from bank: ' + (err.message || 'Error'));
+      toast.error('Failed to pull questions: ' + (err.message || 'Error'));
     } finally {
       setPullingQuestions(false);
     }
@@ -983,143 +1150,304 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
 
                     {/* Short questions config */}
                     {includeShort && (
-                      <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] space-y-2">
-                        <div className="text-xs font-extrabold text-[#111111] flex items-center justify-between">
-                          <span>Short Questions</span>
-                          <span className="text-emerald-700 text-[11px] font-bold">
-                            {safeNum(shortAttemptCount, 5) * safeNum(shortMarksEach, 4)} M
-                          </span>
+                      <div className="p-4 bg-white rounded-xl border border-[#E5E5E5] space-y-3 sm:col-span-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#F0F0F0]">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold text-[#111111]">Short Answer Questions (Subjective)</span>
+                            <span className="text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200">
+                              {safeNum(shortAttemptCount, 5) * safeNum(shortMarksEach, 4)} Marks Total
+                            </span>
+                          </div>
+
+                          {/* Source Toggle */}
+                          <div className="flex items-center p-0.5 bg-[#F0F0F0] rounded-lg border border-[#E0E0E0] self-start sm:self-auto">
+                            <button
+                              type="button"
+                              onClick={() => setShortSource('bank')}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                shortSource === 'bank'
+                                  ? 'bg-white text-[#111111] shadow-xs'
+                                  : 'text-[#737373] hover:text-[#111111]'
+                              }`}
+                            >
+                              <BookOpen size={12} />
+                              <span>From Question Bank</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShortSource('manual')}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                shortSource === 'manual'
+                                  ? 'bg-[#111111] text-[#F4C430] shadow-xs'
+                                  : 'text-[#737373] hover:text-[#111111]'
+                              }`}
+                            >
+                              <PenTool size={12} />
+                              <span>Write Manually</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-[11px] text-[#737373] w-20">Total Short:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="30"
-                            value={shortCount}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setShortCount(val === '' ? '' : (parseInt(val, 10) || ''));
-                            }}
-                            onBlur={() => {
-                              const num = safeNum(shortCount, 6);
-                              const clamped = Math.max(1, Math.min(30, num));
-                              setShortCount(clamped);
-                              if (safeNum(shortAttemptCount, 5) > clamped) {
-                                setShortAttemptCount(clamped);
-                              }
-                            }}
-                            className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
-                          />
+
+                        {/* Numeric Fields */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-[#737373] w-24">Total Questions:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={shortCount}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setShortCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                              }}
+                              onBlur={() => {
+                                const num = safeNum(shortCount, 6);
+                                const clamped = Math.max(1, Math.min(30, num));
+                                setShortCount(clamped);
+                                if (safeNum(shortAttemptCount, 5) > clamped) {
+                                  setShortAttemptCount(clamped);
+                                }
+                              }}
+                              className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-[#737373] w-24">To Attempt:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={safeNum(shortCount, 6)}
+                              value={shortAttemptCount}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setShortAttemptCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                              }}
+                              onBlur={() => {
+                                const maxAllowed = safeNum(shortCount, 6);
+                                const num = safeNum(shortAttemptCount, Math.min(5, maxAllowed));
+                                setShortAttemptCount(Math.max(1, Math.min(maxAllowed, num)));
+                              }}
+                              className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-[#737373] w-24">Marks each:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={shortMarksEach}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setShortMarksEach(val === '' ? '' : (parseInt(val, 10) || ''));
+                              }}
+                              onBlur={() => {
+                                const num = safeNum(shortMarksEach, 4);
+                                setShortMarksEach(Math.max(1, Math.min(20, num)));
+                              }}
+                              className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-[11px] text-[#737373] w-20">To Attempt:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max={safeNum(shortCount, 6)}
-                            value={shortAttemptCount}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setShortAttemptCount(val === '' ? '' : (parseInt(val, 10) || ''));
-                            }}
-                            onBlur={() => {
-                              const maxAllowed = safeNum(shortCount, 6);
-                              const num = safeNum(shortAttemptCount, Math.min(5, maxAllowed));
-                              setShortAttemptCount(Math.max(1, Math.min(maxAllowed, num)));
-                            }}
-                            className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-[11px] text-[#737373] w-20">Marks each:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="20"
-                            value={shortMarksEach}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setShortMarksEach(val === '' ? '' : (parseInt(val, 10) || ''));
-                            }}
-                            onBlur={() => {
-                              const num = safeNum(shortMarksEach, 4);
-                              setShortMarksEach(Math.max(1, Math.min(20, num)));
-                            }}
-                            className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
-                          />
-                        </div>
+
+                        {/* Manual Question Input Area for Short Questions */}
+                        {shortSource === 'manual' && (
+                          <div className="mt-3 pt-3 border-t border-[#F0F0F0] space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+                                <PenTool size={13} className="text-[#111111]" />
+                                <span>Manual Short Questions Entry ({safeNum(shortCount, 6)} total fields)</span>
+                              </div>
+                              <span className="text-[10px] text-[#737373]">
+                                Leave any field blank to automatically pull from Question Bank
+                              </span>
+                            </div>
+
+                            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                              {Array.from({ length: safeNum(shortCount, 6) }).map((_, idx) => {
+                                const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv'][idx] || `${idx + 1}`;
+                                const isFilled = Boolean(manualShortQuestions[idx]?.trim());
+                                return (
+                                  <div key={idx} className="p-2.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-[#111111]">
+                                        Question Part ({roman})
+                                      </span>
+                                      <span
+                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                          isFilled
+                                            ? 'bg-emerald-100 text-emerald-800'
+                                            : 'bg-[#E5E5E5] text-[#737373]'
+                                        }`}
+                                      >
+                                        {isFilled ? '✍️ Manual Entry' : '📚 Auto-fill from Bank'}
+                                      </span>
+                                    </div>
+                                    <textarea
+                                      rows={2}
+                                      value={manualShortQuestions[idx] || ''}
+                                      onChange={(e) => handleManualShortChange(idx, e.target.value)}
+                                      placeholder={`Type Short Question (${roman}) here... (e.g. Define uniform acceleration and state its SI unit.)`}
+                                      className="w-full p-2 text-xs rounded-lg border border-[#E0E0E0] bg-white text-[#111111] focus:outline-hidden focus:border-[#111111] resize-y"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {/* Long questions config */}
                     {includeLong && (
-                      <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] space-y-2">
-                        <div className="text-xs font-extrabold text-[#111111] flex items-center justify-between">
-                          <span>Long Questions</span>
-                          <span className="text-emerald-700 text-[11px] font-bold">
-                            {safeNum(longAttemptCount, 2) * safeNum(longMarksEach, 10)} M
-                          </span>
+                      <div className="p-4 bg-white rounded-xl border border-[#E5E5E5] space-y-3 sm:col-span-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#F0F0F0]">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold text-[#111111]">Long / Detailed Questions (Comprehensive)</span>
+                            <span className="text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200">
+                              {safeNum(longAttemptCount, 2) * safeNum(longMarksEach, 10)} Marks Total
+                            </span>
+                          </div>
+
+                          {/* Source Toggle */}
+                          <div className="flex items-center p-0.5 bg-[#F0F0F0] rounded-lg border border-[#E0E0E0] self-start sm:self-auto">
+                            <button
+                              type="button"
+                              onClick={() => setLongSource('bank')}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                longSource === 'bank'
+                                  ? 'bg-white text-[#111111] shadow-xs'
+                                  : 'text-[#737373] hover:text-[#111111]'
+                              }`}
+                            >
+                              <BookOpen size={12} />
+                              <span>From Question Bank</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLongSource('manual')}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                longSource === 'manual'
+                                  ? 'bg-[#111111] text-[#F4C430] shadow-xs'
+                                  : 'text-[#737373] hover:text-[#111111]'
+                              }`}
+                            >
+                              <PenTool size={12} />
+                              <span>Write Manually</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-[11px] text-[#737373] w-20">Total Long:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="15"
-                            value={longCount}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setLongCount(val === '' ? '' : (parseInt(val, 10) || ''));
-                            }}
-                            onBlur={() => {
-                              const num = safeNum(longCount, 3);
-                              const clamped = Math.max(1, Math.min(15, num));
-                              setLongCount(clamped);
-                              if (safeNum(longAttemptCount, 2) > clamped) {
-                                setLongAttemptCount(clamped);
-                              }
-                            }}
-                            className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
-                          />
+
+                        {/* Numeric Fields */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-[#737373] w-24">Total Questions:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="15"
+                              value={longCount}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setLongCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                              }}
+                              onBlur={() => {
+                                const num = safeNum(longCount, 3);
+                                const clamped = Math.max(1, Math.min(15, num));
+                                setLongCount(clamped);
+                                if (safeNum(longAttemptCount, 2) > clamped) {
+                                  setLongAttemptCount(clamped);
+                                }
+                              }}
+                              className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-[#737373] w-24">To Attempt:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={safeNum(longCount, 3)}
+                              value={longAttemptCount}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setLongAttemptCount(val === '' ? '' : (parseInt(val, 10) || ''));
+                              }}
+                              onBlur={() => {
+                                const maxAllowed = safeNum(longCount, 3);
+                                const num = safeNum(longAttemptCount, Math.min(2, maxAllowed));
+                                setLongAttemptCount(Math.max(1, Math.min(maxAllowed, num)));
+                              }}
+                              className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-[#737373] w-24">Marks each:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={longMarksEach}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setLongMarksEach(val === '' ? '' : (parseInt(val, 10) || ''));
+                              }}
+                              onBlur={() => {
+                                const num = safeNum(longMarksEach, 10);
+                                setLongMarksEach(Math.max(1, Math.min(30, num)));
+                              }}
+                              className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-[11px] text-[#737373] w-20">To Attempt:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max={safeNum(longCount, 3)}
-                            value={longAttemptCount}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setLongAttemptCount(val === '' ? '' : (parseInt(val, 10) || ''));
-                            }}
-                            onBlur={() => {
-                              const maxAllowed = safeNum(longCount, 3);
-                              const num = safeNum(longAttemptCount, Math.min(2, maxAllowed));
-                              setLongAttemptCount(Math.max(1, Math.min(maxAllowed, num)));
-                            }}
-                            className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-[11px] text-[#737373] w-20">Marks each:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="30"
-                            value={longMarksEach}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setLongMarksEach(val === '' ? '' : (parseInt(val, 10) || ''));
-                            }}
-                            onBlur={() => {
-                              const num = safeNum(longMarksEach, 10);
-                              setLongMarksEach(Math.max(1, Math.min(30, num)));
-                            }}
-                            className="w-full h-8 px-2 rounded-lg border border-[#E5E5E5] text-xs font-bold"
-                          />
-                        </div>
+
+                        {/* Manual Question Input Area for Long Questions */}
+                        {longSource === 'manual' && (
+                          <div className="mt-3 pt-3 border-t border-[#F0F0F0] space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs font-extrabold text-[#111111] flex items-center gap-1.5">
+                                <PenTool size={13} className="text-[#111111]" />
+                                <span>Manual Long Questions Entry ({safeNum(longCount, 3)} total fields)</span>
+                              </div>
+                              <span className="text-[10px] text-[#737373]">
+                                Leave any field blank to automatically pull from Question Bank
+                              </span>
+                            </div>
+
+                            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                              {Array.from({ length: safeNum(longCount, 3) }).map((_, idx) => {
+                                const isFilled = Boolean(manualLongQuestions[idx]?.trim());
+                                return (
+                                  <div key={idx} className="p-2.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-[#111111]">
+                                        Long Question {idx + 1}
+                                      </span>
+                                      <span
+                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                          isFilled
+                                            ? 'bg-emerald-100 text-emerald-800'
+                                            : 'bg-[#E5E5E5] text-[#737373]'
+                                        }`}
+                                      >
+                                        {isFilled ? '✍️ Manual Entry' : '📚 Auto-fill from Bank'}
+                                      </span>
+                                    </div>
+                                    <textarea
+                                      rows={3}
+                                      value={manualLongQuestions[idx] || ''}
+                                      onChange={(e) => handleManualLongChange(idx, e.target.value)}
+                                      placeholder={`Type detailed Long Question ${idx + 1} here... (Include theory, sub-parts (a)/(b), or mathematical proofs)`}
+                                      className="w-full p-2 text-xs rounded-lg border border-[#E0E0E0] bg-white text-[#111111] focus:outline-hidden focus:border-[#111111] resize-y"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1128,7 +1456,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
             </div>
           )}
 
-          {/* STEP 3: BANK QUESTIONS REVIEW */}
+          {/* STEP 3: QUESTIONS REVIEW & REFINEMENT */}
           {step === 3 && (() => {
             let sectionIdx = 0;
             const letters = ['A', 'B', 'C', 'D'];
@@ -1144,10 +1472,10 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#F0F0F0]">
                   <div>
                     <h3 className="text-sm font-black text-[#111111]">
-                      Pulled Questions from Question Bank
+                      Review & Refine Test Paper Questions
                     </h3>
                     <p className="text-xs text-[#737373]">
-                      Review the verified questions retrieved for Grade {grade} {subject} ({selectedChapter}).
+                      Review questions configured for Grade {grade} {subject} ({selectedChapter}). You can edit any question inline before generating the PDF.
                     </p>
                   </div>
                   <button
@@ -1156,14 +1484,14 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#F5F5F5] text-xs font-bold text-[#111111] transition-all cursor-pointer shrink-0"
                   >
                     <RefreshCw size={13} className={pullingQuestions ? 'animate-spin' : ''} />
-                    <span>Re-shuffle from Bank</span>
+                    <span>Re-shuffle Bank Questions</span>
                   </button>
                 </div>
 
                 {pullingQuestions ? (
                   <div className="p-12 text-center space-y-3">
                     <div className="w-8 h-8 rounded-full border-2 border-[#111111] border-t-transparent animate-spin mx-auto" />
-                    <div className="text-xs font-bold text-[#111111]">Pulling from Question Banks...</div>
+                    <div className="text-xs font-bold text-[#111111]">Configuring and pulling questions...</div>
                   </div>
                 ) : (
                   <div className="space-y-5 max-h-[50vh] overflow-y-auto pr-1">
@@ -1172,7 +1500,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                       <div className="space-y-2">
                         <div className="text-xs font-black uppercase text-[#111111] flex items-center justify-between bg-[#F5F5F5] p-2 rounded-lg">
                           <span>Section {mcqSec}: {pulledMCQs.length} MCQs ({pulledMCQs.length * safeNum(mcqMarksEach, 1)} Marks)</span>
-                          <span className="text-[10px] font-bold text-[#737373]">All Compulsory</span>
+                          <span className="text-[10px] font-bold text-[#737373]">📚 Bank • All Compulsory</span>
                         </div>
                         <div className="space-y-2">
                           {pulledMCQs.map((mcq, idx) => (
@@ -1200,21 +1528,79 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                       <div className="space-y-2">
                         <div className="text-xs font-black uppercase text-[#111111] flex items-center justify-between bg-[#F5F5F5] p-2 rounded-lg">
                           <span>Section {shortSec}: {pulledShortQuestions.length} Short Questions (Attempt {safeNum(shortAttemptCount, 5)} × {safeNum(shortMarksEach, 4)} = {safeNum(shortAttemptCount, 5) * safeNum(shortMarksEach, 4)} Marks)</span>
+                          <span className="text-[10px] font-bold text-emerald-700">
+                            {shortSource === 'manual' ? '✍️ Manual / Mixed' : '📚 Question Bank'}
+                          </span>
                         </div>
                         <div className="space-y-2">
                           {pulledShortQuestions.map((sq, idx) => {
                             const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
+                            const isEditing = editingQuestionId === (sq.id || `sq-${idx}`);
+                            const isManual = sq.id?.startsWith('manual-');
+
                             return (
-                              <div key={sq.id || idx} className="p-3 bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs">
+                              <div key={sq.id || idx} className="p-3 bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs space-y-2">
                                 <div className="flex items-start justify-between gap-2">
-                                  <div className="font-extrabold text-[#111111]">
-                                    {shortQPrefix}.({roman}) {renderLaTeXToText(sq.question)}
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-extrabold text-[#111111]">
+                                      {shortQPrefix}.({roman})
+                                    </span>
+                                    <span
+                                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                                        isManual
+                                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                          : 'bg-blue-50 text-blue-800 border border-blue-200'
+                                      }`}
+                                    >
+                                      {isManual ? '✍️ Manual' : '📚 Bank'}
+                                    </span>
                                   </div>
-                                  <span className="text-[10px] font-bold text-[#737373] shrink-0">
-                                    [{sq.marks || safeNum(shortMarksEach, 4)} Marks]
-                                  </span>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-[#737373] shrink-0">
+                                      [{sq.marks || safeNum(shortMarksEach, 4)} Marks]
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingQuestionId(isEditing ? null : (sq.id || `sq-${idx}`))}
+                                      className="p-1 text-[#737373] hover:text-[#111111] hover:bg-white rounded transition-all cursor-pointer"
+                                      title="Edit question text"
+                                    >
+                                      <Edit3 size={12} />
+                                    </button>
+                                  </div>
                                 </div>
-                                {sq.modelAnswer && (
+
+                                {isEditing ? (
+                                  <div className="space-y-2 pt-1">
+                                    <textarea
+                                      rows={2}
+                                      value={sq.question}
+                                      onChange={(e) => {
+                                        const newText = e.target.value;
+                                        setPulledShortQuestions((prev) =>
+                                          prev.map((item, i) => (i === idx ? { ...item, question: newText } : item))
+                                        );
+                                      }}
+                                      className="w-full p-2 text-xs rounded-lg border border-[#111111] bg-white text-[#111111]"
+                                    />
+                                    <div className="flex justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingQuestionId(null)}
+                                        className="px-2.5 py-1 bg-[#111111] text-white text-[10px] font-bold rounded-md"
+                                      >
+                                        Done Editing
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="font-medium text-[#111111] pl-4">
+                                    {renderLaTeXToText(sq.question)}
+                                  </div>
+                                )}
+
+                                {sq.modelAnswer && !isEditing && (
                                   <div className="mt-2 text-[11px] text-[#525252] bg-white p-2 rounded-lg border border-[#F0F0F0]">
                                     <strong>Key Answer:</strong> {renderLaTeXToText(sq.modelAnswer)}
                                   </div>
@@ -1231,30 +1617,90 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                       <div className="space-y-2">
                         <div className="text-xs font-black uppercase text-[#111111] flex items-center justify-between bg-[#F5F5F5] p-2 rounded-lg">
                           <span>Section {longSec}: {pulledLongQuestions.length} Long Questions (Attempt {safeNum(longAttemptCount, 2)} × {safeNum(longMarksEach, 10)} = {safeNum(longAttemptCount, 2) * safeNum(longMarksEach, 10)} Marks)</span>
+                          <span className="text-[10px] font-bold text-emerald-700">
+                            {longSource === 'manual' ? '✍️ Manual / Mixed' : '📚 Question Bank'}
+                          </span>
                         </div>
                         <div className="space-y-2">
-                          {pulledLongQuestions.map((lq, idx) => (
-                            <div key={lq.id || idx} className="p-3 bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="font-extrabold text-[#111111]">
-                                  Q{longQStart + idx}. {renderLaTeXToText(lq.question)}
+                          {pulledLongQuestions.map((lq, idx) => {
+                            const isEditing = editingQuestionId === (lq.id || `lq-${idx}`);
+                            const isManual = lq.id?.startsWith('manual-');
+
+                            return (
+                              <div key={lq.id || idx} className="p-3 bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-extrabold text-[#111111]">
+                                      Q{longQStart + idx}.
+                                    </span>
+                                    <span
+                                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                                        isManual
+                                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                          : 'bg-blue-50 text-blue-800 border border-blue-200'
+                                      }`}
+                                    >
+                                      {isManual ? '✍️ Manual' : '📚 Bank'}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-[#737373] shrink-0">
+                                      [{lq.marks || safeNum(longMarksEach, 10)} Marks]
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingQuestionId(isEditing ? null : (lq.id || `lq-${idx}`))}
+                                      className="p-1 text-[#737373] hover:text-[#111111] hover:bg-white rounded transition-all cursor-pointer"
+                                      title="Edit question text"
+                                    >
+                                      <Edit3 size={12} />
+                                    </button>
+                                  </div>
                                 </div>
-                                <span className="text-[10px] font-bold text-[#737373] shrink-0">
-                                  [{lq.marks || safeNum(longMarksEach, 10)} Marks]
-                                </span>
-                              </div>
-                              {lq.parts && lq.parts.length > 0 && (
-                                <div className="space-y-1 pl-2">
-                                  {lq.parts.map((p, pIdx) => (
-                                    <div key={pIdx} className="text-[11px] text-[#525252] flex justify-between">
-                                      <span>{p.label} {renderLaTeXToText(p.text)}</span>
-                                      <span className="text-[10px] text-[#737373]">({p.marks} M)</span>
+
+                                {isEditing ? (
+                                  <div className="space-y-2 pt-1">
+                                    <textarea
+                                      rows={3}
+                                      value={lq.question}
+                                      onChange={(e) => {
+                                        const newText = e.target.value;
+                                        setPulledLongQuestions((prev) =>
+                                          prev.map((item, i) => (i === idx ? { ...item, question: newText } : item))
+                                        );
+                                      }}
+                                      className="w-full p-2 text-xs rounded-lg border border-[#111111] bg-white text-[#111111]"
+                                    />
+                                    <div className="flex justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingQuestionId(null)}
+                                        className="px-2.5 py-1 bg-[#111111] text-white text-[10px] font-bold rounded-md"
+                                      >
+                                        Done Editing
+                                      </button>
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                  </div>
+                                ) : (
+                                  <div className="font-medium text-[#111111] pl-4">
+                                    {renderLaTeXToText(lq.question)}
+                                  </div>
+                                )}
+
+                                {lq.parts && lq.parts.length > 0 && !isEditing && (
+                                  <div className="space-y-1 pl-6">
+                                    {lq.parts.map((p, pIdx) => (
+                                      <div key={pIdx} className="text-[11px] text-[#525252] flex justify-between">
+                                        <span>{p.label} {renderLaTeXToText(p.text)}</span>
+                                        <span className="text-[10px] text-[#737373]">({p.marks} M)</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
