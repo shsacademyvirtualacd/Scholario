@@ -1,5 +1,5 @@
 import type { StoredMCQ, StoredShortQuestion, StoredLongQuestion } from "../../../../types/questionBank";
-import rawBankData from "../../../grade9FbiseBank.json";
+import { biologyMCQs } from "../../biologyData";
 
 export const chapterMetadata = {
   subject: "Biology",
@@ -8,8 +8,7 @@ export const chapterMetadata = {
   slug: "ch08_plant_physiology",
 };
 
-const bioBank = (rawBankData as any)?.Biology || {};
-export const mcqs: StoredMCQ[] = bioBank["Plant Physiology"] || [];
+export const mcqs: StoredMCQ[] = biologyMCQs["Plant Physiology"] || [];
 export const shortQuestions: StoredShortQuestion[] = [];
 export const longQuestions: StoredLongQuestion[] = [];
 

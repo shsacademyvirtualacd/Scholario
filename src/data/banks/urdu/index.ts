@@ -1,6 +1,6 @@
 import type { StoredMCQ } from "../../../types/questionBank";
-import rawBankData from "../../grade9FbiseBank.json";
+import { urduMCQs } from "../urduData";
 
-export const urdu: Record<string, StoredMCQ[]> = (rawBankData as any).Urdu || {};
+export const urdu: Record<string, StoredMCQ[]> = urduMCQs;
 export default urdu;
 

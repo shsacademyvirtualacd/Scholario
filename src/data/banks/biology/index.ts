@@ -1,6 +1,6 @@
 import type { StoredMCQ } from "../../../types/questionBank";
-import rawBankData from "../../grade9FbiseBank.json";
+import { biologyMCQs } from "../biologyData";
 
-export const biology: Record<string, StoredMCQ[]> = (rawBankData as any).Biology || {};
+export const biology: Record<string, StoredMCQ[]> = biologyMCQs;
 export default biology;
 
