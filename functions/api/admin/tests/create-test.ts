@@ -14,12 +14,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   const { supabase, token } = auth;
 
   let userId: string;
-  let userEmail: string = '';
   try {
     const payloadBase64 = token.split('.')[1];
     const payload = JSON.parse(atob(payloadBase64));
     userId = payload.sub;
-    userEmail = payload.email || '';
     if (!userId) throw new Error('No sub claim');
   } catch {
     return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token payload' }), {
