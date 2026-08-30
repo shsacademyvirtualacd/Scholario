@@ -1,7 +1,5 @@
 import type { StoredMCQ, StoredShortQuestion, StoredLongQuestion } from "../../../../types/questionBank";
-import mcqsJson from "./mcqs.json";
-import shortQuestionsJson from "./short_questions.json";
-import longQuestionsJson from "./long_questions.json";
+import rawBankData from "../../../grade9FbiseBank.json";
 
 export const chapterMetadata = {
   subject: "Biology",
@@ -10,9 +8,10 @@ export const chapterMetadata = {
   slug: "ch08_plant_physiology",
 };
 
-export const mcqs: StoredMCQ[] = mcqsJson as unknown as StoredMCQ[];
-export const shortQuestions: StoredShortQuestion[] = shortQuestionsJson as unknown as StoredShortQuestion[];
-export const longQuestions: StoredLongQuestion[] = longQuestionsJson as unknown as StoredLongQuestion[];
+const bioBank = (rawBankData as any)?.Biology || {};
+export const mcqs: StoredMCQ[] = bioBank["Plant Physiology"] || [];
+export const shortQuestions: StoredShortQuestion[] = [];
+export const longQuestions: StoredLongQuestion[] = [];
 
 export default {
   metadata: chapterMetadata,
@@ -20,3 +19,4 @@ export default {
   shortQuestions,
   longQuestions,
 };
+

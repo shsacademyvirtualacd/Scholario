@@ -6,9 +6,9 @@
 import type { StoredMCQ } from '../types/questionBank';
 import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
 import { normalizeFBISEGrade9Subject } from './curriculumFBISE9';
-import { grade9FbiseBank } from '../data/banks';
+import bankData from '../data/grade9FbiseBank.json';
 
-export const FBISE_9_QUESTION_BANK: Record<string, Record<string, StoredMCQ[]>> = grade9FbiseBank as any;
+export const FBISE_9_QUESTION_BANK: Record<string, Record<string, StoredMCQ[]>> = bankData as any;
 
 /**
  * Retrieves questions from the static Grade 9 FBISE Question Bank

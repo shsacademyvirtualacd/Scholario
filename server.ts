@@ -621,7 +621,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   });
 
   // ── Pre-Generated MCQ Question Bank Endpoints ────────
+  let serverCachedBank: any = null;
+
   function getServerBankData(): Record<string, Record<string, StoredMCQ[]>> {
+    if (serverCachedBank) return serverCachedBank;
     return (grade9FbiseBank as unknown as Record<string, Record<string, StoredMCQ[]>>) || {};
   }
 

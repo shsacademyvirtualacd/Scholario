@@ -2257,7 +2257,11 @@ async function execute() {
   const jsonPath = path.join(process.cwd(), 'src/data/grade9FbiseBank.json');
   let bank: Record<string, Record<string, StoredMCQ[]>> = {};
   if (fs.existsSync(jsonPath)) {
-    bank = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+    try {
+      bank = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+    } catch {
+      bank = {};
+    }
   }
 
   if (!bank['Physics']) {
