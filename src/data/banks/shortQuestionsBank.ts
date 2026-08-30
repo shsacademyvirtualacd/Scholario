@@ -1,10 +1,12 @@
 import type { StoredShortQuestion } from '../../types/questionBank';
+import { urduShortQuestions } from './urduShortQuestions';
 
 /**
  * Authoritative Curated Short Question Bank
  * Covers Grade 9, 10, 11, 12 FBISE and Sindh Board subjects and chapters.
  */
 export const shortQuestionsBank: Record<string, Record<string, StoredShortQuestion[]>> = {
+  Urdu: urduShortQuestions,
   Physics: {
     'Physical Quantities and Measurement': [
       {

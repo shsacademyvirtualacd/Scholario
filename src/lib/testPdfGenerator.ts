@@ -2,10 +2,11 @@ import { jsPDF } from 'jspdf';
 import type { GeneratedTestSpecification } from '../types/questionBank';
 import { renderLaTeXToText } from './latexRenderer';
 import { containsUrdu, formatUrduTextForPdf } from './urduReshaper';
+import { NOTO_NASKH_ARABIC_BASE64 } from './urduFontBase64';
 
 // Cached Base64 of SHS Academy Logo and Urdu Fonts
 let cachedShsLogoBase64: string | null = null;
-let cachedUrduFontBase64: string | null = null;
+let cachedUrduFontBase64: string | null = NOTO_NASKH_ARABIC_BASE64;
 
 /**
  * Loads an image from URL or path and converts to Base64 Data URL with strict timeout
@@ -125,7 +126,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
   // 1. Attempt to load and register Urdu TrueType font in jsPDF
   let isUrduFontLoaded = false;
   try {
-    const urduFontBase64 = await loadUrduFontBase64();
+    const urduFontBase64 = cachedUrduFontBase64 || NOTO_NASKH_ARABIC_BASE64 || (await loadUrduFontBase64());
     if (urduFontBase64) {
       doc.addFileToVFS('UrduFont.ttf', urduFontBase64);
       doc.addFont('UrduFont.ttf', 'UrduFont', 'normal');

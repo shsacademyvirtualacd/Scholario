@@ -9,7 +9,8 @@ import {
   FileCheck,
   PenTool,
   BookOpen,
-  Edit3
+  Edit3,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
@@ -359,13 +360,19 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
             } else if (bankIndex < bankRes.shortQuestions.length) {
               finalShorts.push(bankRes.shortQuestions[bankIndex++]);
             } else {
+              const isUrdu = subject.toLowerCase().includes('urdu') || /[\u0600-\u06FF]/.test(selectedChapter);
               finalShorts.push({
                 id: `sq-${i + 1}`,
                 board,
                 grade,
                 subject,
                 chapter: selectedChapter,
-                question: `Explain the fundamental principles and characteristics of ${selectedChapter && selectedChapter !== 'All' ? selectedChapter : subject}.`,
+                question: isUrdu
+                  ? `${selectedChapter && selectedChapter !== 'All' ? selectedChapter : 'اس سبق'} کے اہم نکات اور بنیادی مفہوم کی وضاحت دو مثالوں سے کریں۔`
+                  : `Explain the fundamental principles and characteristics of ${selectedChapter && selectedChapter !== 'All' ? selectedChapter : subject}.`,
+                modelAnswer: isUrdu
+                  ? 'درسی کتاب کے مطابق متعلقہ سوال کی جامع تعریف اور دو مثالیں۔'
+                  : 'Key concepts and comprehensive explanation according to curriculum.',
                 marks: safeNum(shortMarksEach, 4),
                 verified: true,
                 source: 'expert-verified',
@@ -399,13 +406,28 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
             } else if (bankIndex < bankRes.longQuestions.length) {
               finalLongs.push(bankRes.longQuestions[bankIndex++]);
             } else {
+              const isUrdu = subject.toLowerCase().includes('urdu') || /[\u0600-\u06FF]/.test(selectedChapter);
               finalLongs.push({
                 id: `lq-${i + 1}`,
                 board,
                 grade,
                 subject,
                 chapter: selectedChapter,
-                question: `Discuss comprehensively the key laws, mathematical formulations, and practical applications of ${selectedChapter && selectedChapter !== 'All' ? selectedChapter : subject}.`,
+                question: isUrdu
+                  ? `${selectedChapter && selectedChapter !== 'All' ? selectedChapter : 'اس موضوع'} پر تفصیلی اور جامع نوٹ تحریر کریں۔`
+                  : `Discuss comprehensively the key laws, mathematical formulations, and practical applications of ${selectedChapter && selectedChapter !== 'All' ? selectedChapter : subject}.`,
+                parts: [
+                  {
+                    label: isUrdu ? '(الف)' : '(a)',
+                    text: isUrdu ? 'بنیادی تصورات، تعریف اور پس منظر بیان کریں۔' : 'Explain key definitions and background.',
+                    marks: Math.ceil(safeNum(longMarksEach, 10) / 2),
+                  },
+                  {
+                    label: isUrdu ? '(ب)' : '(b)',
+                    text: isUrdu ? 'مثالوں اور عملی انطباق کے ساتھ وضاحت کریں۔' : 'Discuss practical applications and examples.',
+                    marks: Math.floor(safeNum(longMarksEach, 10) / 2),
+                  },
+                ],
                 marks: safeNum(longMarksEach, 10),
                 verified: true,
                 source: 'expert-verified',
@@ -524,8 +546,22 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     }
   };
 
-  // Step navigation to Step 4
+  // Step navigation to Step 4 with validation
   const goToPreviewStep = async () => {
+    const missingSections: string[] = [];
+    if (includeMCQs && pulledMCQs.length === 0) missingSections.push('Multiple Choice Questions (MCQs)');
+    if (includeShort && pulledShortQuestions.length === 0) missingSections.push('Short Answer Questions');
+    if (includeLong && pulledLongQuestions.length === 0) missingSections.push('Long / Detailed Questions');
+
+    if (missingSections.length > 0) {
+      toast.error(
+        `Cannot generate test paper: No questions available for ${missingSections.join(
+          ', '
+        )}. Please switch to "Write Manually" or choose another chapter/full syllabus.`
+      );
+      return;
+    }
+
     setStep(4);
     await handleGeneratePdfPreview();
   };
@@ -1487,6 +1523,73 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     <span>Re-shuffle Bank Questions</span>
                   </button>
                 </div>
+
+                {/* Question Availability / Empty Warning Banner */}
+                {(() => {
+                  const emptySections: string[] = [];
+                  if (includeMCQs && pulledMCQs.length === 0) emptySections.push('MCQs');
+                  if (includeShort && pulledShortQuestions.length === 0) emptySections.push('Short Questions');
+                  if (includeLong && pulledLongQuestions.length === 0) emptySections.push('Long Questions');
+
+                  if (emptySections.length === 0) return null;
+
+                  return (
+                    <div className="p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black">
+                            Question Bank Notice: Insufficient Questions Found for {emptySections.join(', ')}
+                          </h4>
+                          <p className="text-[11px] text-amber-800 leading-relaxed">
+                            The question bank currently does not have enough pre-loaded questions for <strong>Grade {grade} {subject}</strong> with scope <strong>{selectedChapter}</strong>. To proceed without generating a blank test paper, you can write questions manually or broaden the syllabus scope.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200">
+                        {(includeShort || includeLong) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (includeShort) setShortSource('manual');
+                              if (includeLong) setLongSource('manual');
+                              setStep(2);
+                              toast.info('Switched to "Write Manually" mode. Please type your questions in Step 2.');
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111111] text-[#F4C430] text-xs font-bold hover:bg-black transition-all cursor-pointer shadow-xs"
+                          >
+                            <PenTool size={13} />
+                            <span>Switch to "Write Manually" in Step 2</span>
+                          </button>
+                        )}
+
+                        {selectedChapter !== 'All' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedChapter('All');
+                              toast.info('Expanded scope to All Chapters. Refreshing question bank...');
+                              setTimeout(() => handlePullQuestions(), 100);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          >
+                            <BookOpen size={13} />
+                            <span>Expand Scope to Full Syllabus (All Chapters)</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setStep(2)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E0E0E0] text-[#111111] hover:bg-[#F5F5F5] text-xs font-bold transition-all cursor-pointer shadow-xs"
+                        >
+                          <span>Adjust Counts / Question Types</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {pullingQuestions ? (
                   <div className="p-12 text-center space-y-3">

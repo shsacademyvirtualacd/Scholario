@@ -535,7 +535,8 @@ export async function pullTestQuestionsFromBanks(params: {
       for (const ch of chapList) {
         if (shortQuestions.length >= shortTarget) break;
         if (chapter && chapter !== 'All' && ch.name !== chapter && !ch.name.includes(chapter)) continue;
-        const subtopics = ch.subtopics || ['Key Concepts', 'Formulas', 'Definitions'];
+        const isUrdu = subject.toLowerCase().includes('urdu') || /[\u0600-\u06FF]/.test(ch.name);
+        const subtopics = ch.subtopics || (isUrdu ? ['بنیادی قواعد', 'تعریف و مثالیں'] : ['Key Concepts', 'Formulas', 'Definitions']);
         for (const topic of subtopics) {
           if (shortQuestions.length >= shortTarget) break;
           shortQuestions.push({
@@ -546,9 +547,15 @@ export async function pullTestQuestionsFromBanks(params: {
             chapter: ch.name,
             chapterNumber: ch.number,
             topic,
-            question: `Explain the fundamental concept of ${topic} and discuss its significance in ${subject}.`,
-            modelAnswer: `According to the ${board.toUpperCase()} syllabus for ${subject}, ${topic} forms a foundational principle. Students are expected to state the formal definition, write relevant formulas or equations, and describe practical applications.`,
-            keyPoints: [`Accurate definition of ${topic}`, 'Formulas, SI units or balanced chemical/biological relations', 'Two practical applications'],
+            question: isUrdu
+              ? `${ch.name} کے تحت ${topic} کی تعریف کریں اور دو مثالوں کے ساتھ وضاحت کریں۔`
+              : `Explain the fundamental concept of ${topic} and discuss its significance in ${subject}.`,
+            modelAnswer: isUrdu
+              ? `درسی نصاب کے مطابق ${topic} ایک بنیادی تصور ہے۔ طلبہ اس کی جامع تعریف، قواعد اور دو معیاری مثالیں تحریر کریں۔`
+              : `According to the ${board.toUpperCase()} syllabus for ${subject}, ${topic} forms a foundational principle. Students are expected to state the formal definition, write relevant formulas or equations, and describe practical applications.`,
+            keyPoints: isUrdu
+              ? [`${topic} کی درست اور جامع تعریف`, 'دو مستند مثالیں اور قواعد کا انطباق']
+              : [`Accurate definition of ${topic}`, 'Formulas, SI units or balanced chemical/biological relations', 'Two practical applications'],
             marks: 3,
             difficulty: 'medium',
             verified: true,
@@ -576,9 +583,10 @@ export async function pullTestQuestionsFromBanks(params: {
       for (const ch of chapList) {
         if (longQuestions.length >= longTarget) break;
         if (chapter && chapter !== 'All' && ch.name !== chapter && !ch.name.includes(chapter)) continue;
-        const subtopics = ch.subtopics || ['Theoretical Principles', 'Analytical Applications'];
-        const t1 = subtopics[0] || 'Theoretical Foundations';
-        const t2 = subtopics[1] || 'Experimental Analysis';
+        const isUrdu = subject.toLowerCase().includes('urdu') || /[\u0600-\u06FF]/.test(ch.name);
+        const subtopics = ch.subtopics || (isUrdu ? ['اصول و ضوابط', 'ادبی و فنی محاسن'] : ['Theoretical Principles', 'Analytical Applications']);
+        const t1 = subtopics[0] || (isUrdu ? 'قواعد و اصول' : 'Theoretical Foundations');
+        const t2 = subtopics[1] || (isUrdu ? 'اشعار و امثلہ' : 'Experimental Analysis');
 
         longQuestions.push({
           id: `gen_lq_${subject.toLowerCase()}_${addIdx++}`,
@@ -588,25 +596,35 @@ export async function pullTestQuestionsFromBanks(params: {
           chapter: ch.name,
           chapterNumber: ch.number,
           topic: t1,
-          question: `Comprehensive examination of ${ch.name}: theoretical principles, derivations, and application problems.`,
+          question: isUrdu
+            ? `${ch.name} کے بنیادی اصول، قواعد اور تفصیلی ادبی و فنی وضاحت تحریر کریں۔`
+            : `Comprehensive examination of ${ch.name}: theoretical principles, derivations, and application problems.`,
           parts: [
             {
-              label: '(a)',
-              text: `Explain in detail the fundamental laws and conceptual derivations governing ${t1} with necessary mathematical formulations.`,
+              label: isUrdu ? '(الف)' : '(a)',
+              text: isUrdu
+                ? `${t1} کی جامع تعریف کریں اور اس کے بنیادی اجزا کو تفصیل سے بیان کریں۔`
+                : `Explain in detail the fundamental laws and conceptual derivations governing ${t1} with necessary mathematical formulations.`,
               marks: 5,
             },
             {
-              label: '(b)',
-              text: `Analyze the practical application and problem-solving scenario of ${t2} in ${subject}.`,
+              label: isUrdu ? '(ب)' : '(b)',
+              text: isUrdu
+                ? `${t2} کی مدد سے اس کا اطلاق اور روزمرہ یا اساتذہ کے کلام سے دو مثالیں پیش کریں۔`
+                : `Analyze the practical application and problem-solving scenario of ${t2} in ${subject}.`,
               marks: 3,
             },
           ],
-          modelAnswer: `(a) Detailed theoretical derivation covering principles of ${t1}.\n(b) Practical application, diagrammatic representation, and analytical evaluation of ${t2}.`,
-          markingScheme: [
-            '2 marks for theoretical statement and assumptions',
-            '3 marks for mathematical derivation or structural diagrams',
-            '3 marks for analytical problem solution or case application'
-          ],
+          modelAnswer: isUrdu
+            ? `(الف) ${t1} کے تمام پہلوؤں کا احاطہ کرتے ہوئے جامع جواب۔\n(ب) مستند مثالوں اور اشعار کے تجزیے کے ساتھ مدلل تشریح۔`
+            : `(a) Detailed theoretical derivation covering principles of ${t1}.\n(b) Practical application, diagrammatic representation, and analytical evaluation of ${t2}.`,
+          markingScheme: isUrdu
+            ? ['تعریف اور بنیادی اجزا پر 5 نمبر', 'مثالوں، اشعار اور قواعد کے انطباق پر 3 نمبر']
+            : [
+              '2 marks for theoretical statement and assumptions',
+              '3 marks for mathematical derivation or structural diagrams',
+              '3 marks for analytical problem solution or case application'
+            ],
           marks: 8,
           difficulty: 'hard',
           verified: true,
