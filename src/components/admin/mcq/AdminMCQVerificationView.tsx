@@ -16,13 +16,18 @@ import {
   ChevronUp,
   FileText,
   FolderOpen,
-  GraduationCap
+  GraduationCap,
+  HelpCircle,
+  AlignLeft,
+  FileQuestion,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MathText } from '../../common/MathText';
 import {
   loadBankData,
   refreshLiveBankData,
+  getStoredShortQuestions,
+  getStoredLongQuestions,
 } from '../../../lib/questionBankService';
 import { BOARDS, getGradesForBoard } from '../../../lib/taxonomy';
 import {
@@ -30,7 +35,11 @@ import {
   FBISE_GRADE_10_CURRICULUM,
   normalizeFBISEGrade9Subject,
 } from '../../../lib/curriculumFBISE9';
-import type { StoredMCQ } from '../../../types/questionBank';
+import type {
+  StoredMCQ,
+  StoredShortQuestion,
+  StoredLongQuestion,
+} from '../../../types/questionBank';
 
 interface AdminMCQVerificationViewProps {
   initialBoard?: string;
@@ -40,6 +49,7 @@ interface AdminMCQVerificationViewProps {
 }
 
 type ViewMode = 'cards' | 'compact' | 'json';
+type BankTab = 'mcq' | 'short' | 'long';
 
 export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> = ({
   initialBoard = 'fbise',
@@ -47,13 +57,16 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   initialSubject = 'Physics',
   initialChapter,
 }) => {
+  // Bank Type Switcher: 'mcq' | 'short' | 'long'
+  const [bankTab, setBankTab] = useState<BankTab>('mcq');
+
   // Navigation Hierarchy State
   const [selectedBoard, setSelectedBoard] = useState<string>(initialBoard);
   const [selectedGrade, setSelectedGrade] = useState<string>(initialGrade);
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubject);
   const [selectedChapter, setSelectedChapter] = useState<string>(initialChapter || '');
 
-  // Live Storage Bank State
+  // Live Storage Bank State (MCQs)
   const [liveBank, setLiveBank] = useState<Record<string, Record<string, StoredMCQ[]>>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -66,7 +79,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // 1. Fetch live bank data from real storage
+  // 1. Fetch live MCQ bank data from storage
   const fetchLiveBank = useCallback(async (isManualRefresh = false) => {
     try {
       if (isManualRefresh) setRefreshing(true);
@@ -82,11 +95,11 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
             totalCount += (chList || []).length;
           });
         });
-        toast.success(`Live Question Bank re-synchronized: ${totalCount.toLocaleString()} total MCQs loaded.`);
+        toast.success(`Question Banks re-synchronized: ${totalCount.toLocaleString()} total MCQs loaded.`);
       }
     } catch (err: any) {
       console.error('[MCQVerification] Failed to fetch live bank:', err);
-      toast.error('Failed to load live question bank: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to load question bank: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -110,11 +123,9 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     if (!currentGradeDef) return [];
     const subjectsSet = new Set<string>();
 
-    // Add common and stream subjects from taxonomy
     currentGradeDef.commonSubjects?.forEach((s) => subjectsSet.add(s));
     currentGradeDef.streams?.forEach((st) => st.subjects.forEach((s) => subjectsSet.add(s)));
 
-    // If Grade 9 FBISE, also include any subjects from curriculum or live bank
     if (selectedGrade === '9' && selectedBoard === 'fbise') {
       Object.keys(FBISE_GRADE_9_CURRICULUM).forEach((s) => subjectsSet.add(s));
       Object.keys(liveBank).forEach((s) => subjectsSet.add(s));
@@ -123,7 +134,6 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     return Array.from(subjectsSet);
   }, [currentGradeDef, selectedGrade, selectedBoard, liveBank]);
 
-  // Ensure selectedSubject is valid
   useEffect(() => {
     if (availableSubjects.length > 0 && !availableSubjects.includes(selectedSubject)) {
       setSelectedSubject(availableSubjects[0]);
@@ -132,7 +142,6 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
 
   // 3. Compute chapters for the selected subject
   const currentChapters = useMemo(() => {
-    // If Grade 9 FBISE curriculum
     if (selectedGrade === '9' && selectedBoard === 'fbise') {
       const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
       const curData = FBISE_GRADE_9_CURRICULUM[canonical];
@@ -146,7 +155,6 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       }
     }
 
-    // If Grade 10 FBISE curriculum
     if (selectedGrade === '10' && selectedBoard === 'fbise') {
       const curData = FBISE_GRADE_10_CURRICULUM[selectedSubject];
       if (curData && curData.chapters && curData.chapters.length > 0) {
@@ -159,7 +167,6 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       }
     }
 
-    // Check if live bank has chapters for this subject
     const subjData = liveBank[selectedSubject] || {};
     const bankChapters = Object.keys(subjData);
     if (bankChapters.length > 0) {
@@ -174,7 +181,6 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     return [];
   }, [selectedGrade, selectedBoard, selectedSubject, liveBank]);
 
-  // Automatically select first chapter when subject changes if not selected
   useEffect(() => {
     if (currentChapters.length > 0) {
       const exists = currentChapters.some((c) => c.name === selectedChapter);
@@ -186,7 +192,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     }
   }, [currentChapters, selectedChapter]);
 
-  // 4. Compute Counts & Statistics strictly from live storage
+  // 4. Compute Counts & Statistics
   const bankGrandTotal = useMemo(() => {
     let sum = 0;
     Object.values(liveBank).forEach((subj) => {
@@ -197,69 +203,18 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     return sum;
   }, [liveBank]);
 
-  const gradeTotalCount = useMemo(() => {
-    // Only Grade 9 FBISE has stored MCQs in the current live file
-    if (selectedGrade !== '9' || selectedBoard !== 'fbise') {
-      return 0;
-    }
-    return bankGrandTotal;
-  }, [selectedGrade, selectedBoard, bankGrandTotal]);
-
-  const subjectCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    availableSubjects.forEach((subj) => {
-      if (selectedGrade !== '9' || selectedBoard !== 'fbise') {
-        counts[subj] = 0;
-        return;
-      }
-      const canonical = normalizeFBISEGrade9Subject(subj) || subj;
-      const subjData = liveBank[canonical] || liveBank[subj] || {};
-      let total = 0;
-      Object.values(subjData).forEach((qList) => {
-        total += (qList || []).length;
-      });
-      counts[subj] = total;
-    });
-    return counts;
-  }, [availableSubjects, liveBank, selectedGrade, selectedBoard]);
-
-  const chapterCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    currentChapters.forEach((ch) => {
-      if (selectedGrade !== '9' || selectedBoard !== 'fbise') {
-        counts[ch.name] = 0;
-        return;
-      }
-      const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
-      const subjData = liveBank[canonical] || liveBank[selectedSubject] || {};
-      const exactList = subjData[ch.name];
-      if (exactList && Array.isArray(exactList)) {
-        counts[ch.name] = exactList.length;
-      } else {
-        // Case-insensitive match
-        const foundKey = Object.keys(subjData).find(
-          (k) => k.toLowerCase().trim() === ch.name.toLowerCase().trim()
-        );
-        counts[ch.name] = foundKey ? (subjData[foundKey] || []).length : 0;
-      }
-    });
-    return counts;
-  }, [currentChapters, selectedSubject, liveBank, selectedGrade, selectedBoard]);
-
-  // 5. Retrieve stored questions for currently selected chapter
-  const rawChapterQuestions: StoredMCQ[] = useMemo(() => {
+  // Retrieve raw questions for current chapter based on active bank tab
+  const rawMCQs: StoredMCQ[] = useMemo(() => {
     if (!selectedChapter) return [];
     if (selectedGrade !== '9' || selectedBoard !== 'fbise') return [];
 
     const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
     const subjData = liveBank[canonical] || liveBank[selectedSubject] || {};
-    
-    // Exact match
+
     if (subjData[selectedChapter] && Array.isArray(subjData[selectedChapter])) {
       return subjData[selectedChapter];
     }
 
-    // Normalized match
     const foundKey = Object.keys(subjData).find(
       (k) => k.toLowerCase().trim() === selectedChapter.toLowerCase().trim()
     );
@@ -270,31 +225,121 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     return [];
   }, [selectedChapter, selectedSubject, liveBank, selectedGrade, selectedBoard]);
 
-  // 6. Filter questions based on search query and difficulty
-  const filteredQuestions = useMemo(() => {
-    return rawChapterQuestions.filter((q) => {
-      // Difficulty filter
+  const rawShortQuestions: StoredShortQuestion[] = useMemo(() => {
+    if (!selectedChapter) return [];
+    return getStoredShortQuestions(selectedSubject, selectedChapter);
+  }, [selectedSubject, selectedChapter]);
+
+  const rawLongQuestions: StoredLongQuestion[] = useMemo(() => {
+    if (!selectedChapter) return [];
+    return getStoredLongQuestions(selectedSubject, selectedChapter);
+  }, [selectedSubject, selectedChapter]);
+
+  // Dynamic Chapter counts based on selected bank tab
+  const chapterCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    currentChapters.forEach((ch) => {
+      if (bankTab === 'mcq') {
+        const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
+        const subjData = liveBank[canonical] || liveBank[selectedSubject] || {};
+        const exactList = subjData[ch.name];
+        if (exactList && Array.isArray(exactList)) {
+          counts[ch.name] = exactList.length;
+        } else {
+          const foundKey = Object.keys(subjData).find(
+            (k) => k.toLowerCase().trim() === ch.name.toLowerCase().trim()
+          );
+          counts[ch.name] = foundKey ? (subjData[foundKey] || []).length : 0;
+        }
+      } else if (bankTab === 'short') {
+        const list = getStoredShortQuestions(selectedSubject, ch.name);
+        counts[ch.name] = list.length;
+      } else {
+        const list = getStoredLongQuestions(selectedSubject, ch.name);
+        counts[ch.name] = list.length;
+      }
+    });
+    return counts;
+  }, [currentChapters, selectedSubject, liveBank, bankTab]);
+
+  // Subject counts for the active bank tab
+  const subjectCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    availableSubjects.forEach((subj) => {
+      let total = 0;
+      if (bankTab === 'mcq') {
+        const canonical = normalizeFBISEGrade9Subject(subj) || subj;
+        const subjData = liveBank[canonical] || liveBank[subj] || {};
+        Object.values(subjData).forEach((qList) => {
+          total += (qList || []).length;
+        });
+      } else if (bankTab === 'short') {
+        const list = getStoredShortQuestions(subj, 'All');
+        total = list.length;
+      } else {
+        const list = getStoredLongQuestions(subj, 'All');
+        total = list.length;
+      }
+      counts[subj] = total;
+    });
+    return counts;
+  }, [availableSubjects, liveBank, bankTab]);
+
+  // Filtered list based on active tab, search, difficulty
+  const filteredMCQs = useMemo(() => {
+    return rawMCQs.filter((q) => {
       if (difficultyFilter !== 'all' && (q.difficulty || 'medium').toLowerCase() !== difficultyFilter) {
         return false;
       }
-
-      // Search keyword filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
-        const inQuestion = q.question.toLowerCase().includes(query);
-        const inId = q.id.toLowerCase().includes(query);
-        const inExplanation = (q.explanation || '').toLowerCase().includes(query);
-        const inOptions = Object.values(q.options || {}).some((opt) =>
-          String(opt).toLowerCase().includes(query)
+        return (
+          q.question.toLowerCase().includes(query) ||
+          q.id.toLowerCase().includes(query) ||
+          (q.explanation || '').toLowerCase().includes(query) ||
+          Object.values(q.options || {}).some((opt) => String(opt).toLowerCase().includes(query))
         );
-        const inTopic = (q.topic || '').toLowerCase().includes(query);
-
-        return inQuestion || inId || inExplanation || inOptions || inTopic;
       }
-
       return true;
     });
-  }, [rawChapterQuestions, difficultyFilter, searchQuery]);
+  }, [rawMCQs, difficultyFilter, searchQuery]);
+
+  const filteredShortQuestions = useMemo(() => {
+    return rawShortQuestions.filter((q) => {
+      if (difficultyFilter !== 'all' && (q.difficulty || 'medium').toLowerCase() !== difficultyFilter) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        return (
+          q.question.toLowerCase().includes(query) ||
+          q.id.toLowerCase().includes(query) ||
+          (q.modelAnswer || '').toLowerCase().includes(query) ||
+          (q.topic || '').toLowerCase().includes(query)
+        );
+      }
+      return true;
+    });
+  }, [rawShortQuestions, difficultyFilter, searchQuery]);
+
+  const filteredLongQuestions = useMemo(() => {
+    return rawLongQuestions.filter((q) => {
+      if (difficultyFilter !== 'all' && (q.difficulty || 'medium').toLowerCase() !== difficultyFilter) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        return (
+          q.question.toLowerCase().includes(query) ||
+          q.id.toLowerCase().includes(query) ||
+          (q.modelAnswer || '').toLowerCase().includes(query) ||
+          (q.topic || '').toLowerCase().includes(query) ||
+          (q.parts || []).some((p) => p.text.toLowerCase().includes(query))
+        );
+      }
+      return true;
+    });
+  }, [rawLongQuestions, difficultyFilter, searchQuery]);
 
   // Filter chapters in sidebar
   const filteredChapters = useMemo(() => {
@@ -305,35 +350,14 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     );
   }, [currentChapters, chapterSearchQuery]);
 
-  // Automatically expand all explanations by default when chapter changes
-  useEffect(() => {
-    if (rawChapterQuestions.length > 0) {
-      setExpandedExplanations(new Set(rawChapterQuestions.map((q) => q.id)));
-    } else {
-      setExpandedExplanations(new Set());
-    }
-  }, [rawChapterQuestions]);
-
   // Handlers
   const toggleExplanation = (id: string) => {
     setExpandedExplanations((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
-  };
-
-  const expandAll = () => {
-    const allIds = new Set(filteredQuestions.map((q) => q.id));
-    setExpandedExplanations(allIds);
-  };
-
-  const collapseAll = () => {
-    setExpandedExplanations(new Set());
   };
 
   const copyToClipboard = (text: string, id?: string) => {
@@ -345,45 +369,115 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     toast.success('Copied to clipboard!');
   };
 
-  const copyChapterJson = () => {
-    const jsonStr = JSON.stringify(rawChapterQuestions, null, 2);
-    copyToClipboard(jsonStr);
-  };
+  const currentQuestionsCount =
+    bankTab === 'mcq'
+      ? rawMCQs.length
+      : bankTab === 'short'
+      ? rawShortQuestions.length
+      : rawLongQuestions.length;
+
+  const currentFilteredCount =
+    bankTab === 'mcq'
+      ? filteredMCQs.length
+      : bankTab === 'short'
+      ? filteredShortQuestions.length
+      : filteredLongQuestions.length;
 
   return (
     <div className="space-y-6">
-      {/* ── 1. Top Real-Time Storage Banner ── */}
-      <div className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs">
+      {/* ── 1. Top Header & Bank Selector ── */}
+      <div className="bg-white border border-[#E5E5E5] rounded-2xl p-6 shadow-xs space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center shrink-0">
-              <Database size={20} />
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#111111] text-[#F4C430] flex items-center justify-center shadow-xs shrink-0">
+              <Database size={24} />
             </div>
             <div>
-              <h2 className="text-base font-black text-[#111111]">MCQ Question Bank & Verification</h2>
-              <p className="text-xs text-[#737373] mt-0.5 font-medium">
-                Direct read from modular runtime storage <code className="px-1.5 py-0.5 bg-[#F5F5F5] rounded text-[11px] font-mono text-[#111111]">src/data/banks/*.json</code>. Zero mock or sample data.
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black text-[#111111] tracking-tight">
+                  Curriculum Question Bank
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-black bg-[#111111] text-[#F4C430]">
+                  <Sparkles size={11} />
+                  <span>Admin Verification</span>
+                </span>
+              </div>
+              <p className="text-xs text-[#737373] mt-1 max-w-2xl">
+                Pre-generated and verified question bank covering Multiple Choice Questions (MCQs), Short Questions, and Long Questions.
               </p>
             </div>
           </div>
 
-          {/* Quick Metrics & Refresh Button */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 bg-[#FAFAFA] border border-[#E5E5E5] px-3 py-1.5 rounded-xl">
-              <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wider">Total Verified MCQs:</div>
-              <div className="text-xs font-black text-[#111111]">{bankGrandTotal.toLocaleString()}</div>
-            </div>
-
             <button
               onClick={() => fetchLiveBank(true)}
               disabled={refreshing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#111111] text-white hover:bg-[#262626] text-xs font-bold transition-all interactive disabled:opacity-50 cursor-pointer shadow-xs"
-              title="Force reload from disk storage"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#111111] text-white hover:bg-[#262626] text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
             >
               <RotateCcw size={13} className={refreshing ? 'animate-spin text-[#F4C430]' : ''} />
               <span>{refreshing ? 'Syncing...' : 'Sync Storage'}</span>
             </button>
           </div>
+        </div>
+
+        {/* ── Question Bank Type Sub-Tabs (MCQ Bank, Short Question Bank, Long Question Bank) ── */}
+        <div className="flex items-center gap-2 p-1.5 bg-[#F5F5F5] rounded-2xl border border-[#E5E5E5] w-fit flex-wrap">
+          <button
+            onClick={() => setBankTab('mcq')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              bankTab === 'mcq'
+                ? 'bg-[#111111] text-white shadow-xs'
+                : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+            }`}
+          >
+            <CheckCircle2 size={14} className={bankTab === 'mcq' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+            <span>MCQ Bank</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                bankTab === 'mcq' ? 'bg-[#F4C430] text-[#111111]' : 'bg-black/5 text-[#737373]'
+              }`}
+            >
+              {bankGrandTotal.toLocaleString()}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setBankTab('short')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              bankTab === 'short'
+                ? 'bg-[#111111] text-white shadow-xs'
+                : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+            }`}
+          >
+            <AlignLeft size={14} className={bankTab === 'short' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+            <span>Short Question Bank</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                bankTab === 'short' ? 'bg-[#F4C430] text-[#111111]' : 'bg-black/5 text-[#737373]'
+              }`}
+            >
+              Section B
+            </span>
+          </button>
+
+          <button
+            onClick={() => setBankTab('long')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              bankTab === 'long'
+                ? 'bg-[#111111] text-white shadow-xs'
+                : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+            }`}
+          >
+            <FileQuestion size={14} className={bankTab === 'long' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+            <span>Long Question Bank</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                bankTab === 'long' ? 'bg-[#F4C430] text-[#111111]' : 'bg-black/5 text-[#737373]'
+              }`}
+            >
+              Section C
+            </span>
+          </button>
         </div>
       </div>
 
@@ -418,21 +512,17 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           </div>
         </div>
 
-        {/* Grade Selector with Live Counts */}
+        {/* Grade Selector */}
         <div className="pt-2 border-t border-[#F0F0F0]">
           <div className="text-[11px] font-black uppercase tracking-wider text-[#737373] mb-2 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <Layers size={13} />
               <span>2. Select Grade / Class</span>
             </span>
-            <span className="text-[10px] font-medium text-[#A3A3A3]">
-              Running Grade Total: <strong className="text-[#111111]">{gradeTotalCount.toLocaleString()} MCQs</strong>
-            </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {availableGrades.map((g) => {
               const isSelected = selectedGrade === g.grade;
-              const count = g.grade === '9' && selectedBoard === 'fbise' ? bankGrandTotal : 0;
               return (
                 <button
                   key={g.grade}
@@ -451,32 +541,18 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                       {selectedBoard.toUpperCase()} Curriculum
                     </div>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
-                      isSelected
-                        ? 'bg-[#F4C430] text-[#111111]'
-                        : count > 0
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-[#E5E5E5] text-[#737373]'
-                    }`}
-                  >
-                    {count.toLocaleString()} MCQs
-                  </span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Subject Selector with Live Running Counts */}
+        {/* Subject Selector */}
         <div className="pt-2 border-t border-[#F0F0F0]">
           <div className="text-[11px] font-black uppercase tracking-wider text-[#737373] mb-2 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <BookOpen size={13} />
               <span>3. Select Subject</span>
-            </span>
-            <span className="text-[10px] font-medium text-[#A3A3A3]">
-              Click a subject to browse chapter question bank
             </span>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -512,9 +588,9 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
         </div>
       </div>
 
-      {/* ── 3. Main Chapter Drill-Down & Verification Workspace ── */}
+      {/* ── 3. Main Chapter Drill-Down & Questions Workspace ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Chapters List & Running Counts (4 cols) */}
+        {/* Left Column: Chapters List (4 cols) */}
         <div className="lg:col-span-4 bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-xs space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-[#F0F0F0]">
             <div>
@@ -522,15 +598,12 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                 {selectedSubject} Chapters
               </h3>
               <p className="text-[11px] text-[#737373]">
-                {currentChapters.length} chapters total • {subjectCounts[selectedSubject] || 0} MCQs stored
+                {currentChapters.length} chapters total
               </p>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#111111] text-white">
-              {subjectCounts[selectedSubject] || 0}
-            </span>
           </div>
 
-          {/* Chapter Search Input */}
+          {/* Chapter Search */}
           <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
             <input
@@ -544,70 +617,60 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
 
           {/* Chapters Scrollable List */}
           <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
-            {filteredChapters.length === 0 ? (
-              <div className="p-4 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl border border-dashed border-[#E5E5E5]">
-                No chapters found matching &quot;{chapterSearchQuery}&quot;
-              </div>
-            ) : (
-              filteredChapters.map((ch) => {
-                const isSelected = selectedChapter === ch.name;
-                const count = chapterCounts[ch.name] || 0;
-                return (
-                  <button
-                    key={ch.name}
-                    onClick={() => {
-                      setSelectedChapter(ch.name);
-                      setSearchQuery('');
-                    }}
-                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                      isSelected
-                        ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
-                        : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#111111] hover:bg-[#F5F5F5]'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${
+            {filteredChapters.map((ch) => {
+              const isSelected = selectedChapter === ch.name;
+              const count = chapterCounts[ch.name] || 0;
+              return (
+                <button
+                  key={ch.name}
+                  onClick={() => {
+                    setSelectedChapter(ch.name);
+                    setSearchQuery('');
+                  }}
+                  className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    isSelected
+                      ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
+                      : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#111111] hover:bg-[#F5F5F5]'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[10px] font-black uppercase tracking-wider ${
                           isSelected ? 'text-[#F4C430]' : 'text-[#737373]'
-                        }`}>
-                          Ch {ch.number}
-                        </span>
-                        {ch.category && (
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                            isSelected ? 'bg-white/20 text-white' : 'bg-[#E5E5E5] text-[#525252]'
-                          }`}>
-                            {ch.category}
-                          </span>
-                        )}
-                      </div>
-                      <div className={`text-xs font-extrabold truncate mt-0.5 ${
-                        isSelected ? 'text-white' : 'text-[#111111]'
-                      }`}>
-                        {ch.name}
-                      </div>
+                        }`}
+                      >
+                        Ch {ch.number}
+                      </span>
                     </div>
-
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
-                        isSelected
-                          ? 'bg-[#F4C430] text-[#111111]'
-                          : count > 0
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-[#E5E5E5] text-[#737373]'
+                    <div
+                      className={`text-xs font-extrabold truncate mt-0.5 ${
+                        isSelected ? 'text-white' : 'text-[#111111]'
                       }`}
                     >
-                      {count} MCQs
-                    </span>
-                  </button>
-                );
-              })
-            )}
+                      {ch.name}
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                      isSelected
+                        ? 'bg-[#F4C430] text-[#111111]'
+                        : count > 0
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-[#E5E5E5] text-[#737373]'
+                    }`}
+                  >
+                    {count} {bankTab.toUpperCase()}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Right Column: Question Bank Live Content & Detailed Verification (8 cols) */}
+        {/* Right Column: Question Bank Questions (8 cols) */}
         <div className="lg:col-span-8 space-y-4">
-          {/* Chapter Header & Controls Bar */}
           <div className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#F0F0F0]">
               <div>
@@ -616,7 +679,13 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                   <span>•</span>
                   <span>{selectedSubject}</span>
                   <span>•</span>
-                  <span className="text-[#111111] font-black">{selectedBoard.toUpperCase()}</span>
+                  <span className="text-[#111111] font-black">
+                    {bankTab === 'mcq'
+                      ? 'MCQ Bank'
+                      : bankTab === 'short'
+                      ? 'Short Question Bank'
+                      : 'Long Question Bank'}
+                  </span>
                 </div>
                 <h2 className="text-lg font-black text-[#111111] tracking-tight mt-0.5">
                   {selectedChapter || 'No Chapter Selected'}
@@ -626,42 +695,22 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-[#111111] text-white">
                   <CheckCircle2 size={13} className="text-[#F4C430]" />
-                  <span>{rawChapterQuestions.length} Stored MCQs</span>
+                  <span>{currentQuestionsCount} Questions</span>
                 </span>
-
-                {rawChapterQuestions.length > 0 && (
-                  <button
-                    onClick={copyChapterJson}
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#F5F5F5] text-xs font-bold text-[#111111] transition-all interactive cursor-pointer"
-                    title="Copy all questions for this chapter as JSON"
-                  >
-                    <Code size={13} />
-                    <span>Copy JSON</span>
-                  </button>
-                )}
               </div>
             </div>
 
             {/* Search & Filter Toolbar */}
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-              {/* Question Search */}
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
                 <input
                   type="text"
-                  placeholder="Search in questions, options, explanation, or ID..."
+                  placeholder="Search in questions, explanations, model answers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full h-9 pl-9 pr-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#737373] hover:text-[#111111] font-bold"
-                  >
-                    Clear
-                  </button>
-                )}
               </div>
 
               {/* Difficulty Filter */}
@@ -680,306 +729,147 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                   </button>
                 ))}
               </div>
-
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0">
-                <button
-                  onClick={() => setViewMode('cards')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    viewMode === 'cards' ? 'bg-[#111111] text-white' : 'text-[#737373] hover:text-[#111111]'
-                  }`}
-                  title="Card View (Full Details)"
-                >
-                  <FileText size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode('compact')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    viewMode === 'compact' ? 'bg-[#111111] text-white' : 'text-[#737373] hover:text-[#111111]'
-                  }`}
-                  title="Compact Table View"
-                >
-                  <ListFilter size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode('json')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    viewMode === 'json' ? 'bg-[#111111] text-white' : 'text-[#737373] hover:text-[#111111]'
-                  }`}
-                  title="Raw JSON Inspector"
-                >
-                  <Code size={14} />
-                </button>
-              </div>
             </div>
-
-            {/* Quick Actions Bar */}
-            {rawChapterQuestions.length > 0 && (
-              <div className="flex items-center justify-between pt-1 text-xs text-[#737373]">
-                <div>
-                  Showing <strong>{filteredQuestions.length}</strong> of <strong>{rawChapterQuestions.length}</strong> stored questions
-                  {searchQuery && ` matching "${searchQuery}"`}
-                </div>
-                {viewMode === 'cards' && (
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={expandAll}
-                      className="text-[11px] font-bold text-[#111111] hover:underline cursor-pointer"
-                    >
-                      Expand All Explanations
-                    </button>
-                    <span>•</span>
-                    <button
-                      onClick={collapseAll}
-                      className="text-[11px] font-bold text-[#737373] hover:text-[#111111] cursor-pointer"
-                    >
-                      Collapse All
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* ── 4. Main Content Area: Zero-State or Question List ── */}
-          {loading ? (
-            <div className="bg-white border border-[#E5E5E5] rounded-2xl p-12 text-center shadow-xs space-y-3">
-              <div className="w-10 h-10 rounded-full border-2 border-[#111111] border-t-transparent animate-spin mx-auto" />
-              <div className="text-xs font-bold text-[#111111]">Loading Question Bank from Storage...</div>
-              <div className="text-[11px] text-[#737373]">Reading live questions from disk repository</div>
-            </div>
-          ) : rawChapterQuestions.length === 0 ? (
-            /* Zero-State: Pure Real Storage representation, No Mock Data */
-            <div className="bg-white border border-[#E5E5E5] rounded-2xl p-12 text-center shadow-xs space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#F5F5F5] text-[#737373] flex items-center justify-center mx-auto">
-                <FolderOpen size={24} />
-              </div>
-              <div className="max-w-md mx-auto">
-                <h3 className="text-sm font-black text-[#111111]">0 MCQs Stored in Question Bank</h3>
-                <p className="text-xs text-[#737373] mt-1 leading-relaxed">
-                  No pre-generated questions have been saved to live storage for{' '}
-                  <strong className="text-[#111111]">{selectedChapter || 'this chapter'}</strong> ({selectedSubject}, Grade {selectedGrade} {selectedBoard.toUpperCase()}).
-                </p>
-                <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] text-[11px] font-bold text-[#737373]">
-                  <Database size={12} />
-                  <span>Real Database State: 0 items recorded in storage file</span>
-                </div>
-              </div>
-            </div>
-          ) : filteredQuestions.length === 0 ? (
-            /* Search Filter Zero-State */
-            <div className="bg-white border border-[#E5E5E5] rounded-2xl p-8 text-center shadow-xs space-y-2">
-              <p className="text-xs font-bold text-[#111111]">No questions matched your search query</p>
-              <p className="text-xs text-[#737373]">Try removing the keyword filter or changing difficulty.</p>
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setDifficultyFilter('all');
-                }}
-                className="mt-2 text-xs font-bold text-amber-600 hover:underline"
-              >
-                Reset Search Filters
-              </button>
-            </div>
-          ) : viewMode === 'json' ? (
-            /* JSON View */
-            <div className="bg-[#111111] border border-[#262626] rounded-2xl p-4 text-white font-mono text-xs overflow-x-auto shadow-xs">
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-                <span className="text-[#F4C430] font-bold">
-                  // {selectedSubject} — {selectedChapter} ({filteredQuestions.length} MCQs)
-                </span>
-                <button
-                  onClick={copyChapterJson}
-                  className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-[11px] flex items-center gap-1"
-                >
-                  <Copy size={12} />
-                  <span>Copy JSON</span>
-                </button>
-              </div>
-              <pre className="max-h-[650px] overflow-y-auto leading-relaxed text-emerald-400">
-                {JSON.stringify(filteredQuestions, null, 2)}
-              </pre>
-            </div>
-          ) : viewMode === 'compact' ? (
-            /* Compact Table / Review View */
-            <div className="bg-white border border-[#E5E5E5] rounded-2xl overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#FAFAFA] border-b border-[#E5E5E5] text-[#737373] uppercase font-black text-[10px]">
-                    <tr>
-                      <th className="py-3 px-4 w-12 text-center">#</th>
-                      <th className="py-3 px-4 w-28">ID</th>
-                      <th className="py-3 px-4">Question Text</th>
-                      <th className="py-3 px-4 w-20 text-center">Ans</th>
-                      <th className="py-3 px-4 w-20 text-center">Diff</th>
-                      <th className="py-3 px-4 w-16 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F0F0F0]">
-                    {filteredQuestions.map((q, idx) => (
-                      <tr key={q.id} className="hover:bg-[#FAFAFA] transition-colors">
-                        <td className="py-3 px-4 text-center font-bold text-[#737373]">{idx + 1}</td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-[#525252] truncate max-w-[120px]" title={q.id}>
-                          {q.id}
-                        </td>
-                        <td className="py-3 px-4 font-medium text-[#111111]">
-                          <div className="line-clamp-2">
-                            <MathText text={q.question} />
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
-                            {q.correctAnswer}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center capitalize text-[11px] font-bold text-[#737373]">
-                          {q.difficulty || 'medium'}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => toggleExplanation(q.id)}
-                            className="p-1 rounded hover:bg-[#E5E5E5] text-[#737373] hover:text-[#111111]"
-                            title="Inspect details"
-                          >
-                            <Eye size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            /* Detailed Cards View */
+          {/* Questions Rendering */}
+          {bankTab === 'mcq' && (
             <div className="space-y-4">
-              {filteredQuestions.map((q, idx) => {
-                const isExplanationOpen = expandedExplanations.has(q.id);
-                const isCopied = copiedId === q.id;
-                const optionsEntries = Object.entries(q.options || {});
-
-                return (
-                  <div
-                    key={q.id}
-                    className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs space-y-4 hover:border-[#CCCCCC] transition-all"
-                  >
-                    {/* Question Header: Number, ID, Difficulty, Verified Badge */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#F0F0F0]">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="w-6 h-6 rounded-full bg-[#111111] text-white text-xs font-black flex items-center justify-center">
-                          {idx + 1}
-                        </span>
-                        <span className="font-mono text-xs text-[#737373] bg-[#FAFAFA] px-2 py-0.5 rounded border border-[#E5E5E5]">
-                          {q.id}
-                        </span>
-                        <button
-                          onClick={() => copyToClipboard(q.id, q.id)}
-                          className="text-[#737373] hover:text-[#111111] text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                          title="Copy Question ID"
-                        >
-                          {isCopied ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
-                          <span>{isCopied ? 'Copied' : 'Copy ID'}</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold capitalize ${
-                            q.difficulty === 'easy'
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                              : q.difficulty === 'hard'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}
-                        >
-                          {q.difficulty || 'Medium'}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 size={11} className="text-emerald-600" />
-                          <span>Verified</span>
-                        </span>
-                      </div>
+              {filteredMCQs.length === 0 ? (
+                <div className="bg-white border border-[#E5E5E5] rounded-2xl p-12 text-center shadow-xs">
+                  <p className="text-xs text-[#737373]">No MCQs found for this chapter.</p>
+                </div>
+              ) : (
+                filteredMCQs.map((q, idx) => (
+                  <div key={q.id || idx} className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#F0F0F0]">
+                      <span className="text-xs font-black text-[#111111]">Q{idx + 1}. ({q.id})</span>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        Verified MCQ
+                      </span>
                     </div>
-
-                    {/* Question Statement */}
-                    <div className="text-sm font-bold text-[#111111] leading-relaxed">
+                    <div className="text-sm font-bold text-[#111111]">
                       <MathText text={q.question} />
                     </div>
-
-                    {/* All 4 Options (A-D) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-                      {optionsEntries.map(([optKey, optVal]) => {
-                        const isCorrect = optKey.toUpperCase() === (q.correctAnswer || '').toUpperCase();
-                        return (
-                          <div
-                            key={optKey}
-                            className={`p-3 rounded-xl border flex items-start gap-2.5 transition-all ${
-                              isCorrect
-                                ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 font-semibold'
-                                : 'bg-[#FAFAFA] border-[#E5E5E5] text-[#333333]'
-                            }`}
-                          >
-                            <span
-                              className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
-                                isCorrect
-                                  ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'bg-[#E5E5E5] text-[#525252]'
-                              }`}
-                            >
-                              {optKey}
-                            </span>
-                            <div className="flex-1 text-xs leading-relaxed pt-0.5">
-                              <MathText text={String(optVal)} />
-                            </div>
-                            {isCorrect && (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-200/80 text-emerald-900 shrink-0 self-center">
-                                Correct Answer
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Explanation Box */}
-                    <div className="bg-[#FFFDF5] border border-amber-200/70 rounded-xl p-3.5 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <button
-                          onClick={() => toggleExplanation(q.id)}
-                          className="flex items-center gap-1.5 text-amber-900 font-extrabold text-xs hover:text-amber-950 cursor-pointer"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                      {Object.entries(q.options || {}).map(([key, val]) => (
+                        <div
+                          key={key}
+                          className={`p-2.5 rounded-xl border text-xs flex items-center gap-2 ${
+                            key.toUpperCase() === (q.correctAnswer || '').toUpperCase()
+                              ? 'border-emerald-500 bg-emerald-50/50 text-emerald-950 font-extrabold'
+                              : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252]'
+                          }`}
                         >
-                          <Sparkles size={13} className="text-amber-600" />
-                          <span>Official Explanation & Syllabus Justification:</span>
-                          {isExplanationOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                        </button>
-                        <span className="text-[10px] font-bold text-amber-800">
-                          Marked Key: <strong className="text-emerald-700 font-black">Option {q.correctAnswer}</strong>
+                          <span className="w-5 h-5 rounded-full bg-white border border-[#CCCCCC] flex items-center justify-center font-black text-[10px]">
+                            {key}
+                          </span>
+                          <MathText text={val} />
+                        </div>
+                      ))}
+                    </div>
+                    {q.explanation && (
+                      <div className="mt-2 text-xs bg-[#FAFAFA] p-3 rounded-xl border border-[#E5E5E5] text-[#525252]">
+                        <strong className="text-[#111111]">Explanation:</strong> <MathText text={q.explanation} />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {bankTab === 'short' && (
+            <div className="space-y-4">
+              {filteredShortQuestions.length === 0 ? (
+                <div className="bg-white border border-[#E5E5E5] rounded-2xl p-12 text-center shadow-xs">
+                  <p className="text-xs text-[#737373]">No Short Questions found for this chapter.</p>
+                </div>
+              ) : (
+                filteredShortQuestions.map((q, idx) => (
+                  <div key={q.id || idx} className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#F0F0F0]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#111111]">Q{idx + 1}. ({q.id})</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#F5F5F5] text-[#737373]">
+                          {q.marks || 3} Marks
                         </span>
                       </div>
-                      {isExplanationOpen && (
-                        <div className="text-xs text-amber-950 leading-relaxed pl-5 font-medium pt-1 border-t border-amber-200/40">
-                          <MathText text={q.explanation || 'Verified textbook syllabus concept.'} />
-                        </div>
-                      )}
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        Short Answer
+                      </span>
                     </div>
-
-                    {/* Card Footer: Metadata */}
-                    <div className="flex items-center justify-between text-[10px] text-[#A3A3A3] pt-1">
-                      <div className="flex items-center gap-2">
-                        {q.topic && <span>Topic: <strong className="text-[#737373]">{q.topic}</strong></span>}
-                        {q.source && <span>• Source: <strong className="text-[#737373]">{q.source}</strong></span>}
+                    <div className="text-sm font-bold text-[#111111]">
+                      <MathText text={q.question} />
+                    </div>
+                    {q.modelAnswer && (
+                      <div className="mt-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-800">
+                        <strong className="text-[#111111]">Model Answer:</strong> <MathText text={q.modelAnswer} />
                       </div>
-                      <button
-                        onClick={() => copyToClipboard(JSON.stringify(q, null, 2), q.id)}
-                        className="hover:text-[#111111] font-bold flex items-center gap-1"
-                      >
-                        <Code size={11} />
-                        <span>Copy Item JSON</span>
-                      </button>
-                    </div>
+                    )}
+                    {q.keyPoints && q.keyPoints.length > 0 && (
+                      <div className="text-[11px] text-[#737373] space-y-1">
+                        <span className="font-bold text-[#111111]">Key Marking Points:</span>
+                        <ul className="list-disc pl-4 space-y-0.5">
+                          {q.keyPoints.map((kp, kIdx) => (
+                            <li key={kIdx}>{kp}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
+                ))
+              )}
+            </div>
+          )}
+
+          {bankTab === 'long' && (
+            <div className="space-y-4">
+              {filteredLongQuestions.length === 0 ? (
+                <div className="bg-white border border-[#E5E5E5] rounded-2xl p-12 text-center shadow-xs">
+                  <p className="text-xs text-[#737373]">No Long Questions found for this chapter.</p>
+                </div>
+              ) : (
+                filteredLongQuestions.map((q, idx) => (
+                  <div key={q.id || idx} className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#F0F0F0]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#111111]">Q{idx + 1}. ({q.id})</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#F5F5F5] text-[#737373]">
+                          {q.marks || 8} Marks
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                        Detailed Theory / Problem
+                      </span>
+                    </div>
+                    <div className="text-sm font-bold text-[#111111]">
+                      <MathText text={q.question} />
+                    </div>
+                    {q.parts && q.parts.length > 0 && (
+                      <div className="space-y-2 bg-[#FAFAFA] p-3 rounded-xl border border-[#E5E5E5]">
+                        <div className="text-xs font-bold text-[#111111]">Sub-Parts:</div>
+                        {q.parts.map((p, pIdx) => (
+                          <div key={pIdx} className="text-xs text-[#525252] flex items-start justify-between gap-2">
+                            <div>
+                              <strong>{p.label}</strong> <MathText text={p.text} />
+                            </div>
+                            <span className="text-[10px] font-bold text-[#737373] shrink-0">
+                              ({p.marks} M)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {q.modelAnswer && (
+                      <div className="text-xs bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-800">
+                        <strong className="text-[#111111]">Model Answer & Derivation:</strong>{' '}
+                        <MathText text={q.modelAnswer} />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

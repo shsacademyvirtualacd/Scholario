@@ -61,11 +61,73 @@ export interface SubjectBankStat {
   chapters: ChapterBankStat[];
 }
 
-export interface QuestionBankSummary {
+export interface StoredShortQuestion {
+  id: string;
+  board: string;           // e.g. 'fbise', 'sindh'
+  grade: string;           // e.g. '9', '10', '11', '12'
+  subject: string;         // e.g. 'Physics', 'Chemistry', 'Biology'
+  chapter: string;         // e.g. 'Physical Quantities and Measurement'
+  chapterNumber?: number;
+  topic?: string;
+  question: string;
+  modelAnswer?: string;
+  keyPoints?: string[];
+  marks?: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'board_exam' | string;
+  verified: boolean;
+  source: 'curriculum-bank' | 'expert-verified' | 'ai-pregenerated';
+  createdAt?: string;
+}
+
+export interface StoredLongQuestion {
+  id: string;
+  board: string;           // e.g. 'fbise', 'sindh'
+  grade: string;           // e.g. '9', '10', '11', '12'
+  subject: string;         // e.g. 'Physics', 'Chemistry', 'Biology'
+  chapter: string;         // e.g. 'Physical Quantities and Measurement'
+  chapterNumber?: number;
+  topic?: string;
+  question: string;
+  parts?: { label: string; text: string; marks: number }[];
+  modelAnswer?: string;
+  markingScheme?: string[];
+  marks?: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'board_exam' | string;
+  verified: boolean;
+  source: 'curriculum-bank' | 'expert-verified' | 'ai-pregenerated';
+  createdAt?: string;
+}
+
+export type TestQuestionTypeCombination =
+  | 'mcqs_only'
+  | 'short_only'
+  | 'long_only'
+  | 'mcqs_and_short'
+  | 'mcqs_and_long'
+  | 'all_types'; // MCQs + Short Questions + Long Questions
+
+export interface GeneratedTestSpecification {
+  title: string;
+  institutionName: string;
   board: string;
   grade: string;
-  totalQuestions: number;
-  targetQuestions: number;
-  coveragePercentage: number;
-  subjects: Record<string, SubjectBankStat>;
+  stream: string;
+  subject: string;
+  chapter?: string;
+  chapters?: string[];
+  teacherId?: string;
+  teacherName: string;
+  dueDate: string;
+  timeAllowedMinutes: number;
+  totalMarks: number;
+  instructions?: string;
+  combination: TestQuestionTypeCombination;
+  mcqs: StoredMCQ[];
+  shortQuestions: StoredShortQuestion[];
+  longQuestions: StoredLongQuestion[];
+  mcqMarksEach?: number;
+  shortMarksEach?: number;
+  shortAttemptCount?: number;
+  longMarksEach?: number;
+  longAttemptCount?: number;
 }

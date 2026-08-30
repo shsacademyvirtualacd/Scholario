@@ -4,8 +4,18 @@
  */
 
 import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
-import type { BankFetchParams, StoredMCQ, QuestionBankSummary, SubjectBankStat } from '../types/questionBank';
-import { FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from './curriculumFBISE9';
+import type {
+  BankFetchParams,
+  StoredMCQ,
+  StoredShortQuestion,
+  StoredLongQuestion,
+  QuestionBankSummary,
+  SubjectBankStat,
+  TestQuestionTypeCombination,
+} from '../types/questionBank';
+import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM, normalizeFBISEGrade9Subject } from './curriculumFBISE9';
+import { shortQuestionsBank } from '../data/banks/shortQuestionsBank';
+import { longQuestionsBank } from '../data/banks/longQuestionsBank';
 import { supabase } from './supabase';
 
 // Static fallback store loaded in bundle for instant zero-latency client access
@@ -319,4 +329,239 @@ export async function getQuestionBankStats(): Promise<QuestionBankSummary> {
     : 0;
 
   return summary;
+}
+
+/**
+ * Retrieves Stored Short Questions for a given subject and chapter/scope
+ */
+export async function getStoredShortQuestions(
+  subject: string,
+  chapter?: string,
+  grade = '9',
+  board = 'fbise'
+): Promise<StoredShortQuestion[]> {
+  const normSub = normalizeFBISEGrade9Subject(subject) || subject;
+  const subjData = shortQuestionsBank[normSub] || {};
+
+  if (!chapter || chapter === 'All' || chapter === 'Full Syllabus') {
+    const all: StoredShortQuestion[] = [];
+    Object.values(subjData).forEach((list) => all.push(...list));
+    return all;
+  }
+
+  // Exact or partial match
+  const exact = subjData[chapter];
+  if (exact && Array.isArray(exact)) return exact;
+
+  const foundKey = Object.keys(subjData).find(
+    (k) => k.toLowerCase().includes(chapter.toLowerCase()) || chapter.toLowerCase().includes(k.toLowerCase())
+  );
+  if (foundKey && subjData[foundKey]) {
+    return subjData[foundKey];
+  }
+
+  return [];
+}
+
+/**
+ * Retrieves Stored Long Questions for a given subject and chapter/scope
+ */
+export async function getStoredLongQuestions(
+  subject: string,
+  chapter?: string,
+  grade = '9',
+  board = 'fbise'
+): Promise<StoredLongQuestion[]> {
+  const normSub = normalizeFBISEGrade9Subject(subject) || subject;
+  const subjData = longQuestionsBank[normSub] || {};
+
+  if (!chapter || chapter === 'All' || chapter === 'Full Syllabus') {
+    const all: StoredLongQuestion[] = [];
+    Object.values(subjData).forEach((list) => all.push(...list));
+    return all;
+  }
+
+  // Exact or partial match
+  const exact = subjData[chapter];
+  if (exact && Array.isArray(exact)) return exact;
+
+  const foundKey = Object.keys(subjData).find(
+    (k) => k.toLowerCase().includes(chapter.toLowerCase()) || chapter.toLowerCase().includes(k.toLowerCase())
+  );
+  if (foundKey && subjData[foundKey]) {
+    return subjData[foundKey];
+  }
+
+  return [];
+}
+
+/**
+ * Generates or pulls complete questions set for a test based on the 6 combination modes:
+ * - mcqs_only
+ * - short_only
+ * - long_only
+ * - mcqs_and_short
+ * - mcqs_and_long
+ * - all_types (MCQs + Short Questions + Long Questions)
+ */
+export async function pullTestQuestionsFromBanks(params: {
+  combination: TestQuestionTypeCombination;
+  board: string;
+  grade: string;
+  subject: string;
+  chapter?: string;
+  chapters?: string[];
+  mcqCount?: number;
+  shortCount?: number;
+  longCount?: number;
+}): Promise<{
+  mcqs: StoredMCQ[];
+  shortQuestions: StoredShortQuestion[];
+  longQuestions: StoredLongQuestion[];
+}> {
+  const { combination, board, grade, subject, chapter, chapters } = params;
+  const needMCQs = combination === 'mcqs_only' || combination === 'mcqs_and_short' || combination === 'mcqs_and_long' || combination === 'all_types';
+  const needShort = combination === 'short_only' || combination === 'mcqs_and_short' || combination === 'all_types';
+  const needLong = combination === 'long_only' || combination === 'mcqs_and_long' || combination === 'all_types';
+
+  const mcqTarget = params.mcqCount || 10;
+  const shortTarget = params.shortCount || 5;
+  const longTarget = params.longCount || 3;
+
+  let mcqs: StoredMCQ[] = [];
+  let shortQuestions: StoredShortQuestion[] = [];
+  let longQuestions: StoredLongQuestion[] = [];
+
+  // 1. Fetch MCQs if needed
+  if (needMCQs) {
+    const rawMCQRes = await fetchStoredMCQTest({
+      subject,
+      chapter: chapter && chapter !== 'All' ? chapter : undefined,
+      grade,
+      board,
+      count: mcqTarget,
+      selectedChapters: chapters && chapters.length > 0 ? chapters : undefined,
+      examMode: chapters && chapters.length > 1 ? 'multi_chapter' : chapter ? 'chapter' : 'full_syllabus',
+    });
+
+    mcqs = rawMCQRes.questions.map((q, idx) => ({
+      id: q.id || `mcq_test_${idx + 1}`,
+      board,
+      grade,
+      subject,
+      chapter: q.chapter || chapter || subject,
+      question: q.question,
+      options: q.options,
+      correctAnswer: (q.correctAnswer as any) || 'A',
+      explanation: q.explanation || '',
+      difficulty: q.difficulty || 'medium',
+      verified: true,
+      source: 'curriculum-bank',
+      createdAt: new Date().toISOString(),
+    }));
+  }
+
+  // 2. Fetch Short Questions if needed
+  if (needShort) {
+    const rawShort = await getStoredShortQuestions(subject, chapter, grade, board);
+    if (rawShort.length >= shortTarget) {
+      shortQuestions = shuffleArray(rawShort).slice(0, shortTarget);
+    } else {
+      shortQuestions = [...rawShort];
+      // Generate syllabus-derived short questions if bank needs more
+      const curriculum = grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
+      const subjSpec = curriculum[subject] || Object.values(curriculum)[0];
+      const chapList = subjSpec ? subjSpec.chapters : [];
+      let addIdx = shortQuestions.length + 1;
+
+      for (const ch of chapList) {
+        if (shortQuestions.length >= shortTarget) break;
+        if (chapter && chapter !== 'All' && ch.name !== chapter && !ch.name.includes(chapter)) continue;
+        const subtopics = ch.subtopics || ['Key Concepts', 'Formulas', 'Definitions'];
+        for (const topic of subtopics) {
+          if (shortQuestions.length >= shortTarget) break;
+          shortQuestions.push({
+            id: `gen_sq_${subject.toLowerCase()}_${addIdx++}`,
+            board,
+            grade,
+            subject,
+            chapter: ch.name,
+            chapterNumber: ch.number,
+            topic,
+            question: `Explain the fundamental concept of ${topic} and discuss its significance in ${subject}.`,
+            modelAnswer: `According to the ${board.toUpperCase()} syllabus for ${subject}, ${topic} forms a foundational principle. Students are expected to state the formal definition, write relevant formulas or equations, and describe practical applications.`,
+            keyPoints: [`Accurate definition of ${topic}`, 'Formulas, SI units or balanced chemical/biological relations', 'Two practical applications'],
+            marks: 3,
+            difficulty: 'medium',
+            verified: true,
+            source: 'curriculum-bank',
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+  }
+
+  // 3. Fetch Long Questions if needed
+  if (needLong) {
+    const rawLong = await getStoredLongQuestions(subject, chapter, grade, board);
+    if (rawLong.length >= longTarget) {
+      longQuestions = shuffleArray(rawLong).slice(0, longTarget);
+    } else {
+      longQuestions = [...rawLong];
+      // Generate syllabus-derived long questions if bank needs more
+      const curriculum = grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
+      const subjSpec = curriculum[subject] || Object.values(curriculum)[0];
+      const chapList = subjSpec ? subjSpec.chapters : [];
+      let addIdx = longQuestions.length + 1;
+
+      for (const ch of chapList) {
+        if (longQuestions.length >= longTarget) break;
+        if (chapter && chapter !== 'All' && ch.name !== chapter && !ch.name.includes(chapter)) continue;
+        const subtopics = ch.subtopics || ['Theoretical Principles', 'Analytical Applications'];
+        const t1 = subtopics[0] || 'Theoretical Foundations';
+        const t2 = subtopics[1] || 'Experimental Analysis';
+
+        longQuestions.push({
+          id: `gen_lq_${subject.toLowerCase()}_${addIdx++}`,
+          board,
+          grade,
+          subject,
+          chapter: ch.name,
+          chapterNumber: ch.number,
+          topic: t1,
+          question: `Comprehensive examination of ${ch.name}: theoretical principles, derivations, and application problems.`,
+          parts: [
+            {
+              label: '(a)',
+              text: `Explain in detail the fundamental laws and conceptual derivations governing ${t1} with necessary mathematical formulations.`,
+              marks: 5,
+            },
+            {
+              label: '(b)',
+              text: `Analyze the practical application and problem-solving scenario of ${t2} in ${subject}.`,
+              marks: 3,
+            },
+          ],
+          modelAnswer: `(a) Detailed theoretical derivation covering principles of ${t1}.\n(b) Practical application, diagrammatic representation, and analytical evaluation of ${t2}.`,
+          markingScheme: [
+            '2 marks for theoretical statement and assumptions',
+            '3 marks for mathematical derivation or structural diagrams',
+            '3 marks for analytical problem solution or case application'
+          ],
+          marks: 8,
+          difficulty: 'hard',
+          verified: true,
+          source: 'curriculum-bank',
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  return {
+    mcqs: mcqs.slice(0, mcqTarget),
+    shortQuestions: shortQuestions.slice(0, shortTarget),
+    longQuestions: longQuestions.slice(0, longTarget),
+  };
 }

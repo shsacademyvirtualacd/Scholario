@@ -9,6 +9,7 @@ import TestViewerModal from '../../components/common/TestViewerModal';
 import SelfTestingView from '../../components/tests/SelfTestingView';
 import AdminMCQVerificationView from '../../components/admin/mcq/AdminMCQVerificationView';
 import StudentResultsView from '../../components/tests/StudentResultsView';
+import AdminCreateTestModal from '../../components/admin/tests/AdminCreateTestModal';
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -41,6 +42,7 @@ export const AdminTestsPage: React.FC = () => {
   const [tests, setTests] = useState<TestPaper[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
@@ -150,14 +152,24 @@ export const AdminTestsPage: React.FC = () => {
         </div>
 
         {activeTab === 'class-test' && (
-          <button
-            id="admin-open-test-upload-btn"
-            onClick={() => setIsUploadModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-extrabold transition-all shadow-xs shrink-0 cursor-pointer"
-          >
-            <Plus size={16} />
-            <span>Upload Test Paper</span>
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <button
+              id="admin-create-test-btn"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all shadow-sm cursor-pointer border border-[#111111]"
+            >
+              <FileCheck2 size={16} />
+              <span>Create Test (Bank)</span>
+            </button>
+            <button
+              id="admin-open-test-upload-btn"
+              onClick={() => setIsUploadModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-[#FAFAFA] text-[#111111] text-xs font-extrabold transition-all border border-[#E5E5E5] shadow-xs cursor-pointer"
+            >
+              <Plus size={16} />
+              <span>Upload Manual PDF</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -388,6 +400,13 @@ export const AdminTestsPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Create Test from Question Bank Modal (Admin-Only) */}
+      <AdminCreateTestModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onTestCreated={fetchData}
+      />
 
       {/* Upload Test Modal */}
       <TestUploadModal
