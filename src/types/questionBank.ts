@@ -115,7 +115,9 @@ export type TestQuestionTypeCombination =
   | 'long_only'
   | 'mcqs_and_short'
   | 'mcqs_and_long'
-  | 'all_types'; // MCQs + Short Questions + Long Questions
+  | 'short_and_long'
+  | 'all_types'
+  | 'custom';
 
 export interface GeneratedTestSpecification {
   title: string;

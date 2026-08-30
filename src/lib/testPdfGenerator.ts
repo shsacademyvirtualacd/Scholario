@@ -92,17 +92,19 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
     // 2. Running footer on every page
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(7.5);
+    doc.setTextColor(110, 110, 110);
 
     // Footer divider line
     doc.setDrawColor(220, 220, 220);
     doc.setLineWidth(0.3);
-    doc.line(marginX, pageHeight - 12, pageWidth - marginX, pageHeight - 12);
+    doc.line(marginX, pageHeight - 11, pageWidth - marginX, pageHeight - 11);
 
-    doc.text('SHS Virtual Academy • Confidential Examination Paper', marginX, pageHeight - 7);
-    doc.text('Powered by Scholario LMS (scholario.me)', pageWidth / 2, pageHeight - 7, { align: 'center' });
-    doc.text(`Page ${pageNumber}`, pageWidth - marginX, pageHeight - 7, { align: 'right' });
+    // Left side: Academy confidential paper tag
+    doc.text('SHS Virtual Academy • Confidential Examination Paper', marginX, pageHeight - 6.5);
+
+    // Right side: Page number and Scholario platform credit (no center collision)
+    doc.text(`Page ${pageNumber}  •  Powered by Scholario LMS (scholario.me)`, pageWidth - marginX, pageHeight - 6.5, { align: 'right' });
   };
 
   /**
@@ -136,57 +138,75 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
   // ═══════════════════════════════════════════════════════════════════════════
   // 1. FIRST PAGE TOP BRANDED HEADER (SHS Logo Left + Scholario Lockup Right)
   // ═══════════════════════════════════════════════════════════════════════════
+  const leftColWidth = 32;
+  const rightColWidth = 40;
+  const centerColWidth = contentWidth - leftColWidth - rightColWidth; // ~110mm
+  const centerColX = marginX + leftColWidth + centerColWidth / 2; // 105mm
+  const maxCenterTextWidth = centerColWidth - 4; // 106mm
 
-  // Top Left: SHS Academy Logo
+  // Top Left: SHS Academy Logo (Fixed 20x20mm box at marginX, 11)
   if (shsLogoData) {
     try {
-      doc.addImage(shsLogoData, 'PNG', marginX, 12, 22, 22);
+      doc.addImage(shsLogoData, 'PNG', marginX, 11, 20, 20);
     } catch {
       // Fallback text box if image loading issue
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setTextColor(17, 17, 17);
-      doc.text('SHS ACADEMY', marginX, 22);
+      doc.text('SHS ACADEMY', marginX, 21);
     }
   }
 
-  // Top Right: Scholario Logo & Lockup
+  // Top Right: Scholario Logo & Lockup (Fixed right-aligned lockup at pageWidth - marginX)
   const lockupRightX = pageWidth - marginX;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setTextColor(17, 17, 17);
-  doc.text('Scholario', lockupRightX, 17, { align: 'right' });
+  doc.text('Scholario', lockupRightX, 15, { align: 'right' });
 
   // Line 1: Powered by Scholario LMS
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Powered by Scholario LMS', lockupRightX, 21.5, { align: 'right' });
+  doc.setFontSize(7);
+  doc.setTextColor(110, 110, 110);
+  doc.text('Powered by Scholario LMS', lockupRightX, 19.5, { align: 'right' });
 
   // Line 2: scholario.me
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(180, 130, 20); // Golden accent
-  doc.text('scholario.me', lockupRightX, 25.5, { align: 'right' });
+  doc.text('scholario.me', lockupRightX, 23.5, { align: 'right' });
 
-  // Center: Academy Title & Subject
+  // Center: Academy Title, Test Title & Curriculum Details (strictly bounded within maxCenterTextWidth)
+  let centerCursorY = 15;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(12.5);
   doc.setTextColor(17, 17, 17);
-  doc.text('SHS VIRTUAL ACADEMY', pageWidth / 2, 17, { align: 'center' });
+  doc.text('SHS VIRTUAL ACADEMY', centerColX, centerCursorY, { align: 'center', maxWidth: maxCenterTextWidth });
+  centerCursorY += 5;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(50, 50, 50);
-  doc.text(test.title.toUpperCase(), pageWidth / 2, 22.5, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setTextColor(45, 45, 45);
+  const splitTitle = doc.splitTextToSize(test.title.toUpperCase(), maxCenterTextWidth);
+  splitTitle.forEach((line: string) => {
+    doc.text(line, centerColX, centerCursorY, { align: 'center' });
+    centerCursorY += 4.2;
+  });
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 100, 100);
   const chapterSub = test.chapter && test.chapter !== 'All' ? ` • ${test.chapter}` : '';
-  doc.text(`Grade ${test.grade} (${test.stream || 'Science'}) • ${test.board.toUpperCase()} Curriculum${chapterSub}`, pageWidth / 2, 27, { align: 'center' });
+  const subText = `Grade ${test.grade} (${test.stream || 'Science'}) • ${test.board.toUpperCase()} Curriculum${chapterSub}`;
+  const splitSub = doc.splitTextToSize(subText, maxCenterTextWidth);
+  splitSub.forEach((line: string) => {
+    doc.text(line, centerColX, centerCursorY, { align: 'center' });
+    centerCursorY += 3.5;
+  });
 
-  cursorY = 38;
+  // Calculate dynamic header bottom to prevent any overlap with student box
+  const headerBottomY = Math.max(34, 11 + 20, centerCursorY + 1);
+  cursorY = headerBottomY + 3;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 2. STUDENT METADATA & EXAM PARAMETERS BOX
@@ -221,9 +241,18 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 3. SECTION A: MULTIPLE CHOICE QUESTIONS (MCQs)
+  // 3. SECTION RENDERING (ADAPTIVE LETTERING & QUESTION NUMBERING)
   // ═══════════════════════════════════════════════════════════════════════════
-  if (test.mcqs && test.mcqs.length > 0) {
+  const hasMCQs = !!(test.mcqs && test.mcqs.length > 0);
+  const hasShort = !!(test.shortQuestions && test.shortQuestions.length > 0);
+  const hasLong = !!(test.longQuestions && test.longQuestions.length > 0);
+
+  let sectionCount = 0;
+  const sectionLetters = ['A', 'B', 'C', 'D'];
+
+  // 3.1 SECTION: MULTIPLE CHOICE QUESTIONS (MCQs)
+  if (hasMCQs && test.mcqs) {
+    const secLetter = sectionLetters[sectionCount++];
     checkPageBreak(18);
     const mcqMarksTotal = test.mcqs.length * (test.mcqMarksEach || 1);
 
@@ -233,7 +262,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text(`SECTION – A : MULTIPLE CHOICE QUESTIONS (MCQs)`, marginX + 4, cursorY + 4.5);
+    doc.text(`SECTION – ${secLetter} : MULTIPLE CHOICE QUESTIONS (MCQs)`, marginX + 4, cursorY + 4.5);
     doc.text(`[${mcqMarksTotal} Marks]`, lockupRightX - 4, cursorY + 4.5, { align: 'right' });
     cursorY += 9;
 
@@ -280,10 +309,10 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     cursorY += 2;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 4. SECTION B: SHORT ANSWER QUESTIONS
-  // ═══════════════════════════════════════════════════════════════════════════
-  if (test.shortQuestions && test.shortQuestions.length > 0) {
+  // 3.2 SECTION: SHORT ANSWER QUESTIONS
+  if (hasShort && test.shortQuestions) {
+    const secLetter = sectionLetters[sectionCount++];
+    const shortQPrefix = hasMCQs ? 'Q2' : 'Q1';
     checkPageBreak(22);
     const marksPerShort = test.shortMarksEach || 3;
     const attemptCount = test.shortAttemptCount || test.shortQuestions.length;
@@ -295,7 +324,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text(`SECTION – B : SHORT ANSWER QUESTIONS`, marginX + 4, cursorY + 4.5);
+    doc.text(`SECTION – ${secLetter} : SHORT ANSWER QUESTIONS`, marginX + 4, cursorY + 4.5);
     doc.text(`[${shortMarksTotal} Marks]`, lockupRightX - 4, cursorY + 4.5, { align: 'right' });
     cursorY += 9;
 
@@ -310,7 +339,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
     test.shortQuestions.forEach((sq, idx) => {
       const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
-      const qPrefix = `Q2. (${roman})`;
+      const qPrefix = `${shortQPrefix}. (${roman})`;
       const cleanQuestion = sq.question.replace(/\$([^\$]+)\$/g, '$1');
       const marksLabel = `[${sq.marks || marksPerShort} Marks]`;
 
@@ -333,10 +362,10 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     cursorY += 2;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 5. SECTION C: DETAILED / LONG ANSWER QUESTIONS
-  // ═══════════════════════════════════════════════════════════════════════════
-  if (test.longQuestions && test.longQuestions.length > 0) {
+  // 3.3 SECTION: DETAILED / LONG ANSWER QUESTIONS
+  if (hasLong && test.longQuestions) {
+    const secLetter = sectionLetters[sectionCount++];
+    const longQStartNum = (hasMCQs ? 1 : 0) + (hasShort ? 1 : 0) + 1;
     checkPageBreak(25);
     const marksPerLong = test.longMarksEach || 8;
     const attemptCount = test.longAttemptCount || test.longQuestions.length;
@@ -348,7 +377,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text(`SECTION – C : DETAILED / LONG ANSWER QUESTIONS`, marginX + 4, cursorY + 4.5);
+    doc.text(`SECTION – ${secLetter} : DETAILED / LONG ANSWER QUESTIONS`, marginX + 4, cursorY + 4.5);
     doc.text(`[${longMarksTotal} Marks]`, lockupRightX - 4, cursorY + 4.5, { align: 'right' });
     cursorY += 9;
 
@@ -362,7 +391,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     cursorY += 5;
 
     test.longQuestions.forEach((lq, idx) => {
-      const qNum = `Q${idx + 3}.`;
+      const qNum = `Q${longQStartNum + idx}.`;
       const cleanQuestion = lq.question.replace(/\$([^\$]+)\$/g, '$1');
       const marksLabel = `[${lq.marks || marksPerLong} Marks]`;
 

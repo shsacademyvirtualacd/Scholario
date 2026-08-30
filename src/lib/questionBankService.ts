@@ -405,7 +405,10 @@ export function getStoredLongQuestions(
  * - all_types (MCQs + Short Questions + Long Questions)
  */
 export async function pullTestQuestionsFromBanks(params: {
-  combination: TestQuestionTypeCombination;
+  combination?: TestQuestionTypeCombination;
+  includeMCQs?: boolean;
+  includeShort?: boolean;
+  includeLong?: boolean;
   board: string;
   grade: string;
   subject: string;
@@ -420,9 +423,31 @@ export async function pullTestQuestionsFromBanks(params: {
   longQuestions: StoredLongQuestion[];
 }> {
   const { combination, board, grade, subject, chapter, chapters } = params;
-  const needMCQs = combination === 'mcqs_only' || combination === 'mcqs_and_short' || combination === 'mcqs_and_long' || combination === 'all_types';
-  const needShort = combination === 'short_only' || combination === 'mcqs_and_short' || combination === 'all_types';
-  const needLong = combination === 'long_only' || combination === 'mcqs_and_long' || combination === 'all_types';
+  
+  // Support either explicit flags or combination identifier
+  const needMCQs =
+    params.includeMCQs !== undefined
+      ? params.includeMCQs
+      : combination === 'mcqs_only' ||
+        combination === 'mcqs_and_short' ||
+        combination === 'mcqs_and_long' ||
+        combination === 'all_types';
+
+  const needShort =
+    params.includeShort !== undefined
+      ? params.includeShort
+      : combination === 'short_only' ||
+        combination === 'mcqs_and_short' ||
+        combination === 'short_and_long' ||
+        combination === 'all_types';
+
+  const needLong =
+    params.includeLong !== undefined
+      ? params.includeLong
+      : combination === 'long_only' ||
+        combination === 'mcqs_and_long' ||
+        combination === 'short_and_long' ||
+        combination === 'all_types';
 
   const mcqTarget = params.mcqCount || 10;
   const shortTarget = params.shortCount || 5;
