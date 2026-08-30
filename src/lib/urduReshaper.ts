@@ -1,9 +1,11 @@
 /**
  * High-performance, robust Urdu & Arabic script reshaper and bidirectional handler.
  * Converts logical Unicode Urdu/Arabic characters into visual Presentation Forms (Forms A & B)
- * so that standard PDF engines (like jsPDF) with embedded TrueType fonts render connected,
- * beautifully shaped Right-To-Left Urdu/Arabic script correctly.
+ * and formats Right-To-Left lines so that standard PDF engines (like jsPDF) with embedded
+ * TrueType fonts render beautifully shaped, connected, and properly ordered Urdu script.
  */
+
+import type { jsPDF } from 'jspdf';
 
 // Check if a string contains any Urdu/Arabic characters
 export function containsUrdu(text: string | null | undefined): boolean {
@@ -22,7 +24,7 @@ interface GlyphForms {
   medial: string;
 }
 
-// Complete lookup table for Arabic, Persian and Urdu Unicode code points to Presentation Forms
+// Authoritative lookup table for Arabic, Persian and Urdu Unicode code points to Presentation Forms
 const CHAR_MAP: Record<string, GlyphForms> = {
   // Standard Arabic & Common Urdu Characters
   '\u0621': { join: 'NONE', isolated: '\uFE80', final: '\uFE80', initial: '\uFE80', medial: '\uFE80' }, // ء Hamza
@@ -73,7 +75,7 @@ const CHAR_MAP: Record<string, GlyphForms> = {
   '\u06A9': { join: 'DUAL', isolated: '\uFB8E', final: '\uFB8F', initial: '\uFB90', medial: '\uFB91' }, // ک Urdu Keheh
   '\u06AF': { join: 'DUAL', isolated: '\uFB92', final: '\uFB93', initial: '\uFB94', medial: '\uFB95' }, // گ Gaf
   '\u06BA': { join: 'RIGHT', isolated: '\uFB9E', final: '\uFB9F', initial: '\uFB9E', medial: '\uFB9F' }, // ں Noon Ghunna
-  '\u06BE': { join: 'DUAL', isolated: '\uFBAC', final: '\uFBAD', initial: '\uFBAE', medial: '\uFBAF' }, // ھ Do-chashmi Heh
+  '\u06BE': { join: 'DUAL', isolated: '\uFBAC', final: '\uFBAD', initial: '\uFBAC', medial: '\uFBAD' }, // ھ Do-chashmi Heh
   '\u06C1': { join: 'DUAL', isolated: '\uFBA6', final: '\uFBA7', initial: '\uFBA8', medial: '\uFBA9' }, // ہ Goal Heh
   '\u06CC': { join: 'DUAL', isolated: '\uFBFC', final: '\uFBFD', initial: '\uFBFE', medial: '\uFBFF' }, // ی Urdu Choti Yeh
   '\u06D2': { join: 'RIGHT', isolated: '\uFBAE', final: '\uFBAF', initial: '\uFBAE', medial: '\uFBAF' }, // ے Urdu Barree Yeh
@@ -172,14 +174,14 @@ export function reshapeUrdu(text: string): string {
 }
 
 /**
- * Bi-directional word and character order handler for mixed Urdu/English text.
- * When text contains Urdu script, it shapes the Urdu words and orders words/characters for right-to-left visual rendering.
+ * Bi-directional single-line formatter for mixed Urdu/English text.
+ * When text contains Urdu script, it shapes the Urdu words and orders words/characters for right-to-left visual rendering in jsPDF.
  */
 export function formatUrduTextForPdf(text: string): string {
   if (!text) return '';
   if (!containsUrdu(text)) return text;
 
-  // 1. Reshape the entire text to substitute positional Arabic Presentation Forms
+  // 1. Reshape the text to substitute positional Arabic Presentation Forms
   const shaped = reshapeUrdu(text);
 
   // 2. Tokenize into runs of Urdu vs English/Numbers/Symbols
@@ -193,12 +195,11 @@ export function formatUrduTextForPdf(text: string): string {
     tokens.push({ text: chunk, isRTL });
   }
 
-  // 3. For pure RTL lines, reverse character order so standard LTR PDF canvas prints RTL visually
-  // If mixed, handle tokens in visual order
+  // 3. For pure RTL tokens, reverse character sequence so LTR drawing on PDF canvas displays RTL
   const processedTokens = tokens.map((tok) => {
     if (tok.isRTL) {
-      // Invert parentheses inside Urdu runs
-      let inverted = tok.text
+      // Invert brackets inside Urdu runs
+      const inverted = tok.text
         .replace(/\(/g, '\u0000')
         .replace(/\)/g, '(')
         .replace(/\u0000/g, ')')
@@ -206,12 +207,57 @@ export function formatUrduTextForPdf(text: string): string {
         .replace(/\]/g, '[')
         .replace(/\u0000/g, ']');
 
-      // Reverse character sequence for RTL visual display
       return Array.from(inverted).reverse().join('');
     }
     return tok.text;
   });
 
-  // Reverse token order so the overall sentence flows RTL
+  // Reverse overall token sequence so the line flows Right-To-Left
   return processedTokens.reverse().join('');
+}
+
+/**
+ * Robust line wrapper and formatter for Urdu paragraphs and multi-line questions in jsPDF.
+ * Splits text into logical lines first based on measured text width, preserving the top-to-bottom
+ * reading order, then formats each individual line for Right-To-Left display.
+ */
+export function splitAndFormatUrdu(
+  doc: jsPDF,
+  text: string,
+  maxWidth: number,
+  prefix?: string
+): string[] {
+  if (!text) return [];
+
+  const fullLogicalText = prefix ? `${prefix} ${text}` : text;
+  if (!containsUrdu(fullLogicalText)) {
+    return doc.splitTextToSize(fullLogicalText, maxWidth);
+  }
+
+  // Split by whitespace into logical words
+  const words = fullLogicalText.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+
+  const lines: string[] = [];
+  let currentLineWords: string[] = [];
+
+  for (const word of words) {
+    const candidateWords = [...currentLineWords, word];
+    const candidateText = candidateWords.join(' ');
+    const candidateFormatted = formatUrduTextForPdf(candidateText);
+    const measuredWidth = doc.getTextWidth(candidateFormatted);
+
+    if (measuredWidth > maxWidth && currentLineWords.length > 0) {
+      lines.push(formatUrduTextForPdf(currentLineWords.join(' ')));
+      currentLineWords = [word];
+    } else {
+      currentLineWords = candidateWords;
+    }
+  }
+
+  if (currentLineWords.length > 0) {
+    lines.push(formatUrduTextForPdf(currentLineWords.join(' ')));
+  }
+
+  return lines;
 }

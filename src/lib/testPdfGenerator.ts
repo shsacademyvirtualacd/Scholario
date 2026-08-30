@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { GeneratedTestSpecification } from '../types/questionBank';
 import { renderLaTeXToText } from './latexRenderer';
-import { containsUrdu, formatUrduTextForPdf } from './urduReshaper';
+import { containsUrdu, formatUrduTextForPdf, splitAndFormatUrdu } from './urduReshaper';
 import { NOTO_NASKH_ARABIC_BASE64 } from './urduFontBase64';
 
 // Cached Base64 of SHS Academy Logo and Urdu Fonts
@@ -413,64 +413,183 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     test.mcqs.forEach((mcq, idx) => {
       const rawQuestion = renderLaTeXToText(mcq.question);
       const isUrduQ = containsUrdu(rawQuestion) || isUrduSubject;
-      checkPageBreak(24);
-
-      setFontForText(rawQuestion, true, 8.5);
-      doc.setTextColor(20, 20, 20);
+      const optLineHeight = isUrduQ ? 4.2 : 3.8;
+      const qLineHeight = isUrduQ ? 4.5 : 4.2;
 
       if (isUrduQ) {
         // Urdu Right-to-Left Question Layout
-        const urduFullQ = formatUrduTextForPdf(`${rawQuestion}   (${idx + 1}) .1Q`);
-        const splitQ = doc.splitTextToSize(urduFullQ, contentWidth - 4);
-        splitQ.forEach((line: string) => {
-          doc.text(line, lockupRightX, cursorY, { align: 'right' });
-          cursorY += 4.5;
-        });
-        cursorY += 1;
+        const questionLines = splitAndFormatUrdu(doc, rawQuestion, contentWidth - 10, `(${idx + 1})`);
+        const colWidth = (contentWidth - 8) / 2;
 
-        // 4 Options Layout (2 columns x 2 rows, Right-to-Left aligned)
-        const colWidth = (contentWidth - 6) / 2;
-        const optA = formatUrduTextForPdf(`${renderLaTeXToText(mcq.options?.A || '')}  (A)`);
-        const optB = formatUrduTextForPdf(`${renderLaTeXToText(mcq.options?.B || '')}  (B)`);
-        const optC = formatUrduTextForPdf(`${renderLaTeXToText(mcq.options?.C || '')}  (C)`);
-        const optD = formatUrduTextForPdf(`${renderLaTeXToText(mcq.options?.D || '')}  (D)`);
+        const optAText = `(الف)  ${renderLaTeXToText(mcq.options?.A || '')}`;
+        const optBText = `(ب)  ${renderLaTeXToText(mcq.options?.B || '')}`;
+        const optCText = `(ج)  ${renderLaTeXToText(mcq.options?.C || '')}`;
+        const optDText = `(د)  ${renderLaTeXToText(mcq.options?.D || '')}`;
 
-        setFontForText(optA, false, 8);
-        doc.setTextColor(40, 40, 40);
+        const splitA = splitAndFormatUrdu(doc, optAText, colWidth);
+        const splitB = splitAndFormatUrdu(doc, optBText, colWidth);
+        const splitC = splitAndFormatUrdu(doc, optCText, colWidth);
+        const splitD = splitAndFormatUrdu(doc, optDText, colWidth);
 
-        // Row 1: Opt A on Right Column, Opt B on Left Column
-        doc.text(doc.splitTextToSize(optA, colWidth), lockupRightX - 2, cursorY, { align: 'right' });
-        doc.text(doc.splitTextToSize(optB, colWidth), marginX + colWidth - 2, cursorY, { align: 'right' });
-        cursorY += 5;
+        // If any option is long (>2 lines in 2-col mode), switch to full-width stacked layout for pristine legibility
+        const useStacked = splitA.length > 2 || splitB.length > 2 || splitC.length > 2 || splitD.length > 2;
 
-        // Row 2: Opt C on Right Column, Opt D on Left Column
-        doc.text(doc.splitTextToSize(optC, colWidth), lockupRightX - 2, cursorY, { align: 'right' });
-        doc.text(doc.splitTextToSize(optD, colWidth), marginX + colWidth - 2, cursorY, { align: 'right' });
-        cursorY += 6.5;
+        if (useStacked) {
+          const fullOptWidth = contentWidth - 8;
+          const fullA = splitAndFormatUrdu(doc, optAText, fullOptWidth);
+          const fullB = splitAndFormatUrdu(doc, optBText, fullOptWidth);
+          const fullC = splitAndFormatUrdu(doc, optCText, fullOptWidth);
+          const fullD = splitAndFormatUrdu(doc, optDText, fullOptWidth);
+
+          const totalBlockHeight =
+            questionLines.length * qLineHeight +
+            (fullA.length + fullB.length + fullC.length + fullD.length) * optLineHeight +
+            8;
+          checkPageBreak(totalBlockHeight);
+
+          // Render Question
+          setFontForText('اردو', true, 8.5);
+          doc.setTextColor(20, 20, 20);
+          questionLines.forEach((line: string) => {
+            doc.text(line, lockupRightX, cursorY, { align: 'right' });
+            cursorY += qLineHeight;
+          });
+          cursorY += 0.8;
+
+          // Render Stacked Options
+          setFontForText('اردو', false, 8);
+          doc.setTextColor(40, 40, 40);
+          [fullA, fullB, fullC, fullD].forEach((optLines) => {
+            optLines.forEach((line: string) => {
+              doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
+              cursorY += optLineHeight;
+            });
+            cursorY += 1.2;
+          });
+          cursorY += 2;
+        } else {
+          // Dynamic 2-Column x 2-Row Layout
+          const row1Lines = Math.max(splitA.length, splitB.length);
+          const row2Lines = Math.max(splitC.length, splitD.length);
+          const totalBlockHeight =
+            questionLines.length * qLineHeight +
+            (row1Lines + row2Lines) * optLineHeight +
+            7;
+          checkPageBreak(totalBlockHeight);
+
+          // Render Question
+          setFontForText('اردو', true, 8.5);
+          doc.setTextColor(20, 20, 20);
+          questionLines.forEach((line: string) => {
+            doc.text(line, lockupRightX, cursorY, { align: 'right' });
+            cursorY += qLineHeight;
+          });
+          cursorY += 0.8;
+
+          // Render Options Row 1 (Opt A on Right, Opt B on Left)
+          setFontForText('اردو', false, 8);
+          doc.setTextColor(40, 40, 40);
+          const row1StartY = cursorY;
+          splitA.forEach((line: string, i: number) => {
+            doc.text(line, lockupRightX - 2, row1StartY + i * optLineHeight, { align: 'right' });
+          });
+          splitB.forEach((line: string, i: number) => {
+            doc.text(line, marginX + colWidth - 2, row1StartY + i * optLineHeight, { align: 'right' });
+          });
+          cursorY += row1Lines * optLineHeight + 1.5;
+
+          // Render Options Row 2 (Opt C on Right, Opt D on Left)
+          const row2StartY = cursorY;
+          splitC.forEach((line: string, i: number) => {
+            doc.text(line, lockupRightX - 2, row2StartY + i * optLineHeight, { align: 'right' });
+          });
+          splitD.forEach((line: string, i: number) => {
+            doc.text(line, marginX + colWidth - 2, row2StartY + i * optLineHeight, { align: 'right' });
+          });
+          cursorY += row2Lines * optLineHeight + 2.5;
+        }
       } else {
         // Standard Left-to-Right Question Layout
         const qNum = `Q1. (${idx + 1})`;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
         const splitQuestion = doc.splitTextToSize(`${qNum}  ${rawQuestion}`, contentWidth);
-        doc.text(splitQuestion, marginX, cursorY);
-        cursorY += splitQuestion.length * 4 + 1;
 
-        const colWidth = (contentWidth - 6) / 2;
-        const optA = `(A)  ${renderLaTeXToText(mcq.options?.A || '')}`;
-        const optB = `(B)  ${renderLaTeXToText(mcq.options?.B || '')}`;
-        const optC = `(C)  ${renderLaTeXToText(mcq.options?.C || '')}`;
-        const optD = `(D)  ${renderLaTeXToText(mcq.options?.D || '')}`;
+        const colWidth = (contentWidth - 8) / 2;
+        const optAText = `(A)  ${renderLaTeXToText(mcq.options?.A || '')}`;
+        const optBText = `(B)  ${renderLaTeXToText(mcq.options?.B || '')}`;
+        const optCText = `(C)  ${renderLaTeXToText(mcq.options?.C || '')}`;
+        const optDText = `(D)  ${renderLaTeXToText(mcq.options?.D || '')}`;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
-        doc.setTextColor(40, 40, 40);
+        const splitA = doc.splitTextToSize(optAText, colWidth);
+        const splitB = doc.splitTextToSize(optBText, colWidth);
+        const splitC = doc.splitTextToSize(optCText, colWidth);
+        const splitD = doc.splitTextToSize(optDText, colWidth);
 
-        doc.text(doc.splitTextToSize(optA, colWidth), marginX + 4, cursorY);
-        doc.text(doc.splitTextToSize(optB, colWidth), marginX + 4 + colWidth + 4, cursorY);
-        cursorY += 4.5;
+        // If any option is long (>2 lines in 2-col mode), switch to full-width stacked layout for pristine legibility
+        const useStacked = splitA.length > 2 || splitB.length > 2 || splitC.length > 2 || splitD.length > 2;
 
-        doc.text(doc.splitTextToSize(optC, colWidth), marginX + 4, cursorY);
-        doc.text(doc.splitTextToSize(optD, colWidth), marginX + 4 + colWidth + 4, cursorY);
-        cursorY += 6;
+        if (useStacked) {
+          const fullOptWidth = contentWidth - 8;
+          const fullA = doc.splitTextToSize(optAText, fullOptWidth);
+          const fullB = doc.splitTextToSize(optBText, fullOptWidth);
+          const fullC = doc.splitTextToSize(optCText, fullOptWidth);
+          const fullD = doc.splitTextToSize(optDText, fullOptWidth);
+
+          const totalBlockHeight =
+            splitQuestion.length * qLineHeight +
+            (fullA.length + fullB.length + fullC.length + fullD.length) * optLineHeight +
+            8;
+          checkPageBreak(totalBlockHeight);
+
+          // Render Question
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8.5);
+          doc.setTextColor(20, 20, 20);
+          doc.text(splitQuestion, marginX, cursorY);
+          cursorY += splitQuestion.length * qLineHeight + 0.8;
+
+          // Render Stacked Options
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(40, 40, 40);
+          [fullA, fullB, fullC, fullD].forEach((optLines) => {
+            doc.text(optLines, marginX + 4, cursorY);
+            cursorY += optLines.length * optLineHeight + 1.2;
+          });
+          cursorY += 2;
+        } else {
+          // Dynamic 2-Column x 2-Row Layout
+          const row1Lines = Math.max(splitA.length, splitB.length);
+          const row2Lines = Math.max(splitC.length, splitD.length);
+          const totalBlockHeight =
+            splitQuestion.length * qLineHeight +
+            (row1Lines + row2Lines) * optLineHeight +
+            7;
+          checkPageBreak(totalBlockHeight);
+
+          // Render Question
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8.5);
+          doc.setTextColor(20, 20, 20);
+          doc.text(splitQuestion, marginX, cursorY);
+          cursorY += splitQuestion.length * qLineHeight + 0.8;
+
+          // Render Options Row 1 (Opt A on Left, Opt B on Right)
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(40, 40, 40);
+          doc.text(splitA, marginX + 4, cursorY);
+          doc.text(splitB, marginX + 4 + colWidth + 4, cursorY);
+          cursorY += row1Lines * optLineHeight + 1.5;
+
+          // Render Options Row 2 (Opt C on Left, Opt D on Right)
+          doc.text(splitC, marginX + 4, cursorY);
+          doc.text(splitD, marginX + 4 + colWidth + 4, cursorY);
+          cursorY += row2Lines * optLineHeight + 2.5;
+        }
       }
     });
 
@@ -526,19 +645,21 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
       doc.setTextColor(20, 20, 20);
 
       if (isUrduQ) {
-        const fullShortQ = formatUrduTextForPdf(`${cleanQuestion}   (${roman}) .${shortQPrefix}`);
-        const splitQuestion = doc.splitTextToSize(fullShortQ, contentWidth - 22);
+        const splitQuestion = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 24, `(${roman})`);
         checkPageBreak(splitQuestion.length * 4.5 + 4);
 
-        doc.text(splitQuestion, lockupRightX, cursorY, { align: 'right' });
+        splitQuestion.forEach((line: string) => {
+          doc.text(line, lockupRightX, cursorY, { align: 'right' });
+          cursorY += 4.5;
+        });
 
-        // Left-aligned marks badge
+        // Left-aligned marks badge on the first line
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(90, 90, 90);
-        doc.text(marksLabel, marginX, cursorY);
+        doc.text(marksLabel, marginX, cursorY - splitQuestion.length * 4.5 + 3.5);
 
-        cursorY += splitQuestion.length * 4.5 + 3.5;
+        cursorY += 1.5;
       } else {
         const qPrefix = `${shortQPrefix}. (${roman})`;
         const splitQuestion = doc.splitTextToSize(`${qPrefix}  ${cleanQuestion}`, contentWidth - 20);
@@ -606,38 +727,43 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
       doc.setTextColor(20, 20, 20);
 
       if (isUrduQ) {
-        const fullLongQ = formatUrduTextForPdf(`${cleanQuestion}   ${qNum}`);
-        const splitQuestion = doc.splitTextToSize(fullLongQ, contentWidth - 22);
+        const splitQuestion = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 24, `${qNum}`);
         checkPageBreak(splitQuestion.length * 4.5 + (lq.parts ? lq.parts.length * 8 : 4));
 
-        doc.text(splitQuestion, lockupRightX, cursorY, { align: 'right' });
+        splitQuestion.forEach((line: string) => {
+          doc.text(line, lockupRightX, cursorY, { align: 'right' });
+          cursorY += 4.5;
+        });
 
         // Left-aligned marks badge
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(90, 90, 90);
-        doc.text(marksLabel, marginX, cursorY);
+        doc.text(marksLabel, marginX, cursorY - splitQuestion.length * 4.5 + 3.5);
 
-        cursorY += splitQuestion.length * 4.5 + 2;
+        cursorY += 1.5;
 
         // Render sub-parts (الف), (ب) / (a), (b)
         if (lq.parts && lq.parts.length > 0) {
           lq.parts.forEach((part) => {
             const cleanPart = renderLaTeXToText(part.text);
-            const fullPart = formatUrduTextForPdf(`${cleanPart}   ${part.label}`);
-            const splitPart = doc.splitTextToSize(fullPart, contentWidth - 28);
-            checkPageBreak(splitPart.length * 4 + 2);
-
             setFontForText(cleanPart, false, 8);
             doc.setTextColor(40, 40, 40);
-            doc.text(splitPart, lockupRightX - 6, cursorY, { align: 'right' });
+
+            const splitPart = splitAndFormatUrdu(doc, cleanPart, contentWidth - 28, `(${part.label})`);
+            checkPageBreak(splitPart.length * 4 + 2);
+
+            splitPart.forEach((line: string) => {
+              doc.text(line, lockupRightX - 6, cursorY, { align: 'right' });
+              cursorY += 4;
+            });
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7.5);
             doc.setTextColor(110, 110, 110);
-            doc.text(`(${part.marks} Marks)`, marginX + 4, cursorY);
+            doc.text(`(${part.marks} Marks)`, marginX + 4, cursorY - splitPart.length * 4 + 3);
 
-            cursorY += splitPart.length * 4 + 2.5;
+            cursorY += 1.5;
           });
         }
       } else {
@@ -713,10 +839,10 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
         const isOptUrdu = containsUrdu(renderedOptText) || isUrduSubject;
 
         if (isOptUrdu) {
-          const ansUrduHeader = formatUrduTextForPdf(`[${correctOptKey}] ${renderedOptText}   :درست جواب   (${idx + 1}) .1Q`);
           setFontForText(renderedOptText, true, 8);
           doc.setTextColor(30, 41, 59);
-          const splitAns = doc.splitTextToSize(ansUrduHeader, contentWidth - 4);
+          const ansUrduHeader = `(${idx + 1}) درست جواب: [${correctOptKey}] ${renderedOptText}`;
+          const splitAns = splitAndFormatUrdu(doc, ansUrduHeader, contentWidth - 4);
           checkPageBreak(splitAns.length * 4 + 8);
           splitAns.forEach((line: string) => {
             doc.text(line, lockupRightX, cursorY, { align: 'right' });
@@ -725,10 +851,9 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
           cursorY += 0.5;
 
           if (renderedExp) {
-            const expUrdu = formatUrduTextForPdf(`وضاحت: ${renderedExp}`);
             setFontForText(renderedExp, false, 7.5);
             doc.setTextColor(90, 90, 90);
-            const splitExp = doc.splitTextToSize(expUrdu, contentWidth - 6);
+            const splitExp = splitAndFormatUrdu(doc, `وضاحت: ${renderedExp}`, contentWidth - 6);
             checkPageBreak(splitExp.length * 3.6 + 4);
             splitExp.forEach((line: string) => {
               doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
@@ -778,10 +903,9 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
         const isUrduQ = containsUrdu(cleanQuestion) || isUrduSubject;
 
         if (isUrduQ) {
-          const qUrduTitle = formatUrduTextForPdf(`${cleanQuestion}   (${roman})`);
           setFontForText(cleanQuestion, true, 8);
           doc.setTextColor(30, 41, 59);
-          const splitQ = doc.splitTextToSize(qUrduTitle, contentWidth - 4);
+          const splitQ = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 4, `(${roman})`);
           checkPageBreak(splitQ.length * 4 + 8);
           splitQ.forEach((line: string) => {
             doc.text(line, lockupRightX, cursorY, { align: 'right' });
@@ -791,10 +915,9 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
           if (sq.modelAnswer) {
             const renderedAns = renderLaTeXToText(sq.modelAnswer);
-            const ansUrdu = formatUrduTextForPdf(`نمونہ جواب: ${renderedAns}`);
             setFontForText(renderedAns, false, 7.5);
             doc.setTextColor(60, 60, 60);
-            const splitAns = doc.splitTextToSize(ansUrdu, contentWidth - 6);
+            const splitAns = splitAndFormatUrdu(doc, `نمونہ جواب: ${renderedAns}`, contentWidth - 6);
             checkPageBreak(splitAns.length * 3.6 + 3);
             splitAns.forEach((line: string) => {
               doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
@@ -806,10 +929,9 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
           if (sq.keyPoints && sq.keyPoints.length > 0) {
             sq.keyPoints.forEach((kp) => {
               const renderedKp = renderLaTeXToText(kp);
-              const kpUrdu = formatUrduTextForPdf(`• ${renderedKp}`);
               setFontForText(renderedKp, false, 7.5);
               doc.setTextColor(80, 80, 80);
-              const splitKp = doc.splitTextToSize(kpUrdu, contentWidth - 8);
+              const splitKp = splitAndFormatUrdu(doc, `• ${renderedKp}`, contentWidth - 8);
               checkPageBreak(splitKp.length * 3.5 + 2);
               splitKp.forEach((line: string) => {
                 doc.text(line, lockupRightX - 6, cursorY, { align: 'right' });
@@ -875,10 +997,9 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
         const isUrduQ = containsUrdu(cleanQuestion) || isUrduSubject;
 
         if (isUrduQ) {
-          const qUrduTitle = formatUrduTextForPdf(`${cleanQuestion}   Q.${idx + 1}`);
           setFontForText(cleanQuestion, true, 8);
           doc.setTextColor(30, 41, 59);
-          const splitQ = doc.splitTextToSize(qUrduTitle, contentWidth - 4);
+          const splitQ = splitAndFormatUrdu(doc, cleanQuestion, contentWidth - 4, `Q.${idx + 1}`);
           checkPageBreak(splitQ.length * 4 + 8);
           splitQ.forEach((line: string) => {
             doc.text(line, lockupRightX, cursorY, { align: 'right' });
@@ -888,10 +1009,9 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
           if (lq.modelAnswer) {
             const renderedAns = renderLaTeXToText(lq.modelAnswer);
-            const ansUrdu = formatUrduTextForPdf(`خاکہ حل: ${renderedAns}`);
             setFontForText(renderedAns, false, 7.5);
             doc.setTextColor(60, 60, 60);
-            const splitAns = doc.splitTextToSize(ansUrdu, contentWidth - 6);
+            const splitAns = splitAndFormatUrdu(doc, `خاکہ حل: ${renderedAns}`, contentWidth - 6);
             checkPageBreak(splitAns.length * 3.6 + 3);
             splitAns.forEach((line: string) => {
               doc.text(line, lockupRightX - 4, cursorY, { align: 'right' });
@@ -903,10 +1023,9 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
           if (lq.markingScheme && lq.markingScheme.length > 0) {
             lq.markingScheme.forEach((ms) => {
               const renderedMs = renderLaTeXToText(ms);
-              const msUrdu = formatUrduTextForPdf(`- ${renderedMs}`);
               setFontForText(renderedMs, false, 7.5);
               doc.setTextColor(80, 80, 80);
-              const splitMs = doc.splitTextToSize(msUrdu, contentWidth - 8);
+              const splitMs = splitAndFormatUrdu(doc, `- ${renderedMs}`, contentWidth - 8);
               checkPageBreak(splitMs.length * 3.5 + 2);
               splitMs.forEach((line: string) => {
                 doc.text(line, lockupRightX - 6, cursorY, { align: 'right' });

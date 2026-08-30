@@ -498,11 +498,11 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                       <div className="font-extrabold text-neutral-900">
                         Q1. ({idx + 1}) {renderLaTeXToText(mcq.question)}
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-neutral-700 pl-4">
-                        <div>(A) {renderLaTeXToText(mcq.options?.A || '')}</div>
-                        <div>(B) {renderLaTeXToText(mcq.options?.B || '')}</div>
-                        <div>(C) {renderLaTeXToText(mcq.options?.C || '')}</div>
-                        <div>(D) {renderLaTeXToText(mcq.options?.D || '')}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[11px] text-neutral-700 pl-4">
+                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(A)</span> <span>{renderLaTeXToText(mcq.options?.A || '')}</span></div>
+                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(B)</span> <span>{renderLaTeXToText(mcq.options?.B || '')}</span></div>
+                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(C)</span> <span>{renderLaTeXToText(mcq.options?.C || '')}</span></div>
+                        <div className="flex items-start gap-1.5"><span className="font-bold shrink-0">(D)</span> <span>{renderLaTeXToText(mcq.options?.D || '')}</span></div>
                       </div>
                     </div>
                   ))}
