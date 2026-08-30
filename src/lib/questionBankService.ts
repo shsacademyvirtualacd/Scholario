@@ -132,6 +132,53 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 /**
+ * Normalizes chapter name for accurate matching across formats (e.g. "Ch 1: Real Numbers" -> "real numbers")
+ */
+export function normalizeChapterName(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/^(ch\w*|chapter|unit)\s*\d+\s*[:\.\-]\s*/i, '') // strip "Ch 1: ", "Chapter 1 - "
+    .replace(/^(\d+)\s*[:\.\-]\s*/i, '')                      // strip "1. ", "1 - "
+    .replace(/[–—]/g, '-')                                    // normalize dashes
+    .replace(/\s+/g, ' ')                                     // normalize spaces
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Finds matching chapter key in subject bank safely without false positive cross-chapter leakage
+ */
+export function matchChapterKeyInBank(availableKeys: string[], target: string): string | undefined {
+  if (!target || !availableKeys || availableKeys.length === 0) return undefined;
+  const targetClean = target.trim();
+  if (!targetClean || targetClean === 'All' || targetClean.toLowerCase() === 'full syllabus' || targetClean.toLowerCase() === 'mixed chapters') {
+    return undefined;
+  }
+
+  // 1. Exact raw key match
+  const exact = availableKeys.find((k) => k.toLowerCase() === targetClean.toLowerCase());
+  if (exact) return exact;
+
+  // 2. Normalized key match (strips "Ch 1:", dashes, extra spaces)
+  const normTarget = normalizeChapterName(targetClean);
+  if (!normTarget) return undefined;
+
+  const normMatch = availableKeys.find((k) => normalizeChapterName(k) === normTarget);
+  if (normMatch) return normMatch;
+
+  // 3. Substring match only if normTarget is specific enough (>= 4 chars)
+  if (normTarget.length >= 4) {
+    const subMatch = availableKeys.find((k) => {
+      const normK = normalizeChapterName(k);
+      return normK.includes(normTarget) || normTarget.includes(normK);
+    });
+    if (subMatch) return subMatch;
+  }
+
+  return undefined;
+}
+
+/**
  * Primary Instant Retrieval Method:
  * Fetches requested number of verified questions directly from stored question bank.
  * Resolves in < 20ms without any AI API latency.
@@ -144,6 +191,14 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
 }> {
   const targetCount = Math.max(1, params.count || 10);
   const normalizedSubject = normalizeFBISEGrade9Subject(params.subject) || params.subject;
+  const targetChapOrTopic = (params.chapter || params.topic || '').trim();
+  const hasSpecificChapter = Boolean(
+    targetChapOrTopic &&
+    targetChapOrTopic !== 'All' &&
+    targetChapOrTopic.toLowerCase() !== 'full syllabus' &&
+    targetChapOrTopic.toLowerCase() !== 'mixed chapters'
+  );
+
   const excludeSet = new Set(
     (params.excludeTexts || []).map((t) => t.trim().toLowerCase()).concat(
       (params.excludeIds || []).map((id) => id.toLowerCase())
@@ -171,8 +226,8 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
       signal: controller.signal,
       body: JSON.stringify({
         subject: normalizedSubject,
-        topic: params.topic,
-        chapter: params.chapter,
+        topic: targetChapOrTopic || undefined,
+        chapter: targetChapOrTopic || undefined,
         grade: params.grade || '9',
         board: params.board || 'fbise',
         count: targetCount,
@@ -180,7 +235,7 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
         excludeIds: params.excludeIds,
         excludeTexts: params.excludeTexts,
         selectedChapters: params.selectedChapters,
-        examMode: params.examMode,
+        examMode: params.examMode || (hasSpecificChapter ? 'chapter' : 'full_syllabus'),
       }),
     });
     clearTimeout(timeoutId);
@@ -212,21 +267,22 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
   // 2. Query local in-memory / bundled bank store instantly
   const bank = await loadBankData();
   const subjectData = bank[normalizedSubject] || {};
+  const availableChapters = Object.keys(subjectData);
 
   let pool: StoredMCQ[] = [];
 
   const isFullSyllabus =
     params.examMode === 'full_syllabus' ||
-    params.topic?.toLowerCase() === 'full syllabus' ||
-    params.topic?.toLowerCase() === 'mixed chapters' ||
-    !params.topic;
+    targetChapOrTopic.toLowerCase() === 'full syllabus' ||
+    targetChapOrTopic.toLowerCase() === 'mixed chapters' ||
+    targetChapOrTopic.toLowerCase() === 'all' ||
+    (!hasSpecificChapter && (!params.selectedChapters || params.selectedChapters.length === 0));
 
   if (isFullSyllabus) {
     // Sample across all available chapters
-    const allChapNames = Object.keys(subjectData);
-    if (allChapNames.length > 0) {
-      const perChap = Math.max(1, Math.ceil(targetCount / allChapNames.length));
-      for (const chName of allChapNames) {
+    if (availableChapters.length > 0) {
+      const perChap = Math.max(1, Math.ceil(targetCount / availableChapters.length));
+      for (const chName of availableChapters) {
         const chQuestions = (subjectData[chName] || []).filter(
           (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
         );
@@ -238,26 +294,15 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
     const chaps = params.selectedChapters;
     const perChap = Math.max(1, Math.ceil(targetCount / chaps.length));
     for (const ch of chaps) {
-      const chQuestions = (subjectData[ch] || []).filter(
+      const matchedKey = matchChapterKeyInBank(availableChapters, ch) || ch;
+      const chQuestions = (subjectData[matchedKey] || []).filter(
         (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
       );
       pool.push(...shuffleArray(chQuestions).slice(0, perChap));
     }
   } else {
-    // Exact single chapter matching
-    const targetChapterName = params.chapter || params.topic || '';
-    // Find matching chapter key (case-insensitive or normalized)
-    let matchingKey = Object.keys(subjectData).find(
-      (k) => k.toLowerCase() === targetChapterName.toLowerCase()
-    );
-
-    if (!matchingKey) {
-      // Try partial or keyword match
-      matchingKey = Object.keys(subjectData).find(
-        (k) => k.toLowerCase().includes(targetChapterName.toLowerCase()) || targetChapterName.toLowerCase().includes(k.toLowerCase())
-      );
-    }
-
+    // Exact single chapter matching strictly
+    const matchingKey = matchChapterKeyInBank(availableChapters, targetChapOrTopic);
     if (matchingKey && subjectData[matchingKey]) {
       const chQuestions = subjectData[matchingKey].filter(
         (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
@@ -349,15 +394,9 @@ export function getStoredShortQuestions(
     return all;
   }
 
-  // Exact or partial match
-  const exact = subjData[chapter];
-  if (exact && Array.isArray(exact)) return exact;
-
-  const foundKey = Object.keys(subjData).find(
-    (k) => k.toLowerCase().includes(chapter.toLowerCase()) || chapter.toLowerCase().includes(k.toLowerCase())
-  );
-  if (foundKey && subjData[foundKey]) {
-    return subjData[foundKey];
+  const matchedKey = matchChapterKeyInBank(Object.keys(subjData), chapter);
+  if (matchedKey && subjData[matchedKey] && Array.isArray(subjData[matchedKey])) {
+    return subjData[matchedKey];
   }
 
   return [];
@@ -381,15 +420,9 @@ export function getStoredLongQuestions(
     return all;
   }
 
-  // Exact or partial match
-  const exact = subjData[chapter];
-  if (exact && Array.isArray(exact)) return exact;
-
-  const foundKey = Object.keys(subjData).find(
-    (k) => k.toLowerCase().includes(chapter.toLowerCase()) || chapter.toLowerCase().includes(k.toLowerCase())
-  );
-  if (foundKey && subjData[foundKey]) {
-    return subjData[foundKey];
+  const matchedKey = matchChapterKeyInBank(Object.keys(subjData), chapter);
+  if (matchedKey && subjData[matchedKey] && Array.isArray(subjData[matchedKey])) {
+    return subjData[matchedKey];
   }
 
   return [];
@@ -466,7 +499,7 @@ export async function pullTestQuestionsFromBanks(params: {
       board,
       count: mcqTarget,
       selectedChapters: chapters && chapters.length > 0 ? chapters : undefined,
-      examMode: chapters && chapters.length > 1 ? 'multi_chapter' : chapter ? 'chapter' : 'full_syllabus',
+      examMode: chapters && chapters.length > 1 ? 'multi_chapter' : (chapter && chapter !== 'All') ? 'chapter' : 'full_syllabus',
     });
 
     mcqs = rawMCQRes.questions.map((q, idx) => ({

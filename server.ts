@@ -23,6 +23,7 @@ import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDat
 import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
 import { validateMCQQuestion, filterAndValidateMCQs, validateQuestionTopicRelevance, checkQuestionDuplicate } from './src/lib/mcqValidator';
 import { getChapterSyllabusScope, FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from './src/lib/curriculumFBISE9';
+import { grade9FbiseBank } from './src/data/banks/index';
 import type { StoredMCQ } from './src/types/questionBank';
 
 let geminiClient: GoogleGenAI | null = null;
@@ -623,6 +624,44 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   let serverCachedBank: Record<string, Record<string, StoredMCQ[]>> | null = null;
   const BANK_FILE_PATH = path.resolve('src/data/grade9FbiseBank.json');
 
+  function normalizeChapterString(str: string): string {
+    if (!str) return '';
+    return str
+      .replace(/^(ch\w*|chapter|unit)\s*\d+\s*[:\.\-]\s*/i, '') // strip "Ch 1: ", "Chapter 1 - "
+      .replace(/^(\d+)\s*[:\.\-]\s*/i, '')                      // strip "1. ", "1 - "
+      .replace(/[–—]/g, '-')                                    // normalize dashes
+      .replace(/\s+/g, ' ')                                     // normalize spaces
+      .trim()
+      .toLowerCase();
+  }
+
+  function matchChapterInBank(availableKeys: string[], target: string): string | undefined {
+    if (!target || !availableKeys || availableKeys.length === 0) return undefined;
+    const clean = target.trim();
+    if (!clean || clean === 'All' || clean.toLowerCase() === 'full syllabus' || clean.toLowerCase() === 'mixed chapters') {
+      return undefined;
+    }
+
+    const exact = availableKeys.find((k) => k.toLowerCase() === clean.toLowerCase());
+    if (exact) return exact;
+
+    const normTarget = normalizeChapterString(clean);
+    if (!normTarget) return undefined;
+
+    const normMatch = availableKeys.find((k) => normalizeChapterString(k) === normTarget);
+    if (normMatch) return normMatch;
+
+    if (normTarget.length >= 4) {
+      const subMatch = availableKeys.find((k) => {
+        const normK = normalizeChapterString(k);
+        return normK.includes(normTarget) || normTarget.includes(normK);
+      });
+      if (subMatch) return subMatch;
+    }
+
+    return undefined;
+  }
+
   function getServerBankData(): Record<string, Record<string, StoredMCQ[]>> {
     if (serverCachedBank && Object.keys(serverCachedBank).length > 0) {
       return serverCachedBank;
@@ -631,12 +670,14 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       if (fs.existsSync(BANK_FILE_PATH)) {
         const raw = fs.readFileSync(BANK_FILE_PATH, 'utf-8');
         serverCachedBank = JSON.parse(raw);
-        return serverCachedBank!;
+        if (serverCachedBank && Object.keys(serverCachedBank).length > 0) {
+          return serverCachedBank;
+        }
       }
     } catch (err) {
-      console.warn('[Server MCQ Bank] Error loading bank file from disk:', err);
+      console.warn('[Server MCQ Bank] Error loading bank file from disk, using fallback modular bank:', err);
     }
-    serverCachedBank = {};
+    serverCachedBank = (grade9FbiseBank as unknown as Record<string, Record<string, StoredMCQ[]>>) || {};
     return serverCachedBank;
   }
 
@@ -661,6 +702,15 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       const normSubject = normalizeFBISEGrade9Subject(subject) || subject;
       const bank = getServerBankData();
       const subjectBank = bank[normSubject] || {};
+      const availableChapters = Object.keys(subjectBank);
+
+      const targetChapName = (chapter || topic || '').trim();
+      const hasSpecificChapter = Boolean(
+        targetChapName &&
+        targetChapName !== 'All' &&
+        targetChapName.toLowerCase() !== 'full syllabus' &&
+        targetChapName.toLowerCase() !== 'mixed chapters'
+      );
 
       const excludeSet = new Set<string>(
         (excludeTexts as string[]).map((t) => t.trim().toLowerCase()).concat(
@@ -669,40 +719,35 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       );
 
       let pool: StoredMCQ[] = [];
-      const isFullSyllabus = examMode === 'full_syllabus' || !topic || topic.toLowerCase() === 'full syllabus' || topic.toLowerCase() === 'mixed chapters';
+      const isFullSyllabus =
+        examMode === 'full_syllabus' ||
+        targetChapName.toLowerCase() === 'full syllabus' ||
+        targetChapName.toLowerCase() === 'mixed chapters' ||
+        targetChapName.toLowerCase() === 'all' ||
+        (!hasSpecificChapter && (!Array.isArray(selectedChapters) || selectedChapters.length === 0));
 
       if (isFullSyllabus) {
-        const allChapters = Object.keys(subjectBank);
-        if (allChapters.length > 0) {
-          const perChap = Math.max(1, Math.ceil(targetCount / allChapters.length));
-          for (const chName of allChapters) {
+        if (availableChapters.length > 0) {
+          const perChap = Math.max(1, Math.ceil(targetCount / availableChapters.length));
+          for (const chName of availableChapters) {
             const chQuestions = (subjectBank[chName] || []).filter(
               (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
             );
-            // Deterministic or random sampling
             pool.push(...[...chQuestions].sort(() => 0.5 - Math.random()).slice(0, perChap));
           }
         }
       } else if (examMode === 'multi_chapter' && Array.isArray(selectedChapters) && selectedChapters.length > 0) {
         const perChap = Math.max(1, Math.ceil(targetCount / selectedChapters.length));
         for (const chName of selectedChapters) {
-          const chQuestions = (subjectBank[chName] || []).filter(
+          const matchedKey = matchChapterInBank(availableChapters, chName) || chName;
+          const chQuestions = (subjectBank[matchedKey] || []).filter(
             (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
           );
           pool.push(...[...chQuestions].sort(() => 0.5 - Math.random()).slice(0, perChap));
         }
       } else {
-        // Single chapter matching
-        const targetChapName = (chapter || topic || '').trim();
-        let matchedKey = Object.keys(subjectBank).find(
-          (k) => k.toLowerCase() === targetChapName.toLowerCase()
-        );
-        if (!matchedKey) {
-          matchedKey = Object.keys(subjectBank).find(
-            (k) => k.toLowerCase().includes(targetChapName.toLowerCase()) || targetChapName.toLowerCase().includes(k.toLowerCase())
-          );
-        }
-
+        // Single chapter matching strictly
+        const matchedKey = matchChapterInBank(availableChapters, targetChapName);
         if (matchedKey && subjectBank[matchedKey]) {
           pool = subjectBank[matchedKey].filter(
             (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
@@ -918,7 +963,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   });
 
   // ── Admin-Only Create Test From Question Bank Endpoint ──
-  app.post('/api/admin/tests/create-test', async (req, res) => {
+  app.post(['/api/admin/tests/create-test', '/api/tests/create-test'], async (req, res) => {
     const startTime = Date.now();
     console.log(`[CreateTest API] 📥 Received create-test request at ${new Date().toISOString()} (Content-Length: ${req.headers['content-length'] || 'unknown'} bytes)`);
 

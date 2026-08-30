@@ -5,6 +5,7 @@ import { onRequestDelete as delHandler } from '../functions/api/notes/del/[noteI
 import { onRequestGet as auditR2Handler } from '../functions/api/admin/audit-r2';
 import { onRequestPost as sageChatPostHandler, onRequestOptions as sageChatOptionsHandler } from '../functions/api/sage/chat';
 import { onRequestPost as testUploadHandler } from '../functions/api/tests/upload';
+import { onRequestPost as createTestHandler } from '../functions/api/admin/tests/create-test';
 import { onRequestGet as testViewHandler } from '../functions/api/tests/view/[testId]';
 import { onRequestGet as testDlHandler } from '../functions/api/tests/dl/[testId]';
 import { onRequestDelete as testDelHandler } from '../functions/api/tests/del/[testId]';
@@ -148,6 +149,21 @@ export default {
     }
 
     // ── Test Endpoints ────────────────────────────────
+    if ((url.pathname === '/api/admin/tests/create-test' || url.pathname === '/api/tests/create-test') && request.method === 'POST') {
+      try {
+        return await createTestHandler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
     if (url.pathname === '/api/tests/upload' && request.method === 'POST') {
       try {
         return await testUploadHandler({
