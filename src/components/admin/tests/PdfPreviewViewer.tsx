@@ -77,9 +77,11 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
   // Render PDF pages onto HTML5 Canvases using pdfjs-dist
   useEffect(() => {
     let isCancelled = false;
+    let loadingTask: any = null;
+    let loadedPdfDoc: any = null;
 
     async function renderPdfDocument() {
-      if (!pdfArrayBuffer && !pdfBlob) {
+      if (!pdfArrayBuffer && !pdfBlob && !pdfDataUrl) {
         onPreviewReady?.(false);
         return;
       }
@@ -88,17 +90,32 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       setRenderingError(null);
 
       try {
-        let dataToLoad: Uint8Array;
-        if (pdfArrayBuffer) {
-          dataToLoad = new Uint8Array(pdfArrayBuffer);
-        } else if (pdfBlob) {
-          const ab = await pdfBlob.arrayBuffer();
-          dataToLoad = new Uint8Array(ab);
+        let rawBuffer: ArrayBuffer;
+
+        // Prioritize Blob as it generates a fresh, non-detached ArrayBuffer on every call
+        if (pdfBlob) {
+          rawBuffer = await pdfBlob.arrayBuffer();
+        } else if (pdfArrayBuffer && pdfArrayBuffer.byteLength > 0) {
+          // Clone the ArrayBuffer to prevent transfer/detachment by Web Worker
+          rawBuffer = pdfArrayBuffer.slice(0);
+        } else if (pdfDataUrl) {
+          // Decode DataURL if ArrayBuffer is detached or missing
+          const base64Data = pdfDataUrl.includes(',') ? pdfDataUrl.split(',')[1] : pdfDataUrl;
+          const binaryString = atob(base64Data);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          rawBuffer = bytes.buffer;
         } else {
-          throw new Error('No PDF binary data provided');
+          throw new Error('PDF binary data is detached or unavailable.');
         }
 
-        const loadingTask = pdfjsLib.getDocument({
+        // Pass an isolated fresh clone to PDF.js
+        const dataToLoad = new Uint8Array(rawBuffer.slice(0));
+
+        loadingTask = pdfjsLib.getDocument({
           data: dataToLoad,
           cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
           cMapPacked: true,
@@ -106,6 +123,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         });
 
         const pdf = await loadingTask.promise;
+        loadedPdfDoc = pdf;
         if (isCancelled) return;
 
         setNumPages(pdf.numPages);
@@ -171,14 +189,20 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       }
     }
 
-    if (!isGenerating && (pdfArrayBuffer || pdfBlob)) {
+    if (!isGenerating && (pdfArrayBuffer || pdfBlob || pdfDataUrl)) {
       renderPdfDocument();
     }
 
     return () => {
       isCancelled = true;
+      if (loadingTask && typeof loadingTask.destroy === 'function') {
+        loadingTask.destroy().catch(() => {});
+      }
+      if (loadedPdfDoc && typeof loadedPdfDoc.destroy === 'function') {
+        loadedPdfDoc.destroy().catch(() => {});
+      }
     };
-  }, [pdfArrayBuffer, pdfBlob, zoom, isGenerating, renderAttempt]);
+  }, [pdfArrayBuffer, pdfBlob, pdfDataUrl, zoom, isGenerating, renderAttempt]);
 
   // Safeguard: If user is on 'canvas' view and for any reason canvas container has 0 children despite ready PDF, trigger re-render
   useEffect(() => {
@@ -188,24 +212,47 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       canvasContainerRef.current.children.length === 0 &&
       !isGenerating &&
       !isRenderingPages &&
-      (pdfArrayBuffer || pdfBlob)
+      !renderingError &&
+      (pdfArrayBuffer || pdfBlob || pdfDataUrl)
     ) {
-      setZoom((z) => (z === 1.0 ? 1.0001 : 1.0));
+      const timer = setTimeout(() => {
+        if (
+          canvasContainerRef.current &&
+          canvasContainerRef.current.children.length === 0 &&
+          !isRenderingPages
+        ) {
+          setRenderAttempt((a) => a + 1);
+        }
+      }, 150);
+      return () => clearTimeout(timer);
     }
-  }, [activeTab, isGenerating, isRenderingPages, pdfArrayBuffer, pdfBlob]);
+  }, [activeTab, isGenerating, isRenderingPages, renderingError, pdfArrayBuffer, pdfBlob, pdfDataUrl]);
 
-  // Handle Download PDF
+  // Handle Download PDF (completely independent of canvas state)
   const handleDownload = () => {
-    if (!renderedObjectUrl && !pdfDataUrl) return;
-    const downloadUrl = renderedObjectUrl || pdfDataUrl;
-    if (!downloadUrl) return;
+    let downloadUrl = renderedObjectUrl || pdfDataUrl;
+    let tempUrl: string | null = null;
+
+    if (!downloadUrl && pdfBlob) {
+      tempUrl = URL.createObjectURL(pdfBlob);
+      downloadUrl = tempUrl;
+    }
+
+    if (!downloadUrl) {
+      console.warn('[PdfPreviewViewer] No download URL or Blob available.');
+      return;
+    }
 
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `SHS_Test_${testSpec.subject}_Grade${testSpec.grade}.pdf`;
+    link.download = `SHS_Test_${testSpec.subject || 'Assessment'}_Grade${testSpec.grade || 'Paper'}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    if (tempUrl) {
+      setTimeout(() => URL.revokeObjectURL(tempUrl!), 2000);
+    }
   };
 
   // Handle Open in New Tab
@@ -219,12 +266,23 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
           `<iframe src="${pdfDataUrl}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
         );
       }
+    } else if (pdfBlob) {
+      const tempUrl = URL.createObjectURL(pdfBlob);
+      window.open(tempUrl, '_blank');
     }
   };
 
-  // Handle Print Paper
+  // Handle Print Paper (completely independent of canvas state)
   const handlePrint = () => {
-    if (renderedObjectUrl) {
+    let printUrl = renderedObjectUrl || pdfDataUrl;
+    let tempUrl: string | null = null;
+
+    if (!printUrl && pdfBlob) {
+      tempUrl = URL.createObjectURL(pdfBlob);
+      printUrl = tempUrl;
+    }
+
+    if (printUrl) {
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.right = '0';
@@ -232,7 +290,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       iframe.style.width = '0';
       iframe.style.height = '0';
       iframe.style.border = '0';
-      iframe.src = renderedObjectUrl;
+      iframe.src = printUrl;
       document.body.appendChild(iframe);
       iframe.onload = () => {
         try {
@@ -240,6 +298,11 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
           iframe.contentWindow?.print();
         } catch {
           window.print();
+        } finally {
+          setTimeout(() => {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+            if (tempUrl) URL.revokeObjectURL(tempUrl);
+          }, 2000);
         }
       };
     } else {
@@ -452,7 +515,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         )}
 
         {/* State 4A: PDF Canvas Render Mode (Actual Compiled PDF Pages) */}
-        {!isGenerating && !error && (pdfBlob || pdfArrayBuffer) && (
+        {!isGenerating && !error && (pdfBlob || pdfArrayBuffer || pdfDataUrl) && (
           <div className={`w-full flex flex-col items-center ${activeTab === 'canvas' ? '' : 'hidden'}`}>
             {isRenderingPages && (
               <div className="m-auto p-8 max-w-md text-center bg-white rounded-2xl border border-neutral-200 shadow-xl space-y-3 my-8">
@@ -480,7 +543,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                     {renderingError}
                   </p>
                   <p className="text-[11px] text-neutral-500 pt-1">
-                    The PDF binary is ready for download/print. You can retry rasterization or switch to Document Layout.
+                    The PDF binary is ready for download & print. You can retry rasterization, switch to Document Layout, or download directly.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
@@ -494,6 +557,14 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                   >
                     <RefreshCw size={13} />
                     <span>Retry Canvas Render</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F4C430] hover:bg-[#E5B520] text-black font-extrabold text-xs transition-all cursor-pointer"
+                  >
+                    <Download size={13} />
+                    <span>Download PDF</span>
                   </button>
                   <button
                     type="button"
