@@ -239,7 +239,7 @@ async function generateTestPaperHtmlPDF(test: GeneratedTestSpecification, filena
           </div>
           <div>
             <h1 style="margin: 0; font-size: 15px; font-weight: 900; letter-spacing: -0.02em; color: #111111; text-transform: uppercase; line-height: 1.15;">SHS VIRTUAL ACADEMY</h1>
-            <p style="margin: 2px 0 0 0; font-size: 9px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.2;">Department of Examinations & Academic Assessments</p>
+            <p style="margin: 2px 0 0 0; font-size: 9px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.2;">Student Assessment</p>
           </div>
         </div>
         <div style="text-align: right;">

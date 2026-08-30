@@ -621,7 +621,7 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                     SHS VIRTUAL ACADEMY
                   </h1>
                   <p className="text-[11px] font-bold text-neutral-600 uppercase tracking-wide">
-                    Department of Examinations & Academic Assessments
+                    Student Assessment
                   </p>
                 </div>
               </div>
