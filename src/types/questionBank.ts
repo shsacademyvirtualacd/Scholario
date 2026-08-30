@@ -61,6 +61,17 @@ export interface SubjectBankStat {
   chapters: ChapterBankStat[];
 }
 
+export interface QuestionBankSummary {
+  board?: string;
+  grade?: string;
+  totalQuestions: number;
+  targetQuestions: number;
+  coveragePercentage: number;
+  totalSubjects?: number;
+  completedSubjects?: number;
+  subjects: Record<string, SubjectBankStat>;
+}
+
 export interface StoredShortQuestion {
   id: string;
   board: string;           // e.g. 'fbise', 'sindh'

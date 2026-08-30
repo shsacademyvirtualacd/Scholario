@@ -1,29 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
-  FileText,
-  Sparkles,
   CheckCircle2,
-  BookOpen,
-  Calendar,
-  Clock,
-  Award,
-  Layers,
   Download,
   Eye,
   RefreshCw,
-  AlertCircle,
   Check,
   ChevronRight,
-  ShieldCheck,
-  Building2,
   FileCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { pullTestQuestionsFromBanks } from '../../../lib/questionBankService';
 import { generateTestPaperPDF } from '../../../lib/testPdfGenerator';
-import { BOARDS, getGradesForBoard } from '../../../lib/taxonomy';
+import { BOARDS } from '../../../lib/taxonomy';
 import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM } from '../../../lib/curriculumFBISE9';
 import type {
   TestQuestionTypeCombination,
@@ -144,8 +134,8 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
           .in('role', ['teacher', 'admin'])
           .order('full_name');
 
-        if (!error && data && data.length > 0) {
-          const list = data.map((t) => ({ id: t.id, name: t.full_name || 'Faculty Member' }));
+        if (!error && data && Array.isArray(data) && data.length > 0) {
+          const list = (data as any[]).map((t) => ({ id: t.id, name: t.full_name || 'Faculty Member' }));
           setTeachers(list);
           setSelectedTeacherId(list[0].id);
           setSelectedTeacherName(list[0].name);
@@ -346,11 +336,11 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
       });
 
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({ error: 'Failed to publish test' }));
-        throw new Error(errJson.error || `Server responded with ${response.status}`);
+        const errJson: any = await response.json().catch(() => ({ error: 'Failed to publish test' }));
+        throw new Error(errJson?.error || `Server responded with ${response.status}`);
       }
 
-      const result = await response.json();
+      await response.json();
       toast.success('Test Paper successfully created, branded, and published to Class Tests!');
       onTestCreated();
       onClose();

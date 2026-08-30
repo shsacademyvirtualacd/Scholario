@@ -7,17 +7,7 @@ import {
   Sparkles,
   Layers,
   BookOpen,
-  Check,
-  Copy,
-  Code,
-  ListFilter,
-  Eye,
-  ChevronDown,
-  ChevronUp,
-  FileText,
-  FolderOpen,
   GraduationCap,
-  HelpCircle,
   AlignLeft,
   FileQuestion,
 } from 'lucide-react';
@@ -48,7 +38,6 @@ interface AdminMCQVerificationViewProps {
   initialChapter?: string;
 }
 
-type ViewMode = 'cards' | 'compact' | 'json';
 type BankTab = 'mcq' | 'short' | 'long';
 
 export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> = ({
@@ -68,16 +57,13 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
 
   // Live Storage Bank State (MCQs)
   const [liveBank, setLiveBank] = useState<Record<string, Record<string, StoredMCQ[]>>>({});
-  const [loading, setLoading] = useState<boolean>(true);
+  const [, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Filters and UI State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
   const [chapterSearchQuery, setChapterSearchQuery] = useState<string>('');
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
-  const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // 1. Fetch live MCQ bank data from storage
   const fetchLiveBank = useCallback(async (isManualRefresh = false) => {
@@ -351,37 +337,12 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   }, [currentChapters, chapterSearchQuery]);
 
   // Handlers
-  const toggleExplanation = (id: string) => {
-    setExpandedExplanations((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const copyToClipboard = (text: string, id?: string) => {
-    navigator.clipboard.writeText(text);
-    if (id) {
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    }
-    toast.success('Copied to clipboard!');
-  };
-
   const currentQuestionsCount =
     bankTab === 'mcq'
       ? rawMCQs.length
       : bankTab === 'short'
       ? rawShortQuestions.length
       : rawLongQuestions.length;
-
-  const currentFilteredCount =
-    bankTab === 'mcq'
-      ? filteredMCQs.length
-      : bankTab === 'short'
-      ? filteredShortQuestions.length
-      : filteredLongQuestions.length;
 
   return (
     <div className="space-y-6">

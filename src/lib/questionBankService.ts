@@ -334,12 +334,12 @@ export async function getQuestionBankStats(): Promise<QuestionBankSummary> {
 /**
  * Retrieves Stored Short Questions for a given subject and chapter/scope
  */
-export async function getStoredShortQuestions(
+export function getStoredShortQuestions(
   subject: string,
   chapter?: string,
-  grade = '9',
-  board = 'fbise'
-): Promise<StoredShortQuestion[]> {
+  _grade = '9',
+  _board = 'fbise'
+): StoredShortQuestion[] {
   const normSub = normalizeFBISEGrade9Subject(subject) || subject;
   const subjData = shortQuestionsBank[normSub] || {};
 
@@ -366,12 +366,12 @@ export async function getStoredShortQuestions(
 /**
  * Retrieves Stored Long Questions for a given subject and chapter/scope
  */
-export async function getStoredLongQuestions(
+export function getStoredLongQuestions(
   subject: string,
   chapter?: string,
-  grade = '9',
-  board = 'fbise'
-): Promise<StoredLongQuestion[]> {
+  _grade = '9',
+  _board = 'fbise'
+): StoredLongQuestion[] {
   const normSub = normalizeFBISEGrade9Subject(subject) || subject;
   const subjData = longQuestionsBank[normSub] || {};
 
