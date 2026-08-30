@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { pullTestQuestionsFromBanks } from '../../../lib/questionBankService';
 import { generateTestPaperPDF } from '../../../lib/testPdfGenerator';
+import { renderLaTeXToText } from '../../../lib/latexRenderer';
 import { BOARDS } from '../../../lib/taxonomy';
 import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM } from '../../../lib/curriculumFBISE9';
 import type {
@@ -969,13 +970,13 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                           {pulledMCQs.map((mcq, idx) => (
                             <div key={mcq.id || idx} className="p-3 bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs">
                               <div className="font-extrabold text-[#111111]">
-                                Q1.({idx + 1}) {mcq.question}
+                                Q1.({idx + 1}) {renderLaTeXToText(mcq.question)}
                               </div>
                               <div className="grid grid-cols-2 gap-2 mt-2 text-[11px] text-[#525252]">
-                                <div>(A) {mcq.options.A}</div>
-                                <div>(B) {mcq.options.B}</div>
-                                <div>(C) {mcq.options.C}</div>
-                                <div>(D) {mcq.options.D}</div>
+                                <div>(A) {renderLaTeXToText(mcq.options.A)}</div>
+                                <div>(B) {renderLaTeXToText(mcq.options.B)}</div>
+                                <div>(C) {renderLaTeXToText(mcq.options.C)}</div>
+                                <div>(D) {renderLaTeXToText(mcq.options.D)}</div>
                               </div>
                               <div className="mt-1.5 text-[10px] text-emerald-800 font-bold">
                                 Correct: ({mcq.correctAnswer})
@@ -999,7 +1000,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                               <div key={sq.id || idx} className="p-3 bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="font-extrabold text-[#111111]">
-                                    {shortQPrefix}.({roman}) {sq.question}
+                                    {shortQPrefix}.({roman}) {renderLaTeXToText(sq.question)}
                                   </div>
                                   <span className="text-[10px] font-bold text-[#737373] shrink-0">
                                     [{sq.marks || shortMarksEach} Marks]
@@ -1007,7 +1008,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                                 </div>
                                 {sq.modelAnswer && (
                                   <div className="mt-2 text-[11px] text-[#525252] bg-white p-2 rounded-lg border border-[#F0F0F0]">
-                                    <strong>Key Answer:</strong> {sq.modelAnswer}
+                                    <strong>Key Answer:</strong> {renderLaTeXToText(sq.modelAnswer)}
                                   </div>
                                 )}
                               </div>
@@ -1028,7 +1029,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                             <div key={lq.id || idx} className="p-3 bg-[#FAFAFA] rounded-xl border border-[#E5E5E5] text-xs space-y-2">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="font-extrabold text-[#111111]">
-                                  Q{longQStart + idx}. {lq.question}
+                                  Q{longQStart + idx}. {renderLaTeXToText(lq.question)}
                                 </div>
                                 <span className="text-[10px] font-bold text-[#737373] shrink-0">
                                   [{lq.marks || longMarksEach} Marks]
@@ -1038,7 +1039,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                                 <div className="space-y-1 pl-2">
                                   {lq.parts.map((p, pIdx) => (
                                     <div key={pIdx} className="text-[11px] text-[#525252] flex justify-between">
-                                      <span>{p.label} {p.text}</span>
+                                      <span>{p.label} {renderLaTeXToText(p.text)}</span>
                                       <span className="text-[10px] text-[#737373]">({p.marks} M)</span>
                                     </div>
                                   ))}

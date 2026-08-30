@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import type { GeneratedTestSpecification } from '../types/questionBank';
+import { renderLaTeXToText } from './latexRenderer';
 
 // Cached base64 of SHS Academy logo for immediate rendering
 let cachedShsLogoBase64: string | null = null;
@@ -274,7 +275,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
     test.mcqs.forEach((mcq, idx) => {
       const qNum = `Q1. (${idx + 1})`;
-      const cleanQuestion = mcq.question.replace(/\$([^\$]+)\$/g, '$1');
+      const cleanQuestion = renderLaTeXToText(mcq.question);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
@@ -288,10 +289,10 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
       // 4 Options Layout (2 columns x 2 rows)
       const colWidth = (contentWidth - 6) / 2;
-      const optA = `(A)  ${(mcq.options.A || '').replace(/\$([^\$]+)\$/g, '$1')}`;
-      const optB = `(B)  ${(mcq.options.B || '').replace(/\$([^\$]+)\$/g, '$1')}`;
-      const optC = `(C)  ${(mcq.options.C || '').replace(/\$([^\$]+)\$/g, '$1')}`;
-      const optD = `(D)  ${(mcq.options.D || '').replace(/\$([^\$]+)\$/g, '$1')}`;
+      const optA = `(A)  ${renderLaTeXToText(mcq.options?.A || '')}`;
+      const optB = `(B)  ${renderLaTeXToText(mcq.options?.B || '')}`;
+      const optC = `(C)  ${renderLaTeXToText(mcq.options?.C || '')}`;
+      const optD = `(D)  ${renderLaTeXToText(mcq.options?.D || '')}`;
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
@@ -340,7 +341,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
     test.shortQuestions.forEach((sq, idx) => {
       const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
       const qPrefix = `${shortQPrefix}. (${roman})`;
-      const cleanQuestion = sq.question.replace(/\$([^\$]+)\$/g, '$1');
+      const cleanQuestion = renderLaTeXToText(sq.question);
       const marksLabel = `[${sq.marks || marksPerShort} Marks]`;
 
       doc.setFont('helvetica', 'bold');
@@ -392,7 +393,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
     test.longQuestions.forEach((lq, idx) => {
       const qNum = `Q${longQStartNum + idx}.`;
-      const cleanQuestion = lq.question.replace(/\$([^\$]+)\$/g, '$1');
+      const cleanQuestion = renderLaTeXToText(lq.question);
       const marksLabel = `[${lq.marks || marksPerLong} Marks]`;
 
       doc.setFont('helvetica', 'bold');
@@ -412,7 +413,7 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
       // Render parts (a), (b) if present
       if (lq.parts && lq.parts.length > 0) {
         lq.parts.forEach((part) => {
-          const cleanPart = part.text.replace(/\$([^\$]+)\$/g, '$1');
+          const cleanPart = renderLaTeXToText(part.text);
           const splitPart = doc.splitTextToSize(`${part.label}  ${cleanPart}`, contentWidth - 26);
           checkPageBreak(splitPart.length * 4 + 2);
 
@@ -429,6 +430,172 @@ export async function generateTestPaperPDF(test: GeneratedTestSpecification): Pr
 
       cursorY += 3;
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4. ANSWER KEY & MARKING SCHEME APPENDIX (TEACHER'S REFERENCE)
+  // ═══════════════════════════════════════════════════════════════════════════
+  const hasAnswers =
+    (test.mcqs && test.mcqs.some((m) => m.correctAnswer || m.explanation)) ||
+    (test.shortQuestions && test.shortQuestions.some((s) => s.modelAnswer || s.keyPoints)) ||
+    (test.longQuestions && test.longQuestions.some((l) => l.modelAnswer || l.markingScheme));
+
+  if (hasAnswers) {
+    // Start Answer Key on a fresh new page
+    renderPageDecorations(currentPage);
+    doc.addPage();
+    currentPage++;
+    cursorY = 20;
+
+    // Answer Key Header Box
+    doc.setFillColor(180, 130, 20); // Golden accent
+    doc.rect(marginX, cursorY, contentWidth, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text('OFFICIAL ANSWER KEY & MARKING SCHEME (TEACHER’S COPY)', marginX + 4, cursorY + 4.8);
+    cursorY += 11;
+
+    // MCQs Answer Key
+    if (test.mcqs && test.mcqs.length > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(17, 17, 17);
+      doc.text('SECTION A: MULTIPLE CHOICE ANSWERS', marginX, cursorY);
+      cursorY += 5;
+
+      test.mcqs.forEach((mcq, idx) => {
+        const correctOptKey = mcq.correctAnswer || 'A';
+        const correctOptText = (mcq.options as any)?.[correctOptKey] || '';
+        const renderedOptText = renderLaTeXToText(correctOptText);
+        const renderedExp = renderLaTeXToText(mcq.explanation || '');
+
+        const ansHeader = `Q1.(${idx + 1}) Correct Option: [${correctOptKey}] ${renderedOptText}`;
+        const splitAns = doc.splitTextToSize(ansHeader, contentWidth);
+        checkPageBreak(splitAns.length * 4 + 8);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(30, 41, 59);
+        doc.text(splitAns, marginX + 2, cursorY);
+        cursorY += splitAns.length * 3.8 + 0.5;
+
+        if (renderedExp) {
+          const expText = `Explanation: ${renderedExp}`;
+          const splitExp = doc.splitTextToSize(expText, contentWidth - 6);
+          checkPageBreak(splitExp.length * 3.6 + 4);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(90, 90, 90);
+          doc.text(splitExp, marginX + 4, cursorY);
+          cursorY += splitExp.length * 3.6 + 2;
+        }
+      });
+      cursorY += 4;
+    }
+
+    // Short Questions Key Points
+    if (test.shortQuestions && test.shortQuestions.some((s) => s.modelAnswer || (s.keyPoints && s.keyPoints.length > 0))) {
+      checkPageBreak(15);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(17, 17, 17);
+      doc.text('SECTION B: SHORT QUESTIONS MODEL ANSWERS & KEY CRITERIA', marginX, cursorY);
+      cursorY += 5;
+
+      test.shortQuestions.forEach((sq, idx) => {
+        const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'][idx] || `${idx + 1}`;
+        const qTitle = `(${roman}) ${renderLaTeXToText(sq.question)}`;
+        const splitQ = doc.splitTextToSize(qTitle, contentWidth - 4);
+        checkPageBreak(splitQ.length * 4 + 8);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(30, 41, 59);
+        doc.text(splitQ, marginX + 2, cursorY);
+        cursorY += splitQ.length * 3.8 + 1;
+
+        if (sq.modelAnswer) {
+          const renderedAns = renderLaTeXToText(sq.modelAnswer);
+          const splitAns = doc.splitTextToSize(`Model Answer: ${renderedAns}`, contentWidth - 6);
+          checkPageBreak(splitAns.length * 3.6 + 3);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(60, 60, 60);
+          doc.text(splitAns, marginX + 4, cursorY);
+          cursorY += splitAns.length * 3.6 + 1.5;
+        }
+
+        if (sq.keyPoints && sq.keyPoints.length > 0) {
+          sq.keyPoints.forEach((kp) => {
+            const renderedKp = renderLaTeXToText(kp);
+            const splitKp = doc.splitTextToSize(`• ${renderedKp}`, contentWidth - 8);
+            checkPageBreak(splitKp.length * 3.5 + 2);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(80, 80, 80);
+            doc.text(splitKp, marginX + 6, cursorY);
+            cursorY += splitKp.length * 3.5 + 1;
+          });
+        }
+
+        cursorY += 2;
+      });
+      cursorY += 4;
+    }
+
+    // Long Questions Marking Scheme
+    if (test.longQuestions && test.longQuestions.some((l) => l.modelAnswer || (l.markingScheme && l.markingScheme.length > 0))) {
+      checkPageBreak(15);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(17, 17, 17);
+      doc.text('SECTION C: DETAILED QUESTIONS MARKING SCHEME', marginX, cursorY);
+      cursorY += 5;
+
+      test.longQuestions.forEach((lq, idx) => {
+        const qTitle = `Q.${idx + 1} ${renderLaTeXToText(lq.question)}`;
+        const splitQ = doc.splitTextToSize(qTitle, contentWidth - 4);
+        checkPageBreak(splitQ.length * 4 + 8);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(30, 41, 59);
+        doc.text(splitQ, marginX + 2, cursorY);
+        cursorY += splitQ.length * 3.8 + 1;
+
+        if (lq.modelAnswer) {
+          const renderedAns = renderLaTeXToText(lq.modelAnswer);
+          const splitAns = doc.splitTextToSize(`Solution Outline: ${renderedAns}`, contentWidth - 6);
+          checkPageBreak(splitAns.length * 3.6 + 3);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(60, 60, 60);
+          doc.text(splitAns, marginX + 4, cursorY);
+          cursorY += splitAns.length * 3.6 + 1.5;
+        }
+
+        if (lq.markingScheme && lq.markingScheme.length > 0) {
+          lq.markingScheme.forEach((ms) => {
+            const renderedMs = renderLaTeXToText(ms);
+            const splitMs = doc.splitTextToSize(`- ${renderedMs}`, contentWidth - 8);
+            checkPageBreak(splitMs.length * 3.5 + 2);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(80, 80, 80);
+            doc.text(splitMs, marginX + 6, cursorY);
+            cursorY += splitMs.length * 3.5 + 1;
+          });
+        }
+
+        cursorY += 2;
+      });
+    }
   }
 
   // Render decorations on the final page
