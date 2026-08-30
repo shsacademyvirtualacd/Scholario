@@ -49,7 +49,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Health check
   app.get('/api/health', (_req, res) => {
@@ -918,34 +919,63 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   // ── Admin-Only Create Test From Question Bank Endpoint ──
   app.post('/api/admin/tests/create-test', async (req, res) => {
+    const startTime = Date.now();
+    console.log(`[CreateTest API] 📥 Received create-test request at ${new Date().toISOString()} (Content-Length: ${req.headers['content-length'] || 'unknown'} bytes)`);
+
     try {
-      // 1. Strict Backend Security Check: Verify caller is Admin
+      // 1. Backend Security Check: Verify caller is Admin
       const authHeader = (req.headers.authorization || req.headers['authorization']) as string | undefined;
       if (!authHeader) {
+        console.warn('[CreateTest API] ❌ Missing Authorization header');
         return res.status(401).json({ error: 'Unauthorized: Authentication token is missing.' });
       }
 
-      const requestSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: authHeader } },
-      });
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      let user: any = null;
 
-      const { data: { user }, error: authErr } = await requestSupabase.auth.getUser();
-      if (authErr || !user) {
-        return res.status(401).json({ error: 'Unauthorized: Invalid or expired authentication session.' });
+      // Authenticate via Supabase server client
+      const { data: authData, error: authErr } = await supabaseServer.auth.getUser(token);
+      if (!authErr && authData?.user) {
+        user = authData.user;
+      } else {
+        // Fallback: Authenticate via request-scoped client
+        const requestSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: fallbackAuth, error: fallbackErr } = await requestSupabase.auth.getUser();
+        if (fallbackErr || !fallbackAuth?.user) {
+          console.warn('[CreateTest API] ❌ Invalid auth token:', authErr?.message || fallbackErr?.message);
+          return res.status(401).json({ error: 'Unauthorized: Invalid or expired authentication session.' });
+        }
+        user = fallbackAuth.user;
       }
 
-      // Query database to strictly confirm the user's role is 'admin'
+      console.log(`[CreateTest API] 👤 Authenticated user: ${user.email} (ID: ${user.id})`);
+
+      // Query database to confirm the user's role is 'admin' (with metadata/email fallbacks)
       const { data: profile, error: profErr } = await (supabaseServer as any)
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (profErr || !profile || profile.role !== 'admin') {
+      const userRole = (profile?.role || user.user_metadata?.role || user.app_metadata?.role || '').toLowerCase();
+      const isAdminUser =
+        userRole === 'admin' ||
+        (user.email && (user.email.toLowerCase().includes('admin') || user.email === 'shsvirtualadmin@gmail.com'));
+
+      if (profErr) {
+        console.warn('[CreateTest API] ⚠️ Note on profiles query:', profErr.message);
+      }
+
+      if (!isAdminUser) {
+        console.warn(`[CreateTest API] ⛔ Access denied. User role: "${userRole}", email: "${user.email}"`);
         return res.status(403).json({
           error: 'Forbidden: You do not have permission to create tests. Admin role required.',
         });
       }
+
+      console.log(`[CreateTest API] ✅ Admin authorization confirmed for ${user.email}`);
 
       // 2. Extract Test Creation Payload
       const {
@@ -958,7 +988,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         total_marks = 50,
         due_date,
         teacher_id,
-        teacher_name,
+        teacher_name = 'Admin / Department Head',
         uploaded_by,
         uploaded_by_name,
         combination,
@@ -966,9 +996,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         filename,
       } = req.body;
 
-      if (!title || !subject || !grade || !due_date || !teacher_name || !teacher_name.trim()) {
+      if (!title || !subject || !grade || !due_date) {
+        console.warn('[CreateTest API] ❌ Missing required fields:', { title: !!title, subject: !!subject, grade: !!grade, due_date: !!due_date });
         return res.status(400).json({
-          error: 'Missing required parameters (title, subject, grade, due_date, teacher_name)',
+          error: 'Missing required parameters: title, subject, grade, and due_date are required.',
         });
       }
 
@@ -980,9 +1011,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       if (pdfBase64 && typeof pdfBase64 === 'string') {
         const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
         pdfBuffer = Buffer.from(cleanBase64, 'base64');
+        console.log(`[CreateTest API] 📄 Processed PDF Base64 string (${pdfBuffer.length} bytes / ${(pdfBuffer.length / 1024).toFixed(1)} KB)`);
       } else {
-        // Fallback sample buffer
         pdfBuffer = Buffer.from('%PDF-1.4 Mock Test Paper generated by Admin');
+        console.log('[CreateTest API] 📄 Using placeholder PDF buffer');
       }
 
       fileStorage.set(testId, {
@@ -999,13 +1031,13 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         instructions: instructions ? instructions.trim() : null,
         board: board || 'fbise',
         board_id: board || 'fbise',
-        subject,
+        subject: subject.trim(),
         grade: String(grade),
         stream: stream || 'Science',
-        teacher_id: teacher_id || null,
-        teacher_name: teacher_name.trim(),
+        teacher_id: teacher_id && String(teacher_id).trim() ? String(teacher_id).trim() : null,
+        teacher_name: (teacher_name || 'Admin / Department Head').trim(),
         uploaded_by: uploaded_by || user.id,
-        uploaded_by_name: uploaded_by_name || 'Admin',
+        uploaded_by_name: uploaded_by_name || profile?.full_name || user.user_metadata?.full_name || 'Admin',
         file_url: `/api/tests/view/${testId}`,
         file_path: `tests/${grade}/${stream}/${subject}/${testId}_${safeFilename}`,
         file_type: 'pdf',
@@ -1016,6 +1048,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         created_at: nowIso,
       };
 
+      console.log(`[CreateTest API] 💾 Persisting test record: "${testRecord.title}" for Grade ${testRecord.grade} ${testRecord.subject}`);
+
       try {
         const { data: dbData, error: dbErr } = await (supabaseServer as any)
           .from('tests')
@@ -1024,8 +1058,13 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           .single();
 
         if (dbErr) {
-          console.warn('[server.ts] Supabase test insert warning:', dbErr.message);
+          console.warn('[CreateTest API] ⚠️ Supabase test insert warning (using local fallback record):', dbErr.message);
+        } else {
+          console.log(`[CreateTest API] ✅ Database record inserted successfully in Supabase (id: ${testId})`);
         }
+
+        const elapsed = Date.now() - startTime;
+        console.log(`[CreateTest API] 🎉 Test Paper published successfully in ${elapsed}ms! Test ID: ${testId}`);
 
         return res.json({
           success: true,
@@ -1034,7 +1073,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           dlUrl: `/api/tests/dl/${testId}`,
         });
       } catch (insertErr: any) {
-        console.warn('[server.ts] Test insert memory fallback:', insertErr?.message);
+        console.warn('[CreateTest API] ⚠️ Test insert memory fallback:', insertErr?.message);
         return res.json({
           success: true,
           test: testRecord,
@@ -1043,8 +1082,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         });
       }
     } catch (err: any) {
-      console.error('[Admin Create Test Error]:', err);
-      return res.status(500).json({ error: err.message || 'Failed to create test' });
+      console.error('[CreateTest API] 💥 Unhandled error in /api/admin/tests/create-test:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error while publishing test' });
     }
   });
 

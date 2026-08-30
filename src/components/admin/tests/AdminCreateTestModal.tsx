@@ -439,17 +439,37 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
       });
 
       if (!response.ok) {
-        const errJson: any = await response.json().catch(() => ({ error: 'Failed to publish test' }));
-        throw new Error(errJson?.error || `Server responded with ${response.status}`);
+        let errMessage = `Server responded with HTTP ${response.status} ${response.statusText || ''}`.trim();
+        try {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const errJson: any = await response.json();
+            if (errJson?.error) {
+              errMessage = errJson.error;
+            } else if (errJson?.message) {
+              errMessage = errJson.message;
+            }
+          } else {
+            const errText = await response.text();
+            if (errText && errText.trim().length > 0 && errText.length < 300) {
+              errMessage = errText.trim();
+            }
+          }
+        } catch {
+          // Keep default status message
+        }
+        throw new Error(errMessage);
       }
 
-      await response.json();
+      const result = await response.json();
+      console.log('[Create Test] Test published successfully:', result);
       toast.success('Test Paper successfully created, branded, and published to Class Tests!');
       onTestCreated();
       onClose();
     } catch (err: any) {
       console.error('[Create Test Error]:', err);
-      toast.error('Test Creation Error: ' + (err.message || 'Could not publish test'));
+      const detailedMessage = err?.message || 'Could not publish test';
+      toast.error(`Test Creation Error: ${detailedMessage}`);
     } finally {
       setIsSubmitting(false);
     }
