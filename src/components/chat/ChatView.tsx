@@ -36,9 +36,8 @@ interface ChatViewProps {
 
 export const ChatView: React.FC<ChatViewProps> = ({
   role,
-  availableContacts = [],
-  onStartNewChatTitle = 'Start Conversation',
-  allowNewChatWithAllStudents = false,
+  availableContacts: initialAvailableContacts = [],
+  onStartNewChatTitle = 'Start Direct Conversation',
 }) => {
   const { profile } = useAuth();
   const currentUserId = profile?.id;
@@ -54,9 +53,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
+  const [contactRoleFilter, setContactRoleFilter] = useState<'all' | 'teacher' | 'student' | 'admin'>('all');
   const [startingChatWithId, setStartingChatWithId] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [mobileViewActiveThread, setMobileViewActiveThread] = useState(false);
+  const [fetchedContacts, setFetchedContacts] = useState<Profile[]>([]);
+  const [loadingModalContacts, setLoadingModalContacts] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -64,6 +66,46 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
+
+  // Autonomous loading of contacts if not provided by parent
+  useEffect(() => {
+    if (initialAvailableContacts && initialAvailableContacts.length > 0) {
+      setFetchedContacts(initialAvailableContacts);
+      return;
+    }
+
+    if (!currentUserId) return;
+    setLoadingModalContacts(true);
+
+    if (role === 'admin') {
+      import('../../lib/chatService').then(({ getAdminChatContacts }) => {
+        getAdminChatContacts().then(({ students, teachers }) => {
+          setFetchedContacts([...teachers, ...students]);
+        }).catch(err => console.warn('[ChatView] Failed to fetch admin contacts:', err))
+          .finally(() => setLoadingModalContacts(false));
+      });
+    } else if (role === 'teacher') {
+      import('../../lib/chatService').then(({ getTeacherChatContacts }) => {
+        getTeacherChatContacts(currentUserId).then(({ students, admins }) => {
+          setFetchedContacts([...admins, ...students]);
+        }).catch(err => console.warn('[ChatView] Failed to fetch teacher contacts:', err))
+          .finally(() => setLoadingModalContacts(false));
+      });
+    } else if (role === 'student') {
+      getStudentChatContacts(currentUserId).then(({ teachers, admin }) => {
+        setFetchedContacts([...teachers, admin]);
+      }).catch(err => console.warn('[ChatView] Failed to fetch student contacts:', err))
+        .finally(() => setLoadingModalContacts(false));
+    }
+  }, [currentUserId, role, initialAvailableContacts]);
+
+  // Combined contacts list
+  const activeContactsList = useMemo(() => {
+    if (initialAvailableContacts && initialAvailableContacts.length > 0) {
+      return initialAvailableContacts;
+    }
+    return fetchedContacts;
+  }, [initialAvailableContacts, fetchedContacts]);
 
   // 1. Initial Load of Threads & Pre-seeding for Students
   const loadThreads = async (preserveActiveId?: string) => {
@@ -386,15 +428,38 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   // Filter new chat contacts modal
   const filteredModalContacts = useMemo(() => {
-    if (!newChatSearch.trim()) return availableContacts;
+    let list = activeContactsList.filter(c => c.id !== currentUserId);
+
+    if (contactRoleFilter !== 'all') {
+      if (contactRoleFilter === 'admin') {
+        list = list.filter(c => c.role === 'admin');
+      } else if (contactRoleFilter === 'teacher') {
+        list = list.filter(c => c.role === 'teacher');
+      } else if (contactRoleFilter === 'student') {
+        list = list.filter(c => c.role === 'student');
+      }
+    }
+
+    if (!newChatSearch.trim()) return list;
     const q = newChatSearch.toLowerCase();
-    return availableContacts.filter(c => {
+    return list.filter(c => {
       const name = c.full_name?.toLowerCase() || '';
       const stream = (c.stream || c.stream_obj?.name || '')?.toLowerCase();
       const grade = (c.class?.display_name || c.class?.grade || '')?.toLowerCase();
-      return name.includes(q) || stream.includes(q) || grade.includes(q);
+      const roleStr = c.role?.toLowerCase() || '';
+      return name.includes(q) || stream.includes(q) || grade.includes(q) || roleStr.includes(q);
     });
-  }, [availableContacts, newChatSearch]);
+  }, [activeContactsList, currentUserId, contactRoleFilter, newChatSearch]);
+
+  const contactCounts = useMemo(() => {
+    const list = activeContactsList.filter(c => c.id !== currentUserId);
+    return {
+      all: list.length,
+      teacher: list.filter(c => c.role === 'teacher').length,
+      student: list.filter(c => c.role === 'student').length,
+      admin: list.filter(c => c.role === 'admin').length,
+    };
+  }, [activeContactsList, currentUserId]);
 
   const activeThread = useMemo(() => {
     return threads.find(t => t.id === activeThreadId);
@@ -473,15 +538,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </div>
               </div>
 
-              {(allowNewChatWithAllStudents || (availableContacts && availableContacts.length > 0)) && (
-                <button
-                  onClick={() => setShowNewChatModal(true)}
-                  className="p-2 rounded-xl bg-[#111111] text-white hover:bg-[#262626] transition-colors shadow-2xs interactive"
-                  title={onStartNewChatTitle}
-                >
-                  <UserPlus size={16} />
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  setShowNewChatModal(true);
+                  setNewChatSearch('');
+                  setContactRoleFilter('all');
+                  setModalError(null);
+                }}
+                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#111111] text-white hover:bg-[#262626] transition-colors shadow-2xs interactive flex items-center gap-1.5"
+                title={onStartNewChatTitle}
+              >
+                <UserPlus size={16} />
+                <span className="hidden sm:inline text-xs font-bold">New Chat</span>
+              </button>
             </div>
 
             {/* Search Input */}
@@ -510,17 +579,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <p className="text-xs font-semibold text-[#111111]">No conversations yet</p>
                 <p className="text-[11px] text-[#A3A3A3] max-w-[200px]">
                   {role === 'student'
-                    ? 'Your assigned teachers and admin support will appear here.'
-                    : 'Messages from students will appear here.'}
+                    ? 'Start a direct chat with your teachers or administration.'
+                    : role === 'teacher'
+                    ? 'Start a direct chat with students or administration.'
+                    : 'Start a direct chat with any student or teacher.'}
                 </p>
-                {allowNewChatWithAllStudents && (
-                  <button
-                    onClick={() => setShowNewChatModal(true)}
-                    className="mt-2 text-xs font-bold text-[#111111] bg-[#F4C430] hover:bg-[#e6b82a] px-3.5 py-1.5 rounded-xl transition-all shadow-2xs"
-                  >
-                    Start a conversation
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setShowNewChatModal(true);
+                    setNewChatSearch('');
+                    setContactRoleFilter('all');
+                    setModalError(null);
+                  }}
+                  className="mt-2 text-xs font-bold text-[#111111] bg-[#F4C430] hover:bg-[#e6b82a] px-3.5 py-1.5 rounded-xl transition-all shadow-2xs"
+                >
+                  Start a conversation
+                </button>
               </div>
             ) : (
               filteredThreads.map((thread) => {
@@ -803,7 +877,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
-      {/* ── New Chat Modal (for Teacher or Admin to start conversation with student) ── */}
+      {/* ── New Chat Modal (Multi-role contact picker) ── */}
       {showNewChatModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-[#E5E5E5] space-y-4 animate-in fade-in zoom-in-95 duration-150">
@@ -814,7 +888,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[#111111]">{onStartNewChatTitle}</h3>
-                  <p className="text-xs text-[#737373]">Select a student to open a 1-on-1 direct thread</p>
+                  <p className="text-xs text-[#737373]">
+                    {role === 'student'
+                      ? 'Choose a teacher or admin to open a 1-on-1 direct thread'
+                      : role === 'teacher'
+                      ? 'Choose a student or administrator to start a 1-on-1 thread'
+                      : 'Choose a teacher or student to open a 1-on-1 thread'}
+                  </p>
                 </div>
               </div>
               <button
@@ -822,7 +902,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   setShowNewChatModal(false);
                   setModalError(null);
                 }}
-                className="text-[#737373] hover:text-[#111111] text-sm font-bold p-1 rounded-lg hover:bg-[#F5F5F5]"
+                className="text-[#737373] hover:text-[#111111] text-sm font-bold p-1.5 rounded-lg hover:bg-[#F5F5F5] transition-colors"
               >
                 ✕
               </button>
@@ -838,26 +918,136 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
             )}
 
+            {/* Category Filter Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-[#F5F5F5] rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setContactRoleFilter('all')}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                  contactRoleFilter === 'all'
+                    ? 'bg-white text-[#111111] shadow-2xs'
+                    : 'text-[#737373] hover:text-[#111111]'
+                }`}
+              >
+                All ({contactCounts.all})
+              </button>
+
+              {role === 'admin' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setContactRoleFilter('teacher')}
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                      contactRoleFilter === 'teacher'
+                        ? 'bg-white text-[#111111] shadow-2xs'
+                        : 'text-[#737373] hover:text-[#111111]'
+                    }`}
+                  >
+                    Teachers ({contactCounts.teacher})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContactRoleFilter('student')}
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                      contactRoleFilter === 'student'
+                        ? 'bg-white text-[#111111] shadow-2xs'
+                        : 'text-[#737373] hover:text-[#111111]'
+                    }`}
+                  >
+                    Students ({contactCounts.student})
+                  </button>
+                </>
+              )}
+
+              {role === 'teacher' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setContactRoleFilter('student')}
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                      contactRoleFilter === 'student'
+                        ? 'bg-white text-[#111111] shadow-2xs'
+                        : 'text-[#737373] hover:text-[#111111]'
+                    }`}
+                  >
+                    Students ({contactCounts.student})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContactRoleFilter('admin')}
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                      contactRoleFilter === 'admin'
+                        ? 'bg-white text-[#111111] shadow-2xs'
+                        : 'text-[#737373] hover:text-[#111111]'
+                    }`}
+                  >
+                    Admin ({contactCounts.admin})
+                  </button>
+                </>
+              )}
+
+              {role === 'student' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setContactRoleFilter('teacher')}
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                      contactRoleFilter === 'teacher'
+                        ? 'bg-white text-[#111111] shadow-2xs'
+                        : 'text-[#737373] hover:text-[#111111]'
+                    }`}
+                  >
+                    Teachers ({contactCounts.teacher})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContactRoleFilter('admin')}
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                      contactRoleFilter === 'admin'
+                        ? 'bg-white text-[#111111] shadow-2xs'
+                        : 'text-[#737373] hover:text-[#111111]'
+                    }`}
+                  >
+                    Admin ({contactCounts.admin})
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Search Box */}
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
               <input
                 type="text"
                 value={newChatSearch}
                 onChange={(e) => setNewChatSearch(e.target.value)}
-                placeholder="Search by student name or grade..."
+                placeholder="Search by name, subject, or grade..."
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[#F5F5F5] border border-transparent focus:border-[#111111] focus:bg-white transition-all outline-hidden text-[#111111]"
               />
             </div>
 
+            {/* Contacts List */}
             <div className="max-h-64 overflow-y-auto divide-y divide-[#F0F0F0] -mx-2 px-2">
-              {filteredModalContacts.length === 0 ? (
+              {loadingModalContacts ? (
+                <div className="p-6 flex flex-col items-center justify-center gap-2 text-center text-xs text-[#737373]">
+                  <Loader2 size={20} className="animate-spin text-[#F4C430]" />
+                  <span>Loading contacts...</span>
+                </div>
+              ) : filteredModalContacts.length === 0 ? (
                 <div className="p-6 text-center text-xs text-[#737373]">
-                  No matching students found.
+                  No matching contacts found.
                 </div>
               ) : (
                 filteredModalContacts.map((contact) => {
                   const isStarting = startingChatWithId === contact.id;
                   const isAnyStarting = Boolean(startingChatWithId);
+
+                  const contactSubtitle =
+                    contact.role === 'admin'
+                      ? 'Administration Support'
+                      : contact.role === 'teacher'
+                      ? 'Course Instructor'
+                      : (contact.class?.display_name || contact.stream || 'Student');
 
                   return (
                     <button
@@ -874,9 +1064,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           size="sm"
                         />
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-[#111111] truncate">{contact.full_name}</p>
-                          <p className="text-[10px] text-[#737373] truncate">
-                            {contact.class?.display_name || contact.stream || 'Student'}
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-[#111111] truncate">{contact.full_name}</p>
+                            {contact.role === 'admin' && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-[#111111] text-[#F4C430]">
+                                Admin
+                              </span>
+                            )}
+                            {contact.role === 'teacher' && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-[#FDF3C8] text-[#92700A]">
+                                Teacher
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-[#737373] truncate mt-0.5">
+                            {contactSubtitle}
                           </p>
                         </div>
                       </div>

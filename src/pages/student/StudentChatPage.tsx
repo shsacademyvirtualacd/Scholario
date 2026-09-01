@@ -1,8 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import StudentShell from '../../components/student/StudentShell';
 import { ChatView } from '../../components/chat/ChatView';
+import { useAuth } from '../../features/auth/AuthContext';
+import { getStudentChatContacts } from '../../lib/chatService';
+import type { Profile } from '../../types';
 
 export const StudentChatPage: React.FC = () => {
+  const { profile } = useAuth();
+  const [contacts, setContacts] = useState<Profile[]>([]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      getStudentChatContacts(profile.id)
+        .then(({ teachers, admin }) => {
+          setContacts([...teachers, admin]);
+        })
+        .catch((err) => console.error('[StudentChatPage] Failed to fetch contacts:', err));
+    }
+  }, [profile?.id]);
+
   return (
     <StudentShell>
       <div className="space-y-4 max-w-7xl mx-auto">
@@ -16,14 +32,18 @@ export const StudentChatPage: React.FC = () => {
               Academic Chat & Support
             </h1>
             <p className="text-xs md:text-sm text-[#A3A3A3] font-medium leading-relaxed">
-              Connect directly with your course instructors and administration in dedicated, permanent 1-on-1 threads.
+              Connect directly with your course instructors and administration in dedicated, permanent 1-on-1 threads. Start a new chat with any teacher directly at any time.
             </p>
           </div>
           <div className="absolute -right-8 -bottom-8 w-44 h-44 bg-[#F4C430]/10 rounded-full blur-2xl pointer-events-none" />
         </div>
 
         {/* Chat System Container */}
-        <ChatView role="student" />
+        <ChatView
+          role="student"
+          availableContacts={contacts}
+          onStartNewChatTitle="Message a Teacher or Admin Support"
+        />
       </div>
     </StudentShell>
   );

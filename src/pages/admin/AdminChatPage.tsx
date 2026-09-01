@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import AdminShell from '../../components/admin/AdminShell';
 import { ChatView } from '../../components/chat/ChatView';
-import { getAllStudents } from '../../lib/db';
+import { getAdminChatContacts } from '../../lib/chatService';
 import type { Profile } from '../../types';
 
 export const AdminChatPage: React.FC = () => {
-  const [allStudents, setAllStudents] = useState<Profile[]>([]);
+  const [contacts, setContacts] = useState<Profile[]>([]);
 
   useEffect(() => {
-    getAllStudents()
-      .then((students) => setAllStudents(students))
-      .catch((err) => console.error('[AdminChatPage] Failed to fetch students:', err));
+    getAdminChatContacts()
+      .then(({ students, teachers }) => {
+        // List teachers first, then students
+        setContacts([...teachers, ...students]);
+      })
+      .catch((err) => console.error('[AdminChatPage] Failed to fetch contacts:', err));
   }, []);
 
   return (
@@ -23,10 +26,10 @@ export const AdminChatPage: React.FC = () => {
               Direct Messages 💬
             </span>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-              Student Direct Communications
+              School Communications & Direct Messaging
             </h1>
             <p className="text-xs md:text-sm text-[#A3A3A3] font-medium leading-relaxed">
-              Official 1-on-1 support and advisory threads with students. Initiate a new thread with any enrolled student or respond to active student inquiries.
+              Official 1-on-1 direct messaging with teachers, staff, and students. Initiate a new thread with any teacher or enrolled student anytime.
             </p>
           </div>
           <div className="absolute -right-8 -bottom-8 w-44 h-44 bg-[#F4C430]/10 rounded-full blur-2xl pointer-events-none" />
@@ -35,9 +38,9 @@ export const AdminChatPage: React.FC = () => {
         {/* Chat System Container */}
         <ChatView
           role="admin"
-          availableContacts={allStudents}
+          availableContacts={contacts}
           allowNewChatWithAllStudents={true}
-          onStartNewChatTitle="Start Direct Chat with Student"
+          onStartNewChatTitle="Start Direct Chat (Teacher or Student)"
         />
       </div>
     </AdminShell>

@@ -368,7 +368,7 @@ export async function getTotalUnreadChatCount(userId: string): Promise<number> {
 }
 
 /**
- * For Student: Get all teachers the student has classes with + Admin profile.
+ * For Student: Get all teachers (assigned offerings + fallback all teachers) + Admin profile.
  * Prepares / ensures thread objects for each so student sees distinct teacher threads + 1 admin thread.
  */
 export async function getStudentChatContacts(studentId: string): Promise<{
@@ -376,7 +376,7 @@ export async function getStudentChatContacts(studentId: string): Promise<{
   admin: Profile;
 }> {
   // 1. Fetch student's offerings
-  const offerings = await getOfferingsForStudent(studentId);
+  const offerings = await getOfferingsForStudent(studentId).catch(() => []);
   const teacherIds = new Set<string>();
 
   offerings.forEach(off => {
@@ -387,22 +387,42 @@ export async function getStudentChatContacts(studentId: string): Promise<{
 
   // Fetch teacher profiles
   let teachers: Profile[] = [];
-  if (teacherIds.size > 0) {
-    const { data: teacherProfiles } = await (supabase as any)
-      .from('profiles')
-      .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
-      .in('id', Array.from(teacherIds));
-    teachers = teacherProfiles || [];
+  try {
+    if (teacherIds.size > 0) {
+      const { data: teacherProfiles } = await (supabase as any)
+        .from('profiles')
+        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+        .in('id', Array.from(teacherIds))
+        .order('full_name');
+      teachers = teacherProfiles || [];
+    }
+
+    // Fallback: If no assigned teachers found via offerings, get all teacher profiles
+    if (teachers.length === 0) {
+      const { data: allTeachers } = await (supabase as any)
+        .from('profiles')
+        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+        .eq('role', 'teacher')
+        .order('full_name');
+      teachers = allTeachers || [];
+    }
+  } catch (err) {
+    console.warn('[chatService] Error loading teachers for student:', err);
   }
 
   // 2. Fetch admin profile (primary admin)
-  const { data: adminProfiles } = await (supabase as any)
-    .from('profiles')
-    .select('*')
-    .eq('role', 'admin')
-    .limit(1);
+  let admin: Profile | null = null;
+  try {
+    const { data: adminProfiles } = await (supabase as any)
+      .from('profiles')
+      .select('*')
+      .eq('role', 'admin')
+      .limit(1);
+    admin = adminProfiles?.[0] || null;
+  } catch (err) {
+    console.warn('[chatService] Error loading admin for student:', err);
+  }
 
-  let admin: Profile = adminProfiles?.[0];
   if (!admin) {
     admin = {
       id: '00000000-0000-0000-0000-000000000001',
@@ -415,6 +435,86 @@ export async function getStudentChatContacts(studentId: string): Promise<{
   }
 
   return { teachers, admin };
+}
+
+/**
+ * For Teacher: Get all students (enrolled + all students) and Admins so teacher can text both
+ */
+export async function getTeacherChatContacts(teacherId: string): Promise<{
+  students: Profile[];
+  admins: Profile[];
+}> {
+  let students = await getStudentsForTeacherClasses(teacherId);
+
+  // Fallback to all students if teacher has no enrolled students listed yet
+  if (students.length === 0) {
+    try {
+      const { data: allStudents } = await (supabase as any)
+        .from('profiles')
+        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+        .eq('role', 'student')
+        .order('full_name');
+      students = allStudents || [];
+    } catch (err) {
+      console.warn('[chatService] Error fetching all students fallback:', err);
+    }
+  }
+
+  let admins: Profile[] = [];
+  try {
+    const { data: adminProfiles } = await (supabase as any)
+      .from('profiles')
+      .select('*')
+      .eq('role', 'admin')
+      .order('full_name');
+    admins = adminProfiles || [];
+  } catch (err) {
+    console.warn('[chatService] Error loading admins for teacher:', err);
+  }
+
+  if (admins.length === 0) {
+    admins = [{
+      id: '00000000-0000-0000-0000-000000000001',
+      full_name: 'Scholario Administration',
+      role: 'admin',
+      avatar_url: null,
+      phone: null,
+      created_at: new Date().toISOString(),
+    }];
+  }
+
+  return { students, admins };
+}
+
+/**
+ * For Admin: Get all Students and all Teachers
+ */
+export async function getAdminChatContacts(): Promise<{
+  students: Profile[];
+  teachers: Profile[];
+}> {
+  try {
+    const [studentsRes, teachersRes] = await Promise.all([
+      (supabase as any)
+        .from('profiles')
+        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+        .eq('role', 'student')
+        .order('full_name'),
+      (supabase as any)
+        .from('profiles')
+        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+        .eq('role', 'teacher')
+        .order('full_name'),
+    ]);
+
+    return {
+      students: studentsRes.data || [],
+      teachers: teachersRes.data || [],
+    };
+  } catch (err) {
+    console.error('[chatService] Error in getAdminChatContacts:', err);
+    return { students: [], teachers: [] };
+  }
 }
 
 /**

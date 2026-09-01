@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import { ChatView } from '../../components/chat/ChatView';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getStudentsForTeacherClasses } from '../../lib/chatService';
+import { getTeacherChatContacts } from '../../lib/chatService';
 import type { Profile } from '../../types';
 
 export const TeacherChatPage: React.FC = () => {
   const { profile } = useAuth();
-  const [enrolledStudents, setEnrolledStudents] = useState<Profile[]>([]);
+  const [contacts, setContacts] = useState<Profile[]>([]);
 
   useEffect(() => {
     if (profile?.id) {
-      getStudentsForTeacherClasses(profile.id)
-        .then((students) => setEnrolledStudents(students))
-        .catch((err) => console.error('[TeacherChatPage] Failed to fetch students:', err));
+      getTeacherChatContacts(profile.id)
+        .then(({ students, admins }) => {
+          // List Admins first, then students
+          setContacts([...admins, ...students]);
+        })
+        .catch((err) => console.error('[TeacherChatPage] Failed to fetch teacher contacts:', err));
     }
   }, [profile?.id]);
 
@@ -27,10 +30,10 @@ export const TeacherChatPage: React.FC = () => {
               Direct Messages 💬
             </span>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-              Student Direct Threads
+              Student & Admin Direct Threads
             </h1>
             <p className="text-xs md:text-sm text-[#A3A3A3] font-medium leading-relaxed">
-              Communicate one-on-one with your enrolled students. All conversation records are permanent and private between you and each individual student.
+              Communicate one-on-one with your students and school administration. All conversation records are permanent and private in dedicated direct threads.
             </p>
           </div>
           <div className="absolute -right-8 -bottom-8 w-44 h-44 bg-[#F4C430]/10 rounded-full blur-2xl pointer-events-none" />
@@ -39,8 +42,8 @@ export const TeacherChatPage: React.FC = () => {
         {/* Chat System Container */}
         <ChatView
           role="teacher"
-          availableContacts={enrolledStudents}
-          onStartNewChatTitle="Message an Enrolled Student"
+          availableContacts={contacts}
+          onStartNewChatTitle="Message a Student or Admin"
         />
       </div>
     </TeacherShell>
