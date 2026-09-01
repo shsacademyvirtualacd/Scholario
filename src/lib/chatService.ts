@@ -7,56 +7,98 @@ import { getOfferingsForStudent } from './db';
  * Reuses existing thread regardless of who was participant_one or participant_two.
  */
 export async function getOrCreateChatThread(
-  participantA: { id: string; role: Role },
-  participantB: { id: string; role: Role }
+  participantA: { id: string; role?: Role | string },
+  participantB: { id: string; role?: Role | string }
 ): Promise<ChatThread> {
+  if (!participantA?.id || !participantB?.id) {
+    throw new Error('Invalid participant IDs provided to getOrCreateChatThread');
+  }
+
   if (participantA.id === participantB.id) {
     throw new Error('Cannot create chat thread with oneself');
   }
 
+  const roleA: Role = (participantA.role === 'admin' || participantA.role === 'teacher' || participantA.role === 'student')
+    ? participantA.role
+    : 'student';
+  const roleB: Role = (participantB.role === 'admin' || participantB.role === 'teacher' || participantB.role === 'student')
+    ? participantB.role
+    : 'student';
+
+  // Helper to find existing thread across both ordering combinations
+  const findExisting = async (): Promise<ChatThread | null> => {
+    try {
+      const { data: matched, error: matchErr } = await (supabase as any)
+        .from('chat_threads')
+        .select('*')
+        .or(
+          `and(participant_one_id.eq.${participantA.id},participant_two_id.eq.${participantB.id}),` +
+          `and(participant_one_id.eq.${participantB.id},participant_two_id.eq.${participantA.id})`
+        )
+        .limit(1);
+
+      if (!matchErr && matched && matched.length > 0) {
+        return matched[0] as ChatThread;
+      }
+    } catch (e) {
+      console.warn('[chatService] .or query warning:', e);
+    }
+
+    // Direct fallback queries in case .or filter is unsupported in particular proxy
+    try {
+      const { data: d1 } = await (supabase as any)
+        .from('chat_threads')
+        .select('*')
+        .eq('participant_one_id', participantA.id)
+        .eq('participant_two_id', participantB.id)
+        .limit(1);
+      if (d1 && d1.length > 0) return d1[0] as ChatThread;
+
+      const { data: d2 } = await (supabase as any)
+        .from('chat_threads')
+        .select('*')
+        .eq('participant_one_id', participantB.id)
+        .eq('participant_two_id', participantA.id)
+        .limit(1);
+      if (d2 && d2.length > 0) return d2[0] as ChatThread;
+    } catch (e) {
+      console.warn('[chatService] Direct fallback query warning:', e);
+    }
+
+    return null;
+  };
+
   // 1. Check if thread already exists
-  const { data: existing, error: findError } = await (supabase as any)
-    .from('chat_threads')
-    .select('*')
-    .or(
-      `and(participant_one_id.eq.${participantA.id},participant_two_id.eq.${participantB.id}),` +
-      `and(participant_one_id.eq.${participantB.id},participant_two_id.eq.${participantA.id})`
-    )
-    .maybeSingle();
-
-  if (findError) {
-    console.error('[chatService] Error finding thread:', findError);
-  }
-
+  const existing = await findExisting();
   if (existing) {
-    return existing as ChatThread;
+    return existing;
   }
 
-  // 2. Insert new thread if not found
+  // 2. Insert new thread
+  const insertPayload = {
+    participant_one_id: participantA.id,
+    participant_one_role: roleA,
+    participant_two_id: participantB.id,
+    participant_two_role: roleB,
+  };
+
+  console.log('[chatService] Inserting new chat_thread:', insertPayload);
+
   const { data: created, error: insertError } = await (supabase as any)
     .from('chat_threads')
-    .insert({
-      participant_one_id: participantA.id,
-      participant_one_role: participantA.role,
-      participant_two_id: participantB.id,
-      participant_two_role: participantB.role,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
   if (insertError) {
-    // If unique constraint collided due to race condition, re-fetch
-    const { data: retry } = await (supabase as any)
-      .from('chat_threads')
-      .select('*')
-      .or(
-        `and(participant_one_id.eq.${participantA.id},participant_two_id.eq.${participantB.id}),` +
-        `and(participant_one_id.eq.${participantB.id},participant_two_id.eq.${participantA.id})`
-      )
-      .maybeSingle();
+    console.warn('[chatService] Insert chat_thread error:', insertError);
 
-    if (retry) return retry as ChatThread;
-    throw new Error(`[chatService] Failed to create thread: ${insertError.message}`);
+    // If duplicate or conflict occurs, check if the thread now exists
+    const retry = await findExisting();
+    if (retry) return retry;
+
+    const errMsg = insertError.message || insertError.details || insertError.hint || 'Database RLS or constraint error';
+    throw new Error(`Failed to create conversation: ${errMsg}`);
   }
 
   return created as ChatThread;

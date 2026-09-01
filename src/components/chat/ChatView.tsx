@@ -11,7 +11,8 @@ import {
   Shield,
   GraduationCap,
   Users,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -52,6 +53,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
+  const [startingChatWithId, setStartingChatWithId] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [mobileViewActiveThread, setMobileViewActiveThread] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -96,12 +99,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
       const userThreads = await getChatThreadsForUser(currentUserId);
       setThreads(userThreads);
 
-      if (userThreads.length > 0) {
-        if (preserveActiveId && userThreads.some(t => t.id === preserveActiveId)) {
-          setActiveThreadId(preserveActiveId);
-        } else if (!activeThreadId) {
-          setActiveThreadId(userThreads[0].id);
-        }
+      if (preserveActiveId) {
+        setActiveThreadId(preserveActiveId);
+      } else if (userThreads.length > 0 && !activeThreadId) {
+        setActiveThreadId(userThreads[0].id);
       }
     } catch (err) {
       console.error('[Chat] Failed to load threads:', err);
@@ -278,21 +279,47 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   // Start new chat with a contact from modal
   const handleSelectContactToChat = async (contact: Profile) => {
-    if (!currentUserId) return;
+    if (!currentUserId) {
+      setModalError('Your user session is not ready. Please refresh or sign in again.');
+      return;
+    }
+
+    setModalError(null);
+    setStartingChatWithId(contact.id);
+
     try {
-      setShowNewChatModal(false);
-      setLoadingMessages(true);
+      const contactRole: Role = (contact.role === 'admin' || contact.role === 'teacher' || contact.role === 'student')
+        ? contact.role
+        : 'student';
+
       const thread = await getOrCreateChatThread(
         { id: currentUserId, role },
-        { id: contact.id, role: contact.role as Role }
+        { id: contact.id, role: contactRole }
       );
 
+      // Optimistically add to thread list if not present
+      setThreads(prev => {
+        if (prev.some(t => t.id === thread.id)) return prev;
+        const optimisticThread: ChatThreadWithDetails = {
+          ...thread,
+          other_participant: contact,
+          latest_message: null,
+          unread_count: 0,
+        };
+        return [optimisticThread, ...prev];
+      });
+
+      // Synchronize full list and set active
       await loadThreads(thread.id);
       setActiveThreadId(thread.id);
       setMobileViewActiveThread(true);
-    } catch (err) {
-      console.error('[Chat] Error starting chat:', err);
+      setShowNewChatModal(false);
+    } catch (err: any) {
+      console.error('[Chat] Error starting chat with student:', err);
+      const message = err?.message || 'Database error occurred while starting conversation.';
+      setModalError(message);
     } finally {
+      setStartingChatWithId(null);
       setLoadingMessages(false);
     }
   };
@@ -727,12 +754,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => setShowNewChatModal(false)}
+                onClick={() => {
+                  setShowNewChatModal(false);
+                  setModalError(null);
+                }}
                 className="text-[#737373] hover:text-[#111111] text-sm font-bold p-1 rounded-lg hover:bg-[#F5F5F5]"
               >
                 ✕
               </button>
             </div>
+
+            {modalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-start gap-2.5 animate-in fade-in duration-200">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-rose-900">Unable to start conversation</p>
+                  <p className="text-[11px] text-rose-700 mt-0.5 break-words">{modalError}</p>
+                </div>
+              </div>
+            )}
 
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
@@ -751,38 +791,55 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   No matching students found.
                 </div>
               ) : (
-                filteredModalContacts.map((contact) => (
-                  <button
-                    key={contact.id}
-                    onClick={() => handleSelectContactToChat(contact)}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-[#F5F5F5] flex items-center justify-between gap-3 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <ProfileAvatar
-                        avatarUrl={contact.avatar_url}
-                        name={contact.full_name}
-                        role={contact.role}
-                        size="sm"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-[#111111] truncate">{contact.full_name}</p>
-                        <p className="text-[10px] text-[#737373] truncate">
-                          {contact.class?.display_name || contact.stream || 'Student'}
-                        </p>
+                filteredModalContacts.map((contact) => {
+                  const isStarting = startingChatWithId === contact.id;
+                  const isAnyStarting = Boolean(startingChatWithId);
+
+                  return (
+                    <button
+                      key={contact.id}
+                      disabled={isAnyStarting}
+                      onClick={() => handleSelectContactToChat(contact)}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-[#F5F5F5] flex items-center justify-between gap-3 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <ProfileAvatar
+                          avatarUrl={contact.avatar_url}
+                          name={contact.full_name}
+                          role={contact.role}
+                          size="sm"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-[#111111] truncate">{contact.full_name}</p>
+                          <p className="text-[10px] text-[#737373] truncate">
+                            {contact.class?.display_name || contact.stream || 'Student'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-[11px] font-bold text-[#111111] bg-[#F4C430] hover:bg-[#e6b82a] px-2.5 py-1 rounded-lg shrink-0">
-                      Chat
-                    </span>
-                  </button>
-                ))
+                      <span className="text-[11px] font-bold text-[#111111] bg-[#F4C430] hover:bg-[#e6b82a] px-3 py-1 rounded-lg shrink-0 flex items-center gap-1.5 shadow-2xs">
+                        {isStarting ? (
+                          <>
+                            <Loader2 size={12} className="animate-spin text-[#111111]" />
+                            <span>Opening...</span>
+                          </>
+                        ) : (
+                          'Chat'
+                        )}
+                      </span>
+                    </button>
+                  );
+                })
               )}
             </div>
 
             <div className="pt-2 border-t border-[#E5E5E5] flex justify-end">
               <button
-                onClick={() => setShowNewChatModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5]"
+                disabled={Boolean(startingChatWithId)}
+                onClick={() => {
+                  setShowNewChatModal(false);
+                  setModalError(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] disabled:opacity-50"
               >
                 Cancel
               </button>
