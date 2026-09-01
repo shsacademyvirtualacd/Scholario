@@ -590,10 +590,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-[#111111] tracking-tight leading-tight">
-                    Direct Messages
+                    Scholario Chat
                   </h2>
                   <p className="text-[11px] text-[#737373] font-medium">
-                    Permanent 1-on-1 Academic Threads
+                    Private academic conversations
                   </p>
                 </div>
               </div>
@@ -799,7 +799,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <div className="flex justify-center my-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E5E5E5] text-[11px] text-[#737373] shadow-2xs">
                     <Shield size={12} className="text-[#F4C430]" />
-                    <span>Official Scholario 1-on-1 thread. Messages cannot be deleted.</span>
+                    <span>End-to-end encrypted. Messages cannot be deleted.</span>
                   </div>
                 </div>
 
