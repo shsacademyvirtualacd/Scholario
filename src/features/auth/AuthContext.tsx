@@ -62,6 +62,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     profileRef.current = profile;
+
+    // Synchronize Web Push subscription if permission is already granted in browser
+    if (profile?.id && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      import('../../lib/pushSubscriptionService')
+        .then(({ registerPushServiceWorker, subscribeUserToPush }) => {
+          registerPushServiceWorker().catch(() => {});
+          subscribeUserToPush(profile).catch((err) => {
+            console.warn('[AuthContext] Push sync warning:', err);
+          });
+        })
+        .catch(() => {});
+    }
   }, [profile]);
 
   // ── Compute onboarding state ──────────────────────────────────────────────

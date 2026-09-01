@@ -25,6 +25,13 @@ import { validateMCQQuestion, filterAndValidateMCQs, validateQuestionTopicReleva
 import { getChapterSyllabusScope, FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from './src/lib/curriculumFBISE9';
 import { grade9FbiseBank } from './src/data/banks/index';
 import type { StoredMCQ } from './src/types/questionBank';
+import {
+  savePushSubscription,
+  removePushSubscription,
+  getAllPushSubscriptions,
+  sendLiveSessionPushAlerts,
+  checkAndSendTeacherPushReminders,
+} from './src/lib/serverPushService';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -931,14 +938,86 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
       if (error) {
         console.warn('[server /api/live-sessions/start warning]:', error.message);
+        // Still trigger push alerts in background for subscribers
+        sendLiveSessionPushAlerts(row, supabaseServer).catch((pErr) => {
+          console.warn('[server push alerts warning]:', pErr);
+        });
         return res.status(200).json({ success: true, session: row, warning: error.message });
       }
+
+      // Trigger Web Push alerts for students & admins asynchronously in background
+      sendLiveSessionPushAlerts(data || row, supabaseServer).catch((pErr) => {
+        console.warn('[server push alerts warning]:', pErr);
+      });
 
       return res.json({ success: true, session: data });
     } catch (err: any) {
       console.error('[server /api/live-sessions/start error]:', err);
       return res.status(500).json({ error: err?.message || 'Failed to start live session' });
     }
+  });
+
+  // ── Web Push Subscriptions & Alerts Endpoints ────────
+  app.get('/api/push/vapid-public-key', (_req, res) => {
+    const publicKey =
+      process.env.VAPID_PUBLIC_KEY ||
+      process.env.VITE_VAPID_PUBLIC_KEY ||
+      'BAt10hJjc1FsLa_xXoJNWEYKvR1LALcHu2JLJWPbrOksAQ4rw0M-78JS5xNvr6wkDajphLwdbs-yMBvyrHCE484';
+    return res.json({ publicKey });
+  });
+
+  app.post('/api/push/subscribe', async (req, res) => {
+    try {
+      const { user_id, role, endpoint, p256dh, auth, subscription_json, grade, board } = req.body;
+      if (!endpoint || !user_id) {
+        return res.status(400).json({ error: 'user_id and endpoint are required' });
+      }
+
+      await savePushSubscription(
+        {
+          user_id,
+          role: role || 'student',
+          endpoint,
+          p256dh: p256dh || subscription_json?.keys?.p256dh || '',
+          auth: auth || subscription_json?.keys?.auth || '',
+          subscription_json: subscription_json || { endpoint, keys: { p256dh, auth } },
+          grade,
+          board,
+        },
+        supabaseServer
+      );
+
+      return res.json({ success: true, message: 'Push subscription registered successfully' });
+    } catch (err: any) {
+      console.error('[server /api/push/subscribe error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to save push subscription' });
+    }
+  });
+
+  app.post('/api/push/unsubscribe', async (req, res) => {
+    try {
+      const { endpoint } = req.body;
+      if (!endpoint) {
+        return res.status(400).json({ error: 'endpoint is required' });
+      }
+      await removePushSubscription(endpoint, supabaseServer);
+      return res.json({ success: true, message: 'Push subscription removed successfully' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Failed to remove push subscription' });
+    }
+  });
+
+  app.get('/api/push/status', (_req, res) => {
+    const subs = getAllPushSubscriptions();
+    return res.json({
+      success: true,
+      totalSubscriptions: subs.length,
+      byRole: {
+        student: subs.filter((s) => s.role === 'student').length,
+        teacher: subs.filter((s) => s.role === 'teacher').length,
+        admin: subs.filter((s) => s.role === 'admin').length,
+      },
+    });
   });
 
   app.post('/api/live-sessions/end', async (req, res) => {
@@ -1670,6 +1749,48 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
     return res.status(404).send('Answer key not found');
   });
+
+  // ── Explicit Service Worker Handler ─────────────────
+  app.get('/sw.js', (_req, res) => {
+    const swPath = path.resolve('public/sw.js');
+    if (fs.existsSync(swPath)) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.sendFile(swPath);
+    }
+    return res.status(404).send('Service worker not found');
+  });
+
+  // ── Background Realtime Listener for Live Sessions Push ──
+  try {
+    supabaseServer
+      .channel('server-global-live-push-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'live_sessions' },
+        (payload: any) => {
+          const newRow = payload.new;
+          if (newRow && newRow.status === 'live' && newRow.class_link) {
+            sendLiveSessionPushAlerts(newRow, supabaseServer).catch((err) => {
+              console.warn('[ServerPush] Live realtime channel push error:', err);
+            });
+          }
+        }
+      )
+      .subscribe((status: string) => {
+        console.log(`[ServerPush] Realtime live_sessions channel status: ${status}`);
+      });
+  } catch (chanErr) {
+    console.warn('[ServerPush] Warning creating realtime channel:', chanErr);
+  }
+
+  // ── Background Server-Side Cron: Teacher Reminders (Every 60s) ──
+  setInterval(() => {
+    checkAndSendTeacherPushReminders(supabaseServer).catch((cronErr) => {
+      console.warn('[ServerPush] Background teacher reminder check error:', cronErr);
+    });
+  }, 60 * 1000);
 
   // Vite middleware for dev or static serving for production
   if (process.env.NODE_ENV !== 'production') {

@@ -3,6 +3,7 @@ import type { LiveSession, Profile, Enrollment, ClassSlot } from '../types';
 import { stopClassReminder } from './teacherReminderService';
 
 const NOTIFIED_SESSIONS_STORAGE_KEY = 'scholario_notified_live_sessions';
+const ADMIN_NOTIFIED_SESSIONS_STORAGE_KEY = 'scholario_admin_notified_live_sessions';
 
 /**
  * Returns the set of session IDs that have already triggered a notification in this browser session.
@@ -11,6 +12,21 @@ export function getNotifiedSessionIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
     const raw = sessionStorage.getItem(NOTIFIED_SESSIONS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Returns the set of session IDs that have already triggered an admin notification in this browser session.
+ */
+export function getAdminNotifiedSessionIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = sessionStorage.getItem(ADMIN_NOTIFIED_SESSIONS_STORAGE_KEY);
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? new Set(parsed) : new Set();
@@ -34,11 +50,33 @@ export function markSessionIdAsNotified(sessionId: string): void {
 }
 
 /**
+ * Marks a session ID as notified for admin in memory and sessionStorage.
+ */
+export function markAdminSessionIdAsNotified(sessionId: string): void {
+  if (typeof window === 'undefined' || !sessionId) return;
+  try {
+    const set = getAdminNotifiedSessionIds();
+    set.add(sessionId);
+    sessionStorage.setItem(ADMIN_NOTIFIED_SESSIONS_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[LiveSessionService] Failed to persist admin notified session ID:', err);
+  }
+}
+
+/**
  * Checks if a session has already triggered a notification in this session.
  */
 export function isSessionAlreadyNotified(sessionId: string): boolean {
   if (!sessionId) return false;
   return getNotifiedSessionIds().has(sessionId);
+}
+
+/**
+ * Checks if a session has already triggered an admin notification in this session.
+ */
+export function isAdminSessionAlreadyNotified(sessionId: string): boolean {
+  if (!sessionId) return false;
+  return getAdminNotifiedSessionIds().has(sessionId);
 }
 
 /**
@@ -169,6 +207,85 @@ export function fireLiveClassNotification(session: LiveSession): Notification | 
     return notification;
   } catch (err) {
     console.error('[LiveSessionService] Error creating Notification:', err);
+    return null;
+  }
+}
+
+/**
+ * Formats a raw grade identifier (e.g. '9', '10', 'Grade 9') into a clean user-facing string.
+ */
+export function formatGradeDisplay(rawGrade?: string | null): string {
+  if (!rawGrade) return 'All Grades';
+  const trimmed = rawGrade.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return `Grade ${trimmed}`;
+  }
+  if (trimmed.toLowerCase().startsWith('grade') || trimmed.toLowerCase().startsWith('class')) {
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  }
+  return trimmed;
+}
+
+/**
+ * Fires a desktop browser Notification for administrators when any teacher posts a class link.
+ * 
+ * Title: "{Teacher name} posted a class link"
+ * Body: "{Subject} — {Grade} is now live"
+ * Tag: "admin-link-posted-{sessionId}"
+ */
+export function fireAdminLiveClassNotification(session: Partial<LiveSession>): Notification | null {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return null;
+  }
+
+  if (Notification.permission !== 'granted') {
+    return null;
+  }
+
+  const rawTeacher = (session.teacher_name || 'Teacher').trim();
+  const teacherName = rawTeacher.charAt(0).toUpperCase() + rawTeacher.slice(1);
+
+  const rawSubject = (session.subject_name || 'Class').trim();
+  const subjectName = rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1);
+
+  const gradeName = formatGradeDisplay(session.grade_id);
+
+  const title = `${teacherName} posted a class link`;
+  const body = `${subjectName} — ${gradeName} is now live`;
+  const tag = `admin-link-posted-${session.id || 'unknown'}`;
+
+  try {
+    const notification = new Notification(title, {
+      body,
+      icon: '/logo.png',
+      tag, // Ensures repeat notifications replace the previous one instead of stacking
+    });
+
+    notification.onclick = (event) => {
+      event.preventDefault();
+      try {
+        window.focus();
+      } catch (err) {
+        console.warn('[AdminNotification] window.focus error:', err);
+      }
+
+      // Navigate to admin schedule & live monitoring view
+      try {
+        window.location.href = '/admin/schedule';
+      } catch (navErr) {
+        console.warn('[AdminNotification] navigation error:', navErr);
+      }
+
+      notification.close();
+    };
+
+    // Mark as notified in memory and sessionStorage
+    if (session.id) {
+      markAdminSessionIdAsNotified(session.id);
+    }
+    return notification;
+  } catch (err) {
+    console.error('[LiveSessionService] Error creating admin Notification:', err);
     return null;
   }
 }

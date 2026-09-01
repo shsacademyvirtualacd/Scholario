@@ -11,6 +11,7 @@ import { incrementSuspense, decrementSuspense } from '../utils/requestTracker';
 import { OfflineBanner } from '../components/common/OfflineBanner';
 import { LiveSessionNotificationListener } from '../components/common/LiveSessionNotificationListener';
 import { TeacherLiveReminderListener } from '../components/teacher/TeacherLiveReminderListener';
+import { AdminLiveNotificationListener } from '../components/admin/AdminLiveNotificationListener';
 
 // ─── Public pages (eager loaded — small) ────
 import LoginPage from '../pages/public/LoginPage';
@@ -110,6 +111,7 @@ const AppRouter: React.FC = () => (
     <AuthProvider>
       <LiveSessionNotificationListener />
       <TeacherLiveReminderListener />
+      <AdminLiveNotificationListener />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Pages */}

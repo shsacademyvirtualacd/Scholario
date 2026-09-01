@@ -13,6 +13,7 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { DAYS_OF_WEEK_FULL, formatTime12h } from '../../lib/scheduleUtils';
 import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
+import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
 import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
 const BOARDS = [
@@ -636,6 +637,8 @@ export const ScheduleManagerPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <NotificationPermissionBanner role="admin" />
 
       {/* Published to News Notification Toast */}
       {showPublishBanner && (

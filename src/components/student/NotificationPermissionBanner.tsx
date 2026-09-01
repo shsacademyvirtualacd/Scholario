@@ -20,8 +20,16 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
   const [isRequesting, setIsRequesting] = useState(false);
 
   const isTeacher = role === 'teacher';
-  const defaultTitle = isTeacher ? 'Enable Class Start Reminders' : 'Enable Live Class Alerts';
-  const defaultDesc = isTeacher
+  const isAdmin = role === 'admin';
+  const defaultTitle = isAdmin
+    ? 'Enable Live Class Monitoring Alerts'
+    : isTeacher
+    ? 'Enable Class Start Reminders'
+    : 'Enable Live Class Alerts';
+
+  const defaultDesc = isAdmin
+    ? 'Get desktop alerts the moment any teacher posts a link and starts a live class session.'
+    : isTeacher
     ? 'Get desktop alerts 30 minutes before class reminding you to post your live link on time.'
     : 'Get desktop alerts the moment your teacher goes live so you can tap and join immediately.';
 
@@ -71,11 +79,32 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
       if (permission === 'granted') {
         localStorage.setItem(resolvedKey, 'true');
         localStorage.setItem(PERMISSION_RESOLVED_KEY, 'true');
-        toast.success(isTeacher ? 'Class reminders enabled!' : 'Live class notifications enabled!', {
-          description: isTeacher
-            ? "You'll receive alerts 30 minutes before your scheduled classes to post the live link."
-            : "You'll receive an instant alert whenever your teacher starts a class.",
-        });
+        toast.success(
+          isAdmin
+            ? 'Admin live alerts enabled!'
+            : isTeacher
+            ? 'Class reminders enabled!'
+            : 'Live class notifications enabled!',
+          {
+            description: isAdmin
+              ? "You'll receive desktop notifications whenever any teacher posts a class link."
+              : isTeacher
+              ? "You'll receive alerts 30 minutes before your scheduled classes to post the live link."
+              : "You'll receive an instant alert whenever your teacher starts a class.",
+          }
+        );
+
+        // Also trigger background Web Push registration immediately
+        try {
+          const { subscribeUserToPush } = await import('../../lib/pushSubscriptionService');
+          const { data: { user } } = await (await import('../../lib/supabase')).supabase.auth.getUser();
+          if (user) {
+            await subscribeUserToPush({ id: user.id, role });
+          }
+        } catch (pushErr) {
+          console.warn('[NotificationPermissionBanner] Push subscription warning:', pushErr);
+        }
+
         setIsVisible(false);
       } else if (permission === 'denied') {
         localStorage.setItem(resolvedKey, 'true');

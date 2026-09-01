@@ -15,6 +15,7 @@ import {
 } from '../../lib/db';
 import type { Teacher, ClassOffering, ClassSlot, Enrollment, Profile } from '../../types';
 import { useMobile } from '../../hooks/useMobile';
+import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
 
 // ─── Main ────────────────────────────────────────────────────────
 const AdminDashboardPage: React.FC = () => {
@@ -174,6 +175,9 @@ const AdminDashboardPage: React.FC = () => {
           </span>
         )}
       </div>
+
+      {/* ── Browser Notification Permission Banner for Live Class Alerts ── */}
+      <NotificationPermissionBanner role="admin" />
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
