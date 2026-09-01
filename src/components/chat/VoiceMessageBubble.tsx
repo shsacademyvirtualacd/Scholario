@@ -182,20 +182,20 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
   return (
     <div
-      className={`min-w-[260px] sm:min-w-[290px] max-w-[85%] md:max-w-[75%] rounded-2xl p-3 shadow-2xs select-none transition-all ${
+      className={`min-w-[200px] sm:min-w-[260px] max-w-[88%] sm:max-w-[80%] md:max-w-[70%] rounded-2xl p-2.5 sm:p-3 shadow-2xs select-none transition-all ${
         isMe
           ? 'bg-[#111111] text-white rounded-br-xs'
           : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
       }`}
     >
       {/* Voice Player Controls Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Play/Pause Button */}
         <button
           type="button"
           onClick={togglePlayPause}
           disabled={hasError}
-          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 shadow-xs ${
+          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 shadow-xs touch-manipulation ${
             isMe
               ? 'bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111]'
               : 'bg-[#111111] hover:bg-[#262626] text-white'
@@ -203,35 +203,35 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
           title={isPlaying ? 'Pause voice message' : 'Play voice message'}
         >
           {isLoading ? (
-            <Loader2 size={18} className="animate-spin" />
+            <Loader2 size={16} className="animate-spin" />
           ) : isPlaying ? (
-            <Pause size={18} className="fill-current" />
+            <Pause size={16} className="fill-current" />
           ) : hasError ? (
-            <AlertCircle size={18} className="text-rose-500" />
+            <AlertCircle size={16} className="text-rose-500" />
           ) : (
-            <Play size={18} className="fill-current ml-0.5" />
+            <Play size={16} className="fill-current ml-0.5" />
           )}
         </button>
 
         {/* Waveform & Scrubber Track */}
-        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1 sm:gap-1.5 overflow-hidden">
           {/* Interactive Waveform Bar Visualizer */}
           <div
             ref={progressBarRef}
             onClick={handleSeek}
-            className="h-7 flex items-center gap-[3px] cursor-pointer group py-1"
+            className="h-7 flex items-center gap-[2px] sm:gap-[3px] cursor-pointer group py-1 overflow-hidden"
             title="Click to seek"
           >
             {waveformBars.map((heightFactor, idx) => {
               const barPercent = (idx / waveformBars.length) * 100;
               const isFilled = progressPercent >= barPercent;
-              const barHeightPx = Math.max(6, Math.round(heightFactor * 22));
+              const barHeightPx = Math.max(5, Math.round(heightFactor * 20));
 
               return (
                 <div
                   key={idx}
                   style={{ height: `${barHeightPx}px` }}
-                  className={`flex-1 rounded-full transition-all duration-100 ${
+                  className={`flex-1 min-w-[2px] max-w-[4px] rounded-full transition-all duration-100 shrink-0 ${
                     isFilled
                       ? isMe
                         ? 'bg-[#F4C430]'
@@ -246,7 +246,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
           </div>
 
           {/* Time and Speed Info */}
-          <div className="flex items-center justify-between text-[11px] font-mono leading-none">
+          <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-mono leading-none">
             <span className={isMe ? 'text-white/80' : 'text-[#737373]'}>
               {isPlaying || currentTime > 0
                 ? `${formatAudioDuration(currentTime)} / ${formatAudioDuration(totalDuration)}`

@@ -13,7 +13,8 @@ import {
   Users,
   Loader2,
   AlertCircle,
-  Volume2
+  Volume2,
+  Mic
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -51,6 +52,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputContent, setInputContent] = useState('');
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -215,6 +217,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   useEffect(() => {
+    setIsVoiceRecording(false);
     fetchActiveMessages(false);
   }, [activeThreadId, currentUserId]);
 
@@ -920,47 +923,61 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
-                  <form
-                    onSubmit={handleSendMessage}
-                    className="flex-1 flex items-end gap-2 bg-[#F7F7F7] p-2 rounded-2xl border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white transition-all shadow-2xs"
-                  >
-                    <textarea
-                      ref={textareaRef}
-                      rows={1}
-                      value={inputContent}
-                      onChange={(e) => setInputContent(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
-                      className="flex-1 max-h-32 min-h-[38px] p-2 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#A3A3A3] resize-none outline-hidden"
+                <div className="flex items-center gap-2 w-full">
+                  {isVoiceRecording ? (
+                    <VoiceRecorderBar
+                      threadId={activeThread.id}
+                      onSendVoice={handleSendVoice}
+                      onCancelRecording={() => setIsVoiceRecording(false)}
+                      onFinishRecording={() => setIsVoiceRecording(false)}
+                      disabled={sending}
                     />
-
-                    {inputContent.trim() ? (
-                      <button
-                        type="submit"
-                        disabled={sending}
-                        className="w-9 h-9 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs interactive"
-                        title="Send message"
-                      >
-                        {sending ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <Send size={16} />
-                        )}
-                      </button>
-                    ) : (
-                      <VoiceRecorderBar
-                        threadId={activeThread.id}
-                        onSendVoice={handleSendVoice}
-                        disabled={sending}
+                  ) : (
+                    <form
+                      onSubmit={handleSendMessage}
+                      className="flex-1 flex items-end gap-2 bg-[#F7F7F7] p-2 rounded-2xl border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white transition-all shadow-2xs w-full"
+                    >
+                      <textarea
+                        ref={textareaRef}
+                        rows={1}
+                        value={inputContent}
+                        onChange={(e) => setInputContent(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                        placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
+                        className="flex-1 max-h-32 min-h-[38px] p-2 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#A3A3A3] resize-none outline-hidden"
                       />
-                    )}
-                  </form>
+
+                      {inputContent.trim() ? (
+                        <button
+                          type="submit"
+                          disabled={sending}
+                          className="w-9 h-9 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs interactive touch-manipulation"
+                          title="Send message"
+                        >
+                          {sending ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Send size={16} />
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsVoiceRecording(true)}
+                          disabled={sending}
+                          className="w-9 h-9 rounded-xl bg-[#111111] hover:bg-[#262626] text-[#F4C430] hover:text-white font-bold flex items-center justify-center shrink-0 transition-all shadow-2xs interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Record a voice message"
+                        >
+                          <Mic size={17} />
+                        </button>
+                      )}
+                    </form>
+                  )}
                 </div>
               </div>
             </>

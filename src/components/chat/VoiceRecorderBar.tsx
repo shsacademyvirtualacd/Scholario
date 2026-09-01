@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Trash2, Send, Loader2, AlertCircle } from 'lucide-react';
+import { Trash2, Send, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   isVoiceRecordingSupported,
   getSupportedAudioMimeType,
@@ -10,19 +10,23 @@ import {
 interface VoiceRecorderBarProps {
   threadId: string;
   onSendVoice: (audioUrl: string, durationSeconds: number) => Promise<void>;
+  onCancelRecording: () => void;
+  onFinishRecording?: () => void;
   disabled?: boolean;
 }
 
 export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
   threadId,
   onSendVoice,
+  onCancelRecording,
+  onFinishRecording,
   disabled,
 }) => {
-  const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [volumeLevel, setVolumeLevel] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -34,7 +38,7 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
 
   const isSupported = isVoiceRecordingSupported();
 
-  // Cleanup audio tracks and streams
+  // Cleanup audio tracks, context, and timer intervals
   const cleanupStream = () => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -58,19 +62,15 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
     audioChunksRef.current = [];
   };
 
-  useEffect(() => {
-    return () => {
-      cleanupStream();
-    };
-  }, []);
-
   const startRecording = async () => {
     if (!isSupported) {
       setErrorMessage('Audio recording is not supported in this browser environment.');
+      setIsInitializing(false);
       return;
     }
 
     setErrorMessage(null);
+    setIsInitializing(true);
     audioChunksRef.current = [];
     setRecordingSeconds(0);
     setVolumeLevel(0);
@@ -128,7 +128,7 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
       };
 
       recorder.start(250); // Slice chunks every 250ms
-      setIsRecording(true);
+      setIsInitializing(false);
 
       // Start recording duration timer
       timerIntervalRef.current = setInterval(() => {
@@ -144,45 +144,49 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
     } catch (err: any) {
       console.error('[VoiceRecorder] getUserMedia permission error:', err);
       cleanupStream();
-      setIsRecording(false);
+      setIsInitializing(false);
 
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setErrorMessage('Microphone access was denied. Please allow microphone permissions in your browser.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setErrorMessage('No microphone device was detected on your system.');
+        setErrorMessage('No microphone device was detected on your device.');
       } else {
         setErrorMessage(`Microphone error: ${err.message || 'Could not access audio device.'}`);
       }
     }
   };
 
-  const cancelRecording = () => {
+  // Automatically start recording when mounted (full replacement mode)
+  useEffect(() => {
+    startRecording();
+    return () => {
+      cleanupStream();
+    };
+  }, []);
+
+  const handleCancel = () => {
     cleanupStream();
-    setIsRecording(false);
     setRecordingSeconds(0);
     setVolumeLevel(0);
     setErrorMessage(null);
+    onCancelRecording();
   };
 
   const stopAndSend = async () => {
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
-      cancelRecording();
+      handleCancel();
       return;
     }
 
     const duration = recordingSeconds;
     if (duration < 1 && audioChunksRef.current.length === 0) {
-      // Too short recording (less than 1s)
-      setErrorMessage('Recording was too short. Hold and speak for at least 1 second.');
-      cancelRecording();
+      setErrorMessage('Recording too short. Speak for at least 1 second.');
       return;
     }
 
     setIsUploading(true);
-
     const { mimeType, extension } = getSupportedAudioMimeType();
 
-    // Finalize recording data
     mediaRecorderRef.current.onstop = async () => {
       try {
         const audioBlob = new Blob(audioChunksRef.current, {
@@ -190,7 +194,6 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
         });
 
         cleanupStream();
-        setIsRecording(false);
 
         const { audioUrl } = await uploadVoiceMessageAudio(
           audioBlob,
@@ -201,6 +204,11 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
 
         await onSendVoice(audioUrl, Math.max(1, duration));
         setErrorMessage(null);
+        if (onFinishRecording) {
+          onFinishRecording();
+        } else {
+          onCancelRecording();
+        }
       } catch (uploadErr: any) {
         console.error('[VoiceRecorder] Upload error:', uploadErr);
         setErrorMessage(uploadErr.message || 'Failed to upload voice message.');
@@ -216,94 +224,89 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
     } catch (stopErr) {
       console.warn('[VoiceRecorder] Error stopping MediaRecorder:', stopErr);
       cleanupStream();
-      setIsRecording(false);
       setIsUploading(false);
+      handleCancel();
     }
   };
 
-  if (!isRecording) {
+  // If there's an initialization error or permission denial
+  if (errorMessage && !isUploading) {
     return (
-      <div className="relative">
-        <button
-          type="button"
-          onClick={startRecording}
-          disabled={disabled || !isSupported}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-            isSupported && !disabled
-              ? 'bg-[#111111] hover:bg-[#262626] text-[#F4C430] hover:text-white shadow-2xs interactive'
-              : 'bg-[#E5E5E5] text-[#A3A3A3] cursor-not-allowed'
-          }`}
-          title={
-            !isSupported
-              ? 'Microphone recording is not supported in this browser'
-              : 'Record a voice message'
-          }
-        >
-          <Mic size={17} />
-        </button>
-
-        {errorMessage && (
-          <div className="absolute bottom-12 right-0 w-72 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 shadow-md z-30 flex items-start gap-2">
-            <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <span className="font-semibold text-rose-900">Microphone Issue: </span>
-              <span>{errorMessage}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setErrorMessage(null)}
-              className="text-rose-400 hover:text-rose-700 text-xs font-bold"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+      <div className="w-full max-w-full bg-rose-50 border border-rose-200 p-3 rounded-2xl flex items-center justify-between gap-2.5 text-xs text-rose-800 shadow-2xs animate-in fade-in duration-200">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <AlertCircle size={17} className="text-rose-600 shrink-0" />
+          <span className="truncate">{errorMessage}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={startRecording}
+            className="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 font-semibold rounded-xl flex items-center gap-1 text-[11px] transition-colors"
+          >
+            <RefreshCw size={12} />
+            <span>Retry</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="px-2.5 py-1.5 bg-white hover:bg-rose-100 text-rose-700 font-medium rounded-xl border border-rose-200 text-[11px] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     );
   }
 
-  // Active Recording Bar Interface
+  // Active Voice Recording Bar (Full Replacement Mode)
   return (
-    <div className="flex-1 flex items-center justify-between gap-3 bg-[#111111] text-white px-3.5 py-1.5 rounded-2xl animate-in fade-in zoom-in-95 duration-150 shadow-inner min-h-[44px]">
-      {/* Recording indicator & timer */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        <div className="relative flex items-center justify-center">
+    <div className="w-full max-w-full bg-[#111111] text-white px-3 sm:px-4 py-2 rounded-2xl flex items-center justify-between gap-2 sm:gap-3 shadow-inner min-h-[46px] animate-in fade-in duration-150 overflow-hidden box-border">
+      {/* Recording Indicator & Timer */}
+      <div className="flex items-center gap-2 shrink-0 select-none">
+        <div className="relative flex items-center justify-center w-3 h-3">
           <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping absolute opacity-75" />
           <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
         </div>
-        <span className="font-mono text-xs font-bold text-white tracking-wider">
-          {formatAudioDuration(recordingSeconds)}
+        <span className="font-mono text-xs font-bold text-white tracking-wider tabular-nums">
+          {isInitializing ? '0:00' : formatAudioDuration(recordingSeconds)}
         </span>
       </div>
 
-      {/* Live Animated Audio Wave Bars */}
-      <div className="flex-1 flex items-center justify-center gap-1 px-2 h-6 overflow-hidden max-w-[200px] sm:max-w-xs">
-        {Array.from({ length: 16 }).map((_, i) => {
+      {/* Live Animated Audio Waveform Bars (Fully responsive, flexes and shrinks without overflow) */}
+      <div className="flex-1 min-w-0 flex items-center justify-center gap-[3px] sm:gap-1 px-1 sm:px-2 overflow-hidden">
+        {Array.from({ length: 18 }).map((_, i) => {
+          // Dynamic height based on sine frequency + live microphone volume level
           const height = Math.max(
             4,
             Math.min(
               22,
-              Math.round(((Math.sin(i + recordingSeconds * 2) + 1) * 6) + (volumeLevel * 0.16))
+              Math.round(((Math.sin(i * 0.8 + recordingSeconds * 2.5) + 1) * 6) + (volumeLevel * 0.16))
             )
           );
+
+          // Hide outer bars on very small screens to ensure compact fit
+          const isOuterBar = i < 3 || i > 14;
+
           return (
             <div
               key={i}
               style={{ height: `${height}px` }}
-              className="w-1 rounded-full bg-[#F4C430] transition-all duration-75"
+              className={`w-1 min-w-[2px] max-w-[3.5px] rounded-full bg-[#F4C430] transition-all duration-75 shrink-0 ${
+                isOuterBar ? 'hidden sm:block' : 'block'
+              }`}
             />
           );
         })}
       </div>
 
-      {/* Action Buttons: Cancel (Trash) & Send */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Action Controls: Cancel (Trash) & Send (Yellow button) */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Cancel Recording */}
         <button
           type="button"
-          onClick={cancelRecording}
-          disabled={isUploading}
-          className="w-8 h-8 rounded-xl bg-white/10 hover:bg-rose-500/20 text-[#D4D4D4] hover:text-rose-300 flex items-center justify-center transition-colors"
+          onClick={handleCancel}
+          disabled={isUploading || disabled}
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 hover:bg-rose-500/20 text-[#D4D4D4] hover:text-rose-300 flex items-center justify-center transition-colors touch-manipulation disabled:opacity-40"
           title="Cancel and discard voice note"
         >
           <Trash2 size={15} />
@@ -313,12 +316,12 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
         <button
           type="button"
           onClick={stopAndSend}
-          disabled={isUploading}
-          className="w-8 h-8 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center transition-transform active:scale-95 shadow-2xs"
+          disabled={isUploading || disabled || isInitializing}
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center transition-transform active:scale-95 shadow-2xs touch-manipulation disabled:opacity-40"
           title="Send voice message"
         >
           {isUploading ? (
-            <Loader2 size={15} className="animate-spin text-[#111111]" />
+            <Loader2 size={16} className="animate-spin text-[#111111]" />
           ) : (
             <Send size={15} />
           )}
