@@ -12,8 +12,9 @@ export const StudentChatPage: React.FC = () => {
   useEffect(() => {
     if (profile?.id) {
       getStudentChatContacts(profile.id)
-        .then(({ teachers, admin }) => {
-          setContacts([...teachers, admin]);
+        .then(({ teachers, admins, admin }) => {
+          const adminList = admins && admins.length > 0 ? admins : (admin ? [admin] : []);
+          setContacts([...adminList, ...teachers]);
         })
         .catch((err) => console.error('[StudentChatPage] Failed to fetch contacts:', err));
     }

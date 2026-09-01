@@ -135,6 +135,115 @@ export async function getOrCreateChatThread(
 }
 
 /**
+ * Helper to fetch teacher subject specializations from class offerings
+ */
+export async function getTeacherSubjectsMap(): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  try {
+    const { data: offerings } = await (supabase as any)
+      .from('class_offerings')
+      .select('teacher_id, subject:subjects(name), class:classes(display_name)');
+    if (offerings) {
+      offerings.forEach((off: any) => {
+        if (off.teacher_id && off.subject?.name) {
+          const list = map.get(off.teacher_id) || [];
+          if (!list.includes(off.subject.name)) list.push(off.subject.name);
+          map.set(off.teacher_id, list);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[chatService] Failed to load teacher subjects map:', err);
+  }
+  return map;
+}
+
+/**
+ * Enriches a list of profiles with distinct teacher subjects and differentiated admin titles
+ */
+export function enrichProfilesList(
+  profiles: Profile[],
+  teacherSubjectsMap?: Map<string, string[]>,
+  teachersTableData?: any[]
+): Profile[] {
+  // Count how many admins exist to differentiate them if needed
+  const adminProfiles = profiles.filter(p => p.role === 'admin');
+  const multipleAdmins = adminProfiles.length > 1;
+
+  let adminIndex = 0;
+
+  return profiles.map((p) => {
+    const enriched = { ...p } as any;
+
+    if (p.role === 'teacher') {
+      // Look up subjects
+      const subjects = teacherSubjectsMap?.get(p.id) || [];
+      
+      // Also look up in teachers table if name or email matches
+      if (teachersTableData && teachersTableData.length > 0) {
+        const teacherRec = teachersTableData.find(
+          t => t.id === p.id || (p.phone && t.phone === p.phone) || (t.email && (p as any).email && t.email === (p as any).email)
+        );
+        if (teacherRec) {
+          if ((!enriched.full_name || enriched.full_name.toLowerCase() === 'teacher') && teacherRec.full_name) {
+            enriched.full_name = teacherRec.full_name;
+          }
+          if (teacherRec.subject && !subjects.includes(teacherRec.subject)) {
+            subjects.push(teacherRec.subject);
+          }
+        }
+      }
+
+      enriched.teacher_subjects = subjects;
+      
+      // If full_name is just "Teacher" or generic, give it a distinct subject descriptor
+      if (!enriched.full_name || enriched.full_name.trim().toLowerCase() === 'teacher') {
+        enriched.full_name = subjects.length > 0
+          ? `${subjects[0]} Teacher`
+          : (p.stream_obj?.name ? `${p.stream_obj.name} Teacher` : 'Faculty Instructor');
+      }
+
+      enriched.teacher_display_title = subjects.length > 0 
+        ? `${subjects.join(', ')} Instructor` 
+        : (p.stream_obj?.name ? `${p.stream_obj.name} Faculty` : 'Course Instructor');
+    } else if (p.role === 'admin') {
+      adminIndex++;
+      
+      // If multiple admins exist, make sure each admin has a clear, distinguishable name & tag
+      if (multipleAdmins) {
+        const isGenericName = !enriched.full_name || 
+          enriched.full_name.trim().toLowerCase() === 'admin' || 
+          enriched.full_name.trim().toLowerCase() === 'administrator' || 
+          enriched.full_name.trim().toLowerCase() === 'scholario administration';
+
+        const adminTags = [
+          'Admissions & Academic Office',
+          'Accounts & Student Support',
+          'Administrative Helpdesk',
+          'Principal & Management Office',
+        ];
+        const assignedTag = adminTags[(adminIndex - 1) % adminTags.length];
+
+        enriched.admin_tag = assignedTag;
+
+        if (isGenericName) {
+          enriched.full_name = `Admin Support (${adminIndex === 1 ? 'Primary / Academics' : 'Helpdesk / Support'})`;
+        } else {
+          enriched.full_name = `${enriched.full_name} (${adminIndex === 1 ? 'Office' : 'Support'})`;
+        }
+      } else {
+        enriched.admin_tag = 'Institutional Administration';
+        if (!enriched.full_name || enriched.full_name.trim().toLowerCase() === 'admin') {
+          enriched.full_name = 'Scholario Administration';
+        }
+      }
+    }
+
+    return enriched as Profile;
+  });
+}
+
+/**
  * Get all threads for the current user with details (other participant profile, latest message, unread count)
  */
 export async function getChatThreadsForUser(userId: string): Promise<ChatThreadWithDetails[]> {
@@ -182,13 +291,34 @@ export async function getChatThreadsForUser(userId: string): Promise<ChatThreadW
   const profileMap = new Map<string, Profile>();
   if (otherIds.size > 0) {
     try {
-      const { data: profilesData } = await (supabase as any)
-        .from('profiles')
-        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
-        .in('id', Array.from(otherIds));
+      const [profilesRes, offeringsRes, teachersRes] = await Promise.all([
+        (supabase as any)
+          .from('profiles')
+          .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+          .in('id', Array.from(otherIds)),
+        (supabase as any)
+          .from('class_offerings')
+          .select('teacher_id, subject:subjects(name), class:classes(display_name)'),
+        (supabase as any)
+          .from('teachers')
+          .select('*'),
+      ]);
 
-      if (profilesData) {
-        profilesData.forEach((p: Profile) => {
+      const teacherSubjectsMap = new Map<string, string[]>();
+      if (offeringsRes.data) {
+        offeringsRes.data.forEach((off: any) => {
+          if (off.teacher_id && off.subject?.name) {
+            const list = teacherSubjectsMap.get(off.teacher_id) || [];
+            if (!list.includes(off.subject.name)) list.push(off.subject.name);
+            teacherSubjectsMap.set(off.teacher_id, list);
+          }
+        });
+      }
+
+      if (profilesRes.data) {
+        const rawProfiles: Profile[] = profilesRes.data;
+        const enriched = enrichProfilesList(rawProfiles, teacherSubjectsMap, teachersRes.data || []);
+        enriched.forEach((p: Profile) => {
           profileMap.set(p.id, p);
         });
       }
@@ -234,7 +364,7 @@ export async function getChatThreadsForUser(userId: string): Promise<ChatThreadW
       // Fallback profile if not found
       otherProfile = {
         id: otherId,
-        full_name: otherRole === 'admin' ? 'Scholario Administration' : (otherRole === 'teacher' ? 'Teacher' : 'Student'),
+        full_name: otherRole === 'admin' ? 'Scholario Administration' : (otherRole === 'teacher' ? 'Faculty Teacher' : 'Student'),
         role: otherRole,
         avatar_url: null,
         phone: null,
@@ -370,17 +500,22 @@ export async function getTotalUnreadChatCount(userId: string): Promise<number> {
 }
 
 /**
- * For Student: Get all teachers (assigned offerings + fallback all teachers) + Admin profile.
- * Prepares / ensures thread objects for each so student sees distinct teacher threads + 1 admin thread.
+ * For Student: Get all teachers (assigned offerings + fallback all teachers) + Admin profiles.
+ * Prepares / ensures thread objects for each so student sees distinct teacher threads + all admin threads.
  */
 export async function getStudentChatContacts(studentId: string): Promise<{
   teachers: Profile[];
+  admins: Profile[];
   admin: Profile;
 }> {
-  // 1. Fetch student's offerings
-  const offerings = await getOfferingsForStudent(studentId).catch(() => []);
-  const teacherIds = new Set<string>();
+  // 1. Fetch student's offerings & teacher subject mapping in parallel
+  const [offerings, teacherSubjectsMap, teachersTableRes] = await Promise.all([
+    getOfferingsForStudent(studentId).catch(() => []),
+    getTeacherSubjectsMap(),
+    (supabase as any).from('teachers').select('*'),
+  ]);
 
+  const teacherIds = new Set<string>();
   offerings.forEach(off => {
     if (off.teacher_id) {
       teacherIds.add(off.teacher_id);
@@ -412,31 +547,38 @@ export async function getStudentChatContacts(studentId: string): Promise<{
     console.warn('[chatService] Error loading teachers for student:', err);
   }
 
-  // 2. Fetch admin profile (primary admin)
-  let admin: Profile | null = null;
+  // Enrich teacher profiles with subjects
+  teachers = enrichProfilesList(teachers, teacherSubjectsMap, teachersTableRes.data || []);
+
+  // 2. Fetch ALL admin profiles so student can distinguish multiple admins
+  let admins: Profile[] = [];
   try {
     const { data: adminProfiles } = await (supabase as any)
       .from('profiles')
       .select('*')
       .eq('role', 'admin')
-      .limit(1);
-    admin = adminProfiles?.[0] || null;
+      .order('created_at', { ascending: true });
+    admins = adminProfiles || [];
   } catch (err) {
     console.warn('[chatService] Error loading admin for student:', err);
   }
 
-  if (!admin) {
-    admin = {
+  if (admins.length === 0) {
+    admins = [{
       id: '00000000-0000-0000-0000-000000000001',
       full_name: 'Scholario Administration',
       role: 'admin',
       avatar_url: null,
       phone: null,
       created_at: new Date().toISOString(),
-    };
+    }];
+  } else {
+    admins = enrichProfilesList(admins);
   }
 
-  return { teachers, admin };
+  const primaryAdmin = admins[0];
+
+  return { teachers, admins, admin: primaryAdmin };
 }
 
 /**
@@ -468,7 +610,7 @@ export async function getTeacherChatContacts(teacherId: string): Promise<{
       .from('profiles')
       .select('*')
       .eq('role', 'admin')
-      .order('full_name');
+      .order('created_at', { ascending: true });
     admins = adminProfiles || [];
   } catch (err) {
     console.warn('[chatService] Error loading admins for teacher:', err);
@@ -483,6 +625,8 @@ export async function getTeacherChatContacts(teacherId: string): Promise<{
       phone: null,
       created_at: new Date().toISOString(),
     }];
+  } else {
+    admins = enrichProfilesList(admins);
   }
 
   return { students, admins };
@@ -496,7 +640,7 @@ export async function getAdminChatContacts(): Promise<{
   teachers: Profile[];
 }> {
   try {
-    const [studentsRes, teachersRes] = await Promise.all([
+    const [studentsRes, teachersRes, teacherSubjectsMap, teachersTableRes] = await Promise.all([
       (supabase as any)
         .from('profiles')
         .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
@@ -507,11 +651,15 @@ export async function getAdminChatContacts(): Promise<{
         .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
         .eq('role', 'teacher')
         .order('full_name'),
+      getTeacherSubjectsMap(),
+      (supabase as any).from('teachers').select('*'),
     ]);
+
+    const enrichedTeachers = enrichProfilesList(teachersRes.data || [], teacherSubjectsMap, teachersTableRes.data || []);
 
     return {
       students: studentsRes.data || [],
-      teachers: teachersRes.data || [],
+      teachers: enrichedTeachers,
     };
   } catch (err) {
     console.error('[chatService] Error in getAdminChatContacts:', err);

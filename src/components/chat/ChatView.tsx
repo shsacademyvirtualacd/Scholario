@@ -489,18 +489,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  const getRoleBadge = (otherRole: Role | string, isSupportAdmin?: boolean) => {
+  const getRoleBadge = (
+    otherRole: Role | string,
+    isSupportAdmin?: boolean,
+    extraInfo?: { subjects?: string[]; tag?: string; stream?: string }
+  ) => {
     if (isSupportAdmin || otherRole === 'admin') {
+      const tagText = extraInfo?.tag || 'Support';
+      // Format cleanly for badge
+      const shortTag = tagText.replace('Scholario ', '').replace('Institutional ', '');
       return (
         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#111111] text-[#F4C430] border border-[#F4C430]/30 shadow-2xs">
-          <Shield size={10} /> Admin Support
+          <Shield size={10} /> {shortTag.includes('Admin') ? shortTag : `Admin • ${shortTag}`}
         </span>
       );
     }
     if (otherRole === 'teacher') {
+      const subjectText = (extraInfo?.subjects && extraInfo.subjects.length > 0)
+        ? extraInfo.subjects[0]
+        : (extraInfo?.stream || 'Faculty');
       return (
         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FDF3C8] text-[#92700A] border border-[#F4C430]/30">
-          <GraduationCap size={10} /> Teacher
+          <GraduationCap size={10} /> Teacher • {subjectText}
         </span>
       );
     }
@@ -638,8 +648,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        {getRoleBadge(other?.role || 'student', isAdmin)}
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        {getRoleBadge(other?.role || 'student', isAdmin, {
+                          subjects: (other as any)?.teacher_subjects,
+                          tag: (other as any)?.admin_tag,
+                          stream: other?.stream_obj?.name || other?.stream || undefined,
+                        })}
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
@@ -696,15 +710,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   />
 
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-bold text-[#111111] truncate">
                         {activeThread.other_participant?.full_name || 'Direct Conversation'}
                       </h3>
-                      {getRoleBadge(activeThread.other_participant?.role || 'student', activeThread.other_participant?.role === 'admin')}
+                      {getRoleBadge(
+                        activeThread.other_participant?.role || 'student',
+                        activeThread.other_participant?.role === 'admin',
+                        {
+                          subjects: (activeThread.other_participant as any)?.teacher_subjects,
+                          tag: (activeThread.other_participant as any)?.admin_tag,
+                          stream: activeThread.other_participant?.stream_obj?.name || activeThread.other_participant?.stream || undefined,
+                        }
+                      )}
                     </div>
-                    <p className="text-[10px] text-[#737373] truncate font-medium flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Direct 1-on-1 • Permanent academic history
+                    <p className="text-[10px] text-[#737373] truncate font-medium flex items-center gap-1.5 mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      {activeThread.other_participant?.role === 'teacher'
+                        ? ((activeThread.other_participant as any)?.teacher_display_title || 'Faculty Teacher • Direct Academic Channel')
+                        : activeThread.other_participant?.role === 'admin'
+                        ? ((activeThread.other_participant as any)?.admin_tag || 'Institutional Administration • Official Support')
+                        : (activeThread.other_participant?.class?.display_name || 'Student • Direct 1-on-1')}
                     </p>
                   </div>
                 </div>
@@ -1044,9 +1070,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                   const contactSubtitle =
                     contact.role === 'admin'
-                      ? 'Administration Support'
+                      ? ((contact as any).admin_tag || 'Administration Support')
                       : contact.role === 'teacher'
-                      ? 'Course Instructor'
+                      ? ((contact as any).teacher_display_title || ((contact as any).teacher_subjects?.length ? `${(contact as any).teacher_subjects.join(', ')} Instructor` : 'Course Instructor'))
                       : (contact.class?.display_name || contact.stream || 'Student');
 
                   return (
@@ -1064,20 +1090,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           size="sm"
                         />
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <p className="text-xs font-bold text-[#111111] truncate">{contact.full_name}</p>
-                            {contact.role === 'admin' && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-[#111111] text-[#F4C430]">
-                                Admin
-                              </span>
-                            )}
-                            {contact.role === 'teacher' && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-[#FDF3C8] text-[#92700A]">
-                                Teacher
-                              </span>
-                            )}
+                            {getRoleBadge(contact.role, contact.role === 'admin', {
+                              subjects: (contact as any).teacher_subjects,
+                              tag: (contact as any).admin_tag,
+                              stream: contact.stream_obj?.name || contact.stream || undefined,
+                            })}
                           </div>
-                          <p className="text-[10px] text-[#737373] truncate mt-0.5">
+                          <p className="text-[10px] text-[#737373] truncate mt-0.5 font-medium">
                             {contactSubtitle}
                           </p>
                         </div>
