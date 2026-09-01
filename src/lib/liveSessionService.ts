@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { LiveSession, Profile, Enrollment, ClassSlot } from '../types';
+import { stopClassReminder } from './teacherReminderService';
 
 const NOTIFIED_SESSIONS_STORAGE_KEY = 'scholario_notified_live_sessions';
 
@@ -204,6 +205,7 @@ export async function triggerLiveSession(params: {
   const subjectName = typeof rawSubj === 'string' ? rawSubj : 'Class';
 
   const sessionId = `${slotId}_${sessionDate}`;
+  stopClassReminder(sessionId);
 
   const rowPayload = {
     id: sessionId,

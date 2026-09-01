@@ -5,9 +5,28 @@ import { toast } from 'sonner';
 const PERMISSION_RESOLVED_KEY = 'scholario_notifications_permission_resolved';
 const BANNER_DISMISSED_KEY = 'scholario_notifications_banner_dismissed';
 
-export const NotificationPermissionBanner: React.FC = () => {
+interface NotificationPermissionBannerProps {
+  role?: 'student' | 'teacher' | string;
+  title?: string;
+  description?: string;
+}
+
+export const NotificationPermissionBanner: React.FC<NotificationPermissionBannerProps> = ({
+  role = 'student',
+  title: customTitle,
+  description: customDesc,
+}) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
+
+  const isTeacher = role === 'teacher';
+  const defaultTitle = isTeacher ? 'Enable Class Start Reminders' : 'Enable Live Class Alerts';
+  const defaultDesc = isTeacher
+    ? 'Get desktop alerts 30 minutes before class reminding you to post your live link on time.'
+    : 'Get desktop alerts the moment your teacher goes live so you can tap and join immediately.';
+
+  const displayTitle = customTitle || defaultTitle;
+  const displayDesc = customDesc || defaultDesc;
 
   useEffect(() => {
     // 1. Check browser support
@@ -22,13 +41,16 @@ export const NotificationPermissionBanner: React.FC = () => {
     }
 
     // 3. Check if user already resolved or dismissed the banner in a prior session
-    const isResolved = localStorage.getItem(PERMISSION_RESOLVED_KEY) === 'true';
-    const isDismissed = localStorage.getItem(BANNER_DISMISSED_KEY) === 'true';
+    const resolvedKey = `${PERMISSION_RESOLVED_KEY}_${role}`;
+    const dismissedKey = `${BANNER_DISMISSED_KEY}_${role}`;
+
+    const isResolved = localStorage.getItem(resolvedKey) === 'true' || localStorage.getItem(PERMISSION_RESOLVED_KEY) === 'true';
+    const isDismissed = localStorage.getItem(dismissedKey) === 'true';
 
     if (!isResolved && !isDismissed && currentPermission === 'default') {
       setIsVisible(true);
     }
-  }, []);
+  }, [role]);
 
   if (!isVisible) {
     return null;
@@ -43,14 +65,20 @@ export const NotificationPermissionBanner: React.FC = () => {
     setIsRequesting(true);
     try {
       const permission = await Notification.requestPermission();
+      const resolvedKey = `${PERMISSION_RESOLVED_KEY}_${role}`;
+      const dismissedKey = `${BANNER_DISMISSED_KEY}_${role}`;
 
       if (permission === 'granted') {
+        localStorage.setItem(resolvedKey, 'true');
         localStorage.setItem(PERMISSION_RESOLVED_KEY, 'true');
-        toast.success('Live class notifications enabled!', {
-          description: "You'll receive an instant alert whenever your teacher starts a class.",
+        toast.success(isTeacher ? 'Class reminders enabled!' : 'Live class notifications enabled!', {
+          description: isTeacher
+            ? "You'll receive alerts 30 minutes before your scheduled classes to post the live link."
+            : "You'll receive an instant alert whenever your teacher starts a class.",
         });
         setIsVisible(false);
       } else if (permission === 'denied') {
+        localStorage.setItem(resolvedKey, 'true');
         localStorage.setItem(PERMISSION_RESOLVED_KEY, 'true');
         toast.info('Notifications blocked in browser settings', {
           description: 'You can enable them anytime in your browser site permissions.',
@@ -58,7 +86,7 @@ export const NotificationPermissionBanner: React.FC = () => {
         setIsVisible(false);
       } else {
         // 'default' - dismissed prompt without choosing
-        localStorage.setItem(BANNER_DISMISSED_KEY, 'true');
+        localStorage.setItem(dismissedKey, 'true');
         setIsVisible(false);
       }
     } catch (err) {
@@ -70,7 +98,8 @@ export const NotificationPermissionBanner: React.FC = () => {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(BANNER_DISMISSED_KEY, 'true');
+    const dismissedKey = `${BANNER_DISMISSED_KEY}_${role}`;
+    localStorage.setItem(dismissedKey, 'true');
     setIsVisible(false);
   };
 
@@ -88,14 +117,14 @@ export const NotificationPermissionBanner: React.FC = () => {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-extrabold text-[#111111] tracking-tight">
-                Enable Live Class Alerts
+                {displayTitle}
               </h3>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900">
                 <Sparkles size={10} /> Instant
               </span>
             </div>
             <p className="text-xs text-[#525252] mt-0.5 leading-relaxed font-medium">
-              Get desktop alerts the moment your teacher goes live so you can tap and join immediately.
+              {displayDesc}
             </p>
           </div>
         </div>

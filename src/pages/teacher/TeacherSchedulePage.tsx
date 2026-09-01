@@ -14,6 +14,7 @@ import {
 } from '../../lib/scheduleUtils';
 import { LiveLinkEditor } from './TeacherDashboardPage';
 import { useMobile } from '../../hooks/useMobile';
+import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
 
 const DAYS_OF_WEEK = [
   { label: 'Monday', index: 0 },
@@ -134,6 +135,8 @@ export const TeacherSchedulePage: React.FC = () => {
         title="Teaching Schedule"
         description="Review your weekly lecture calendar, classroom assignments, and timing slots."
       />
+
+      <NotificationPermissionBanner role="teacher" />
 
       {loading ? (
         <div className="space-y-4 animate-pulse">

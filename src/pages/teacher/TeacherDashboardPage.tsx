@@ -33,6 +33,8 @@ import {
   timeStrToMins, getClosestDateForDayOfWeek
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
+import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
+import { stopClassReminder } from '../../lib/teacherReminderService';
 
 // ─── Live Link Editor for Teacher (per-session date instance) ──────────
 export const LiveLinkEditor: React.FC<{
@@ -81,6 +83,7 @@ export const LiveLinkEditor: React.FC<{
     const trimmed = linkVal.trim();
     try {
       if (trimmed) {
+        stopClassReminder(`${slot.id}_${sessionDate}`);
         await upsertSessionLink(slot.id, sessionDate, trimmed, slot.offering_id, teacherId);
         await triggerLiveSession({
           slot,
@@ -126,42 +129,46 @@ export const LiveLinkEditor: React.FC<{
 
   if (isLoading) {
     return (
-      <div className="h-7 bg-gray-50 rounded animate-pulse w-full mt-2" />
+      <div id={`live-link-editor-${slot?.id}`} className="w-full">
+        <div className="h-7 bg-gray-50 rounded animate-pulse w-full mt-2" />
+      </div>
     );
   }
 
   if (isEditing) {
     return (
-      <div className="flex flex-col gap-1 mt-2 w-full">
-        <div className="flex items-center gap-1.5 w-full">
-          <input 
-            type="text" 
-            placeholder="https://zoom.us/j/... or https://meet.google.com/..."
-            value={linkVal}
-            onChange={e => setLinkVal(e.target.value)}
-            className="flex-1 text-xs px-2.5 py-1.5 border border-[#E5E5E5] rounded-lg focus:outline-none focus:border-[#F4C430] bg-white shadow-xs"
-            autoFocus
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
-          />
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="p-1.5 bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] rounded-lg interactive disabled:opacity-50"
-            title="Save live class link for this session"
-          >
-            <Check size={13} />
-          </button>
-          <button
-            onClick={() => { setIsEditing(false); setLinkVal(currentLink || ''); }}
-            className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
-            title="Cancel"
-          >
-            <X size={13} />
-          </button>
+      <div id={`live-link-editor-${slot?.id}`} className="w-full">
+        <div className="flex flex-col gap-1 mt-2 w-full">
+          <div className="flex items-center gap-1.5 w-full">
+            <input 
+              type="text" 
+              placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+              value={linkVal}
+              onChange={e => setLinkVal(e.target.value)}
+              className="flex-1 text-xs px-2.5 py-1.5 border border-[#E5E5E5] rounded-lg focus:outline-none focus:border-[#F4C430] bg-white shadow-xs"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleSave()}
+            />
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="p-1.5 bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] rounded-lg interactive disabled:opacity-50"
+              title="Save live class link for this session"
+            >
+              <Check size={13} />
+            </button>
+            <button
+              onClick={() => { setIsEditing(false); setLinkVal(currentLink || ''); }}
+              className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
+              title="Cancel"
+            >
+              <X size={13} />
+            </button>
+          </div>
+          <span className="text-[10px] text-[#737373] italic">
+            ℹ️ Link applies ONLY to session ({sessionDate}). Accessible to students 10m before class.
+          </span>
         </div>
-        <span className="text-[10px] text-[#737373] italic">
-          ℹ️ Link applies ONLY to session ({sessionDate}). Accessible to students 10m before class.
-        </span>
       </div>
     );
   }
@@ -171,62 +178,66 @@ export const LiveLinkEditor: React.FC<{
   
   if (hasLink) {
     return (
-      <div className="flex flex-col gap-1.5 w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg p-2">
-        <div className="flex items-center justify-between w-full gap-2">
-          <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
-            <LinkIcon size={12} className="text-blue-500 shrink-0" />
-            <a
-              href={currentLink.startsWith('http') ? currentLink : `https://${currentLink}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[11px] font-semibold text-blue-600 hover:underline truncate"
-            >
-              {currentLink}
-            </a>
+      <div id={`live-link-editor-${slot?.id}`} className="w-full">
+        <div className="flex flex-col gap-1.5 w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg p-2">
+          <div className="flex items-center justify-between w-full gap-2">
+            <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
+              <LinkIcon size={12} className="text-blue-500 shrink-0" />
+              <a
+                href={currentLink.startsWith('http') ? currentLink : `https://${currentLink}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] font-semibold text-blue-600 hover:underline truncate"
+              >
+                {currentLink}
+              </a>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-[10px] text-[#737373] hover:text-[#111111] font-semibold px-1.5 py-0.5 rounded hover:bg-gray-200 transition-colors"
+              >
+                ✏️ Edit
+              </button>
+              <button
+                onClick={handleRemove}
+                disabled={isSaving}
+                className="text-[10px] text-rose-600 hover:text-rose-700 font-semibold px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors"
+                title="Remove link for this session"
+              >
+                ✕
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => setIsEditing(true)}
-              className="text-[10px] text-[#737373] hover:text-[#111111] font-semibold px-1.5 py-0.5 rounded hover:bg-gray-200 transition-colors"
-            >
-              ✏️ Edit
-            </button>
-            <button
-              onClick={handleRemove}
-              disabled={isSaving}
-              className="text-[10px] text-rose-600 hover:text-rose-700 font-semibold px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors"
-              title="Remove link for this session"
-            >
-              ✕
-            </button>
+          <div className="flex items-center gap-1 text-[9px] font-semibold">
+            {status.isAvailable ? (
+              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                🟢 Accessible to students now
+              </span>
+            ) : status.status === 'ended' ? (
+              <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                Session ended
+              </span>
+            ) : (
+              <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                <Lock size={9} /> Accessible to students 10m before class
+              </span>
+            )}
           </div>
-        </div>
-        <div className="flex items-center gap-1 text-[9px] font-semibold">
-          {status.isAvailable ? (
-            <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-              🟢 Accessible to students now
-            </span>
-          ) : status.status === 'ended' ? (
-            <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-              Session ended
-            </span>
-          ) : (
-            <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1">
-              <Lock size={9} /> Accessible to students 10m before class
-            </span>
-          )}
         </div>
       </div>
     );
   }
 
   return (
-    <button
-      onClick={() => setIsEditing(true)}
-      className="flex items-center gap-1.5 text-[11px] text-[#737373] hover:text-[#111111] font-semibold border border-dashed border-[#D4D4D4] hover:border-[#111111] px-2.5 py-1.5 rounded-lg transition-colors w-full justify-center bg-[#FAFAFA] hover:bg-[#F5F5F5] mt-2 shadow-xs"
-    >
-      🔗 Add Live Class Link (Zoom/Meet)
-    </button>
+    <div id={`live-link-editor-${slot?.id}`} className="w-full">
+      <button
+        onClick={() => setIsEditing(true)}
+        className="flex items-center gap-1.5 text-[11px] text-[#737373] hover:text-[#111111] font-semibold border border-dashed border-[#D4D4D4] hover:border-[#111111] px-2.5 py-1.5 rounded-lg transition-colors w-full justify-center bg-[#FAFAFA] hover:bg-[#F5F5F5] mt-2 shadow-xs cursor-pointer"
+      >
+        🔗 Add Live Class Link (Zoom/Meet)
+      </button>
+    </div>
   );
 };
 
@@ -759,6 +770,9 @@ export const TeacherDashboardPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* ── Browser Notification Permission Banner for Class Reminders ── */}
+      <NotificationPermissionBanner role="teacher" />
 
       {/* ── Metrics Strip ── */}
       <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-2 xl:grid-cols-4 gap-4'}>
