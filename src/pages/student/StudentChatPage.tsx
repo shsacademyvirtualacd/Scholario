@@ -24,17 +24,11 @@ export const StudentChatPage: React.FC = () => {
     <StudentShell>
       <div className="space-y-4 max-w-7xl mx-auto">
         {/* Top Header Banner */}
-        <div className="bg-[#111111] rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-md">
-          <div className="relative z-10 max-w-xl">
-            <span className="badge bg-[#F4C430] text-[#111111] font-black tracking-widest text-[10px] uppercase px-2.5 py-1 mb-3 inline-block shadow-2xs">
-              DIRECT MESSAGING
-            </span>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
+        <div className="bg-[#111111] rounded-3xl px-6 py-5 md:px-8 md:py-6 text-white relative overflow-hidden shadow-md flex items-center">
+          <div className="relative z-10">
+            <h1 className="text-xl md:text-2xl font-black tracking-tight">
               Scholario Chat
             </h1>
-            <p className="text-xs md:text-sm text-[#A3A3A3] font-medium leading-relaxed">
-              Message your students, teachers, and admin directly — one-on-one, private, and permanent.
-            </p>
           </div>
           <div className="absolute -right-8 -bottom-8 w-44 h-44 bg-[#F4C430]/10 rounded-full blur-2xl pointer-events-none" />
         </div>
