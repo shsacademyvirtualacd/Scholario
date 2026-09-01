@@ -288,7 +288,7 @@ export async function getChatMessages(threadId: string): Promise<ChatMessage[]> 
 export async function sendChatMessage(
   threadId: string,
   senderId: string,
-  senderRole: Role,
+  senderRole: Role | string,
   content: string
 ): Promise<ChatMessage> {
   const trimmed = content.trim();
@@ -296,12 +296,14 @@ export async function sendChatMessage(
     throw new Error('Message content cannot be empty');
   }
 
+  const normalizedRole = String(senderRole || 'student').toLowerCase();
+
   const { data, error } = await (supabase as any)
     .from('chat_messages')
     .insert({
       thread_id: threadId,
       sender_id: senderId,
-      sender_role: senderRole,
+      sender_role: normalizedRole,
       content: trimmed,
       read_at: null,
     })

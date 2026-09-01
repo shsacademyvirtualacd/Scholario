@@ -46,10 +46,26 @@ BEGIN
   -- Maintain participant_one_id & participant_two_id for backward compatibility if present
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'chat_threads' AND column_name = 'participant_one_id') THEN
     ALTER TABLE public.chat_threads ADD COLUMN participant_one_id uuid REFERENCES public.profiles(id) ON DELETE RESTRICT;
-    ALTER TABLE public.chat_threads ADD COLUMN participant_one_role text CHECK (participant_one_role IN ('student', 'teacher', 'admin'));
+    ALTER TABLE public.chat_threads ADD COLUMN participant_one_role text;
     ALTER TABLE public.chat_threads ADD COLUMN participant_two_id uuid REFERENCES public.profiles(id) ON DELETE RESTRICT;
-    ALTER TABLE public.chat_threads ADD COLUMN participant_two_role text CHECK (participant_two_role IN ('student', 'teacher', 'admin'));
+    ALTER TABLE public.chat_threads ADD COLUMN participant_two_role text;
   END IF;
+END $$;
+
+-- Drop any restrictive check constraints on participant roles in chat_threads
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN (
+    SELECT conname 
+    FROM pg_constraint 
+    WHERE conrelid = 'public.chat_threads'::regclass 
+      AND contype = 'c' 
+      AND (conname ILIKE '%role%' OR conname ILIKE '%type%')
+  ) LOOP
+    EXECUTE 'ALTER TABLE public.chat_threads DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
+  END LOOP;
 END $$;
 
 -- 3. Drop legacy unique constraints on student_id that restricted 1 thread per student
@@ -102,16 +118,43 @@ CREATE INDEX IF NOT EXISTS idx_chat_threads_staff_id ON public.chat_threads(staf
 CREATE INDEX IF NOT EXISTS idx_chat_threads_type ON public.chat_threads(thread_type);
 CREATE INDEX IF NOT EXISTS idx_chat_threads_created_at ON public.chat_threads(created_at DESC);
 
--- 5. Chat Messages Table
+-- 5. Chat Messages Table & Constraint Fix
 CREATE TABLE IF NOT EXISTS public.chat_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   thread_id uuid NOT NULL REFERENCES public.chat_threads(id) ON DELETE RESTRICT,
   sender_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
-  sender_role text NOT NULL CHECK (sender_role IN ('student', 'teacher', 'admin')),
+  sender_role text NOT NULL DEFAULT 'student',
   content text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   read_at timestamptz NULL
 );
+
+-- Drop any outdated or restrictive check constraints on sender_role
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  -- Drop named constraint if exists
+  ALTER TABLE public.chat_messages DROP CONSTRAINT IF EXISTS chat_messages_sender_role_check;
+  ALTER TABLE public.chat_messages DROP CONSTRAINT IF EXISTS check_sender_role;
+  ALTER TABLE public.chat_messages DROP CONSTRAINT IF EXISTS chat_messages_role_check;
+
+  -- Drop all remaining check constraints touching sender_role
+  FOR r IN (
+    SELECT conname 
+    FROM pg_constraint 
+    WHERE conrelid = 'public.chat_messages'::regclass 
+      AND contype = 'c' 
+      AND (conname ILIKE '%role%' OR conname ILIKE '%sender%')
+  ) LOOP
+    EXECUTE 'ALTER TABLE public.chat_messages DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
+  END LOOP;
+END $$;
+
+-- Add updated check constraint supporting all current and future roles
+ALTER TABLE public.chat_messages 
+  ADD CONSTRAINT chat_messages_sender_role_check 
+  CHECK (sender_role IN ('student', 'teacher', 'admin', 'staff', 'super_admin', 'parent'));
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_created ON public.chat_messages(thread_id, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON public.chat_messages(sender_id);
