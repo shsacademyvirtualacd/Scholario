@@ -418,14 +418,20 @@ export async function sendChatMessage(
   threadId: string,
   senderId: string,
   senderRole: Role | string,
-  content: string
+  content: string,
+  extraOptions?: {
+    messageType?: 'text' | 'voice';
+    audioUrl?: string | null;
+    audioDurationSeconds?: number | null;
+  }
 ): Promise<ChatMessage> {
   const trimmed = content.trim();
-  if (!trimmed) {
+  if (!trimmed && !extraOptions?.audioUrl) {
     throw new Error('Message content cannot be empty');
   }
 
   const normalizedRole = String(senderRole || 'student').toLowerCase();
+  const messageType = extraOptions?.messageType || (extraOptions?.audioUrl ? 'voice' : 'text');
 
   const { data, error } = await (supabase as any)
     .from('chat_messages')
@@ -433,7 +439,10 @@ export async function sendChatMessage(
       thread_id: threadId,
       sender_id: senderId,
       sender_role: normalizedRole,
-      content: trimmed,
+      content: trimmed || (messageType === 'voice' ? '🎤 Voice message' : ''),
+      message_type: messageType,
+      audio_url: extraOptions?.audioUrl || null,
+      audio_duration_seconds: extraOptions?.audioDurationSeconds ?? null,
       read_at: null,
     })
     .select()
@@ -445,6 +454,31 @@ export async function sendChatMessage(
   }
 
   return data as ChatMessage;
+}
+
+/**
+ * Send a voice message in a thread.
+ */
+export async function sendVoiceChatMessage(
+  threadId: string,
+  senderId: string,
+  senderRole: Role | string,
+  audioUrl: string,
+  durationSeconds: number,
+  fallbackText?: string
+): Promise<ChatMessage> {
+  if (!audioUrl) {
+    throw new Error('Audio URL is required for a voice message.');
+  }
+
+  const durationFormatted = `${Math.floor(durationSeconds / 60)}:${durationSeconds % 60 < 10 ? '0' : ''}${durationSeconds % 60}`;
+  const defaultText = fallbackText || `🎤 Voice message (${durationFormatted})`;
+
+  return sendChatMessage(threadId, senderId, senderRole, defaultText, {
+    messageType: 'voice',
+    audioUrl,
+    audioDurationSeconds: Math.round(durationSeconds),
+  });
 }
 
 /**

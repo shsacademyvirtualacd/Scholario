@@ -1750,6 +1750,79 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.status(404).send('Answer key not found');
   });
 
+  // ── Chat Voice Messages Upload ────────────────────
+  app.post('/api/chat/voice/upload', upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const threadId = req.body.thread_id || 'general';
+
+      if (!file) {
+        return res.status(400).json({ error: 'No audio file provided' });
+      }
+
+      const audioId = `voice_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const mimeType = file.mimetype || 'audio/webm';
+      const extension = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+      const filePath = `${threadId}/${audioId}.${extension}`;
+
+      // Save to in-memory store for fallback previewing
+      fileStorage.set(audioId, {
+        buffer: file.buffer,
+        mimeType,
+        filename: file.originalname || `${audioId}.${extension}`,
+      });
+
+      // Try uploading to Supabase Storage 'voice-messages' bucket
+      try {
+        const { data: uploadData, error: uploadErr } = await supabaseServer.storage
+          .from('voice-messages')
+          .upload(filePath, file.buffer, {
+            contentType: mimeType,
+            cacheControl: '31536000',
+            upsert: false,
+          });
+
+        if (!uploadErr && uploadData) {
+          const { data: pubData } = supabaseServer.storage
+            .from('voice-messages')
+            .getPublicUrl(filePath);
+
+          if (pubData?.publicUrl) {
+            return res.json({
+              success: true,
+              audio_url: pubData.publicUrl,
+              audio_id: audioId,
+            });
+          }
+        }
+      } catch (storageErr) {
+        console.warn('[server /api/chat/voice/upload] Supabase storage upload warning:', storageErr);
+      }
+
+      // Fallback local view URL
+      return res.json({
+        success: true,
+        audio_url: `/api/chat/voice/view/${audioId}`,
+        audio_id: audioId,
+      });
+    } catch (err: any) {
+      console.error('[server /api/chat/voice/upload] Error:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error uploading audio' });
+    }
+  });
+
+  app.get('/api/chat/voice/view/:audioId', (req, res) => {
+    const { audioId } = req.params;
+    const stored = fileStorage.get(audioId);
+    if (!stored) {
+      return res.status(404).send('Voice message audio not found');
+    }
+
+    res.setHeader('Content-Type', stored.mimeType || 'audio/webm');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(stored.buffer);
+  });
+
   // ── Explicit Service Worker Handler ─────────────────
   app.get('/sw.js', (_req, res) => {
     const swPath = path.resolve('public/sw.js');

@@ -12,16 +12,21 @@ import {
   GraduationCap,
   Users,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Volume2
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import ProfileAvatar from '../common/ProfileAvatar';
+import { VoiceMessageBubble } from './VoiceMessageBubble';
+import { VoiceRecorderBar } from './VoiceRecorderBar';
+import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
 import {
   getChatThreadsForUser,
   getChatMessages,
   sendChatMessage,
+  sendVoiceChatMessage,
   markChatThreadMessagesAsRead,
   getOrCreateChatThread,
   getStudentChatContacts
@@ -372,6 +377,43 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
+  // Handle Send Voice Message
+  const handleSendVoice = async (audioUrl: string, durationSeconds: number) => {
+    if (!activeThreadId || !currentUserId || !audioUrl) return;
+
+    setSendError(null);
+    try {
+      const createdMsg = await sendVoiceChatMessage(
+        activeThreadId,
+        currentUserId,
+        role,
+        audioUrl,
+        durationSeconds
+      );
+
+      // Optimistically append message if not already added by realtime
+      setMessages(prev => {
+        if (prev.some(m => m.id === createdMsg.id)) return prev;
+        return [...prev, createdMsg];
+      });
+
+      // Update thread in list
+      setThreads(prev => {
+        const threadIndex = prev.findIndex(t => t.id === activeThreadId);
+        if (threadIndex !== -1) {
+          const updated = [...prev];
+          const thread = { ...updated[threadIndex], latest_message: createdMsg };
+          updated.splice(threadIndex, 1);
+          return [thread, ...updated];
+        }
+        return prev;
+      });
+    } catch (err: any) {
+      console.error('[Chat] Failed to send voice message:', err);
+      setSendError(err?.message || 'Failed to send voice message.');
+    }
+  };
+
   // Start new chat with a contact from modal
   const handleSelectContactToChat = async (contact: Profile) => {
     if (!currentUserId) {
@@ -662,18 +704,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        <p className={`text-[11px] truncate ${hasUnread ? 'font-semibold text-[#111111]' : 'text-[#737373]'}`}>
+                        <div className={`text-[11px] truncate ${hasUnread ? 'font-semibold text-[#111111]' : 'text-[#737373]'}`}>
                           {thread.latest_message ? (
                             <>
                               {thread.latest_message.sender_id === currentUserId && (
                                 <span className="text-[#A3A3A3] mr-1">You:</span>
                               )}
-                              {thread.latest_message.content}
+                              {thread.latest_message.message_type === 'voice' || thread.latest_message.audio_url ? (
+                                <span className="inline-flex items-center gap-1 text-[#D97706] font-medium">
+                                  <Volume2 size={12} className="shrink-0" />
+                                  <span>Voice message ({formatAudioDuration(thread.latest_message.audio_duration_seconds || 0)})</span>
+                                </span>
+                              ) : (
+                                thread.latest_message.content
+                              )}
                             </>
                           ) : (
                             <span className="italic text-[#A3A3A3]">No messages yet — send a greeting</span>
                           )}
-                        </p>
+                        </div>
                         {hasUnread && (
                           <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none">
                             {thread.unread_count}
@@ -806,34 +855,45 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             />
                           )}
 
-                          <div
-                            className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-2xs ${
-                              isMe
-                                ? 'bg-[#111111] text-white rounded-br-xs'
-                                : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
-                            }`}
-                          >
-                            <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words select-text">
-                              {msg.content}
-                            </p>
-
+                          {msg.message_type === 'voice' || msg.audio_url ? (
+                            <VoiceMessageBubble
+                              messageId={msg.id}
+                              audioUrl={msg.audio_url || ''}
+                              durationSeconds={msg.audio_duration_seconds}
+                              createdAt={msg.created_at}
+                              readAt={msg.read_at}
+                              isMe={isMe}
+                            />
+                          ) : (
                             <div
-                              className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
-                                isMe ? 'text-white/60' : 'text-[#A3A3A3]'
+                              className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-2xs ${
+                                isMe
+                                  ? 'bg-[#111111] text-white rounded-br-xs'
+                                  : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
                               }`}
                             >
-                              <span>{formatMessageTime(msg.created_at)}</span>
-                              {isMe && (
-                                <span title={isRead ? 'Read' : 'Delivered'}>
-                                  {isRead ? (
-                                    <CheckCheck size={12} className="text-[#F4C430]" />
-                                  ) : (
-                                    <Check size={12} />
-                                  )}
-                                </span>
-                              )}
+                              <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words select-text">
+                                {msg.content}
+                              </p>
+
+                              <div
+                                className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
+                                  isMe ? 'text-white/60' : 'text-[#A3A3A3]'
+                                }`}
+                              >
+                                <span>{formatMessageTime(msg.created_at)}</span>
+                                {isMe && (
+                                  <span title={isRead ? 'Read' : 'Delivered'}>
+                                    {isRead ? (
+                                      <CheckCheck size={12} className="text-[#F4C430]" />
+                                    ) : (
+                                      <Check size={12} />
+                                    )}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </React.Fragment>
                     );
@@ -860,38 +920,48 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 )}
 
-                <form
-                  onSubmit={handleSendMessage}
-                  className="flex items-end gap-2 bg-[#F7F7F7] p-2 rounded-2xl border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white transition-all shadow-2xs"
-                >
-                  <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={inputContent}
-                    onChange={(e) => setInputContent(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
-                    className="flex-1 max-h-32 min-h-[38px] p-2 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#A3A3A3] resize-none outline-hidden"
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={!inputContent.trim() || sending}
-                    className="w-9 h-9 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs interactive"
-                    title="Send message"
+                <div className="flex items-center gap-2">
+                  <form
+                    onSubmit={handleSendMessage}
+                    className="flex-1 flex items-end gap-2 bg-[#F7F7F7] p-2 rounded-2xl border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white transition-all shadow-2xs"
                   >
-                    {sending ? (
-                      <Loader2 size={16} className="animate-spin" />
+                    <textarea
+                      ref={textareaRef}
+                      rows={1}
+                      value={inputContent}
+                      onChange={(e) => setInputContent(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
+                      className="flex-1 max-h-32 min-h-[38px] p-2 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#A3A3A3] resize-none outline-hidden"
+                    />
+
+                    {inputContent.trim() ? (
+                      <button
+                        type="submit"
+                        disabled={sending}
+                        className="w-9 h-9 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs interactive"
+                        title="Send message"
+                      >
+                        {sending ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Send size={16} />
+                        )}
+                      </button>
                     ) : (
-                      <Send size={16} />
+                      <VoiceRecorderBar
+                        threadId={activeThread.id}
+                        onSendVoice={handleSendVoice}
+                        disabled={sending}
+                      />
                     )}
-                  </button>
-                </form>
+                  </form>
+                </div>
               </div>
             </>
           ) : (
