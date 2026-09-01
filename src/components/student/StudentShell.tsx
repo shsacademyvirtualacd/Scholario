@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
+  MessageSquare,
   Calendar,
   BookMarked,
   FileCheck2,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { NotificationBell } from '../common/NotificationBell';
 import ProfileAvatar from '../common/ProfileAvatar';
 
@@ -31,6 +33,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/student' },
+  { icon: MessageSquare,   label: 'Chat',      path: '/student/chat' },
   { icon: ClipboardCheck,  label: 'Attendance', path: '/student/attendance' },
   { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
   { icon: FileCheck2,      label: 'Testing Center', path: '/student/tests' },
@@ -42,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   const { profile, signOut, feeStatus } = useAuth();
+  const { unreadCount } = useUnreadChatCount();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -90,18 +94,26 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           {NAV_ITEMS.map(({ icon: Icon, label, path, disabled }) => {
             const isBlocked = feeStatus !== 'paid' && path !== '/student/checkout';
             const isActive = !disabled && !isBlocked && (activeNav === path || (path !== '/student' && activeNav.startsWith(path)));
+            const isChat = path === '/student/chat';
             return (
               <button
                 key={path}
                 onClick={() => !disabled && !isBlocked && handleNav(path)}
                 disabled={disabled || isBlocked}
                 title={isBlocked ? "Unlocks after payment verification" : undefined}
-                className={`sidebar-link w-full ${isActive ? 'active' : ''} ${
+                className={`sidebar-link w-full justify-between ${isActive ? 'active' : ''} ${
                   disabled || isBlocked ? 'opacity-40 cursor-not-allowed' : 'interactive'
                 }`}
               >
-                <Icon size={17} className={`sidebar-icon shrink-0 ${isActive ? '' : 'text-[#525252]'}`} />
-                <span>{label}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Icon size={17} className={`sidebar-icon shrink-0 ${isActive ? '' : 'text-[#525252]'}`} />
+                  <span className="truncate">{label}</span>
+                </div>
+                {isChat && unreadCount > 0 && !disabled && !isBlocked && (
+                  <span className="shrink-0 px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none shadow-sm animate-pulse">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </button>
             );
           })}

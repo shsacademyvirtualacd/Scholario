@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
+  MessageSquare,
   Calendar,
   GraduationCap,
   Users,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import ProfileAvatar from '../common/ProfileAvatar';
 
 interface AdminShellProps {
@@ -35,6 +37,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard',  path: '/admin' },
+  { icon: MessageSquare,   label: 'Chat',       path: '/admin/chat' },
   { icon: ClipboardCheck,  label: 'Attendance', path: '/admin/attendance' },
   { icon: UserCheck,       label: 'Roster Manager', path: '/admin/roster' },
   { icon: Calendar,        label: 'Schedule',   path: '/admin/schedule' },
@@ -50,6 +53,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
+  const { unreadCount } = useUnreadChatCount();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -111,15 +115,23 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
           {NAV_ITEMS.map(({ icon: Icon, label, path, disabled }) => {
             const isActive = !disabled && isPathActive(path);
+            const isChat = path === '/admin/chat';
             return (
               <button
                 key={path}
                 onClick={() => !disabled && handleNav(path)}
                 disabled={disabled}
-                className={`sidebar-link w-full ${isActive ? 'active' : ''} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                className={`sidebar-link w-full justify-between ${isActive ? 'active' : ''} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
-                <Icon size={17} className={`sidebar-icon shrink-0 ${isActive ? '' : 'text-[#525252]'}`} />
-                <span>{label}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Icon size={17} className={`sidebar-icon shrink-0 ${isActive ? '' : 'text-[#525252]'}`} />
+                  <span className="truncate">{label}</span>
+                </div>
+                {isChat && unreadCount > 0 && !disabled && (
+                  <span className="shrink-0 px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none shadow-sm animate-pulse">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </button>
             );
           })}

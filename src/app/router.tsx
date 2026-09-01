@@ -26,6 +26,15 @@ import LandingShell from '../pages/public/LandingShell';
 const StudentDashboardPage = lazy(() => import('../pages/student/StudentDashboardPage'));
 const AdminDashboardPage   = lazy(() => import('../pages/admin/AdminDashboardPage'));
 
+// ─── Student sub-pages (lazy) ────────────────
+const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
+const StudentTestsPage = lazy(() => import('../pages/student/TestsPage'));
+const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
+const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
+const ProfilePage    = lazy(() => import('../pages/student/ProfilePage'));
+const StudentAnnouncementsPage = lazy(() => import('../pages/student/StudentAnnouncementsPage'));
+const StudentChatPage = lazy(() => import('../pages/student/StudentChatPage'));
+
 // ─── Teacher Portal (lazy) ──────────────────
 const TeacherDashboardPage = lazy(() => import('../pages/teacher/TeacherDashboardPage'));
 const TeacherAttendancePage = lazy(() => import('../pages/teacher/TeacherAttendancePage'));
@@ -34,6 +43,7 @@ const TeacherTestsPage = lazy(() => import('../pages/teacher/TeacherTestsPage'))
 const TeacherSchedulePage = lazy(() => import('../pages/teacher/TeacherSchedulePage'));
 const TeacherAnnouncementsPage = lazy(() => import('../pages/teacher/TeacherAnnouncementsPage'));
 const TeacherProfilePage = lazy(() => import('../pages/teacher/ProfilePage'));
+const TeacherChatPage = lazy(() => import('../pages/teacher/TeacherChatPage'));
 
 // ─── Fee Pages (lazy) ───────────────────────
 const StudentCheckoutPage = lazy(() => import('../pages/student/StudentCheckoutPage'));
@@ -43,14 +53,6 @@ const AdminFeesPage = lazy(() => import('../pages/admin/AdminFeesPage'));
 const StudentSagePage = lazy(() => import('../pages/student/StudentSagePage'));
 const TeacherSagePage = lazy(() => import('../pages/teacher/TeacherSagePage'));
 const AdminSagePage   = lazy(() => import('../pages/admin/AdminSagePage'));
-
-// ─── Student sub-pages (lazy) ────────────────
-const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
-const StudentTestsPage = lazy(() => import('../pages/student/TestsPage'));
-const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
-const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
-const ProfilePage    = lazy(() => import('../pages/student/ProfilePage'));
-const StudentAnnouncementsPage = lazy(() => import('../pages/student/StudentAnnouncementsPage'));
 
 // ─── Admin sub-pages (lazy) ──────────────────
 const ScheduleManagerPage  = lazy(() => import('../pages/admin/ScheduleManagerPage'));
@@ -63,6 +65,7 @@ const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnounceme
 const AdminProfilePage     = lazy(() => import('../pages/admin/ProfilePage'));
 const PriceManagerPage     = lazy(() => import('../pages/admin/PriceManagerPage'));
 const RosterManagerPage    = lazy(() => import('../pages/admin/RosterManagerPage'));
+const AdminChatPage        = lazy(() => import('../pages/admin/AdminChatPage'));
 
 // ─── Page loader ────────────────────────────
 const PageLoader: React.FC = () => {
@@ -127,6 +130,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="student"><StudentDashboardPage /></ProtectedRoute>}
           />
           <Route
+            path="/student/chat"
+            element={<ProtectedRoute requiredRole="student"><StudentChatPage /></ProtectedRoute>}
+          />
+          <Route
             path="/student/notes"
             element={<ProtectedRoute requiredRole="student"><NotesPage /></ProtectedRoute>}
           />
@@ -167,6 +174,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/admin"
             element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/chat"
+            element={<ProtectedRoute requiredRole="admin"><AdminChatPage /></ProtectedRoute>}
           />
           <Route
             path="/admin/roster"
@@ -225,6 +236,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/teacher"
             element={<ProtectedRoute requiredRole="teacher"><TeacherDashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teacher/chat"
+            element={<ProtectedRoute requiredRole="teacher"><TeacherChatPage /></ProtectedRoute>}
           />
           <Route
             path="/teacher/attendance"

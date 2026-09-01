@@ -290,6 +290,32 @@ export interface Announcement {
   creator?: Profile;
 }
 
+// ─── chat_threads & chat_messages ───────────
+export interface ChatThread {
+  id: string;
+  participant_one_id: string;
+  participant_one_role: Role;
+  participant_two_id: string;
+  participant_two_role: Role;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  sender_role: Role;
+  content: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface ChatThreadWithDetails extends ChatThread {
+  other_participant: Profile;
+  latest_message?: ChatMessage | null;
+  unread_count: number;
+}
+
 // ─── teacher_attendance_ratings ──────────────
 export type TeacherAttendanceRatingVote = 'present' | 'absent';
 
@@ -426,6 +452,16 @@ export interface Database {
         Row: TestSubmission;
         Insert: Omit<TestSubmission, 'id' | 'submitted_at' | 'test' | 'student'> & { id?: string; submitted_at?: string };
         Update: Partial<Omit<TestSubmission, 'id' | 'submitted_at' | 'test' | 'student'>>;
+      };
+      chat_threads: {
+        Row: ChatThread;
+        Insert: Omit<ChatThread, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<Omit<ChatThread, 'id' | 'created_at'>>;
+      };
+      chat_messages: {
+        Row: ChatMessage;
+        Insert: Omit<ChatMessage, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<Omit<ChatMessage, 'id' | 'created_at'>>;
       };
     };
   };

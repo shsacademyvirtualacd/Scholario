@@ -20,6 +20,7 @@ import type {
 import { triggerLiveSession, endLiveSession } from './liveSessionService';
 export * from './liveSessionService';
 export * from './avatarService';
+export * from './chatService';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
 function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
