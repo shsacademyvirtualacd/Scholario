@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
+  MessageSquare,
   ClipboardCheck,
   Calendar,
   BookMarked,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { NotificationBell } from '../common/NotificationBell';
 import ProfileAvatar from '../common/ProfileAvatar';
 
@@ -24,6 +26,7 @@ interface TeacherShellProps {
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',     path: '/teacher' },
+  { icon: MessageSquare,   label: 'Chat',          path: '/teacher/chat' },
   { icon: ClipboardCheck,  label: 'Attendance',    path: '/teacher/attendance' },
   { icon: BookMarked,      label: 'Notes Manager', path: '/teacher/notes' },
   { icon: FileCheck2,      label: 'Testing Center', path: '/teacher/tests' },
@@ -34,6 +37,7 @@ const NAV_ITEMS = [
 
 export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
+  const { unreadCount } = useUnreadChatCount();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -92,14 +96,22 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
           {NAV_ITEMS.map(({ icon: Icon, label, path }) => {
             const isActive = isPathActive(path);
+            const isChat = path === '/teacher/chat';
             return (
               <button
                 key={path}
                 onClick={() => handleNav(path)}
-                className={`sidebar-link w-full ${isActive ? 'active' : ''}`}
+                className={`sidebar-link w-full justify-between ${isActive ? 'active' : ''}`}
               >
-                <Icon size={17} className={`sidebar-icon shrink-0 ${isActive ? '' : 'text-[#525252]'}`} />
-                <span>{label}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Icon size={17} className={`sidebar-icon shrink-0 ${isActive ? '' : 'text-[#525252]'}`} />
+                  <span className="truncate">{label}</span>
+                </div>
+                {isChat && unreadCount > 0 && (
+                  <span className="shrink-0 px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none shadow-sm animate-pulse">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </button>
             );
           })}

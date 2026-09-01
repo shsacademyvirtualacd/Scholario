@@ -1,24 +1,31 @@
 import { supabase } from './supabase';
-import type { ChatThread, ChatMessage, ChatThreadWithDetails } from '../types';
+import type { Role, Profile, ChatThread, ChatMessage, ChatThreadWithDetails } from '../types';
+import { getOfferingsForStudent } from './db';
 
 /**
- * Get or create the unique 1-on-1 direct thread for a student with administration.
- * Each student has exactly one thread (student <-> admin).
+ * Get or create a 1-on-1 thread between two participants.
+ * Reuses existing thread regardless of who was participant_one or participant_two.
  */
-export async function getOrCreateStudentThread(studentId: string): Promise<ChatThread> {
-  if (!studentId) {
-    throw new Error('Student ID is required');
+export async function getOrCreateChatThread(
+  participantA: { id: string; role: Role },
+  participantB: { id: string; role: Role }
+): Promise<ChatThread> {
+  if (participantA.id === participantB.id) {
+    throw new Error('Cannot create chat thread with oneself');
   }
 
-  // 1. Try to fetch existing thread
+  // 1. Check if thread already exists
   const { data: existing, error: findError } = await (supabase as any)
     .from('chat_threads')
-    .select('*, student:profiles!student_id(*, class:classes(*, board:boards(*)), stream_obj:streams(*))')
-    .eq('student_id', studentId)
+    .select('*')
+    .or(
+      `and(participant_one_id.eq.${participantA.id},participant_two_id.eq.${participantB.id}),` +
+      `and(participant_one_id.eq.${participantB.id},participant_two_id.eq.${participantA.id})`
+    )
     .maybeSingle();
 
   if (findError) {
-    console.error('[chatService] Error finding student thread:', findError);
+    console.error('[chatService] Error finding thread:', findError);
   }
 
   if (existing) {
@@ -29,53 +36,76 @@ export async function getOrCreateStudentThread(studentId: string): Promise<ChatT
   const { data: created, error: insertError } = await (supabase as any)
     .from('chat_threads')
     .insert({
-      student_id: studentId,
+      participant_one_id: participantA.id,
+      participant_one_role: participantA.role,
+      participant_two_id: participantB.id,
+      participant_two_role: participantB.role,
     })
-    .select('*, student:profiles!student_id(*, class:classes(*, board:boards(*)), stream_obj:streams(*))')
+    .select()
     .single();
 
   if (insertError) {
-    // If concurrent insert occurred, retry fetch
+    // If unique constraint collided due to race condition, re-fetch
     const { data: retry } = await (supabase as any)
       .from('chat_threads')
-      .select('*, student:profiles!student_id(*, class:classes(*, board:boards(*)), stream_obj:streams(*))')
-      .eq('student_id', studentId)
+      .select('*')
+      .or(
+        `and(participant_one_id.eq.${participantA.id},participant_two_id.eq.${participantB.id}),` +
+        `and(participant_one_id.eq.${participantB.id},participant_two_id.eq.${participantA.id})`
+      )
       .maybeSingle();
 
     if (retry) return retry as ChatThread;
-    throw new Error(`[chatService] Failed to create student thread: ${insertError.message}`);
+    throw new Error(`[chatService] Failed to create thread: ${insertError.message}`);
   }
 
   return created as ChatThread;
 }
 
 /**
- * For Admin: Get all student chat threads with student profile details, latest message, and unread count.
+ * Get all threads for the current user with details (other participant profile, latest message, unread count)
  */
-export async function getAdminChatThreads(): Promise<ChatThreadWithDetails[]> {
-  const { data: threads, error: threadErr } = await (supabase as any)
+export async function getChatThreadsForUser(userId: string): Promise<ChatThreadWithDetails[]> {
+  const { data: threads, error } = await (supabase as any)
     .from('chat_threads')
-    .select('*, student:profiles!student_id(*, class:classes(*, board:boards(*)), stream_obj:streams(*))')
+    .select('*')
+    .or(`participant_one_id.eq.${userId},participant_two_id.eq.${userId}`)
     .order('created_at', { ascending: false });
 
-  if (threadErr) {
-    console.error('[chatService] Error fetching admin threads:', threadErr);
+  if (error) {
+    console.error('[chatService] Error fetching threads:', error);
     return [];
   }
 
   if (!threads || threads.length === 0) return [];
 
-  // Fetch all messages for these threads to get latest message & unread count
+  // Collect other participant IDs
+  const otherIds = new Set<string>();
+  threads.forEach((t: ChatThread) => {
+    const otherId = t.participant_one_id === userId ? t.participant_two_id : t.participant_one_id;
+    otherIds.add(otherId);
+  });
+
+  // Fetch profiles of all other participants
+  const { data: profilesData } = await (supabase as any)
+    .from('profiles')
+    .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+    .in('id', Array.from(otherIds));
+
+  const profileMap = new Map<string, Profile>();
+  if (profilesData) {
+    profilesData.forEach((p: Profile) => {
+      profileMap.set(p.id, p);
+    });
+  }
+
+  // Fetch latest messages & unread counts for all threads
   const threadIds = threads.map((t: ChatThread) => t.id);
-  const { data: messagesData, error: msgErr } = await (supabase as any)
+  const { data: messagesData } = await (supabase as any)
     .from('chat_messages')
     .select('*')
     .in('thread_id', threadIds)
     .order('created_at', { ascending: true });
-
-  if (msgErr) {
-    console.error('[chatService] Error fetching messages for threads:', msgErr);
-  }
 
   const messagesByThread = new Map<string, ChatMessage[]>();
   if (messagesData) {
@@ -86,17 +116,30 @@ export async function getAdminChatThreads(): Promise<ChatThreadWithDetails[]> {
     });
   }
 
-  const enrichedThreads: ChatThreadWithDetails[] = threads.map((t: any) => {
+  const enrichedThreads: ChatThreadWithDetails[] = threads.map((t: ChatThread) => {
+    const otherId = t.participant_one_id === userId ? t.participant_two_id : t.participant_one_id;
+    const otherRole = t.participant_one_id === userId ? t.participant_two_role : t.participant_one_role;
+    
+    let otherProfile = profileMap.get(otherId);
+    if (!otherProfile) {
+      // Fallback profile if not found
+      otherProfile = {
+        id: otherId,
+        full_name: otherRole === 'admin' ? 'Scholario Support (Admin)' : (otherRole === 'teacher' ? 'Teacher' : 'Student'),
+        role: otherRole,
+        avatar_url: null,
+        phone: null,
+        created_at: t.created_at,
+      };
+    }
+
     const tMessages = messagesByThread.get(t.id) || [];
     const latestMessage = tMessages.length > 0 ? tMessages[tMessages.length - 1] : null;
-    // Unread count for admin = student sent messages where read_at is null
-    const unreadCount = tMessages.filter(m => m.sender_role === 'student' && !m.read_at).length;
+    const unreadCount = tMessages.filter(m => m.sender_id !== userId && !m.read_at).length;
 
     return {
-      id: t.id,
-      student_id: t.student_id,
-      created_at: t.created_at,
-      student: t.student || null,
+      ...t,
+      other_participant: otherProfile,
       latest_message: latestMessage,
       unread_count: unreadCount,
     };
@@ -113,7 +156,7 @@ export async function getAdminChatThreads(): Promise<ChatThreadWithDetails[]> {
 }
 
 /**
- * Get all messages for a specific thread ordered chronologically.
+ * Get all messages for a specific thread
  */
 export async function getChatMessages(threadId: string): Promise<ChatMessage[]> {
   const { data, error } = await (supabase as any)
@@ -131,12 +174,12 @@ export async function getChatMessages(threadId: string): Promise<ChatMessage[]> 
 }
 
 /**
- * Send a message within a thread. Permanent by design (no delete capability).
+ * Send a message in a thread. No delete capability.
  */
 export async function sendChatMessage(
   threadId: string,
   senderId: string,
-  senderRole: 'student' | 'admin',
+  senderRole: Role,
   content: string
 ): Promise<ChatMessage> {
   const trimmed = content.trim();
@@ -165,19 +208,14 @@ export async function sendChatMessage(
 }
 
 /**
- * Mark messages as read in a thread when opened by a user.
+ * Mark all unread messages in a thread sent by the other party as read
  */
-export async function markChatThreadMessagesAsRead(
-  threadId: string,
-  currentUserRole: 'student' | 'admin'
-): Promise<void> {
-  const oppositeRole = currentUserRole === 'student' ? 'admin' : 'student';
-
+export async function markChatThreadMessagesAsRead(threadId: string, currentUserId: string): Promise<void> {
   const { error } = await (supabase as any)
     .from('chat_messages')
     .update({ read_at: new Date().toISOString() })
     .eq('thread_id', threadId)
-    .eq('sender_role', oppositeRole)
+    .neq('sender_id', currentUserId)
     .is('read_at', null);
 
   if (error) {
@@ -186,51 +224,135 @@ export async function markChatThreadMessagesAsRead(
 }
 
 /**
- * Get the total number of unread messages for a given user and role.
- * - If student: counts unread messages sent by admin in their thread.
- * - If admin: counts unread messages sent by students across all threads.
+ * Get the total number of unread messages across all threads for a user
  */
-export async function getTotalUnreadChatCount(userId: string, role: 'student' | 'admin'): Promise<number> {
+export async function getTotalUnreadChatCount(userId: string): Promise<number> {
   try {
-    if (role === 'student') {
-      // Find the student's thread
-      const { data: thread } = await (supabase as any)
-        .from('chat_threads')
-        .select('id')
-        .eq('student_id', userId)
-        .maybeSingle();
+    // 1. Get user's thread IDs
+    const { data: threads, error: threadErr } = await (supabase as any)
+      .from('chat_threads')
+      .select('id')
+      .or(`participant_one_id.eq.${userId},participant_two_id.eq.${userId}`);
 
-      if (!thread) return 0;
+    if (threadErr || !threads || threads.length === 0) return 0;
 
-      const { count, error } = await (supabase as any)
-        .from('chat_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('thread_id', thread.id)
-        .eq('sender_role', 'admin')
-        .is('read_at', null);
+    const threadIds = threads.map((t: { id: string }) => t.id);
 
-      if (error) {
-        console.error('[chatService] Error counting student unread messages:', error);
-        return 0;
-      }
-      return count || 0;
-    } else if (role === 'admin') {
-      // Admin: all unread messages sent by any student
-      const { count, error } = await (supabase as any)
-        .from('chat_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('sender_role', 'student')
-        .is('read_at', null);
+    // 2. Count unread messages
+    const { count, error: msgErr } = await (supabase as any)
+      .from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .in('thread_id', threadIds)
+      .neq('sender_id', userId)
+      .is('read_at', null);
 
-      if (error) {
-        console.error('[chatService] Error counting admin unread messages:', error);
-        return 0;
-      }
-      return count || 0;
+    if (msgErr) {
+      console.error('[chatService] Error counting unread messages:', msgErr);
+      return 0;
     }
-    return 0;
+
+    return count || 0;
   } catch (err) {
     console.error('[chatService] Exception in getTotalUnreadChatCount:', err);
     return 0;
   }
 }
+
+/**
+ * For Student: Get all teachers the student has classes with + Admin profile.
+ * Prepares / ensures thread objects for each so student sees distinct teacher threads + 1 admin thread.
+ */
+export async function getStudentChatContacts(studentId: string): Promise<{
+  teachers: Profile[];
+  admin: Profile;
+}> {
+  // 1. Fetch student's offerings
+  const offerings = await getOfferingsForStudent(studentId);
+  const teacherIds = new Set<string>();
+
+  offerings.forEach(off => {
+    if (off.teacher_id) {
+      teacherIds.add(off.teacher_id);
+    }
+  });
+
+  // Fetch teacher profiles
+  let teachers: Profile[] = [];
+  if (teacherIds.size > 0) {
+    const { data: teacherProfiles } = await (supabase as any)
+      .from('profiles')
+      .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+      .in('id', Array.from(teacherIds));
+    teachers = teacherProfiles || [];
+  }
+
+  // 2. Fetch admin profile (primary admin)
+  const { data: adminProfiles } = await (supabase as any)
+    .from('profiles')
+    .select('*')
+    .eq('role', 'admin')
+    .limit(1);
+
+  let admin: Profile = adminProfiles?.[0];
+  if (!admin) {
+    admin = {
+      id: '00000000-0000-0000-0000-000000000001',
+      full_name: 'Scholario Administration',
+      role: 'admin',
+      avatar_url: null,
+      phone: null,
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  return { teachers, admin };
+}
+
+/**
+ * For Teacher: Get all students enrolled in any class taught by this teacher
+ */
+export async function getStudentsForTeacherClasses(teacherId: string): Promise<Profile[]> {
+  try {
+    const { data: offerings } = await (supabase as any)
+      .from('class_offerings')
+      .select('id')
+      .eq('teacher_id', teacherId);
+
+    if (!offerings || offerings.length === 0) return [];
+    const offeringIds = offerings.map((o: any) => o.id);
+
+    const { data: enrollments } = await (supabase as any)
+      .from('enrollments')
+      .select('student_id')
+      .in('class_offering_id', offeringIds);
+
+    if (!enrollments || enrollments.length === 0) return [];
+    const studentIds = Array.from(new Set(enrollments.map((e: any) => e.student_id)));
+
+    const { data: studentProfiles } = await (supabase as any)
+      .from('profiles')
+      .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+      .in('id', studentIds)
+      .order('full_name');
+
+    return studentProfiles || [];
+  } catch (err) {
+    console.error('[chatService] Error fetching teacher students:', err);
+    return [];
+  }
+}
+
+/**
+ * For Admin: Get primary admin user profile or return fallback
+ */
+export async function getPrimaryAdminProfile(): Promise<Profile | null> {
+  const { data } = await (supabase as any)
+    .from('profiles')
+    .select('*')
+    .eq('role', 'admin')
+    .limit(1)
+    .maybeSingle();
+
+  return data || null;
+}
+

@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import AdminShell from '../../components/admin/AdminShell';
+import TeacherShell from '../../components/teacher/TeacherShell';
 import { ChatView } from '../../components/chat/ChatView';
-import { getAllStudents } from '../../lib/db';
+import { useAuth } from '../../features/auth/AuthContext';
+import { getStudentsForTeacherClasses } from '../../lib/chatService';
 import type { Profile } from '../../types';
 
-export const AdminChatPage: React.FC = () => {
-  const [allStudents, setAllStudents] = useState<Profile[]>([]);
+export const TeacherChatPage: React.FC = () => {
+  const { profile } = useAuth();
+  const [enrolledStudents, setEnrolledStudents] = useState<Profile[]>([]);
 
   useEffect(() => {
-    getAllStudents()
-      .then((students) => setAllStudents(students))
-      .catch((err) => console.error('[AdminChatPage] Failed to fetch students:', err));
-  }, []);
+    if (profile?.id) {
+      getStudentsForTeacherClasses(profile.id)
+        .then((students) => setEnrolledStudents(students))
+        .catch((err) => console.error('[TeacherChatPage] Failed to fetch students:', err));
+    }
+  }, [profile?.id]);
 
   return (
-    <AdminShell>
+    <TeacherShell>
       <div className="space-y-4 max-w-7xl mx-auto">
         {/* Banner */}
         <div className="bg-[#111111] rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-md">
@@ -23,10 +27,10 @@ export const AdminChatPage: React.FC = () => {
               Direct Messages 💬
             </span>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-              Student Direct Communications
+              Student Direct Threads
             </h1>
             <p className="text-xs md:text-sm text-[#A3A3A3] font-medium leading-relaxed">
-              Official 1-on-1 support and advisory threads with students. Initiate a new thread with any enrolled student or respond to active student inquiries.
+              Communicate one-on-one with your enrolled students. All conversation records are permanent and private between you and each individual student.
             </p>
           </div>
           <div className="absolute -right-8 -bottom-8 w-44 h-44 bg-[#F4C430]/10 rounded-full blur-2xl pointer-events-none" />
@@ -34,14 +38,13 @@ export const AdminChatPage: React.FC = () => {
 
         {/* Chat System Container */}
         <ChatView
-          role="admin"
-          availableContacts={allStudents}
-          allowNewChatWithAllStudents={true}
-          onStartNewChatTitle="Start Direct Chat with Student"
+          role="teacher"
+          availableContacts={enrolledStudents}
+          onStartNewChatTitle="Message an Enrolled Student"
         />
       </div>
-    </AdminShell>
+    </TeacherShell>
   );
 };
 
-export default AdminChatPage;
+export default TeacherChatPage;
