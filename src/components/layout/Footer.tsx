@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 import { LegalModal } from '../ui/LegalModal';
 import { AboutModal } from '../ui/AboutModal';
 import { ContactModal } from '../ui/ContactModal';
@@ -89,6 +89,15 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             >
               Get Started
             </button>
+            <a
+              href="https://chat.whatsapp.com/L3EYfjDXFNOGTzZjAjRuvg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-lg group interactive inline-flex items-center justify-center gap-2.5 border border-white/25 text-white hover:bg-white/10 hover:border-white/40 transition-colors"
+            >
+              <MessageCircle size={18} className="text-[#25D366]" />
+              <span>Join SHS Community</span>
+            </a>
           </div>
         </div>
       </div>

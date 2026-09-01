@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Sparkles, Shield, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield, Zap, MessageCircle } from 'lucide-react';
 import DashboardPreview from './DashboardPreview';
 
 interface HeroSectionProps {
@@ -100,6 +100,15 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
             Get Started
             <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform duration-200" />
           </button>
+          <a
+            href="https://chat.whatsapp.com/L3EYfjDXFNOGTzZjAjRuvg"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-outline btn-lg group interactive inline-flex items-center justify-center gap-2.5"
+          >
+            <MessageCircle size={18} className="text-[#25D366] group-hover:text-white transition-colors" />
+            <span>Join SHS Community</span>
+          </a>
         </div>
 
         {/* Trust indicators */}
