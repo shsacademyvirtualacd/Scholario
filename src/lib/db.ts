@@ -17,6 +17,8 @@ import type {
   TeacherAttendanceRating, TeacherAttendanceRatingVote,
   TestPaper, TestSubmission, StudentMCQAttempt, NoteFileType,
 } from '../types';
+import { triggerLiveSession, endLiveSession } from './liveSessionService';
+export * from './liveSessionService';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
 function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
@@ -510,7 +512,20 @@ export async function upsertSessionLink(
     .select()
     .single();
 
-  return throwOnError(data, error, 'upsertSessionLink') as ClassSessionLink;
+  const savedLink = throwOnError(data, error, 'upsertSessionLink') as ClassSessionLink;
+
+  // Trigger live session status update in background/async
+  triggerLiveSession({
+    slotId,
+    sessionDate,
+    linkUrl: trimmed,
+    offeringId,
+    teacherId: createdBy,
+  }).catch((err) => {
+    console.warn('[db:upsertSessionLink] live session trigger warning:', err);
+  });
+
+  return savedLink;
 }
 
 /** Delete / clear a session link for a specific slot and session date */
@@ -520,6 +535,11 @@ export async function deleteSessionLink(slotId: string, sessionDate: string): Pr
     .delete()
     .eq('slot_id', slotId)
     .eq('session_date', sessionDate);
+
+  endLiveSession(slotId, sessionDate).catch((err) => {
+    console.warn('[db:deleteSessionLink] end live session warning:', err);
+  });
+
   if (error) throw error;
 }
 

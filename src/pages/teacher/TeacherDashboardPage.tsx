@@ -20,7 +20,9 @@ import {
   upsertAttendanceBatch,
   getSessionLink,
   upsertSessionLink,
-  deleteSessionLink
+  deleteSessionLink,
+  triggerLiveSession,
+  endLiveSession
 } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -80,10 +82,19 @@ export const LiveLinkEditor: React.FC<{
     try {
       if (trimmed) {
         await upsertSessionLink(slot.id, sessionDate, trimmed, slot.offering_id, teacherId);
+        await triggerLiveSession({
+          slot,
+          slotId: slot.id,
+          sessionDate,
+          linkUrl: trimmed,
+          offeringId: slot.offering_id,
+          teacherId,
+        });
         setCurrentLink(trimmed);
         onLinkUpdated?.(trimmed);
       } else {
         await deleteSessionLink(slot.id, sessionDate);
+        await endLiveSession(slot.id, sessionDate);
         setCurrentLink(null);
         onLinkUpdated?.(null);
       }
@@ -101,6 +112,7 @@ export const LiveLinkEditor: React.FC<{
     setIsSaving(true);
     try {
       await deleteSessionLink(slot.id, sessionDate);
+      await endLiveSession(slot.id, sessionDate);
       setCurrentLink(null);
       setLinkVal('');
       onLinkUpdated?.(null);

@@ -882,6 +882,112 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     }
   });
 
+  // ── Live Sessions Management (Teacher & System Live Notifications) ──
+  app.post('/api/live-sessions/start', async (req, res) => {
+    try {
+      const {
+        id,
+        slot_id,
+        offering_id,
+        subject_id,
+        grade_id,
+        class_link,
+        teacher_id,
+        teacher_name,
+        subject_name,
+      } = req.body;
+
+      if (!class_link || !class_link.trim()) {
+        return res.status(400).json({ error: 'class_link is required' });
+      }
+
+      const sessionId = id || (slot_id ? `${slot_id}_${new Date().toISOString().slice(0, 10)}` : `live_${Date.now()}`);
+      const row = {
+        id: sessionId,
+        subject_id: String(subject_id || 'general'),
+        grade_id: String(grade_id || '9'),
+        class_link: class_link.trim(),
+        status: 'live',
+        started_at: new Date().toISOString(),
+        ended_at: null,
+        teacher_id: teacher_id || null,
+        teacher_name: teacher_name || 'Teacher',
+        subject_name: subject_name || 'Class',
+        slot_id: slot_id || null,
+        offering_id: offering_id || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const userToken = req.headers.authorization?.replace('Bearer ', '');
+      const requestSupabase = userToken ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${userToken}` } }
+      }) : supabaseServer;
+
+      const { data, error } = await requestSupabase
+        .from('live_sessions')
+        .upsert(row, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('[server /api/live-sessions/start warning]:', error.message);
+        return res.status(200).json({ success: true, session: row, warning: error.message });
+      }
+
+      return res.json({ success: true, session: data });
+    } catch (err: any) {
+      console.error('[server /api/live-sessions/start error]:', err);
+      return res.status(500).json({ error: err?.message || 'Failed to start live session' });
+    }
+  });
+
+  app.post('/api/live-sessions/end', async (req, res) => {
+    try {
+      const { id } = req.body;
+      if (!id) {
+        return res.status(400).json({ error: 'Session id is required' });
+      }
+
+      const userToken = req.headers.authorization?.replace('Bearer ', '');
+      const requestSupabase = userToken ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${userToken}` } }
+      }) : supabaseServer;
+
+      const { error } = await requestSupabase
+        .from('live_sessions')
+        .update({
+          status: 'ended',
+          ended_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.warn('[server /api/live-sessions/end warning]:', error.message);
+      }
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message || 'Failed to end live session' });
+    }
+  });
+
+  app.get('/api/live-sessions/active', async (_req, res) => {
+    try {
+      const { data, error } = await supabaseServer
+        .from('live_sessions')
+        .select('*')
+        .eq('status', 'live');
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+      return res.json({ success: true, sessions: data || [] });
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message || 'Failed to fetch active live sessions' });
+    }
+  });
+
   // ── Tests Upload (Express Dev Handler) ──────────────
   app.post('/api/tests/upload', upload.single('file'), async (req, res) => {
     try {

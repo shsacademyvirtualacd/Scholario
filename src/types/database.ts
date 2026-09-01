@@ -121,6 +121,24 @@ export interface ClassSessionLink {
   offering?: ClassOffering;
 }
 
+// ─── live_sessions ──────────────────────────
+export interface LiveSession {
+  id: string;
+  subject_id: string;
+  grade_id: string;
+  class_link: string;
+  status: 'live' | 'ended' | 'scheduled' | string;
+  started_at: string;
+  ended_at?: string | null;
+  teacher_id?: string | null;
+  teacher_name?: string | null;
+  subject_name?: string | null;
+  slot_id?: string | null;
+  offering_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // ─── enrollments ────────────────────────────
 export interface Enrollment {
   id: string;

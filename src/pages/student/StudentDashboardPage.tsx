@@ -19,6 +19,7 @@ import {
   getSessionLink
 } from '../../lib/db';
 import TeacherAttendanceRatingCard from '../../components/student/TeacherAttendanceRatingCard';
+import NotificationPermissionBanner from '../../components/student/NotificationPermissionBanner';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
@@ -789,6 +790,9 @@ const StudentDashboardPage: React.FC = () => {
           display: inline-block;
         }
       `}</style>
+
+      {/* ── Notification Permission Request Banner ── */}
+      <NotificationPermissionBanner />
 
       {/* ── Welcome ── */}
       <div className="flex items-start justify-between gap-4">
