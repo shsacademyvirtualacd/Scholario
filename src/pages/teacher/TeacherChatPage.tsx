@@ -27,7 +27,7 @@ export const TeacherChatPage: React.FC = () => {
         <div className="bg-[#111111] rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-md">
           <div className="relative z-10 max-w-xl">
             <span className="badge bg-[#F4C430] text-[#111111] font-black tracking-widest text-[10px] uppercase px-2.5 py-1 mb-3 inline-block shadow-2xs">
-              SCHOLARIO CHAT
+              DIRECT MESSAGING
             </span>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
               Scholario Chat

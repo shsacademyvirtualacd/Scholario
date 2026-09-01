@@ -799,7 +799,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <div className="flex justify-center my-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E5E5E5] text-[11px] text-[#737373] shadow-2xs">
                     <Shield size={12} className="text-[#F4C430]" />
-                    <span>End-to-end encrypted. Messages cannot be deleted.</span>
+                    <span>End-to-end encrypted.</span>
                   </div>
                 </div>
 
