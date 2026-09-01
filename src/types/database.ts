@@ -291,8 +291,13 @@ export interface Announcement {
 }
 
 // ─── chat_threads & chat_messages ───────────
+export type ChatThreadType = 'admin' | 'teacher' | 'staff';
+
 export interface ChatThread {
   id: string;
+  student_id?: string | null;
+  staff_id?: string | null;
+  thread_type?: ChatThreadType;
   participant_one_id: string;
   participant_one_role: Role;
   participant_two_id: string;

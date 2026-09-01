@@ -50,6 +50,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
@@ -281,6 +282,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!inputContent.trim() || !activeThreadId || !currentUserId || sending) return;
 
     const contentToSend = inputContent.trim();
+    setSendError(null);
     setInputContent('');
     setSending(true);
 
@@ -316,6 +318,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
     } catch (err: any) {
       console.error('[Chat] Failed to send message:', err);
       setInputContent(contentToSend); // restore on error
+      const msg = err?.message || 'Database permission error. Please run the chat migration script.';
+      setSendError(msg);
     } finally {
       setSending(false);
     }
@@ -734,7 +738,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
 
               {/* Message Input Bar */}
-              <div className="p-3 md:p-4 bg-white border-t border-[#E5E5E5]">
+              <div className="p-3 md:p-4 bg-white border-t border-[#E5E5E5] space-y-2">
+                {sendError && (
+                  <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 animate-in fade-in duration-200">
+                    <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-rose-900">Failed to send: </span>
+                      <span className="text-rose-700">{sendError}</span>
+                    </div>
+                    <button
+                      onClick={() => setSendError(null)}
+                      className="text-rose-500 hover:text-rose-800 text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
                 <form
                   onSubmit={handleSendMessage}
                   className="flex items-end gap-2 bg-[#F7F7F7] p-2 rounded-2xl border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white transition-all shadow-2xs"

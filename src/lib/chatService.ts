@@ -74,8 +74,38 @@ export async function getOrCreateChatThread(
     return existing;
   }
 
+  // Determine thread_type, student_id, and staff_id
+  let threadType: 'admin' | 'teacher' | 'staff' = 'admin';
+  let studentId: string | null = null;
+  let staffId: string | null = null;
+
+  if (roleA === 'student' && roleB === 'admin') {
+    threadType = 'admin';
+    studentId = participantA.id;
+    staffId = participantB.id;
+  } else if (roleB === 'student' && roleA === 'admin') {
+    threadType = 'admin';
+    studentId = participantB.id;
+    staffId = participantA.id;
+  } else if (roleA === 'student' && roleB === 'teacher') {
+    threadType = 'teacher';
+    studentId = participantA.id;
+    staffId = participantB.id;
+  } else if (roleB === 'student' && roleA === 'teacher') {
+    threadType = 'teacher';
+    studentId = participantB.id;
+    staffId = participantA.id;
+  } else if (roleA === 'teacher' || roleB === 'teacher') {
+    threadType = 'staff';
+    studentId = null;
+    staffId = roleA === 'teacher' ? participantA.id : participantB.id;
+  }
+
   // 2. Insert new thread
   const insertPayload = {
+    student_id: studentId,
+    staff_id: staffId,
+    thread_type: threadType,
     participant_one_id: participantA.id,
     participant_one_role: roleA,
     participant_two_id: participantB.id,
