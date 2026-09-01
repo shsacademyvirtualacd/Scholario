@@ -92,8 +92,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
           .finally(() => setLoadingModalContacts(false));
       });
     } else if (role === 'student') {
-      getStudentChatContacts(currentUserId).then(({ teachers, admin }) => {
-        setFetchedContacts([...teachers, admin]);
+      getStudentChatContacts(currentUserId).then(({ teachers, admins, admin }) => {
+        const adminList = admins && admins.length > 0 ? admins : (admin ? [admin] : []);
+        setFetchedContacts([...adminList, ...teachers]);
       }).catch(err => console.warn('[ChatView] Failed to fetch student contacts:', err))
         .finally(() => setLoadingModalContacts(false));
     }
@@ -115,23 +116,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
       let userThreads = await getChatThreadsForUser(currentUserId);
 
       if (role === 'student') {
-        // For students, check if they need starter contacts seeded
+        // For students, ensure starter threads with admins and faculty are initialized cleanly
         try {
-          const { teachers, admin } = await getStudentChatContacts(currentUserId);
+          const { teachers, admins, admin } = await getStudentChatContacts(currentUserId);
           const studentRole: Role = 'student';
           let seededAny = false;
 
-          // Check if admin thread exists in userThreads
-          const hasAdminThread = userThreads.some(
-            t => t.participant_one_role === 'admin' || t.participant_two_role === 'admin'
-          );
-
-          if (!hasAdminThread && admin?.id) {
-            await getOrCreateChatThread(
-              { id: currentUserId, role: studentRole },
-              { id: admin.id, role: 'admin' }
-            ).catch(err => console.warn('[Chat] Ensure admin thread warning:', err));
-            seededAny = true;
+          // Check if admin threads exist in userThreads
+          const adminList = admins && admins.length > 0 ? admins : (admin ? [admin] : []);
+          for (const adm of adminList) {
+            if (adm?.id) {
+              const hasAdminThread = userThreads.some(
+                t => t.participant_one_id === adm.id || t.participant_two_id === adm.id
+              );
+              if (!hasAdminThread) {
+                await getOrCreateChatThread(
+                  { id: currentUserId, role: studentRole },
+                  { id: adm.id, role: 'admin' }
+                ).catch(err => console.warn('[Chat] Ensure admin thread warning:', err));
+                seededAny = true;
+              }
+            }
           }
 
           // Ensure teacher threads exist if missing

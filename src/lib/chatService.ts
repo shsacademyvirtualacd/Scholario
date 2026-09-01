@@ -177,7 +177,7 @@ export function enrichProfilesList(
 
     if (p.role === 'teacher') {
       // Look up subjects
-      const subjects = teacherSubjectsMap?.get(p.id) || [];
+      const subjects = [...(teacherSubjectsMap?.get(p.id) || [])];
       
       // Also look up in teachers table if name or email matches
       if (teachersTableData && teachersTableData.length > 0) {
@@ -209,33 +209,32 @@ export function enrichProfilesList(
     } else if (p.role === 'admin') {
       adminIndex++;
       
-      // If multiple admins exist, make sure each admin has a clear, distinguishable name & tag
-      if (multipleAdmins) {
-        const isGenericName = !enriched.full_name || 
-          enriched.full_name.trim().toLowerCase() === 'admin' || 
-          enriched.full_name.trim().toLowerCase() === 'administrator' || 
-          enriched.full_name.trim().toLowerCase() === 'scholario administration';
+      const rawName = (enriched.full_name || '').trim();
+      const isGenericName = !rawName || 
+        rawName.toLowerCase() === 'admin' || 
+        rawName.toLowerCase() === 'administrator' || 
+        rawName.toLowerCase() === 'scholario administration';
 
+      if (rawName.toLowerCase().includes('developer')) {
+        enriched.admin_tag = 'System & Technical Administration';
+      } else if (rawName.toLowerCase().includes('virtual')) {
+        enriched.admin_tag = 'Admissions & Academic Office';
+      } else if (multipleAdmins) {
         const adminTags = [
           'Admissions & Academic Office',
           'Accounts & Student Support',
           'Administrative Helpdesk',
           'Principal & Management Office',
         ];
-        const assignedTag = adminTags[(adminIndex - 1) % adminTags.length];
-
-        enriched.admin_tag = assignedTag;
-
-        if (isGenericName) {
-          enriched.full_name = `Admin Support (${adminIndex === 1 ? 'Primary / Academics' : 'Helpdesk / Support'})`;
-        } else {
-          enriched.full_name = `${enriched.full_name} (${adminIndex === 1 ? 'Office' : 'Support'})`;
-        }
+        enriched.admin_tag = adminTags[(adminIndex - 1) % adminTags.length];
       } else {
         enriched.admin_tag = 'Institutional Administration';
-        if (!enriched.full_name || enriched.full_name.trim().toLowerCase() === 'admin') {
-          enriched.full_name = 'Scholario Administration';
-        }
+      }
+
+      if (isGenericName) {
+        enriched.full_name = multipleAdmins
+          ? `Admin Support (${adminIndex === 1 ? 'Primary / Academics' : 'Helpdesk / Support'})`
+          : 'Scholario Administration';
       }
     }
 
@@ -500,68 +499,86 @@ export async function getTotalUnreadChatCount(userId: string): Promise<number> {
 }
 
 /**
- * For Student: Get all teachers (assigned offerings + fallback all teachers) + Admin profiles.
- * Prepares / ensures thread objects for each so student sees distinct teacher threads + all admin threads.
+ * For Student: Get all teachers (assigned offerings prioritized + all faculty teachers) + All Admin profiles.
+ * Ensures the student sees all teachers and all admins in the plus button modal and active threads.
  */
 export async function getStudentChatContacts(studentId: string): Promise<{
   teachers: Profile[];
   admins: Profile[];
   admin: Profile;
 }> {
-  // 1. Fetch student's offerings & teacher subject mapping in parallel
-  const [offerings, teacherSubjectsMap, teachersTableRes] = await Promise.all([
+  // 1. Fetch student's offerings, teacher subject mapping, teachers table records, teacher profiles, and admin profiles in parallel
+  const [
+    offerings,
+    teacherSubjectsMap,
+    teachersTableRes,
+    allTeacherProfilesRes,
+    allAdminProfilesRes
+  ] = await Promise.all([
     getOfferingsForStudent(studentId).catch(() => []),
     getTeacherSubjectsMap(),
-    (supabase as any).from('teachers').select('*'),
-  ]);
-
-  const teacherIds = new Set<string>();
-  offerings.forEach(off => {
-    if (off.teacher_id) {
-      teacherIds.add(off.teacher_id);
-    }
-  });
-
-  // Fetch teacher profiles
-  let teachers: Profile[] = [];
-  try {
-    if (teacherIds.size > 0) {
-      const { data: teacherProfiles } = await (supabase as any)
-        .from('profiles')
-        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
-        .in('id', Array.from(teacherIds))
-        .order('full_name');
-      teachers = teacherProfiles || [];
-    }
-
-    // Fallback: If no assigned teachers found via offerings, get all teacher profiles
-    if (teachers.length === 0) {
-      const { data: allTeachers } = await (supabase as any)
-        .from('profiles')
-        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
-        .eq('role', 'teacher')
-        .order('full_name');
-      teachers = allTeachers || [];
-    }
-  } catch (err) {
-    console.warn('[chatService] Error loading teachers for student:', err);
-  }
-
-  // Enrich teacher profiles with subjects
-  teachers = enrichProfilesList(teachers, teacherSubjectsMap, teachersTableRes.data || []);
-
-  // 2. Fetch ALL admin profiles so student can distinguish multiple admins
-  let admins: Profile[] = [];
-  try {
-    const { data: adminProfiles } = await (supabase as any)
+    (supabase as any).from('teachers').select('*').order('full_name'),
+    (supabase as any)
+      .from('profiles')
+      .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+      .eq('role', 'teacher')
+      .order('full_name'),
+    (supabase as any)
       .from('profiles')
       .select('*')
       .eq('role', 'admin')
-      .order('created_at', { ascending: true });
-    admins = adminProfiles || [];
-  } catch (err) {
-    console.warn('[chatService] Error loading admin for student:', err);
+      .order('created_at', { ascending: true }),
+  ]);
+
+  const assignedTeacherIds = new Set<string>();
+  offerings.forEach(off => {
+    if (off.teacher_id) {
+      assignedTeacherIds.add(off.teacher_id);
+    }
+  });
+
+  // Combine teachers from profiles table and teachers table (avoiding duplicates)
+  const teachersMap = new Map<string, Profile>();
+
+  // 1a. Add all profiles with role = 'teacher'
+  if (allTeacherProfilesRes?.data && Array.isArray(allTeacherProfilesRes.data)) {
+    allTeacherProfilesRes.data.forEach((p: Profile) => {
+      teachersMap.set(p.id, p);
+    });
   }
+
+  // 1b. Also incorporate entries from the teachers table in case any teacher profile row is pending or missing
+  if (teachersTableRes?.data && Array.isArray(teachersTableRes.data)) {
+    teachersTableRes.data.forEach((t: any) => {
+      if (!teachersMap.has(t.id)) {
+        teachersMap.set(t.id, {
+          id: t.id,
+          full_name: t.full_name || 'Faculty Teacher',
+          role: 'teacher',
+          avatar_url: t.avatar_url || null,
+          phone: t.phone || null,
+          created_at: t.created_at || new Date().toISOString(),
+        } as Profile);
+      }
+    });
+  }
+
+  let teachers = Array.from(teachersMap.values());
+
+  // Sort teachers: Enrolled course instructors first, then alphabetical by name
+  teachers.sort((a, b) => {
+    const aAssigned = assignedTeacherIds.has(a.id);
+    const bAssigned = assignedTeacherIds.has(b.id);
+    if (aAssigned && !bAssigned) return -1;
+    if (!aAssigned && bAssigned) return 1;
+    return (a.full_name || '').localeCompare(b.full_name || '');
+  });
+
+  // Enrich teacher profiles with subjects
+  teachers = enrichProfilesList(teachers, teacherSubjectsMap, teachersTableRes?.data || []);
+
+  // 2. Process ALL admin profiles
+  let admins: Profile[] = allAdminProfilesRes?.data || [];
 
   if (admins.length === 0) {
     admins = [{
