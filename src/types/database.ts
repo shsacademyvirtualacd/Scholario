@@ -293,25 +293,24 @@ export interface Announcement {
 // ─── chat_threads & chat_messages ───────────
 export interface ChatThread {
   id: string;
-  participant_one_id: string;
-  participant_one_role: Role;
-  participant_two_id: string;
-  participant_two_role: Role;
+  student_id: string;
   created_at: string;
+  // joined
+  student?: Profile;
 }
 
 export interface ChatMessage {
   id: string;
   thread_id: string;
   sender_id: string;
-  sender_role: Role;
+  sender_role: 'student' | 'admin';
   content: string;
   created_at: string;
   read_at: string | null;
 }
 
 export interface ChatThreadWithDetails extends ChatThread {
-  other_participant: Profile;
+  student?: Profile;
   latest_message?: ChatMessage | null;
   unread_count: number;
 }

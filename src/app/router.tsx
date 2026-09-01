@@ -43,7 +43,6 @@ const TeacherTestsPage = lazy(() => import('../pages/teacher/TeacherTestsPage'))
 const TeacherSchedulePage = lazy(() => import('../pages/teacher/TeacherSchedulePage'));
 const TeacherAnnouncementsPage = lazy(() => import('../pages/teacher/TeacherAnnouncementsPage'));
 const TeacherProfilePage = lazy(() => import('../pages/teacher/ProfilePage'));
-const TeacherChatPage = lazy(() => import('../pages/teacher/TeacherChatPage'));
 
 // ─── Fee Pages (lazy) ───────────────────────
 const StudentCheckoutPage = lazy(() => import('../pages/student/StudentCheckoutPage'));
@@ -236,10 +235,6 @@ const AppRouter: React.FC = () => (
           <Route
             path="/teacher"
             element={<ProtectedRoute requiredRole="teacher"><TeacherDashboardPage /></ProtectedRoute>}
-          />
-          <Route
-            path="/teacher/chat"
-            element={<ProtectedRoute requiredRole="teacher"><TeacherChatPage /></ProtectedRoute>}
           />
           <Route
             path="/teacher/attendance"

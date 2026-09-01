@@ -92,7 +92,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
           {NAV_ITEMS.map(({ icon: Icon, label, path, disabled }) => {
-            const isBlocked = feeStatus !== 'paid' && path !== '/student/checkout';
+            const isBlocked = feeStatus !== 'paid' && path !== '/student/checkout' && path !== '/student/chat';
             const isActive = !disabled && !isBlocked && (activeNav === path || (path !== '/student' && activeNav.startsWith(path)));
             const isChat = path === '/student/chat';
             return (
