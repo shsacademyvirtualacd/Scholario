@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Phone, Camera, Edit3, Check, X, ShieldCheck, Loader2 } from 'lucide-react';
+import { Mail, Phone, Edit3, Check, X, ShieldCheck, Loader2 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
+import ProfileAvatar from '../../components/common/ProfileAvatar';
 import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getDashboardCounts } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
@@ -94,14 +95,15 @@ export const ProfilePage: React.FC = () => {
         <div className="lg:col-span-1 bg-white border border-[#E5E5E5] rounded-2xl p-6 text-center shadow-sm relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-2 bg-[#F4C430]" />
           
-          {/* Avatar container */}
-          <div className={`relative mx-auto mt-4 mb-4 group cursor-pointer ${isMobile ? 'w-28 h-28' : 'w-24 h-24'}`}>
-            <div className={`w-full h-full rounded-2xl bg-[#F4C430] flex items-center justify-center font-black text-[#111111] shadow-md border-2 border-white ${isMobile ? 'text-4xl' : 'text-3xl'}`}>
-              {fullName[0]?.toUpperCase() || 'A'}
-            </div>
-            <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-              <Camera size={20} />
-            </div>
+          {/* Avatar container with R2 upload/change support */}
+          <div className="mt-4 mb-4">
+            <ProfileAvatar
+              avatarUrl={profile?.avatar_url}
+              name={fullName}
+              role="admin"
+              size="2xl"
+              editable
+            />
           </div>
 
           <h2 className="text-lg font-extrabold text-[#111111]">{fullName}</h2>

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
+import ProfileAvatar from '../common/ProfileAvatar';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -129,9 +130,13 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           <div
             className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A] text-white text-left transition-colors"
           >
-            <div className="w-8 h-8 rounded-lg bg-[#F4C430] text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
-              {(profile?.full_name?.[0] ?? 'A').toUpperCase()}
-            </div>
+            <ProfileAvatar
+              avatarUrl={profile?.avatar_url}
+              name={profile?.full_name ?? 'Administrator'}
+              role="admin"
+              size="sm"
+              className="shrink-0 ring-1 ring-white/10"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold truncate leading-tight text-white">
                 {profile?.full_name ?? 'Administrator'}
@@ -173,9 +178,15 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => navigate('/admin/profile')}
-              className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-[#F4C430] hover:scale-105 transition-transform"
+              title={profile?.full_name || 'Admin Profile'}
+              className="rounded-lg overflow-hidden hover:scale-105 transition-transform interactive"
             >
-              {(profile?.full_name?.[0] ?? 'A').toUpperCase()}
+              <ProfileAvatar
+                avatarUrl={profile?.avatar_url}
+                name={profile?.full_name ?? 'Administrator'}
+                role="admin"
+                size="md"
+              />
             </button>
           </div>
         </header>

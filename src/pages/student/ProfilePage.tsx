@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, Mail, Award, Book, Edit3, Check, X, Camera, Loader2 } from 'lucide-react';
+import { User, Phone, Mail, Award, Book, Edit3, Check, X, Loader2 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
+import ProfileAvatar from '../../components/common/ProfileAvatar';
 import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getEnrollmentsForStudent, getFeeStatus } from '../../lib/db';
 import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
@@ -115,16 +116,15 @@ export const ProfilePage: React.FC = () => {
           <div className="lg:col-span-1 bg-white border border-[#E5E5E5] rounded-2xl p-6 text-center shadow-sm relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-2 bg-[#F4C430]" />
             
-            {/* Avatar container */}
-            <div className="relative w-24 h-24 mx-auto mt-4 mb-4 group cursor-pointer">
-              <div className="w-full h-full rounded-2xl bg-[#F4C430] flex items-center justify-center text-3xl font-black text-[#111111] shadow-md border-2 border-white">
-                {fullName[0]?.toUpperCase() || 'S'}
-              </div>
-              
-              {/* Upload Hover Indicator */}
-              <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                <Camera size={20} />
-              </div>
+            {/* Avatar container with R2 upload/change support */}
+            <div className="mt-4 mb-4">
+              <ProfileAvatar
+                avatarUrl={profile?.avatar_url}
+                name={fullName}
+                role="student"
+                size="2xl"
+                editable
+              />
             </div>
 
             <h2 className="text-lg font-extrabold text-[#111111]">{fullName}</h2>

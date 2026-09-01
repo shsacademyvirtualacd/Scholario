@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Mail, Clock, Video } from 'lucide-react';
+import ProfileAvatar from '../../common/ProfileAvatar';
 import type { Teacher, ClassOffering, ClassSlot } from '../../../types';
 import { getOfferingsForTeacher, getSlotsForTeacher, getStudentsForTeacher } from '../../../lib/db';
 
@@ -28,15 +29,6 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
     }).catch(console.error).finally(() => setLoading(false));
   }, [teacher.id]);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -60,9 +52,13 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
     <div className="space-y-6">
       {/* Profiler block */}
       <div className="flex flex-col items-center text-center pb-5 border-b border-[#F5F5F5]">
-        <div className="w-16 h-16 rounded-full bg-[#FFF9E6] text-[#F4C430] border-2 border-[#FDE68A] flex items-center justify-center text-xl font-bold mb-3 shadow-inner">
-          {getInitials(teacher.full_name)}
-        </div>
+        <ProfileAvatar
+          avatarUrl={teacher.avatar_url}
+          name={teacher.full_name}
+          role="teacher"
+          size="xl"
+          className="mb-3 shadow-inner"
+        />
         <h3 className="text-lg font-black text-[#111111]">{teacher.full_name}</h3>
         <span className={`badge ${teacher.is_active ? 'badge-gold' : 'badge-gray'} mt-1.5`}>
           {teacher.is_active ? 'Active Status' : 'Inactive Status'}

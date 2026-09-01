@@ -13,9 +13,13 @@ import { onRequestPost as submissionUploadHandler } from '../functions/api/submi
 import { onRequestGet as submissionViewHandler } from '../functions/api/submissions/view/[submissionId]';
 import { onRequestGet as submissionDlHandler } from '../functions/api/submissions/dl/[submissionId]';
 import { onRequestPost as submissionGradeHandler } from '../functions/api/submissions/grade';
+import { onRequestPost as avatarUploadHandler } from '../functions/api/profiles/avatar/upload';
+import { onRequestDelete as avatarDeleteHandler, onRequestPost as avatarDeletePostHandler } from '../functions/api/profiles/avatar/delete';
+import { onRequestGet as avatarViewHandler } from '../functions/api/profiles/avatar/view/[...key]';
 
 export interface Env {
   NOTES_BUCKET: any;
+  AVATARS_BUCKET?: any;
   ASSETS: any;
   SUPABASE_URL?: string;
   VITE_SUPABASE_URL?: string;
@@ -291,6 +295,56 @@ export default {
           request,
           env,
           params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    // ── Profile Picture (Avatar) Endpoints ──────────
+    if (url.pathname === '/api/profiles/avatar/upload' && request.method === 'POST') {
+      try {
+        return await avatarUploadHandler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname === '/api/profiles/avatar/delete' && (request.method === 'DELETE' || request.method === 'POST')) {
+      try {
+        const handler = request.method === 'DELETE' ? avatarDeleteHandler : avatarDeletePostHandler;
+        return await handler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/profiles/avatar/view/') || url.pathname.startsWith('/api/profiles/avatar/')) {
+      const cleanPath = url.pathname.replace(/\/+$/, '');
+      const prefix = cleanPath.startsWith('/api/profiles/avatar/view/') ? '/api/profiles/avatar/view/' : '/api/profiles/avatar/';
+      const rawKey = cleanPath.slice(prefix.length);
+      try {
+        return await avatarViewHandler({
+          request,
+          env,
+          params: { key: rawKey },
           waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
           next: () => Promise.resolve(new Response('')),
           data: {}

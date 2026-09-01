@@ -16,6 +16,7 @@ import {
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { NotificationBell } from '../common/NotificationBell';
+import ProfileAvatar from '../common/ProfileAvatar';
 
 interface TeacherShellProps {
   children: React.ReactNode;
@@ -109,9 +110,13 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
           <div
             className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A] text-white text-left shrink-0"
           >
-            <div className="w-8 h-8 rounded-lg bg-[#F4C430] text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
-              {(profile?.full_name?.[0] ?? 'T').toUpperCase()}
-            </div>
+            <ProfileAvatar
+              avatarUrl={profile?.avatar_url}
+              name={profile?.full_name ?? 'Teacher'}
+              role="teacher"
+              size="sm"
+              className="shrink-0 ring-1 ring-white/10"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold truncate leading-tight text-white">
                 {profile?.full_name ?? 'Teacher'}
@@ -154,9 +159,15 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
             <NotificationBell />
             <button
               onClick={() => handleNav('/teacher/profile')}
-              className="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-[#F4C430] hover:scale-105 transition-transform"
+              title={profile?.full_name || 'Profile'}
+              className="rounded-lg overflow-hidden hover:scale-105 transition-transform interactive"
             >
-              {(profile?.full_name?.[0] ?? 'T').toUpperCase()}
+              <ProfileAvatar
+                avatarUrl={profile?.avatar_url}
+                name={profile?.full_name ?? 'Teacher'}
+                role="teacher"
+                size="md"
+              />
             </button>
           </div>
         </header>

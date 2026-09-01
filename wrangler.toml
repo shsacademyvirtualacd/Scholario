@@ -17,3 +17,7 @@ binding = "ASSETS"
 binding = "NOTES_BUCKET"
 bucket_name = "scholario-notes"
 
+[[r2_buckets]]
+binding = "AVATARS_BUCKET"
+bucket_name = "scholario-avatars"
+

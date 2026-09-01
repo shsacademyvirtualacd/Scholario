@@ -16,6 +16,7 @@ import {
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { NotificationBell } from '../common/NotificationBell';
+import ProfileAvatar from '../common/ProfileAvatar';
 
 interface StudentShellProps {
   children: React.ReactNode;
@@ -110,9 +111,13 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         <div className="p-3 border-t border-[#1F1F1F] space-y-2">
           {/* Sidebar Profile Card (Non-interactive) */}
           <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] text-white border border-[#2A2A2A]">
-            <div className="w-8 h-8 rounded-lg bg-[#F4C430] text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
-              {(profile?.full_name?.[0] ?? 'S').toUpperCase()}
-            </div>
+            <ProfileAvatar
+              avatarUrl={profile?.avatar_url}
+              name={profile?.full_name ?? 'Student'}
+              role="student"
+              size="sm"
+              className="shrink-0 ring-1 ring-white/10"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold truncate leading-tight text-white">
                 {profile?.full_name ?? 'Student'}
@@ -157,12 +162,17 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
             <button
               onClick={() => feeStatus === 'paid' && navigate('/student/profile')}
               disabled={feeStatus !== 'paid'}
-              title={feeStatus !== 'paid' ? "Unlocks after payment verification" : undefined}
-              className={`w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center text-sm font-bold text-white ${
+              title={feeStatus !== 'paid' ? "Unlocks after payment verification" : (profile?.full_name || 'Profile')}
+              className={`rounded-lg overflow-hidden ${
                 feeStatus !== 'paid' ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 transition-transform interactive'
               }`}
             >
-              {(profile?.full_name?.[0] ?? 'S').toUpperCase()}
+              <ProfileAvatar
+                avatarUrl={profile?.avatar_url}
+                name={profile?.full_name ?? 'Student'}
+                role="student"
+                size="md"
+              />
             </button>
           </div>
         </header>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Eye } from 'lucide-react';
+import ProfileAvatar from '../../common/ProfileAvatar';
 import type { Teacher, ClassOffering, ClassSlot, Enrollment } from '../../../types';
 
 interface TeacherTableProps {
@@ -29,15 +30,6 @@ export const TeacherTable: React.FC<TeacherTableProps> = ({
     return { classesCount, studentCount, streams };
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
     <div className="table-container">
       <table className="table">
@@ -58,9 +50,13 @@ export const TeacherTable: React.FC<TeacherTableProps> = ({
               <tr key={teacher.id}>
                 <td>
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-[#FFF9E6] text-[#F4C430] border border-[#FDE68A] flex items-center justify-center text-xs font-bold shrink-0">
-                      {getInitials(teacher.full_name)}
-                    </div>
+                    <ProfileAvatar
+                      avatarUrl={teacher.avatar_url}
+                      name={teacher.full_name}
+                      role="teacher"
+                      size="sm"
+                      className="shrink-0"
+                    />
                     <div>
                       <span className="font-semibold text-[#111111] block leading-tight">{teacher.full_name}</span>
                       <span className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mt-0.5 block">
