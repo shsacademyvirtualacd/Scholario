@@ -108,14 +108,34 @@ export async function getOrCreateChatThread(
  * Get all threads for the current user with details (other participant profile, latest message, unread count)
  */
 export async function getChatThreadsForUser(userId: string): Promise<ChatThreadWithDetails[]> {
-  const { data: threads, error } = await (supabase as any)
-    .from('chat_threads')
-    .select('*')
-    .or(`participant_one_id.eq.${userId},participant_two_id.eq.${userId}`)
-    .order('created_at', { ascending: false });
+  let threads: ChatThread[] = [];
 
-  if (error) {
-    console.error('[chatService] Error fetching threads:', error);
+  try {
+    const { data, error } = await (supabase as any)
+      .from('chat_threads')
+      .select('*')
+      .or(`participant_one_id.eq.${userId},participant_two_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      threads = data;
+    } else if (error) {
+      console.warn('[chatService] .or query warning on chat_threads:', error);
+      // Direct query fallbacks
+      const [res1, res2] = await Promise.all([
+        (supabase as any).from('chat_threads').select('*').eq('participant_one_id', userId),
+        (supabase as any).from('chat_threads').select('*').eq('participant_two_id', userId),
+      ]);
+      const combined = [...(res1.data || []), ...(res2.data || [])];
+      const seen = new Set<string>();
+      threads = combined.filter(t => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+    }
+  } catch (err) {
+    console.error('[chatService] Exception fetching threads:', err);
     return [];
   }
 
@@ -125,37 +145,54 @@ export async function getChatThreadsForUser(userId: string): Promise<ChatThreadW
   const otherIds = new Set<string>();
   threads.forEach((t: ChatThread) => {
     const otherId = t.participant_one_id === userId ? t.participant_two_id : t.participant_one_id;
-    otherIds.add(otherId);
+    if (otherId) otherIds.add(otherId);
   });
 
   // Fetch profiles of all other participants
-  const { data: profilesData } = await (supabase as any)
-    .from('profiles')
-    .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
-    .in('id', Array.from(otherIds));
-
   const profileMap = new Map<string, Profile>();
-  if (profilesData) {
-    profilesData.forEach((p: Profile) => {
-      profileMap.set(p.id, p);
-    });
+  if (otherIds.size > 0) {
+    try {
+      const { data: profilesData } = await (supabase as any)
+        .from('profiles')
+        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+        .in('id', Array.from(otherIds));
+
+      if (profilesData) {
+        profilesData.forEach((p: Profile) => {
+          profileMap.set(p.id, p);
+        });
+      }
+    } catch (e) {
+      console.warn('[chatService] Profile lookup warning:', e);
+    }
   }
 
   // Fetch latest messages & unread counts for all threads
   const threadIds = threads.map((t: ChatThread) => t.id);
-  const { data: messagesData } = await (supabase as any)
-    .from('chat_messages')
-    .select('*')
-    .in('thread_id', threadIds)
-    .order('created_at', { ascending: true });
-
   const messagesByThread = new Map<string, ChatMessage[]>();
-  if (messagesData) {
-    messagesData.forEach((m: ChatMessage) => {
-      const list = messagesByThread.get(m.thread_id) || [];
-      list.push(m);
-      messagesByThread.set(m.thread_id, list);
-    });
+
+  if (threadIds.length > 0) {
+    try {
+      const { data: messagesData, error: msgErr } = await (supabase as any)
+        .from('chat_messages')
+        .select('*')
+        .in('thread_id', threadIds)
+        .order('created_at', { ascending: true });
+
+      if (msgErr) {
+        console.warn('[chatService] Batch messages fetch warning:', msgErr);
+      }
+
+      if (messagesData) {
+        messagesData.forEach((m: ChatMessage) => {
+          const list = messagesByThread.get(m.thread_id) || [];
+          list.push(m);
+          messagesByThread.set(m.thread_id, list);
+        });
+      }
+    } catch (e) {
+      console.warn('[chatService] Messages lookup warning:', e);
+    }
   }
 
   const enrichedThreads: ChatThreadWithDetails[] = threads.map((t: ChatThread) => {
@@ -167,7 +204,7 @@ export async function getChatThreadsForUser(userId: string): Promise<ChatThreadW
       // Fallback profile if not found
       otherProfile = {
         id: otherId,
-        full_name: otherRole === 'admin' ? 'Scholario Support (Admin)' : (otherRole === 'teacher' ? 'Teacher' : 'Student'),
+        full_name: otherRole === 'admin' ? 'Scholario Administration' : (otherRole === 'teacher' ? 'Teacher' : 'Student'),
         role: otherRole,
         avatar_url: null,
         phone: null,

@@ -68,35 +68,53 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const loadThreads = async (preserveActiveId?: string) => {
     if (!currentUserId) return;
     try {
+      // First, load all threads the user is already part of
+      let userThreads = await getChatThreadsForUser(currentUserId);
+
       if (role === 'student') {
-        // For students, ensure threads exist for their teachers & admin
+        // For students, check if they need starter contacts seeded
         try {
           const { teachers, admin } = await getStudentChatContacts(currentUserId);
           const studentRole: Role = 'student';
-          
-          // Ensure admin thread exists
-          if (admin?.id) {
+          let seededAny = false;
+
+          // Check if admin thread exists in userThreads
+          const hasAdminThread = userThreads.some(
+            t => t.participant_one_role === 'admin' || t.participant_two_role === 'admin'
+          );
+
+          if (!hasAdminThread && admin?.id) {
             await getOrCreateChatThread(
               { id: currentUserId, role: studentRole },
               { id: admin.id, role: 'admin' }
             ).catch(err => console.warn('[Chat] Ensure admin thread warning:', err));
+            seededAny = true;
           }
 
-          // Ensure teacher threads exist
+          // Ensure teacher threads exist if missing
           for (const teacher of teachers) {
             if (teacher.id) {
-              await getOrCreateChatThread(
-                { id: currentUserId, role: studentRole },
-                { id: teacher.id, role: 'teacher' }
-              ).catch(err => console.warn('[Chat] Ensure teacher thread warning:', err));
+              const hasTeacherThread = userThreads.some(
+                t => t.participant_one_id === teacher.id || t.participant_two_id === teacher.id
+              );
+              if (!hasTeacherThread) {
+                await getOrCreateChatThread(
+                  { id: currentUserId, role: studentRole },
+                  { id: teacher.id, role: 'teacher' }
+                ).catch(err => console.warn('[Chat] Ensure teacher thread warning:', err));
+                seededAny = true;
+              }
             }
+          }
+
+          if (seededAny) {
+            userThreads = await getChatThreadsForUser(currentUserId);
           }
         } catch (seedErr) {
           console.warn('[Chat] Auto-seed contacts warning:', seedErr);
         }
       }
 
-      const userThreads = await getChatThreadsForUser(currentUserId);
       setThreads(userThreads);
 
       if (preserveActiveId) {
@@ -116,40 +134,63 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [currentUserId, role]);
 
   // 2. Load Messages when Active Thread changes
-  useEffect(() => {
+  const fetchActiveMessages = async (silent = false) => {
     if (!activeThreadId || !currentUserId) {
       setMessages([]);
       return;
     }
 
-    let isMounted = true;
-    const fetchMessages = async () => {
-      setLoadingMessages(true);
-      try {
-        const msgs = await getChatMessages(activeThreadId);
-        if (isMounted) {
-          setMessages(msgs);
-          // Mark unread messages in this thread as read
-          await markChatThreadMessagesAsRead(activeThreadId, currentUserId);
-          window.dispatchEvent(new CustomEvent('scholario-chat-read'));
-          // Optimistically clear unread count for this thread in state
-          setThreads(prev =>
-            prev.map(t => (t.id === activeThreadId ? { ...t, unread_count: 0 } : t))
-          );
+    if (!silent) setLoadingMessages(true);
+    try {
+      const msgs = await getChatMessages(activeThreadId);
+      setMessages(msgs);
+      
+      // If there are unread messages from other user, mark as read
+      const hasUnread = msgs.some(m => m.sender_id !== currentUserId && !m.read_at);
+      if (hasUnread) {
+        await markChatThreadMessagesAsRead(activeThreadId, currentUserId);
+        window.dispatchEvent(new CustomEvent('scholario-chat-read'));
+        setThreads(prev =>
+          prev.map(t => (t.id === activeThreadId ? { ...t, unread_count: 0 } : t))
+        );
+      }
+    } catch (err) {
+      console.error('[Chat] Failed to load messages:', err);
+    } finally {
+      if (!silent) setLoadingMessages(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveMessages(false);
+  }, [activeThreadId, currentUserId]);
+
+  // Background polling & Window focus sync (resilient fallback for Realtime)
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const interval = setInterval(() => {
+      if (activeThreadId) {
+        fetchActiveMessages(true);
+      }
+    }, 5000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadThreads(activeThreadId || undefined);
+        if (activeThreadId) {
+          fetchActiveMessages(true);
         }
-      } catch (err) {
-        console.error('[Chat] Failed to load messages:', err);
-      } finally {
-        if (isMounted) setLoadingMessages(false);
       }
     };
 
-    fetchMessages();
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      isMounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [activeThreadId, currentUserId]);
+  }, [currentUserId, activeThreadId]);
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
@@ -160,7 +201,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   useEffect(() => {
     if (!currentUserId) return;
 
-    const channelName = `chat-room-${currentUserId}-${Math.random().toString(36).substring(7)}`;
+    const channelName = `chat-room-${currentUserId}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -176,7 +217,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
           // If the message belongs to active thread
           if (newMsg.thread_id === activeThreadId) {
             setMessages(prev => {
-              // Avoid duplicate if already in state
               if (prev.some(m => m.id === newMsg.id)) return prev;
               return [...prev, newMsg];
             });
@@ -224,7 +264,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) {
+          console.warn('[Chat Realtime] Subscription status:', status, 'error:', err);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
