@@ -16,10 +16,13 @@ import { onRequestPost as submissionGradeHandler } from '../functions/api/submis
 import { onRequestPost as avatarUploadHandler } from '../functions/api/profiles/avatar/upload';
 import { onRequestDelete as avatarDeleteHandler, onRequestPost as avatarDeletePostHandler } from '../functions/api/profiles/avatar/delete';
 import { onRequestGet as avatarViewHandler } from '../functions/api/profiles/avatar/view/[...key]';
+import { onRequestPost as chatUploadHandler } from '../functions/api/chat/upload';
+import { onRequestGet as chatAttachmentHandler } from '../functions/api/chat/attachment/[...key]';
 
 export interface Env {
   NOTES_BUCKET: any;
   AVATARS_BUCKET?: any;
+  CHAT_ATTACHMENTS?: any;
   ASSETS: any;
   SUPABASE_URL?: string;
   VITE_SUPABASE_URL?: string;
@@ -342,6 +345,38 @@ export default {
       const rawKey = cleanPath.slice(prefix.length);
       try {
         return await avatarViewHandler({
+          request,
+          env,
+          params: { key: rawKey },
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    // ── Chat Attachment Endpoints ──────────
+    if (url.pathname === '/api/chat/upload' && request.method === 'POST') {
+      try {
+        return await chatUploadHandler({
+          request,
+          env,
+          params: {},
+          waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+          next: () => Promise.resolve(new Response('')),
+          data: {}
+        } as any);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/chat/attachment/') && request.method === 'GET') {
+      const rawKey = url.pathname.slice('/api/chat/attachment/'.length);
+      try {
+        return await chatAttachmentHandler({
           request,
           env,
           params: { key: rawKey },

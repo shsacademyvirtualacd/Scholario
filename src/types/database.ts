@@ -292,7 +292,7 @@ export interface Announcement {
 
 // ─── chat_threads & chat_messages ───────────
 export type ChatThreadType = 'admin' | 'teacher' | 'staff';
-export type ChatMessageType = 'text' | 'voice';
+export type ChatMessageType = 'text' | 'voice' | 'image' | 'file';
 
 export interface ChatThread {
   id: string;
@@ -315,6 +315,10 @@ export interface ChatMessage {
   message_type?: ChatMessageType;
   audio_url?: string | null;
   audio_duration_seconds?: number | null;
+  attachment_key?: string | null;
+  attachment_name?: string | null;
+  attachment_size?: number | null;
+  mime_type?: string | null;
   created_at: string;
   read_at: string | null;
 }

@@ -14,13 +14,19 @@ import {
   Loader2,
   AlertCircle,
   Volume2,
-  Mic
+  Mic,
+  Paperclip,
+  Image as ImageIcon,
+  FileText
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import ProfileAvatar from '../common/ProfileAvatar';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { VoiceRecorderBar } from './VoiceRecorderBar';
+import { ChatImageBubble } from './ChatImageBubble';
+import { ChatFileBubble } from './ChatFileBubble';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
 import {
@@ -28,6 +34,8 @@ import {
   getChatMessages,
   sendChatMessage,
   sendVoiceChatMessage,
+  uploadChatAttachment,
+  sendAttachmentChatMessage,
   markChatThreadMessagesAsRead,
   getOrCreateChatThread,
   getStudentChatContacts
@@ -57,6 +65,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingFilename, setUploadingFilename] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
@@ -69,6 +80,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -434,6 +446,101 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
+  // Handle file or image attachment upload
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value so same file can be selected again if needed
+    e.target.value = '';
+
+    if (!activeThreadId || !currentUserId) {
+      toast.error('Please select a conversation first.');
+      return;
+    }
+
+    // Validate size client-side: <= 15MB
+    const MAX_SIZE = 15 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast.error(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum allowed size is 15 MB.`);
+      return;
+    }
+
+    // Validate mime type in allowlist (image/*, application/pdf, .doc, .docx)
+    const mime = (file.type || '').toLowerCase();
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const isImage = mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'heic'].includes(ext);
+    const isPdf = mime === 'application/pdf' || ext === 'pdf';
+    const isWord =
+      mime === 'application/msword' ||
+      mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      ['doc', 'docx'].includes(ext);
+
+    if (!isImage && !isPdf && !isWord) {
+      toast.error('Unsupported file type. Please choose an image, PDF, or Word document (.doc, .docx).');
+      return;
+    }
+
+    setIsUploadingAttachment(true);
+    setUploadProgress(0);
+    setUploadingFilename(file.name);
+    setSendError(null);
+
+    try {
+      const uploadRes = await uploadChatAttachment(file, activeThreadId, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      const caption = inputContent.trim() ? inputContent.trim() : undefined;
+      const createdMsg = await sendAttachmentChatMessage(
+        activeThreadId,
+        currentUserId,
+        role,
+        uploadRes,
+        caption
+      );
+
+      // Optimistically update message list
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === createdMsg.id)) return prev;
+        return [...prev, createdMsg];
+      });
+
+      // Clear input content if it was used as caption
+      if (caption) {
+        setInputContent('');
+      }
+
+      // Scroll to bottom
+      setTimeout(() => {
+        scrollToBottom('smooth');
+      }, 50);
+
+      // Update thread list with latest message
+      setThreads((prev) => {
+        const threadIndex = prev.findIndex((t) => t.id === activeThreadId);
+        if (threadIndex !== -1) {
+          const updated = [...prev];
+          const thread = { ...updated[threadIndex], latest_message: createdMsg };
+          updated.splice(threadIndex, 1);
+          return [thread, ...updated];
+        }
+        return prev;
+      });
+
+      toast.success(`${isImage ? 'Image' : 'File'} sent successfully`);
+    } catch (err: any) {
+      console.error('[Chat] Failed to upload and send attachment:', err);
+      const msg = err?.message || 'Failed to upload attachment.';
+      setSendError(msg);
+      toast.error(msg);
+    } finally {
+      setIsUploadingAttachment(false);
+      setUploadProgress(0);
+      setUploadingFilename('');
+    }
+  };
+
   // Start new chat with a contact from modal
   const handleSelectContactToChat = async (contact: Profile) => {
     if (!currentUserId) {
@@ -735,6 +842,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   <Volume2 size={12} className="shrink-0" />
                                   <span>Voice message ({formatAudioDuration(thread.latest_message.audio_duration_seconds || 0)})</span>
                                 </span>
+                              ) : thread.latest_message.message_type === 'image' ? (
+                                <span className="inline-flex items-center gap-1 text-[#2563EB] font-medium">
+                                  <ImageIcon size={12} className="shrink-0" />
+                                  <span>Photo {thread.latest_message.content && thread.latest_message.content !== 'Photo' ? `• ${thread.latest_message.content}` : ''}</span>
+                                </span>
+                              ) : thread.latest_message.message_type === 'file' ? (
+                                <span className="inline-flex items-center gap-1 text-[#7C3AED] font-medium">
+                                  <FileText size={12} className="shrink-0" />
+                                  <span>Document • {thread.latest_message.attachment_name || thread.latest_message.content || 'Attachment'}</span>
+                                </span>
                               ) : (
                                 thread.latest_message.content
                               )}
@@ -884,6 +1001,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
                               readAt={msg.read_at}
                               isMe={isMe}
                             />
+                          ) : msg.message_type === 'image' && msg.attachment_key ? (
+                            <ChatImageBubble
+                              messageId={msg.id}
+                              attachmentKey={msg.attachment_key}
+                              attachmentName={msg.attachment_name}
+                              attachmentSize={msg.attachment_size}
+                              content={msg.content}
+                              createdAt={msg.created_at}
+                              readAt={msg.read_at}
+                              isMe={isMe}
+                            />
+                          ) : msg.message_type === 'file' && msg.attachment_key ? (
+                            <ChatFileBubble
+                              messageId={msg.id}
+                              attachmentKey={msg.attachment_key}
+                              attachmentName={msg.attachment_name}
+                              attachmentSize={msg.attachment_size}
+                              mimeType={msg.mime_type}
+                              content={msg.content}
+                              createdAt={msg.created_at}
+                              readAt={msg.read_at}
+                              isMe={isMe}
+                            />
                           ) : (
                             <div
                               className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-2xs ${
@@ -947,32 +1087,76 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       onSendVoice={handleSendVoice}
                       onCancelRecording={() => setIsVoiceRecording(false)}
                       onFinishRecording={() => setIsVoiceRecording(false)}
-                      disabled={sending}
+                      disabled={sending || isUploadingAttachment}
                     />
                   ) : (
                     <form
                       onSubmit={handleSendMessage}
                       className="flex-1 flex items-end gap-2 bg-[#F7F7F7] p-2 rounded-2xl border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white transition-all shadow-2xs w-full"
                     >
-                      <textarea
-                        ref={textareaRef}
-                        rows={1}
-                        value={inputContent}
-                        onChange={(e) => setInputContent(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                        placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
-                        className="flex-1 max-h-32 min-h-[38px] p-2 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#A3A3A3] resize-none outline-hidden"
+                      {/* Hidden Native File Picker Input */}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        id="chat-attachment-input"
+                        accept="image/*,application/pdf,.doc,.docx"
+                        onChange={handleFileSelected}
+                        className="hidden"
+                        disabled={sending || isUploadingAttachment}
                       />
+
+                      {/* If uploading attachment: show progress bar inside input */}
+                      {isUploadingAttachment ? (
+                        <div className="flex-1 flex items-center gap-2 px-2 py-1.5 min-h-[38px]">
+                          <div className="w-7 h-7 rounded-xl bg-[#F4C430]/20 flex items-center justify-center text-[#B8860B] shrink-0">
+                            <Loader2 size={15} className="animate-spin" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between text-[11px] font-medium mb-1">
+                              <span className="truncate text-[#111111] font-semibold">{uploadingFilename}</span>
+                              <span className="text-[#737373] font-mono text-[10px] ml-2 shrink-0">{uploadProgress}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#E5E5E5] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#F4C430] transition-all duration-150 rounded-full"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <textarea
+                          ref={textareaRef}
+                          rows={1}
+                          value={inputContent}
+                          onChange={(e) => setInputContent(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                          placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
+                          className="flex-1 max-h-32 min-h-[38px] p-2 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#A3A3A3] resize-none outline-hidden"
+                        />
+                      )}
+
+                      {/* Attachment Button (to the left of the mic / send button) */}
+                      <button
+                        type="button"
+                        id="btn-chat-attach"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={sending || isUploadingAttachment}
+                        className="w-9 h-9 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#EAEAEA] flex items-center justify-center shrink-0 transition-all interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Attach image or document (≤ 15MB)"
+                      >
+                        <Paperclip size={18} />
+                      </button>
 
                       {inputContent.trim() ? (
                         <button
                           type="submit"
-                          disabled={sending}
+                          disabled={sending || isUploadingAttachment}
                           className="w-9 h-9 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs interactive touch-manipulation"
                           title="Send message"
                         >
@@ -986,7 +1170,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsVoiceRecording(true)}
-                          disabled={sending}
+                          disabled={sending || isUploadingAttachment}
                           className="w-9 h-9 rounded-xl bg-[#111111] hover:bg-[#262626] text-[#F4C430] hover:text-white font-bold flex items-center justify-center shrink-0 transition-all shadow-2xs interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Record a voice message"
                         >

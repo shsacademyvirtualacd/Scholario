@@ -1858,6 +1858,152 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.send(stored.buffer);
   });
 
+  // ── Chat Attachments Upload & Download ────────────────────
+  app.post('/api/chat/upload', upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const conversationId = req.body.conversation_id || req.body.thread_id;
+      if (!file) {
+        return res.status(400).json({ error: 'No file provided' });
+      }
+      if (!conversationId) {
+        return res.status(400).json({ error: 'Missing conversation_id parameter' });
+      }
+
+      // 15 MB limit
+      const MAX_SIZE = 15 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        return res.status(413).json({ error: `File size exceeds 15 MB limit.` });
+      }
+
+      // Authentication (from header or token)
+      let userId = 'anonymous';
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
+          if (payload?.sub) userId = payload.sub;
+        } catch {}
+      }
+
+      const cleanFilename = (file.originalname || `attachment_${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const timestamp = Date.now();
+      const objectKey = `${conversationId}/${userId}/${timestamp}_${cleanFilename}`;
+
+      fileStorage.set(objectKey, {
+        buffer: file.buffer,
+        mimeType: file.mimetype,
+        filename: file.originalname || cleanFilename,
+        size: file.size,
+      });
+
+      return res.json({
+        success: true,
+        key: objectKey,
+        filename: file.originalname || cleanFilename,
+        size: file.size,
+        mime_type: file.mimetype,
+      });
+    } catch (err: any) {
+      console.error('[server /api/chat/upload] Error:', err);
+      return res.status(500).json({ error: err.message || 'Internal error uploading attachment' });
+    }
+  });
+
+  app.get('/api/chat/attachment/{*key}', async (req, res) => {
+    try {
+      let key = (req.params as any)?.key || (req.params as any)[0] || '';
+      if (!key) {
+        const prefix = '/api/chat/attachment/';
+        if (req.url.startsWith(prefix)) {
+          key = req.url.slice(prefix.length).split('?')[0];
+        }
+      }
+      key = decodeURIComponent(key);
+
+      // Authenticate
+      let token = '';
+      if (req.headers.authorization?.startsWith('Bearer ')) {
+        token = req.headers.authorization.slice(7);
+      } else if (req.query.token) {
+        token = String(req.query.token);
+      }
+
+      let userId = '';
+      if (token) {
+        try {
+          const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+          userId = payload?.sub || '';
+        } catch {}
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+      }
+
+      // Check authorization (sender or recipient)
+      const keyParts = key.split('/');
+      const senderIdFromKey = keyParts[1];
+      let authorized = Boolean(senderIdFromKey && senderIdFromKey === userId);
+
+      if (!authorized) {
+        const { data: msg } = await supabaseServer
+          .from('chat_messages')
+          .select('id, sender_id, thread_id, attachment_key')
+          .eq('attachment_key', key)
+          .maybeSingle();
+
+        if (msg) {
+          if (msg.sender_id === userId) {
+            authorized = true;
+          } else if (msg.thread_id) {
+            const { data: thread } = await supabaseServer
+              .from('chat_threads')
+              .select('id, participant_one_id, participant_two_id')
+              .eq('id', msg.thread_id)
+              .maybeSingle();
+            if (thread && (thread.participant_one_id === userId || thread.participant_two_id === userId)) {
+              authorized = true;
+            }
+          }
+        }
+      }
+
+      if (!authorized) {
+        // Check admin
+        const { data: profile } = await supabaseServer
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile && (profile.role === 'admin' || profile.role === 'super_admin')) {
+          authorized = true;
+        }
+      }
+
+      if (!authorized) {
+        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this attachment' });
+      }
+
+      const stored = fileStorage.get(key);
+      if (!stored) {
+        return res.status(404).send('Attachment not found');
+      }
+
+      const forceDownload = req.query.download === '1';
+      const isImage = (stored.mimeType || '').startsWith('image/');
+      const disposition = forceDownload || !isImage ? 'attachment' : 'inline';
+
+      res.setHeader('Content-Type', stored.mimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(stored.filename || 'attachment')}"`);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      return res.send(stored.buffer);
+    } catch (err: any) {
+      console.error('[server /api/chat/attachment] Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Explicit Service Worker Handler ─────────────────
   app.get('/sw.js', (_req, res) => {
     const swPath = path.resolve('public/sw.js');

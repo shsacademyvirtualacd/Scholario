@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Role, Profile, ChatThread, ChatMessage, ChatThreadWithDetails } from '../types';
+import type { Role, Profile, ChatThread, ChatMessage, ChatMessageType, ChatThreadWithDetails } from '../types';
 
 /**
  * Helper to fetch all teacher IDs assigned to teach a specific student
@@ -584,13 +584,17 @@ export async function sendChatMessage(
   senderRole: Role | string,
   content: string,
   extraOptions?: {
-    messageType?: 'text' | 'voice';
+    messageType?: ChatMessageType;
     audioUrl?: string | null;
     audioDurationSeconds?: number | null;
+    attachmentKey?: string | null;
+    attachmentName?: string | null;
+    attachmentSize?: number | null;
+    mimeType?: string | null;
   }
 ): Promise<ChatMessage> {
   const trimmed = content.trim();
-  if (!trimmed && !extraOptions?.audioUrl) {
+  if (!trimmed && !extraOptions?.audioUrl && !extraOptions?.attachmentKey) {
     throw new Error('Message content cannot be empty');
   }
 
@@ -603,10 +607,14 @@ export async function sendChatMessage(
       thread_id: threadId,
       sender_id: senderId,
       sender_role: normalizedRole,
-      content: trimmed || (messageType === 'voice' ? '🎤 Voice message' : ''),
+      content: trimmed || (messageType === 'voice' ? '🎤 Voice message' : extraOptions?.attachmentName || 'Attachment'),
       message_type: messageType,
       audio_url: extraOptions?.audioUrl || null,
       audio_duration_seconds: extraOptions?.audioDurationSeconds ?? null,
+      attachment_key: extraOptions?.attachmentKey || null,
+      attachment_name: extraOptions?.attachmentName || null,
+      attachment_size: extraOptions?.attachmentSize ?? null,
+      mime_type: extraOptions?.mimeType || null,
       read_at: null,
     })
     .select()
@@ -643,6 +651,106 @@ export async function sendVoiceChatMessage(
     audioUrl,
     audioDurationSeconds: Math.round(durationSeconds),
   });
+}
+
+/**
+ * Upload a chat attachment to Cloudflare R2 via Worker endpoint
+ */
+export async function uploadChatAttachment(
+  file: File,
+  conversationId: string,
+  onProgress?: (percent: number) => void
+): Promise<{ key: string; filename: string; size: number; mime_type: string }> {
+  // Validate file size client-side: <= 15 MB
+  const MAX_SIZE = 15 * 1024 * 1024;
+  if (file.size > MAX_SIZE) {
+    throw new Error(`File exceeds maximum size of 15 MB (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) {
+    throw new Error('You must be signed in to upload attachments.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('conversation_id', conversationId);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/chat/upload');
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      try {
+        const response = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && response.success) {
+          resolve({
+            key: response.key,
+            filename: response.filename || file.name,
+            size: response.size || file.size,
+            mime_type: response.mime_type || file.type,
+          });
+        } else {
+          reject(new Error(response.error || `Upload failed with status ${xhr.status}`));
+        }
+      } catch {
+        reject(new Error(`Server error: ${xhr.responseText || xhr.statusText}`));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Network error during file upload'));
+    };
+
+    xhr.send(formData);
+  });
+}
+
+/**
+ * Send an attachment (image or file) message in a thread.
+ */
+export async function sendAttachmentChatMessage(
+  threadId: string,
+  senderId: string,
+  senderRole: Role | string,
+  attachment: { key: string; filename: string; size: number; mime_type: string },
+  caption?: string
+): Promise<ChatMessage> {
+  const isImage = (attachment.mime_type || '').startsWith('image/');
+  const messageType: ChatMessageType = isImage ? 'image' : 'file';
+  const content = caption?.trim() || attachment.filename;
+
+  return sendChatMessage(threadId, senderId, senderRole, content, {
+    messageType,
+    attachmentKey: attachment.key,
+    attachmentName: attachment.filename,
+    attachmentSize: attachment.size,
+    mimeType: attachment.mime_type,
+  });
+}
+
+/**
+ * Generates an authorized attachment view/download URL.
+ */
+export function getAttachmentUrl(key: string, token?: string, download?: boolean): string {
+  const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+  let url = `/api/chat/attachment/${encodedKey}`;
+  const params = new URLSearchParams();
+  if (token) params.set('token', token);
+  if (download) params.set('download', '1');
+  const qs = params.toString();
+  return qs ? `${url}?${qs}` : url;
 }
 
 /**
