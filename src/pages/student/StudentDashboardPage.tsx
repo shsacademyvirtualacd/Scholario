@@ -503,7 +503,7 @@ const NextClassWidget: React.FC<{
         <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
         <span className="text-xs text-[#A3A3A3]">·</span>
         <span className="text-xs font-semibold text-[#737373] capitalize">
-          FBISE · Gr. {nextSlot.offering?.grade || '10'}
+          {((nextSlot.offering?.board || nextSlot.offering?.board_id || (nextSlot.offering as any)?.class?.board_id || '').toLowerCase() === 'sindh' ? 'Sindh' : (nextSlot.offering?.board || nextSlot.offering?.board_id || (nextSlot.offering as any)?.class?.board_id || '').toLowerCase() === 'ielts' ? 'IELTS' : 'FBISE')} · Gr. {nextSlot.offering?.grade || '10'}
         </span>
       </div>
       <StudentLiveLink

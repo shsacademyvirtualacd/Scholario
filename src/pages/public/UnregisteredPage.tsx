@@ -24,8 +24,8 @@ export const UnregisteredPage: React.FC = () => {
   // Form Fields
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || user?.email?.split('@')[0] || '');
   const [phone, setPhone] = useState('');
-  const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh'>(
-    queryBoard === 'sindh' ? 'sindh' : 'fbise'
+  const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh' | 'ielts'>(
+    queryBoard === 'sindh' ? 'sindh' : queryBoard === 'ielts' ? 'ielts' : 'fbise'
   );
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStreamId, setSelectedStreamId] = useState<string | null>(null);
@@ -540,12 +540,12 @@ export const UnregisteredPage: React.FC = () => {
                     <span className="text-[10px] text-[#A3A3A3] font-medium">Curriculum Standard</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 bg-[#F5F5F5] p-1.5 rounded-2xl border border-[#E5E5E5]">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#F5F5F5] p-1.5 rounded-2xl border border-[#E5E5E5]">
                     {BOARDS.map((b) => (
                       <button
                         key={b.id}
                         type="button"
-                        onClick={() => setSelectedBoardId(b.id as 'fbise' | 'sindh')}
+                        onClick={() => setSelectedBoardId(b.id as 'fbise' | 'sindh' | 'ielts')}
                         className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                           selectedBoardId === b.id
                             ? 'bg-white text-[#111111] shadow-sm border border-[#E5E5E5]'

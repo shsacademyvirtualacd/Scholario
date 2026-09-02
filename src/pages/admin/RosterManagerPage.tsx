@@ -58,7 +58,7 @@ export const RosterManagerPage: React.FC = () => {
   const [editStudentEntry, setEditStudentEntry] = useState<RosterEntry | null>(null);
   const [editStudentName, setEditStudentName] = useState('');
   const [editStudentEmail, setEditStudentEmail] = useState('');
-  const [editStudentBoard, setEditStudentBoard] = useState<'fbise' | 'sindh'>('fbise');
+  const [editStudentBoard, setEditStudentBoard] = useState<'fbise' | 'sindh' | 'ielts'>('fbise');
   const [editStudentClass, setEditStudentClass] = useState('');
   const [editStudentStreamId, setEditStudentStreamId] = useState('');
   const [editStudentError, setEditStudentError] = useState<string | null>(null);
@@ -410,7 +410,7 @@ export const RosterManagerPage: React.FC = () => {
     setEditStudentEmail(entry.email || p?.email || '');
 
     const rawBoard = (p?.board_id || p?.board || 'fbise').toLowerCase();
-    const boardVal: 'fbise' | 'sindh' = rawBoard === 'sindh' ? 'sindh' : 'fbise';
+    const boardVal: 'fbise' | 'sindh' | 'ielts' = rawBoard === 'sindh' ? 'sindh' : rawBoard === 'ielts' ? 'ielts' : 'fbise';
     setEditStudentBoard(boardVal);
 
     const boardClasses = classesList.filter(c => (c.board_id || '').toLowerCase() === boardVal);
@@ -431,7 +431,7 @@ export const RosterManagerPage: React.FC = () => {
     setEditStudentModalOpen(true);
   };
 
-  const handleBoardChangeInModal = (newBoard: 'fbise' | 'sindh') => {
+  const handleBoardChangeInModal = (newBoard: 'fbise' | 'sindh' | 'ielts') => {
     setEditStudentBoard(newBoard);
     const newClasses = classesList
       .filter(c => (c.board_id || '').toLowerCase() === newBoard)
@@ -649,11 +649,20 @@ export const RosterManagerPage: React.FC = () => {
       });
   }, [offerings]);
 
+  const ieltsOfferings = useMemo(() => {
+    return offerings
+      .filter(o => {
+        const b = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
+        return b === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts');
+      })
+      .sort((a, b) => (a.subject_name || '').localeCompare(b.subject_name || ''));
+  }, [offerings]);
+
   const otherOfferings = useMemo(() => {
     return offerings
       .filter(o => {
         const bId = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
-        return bId !== 'fbise' && bId !== 'sindh';
+        return bId !== 'fbise' && bId !== 'sindh' && bId !== 'ielts' && !(o.subject_name || '').toLowerCase().includes('ielts');
       })
       .sort((a, b) => {
         const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
@@ -1494,6 +1503,92 @@ export const RosterManagerPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* ── SECTION 3: IELTS (Academic & General Training) ── */}
+                  <div className="space-y-2.5 pt-2">
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-amber-100 shrink-0" />
+                        <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                          IELTS (International English)
+                        </h4>
+                        <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
+                          {ieltsOfferings.length}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedClasses.filter(id => ieltsOfferings.some(o => o.id === id)).length > 0 && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md">
+                            {selectedClasses.filter(id => ieltsOfferings.some(o => o.id === id)).length} selected
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ieltsIds = ieltsOfferings.map(o => o.id);
+                            const allSelected = ieltsIds.length > 0 && ieltsIds.every(id => selectedClasses.includes(id));
+                            if (allSelected) {
+                              setSelectedClasses(prev => prev.filter(id => !ieltsIds.includes(id)));
+                            } else {
+                              setSelectedClasses(prev => Array.from(new Set([...prev, ...ieltsIds])));
+                            }
+                          }}
+                          className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
+                        >
+                          {ieltsOfferings.length > 0 && ieltsOfferings.every(o => selectedClasses.includes(o.id)) ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
+                      {ieltsOfferings.length === 0 ? (
+                        <div className="p-4 text-xs text-[#737373] text-center">No IELTS offerings found.</div>
+                      ) : (
+                        ieltsOfferings.map(off => {
+                          const isChecked = selectedClasses.includes(off.id);
+                          const isAssignedToThisTeacher = selectedEntry && (
+                            off.teacher_id === selectedEntry.id || 
+                            off.teacher_id === selectedEntry.profile_id || 
+                            off.teacher?.id === selectedEntry.id || 
+                            off.teacher?.id === selectedEntry.profile_id
+                          );
+                          return (
+                            <label 
+                              key={off.id}
+                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-amber-50/70 font-semibold' : ''}`}
+                            >
+                              <div className="pr-3">
+                                <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
+                                  <span>{off.subject_name}</span>
+                                  {off.stream && (
+                                    <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
+                                      {off.stream}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] mt-0.5">
+                                  {off.teacher ? (
+                                    <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
+                                      Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
+                                      {isAssignedToThisTeacher && ' (Assigned)'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
+                                  )}
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleClassSelect(off.id)}
+                                className="rounded border-[#D4D4D4] text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer shrink-0"
+                              />
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
                   {/* Optional Fallback for any other boards */}
                   {otherOfferings.length > 0 && (
                     <div className="space-y-2.5 pt-2">
@@ -1635,7 +1730,7 @@ export const RosterManagerPage: React.FC = () => {
                 <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
                   Academic Board <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <button
                     type="button"
                     onClick={() => handleBoardChangeInModal('fbise')}
@@ -1670,6 +1765,24 @@ export const RosterManagerPage: React.FC = () => {
                       )}
                     </div>
                     <span className="text-[11px] text-zinc-500 block mt-0.5">BIEK / BSEK Curriculum</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleBoardChangeInModal('ielts')}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      editStudentBoard === 'ielts'
+                        ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-900">IELTS</span>
+                      {editStudentBoard === 'ielts' && (
+                        <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
+                      )}
+                    </div>
+                    <span className="text-[11px] text-zinc-500 block mt-0.5">International English</span>
                   </button>
                 </div>
               </div>

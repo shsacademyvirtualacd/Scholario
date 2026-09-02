@@ -8,7 +8,7 @@
 import { supabase } from './supabase';
 import { pageCache } from './pageCache';
 import { getPKTNow } from './scheduleUtils';
-import { BOARDS, FBISE_GRADES, SINDH_GRADES } from './taxonomy';
+import { BOARDS, FBISE_GRADES, SINDH_GRADES, IELTS_GRADES, getGradesForBoard } from './taxonomy';
 // getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
   Profile, Teacher, ClassOffering, ClassSlot, ClassSessionLink,
@@ -34,7 +34,7 @@ function mapOffering(off: any): any {
   const subjName = off.subject?.name || (typeof off.subject === 'string' ? off.subject : null) || off.subject_name || 'Subject';
   const rawBoard = off.class?.board_id || off.class?.board?.id || off.board_id || off.board || 'fbise';
   const boardId = String(rawBoard).toLowerCase();
-  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)');
+  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : boardId === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)');
   return {
     ...off,
     board: boardId,
@@ -146,7 +146,7 @@ export async function completeStudentOnboarding(
 ): Promise<void> {
   const isUUID = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
   
-  if (isUUID(classId) && (isUUID(boardId) || boardId === 'fbise' || boardId === 'sindh')) {
+  if (isUUID(classId) && (isUUID(boardId) || boardId === 'fbise' || boardId === 'sindh' || boardId === 'ielts')) {
     const { error } = await (supabase as any).rpc('complete_student_onboarding', {
       p_student_id: studentId,
       p_board_id: boardId,
@@ -2944,7 +2944,7 @@ export async function getClassesWithFeeConfigs(): Promise<ClassWithFeeConfig[]> 
     const fc = feeMap.get(cls.id);
     const hasConfig = !!fc;
     const amount = fc && typeof fc.amount === 'number' ? fc.amount : (fc?.amount ? Number(fc.amount) : 0);
-    const boardName = cls.board?.name || (cls.board_id === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)');
+    const boardName = cls.board?.name || (cls.board_id === 'sindh' ? 'Sindh Board' : cls.board_id === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)');
 
     return {
       id: cls.id,
@@ -2963,7 +2963,7 @@ export async function getClassesWithFeeConfigs(): Promise<ClassWithFeeConfig[]> 
 
   result.sort((a, b) => {
     if (a.board_id !== b.board_id) {
-      return a.board_id === 'fbise' ? -1 : 1;
+      return a.board_id === 'fbise' ? -1 : a.board_id === 'sindh' ? 0 : 1;
     }
     return parseInt(a.grade, 10) - parseInt(b.grade, 10);
   });
@@ -2991,7 +2991,7 @@ export async function getTaxonomy(): Promise<{
   ]);
 
   const boardsList: BoardEntry[] = [...(b.data || [])];
-  // Ensure both boards are represented
+  // Ensure all boards are represented
   for (const boardDef of BOARDS) {
     if (!boardsList.some((bItem) => bItem.id === boardDef.id)) {
       boardsList.push({
@@ -3002,9 +3002,9 @@ export async function getTaxonomy(): Promise<{
   }
 
   const classesData: ClassEntry[] = [...(c.data || [])];
-  // Ensure both FBISE and Sindh classes (9, 10, 11, 12) exist in classesData
+  // Ensure classes exist for all boards (FBISE, Sindh, IELTS)
   for (const boardDef of BOARDS) {
-    const grades = boardDef.id === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    const grades = getGradesForBoard(boardDef.id);
     for (const g of grades) {
       if (!classesData.some((cls) => cls.board_id === boardDef.id && String(cls.grade) === String(g.grade))) {
         classesData.push({
@@ -3022,7 +3022,7 @@ export async function getTaxonomy(): Promise<{
   const streamsData: StreamEntry[] = [...(s.data || [])];
   // Ensure streams exist for all classes
   for (const cls of classesData) {
-    const grades = cls.board_id === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    const grades = getGradesForBoard(cls.board_id);
     const gradeDef = grades.find((g) => String(g.grade) === String(cls.grade));
     if (gradeDef) {
       for (const st of gradeDef.streams) {
@@ -3057,7 +3057,7 @@ export async function getTaxonomy(): Promise<{
 export function getSubjectsForStream(grade: string, streamName: string, boardId?: string): string[] {
   const targetBoard = boardId || 'fbise';
   if (!cachedTaxonomy) {
-    const grades = targetBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    const grades = getGradesForBoard(targetBoard);
     const g = grades.find((gr) => gr.grade === grade);
     if (!g) return [];
     if (!streamName) return g.commonSubjects || [];
@@ -3071,7 +3071,7 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
   ) || cachedTaxonomy.classes.find((c: any) => String(c.grade) === String(grade));
 
   if (!gradeClass) {
-    const grades = targetBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+    const grades = getGradesForBoard(targetBoard);
     const g = grades.find((gr) => gr.grade === grade);
     return g ? (g.streams[0]?.subjects || g.commonSubjects || []) : [];
   }
@@ -3089,7 +3089,7 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
       .filter(Boolean) as string[];
 
     if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
-    const grades = (gradeClass.board_id === 'sindh' || targetBoard === 'sindh') ? SINDH_GRADES : FBISE_GRADES;
+    const grades = getGradesForBoard(gradeClass.board_id || targetBoard);
     const g = grades.find((gr) => gr.grade === grade);
     return g ? Array.from(new Set(g.streams.flatMap(s => s.subjects))).sort() : [];
   }
@@ -3113,7 +3113,7 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
     if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
   }
 
-  const grades = (gradeClass.board_id === 'sindh' || targetBoard === 'sindh') ? SINDH_GRADES : FBISE_GRADES;
+  const grades = getGradesForBoard(gradeClass.board_id || targetBoard);
   const g = grades.find((gr) => gr.grade === grade);
   if (!g) return [];
   const st = g.streams.find((s) => s.name.toLowerCase() === norm || norm.includes(s.name.toLowerCase()));

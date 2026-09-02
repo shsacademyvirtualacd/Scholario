@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────
 
 export type Role = 'student' | 'admin' | 'teacher';
-export type Board = 'fbise' | 'sindh';
+export type Board = 'fbise' | 'sindh' | 'ielts';
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'pending';
 export type NoteFileType = 'pdf' | 'image' | 'doc' | 'docx' | 'ppt' | 'pptx' | 'xls' | 'xlsx' | 'txt';
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Mon … 6=Sun

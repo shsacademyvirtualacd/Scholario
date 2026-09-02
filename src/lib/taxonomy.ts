@@ -19,7 +19,7 @@ export interface GradeDef {
 }
 
 export interface BoardDef {
-  id: 'fbise' | 'sindh';
+  id: 'fbise' | 'sindh' | 'ielts';
   name: string;
   shortName: string;
   description: string;
@@ -37,6 +37,12 @@ export const BOARDS: BoardDef[] = [
     name: 'Sindh Board',
     shortName: 'Sindh Board',
     description: 'Sindh Secondary & Higher Secondary Education (Karachi & Provincial Boards)',
+  },
+  {
+    id: 'ielts',
+    name: 'IELTS Preparation',
+    shortName: 'IELTS',
+    description: 'International English Language Testing System (Academic & General Training)',
   },
 ];
 

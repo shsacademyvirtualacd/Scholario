@@ -5,7 +5,7 @@ import { getAllLiveFeeConfigs } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
 const PricingSection: React.FC = () => {
-  const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh'>('fbise');
+  const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh' | 'ielts'>('fbise');
   const [selectedGradeValue, setSelectedGradeValue] = useState('10');
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
@@ -24,6 +24,14 @@ const PricingSection: React.FC = () => {
   useEffect(() => {
     loadAllPrices();
   }, [loadAllPrices]);
+
+  // Ensure selectedGradeValue is valid when selectedBoardId changes
+  useEffect(() => {
+    const grades = getGradesForBoard(selectedBoardId);
+    if (!grades.some((g) => g.grade === selectedGradeValue)) {
+      setSelectedGradeValue(grades[0]?.grade || '10');
+    }
+  }, [selectedBoardId]);
 
   // Subscribe to realtime fee_configs updates
   useRealtimeTable({
@@ -72,13 +80,13 @@ const PricingSection: React.FC = () => {
               <label className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
                 Select Education Board
               </label>
-              <div className="grid grid-cols-2 gap-2 bg-[#EFEFEF] p-1 rounded-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#EFEFEF] p-1 rounded-xl">
                 {BOARDS.map((board) => (
                   <button
                     key={board.id}
                     type="button"
                     onClick={() => {
-                      setSelectedBoardId(board.id as 'fbise' | 'sindh');
+                      setSelectedBoardId(board.id as 'fbise' | 'sindh' | 'ielts');
                     }}
                     className={`py-2.5 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
                       selectedBoardId === board.id
@@ -96,9 +104,9 @@ const PricingSection: React.FC = () => {
             {/* Grade Selector */}
             <div>
               <label htmlFor="grade-select" className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
-                Select Class / Grade ({currentBoardDef.name})
+                Select Stream / Course ({currentBoardDef.name})
               </label>
-              <div className="grid grid-cols-4 gap-1.5 bg-[#EFEFEF] p-1 rounded-xl">
+              <div className={`grid ${activeGradesList.length === 1 ? 'grid-cols-1' : activeGradesList.length === 2 ? 'grid-cols-2' : 'grid-cols-4'} gap-1.5 bg-[#EFEFEF] p-1 rounded-xl`}>
                 {activeGradesList.map((g) => (
                   <button
                     key={g.value}

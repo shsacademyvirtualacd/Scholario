@@ -19,6 +19,7 @@ import type { Note, ClassOffering } from '../../types';
 const BOARDS = [
   { id: 'fbise', label: 'Federal Board (FBISE)' },
   { id: 'sindh', label: 'Sindh Board' },
+  { id: 'ielts', label: 'IELTS' },
 ];
 
 export const NotesManagerPage: React.FC = () => {
@@ -85,7 +86,7 @@ export const NotesManagerPage: React.FC = () => {
     seenGrades.add(g.id);
     return true;
   });
-  activeGrades.push({ id: 'all', label: selectedBoard === 'sindh' ? 'All Sindh' : 'All FBISE' });
+  activeGrades.push({ id: 'all', label: selectedBoard === 'sindh' ? 'All Sindh' : selectedBoard === 'ielts' ? 'All IELTS' : 'All FBISE' });
 
   // Compute active streams for selected grade
   const activeClass = taxonomy?.classes?.find(

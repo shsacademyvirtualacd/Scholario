@@ -19,6 +19,7 @@ import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 const BOARDS = [
   { id: 'fbise', label: 'FBISE' },
   { id: 'sindh', label: 'Sindh Board' },
+  { id: 'ielts', label: 'IELTS' },
 ];
 
 export const ScheduleManagerPage: React.FC = () => {

@@ -7,7 +7,7 @@ import Logo from '../ui/Logo';
 import { useMobile } from '../../hooks/useMobile';
 
 interface DashboardClassData {
-  boardId: 'fbise' | 'sindh';
+  boardId: 'fbise' | 'sindh' | 'ielts';
   boardName: string;
   grade: string;
   gradeLabel: string;
@@ -191,16 +191,56 @@ const CLASS_DASHBOARD_DATA: Record<string, DashboardClassData> = {
     attendedClasses: 32,
     icon: '🧪',
   },
+  'ielts-10': {
+    boardId: 'ielts',
+    boardName: 'IELTS Academic',
+    grade: '10',
+    gradeLabel: 'Academic Module',
+    studentName: 'Zainab Malik',
+    stream: 'IELTS Academic (Band 7.5+ Target)',
+    nextSubject: 'IELTS Academic Writing Task 2',
+    teacher: 'Sir Farhan Siddiqui',
+    time: '8:00 PM',
+    topic: 'Opinion & Discussion Essay Structures',
+    recentNoteTitle: 'Band 9 Sample Essays & Cohesion Connectors',
+    recentNoteSubject: 'IELTS Writing',
+    recentNoteSubtitle: 'Comprehensive Task 1 & Task 2 Templates',
+    streak: 18,
+    classesLeft: 10,
+    classesTotal: 36,
+    attendedClasses: 26,
+    icon: '🎯',
+  },
+  'ielts-12': {
+    boardId: 'ielts',
+    boardName: 'IELTS General Training',
+    grade: '12',
+    gradeLabel: 'General Training',
+    studentName: 'Hamza Tariq',
+    stream: 'IELTS General Training',
+    nextSubject: 'IELTS Speaking Masterclass',
+    teacher: 'Ms. Sarah Jenkins',
+    time: '7:30 PM',
+    topic: 'Part 2 Cue Card Fluency & Idiomatic Lexicon',
+    recentNoteTitle: 'Top 50 High-Frequency Speaking Cue Cards',
+    recentNoteSubject: 'IELTS Speaking',
+    recentNoteSubtitle: 'Pronunciation & Fluency Score Booster',
+    streak: 14,
+    classesLeft: 12,
+    classesTotal: 36,
+    attendedClasses: 24,
+    icon: '🎙️',
+  },
 };
 
 const DashboardPreview: React.FC = () => {
   const isMobile = useMobile();
-  const [activeBoard, setActiveBoard] = useState<'fbise' | 'sindh'>('sindh');
+  const [activeBoard, setActiveBoard] = useState<'fbise' | 'sindh' | 'ielts'>('sindh');
   const [activeGrade, setActiveGrade] = useState<'9' | '10' | '11' | '12'>('10');
   const [previewTeacherVote, setPreviewTeacherVote] = useState<'present' | 'absent' | null>(null);
 
   const selectedKey = `${activeBoard}-${activeGrade}`;
-  const data = CLASS_DASHBOARD_DATA[selectedKey] || CLASS_DASHBOARD_DATA['sindh-10'];
+  const data = CLASS_DASHBOARD_DATA[selectedKey] || (activeBoard === 'ielts' ? CLASS_DASHBOARD_DATA['ielts-10'] : CLASS_DASHBOARD_DATA['sindh-10']);
 
   const attendancePercent = Math.round((data.attendedClasses / data.classesTotal) * 100);
 
@@ -218,7 +258,7 @@ const DashboardPreview: React.FC = () => {
         </div>
 
         {/* Board Selection */}
-        <div className="flex items-center gap-1.5 bg-[#1F1F1F] p-1 rounded-xl border border-[#333333]">
+        <div className="flex items-center gap-1.5 bg-[#1F1F1F] p-1 rounded-xl border border-[#333333] flex-wrap">
           <button
             type="button"
             onClick={() => setActiveBoard('fbise')}
@@ -241,24 +281,62 @@ const DashboardPreview: React.FC = () => {
           >
             Sindh Board
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveBoard('ielts')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              activeBoard === 'ielts'
+                ? 'bg-[#F4C430] text-[#111111] shadow-sm'
+                : 'text-[#A3A3A3] hover:text-white'
+            }`}
+          >
+            IELTS
+          </button>
         </div>
 
         {/* Grade Selection */}
         <div className="flex items-center gap-1 bg-[#1F1F1F] p-1 rounded-xl border border-[#333333]">
-          {(['9', '10', '11', '12'] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => setActiveGrade(g)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                activeGrade === g
-                  ? 'bg-white text-[#111111] shadow-sm'
-                  : 'text-[#A3A3A3] hover:text-white'
-              }`}
-            >
-              Class {g}th
-            </button>
-          ))}
+          {activeBoard === 'ielts' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveGrade('10')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeGrade === '10'
+                    ? 'bg-white text-[#111111] shadow-sm'
+                    : 'text-[#A3A3A3] hover:text-white'
+                }`}
+              >
+                Academic
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveGrade('12')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeGrade === '12'
+                    ? 'bg-white text-[#111111] shadow-sm'
+                    : 'text-[#A3A3A3] hover:text-white'
+                }`}
+              >
+                General
+              </button>
+            </>
+          ) : (
+            (['9', '10', '11', '12'] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setActiveGrade(g)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeGrade === g
+                    ? 'bg-white text-[#111111] shadow-sm'
+                    : 'text-[#A3A3A3] hover:text-white'
+                }`}
+              >
+                Class {g}th
+              </button>
+            ))
+          )}
         </div>
       </div>
 

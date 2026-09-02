@@ -24,7 +24,7 @@ export const StudentCheckoutPage: React.FC = () => {
   const [feeStatus, setFeeStatus] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [studentClass, setStudentClass] = useState<any | null>(null);
-  const [studentBoardId, setStudentBoardId] = useState<'fbise' | 'sindh'>((profile?.board_id as any) || 'fbise');
+  const [studentBoardId, setStudentBoardId] = useState<'fbise' | 'sindh' | 'ielts'>((profile?.board_id as any) || 'fbise');
   const [studentGrade, setStudentGrade] = useState<string>('10');
   const [copiedText, setCopiedText] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -45,7 +45,7 @@ export const StudentCheckoutPage: React.FC = () => {
       }
 
       let grade = '10';
-      let boardId: 'fbise' | 'sindh' = (profile.board_id as any) || 'fbise';
+      let boardId: 'fbise' | 'sindh' | 'ielts' = (profile.board_id as any) || 'fbise';
 
       if (enrolls && enrolls.length > 0) {
         const offering = enrolls[0].offering;

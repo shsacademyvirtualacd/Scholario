@@ -160,6 +160,9 @@ export const StudentsAdminPage: React.FC = () => {
     if (streamFilter === 'pre-medical') return rawStream.includes('pre-med') || rawStream.includes('bio');
     if (streamFilter === 'pre-engineering') return rawStream.includes('pre-eng') || rawStream.includes('eng');
     if (streamFilter === 'ics') return rawStream.includes('ics') || rawStream.includes('comp');
+    if (streamFilter === 'academic') return rawStream.includes('academic') || sBoard.includes('ielts');
+    if (streamFilter === 'general-training') return rawStream.includes('general') || sBoard.includes('ielts');
+    if (streamFilter === 'ielts') return sBoard.includes('ielts') || rawStream.includes('ielts');
     return rawStream === streamFilter;
   });
 
@@ -288,6 +291,9 @@ export const StudentsAdminPage: React.FC = () => {
             <option value="pre-engineering">Pre-Engineering</option>
             <option value="pre-medical">Pre-Medical</option>
             <option value="ics">ICS</option>
+            <option value="ielts">IELTS (All)</option>
+            <option value="academic">IELTS Academic</option>
+            <option value="general-training">IELTS General Training</option>
           </select>
         </div>
       </div>

@@ -38,7 +38,7 @@ import {
   getWeakTopicsForStudent,
 } from '../../lib/selfTestService';
 import { saveStudentMCQAttempt } from '../../lib/db';
-import { BOARDS, FBISE_GRADES, SINDH_GRADES, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { BOARDS, FBISE_GRADES, SINDH_GRADES, IELTS_GRADES, getGradesForBoard, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   isGrade9FBISE,
@@ -226,7 +226,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   }, [viewMode, isPaused]);
 
   // Available subjects for selected board/grade
-  const availableGrades = activeBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+  const availableGrades = getGradesForBoard(activeBoard);
   const currentGradeDef = availableGrades.find((g) => g.grade === activeGrade) || availableGrades[0];
 
   const studentEnrolledSubjects = useMemo(() => {
@@ -1047,7 +1047,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                     <label className="block text-xs font-bold text-[#111111] mb-1.5">
                       Educational Board
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {BOARDS.map((b) => (
                         <button
                           key={b.id}

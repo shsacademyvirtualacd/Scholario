@@ -265,6 +265,22 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
           >
             Sindh Board
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedBoard('ielts');
+              setSelectedStream('all');
+              setOfferingId('');
+            }}
+            disabled={loading}
+            className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+              selectedBoard === 'ielts'
+                ? 'border-[#F4C430] text-[#111111]'
+                : 'border-transparent text-[#737373] hover:text-[#111111]'
+            }`}
+          >
+            IELTS
+          </button>
         </div>
       </div>
 
@@ -351,7 +367,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
             const subjName = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || 'Class';
             const gr = offering.grade || (offering as any).class?.grade || '10';
             const st = typeof offering.stream === 'string' ? offering.stream : offering.stream?.name || 'All Streams';
-            const offBoard = offering.board === 'sindh' || (offering as any).class?.board_id === 'sindh' ? 'Sindh' : 'FBISE';
+            const offBoard = offering.board === 'sindh' || (offering as any).class?.board_id === 'sindh' ? 'Sindh' : offering.board === 'ielts' || (offering as any).class?.board_id === 'ielts' ? 'IELTS' : 'FBISE';
             return (
               <option key={offering.id} value={offering.id}>
                 {subjName} — Grade {gr} {offBoard} ({st})

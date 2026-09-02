@@ -382,7 +382,7 @@ export const AdminTestsPage: React.FC = () => {
                         : 'text-[#525252] hover:text-[#111111]'
                     }`}
                   >
-                    {g === 'all' ? (selectedBoard === 'sindh' ? 'All Sindh' : 'All FBISE') : `${g}th`}
+                    {g === 'all' ? (selectedBoard === 'sindh' ? 'All Sindh' : selectedBoard === 'ielts' ? 'All IELTS' : 'All FBISE') : `${g}th`}
                   </button>
                 ))}
               </div>

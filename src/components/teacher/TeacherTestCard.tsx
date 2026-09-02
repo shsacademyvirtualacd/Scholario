@@ -91,7 +91,7 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
               {test.subject}
             </span>
             <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5]">
-              Grade {test.grade} {test.board === 'sindh' || test.board_id === 'sindh' ? 'Sindh' : 'FBISE'} {test.stream && test.stream !== 'all' ? `• ${test.stream}` : ''}
+              Grade {test.grade} {test.board === 'sindh' || test.board_id === 'sindh' ? 'Sindh' : test.board === 'ielts' || test.board_id === 'ielts' ? 'IELTS' : 'FBISE'} {test.stream && test.stream !== 'all' ? `• ${test.stream}` : ''}
             </span>
           </div>
         </div>

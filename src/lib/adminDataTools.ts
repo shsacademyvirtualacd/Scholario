@@ -251,7 +251,7 @@ async function executeViaPg(toolName: string, args: Record<string, any>, pool: p
         joined_at: any;
       }> = profilesRes.rows.map((s: any) => {
         const grade = s.class_grade || 'Unassigned';
-        const boardName = s.board_name || (s.board_id === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)');
+        const boardName = s.board_name || (s.board_id === 'sindh' ? 'Sindh Board' : s.board_id === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)');
         const streamName = s.stream || 'Biology';
         return {
           id: s.id,
@@ -393,7 +393,7 @@ async function executeViaPg(toolName: string, args: Record<string, any>, pool: p
       students.forEach((s: any) => {
         const gradeKey = `Grade ${s.class_grade || '9'}`;
         byGrade[gradeKey] = (byGrade[gradeKey] || 0) + 1;
-        const boardName = s.board_name || (s.board_id === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)');
+        const boardName = s.board_name || (s.board_id === 'sindh' ? 'Sindh Board' : s.board_id === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)');
         byBoard[boardName] = (byBoard[boardName] || 0) + 1;
         const streamName = s.stream || 'Biology';
         byStream[streamName] = (byStream[streamName] || 0) + 1;
@@ -550,7 +550,7 @@ async function executeViaPg(toolName: string, args: Record<string, any>, pool: p
 
       const offerings = offeringsRes.rows.map((o: any) => ({
         id: o.id,
-        board: o.board_name || (o.board_id === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)'),
+        board: o.board_name || (o.board_id === 'sindh' ? 'Sindh Board' : o.board_id === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)'),
         grade: o.class_grade || '10',
         subject: o.subject_name || 'Subject',
         stream: o.stream_name || 'All',
@@ -827,7 +827,7 @@ async function executeViaSupabase(
         const classObj = s.class_id ? classMap.get(s.class_id) : null;
         const grade = classObj?.grade || s.grade || '9';
         const boardName = s.board_id
-          ? boardMap.get(s.board_id) || (s.board_id === 'sindh' ? 'Sindh Board' : 'Federal Board (FBISE)')
+          ? boardMap.get(s.board_id) || (s.board_id === 'sindh' ? 'Sindh Board' : s.board_id === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)')
           : classObj?.board?.name || 'Federal Board (FBISE)';
         const streamName = s.stream_id ? streamMap.get(s.stream_id) || s.stream : s.stream || 'Biology';
 

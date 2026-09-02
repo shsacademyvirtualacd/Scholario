@@ -804,7 +804,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                   >
                     {availableGrades.map((g) => (
                       <option key={g.grade} value={g.grade}>
-                        Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : 'FBISE'})
+                        Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : board === 'ielts' ? 'IELTS' : 'FBISE'})
                       </option>
                     ))}
                   </select>

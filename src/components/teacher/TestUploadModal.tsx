@@ -353,6 +353,22 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
               >
                 Sindh Board
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBoard('ielts');
+                  setGrade('10');
+                  setStream('all');
+                }}
+                disabled={uploading}
+                className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  board === 'ielts'
+                    ? 'border-[#F4C430] text-[#111111]'
+                    : 'border-transparent text-[#737373] hover:text-[#111111]'
+                }`}
+              >
+                IELTS
+              </button>
             </div>
           </div>
 
@@ -374,7 +390,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
               >
                 {availableGrades.map((g) => (
                   <option key={g.grade} value={g.grade}>
-                    Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : 'FBISE'})
+                    Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : board === 'ielts' ? 'IELTS' : 'FBISE'})
                   </option>
                 ))}
               </select>
