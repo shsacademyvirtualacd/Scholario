@@ -84,6 +84,69 @@ const SUGGESTED_TOPICS: Record<string, string[]> = {
   ],
   Urdu: ['Qawaid-o-Insha', 'Tashreeh & Nazm', 'Asbaaq & Khulasa', 'Muhawraat & Imla'],
   'Pakistan Studies': ['Ideology of Pakistan', 'Pakistan Movement (1857-1947)', 'Geography & Resources', 'Constitutional Development', 'Foreign Policy of Pakistan'],
+  'IELTS Listening': [
+    'Section 1: Social Needs & Everyday Dialogues',
+    'Section 2: Monologue in Everyday Social Context',
+    'Section 3: Educational or Training Conversation',
+    'Section 4: Academic Lecture Monologue',
+    'Multiple Choice & Matching Questions',
+    'Sentence & Summary Completion',
+    'Form, Note, Table & Flow-Chart Completion',
+  ],
+  'IELTS Reading (Academic)': [
+    'Academic Passage 1: Descriptive & Factual Analysis',
+    'Academic Passage 2: Discursive & Argumentative Analysis',
+    'Academic Passage 3: Complex Academic Inquiry',
+    'True / False / Not Given & Yes / No / Not Given',
+    'Matching Headings & Information',
+    'Summary, Note, Table & Sentence Completion',
+    'Multiple Choice Questions',
+  ],
+  'IELTS Reading (GT)': [
+    'Section 1: Social Survival (Notices, Timetables, Ads)',
+    'Section 2: Workplace Survival (Job Descriptions, Staff Training)',
+    'Section 3: General Reading Comprehension (Long Complex Text)',
+    'True / False / Not Given & Locating Information',
+    'Matching Features & Headings',
+    'Sentence & Diagram Label Completion',
+  ],
+  'IELTS Reading': [
+    'Passage Comprehension & Key Arguments',
+    'True / False / Not Given & Yes / No / Not Given',
+    'Matching Headings & Features',
+    'Summary & Sentence Completion',
+  ],
+  'IELTS Writing (Academic)': [
+    'Task 1: Line Graphs & Bar Charts Data Description',
+    'Task 1: Pie Charts, Tables & Multiple Data Sources',
+    'Task 1: Process Diagrams & Maps Analysis',
+    'Task 2: Opinion Essays (Agree / Disagree)',
+    'Task 2: Discussion Essays (Discuss Both Views & Opinion)',
+    'Task 2: Problem-Solution & Cause-Effect Essays',
+    'Task 2: Double Question Essays',
+    'Coherence & Cohesion, Lexical Resource & Grammar',
+  ],
+  'IELTS Writing (GT)': [
+    'Task 1: Formal Letter Writing',
+    'Task 1: Semi-Formal Letter Writing',
+    'Task 1: Informal Letter Writing',
+    'Task 2: Discursive & Opinion Essay',
+    'Task 2: Problem-Solution Essay',
+    'Task 2: Advantages vs Disadvantages',
+    'Task 1 & 2 Structure, Vocabulary & Band Descriptors',
+  ],
+  'IELTS Writing': [
+    'Task 1: Analysis & Key Overview Formulation',
+    'Task 2: Opinion & Discussion Essay Structure',
+    'Paragraphing, Linkers & Cohesive Devices',
+    'Grammatical Range, Accuracy & Academic Lexis',
+  ],
+  'IELTS Speaking': [
+    'Part 1: Introduction, Hobbies & Daily Life Questions',
+    'Part 2: Long Turn Cue Card Presentation Strategy',
+    'Part 3: In-Depth Discussion & Abstract Topic Analysis',
+    'Fluency & Coherence, Lexical Resource & Pronunciation',
+  ],
 };
 
 export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
@@ -152,6 +215,16 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const activeBoard = isStudent ? studentBoardId : board;
   const activeGrade = isStudent ? studentGrade : grade;
   const isFbise9 = isGrade9FBISE(activeBoard, activeGrade);
+  const isIelts =
+    String(activeBoard).toLowerCase() === 'ielts' ||
+    String(activeGrade).toLowerCase() === 'ielts' ||
+    String(studentStream).toLowerCase().includes('ielts') ||
+    String(studentStream).toLowerCase() === 'general training' ||
+    String(studentStream).toLowerCase() === 'academic';
+
+  const isGt =
+    String(studentStream).toLowerCase().includes('general') ||
+    String(studentStream).toLowerCase().includes('gt');
 
   // Runtime quiz state
   const [viewMode, setViewMode] = useState<ViewMode>('config');
@@ -238,6 +311,24 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   }, [isStudent, profile]);
 
   const allSubjectsForGrade = useMemo(() => {
+    if (isIelts) {
+      if (isGt) {
+        return [
+          'IELTS Listening',
+          'IELTS Reading (GT)',
+          'IELTS Writing (GT)',
+          'IELTS Reading (Academic)',
+          'IELTS Writing (Academic)',
+          'IELTS Speaking',
+        ];
+      }
+      return [
+        'IELTS Listening',
+        'IELTS Reading (Academic)',
+        'IELTS Writing (Academic)',
+        'IELTS Speaking',
+      ];
+    }
     if (isFbise9) {
       // Official FBISE Grade 9 Subjects
       return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science', 'English', 'Urdu'];
@@ -263,9 +354,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         s.toLowerCase() !== 'islamiyat' &&
         !s.toLowerCase().includes('islam')
     );
-  }, [isFbise9, studentEnrolledSubjects, currentGradeDef]);
+  }, [isIelts, isGt, isFbise9, studentEnrolledSubjects, currentGradeDef]);
 
-  // Safety fallback if subject is set to Islamiat
+  // Safety fallback if subject is set to Islamiat or not available in current board/grade
   useEffect(() => {
     if (
       subject === 'Islamiat' ||
@@ -273,10 +364,16 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       subject.toLowerCase() === 'islamiyat' ||
       subject.toLowerCase().includes('islam')
     ) {
-      const fallback = allSubjectsForGrade[0] || 'Physics';
+      const fallback = allSubjectsForGrade[0] || (isIelts ? 'IELTS Listening' : 'Physics');
       setSubject(fallback);
+    } else if (allSubjectsForGrade.length > 0 && !allSubjectsForGrade.includes(subject) && subject !== 'Other') {
+      const fallback = allSubjectsForGrade[0];
+      setSubject(fallback);
+      if (SUGGESTED_TOPICS[fallback]?.[0]) {
+        setTopic(SUGGESTED_TOPICS[fallback][0]);
+      }
     }
-  }, [subject, allSubjectsForGrade]);
+  }, [subject, allSubjectsForGrade, isIelts]);
 
   const activeSubjectName = subject === 'Other' ? (customSubject.trim() || 'General Subject') : subject;
 
@@ -1018,24 +1115,40 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                         <span>Educational Board</span>
                       </div>
                       <div className="text-xs font-black text-[#111111] mt-0.5">
-                        {activeBoard === 'sindh' ? 'Sindh Board (BSEK / BIEK)' : 'Federal Board (FBISE)'}
+                        {isIelts
+                          ? 'IELTS Preparation'
+                          : activeBoard === 'sindh'
+                          ? 'Sindh Board (BSEK / BIEK)'
+                          : 'Federal Board (FBISE)'}
                       </div>
                       <div className="text-[10px] text-[#737373] mt-0.5 truncate">
-                        {activeBoard === 'sindh' ? 'BSEK / BIEK Karachi & Sindh' : 'Federal Board of Inter & Secondary Education'}
+                        {isIelts
+                          ? 'International English Language Testing System'
+                          : activeBoard === 'sindh'
+                          ? 'BSEK / BIEK Karachi & Sindh'
+                          : 'Federal Board of Inter & Secondary Education'}
                       </div>
                     </div>
 
-                    {/* Target Grade */}
+                    {/* Target Grade / IELTS Stream */}
                     <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] shadow-2xs">
                       <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wide flex items-center gap-1">
                         <Lock size={10} className="text-[#A3A3A3]" />
-                        <span>Target Grade</span>
+                        <span>{isIelts ? 'IELTS Stream' : 'Target Grade'}</span>
                       </div>
                       <div className="text-xs font-black text-[#111111] mt-0.5">
-                        Grade {activeGrade} {studentStream ? `• ${studentStream}` : ''}
+                        {isIelts
+                          ? isGt
+                            ? 'General Training'
+                            : 'Academic'
+                          : `Grade ${activeGrade} ${studentStream ? `• ${studentStream}` : ''}`}
                       </div>
                       <div className="text-[10px] text-[#737373] mt-0.5 truncate">
-                        {profile?.class?.display_name || `Class ${activeGrade}th Roster`}
+                        {isIelts
+                          ? isGt
+                            ? 'General Training (All modules + GT Task 1)'
+                            : 'Academic Stream (Academic modules)'
+                          : profile?.class?.display_name || `Class ${activeGrade}th Roster`}
                       </div>
                     </div>
                   </div>
@@ -1070,9 +1183,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-[#111111] mb-1.5">
-                      Target Grade
+                      {board === 'ielts' ? 'IELTS Course' : 'Target Grade'}
                     </label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className={`grid gap-2 ${board === 'ielts' ? 'grid-cols-1' : 'grid-cols-4'}`}>
                       {availableGrades.map((g) => (
                         <button
                           key={g.grade}
@@ -1084,7 +1197,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                               : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
                           }`}
                         >
-                          {g.displayName} Grade
+                          {g.grade === 'IELTS' ? 'IELTS Preparation (Academic & General)' : `${g.displayName} Grade`}
                         </button>
                       ))}
                     </div>

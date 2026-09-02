@@ -1544,11 +1544,23 @@ async function enrichSubmissionsUrls(subs: any[]): Promise<TestSubmission[]> {
 export async function getTestsForStudent(grade: string, stream?: string, boardId?: string): Promise<TestPaper[]> {
   if (!grade) return [];
   try {
-    const { data, error } = await (supabase as any)
+    const isIelts =
+      (boardId || '').toLowerCase() === 'ielts' ||
+      String(grade).toLowerCase() === 'ielts' ||
+      (stream || '').toLowerCase().includes('ielts') ||
+      (stream || '').toLowerCase() === 'general training' ||
+      (stream || '').toLowerCase() === 'academic';
+
+    let query = (supabase as any)
       .from('tests')
       .select('*')
-      .eq('grade', String(grade))
       .order('due_date', { ascending: true });
+
+    if (!isIelts) {
+      query = query.eq('grade', String(grade));
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.warn('[getTestsForStudent] error:', error);
@@ -1559,9 +1571,20 @@ export async function getTestsForStudent(grade: string, stream?: string, boardId
     
     // Strict scoping: visibility is intersection of board, grade AND stream
     const filtered = rows.filter((t) => {
+      const testBoard = (t.board || t.board_id || 'fbise').toLowerCase();
+      if (isIelts) {
+        if (testBoard !== 'ielts') return false;
+        // Academic students only see tests for Academic stream or common/all
+        // General Training students see both GT and Academic tests
+        const isGtStudent = (stream || '').toLowerCase().includes('general') || (stream || '').toLowerCase().includes('gt');
+        const testStream = (t.stream || '').toLowerCase();
+        if (!testStream || testStream === 'all' || testStream === 'all streams') return true;
+        if (isGtStudent) return true; // GT is superset
+        return testStream === 'academic' || testStream.includes('academic');
+      }
+
       if (boardId) {
-        const testBoard = t.board || t.board_id || 'fbise';
-        if (testBoard !== boardId) return false;
+        if (testBoard !== boardId.toLowerCase()) return false;
       }
       if (t.grade !== String(grade)) return false;
       if (!t.stream || t.stream === 'all' || t.stream === 'All Streams') return true;
@@ -3059,6 +3082,36 @@ export async function getTaxonomy(): Promise<{
  * Supports board-aware lookup with fallback to taxonomy definition.
  */
 export function getSubjectsForStream(grade: string, streamName: string, boardId?: string): string[] {
+  const normBoard = (boardId || '').trim().toLowerCase();
+  const isIelts =
+    normBoard === 'ielts' ||
+    grade === 'IELTS' ||
+    grade === 'ielts' ||
+    streamName?.toLowerCase().includes('ielts') ||
+    ((streamName?.toLowerCase() === 'academic' || streamName?.toLowerCase() === 'general training') && (!normBoard || normBoard === 'ielts'));
+
+  if (isIelts) {
+    const isGt =
+      streamName?.toLowerCase().includes('general') ||
+      streamName?.toLowerCase().includes('gt');
+    if (isGt) {
+      return [
+        'IELTS Listening',
+        'IELTS Reading (GT)',
+        'IELTS Writing (GT)',
+        'IELTS Reading (Academic)',
+        'IELTS Writing (Academic)',
+        'IELTS Speaking',
+      ];
+    }
+    return [
+      'IELTS Listening',
+      'IELTS Reading (Academic)',
+      'IELTS Writing (Academic)',
+      'IELTS Speaking',
+    ];
+  }
+
   const targetBoard = boardId || 'fbise';
   if (!cachedTaxonomy) {
     const grades = getGradesForBoard(targetBoard);

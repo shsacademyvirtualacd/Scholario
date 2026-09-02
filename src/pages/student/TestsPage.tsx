@@ -19,6 +19,11 @@ export const TestsPage: React.FC = () => {
   const studentId = profile?.id || '';
   const studentGrade = profile?.class?.grade || (profile as any)?.grade || '10';
   const studentStream = profile?.stream_obj?.name || (profile as any)?.stream || '';
+  const studentBoardId =
+    profile?.board_id ||
+    (typeof profile?.board === 'string' ? profile.board : profile?.board?.id) ||
+    profile?.class?.board_id ||
+    'fbise';
 
   // Tab navigation: 'class-test' vs 'self-test'
   const activeTab = searchParams.get('tab') === 'self-test' ? 'self-test' : 'class-test';
@@ -49,7 +54,7 @@ export const TestsPage: React.FC = () => {
     try {
       setLoading(true);
       const [fetchedTests, fetchedSubs, fetchedOffs] = await Promise.all([
-        getTestsForStudent(studentGrade, studentStream),
+        getTestsForStudent(studentGrade, studentStream, studentBoardId),
         getSubmissionsForStudent(studentId),
         getOfferingsForStudent(studentId).catch(() => []),
       ]);

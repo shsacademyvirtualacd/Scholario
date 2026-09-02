@@ -469,9 +469,15 @@ export const RosterManagerPage: React.FC = () => {
       setEditStudentError('Please enter the student\'s full name.');
       return;
     }
-    if (!editStudentClass) {
-      setEditStudentError('Please select a grade/class level.');
-      return;
+    let classIdToUse = editStudentClass;
+    if (!classIdToUse) {
+      if (editStudentBoard === 'ielts') {
+        const ieltsClass = classesList.find(c => (c.board_id || '').toLowerCase() === 'ielts') || classesList.find(c => (c.grade || '').toLowerCase() === 'ielts');
+        classIdToUse = ieltsClass ? ieltsClass.id : 'ielts';
+      } else {
+        setEditStudentError('Please select a grade/class level.');
+        return;
+      }
     }
 
     setEditStudentSaving(true);
@@ -481,15 +487,30 @@ export const RosterManagerPage: React.FC = () => {
         (editStudentEntry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (editStudentEntry.email || '').toLowerCase()) : null);
 
       const studentProfileId = matchedProfile?.id || editStudentEntry.profile_id || editStudentEntry.id;
-      const selectedStreamObj = streamsList.find(s => s.id === editStudentStreamId);
-      const streamName = selectedStreamObj?.name || (editStudentStreamId ? 'Selected Stream' : 'General');
+      
+      let streamName = 'General';
+      let finalStreamId: string | null = editStudentStreamId || null;
+
+      if (editStudentBoard === 'ielts') {
+        const isGt =
+          editStudentStreamId === 'general-training' ||
+          editStudentStreamId?.toLowerCase().includes('general') ||
+          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') ||
+          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt');
+        streamName = isGt ? 'General Training' : 'Academic';
+        const matchedStream = streamsList.find(s => s.class_id === classIdToUse && (isGt ? (s.name.toLowerCase().includes('general') || s.name.toLowerCase().includes('gt')) : s.name.toLowerCase().includes('academic')));
+        finalStreamId = matchedStream ? matchedStream.id : null;
+      } else {
+        const selectedStreamObj = streamsList.find(s => s.id === editStudentStreamId);
+        streamName = selectedStreamObj?.name || (editStudentStreamId ? 'Selected Stream' : 'General');
+      }
 
       // 1. Update/Upsert Profile in profiles table
       const profilePayload: any = {
         full_name: nameTrim,
         board_id: editStudentBoard,
-        class_id: editStudentClass,
-        stream_id: editStudentStreamId || null,
+        class_id: classIdToUse,
+        stream_id: finalStreamId,
         stream: streamName,
         onboarding_complete: true,
         role: 'student'
@@ -1787,66 +1808,142 @@ export const RosterManagerPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Class / Grade Selection */}
-              <div>
-                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                  Class / Grade Level <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {availableClassesForEdit.map((c) => {
-                    const isSelected = editStudentClass === c.id;
-                    return (
-                      <button
-                        type="button"
-                        key={c.id}
-                        onClick={() => handleClassChangeInModal(c.id)}
-                        className={`p-2.5 rounded-xl border text-center transition-all ${
-                          isSelected
-                            ? 'border-purple-600 bg-purple-600 text-white font-bold shadow-sm'
-                            : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 font-semibold'
-                        }`}
-                      >
-                        <div className="text-xs">{c.display_name}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* Class / Grade & Stream Selection */}
+              {editStudentBoard === 'ielts' ? (
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                    IELTS Stream <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const academicStream =
+                          streamsList.find(s => s.class_id === editStudentClass && s.name.toLowerCase().includes('academic')) ||
+                          streamsList.find(s => s.name.toLowerCase().includes('academic'));
+                        setEditStudentStreamId(academicStream ? academicStream.id : 'academic');
+                      }}
+                      className={`p-3.5 rounded-2xl border text-left transition-all ${
+                        !editStudentStreamId ||
+                        editStudentStreamId === 'academic' ||
+                        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('academic') ||
+                        (!streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') &&
+                         !streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt') &&
+                         editStudentStreamId !== 'general-training')
+                          ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
+                          : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-zinc-900">Academic</span>
+                        {(!editStudentStreamId ||
+                          editStudentStreamId === 'academic' ||
+                          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('academic') ||
+                          (!streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') &&
+                           !streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt') &&
+                           editStudentStreamId !== 'general-training')) && (
+                          <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
+                        )}
+                      </div>
+                      <span className="text-[11px] text-zinc-500 block mt-0.5">
+                        Academic Reading & Writing + Listening & Speaking
+                      </span>
+                    </button>
 
-              {/* Stream Selection */}
-              <div>
-                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                  Academic Stream <span className="text-red-500">*</span>
-                </label>
-                {availableStreamsForEdit.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {availableStreamsForEdit.map((s) => {
-                      const isSelected = editStudentStreamId === s.id;
-                      return (
-                        <button
-                          type="button"
-                          key={s.id}
-                          onClick={() => setEditStudentStreamId(s.id)}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
-                            isSelected
-                              ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold ring-1 ring-purple-600/30'
-                              : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-medium'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs">{s.name}</span>
-                            {isSelected && <Check size={12} className="text-purple-600" />}
-                          </div>
-                        </button>
-                      );
-                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const gtStream =
+                          streamsList.find(s => s.class_id === editStudentClass && (s.name.toLowerCase().includes('general') || s.name.toLowerCase().includes('gt'))) ||
+                          streamsList.find(s => s.name.toLowerCase().includes('general') || s.name.toLowerCase().includes('gt'));
+                        setEditStudentStreamId(gtStream ? gtStream.id : 'general-training');
+                      }}
+                      className={`p-3.5 rounded-2xl border text-left transition-all ${
+                        editStudentStreamId === 'general-training' ||
+                        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') ||
+                        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt')
+                          ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
+                          : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-zinc-900">General Training</span>
+                        {(editStudentStreamId === 'general-training' ||
+                          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') ||
+                          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt')) && (
+                          <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
+                        )}
+                      </div>
+                      <span className="text-[11px] text-zinc-500 block mt-0.5">
+                        General Training + Academic Modules (Superset)
+                      </span>
+                    </button>
                   </div>
-                ) : (
-                  <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs text-zinc-500">
-                    General Stream (Core curriculum subjects assigned automatically)
+                </div>
+              ) : (
+                <>
+                  {/* Class / Grade Selection */}
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                      Class / Grade Level <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {availableClassesForEdit.map((c) => {
+                        const isSelected = editStudentClass === c.id;
+                        return (
+                          <button
+                            type="button"
+                            key={c.id}
+                            onClick={() => handleClassChangeInModal(c.id)}
+                            className={`p-2.5 rounded-xl border text-center transition-all ${
+                              isSelected
+                                ? 'border-purple-600 bg-purple-600 text-white font-bold shadow-sm'
+                                : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 font-semibold'
+                            }`}
+                          >
+                            <div className="text-xs">{c.display_name}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Stream Selection */}
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                      Academic Stream <span className="text-red-500">*</span>
+                    </label>
+                    {availableStreamsForEdit.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {availableStreamsForEdit.map((s) => {
+                          const isSelected = editStudentStreamId === s.id;
+                          return (
+                            <button
+                              type="button"
+                              key={s.id}
+                              onClick={() => setEditStudentStreamId(s.id)}
+                              className={`p-2.5 rounded-xl border text-left transition-all ${
+                                isSelected
+                                  ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold ring-1 ring-purple-600/30'
+                                  : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-medium'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs">{s.name}</span>
+                                {isSelected && <Check size={12} className="text-purple-600" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs text-zinc-500">
+                        General Stream (Core curriculum subjects assigned automatically)
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Modal Actions */}
               <div className="pt-4 border-t border-zinc-100 flex gap-3">

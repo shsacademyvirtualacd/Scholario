@@ -502,8 +502,13 @@ const NextClassWidget: React.FC<{
         <Clock size={13} className="text-[#F4C430] shrink-0" />
         <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
         <span className="text-xs text-[#A3A3A3]">·</span>
-        <span className="text-xs font-semibold text-[#737373] capitalize">
-          {((nextSlot.offering?.board || nextSlot.offering?.board_id || (nextSlot.offering as any)?.class?.board_id || '').toLowerCase() === 'sindh' ? 'Sindh' : (nextSlot.offering?.board || nextSlot.offering?.board_id || (nextSlot.offering as any)?.class?.board_id || '').toLowerCase() === 'ielts' ? 'IELTS' : 'FBISE')} · Gr. {nextSlot.offering?.grade || '10'}
+        <span className="text-xs font-semibold text-[#737373]">
+          {(() => {
+            const b = (nextSlot.offering?.board || nextSlot.offering?.board_id || (nextSlot.offering as any)?.class?.board_id || '').toLowerCase();
+            if (b === 'ielts') return 'IELTS Preparation';
+            if (b === 'sindh') return `Sindh · Gr. ${nextSlot.offering?.grade || '10'}`;
+            return `FBISE · Gr. ${nextSlot.offering?.grade || '10'}`;
+          })()}
         </span>
       </div>
       <StudentLiveLink

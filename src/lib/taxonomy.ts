@@ -143,11 +143,27 @@ export const IELTS_GRADES: GradeDef[] = [
     grade: 'IELTS',
     displayName: 'IELTS Preparation',
     boardId: 'ielts',
-    commonSubjects: ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'],
+    commonSubjects: ['IELTS Listening', 'IELTS Speaking'],
     streams: [
       {
-        name: 'IELTS Preparation',
-        subjects: ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'],
+        name: 'Academic',
+        subjects: [
+          'IELTS Listening',
+          'IELTS Reading (Academic)',
+          'IELTS Writing (Academic)',
+          'IELTS Speaking',
+        ],
+      },
+      {
+        name: 'General Training',
+        subjects: [
+          'IELTS Listening',
+          'IELTS Reading (GT)',
+          'IELTS Writing (GT)',
+          'IELTS Reading (Academic)',
+          'IELTS Writing (Academic)',
+          'IELTS Speaking',
+        ],
       },
     ],
   },
@@ -202,14 +218,39 @@ export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[]
  * drift. This stub is kept only so that getEnrolledSubjectsForStudent (which
  * calls it internally) continues to build until it is separately migrated.
  */
-export function getSubjectsForStream(grade: string, streamName: string): string[] {
-  if (typeof console !== 'undefined') {
-    console.warn(
-      '[taxonomy] getSubjectsForStream called from taxonomy.ts (static shadow data). ' +
-      'Import from db.ts for the DB-backed version.'
-    );
+export function getSubjectsForStream(grade: string, streamName: string, boardId?: string): string[] {
+  const normBoard = (boardId || '').trim().toLowerCase();
+  const isIelts =
+    normBoard === 'ielts' ||
+    grade === 'IELTS' ||
+    grade === 'ielts' ||
+    streamName?.toLowerCase().includes('ielts') ||
+    ((streamName?.toLowerCase() === 'academic' || streamName?.toLowerCase() === 'general training') && (!normBoard || normBoard === 'ielts'));
+
+  if (isIelts) {
+    const isGt =
+      streamName?.toLowerCase().includes('general') ||
+      streamName?.toLowerCase().includes('gt');
+    if (isGt) {
+      return [
+        'IELTS Listening',
+        'IELTS Reading (GT)',
+        'IELTS Writing (GT)',
+        'IELTS Reading (Academic)',
+        'IELTS Writing (Academic)',
+        'IELTS Speaking',
+      ];
+    }
+    return [
+      'IELTS Listening',
+      'IELTS Reading (Academic)',
+      'IELTS Writing (Academic)',
+      'IELTS Speaking',
+    ];
   }
-  const g = GRADES.find((gr) => gr.grade === grade);
+
+  const gradesList = normBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
+  const g = gradesList.find((gr) => gr.grade === grade) || GRADES.find((gr) => gr.grade === grade);
   if (!g) return [];
   if (!streamName) return g.commonSubjects || [];
 
@@ -230,9 +271,33 @@ export function getSubjectsForStream(grade: string, streamName: string): string[
 export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[]): string[] {
   let grade = '10';
   let streamName = '';
+  let boardId = '';
+
+  if (profile) {
+    boardId =
+      profile.board_id ||
+      (typeof profile.board === 'string' ? profile.board : profile.board?.id) ||
+      profile.class?.board_id ||
+      (typeof profile.class?.board === 'string' ? profile.class.board : profile.class?.board?.id) ||
+      '';
+    if (profile.class?.grade || profile.grade) {
+      grade = profile.class?.grade || profile.grade;
+    }
+    if (!streamName) {
+      streamName = profile.stream_obj?.name || profile.stream || '';
+    }
+  }
 
   if (enrollments && enrollments.length > 0) {
     const off = enrollments[0].offering;
+    if (!boardId) {
+      boardId =
+        off?.board ||
+        off?.board_id ||
+        off?.class?.board_id ||
+        (typeof off?.class?.board === 'string' ? off.class.board : off?.class?.board?.id) ||
+        '';
+    }
     if (off?.class?.grade || off?.grade) {
       grade = off?.class?.grade || off?.grade;
     }
@@ -241,16 +306,36 @@ export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[])
     if (foundStream) streamName = foundStream;
   }
 
-  if (profile) {
-    if ((!grade || grade === '10') && (profile.class?.grade || profile.grade)) {
-      grade = profile.class?.grade || profile.grade;
+  const isIelts =
+    String(boardId).trim().toLowerCase() === 'ielts' ||
+    String(grade).trim().toLowerCase() === 'ielts' ||
+    String(streamName).trim().toLowerCase().includes('ielts') ||
+    String(streamName).trim().toLowerCase() === 'general training' ||
+    String(streamName).trim().toLowerCase() === 'academic';
+
+  if (isIelts) {
+    const isGt =
+      String(streamName).toLowerCase().includes('general') ||
+      String(streamName).toLowerCase().includes('gt');
+    if (isGt) {
+      return [
+        'IELTS Listening',
+        'IELTS Reading (GT)',
+        'IELTS Writing (GT)',
+        'IELTS Reading (Academic)',
+        'IELTS Writing (Academic)',
+        'IELTS Speaking',
+      ];
     }
-    if (!streamName) {
-      streamName = profile.stream_obj?.name || profile.stream || '';
-    }
+    return [
+      'IELTS Listening',
+      'IELTS Reading (Academic)',
+      'IELTS Writing (Academic)',
+      'IELTS Speaking',
+    ];
   }
 
-  const subjects = getSubjectsForStream(grade, streamName);
+  const subjects = getSubjectsForStream(grade, streamName, boardId || 'fbise');
   return Array.from(new Set(subjects)).sort();
 }
 
@@ -386,15 +471,27 @@ export function getStudentStreamLabel(student: {
   stream?: string | null;
   stream_obj?: { name?: string } | null;
   board_id?: string | null;
+  board?: any;
 }): string {
-  if (student.board_id && String(student.board_id).toLowerCase() === 'ielts') {
-    return 'IELTS Preparation';
+  const rawBoard =
+    student.board_id ||
+    (typeof student.board === 'string' ? student.board : student.board?.id);
+  const isIelts = rawBoard && String(rawBoard).toLowerCase() === 'ielts';
+  const raw = student.stream_obj?.name || student.stream;
+
+  if (isIelts) {
+    if (!raw) return 'Academic';
+    const lower = raw.trim().toLowerCase();
+    if (lower.includes('general') || lower.includes('gt')) return 'General Training';
+    if (lower.includes('academic')) return 'Academic';
+    return 'Academic';
   }
 
-  const raw = student.stream_obj?.name || student.stream;
   if (!raw) return 'General';
 
   const lower = raw.trim().toLowerCase();
+  if (lower.includes('general training') || lower === 'gt') return 'General Training';
+  if (lower === 'academic') return 'Academic';
   if (lower.includes('ielts')) return 'IELTS Preparation';
   if (lower === 'ics') return 'ICS';
   if (lower === 'pre-medical' || lower === 'pre medical') return 'Pre-Medical';

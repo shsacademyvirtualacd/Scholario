@@ -123,7 +123,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       let userThreads = await getChatThreadsForUser(currentUserId);
 
       if (role === 'student') {
-        // For students, ensure starter threads with admins and faculty are initialized cleanly
+        // For students, ensure starter threads with admins and assigned teachers are initialized cleanly
         try {
           const { teachers, admins, admin } = await getStudentChatContacts(currentUserId);
           const studentRole: Role = 'student';
@@ -146,7 +146,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             }
           }
 
-          // Ensure teacher threads exist if missing
+          // Ensure teacher threads exist ONLY for actually assigned teachers
           for (const teacher of teachers) {
             if (teacher.id) {
               const hasTeacherThread = userThreads.some(
@@ -165,6 +165,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
           if (seededAny) {
             userThreads = await getChatThreadsForUser(currentUserId);
           }
+
+          // Filter out any stale empty threads with unassigned teachers that may have been created prior to assignment enforcement
+          const assignedTeacherIdSet = new Set(teachers.map(t => t.id));
+          const adminIdSet = new Set(adminList.map(a => a.id));
+
+          userThreads = userThreads.filter(t => {
+            const otherRole = t.other_participant?.role || (t.participant_one_role === 'student' ? t.participant_two_role : t.participant_one_role);
+            const otherId = t.other_participant?.id || (t.participant_one_id === currentUserId ? t.participant_two_id : t.participant_one_id);
+
+            // Admins are always allowed
+            if (otherRole === 'admin' || (otherId && adminIdSet.has(otherId))) return true;
+            // Assigned teachers are always allowed
+            if (otherId && assignedTeacherIdSet.has(otherId)) return true;
+            // If it's a thread with an unassigned teacher, only show if messages have already been exchanged
+            if (t.latest_message) return true;
+            return false;
+          });
         } catch (seedErr) {
           console.warn('[Chat] Auto-seed contacts warning:', seedErr);
         }
@@ -1153,7 +1170,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </div>
               ) : filteredModalContacts.length === 0 ? (
                 <div className="p-6 text-center text-xs text-[#737373]">
-                  No matching contacts found.
+                  {role === 'student' && contactRoleFilter === 'teacher' ? (
+                    <div className="space-y-1.5 max-w-xs mx-auto">
+                      <p className="font-semibold text-[#111111]">No teacher assigned yet</p>
+                      <p className="text-[11px] leading-relaxed">
+                        An instructor has not yet been assigned to your enrolled courses. You can reach out to Administration Support anytime for assistance.
+                      </p>
+                    </div>
+                  ) : (
+                    'No matching contacts found.'
+                  )}
                 </div>
               ) : (
                 filteredModalContacts.map((contact) => {

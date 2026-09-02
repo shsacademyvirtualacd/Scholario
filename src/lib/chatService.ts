@@ -1,6 +1,154 @@
 import { supabase } from './supabase';
 import type { Role, Profile, ChatThread, ChatMessage, ChatThreadWithDetails } from '../types';
-import { getOfferingsForStudent } from './db';
+
+/**
+ * Helper to fetch all teacher IDs assigned to teach a specific student
+ * via enrollments, class offerings, subject streams, and class associations.
+ */
+export async function getAssignedTeacherIdsForStudent(studentId: string): Promise<Set<string>> {
+  const assignedIds = new Set<string>();
+  if (!studentId) return assignedIds;
+
+  try {
+    const [studentProfRes, enrollmentsRes] = await Promise.all([
+      (supabase as any)
+        .from('profiles')
+        .select('id, class_id, stream_id, stream, board_id, role, class:classes(*, board:boards(*)), stream_obj:streams(*)')
+        .eq('id', studentId)
+        .maybeSingle(),
+      (supabase as any)
+        .from('enrollments')
+        .select('offering_id, class_offering_id, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
+        .eq('student_id', studentId),
+    ]);
+
+    const studentProf = studentProfRes?.data;
+    const enrollments = enrollmentsRes?.data || [];
+
+    // 1. Collect teacher IDs directly from enrollments -> class_offerings
+    if (enrollments.length > 0) {
+      const directOfferingIds: string[] = [];
+      enrollments.forEach((e: any) => {
+        const offId = e.offering_id || e.class_offering_id || e.offering?.id;
+        if (offId) directOfferingIds.push(offId);
+        if (e.offering?.teacher_id) assignedIds.add(e.offering.teacher_id);
+        if (e.offering?.teacher?.id) assignedIds.add(e.offering.teacher.id);
+      });
+
+      if (directOfferingIds.length > 0) {
+        const { data: offs } = await (supabase as any)
+          .from('class_offerings')
+          .select('id, teacher_id')
+          .in('id', directOfferingIds);
+        if (offs) {
+          offs.forEach((o: any) => {
+            if (o.teacher_id) assignedIds.add(o.teacher_id);
+          });
+        }
+      }
+    }
+
+    // 2. Collect teacher IDs from student's enrolled class / stream offerings
+    const classId = studentProf?.class_id || studentProf?.class?.id;
+    if (classId) {
+      const { data: classOfferings } = await (supabase as any)
+        .from('class_offerings')
+        .select('id, class_id, subject_id, teacher_id, stream_id, subject:subjects(name), stream:streams(name)')
+        .eq('class_id', classId);
+
+      if (classOfferings && classOfferings.length > 0) {
+        const studentBoardId = studentProf?.board_id || studentProf?.class?.board_id || studentProf?.class?.board?.id;
+        const isIelts =
+          (studentBoardId && String(studentBoardId).toLowerCase() === 'ielts') ||
+          (studentProf?.class?.grade && String(studentProf.class.grade).toLowerCase() === 'ielts') ||
+          (studentProf?.stream && String(studentProf.stream).toLowerCase().includes('ielts'));
+
+        const studentStreamName = studentProf?.stream_obj?.name || studentProf?.stream || '';
+        const studentStreamId = studentProf?.stream_id || studentProf?.stream_obj?.id;
+
+        classOfferings.forEach((off: any) => {
+          if (!off.teacher_id) return;
+
+          if (isIelts) {
+            // For IELTS, any teacher assigned to an IELTS class offering is an assigned IELTS teacher
+            assignedIds.add(off.teacher_id);
+          } else {
+            const offStreamName = off.stream?.name || '';
+            const offStreamId = off.stream_id;
+
+            if (offStreamId && studentStreamId && offStreamId === studentStreamId) {
+              assignedIds.add(off.teacher_id);
+            } else if (
+              studentStreamName &&
+              offStreamName &&
+              offStreamName.toLowerCase() === studentStreamName.toLowerCase()
+            ) {
+              assignedIds.add(off.teacher_id);
+            } else if (!offStreamId && !offStreamName) {
+              // Common/compulsory subject offering for the whole class
+              assignedIds.add(off.teacher_id);
+            }
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[chatService] Error calculating assigned teacher IDs:', err);
+  }
+
+  return assignedIds;
+}
+
+/**
+ * Check if a teacher is actually assigned to teach a student.
+ */
+export async function isTeacherAssignedToStudent(teacherId: string, studentId: string): Promise<boolean> {
+  if (!teacherId || !studentId) return false;
+
+  try {
+    const assignedIds = await getAssignedTeacherIdsForStudent(studentId);
+    if (assignedIds.has(teacherId)) return true;
+
+    // Check cross-reference between teachers table and profiles table
+    const [profRes, teacherRes] = await Promise.all([
+      (supabase as any).from('profiles').select('id, phone, email').eq('id', teacherId).maybeSingle(),
+      (supabase as any).from('teachers').select('id, phone, email').eq('id', teacherId).maybeSingle(),
+    ]);
+
+    const prof = profRes?.data;
+    const tRec = teacherRes?.data;
+    const possibleIds = new Set<string>([teacherId]);
+
+    if (prof) {
+      const { data: matchedTeachers } = await (supabase as any)
+        .from('teachers')
+        .select('id')
+        .or(`id.eq.${prof.id}${prof.email ? `,email.ilike.${prof.email}` : ''}${prof.phone ? `,phone.eq.${prof.phone}` : ''}`);
+      if (matchedTeachers) {
+        matchedTeachers.forEach((t: any) => possibleIds.add(t.id));
+      }
+    }
+
+    if (tRec) {
+      const { data: matchedProfiles } = await (supabase as any)
+        .from('profiles')
+        .select('id')
+        .or(`id.eq.${tRec.id}${tRec.email ? `,email.ilike.${tRec.email}` : ''}${tRec.phone ? `,phone.eq.${tRec.phone}` : ''}`);
+      if (matchedProfiles) {
+        matchedProfiles.forEach((p: any) => possibleIds.add(p.id));
+      }
+    }
+
+    for (const id of possibleIds) {
+      if (assignedIds.has(id)) return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error('[chatService] Error verifying teacher assignment:', err);
+    return false;
+  }
+}
 
 /**
  * Get or create a 1-on-1 thread between two participants.
@@ -72,6 +220,14 @@ export async function getOrCreateChatThread(
   const existing = await findExisting();
   if (existing) {
     return existing;
+  }
+
+  // Access control check: If a student is initiating a thread with a teacher, verify assignment
+  if (roleA === 'student' && roleB === 'teacher') {
+    const isAssigned = await isTeacherAssignedToStudent(participantB.id, participantA.id);
+    if (!isAssigned) {
+      throw new Error('Access restricted: You can only message teachers assigned to your enrolled courses.');
+    }
   }
 
   // Determine thread_type, student_id, and staff_id
@@ -533,23 +689,25 @@ export async function getTotalUnreadChatCount(userId: string): Promise<number> {
 }
 
 /**
- * For Student: Get all teachers (assigned offerings prioritized + all faculty teachers) + All Admin profiles.
- * Ensures the student sees all teachers and all admins in the plus button modal and active threads.
+ * For Student: Get ONLY assigned teachers (teachers teaching the student's enrolled courses/class) + All Admin profiles.
+ * If no teacher is assigned yet, teachers will be an empty array and never fall back to the unfiltered teacher roster.
+ * Admin profiles are always included and reachable by all students.
  */
 export async function getStudentChatContacts(studentId: string): Promise<{
   teachers: Profile[];
   admins: Profile[];
   admin: Profile;
 }> {
-  // 1. Fetch student's offerings, teacher subject mapping, teachers table records, teacher profiles, and admin profiles in parallel
+  // 1. Fetch assigned teacher IDs for this specific student
+  const assignedTeacherIds = await getAssignedTeacherIdsForStudent(studentId);
+
+  // 2. Fetch admin profiles, teacher subject mapping, and teacher metadata
   const [
-    offerings,
     teacherSubjectsMap,
     teachersTableRes,
     allTeacherProfilesRes,
     allAdminProfilesRes
   ] = await Promise.all([
-    getOfferingsForStudent(studentId).catch(() => []),
     getTeacherSubjectsMap(),
     (supabase as any).from('teachers').select('*').order('full_name'),
     (supabase as any)
@@ -564,54 +722,67 @@ export async function getStudentChatContacts(studentId: string): Promise<{
       .order('created_at', { ascending: true }),
   ]);
 
-  const assignedTeacherIds = new Set<string>();
-  offerings.forEach(off => {
-    if (off.teacher_id) {
-      assignedTeacherIds.add(off.teacher_id);
-    }
-  });
+  let teachers: Profile[] = [];
 
-  // Combine teachers from profiles table and teachers table (avoiding duplicates)
-  const teachersMap = new Map<string, Profile>();
+  // ONLY populate teachers if there are actually assigned teacher IDs
+  if (assignedTeacherIds.size > 0) {
+    const allTeachersData: any[] = teachersTableRes?.data || [];
+    const allTeacherProfiles: Profile[] = allTeacherProfilesRes?.data || [];
 
-  // 1a. Add all profiles with role = 'teacher'
-  if (allTeacherProfilesRes?.data && Array.isArray(allTeacherProfilesRes.data)) {
-    allTeacherProfilesRes.data.forEach((p: Profile) => {
-      teachersMap.set(p.id, p);
-    });
-  }
+    // Map assigned teacher IDs (which might be in teachers table or profiles table)
+    const matchedProfileIds = new Set<string>();
 
-  // 1b. Also incorporate entries from the teachers table in case any teacher profile row is pending or missing
-  if (teachersTableRes?.data && Array.isArray(teachersTableRes.data)) {
-    teachersTableRes.data.forEach((t: any) => {
-      if (!teachersMap.has(t.id)) {
-        teachersMap.set(t.id, {
-          id: t.id,
-          full_name: t.full_name || 'Faculty Teacher',
-          role: 'teacher',
-          avatar_url: t.avatar_url || null,
-          phone: t.phone || null,
-          created_at: t.created_at || new Date().toISOString(),
-        } as Profile);
+    assignedTeacherIds.forEach((tId) => {
+      matchedProfileIds.add(tId);
+      // If tId is in teachers table, find profile with matching email or phone
+      const tRec = allTeachersData.find((t) => t.id === tId);
+      if (tRec) {
+        const matchingProf = allTeacherProfiles.find(
+          (p) =>
+            p.id === tRec.id ||
+            (tRec.email && (p as any).email && (p as any).email.toLowerCase() === tRec.email.toLowerCase()) ||
+            (tRec.phone && p.phone === tRec.phone)
+        );
+        if (matchingProf) {
+          matchedProfileIds.add(matchingProf.id);
+        }
       }
     });
+
+    const teachersMap = new Map<string, Profile>();
+
+    // Add matched profiles with role = 'teacher'
+    allTeacherProfiles.forEach((p) => {
+      if (matchedProfileIds.has(p.id)) {
+        teachersMap.set(p.id, p);
+      }
+    });
+
+    // Also include from teachers table if not already represented in profiles
+    allTeachersData.forEach((t) => {
+      if (assignedTeacherIds.has(t.id) && !teachersMap.has(t.id)) {
+        const isRepresented = Array.from(teachersMap.values()).some(
+          (p) => t.email && (p as any).email && (p as any).email.toLowerCase() === t.email.toLowerCase()
+        );
+        if (!isRepresented) {
+          teachersMap.set(t.id, {
+            id: t.id,
+            full_name: t.full_name || 'Assigned Instructor',
+            role: 'teacher',
+            avatar_url: t.avatar_url || null,
+            phone: t.phone || null,
+            created_at: t.created_at || new Date().toISOString(),
+          } as Profile);
+        }
+      }
+    });
+
+    teachers = Array.from(teachersMap.values());
+    teachers = enrichProfilesList(teachers, teacherSubjectsMap, allTeachersData);
+    teachers.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
   }
 
-  let teachers = Array.from(teachersMap.values());
-
-  // Sort teachers: Enrolled course instructors first, then alphabetical by name
-  teachers.sort((a, b) => {
-    const aAssigned = assignedTeacherIds.has(a.id);
-    const bAssigned = assignedTeacherIds.has(b.id);
-    if (aAssigned && !bAssigned) return -1;
-    if (!aAssigned && bAssigned) return 1;
-    return (a.full_name || '').localeCompare(b.full_name || '');
-  });
-
-  // Enrich teacher profiles with subjects
-  teachers = enrichProfilesList(teachers, teacherSubjectsMap, teachersTableRes?.data || []);
-
-  // 2. Process ALL admin profiles
+  // 3. Process ALL admin profiles (Admins are ALWAYS visible and reachable)
   let admins: Profile[] = allAdminProfilesRes?.data || [];
 
   if (admins.length === 0) {
