@@ -42,7 +42,7 @@ export const BOARDS: BoardDef[] = [
     id: 'ielts',
     name: 'IELTS Preparation',
     shortName: 'IELTS',
-    description: 'International English Language Testing System (Academic & General Training)',
+    description: 'Complete 4-skill preparation covering Listening, Reading, Writing, and Speaking.',
   },
 ];
 
@@ -140,26 +140,14 @@ export const SINDH_GRADES: GradeDef[] = [
 
 export const IELTS_GRADES: GradeDef[] = [
   {
-    grade: '10',
-    displayName: 'Academic',
+    grade: 'IELTS',
+    displayName: 'IELTS Preparation',
     boardId: 'ielts',
     commonSubjects: ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'],
     streams: [
       {
-        name: 'Academic',
-        subjects: ['IELTS Listening', 'IELTS Reading (Academic)', 'IELTS Writing (Academic)', 'IELTS Speaking'],
-      },
-    ],
-  },
-  {
-    grade: '12',
-    displayName: 'General Training',
-    boardId: 'ielts',
-    commonSubjects: ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'],
-    streams: [
-      {
-        name: 'General Training',
-        subjects: ['IELTS Listening', 'IELTS Reading (GT)', 'IELTS Writing (GT)', 'IELTS Speaking'],
+        name: 'IELTS Preparation',
+        subjects: ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'],
       },
     ],
   },
@@ -182,7 +170,8 @@ export function getBoardDef(boardId?: string | null): BoardDef {
 }
 
 /** Default monthly tuition price by grade (aligned with database fee_configs) */
-export function getDefaultPrice(grade: string): number {
+export function getDefaultPrice(grade: string, boardId?: string): number {
+  if (boardId === 'ielts' || grade === 'IELTS' || grade === 'ielts') return 5000;
   return ['11', '12'].includes(grade) ? 4000 : 3000;
 }
 
@@ -287,6 +276,7 @@ export function getStudentBoardLabel(
     const bIdNorm = String(rawBoardId).trim().toLowerCase();
     if (bIdNorm === 'sindh') return 'Sindh Board';
     if (bIdNorm === 'fbise') return 'Federal Board (FBISE)';
+    if (bIdNorm === 'ielts') return 'IELTS Preparation';
     const bDef = BOARDS.find((b) => b.id.toLowerCase() === bIdNorm);
     if (bDef) return bDef.name;
   }
@@ -313,6 +303,7 @@ export function getStudentBoardLabel(
           const offNorm = String(offBoard).trim().toLowerCase();
           if (offNorm === 'sindh') return 'Sindh Board';
           if (offNorm === 'fbise') return 'Federal Board (FBISE)';
+          if (offNorm === 'ielts') return 'IELTS Preparation';
           const bDef = BOARDS.find((b) => b.id.toLowerCase() === offNorm);
           if (bDef) return bDef.name;
         }
@@ -327,16 +318,33 @@ export function getStudentBoardLabel(
   return 'Federal Board (FBISE)';
 }
 
-/** Resolves the grade label for a student (e.g. 'Grade 9', 'Grade 10') */
+/** Resolves the grade label for a student (e.g. 'Grade 9', 'Grade 10', or 'IELTS Preparation' with no grade) */
 export function getStudentGradeLabel(
   student: {
     grade?: string | null;
-    class?: { grade?: string; display_name?: string } | null;
+    board_id?: string | null;
+    board?: { id?: string; name?: string } | string | null;
+    class?: { grade?: string; display_name?: string; board_id?: string; board?: { id?: string; name?: string } | string } | null;
     id?: string;
   },
   enrollments?: Array<{ student_id: string; offering_id: string }>,
-  offerings?: Array<{ id: string; grade?: string }>
+  offerings?: Array<{ id: string; grade?: string; board?: string; class_id?: string; class?: { board_id?: string; board?: { id?: string; name?: string } | string } }>
 ): string {
+  const boardId =
+    student.board_id ||
+    (typeof student.board === 'string' ? student.board : student.board?.id) ||
+    student.class?.board_id ||
+    (typeof student.class?.board === 'string' ? student.class?.board : (student.class?.board as { id?: string })?.id);
+
+  if (boardId && String(boardId).trim().toLowerCase() === 'ielts') {
+    return 'IELTS Preparation';
+  }
+
+  const rawGrade = student.class?.grade || student.grade;
+  if (rawGrade && (String(rawGrade).trim().toLowerCase() === 'ielts' || String(rawGrade).trim().toLowerCase().includes('ielts'))) {
+    return 'IELTS Preparation';
+  }
+
   if (student.class?.grade) {
     return `Grade ${student.class.grade}`;
   }
@@ -344,6 +352,7 @@ export function getStudentGradeLabel(
     return `Grade ${student.grade}`;
   }
   if (student.class?.display_name) {
+    if (student.class.display_name.toLowerCase().includes('ielts')) return 'IELTS Preparation';
     return student.class.display_name.startsWith('Grade')
       ? student.class.display_name
       : `Grade ${student.class.display_name}`;
@@ -353,8 +362,18 @@ export function getStudentGradeLabel(
     const studentEnrollments = enrollments.filter((e) => e.student_id === student.id);
     for (const en of studentEnrollments) {
       const off = offerings.find((o) => o.id === en.offering_id);
-      if (off?.grade) {
-        return `Grade ${off.grade}`;
+      if (off) {
+        const offBoard =
+          off.board ||
+          off.class?.board_id ||
+          (typeof off.class?.board === 'string' ? off.class.board : (off.class?.board as { id?: string })?.id);
+        if (offBoard && String(offBoard).trim().toLowerCase() === 'ielts') {
+          return 'IELTS Preparation';
+        }
+        if (off.grade) {
+          if (String(off.grade).trim().toLowerCase() === 'ielts') return 'IELTS Preparation';
+          return `Grade ${off.grade}`;
+        }
       }
     }
   }
@@ -366,11 +385,17 @@ export function getStudentGradeLabel(
 export function getStudentStreamLabel(student: {
   stream?: string | null;
   stream_obj?: { name?: string } | null;
+  board_id?: string | null;
 }): string {
+  if (student.board_id && String(student.board_id).toLowerCase() === 'ielts') {
+    return 'IELTS Preparation';
+  }
+
   const raw = student.stream_obj?.name || student.stream;
   if (!raw) return 'General';
 
   const lower = raw.trim().toLowerCase();
+  if (lower.includes('ielts')) return 'IELTS Preparation';
   if (lower === 'ics') return 'ICS';
   if (lower === 'pre-medical' || lower === 'pre medical') return 'Pre-Medical';
   if (lower === 'pre-engineering' || lower === 'pre engineering') return 'Pre-Engineering';

@@ -2662,8 +2662,12 @@ export async function resolveGradeFeeConfig(grade: string, classId?: string | nu
     amount = config.amount;
   }
   if (amount === null || amount <= 0) {
-    const fallbackPrice = ['11', '12'].includes(grade) ? 4000 : 3000;
-    amount = fallbackPrice;
+    if (targetBoard === 'ielts' || grade === 'IELTS' || grade === 'ielts') {
+      amount = 5000;
+    } else {
+      const fallbackPrice = ['11', '12'].includes(grade) ? 4000 : 3000;
+      amount = fallbackPrice;
+    }
   }
 
   let rawInstructions = classConfig?.payment_instructions || config?.payment_instructions || 'Easypaisa:\nNumber: 03335292094\nName: Sadia Fatima\n\nJazzCash:\nNumber: 03058969050\nName: Haseena Bibi';

@@ -41,16 +41,24 @@ export const UnregisteredPage: React.FC = () => {
     getTaxonomy()
       .then((tax) => {
         setTaxonomy(tax);
-        // Default class to selected board's target grade or first class
-        const boardClasses = tax.classes.filter((c: any) => c.board_id === selectedBoardId);
-        const matchingClass = queryGrade
-          ? boardClasses.find((c: any) => String(c.grade) === String(queryGrade))
-          : boardClasses[0];
+        if (selectedBoardId === 'ielts') {
+          const ieltsClass = tax.classes.find((c: any) => c.board_id === 'ielts');
+          if (ieltsClass) {
+            setSelectedClassId(ieltsClass.id);
+            setSelectedStreamId('IELTS Preparation');
+          }
+        } else {
+          // Default class to selected board's target grade or first class
+          const boardClasses = tax.classes.filter((c: any) => c.board_id === selectedBoardId);
+          const matchingClass = queryGrade
+            ? boardClasses.find((c: any) => String(c.grade) === String(queryGrade))
+            : boardClasses[0];
 
-        if (matchingClass) {
-          setSelectedClassId(matchingClass.id);
-        } else if (boardClasses.length > 0) {
-          setSelectedClassId(boardClasses[0].id);
+          if (matchingClass) {
+            setSelectedClassId(matchingClass.id);
+          } else if (boardClasses.length > 0) {
+            setSelectedClassId(boardClasses[0].id);
+          }
         }
       })
       .catch((err) => {
@@ -61,18 +69,40 @@ export const UnregisteredPage: React.FC = () => {
   // When board changes, ensure selectedClassId moves to the corresponding class in that board
   useEffect(() => {
     if (!taxonomy) return;
-    const currentClass = taxonomy.classes.find((c: any) => c.id === selectedClassId);
-    const targetGrade = currentClass?.grade || queryGrade || '10';
-    const boardClasses = taxonomy.classes.filter((c: any) => c.board_id === selectedBoardId);
-    const matchingClass = boardClasses.find((c: any) => String(c.grade) === String(targetGrade)) || boardClasses[0];
+    if (selectedBoardId === 'ielts') {
+      const ieltsClass = taxonomy.classes.find((c: any) => c.board_id === 'ielts');
+      if (ieltsClass) {
+        setSelectedClassId(ieltsClass.id);
+        setSelectedStreamId('IELTS Preparation');
+      }
+    } else {
+      const currentClass = taxonomy.classes.find((c: any) => c.id === selectedClassId);
+      const targetGrade = currentClass?.grade || queryGrade || '10';
+      const boardClasses = taxonomy.classes.filter((c: any) => c.board_id === selectedBoardId);
+      const matchingClass = boardClasses.find((c: any) => String(c.grade) === String(targetGrade)) || boardClasses[0];
 
-    if (matchingClass && matchingClass.id !== selectedClassId) {
-      setSelectedClassId(matchingClass.id);
-      setSelectedStreamId(null);
+      if (matchingClass && matchingClass.id !== selectedClassId) {
+        setSelectedClassId(matchingClass.id);
+        setSelectedStreamId(null);
+      }
     }
   }, [selectedBoardId, taxonomy]);
 
   const refreshLivePrice = () => {
+    if (selectedBoardId === 'ielts') {
+      const cls = taxonomy?.classes?.find((c: any) => c.board_id === 'ielts') || { id: 'ielts-IELTS', grade: 'IELTS' };
+      resolveGradeFeeConfig('IELTS', cls.id, 'ielts')
+        .then((cfg) => {
+          if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
+            setLivePrice(cfg.amount);
+          } else {
+            setLivePrice(5000);
+          }
+        })
+        .catch(() => setLivePrice(5000));
+      return;
+    }
+
     if (selectedClassId && taxonomy) {
       const cls = taxonomy.classes.find((c: any) => c.id === selectedClassId);
       if (cls) {
@@ -81,17 +111,21 @@ export const UnregisteredPage: React.FC = () => {
             if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
               setLivePrice(cfg.amount);
             } else {
-              setLivePrice(cls.grade ? getDefaultPrice(cls.grade) : 3000);
+              setLivePrice(cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000);
             }
           })
-          .catch(() => setLivePrice(cls.grade ? getDefaultPrice(cls.grade) : 3000));
+          .catch(() => setLivePrice(cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000));
       }
     }
   };
 
   // Reset stream and calculate live price when class or board changes
   useEffect(() => {
-    setSelectedStreamId(null);
+    if (selectedBoardId === 'ielts') {
+      setSelectedStreamId('IELTS Preparation');
+    } else {
+      setSelectedStreamId(null);
+    }
     refreshLivePrice();
   }, [selectedClassId, selectedBoardId, taxonomy]);
 
@@ -559,95 +593,138 @@ export const UnregisteredPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Section 3: Class Selection */}
-                <div className="space-y-3 pt-4 border-t border-[#F5F5F5]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
-                      <BookOpen size={14} className="text-[#F4C430]" />
-                      <span>Step 3: Select Academic Grade ({currentBoardDef.shortName})</span>
-                    </div>
-                  </div>
-
-                  <div className={isMobile ? 'grid grid-cols-2 gap-2.5' : 'grid grid-cols-4 gap-2.5'}>
-                    {classesForBoard.map((c: any) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setSelectedClassId(c.id)}
-                        className={`p-3.5 rounded-2xl border-2 text-center transition-all duration-200 ${selectedClassId === c.id
-                            ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm font-black text-[#111111]'
-                            : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4] font-bold text-[#737373]'
-                          }`}
-                      >
-                        <div className="text-base tracking-tight">{c.display_name}</div>
-                        <div className="text-[10px] text-[#A3A3A3] mt-0.5">Grade {c.grade}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Section 4: Stream Selection */}
-                {selectedClassId && (
+                {/* Section 3 & 4: Academic Grade & Stream Selection (Skipped for IELTS) */}
+                {selectedBoardId === 'ielts' ? (
                   <div className="space-y-3 pt-4 border-t border-[#F5F5F5] animate-in fade-in duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
                         <GraduationCap size={14} className="text-[#F4C430]" />
-                        <span>Step 4: Choose Stream ({selectedClassObj?.display_name} - {currentBoardDef.shortName})</span>
+                        <span>IELTS Preparation Program</span>
                       </div>
-                      <span className="text-[10px] text-[#A3A3A3] font-medium">Select one</span>
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
+                        Complete 4-Skill Track
+                      </span>
                     </div>
 
-                    <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-3'}>
-                      {streamsForClass.map((s: any) => {
-                        let streamSubjects: string[] = [];
-                        if (Array.isArray(s.subjects) && s.subjects.length > 0) {
-                          streamSubjects = s.subjects;
-                        } else if (taxonomy.streamSubjects) {
-                          streamSubjects = taxonomy.streamSubjects
-                            .filter((ss: any) => ss.stream_id === s.id)
-                            .map((ss: any) => taxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
-                            .filter(Boolean);
-                        }
-                        if (streamSubjects.length === 0 && selectedClassObj) {
-                          const boardGrades = getGradesForBoard(selectedBoardId);
-                          const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
-                          const stDef = gradeDef?.streams.find((st) => st.name.toLowerCase() === s.name?.toLowerCase());
-                          if (stDef) streamSubjects = stDef.subjects;
-                        }
-
-                        return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => setSelectedStreamId(s.id)}
-                            className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between ${selectedStreamId === s.id
-                                ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
-                                : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
-                              }`}
+                    <div className="p-4 rounded-2xl border-2 border-[#F4C430] bg-[#FFFBF0] shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-[#111111]">IELTS Complete Preparation</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
+                            Unified Syllabus
+                          </span>
+                        </div>
+                        <CheckCircle2 size={18} className="text-[#F4C430] shrink-0" />
+                      </div>
+                      <p className="text-xs text-[#737373] leading-relaxed mb-3">
+                        One streamlined comprehensive program covering all four core exam modules with personalized feedback, practice tests, and live interactive speaking drills. No grade level or version selection needed.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'].map((skill) => (
+                          <div
+                            key={skill}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-xl bg-white text-[#111111] border border-[#E5E5E5] shadow-xs"
                           >
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-black text-[#111111]">{s.name} Stream</span>
-                                {selectedStreamId === s.id && (
-                                  <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-1.5 mt-2">
-                                {streamSubjects.map((sub: string) => (
-                                  <span
-                                    key={sub}
-                                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5]"
-                                  >
-                                    {sub}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#F4C430]" />
+                            <span>{skill}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                ) : (
+                  <>
+                    {/* Section 3: Class Selection */}
+                    <div className="space-y-3 pt-4 border-t border-[#F5F5F5]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
+                          <BookOpen size={14} className="text-[#F4C430]" />
+                          <span>Step 3: Select Academic Grade ({currentBoardDef.shortName})</span>
+                        </div>
+                      </div>
+
+                      <div className={isMobile ? 'grid grid-cols-2 gap-2.5' : 'grid grid-cols-4 gap-2.5'}>
+                        {classesForBoard.map((c: any) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setSelectedClassId(c.id)}
+                            className={`p-3.5 rounded-2xl border-2 text-center transition-all duration-200 ${selectedClassId === c.id
+                                ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm font-black text-[#111111]'
+                                : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4] font-bold text-[#737373]'
+                              }`}
+                          >
+                            <div className="text-base tracking-tight">{c.display_name}</div>
+                            <div className="text-[10px] text-[#A3A3A3] mt-0.5">Grade {c.grade}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Section 4: Stream Selection */}
+                    {selectedClassId && (
+                      <div className="space-y-3 pt-4 border-t border-[#F5F5F5] animate-in fade-in duration-300">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
+                            <GraduationCap size={14} className="text-[#F4C430]" />
+                            <span>Step 4: Choose Stream ({selectedClassObj?.display_name} - {currentBoardDef.shortName})</span>
+                          </div>
+                          <span className="text-[10px] text-[#A3A3A3] font-medium">Select one</span>
+                        </div>
+
+                        <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-3'}>
+                          {streamsForClass.map((s: any) => {
+                            let streamSubjects: string[] = [];
+                            if (Array.isArray(s.subjects) && s.subjects.length > 0) {
+                              streamSubjects = s.subjects;
+                            } else if (taxonomy.streamSubjects) {
+                              streamSubjects = taxonomy.streamSubjects
+                                .filter((ss: any) => ss.stream_id === s.id)
+                                .map((ss: any) => taxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+                                .filter(Boolean);
+                            }
+                            if (streamSubjects.length === 0 && selectedClassObj) {
+                              const boardGrades = getGradesForBoard(selectedBoardId);
+                              const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
+                              const stDef = gradeDef?.streams.find((st) => st.name.toLowerCase() === s.name?.toLowerCase());
+                              if (stDef) streamSubjects = stDef.subjects;
+                            }
+
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => setSelectedStreamId(s.id)}
+                                className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between ${selectedStreamId === s.id
+                                    ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
+                                    : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
+                                  }`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-black text-[#111111]">{s.name} Stream</span>
+                                    {selectedStreamId === s.id && (
+                                      <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {streamSubjects.map((sub: string) => (
+                                      <span
+                                        key={sub}
+                                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5]"
+                                      >
+                                        {sub}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Section 5: Live Tuition Fee Summary */}
@@ -659,7 +736,9 @@ export const UnregisteredPage: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">
-                          Live Tuition Summary ({selectedClassObj?.display_name} - {currentBoardDef.shortName})
+                          {selectedBoardId === 'ielts'
+                            ? 'Live Tuition Summary (IELTS Preparation)'
+                            : `Live Tuition Summary (${selectedClassObj?.display_name || ''} - ${currentBoardDef.shortName})`}
                         </span>
                         {livePrice !== null && livePrice > 0 ? (
                           <span className="text-xl font-black text-[#111111]">

@@ -162,9 +162,11 @@ export const StudentCheckoutPage: React.FC = () => {
       cleanPhone = '92' + cleanPhone;
     }
     const boardDef = getBoardDef(studentBoardId);
-    const className = studentClass 
-      ? `${studentClass.subject_name || studentClass.subject || boardDef.shortName} (${boardDef.shortName} Grade ${studentClass.grade || studentGrade})` 
-      : `${boardDef.name} (Class ${studentGrade}th)`;
+    const className = studentBoardId === 'ielts'
+      ? 'IELTS Complete Preparation Program'
+      : (studentClass 
+          ? `${studentClass.subject_name || studentClass.subject || boardDef.shortName} (${boardDef.shortName} Grade ${studentClass.grade || studentGrade})` 
+          : `${boardDef.name} (Class ${studentGrade}th)`);
     const message = `Hello, I am ${profile?.full_name || 'Student'}. I have sent the payment proof for my class fee (PKR ${feeConfig.amount.toLocaleString()}) for ${className}. Please verify and authorize my account.`;
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
@@ -283,9 +285,11 @@ export const StudentCheckoutPage: React.FC = () => {
                     <div>
                       <h2 className="text-base font-extrabold text-[#111111] tracking-tight">Tuition Fee Package</h2>
                       <p className="text-xs text-[#737373] mt-0.5">
-                        {studentClass 
-                          ? `${studentClass.subject_name || studentClass.subject || getBoardDef(studentBoardId).shortName} (${getBoardDef(studentBoardId).shortName} Grade ${studentClass.grade || studentGrade})` 
-                          : `${getBoardDef(studentBoardId).name} Academic Program (Class ${studentGrade}th)`}
+                        {studentBoardId === 'ielts'
+                          ? 'IELTS Complete Preparation Program'
+                          : (studentClass 
+                              ? `${studentClass.subject_name || studentClass.subject || getBoardDef(studentBoardId).shortName} (${getBoardDef(studentBoardId).shortName} Grade ${studentClass.grade || studentGrade})` 
+                              : `${getBoardDef(studentBoardId).name} Academic Program (Class ${studentGrade}th)`)}
                       </p>
                     </div>
                     {getStatusBadge()}
