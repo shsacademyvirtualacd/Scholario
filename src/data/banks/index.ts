@@ -5,13 +5,14 @@ import chemistry from './chemistry/index';
 import mathematics from './mathematics/index';
 import urdu from './urdu/index';
 import english from './english/index';
+import { IELTS_MCQ_BANK, IELTS_GRAMMAR_MCQS, IELTS_COMPREHENSION_MCQS } from './ielts/index';
 
 export type SubjectMCQBank = Record<string, StoredMCQ[]>;
 export type FullGrade9Bank = Record<string, SubjectMCQBank>;
 
 /**
- * Authoritative merged Grade 9 FBISE Question Bank.
- * Stored as separate per-subject JSON files for maximum reliability & version control safety,
+ * Authoritative merged Question Banks.
+ * Stored as separate per-subject JSON/TS files for maximum reliability & version control safety,
  * merged dynamically at build/runtime.
  */
 export const grade9FbiseBank: FullGrade9Bank = {
@@ -21,6 +22,9 @@ export const grade9FbiseBank: FullGrade9Bank = {
   Mathematics: mathematics as unknown as SubjectMCQBank,
   Urdu: urdu as unknown as SubjectMCQBank,
   English: english as unknown as SubjectMCQBank,
+  'IELTS Preparation': IELTS_MCQ_BANK,
+  'Grammar': { 'Grammar': IELTS_GRAMMAR_MCQS },
+  'Comprehension of Passages': { 'Comprehension of Passages': IELTS_COMPREHENSION_MCQS },
 };
 
 export {
@@ -30,6 +34,10 @@ export {
   mathematics,
   urdu,
   english,
+  IELTS_MCQ_BANK,
+  IELTS_GRAMMAR_MCQS,
+  IELTS_COMPREHENSION_MCQS,
 };
 
 export default grade9FbiseBank;
+

@@ -2,6 +2,7 @@ import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
 import { getGrade9FBISEQuestions } from './fbise9QuestionsBank';
 import { validateQuestionTopicRelevance, validateMCQQuestion, checkQuestionDuplicate } from './mcqValidator';
 import { getChapterSyllabusScope } from './curriculumFBISE9';
+import { IELTS_GRAMMAR_MCQS, IELTS_COMPREHENSION_MCQS } from '../data/banks/ielts/index';
 
 /**
  * High-quality, strictly syllabus-scoped fallback MCQ generator.
@@ -19,6 +20,48 @@ export function generateCurriculumFallbackMCQs(
 ): MCQQuestion[] {
   const normSubject = (subject || 'Physics').trim();
   const normTopic = (topic || 'General Science').trim();
+  const normSub = normSubject.toLowerCase();
+  const normTop = normTopic.toLowerCase();
+  const isIelts =
+    board?.toLowerCase() === 'ielts' ||
+    String(grade).toUpperCase() === 'IELTS' ||
+    normSub.includes('ielts') ||
+    normSub === 'grammar' ||
+    normSub.includes('comprehension');
+
+  // 0. High priority: IELTS Question Bank (Grammar & Comprehension)
+  if (isIelts) {
+    const isComprehension =
+      normSub.includes('comprehension') ||
+      normTop.includes('comprehension') ||
+      normTop.includes('passage') ||
+      normSub.includes('reading');
+
+    const sourcePool = isComprehension ? IELTS_COMPREHENSION_MCQS : IELTS_GRAMMAR_MCQS;
+    const excludeSet = new Set(excludeTexts.map((t) => t.trim().toLowerCase()));
+
+    const filtered = sourcePool.filter(
+      (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
+    );
+
+    // Shuffle pool deterministically / randomly
+    const shuffled = [...filtered].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, count).map((q) => ({
+      id: q.id,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation || 'Verified IELTS language proficiency skill assessment.',
+      chapter: q.chapter || (isComprehension ? 'Comprehension of Passages' : 'Grammar'),
+      topic: q.topic || q.chapter || (isComprehension ? 'Comprehension of Passages' : 'Grammar'),
+      difficulty: (q.difficulty as MCQDifficulty) || difficulty,
+    }));
+
+    if (selected.length > 0) {
+      return selected;
+    }
+  }
+
   const selectedChaps = normTopic && normTopic !== 'Full Syllabus' && normTopic !== 'Mixed Chapters' && normTopic !== 'All'
     ? [normTopic]
     : [];
@@ -33,9 +76,6 @@ export function generateCurriculumFallbackMCQs(
   const questions: MCQQuestion[] = [...fbise9Questions];
   const validationContext = { subject: normSubject, topic: normTopic, grade: String(grade), board: String(board) };
   const scope = getChapterSyllabusScope(normSubject, normTopic);
-
-  const normSub = normSubject.toLowerCase();
-  const normTop = normTopic.toLowerCase();
 
   // Helper to safely add valid, non-duplicate, chapter-confined question
   const addSafeQuestion = (q: MCQQuestion) => {

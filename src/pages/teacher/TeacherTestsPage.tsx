@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, BookOpen, FileCheck2, GraduationCap } from 'lucide-react';
+import { Search, BookOpen, FileCheck2, GraduationCap, PenTool } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
 import TestViewerModal from '../../components/common/TestViewerModal';
 import StudentResultsView from '../../components/tests/StudentResultsView';
+import { TeacherIELTSWritingGrading } from '../../components/ielts/TeacherIELTSWritingGrading';
 import { getTestsForTeacher, getOfferingsForTeacher } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -15,17 +16,21 @@ export const TeacherTestsPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Tab navigation: 'class-test' vs 'student-results'
+  // Tab navigation: 'class-test' vs 'student-results' vs 'ielts-writing'
   const rawTab = searchParams.get('tab');
-  const activeTab: 'class-test' | 'student-results' =
-    rawTab === 'student-results' || rawTab === 'results' ? 'student-results' : 'class-test';
+  const activeTab: 'class-test' | 'student-results' | 'ielts-writing' =
+    rawTab === 'ielts-writing' || rawTab === 'ielts'
+      ? 'ielts-writing'
+      : rawTab === 'student-results' || rawTab === 'results'
+      ? 'student-results'
+      : 'class-test';
 
-  const setActiveTab = (tab: 'class-test' | 'student-results') => {
+  const setActiveTab = (tab: 'class-test' | 'student-results' | 'ielts-writing') => {
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'class-test') {
       newParams.delete('tab');
     } else {
-      newParams.set('tab', 'student-results');
+      newParams.set('tab', tab);
     }
     setSearchParams(newParams);
   };
@@ -155,9 +160,26 @@ export const TeacherTestsPage: React.FC = () => {
             MCQ
           </span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('ielts-writing')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'ielts-writing'
+              ? 'bg-[#111111] text-white shadow-xs'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+          }`}
+        >
+          <PenTool size={15} className={activeTab === 'ielts-writing' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <span>IELTS Writing Reviews</span>
+          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold">
+            Grading
+          </span>
+        </button>
       </div>
 
-      {activeTab === 'student-results' ? (
+      {activeTab === 'ielts-writing' ? (
+        <TeacherIELTSWritingGrading />
+      ) : activeTab === 'student-results' ? (
         <StudentResultsView
           isTeacher={true}
           teacherOfferings={offerings}

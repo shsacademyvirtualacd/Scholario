@@ -26,6 +26,9 @@ import {
   CheckSquare,
   Square,
   Flame,
+  Headphones,
+  PenTool,
+  BookOpenCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { MCQQuestion, MCQDifficulty, SelfTestConfig, SelfTestResult, ExamMode } from '../../types/selfTest';
@@ -47,6 +50,9 @@ import {
 } from '../../lib/curriculumFBISE9';
 import { generateCurriculumFallbackMCQs } from '../../lib/curriculumMCQs';
 import { MathText } from '../common/MathText';
+import { IELTSListeningCenter } from '../ielts/IELTSListeningCenter';
+import { IELTSReadingCenter } from '../ielts/IELTSReadingCenter';
+import { IELTSWritingCenter } from '../ielts/IELTSWritingCenter';
 
 interface SelfTestingViewProps {
   defaultSubject?: string;
@@ -84,68 +90,21 @@ const SUGGESTED_TOPICS: Record<string, string[]> = {
   ],
   Urdu: ['Qawaid-o-Insha', 'Tashreeh & Nazm', 'Asbaaq & Khulasa', 'Muhawraat & Imla'],
   'Pakistan Studies': ['Ideology of Pakistan', 'Pakistan Movement (1857-1947)', 'Geography & Resources', 'Constitutional Development', 'Foreign Policy of Pakistan'],
-  'IELTS Listening': [
-    'Section 1: Social Needs & Everyday Dialogues',
-    'Section 2: Monologue in Everyday Social Context',
-    'Section 3: Educational or Training Conversation',
-    'Section 4: Academic Lecture Monologue',
-    'Multiple Choice & Matching Questions',
-    'Sentence & Summary Completion',
-    'Form, Note, Table & Flow-Chart Completion',
+  Grammar: [
+    'Mixed Grammar (Tenses, Articles, Prepositions & Syntax)',
+    'Subject-Verb Agreement & Sentence Correction',
+    'Tenses, Verb Forms & Aspect',
+    'Prepositions, Modals & Connectors',
+    'Relative Clauses & Conditionals',
+    'Passive Voice & Indirect Speech',
   ],
-  'IELTS Reading (Academic)': [
-    'Academic Passage 1: Descriptive & Factual Analysis',
-    'Academic Passage 2: Discursive & Argumentative Analysis',
-    'Academic Passage 3: Complex Academic Inquiry',
-    'True / False / Not Given & Yes / No / Not Given',
-    'Matching Headings & Information',
-    'Summary, Note, Table & Sentence Completion',
-    'Multiple Choice Questions',
-  ],
-  'IELTS Reading (GT)': [
-    'Section 1: Social Survival (Notices, Timetables, Ads)',
-    'Section 2: Workplace Survival (Job Descriptions, Staff Training)',
-    'Section 3: General Reading Comprehension (Long Complex Text)',
-    'True / False / Not Given & Locating Information',
-    'Matching Features & Headings',
-    'Sentence & Diagram Label Completion',
-  ],
-  'IELTS Reading': [
-    'Passage Comprehension & Key Arguments',
-    'True / False / Not Given & Yes / No / Not Given',
-    'Matching Headings & Features',
-    'Summary & Sentence Completion',
-  ],
-  'IELTS Writing (Academic)': [
-    'Task 1: Line Graphs & Bar Charts Data Description',
-    'Task 1: Pie Charts, Tables & Multiple Data Sources',
-    'Task 1: Process Diagrams & Maps Analysis',
-    'Task 2: Opinion Essays (Agree / Disagree)',
-    'Task 2: Discussion Essays (Discuss Both Views & Opinion)',
-    'Task 2: Problem-Solution & Cause-Effect Essays',
-    'Task 2: Double Question Essays',
-    'Coherence & Cohesion, Lexical Resource & Grammar',
-  ],
-  'IELTS Writing (GT)': [
-    'Task 1: Formal Letter Writing',
-    'Task 1: Semi-Formal Letter Writing',
-    'Task 1: Informal Letter Writing',
-    'Task 2: Discursive & Opinion Essay',
-    'Task 2: Problem-Solution Essay',
-    'Task 2: Advantages vs Disadvantages',
-    'Task 1 & 2 Structure, Vocabulary & Band Descriptors',
-  ],
-  'IELTS Writing': [
-    'Task 1: Analysis & Key Overview Formulation',
-    'Task 2: Opinion & Discussion Essay Structure',
-    'Paragraphing, Linkers & Cohesive Devices',
-    'Grammatical Range, Accuracy & Academic Lexis',
-  ],
-  'IELTS Speaking': [
-    'Part 1: Introduction, Hobbies & Daily Life Questions',
-    'Part 2: Long Turn Cue Card Presentation Strategy',
-    'Part 3: In-Depth Discussion & Abstract Topic Analysis',
-    'Fluency & Coherence, Lexical Resource & Pronunciation',
+  'Comprehension of Passages': [
+    'Mixed Comprehension Passages',
+    'Academic & Scientific Inquiry Passages',
+    'Environmental Science & Ecology Passages',
+    'Technology & Digital Innovation Passages',
+    'Global Economics & Trade Passages',
+    'Sociology & Education Policy Passages',
   ],
 };
 
@@ -225,6 +184,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const isGt =
     String(studentStream).toLowerCase().includes('general') ||
     String(studentStream).toLowerCase().includes('gt');
+
+  // IELTS Module sub-navigation (MCQ Bank vs Listening vs Reading vs Writing)
+  const [ieltsModuleTab, setIeltsModuleTab] = useState<'mcq' | 'listening' | 'reading' | 'writing'>('mcq');
 
   // Runtime quiz state
   const [viewMode, setViewMode] = useState<ViewMode>('config');
@@ -312,22 +274,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   const allSubjectsForGrade = useMemo(() => {
     if (isIelts) {
-      if (isGt) {
-        return [
-          'IELTS Listening',
-          'IELTS Reading (GT)',
-          'IELTS Writing (GT)',
-          'IELTS Reading (Academic)',
-          'IELTS Writing (Academic)',
-          'IELTS Speaking',
-        ];
-      }
-      return [
-        'IELTS Listening',
-        'IELTS Reading (Academic)',
-        'IELTS Writing (Academic)',
-        'IELTS Speaking',
-      ];
+      return ['Grammar', 'Comprehension of Passages'];
     }
     if (isFbise9) {
       // Official FBISE Grade 9 Subjects
@@ -1035,61 +982,147 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
     return (
       <div className="space-y-6">
-        {/* Intro Card */}
-        <div className="bg-linear-to-r from-[#111111] to-[#1F1F1F] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#2A2A2A] shadow-md">
-          <div className="absolute right-0 top-0 w-80 h-80 bg-[#F4C430]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10 max-w-2xl space-y-3">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              {isFbise9 ? 'Grade 9 FBISE Self-Testing & Exam Generator' : 'Interactive Self-Testing Center'}
-            </h2>
-            <p className="text-xs sm:text-sm text-[#A3A3A3] leading-relaxed">
-              {isFbise9
-                ? 'Practice with 100% official FBISE Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
-                : 'Generate 100% curriculum-accurate, syllabus-aligned multiple choice practice questions on any subject or topic. Your practice scores are private to you.'}
-            </p>
+        {/* If IELTS: Show 4 Comprehensive IELTS Center Tabs */}
+        {isIelts && (
+          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-[#EBEBEB] dark:bg-slate-800 rounded-2xl w-fit">
+            <button
+              type="button"
+              onClick={() => setIeltsModuleTab('mcq')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                ieltsModuleTab === 'mcq'
+                  ? 'bg-[#111111] dark:bg-blue-600 text-white shadow-xs'
+                  : 'text-[#525252] dark:text-slate-300 hover:text-[#111111] hover:bg-black/5 dark:hover:bg-slate-700'
+              }`}
+            >
+              <CheckSquare size={15} className={ieltsModuleTab === 'mcq' ? 'text-[#F4C430] dark:text-blue-200' : 'text-[#737373]'} />
+              <span>MCQ Self-Test Bank</span>
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-900 dark:text-amber-200 text-[10px] font-extrabold">
+                Grammar & Passages
+              </span>
+            </button>
 
-            <div className="flex flex-wrap gap-4 pt-2">
-              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
-                <CheckCircle2 size={15} className="text-[#10B981]" />
-                <span>Verified Curriculum Chapters</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
-                <CheckCircle2 size={15} className="text-[#10B981]" />
-                <span>Instant Explanations & Solutions</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
-                <CheckCircle2 size={15} className="text-[#10B981]" />
-                <span>Private & Zero Impact on GPA</span>
+            <button
+              type="button"
+              onClick={() => setIeltsModuleTab('listening')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                ieltsModuleTab === 'listening'
+                  ? 'bg-[#111111] dark:bg-indigo-600 text-white shadow-xs'
+                  : 'text-[#525252] dark:text-slate-300 hover:text-[#111111] hover:bg-black/5 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Headphones size={15} className={ieltsModuleTab === 'listening' ? 'text-[#F4C430] dark:text-indigo-200' : 'text-[#737373]'} />
+              <span>Listening Studio</span>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-900 dark:text-indigo-200 text-[10px] font-extrabold">
+                20 Audio Clips
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIeltsModuleTab('reading')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                ieltsModuleTab === 'reading'
+                  ? 'bg-[#111111] dark:bg-blue-600 text-white shadow-xs'
+                  : 'text-[#525252] dark:text-slate-300 hover:text-[#111111] hover:bg-black/5 dark:hover:bg-slate-700'
+              }`}
+            >
+              <BookOpenCheck size={15} className={ieltsModuleTab === 'reading' ? 'text-[#F4C430] dark:text-blue-200' : 'text-[#737373]'} />
+              <span>Reading Center</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-900 dark:text-blue-200 text-[10px] font-extrabold">
+                3 Passages
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIeltsModuleTab('writing')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                ieltsModuleTab === 'writing'
+                  ? 'bg-[#111111] dark:bg-purple-600 text-white shadow-xs'
+                  : 'text-[#525252] dark:text-slate-300 hover:text-[#111111] hover:bg-black/5 dark:hover:bg-slate-700'
+              }`}
+            >
+              <PenTool size={15} className={ieltsModuleTab === 'writing' ? 'text-[#F4C430] dark:text-purple-200' : 'text-[#737373]'} />
+              <span>Writing Studio</span>
+              <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-900 dark:text-purple-200 text-[10px] font-extrabold">
+                Teacher Review
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* IELTS Specialized Module Views */}
+        {isIelts && ieltsModuleTab === 'listening' ? (
+          <IELTSListeningCenter />
+        ) : isIelts && ieltsModuleTab === 'reading' ? (
+          <IELTSReadingCenter />
+        ) : isIelts && ieltsModuleTab === 'writing' ? (
+          <IELTSWritingCenter />
+        ) : (
+          <>
+            {/* Intro Card */}
+            <div className="bg-linear-to-r from-[#111111] to-[#1F1F1F] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#2A2A2A] shadow-md">
+              <div className="absolute right-0 top-0 w-80 h-80 bg-[#F4C430]/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative z-10 max-w-2xl space-y-3">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  {isIelts
+                    ? 'IELTS Self-Testing MCQ Question Bank'
+                    : isFbise9
+                    ? 'Grade 9 FBISE Self-Testing & Exam Generator'
+                    : 'Interactive Self-Testing Center'}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#A3A3A3] leading-relaxed">
+                  {isIelts
+                    ? 'Practice 200 authentic IELTS MCQs strictly divided into Grammar (100 MCQs) and Comprehension of Passages (100 MCQs) with instant scoring and detailed explanations.'
+                    : isFbise9
+                    ? 'Practice with 100% official FBISE Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
+                    : 'Generate 100% curriculum-accurate, syllabus-aligned multiple choice practice questions on any subject or topic. Your practice scores are private to you.'}
+                </p>
+
+                <div className="flex flex-wrap gap-4 pt-2">
+                  <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
+                    <CheckCircle2 size={15} className="text-[#10B981]" />
+                    <span>{isIelts ? '200 Authentic IELTS Questions' : 'Verified Curriculum Chapters'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
+                    <CheckCircle2 size={15} className="text-[#10B981]" />
+                    <span>Instant Explanations & Solutions</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
+                    <CheckCircle2 size={15} className="text-[#10B981]" />
+                    <span>Private & Zero Impact on GPA</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Generator Form */}
-        <div className="bg-white rounded-3xl border border-[#E5E5E5] p-6 sm:p-8 shadow-xs space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-[#F0F0F0]">
-            <div>
-              <h3 className="text-base font-extrabold text-[#111111] flex items-center gap-2">
-                <Sliders size={18} className="text-[#F4C430]" />
-                <span>Configure Practice Quiz</span>
-              </h3>
-              <p className="text-xs text-[#737373] mt-0.5">
-                {isFbise9
-                  ? 'Official FBISE Grade 9 chapters — select single chapter, multiple chapters, or full subject exam.'
-                  : 'Customize syllabus parameters to target specific chapters or concepts.'}
-              </p>
-            </div>
+            {/* Generator Form */}
+            <div className="bg-white rounded-3xl border border-[#E5E5E5] p-6 sm:p-8 shadow-xs space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-[#F0F0F0]">
+                <div>
+                  <h3 className="text-base font-extrabold text-[#111111] flex items-center gap-2">
+                    <Sliders size={18} className="text-[#F4C430]" />
+                    <span>{isIelts ? 'Configure IELTS Practice Test' : 'Configure Practice Quiz'}</span>
+                  </h3>
+                  <p className="text-xs text-[#737373] mt-0.5">
+                    {isIelts
+                      ? 'Select Grammar or Comprehension of Passages to test language proficiency and reading skills.'
+                      : isFbise9
+                      ? 'Official FBISE Grade 9 chapters — select single chapter, multiple chapters, or full subject exam.'
+                      : 'Customize syllabus parameters to target specific chapters or concepts.'}
+                  </p>
+                </div>
 
-            {historyItems.length > 0 && (
-              <button
-                onClick={() => setViewMode('history')}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive"
-              >
-                <History size={15} className="text-[#737373]" />
-                <span>Past Self-Tests ({historyItems.length})</span>
-              </button>
-            )}
-          </div>
+                {historyItems.length > 0 && (
+                  <button
+                    onClick={() => setViewMode('history')}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive"
+                  >
+                    <History size={15} className="text-[#737373]" />
+                    <span>Past Self-Tests ({historyItems.length})</span>
+                  </button>
+                )}
+              </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Board & Grade Configuration */}
@@ -1697,6 +1730,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
               ))}
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     );
