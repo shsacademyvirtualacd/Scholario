@@ -711,11 +711,11 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         examMode = 'single_chapter',
       } = req.body || {};
 
-      const isIelts = isIELTSBoard(board, grade) || Object.keys(ieltsBank).includes(subject);
+      const isIelts = isIELTSBoard(board, grade) || String(board || '').toLowerCase().includes('ielts') || Object.keys(ieltsBank).includes(subject);
       const targetCount = Math.max(1, Number(count) || 10);
       const normSubject = isIelts ? subject : (normalizeFBISEGrade9Subject(subject) || subject);
       const bank = getServerBankData(isIelts ? 'ielts' : board, isIelts ? 'ielts' : grade);
-      const subjectBank = bank[normSubject] || {};
+      const subjectBank = bank[normSubject] || bank[subject] || {};
       const availableChapters = Object.keys(subjectBank);
 
       const targetChapName = (chapter || topic || '').trim();

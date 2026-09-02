@@ -229,7 +229,7 @@ export function normalizeFBISEGrade9Subject(rawSubject: string): string | null {
   const norm = (rawSubject || '').trim().toLowerCase();
   for (const [canonical, data] of Object.entries(FBISE_GRADE_9_CURRICULUM)) {
     if (canonical.toLowerCase() === norm) return canonical;
-    if (data.aliases.some((alias) => norm.includes(alias) || alias.includes(norm))) {
+    if (data.aliases.some((alias) => norm === alias.toLowerCase())) {
       return canonical;
     }
   }

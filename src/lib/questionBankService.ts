@@ -223,8 +223,9 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
   totalAvailableInBank: number;
   isPartial: boolean;
 }> {
+  const isIelts = isIELTSBoard(params.board, params.grade) || String(params.board || '').toLowerCase().includes('ielts');
   const targetCount = Math.max(1, params.count || 10);
-  const normalizedSubject = normalizeFBISEGrade9Subject(params.subject) || params.subject;
+  const normalizedSubject = isIelts ? params.subject : (normalizeFBISEGrade9Subject(params.subject) || params.subject);
   const targetChapOrTopic = (params.chapter || params.topic || '').trim();
   const hasSpecificChapter = Boolean(
     targetChapOrTopic &&
@@ -262,8 +263,8 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
         subject: normalizedSubject,
         topic: targetChapOrTopic || undefined,
         chapter: targetChapOrTopic || undefined,
-        grade: params.grade || '9',
-        board: params.board || 'fbise',
+        grade: isIelts ? 'ielts' : (params.grade || '9'),
+        board: isIelts ? 'ielts' : (params.board || 'fbise'),
         count: targetCount,
         difficulty: params.difficulty,
         excludeIds: params.excludeIds,
@@ -299,9 +300,8 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
   }
 
   // 2. Query local in-memory / bundled bank store instantly
-  const isIelts = isIELTSBoard(params.board, params.grade);
   const bank = await loadBankData(false, isIelts ? 'ielts' : (params.board || 'fbise'));
-  const subjectData = bank[normalizedSubject] || {};
+  const subjectData = bank[normalizedSubject] || bank[params.subject] || {};
   const availableChapters = Object.keys(subjectData);
 
   let pool: StoredMCQ[] = [];
@@ -666,58 +666,61 @@ export async function pullTestQuestionsFromBanks(params: {
         if (chapter && chapter !== 'All' && ch.name !== chapter && !ch.name.includes(chapter)) continue;
         const isUrdu = subject.toLowerCase().includes('urdu') || /[\u0600-\u06FF]/.test(ch.name);
         const subtopics = ch.subtopics || (isUrdu ? ['اصول و ضوابط', 'ادبی و فنی محاسن'] : ['Theoretical Principles', 'Analytical Applications']);
-        const t1 = subtopics[0] || (isUrdu ? 'قواعد و اصول' : 'Theoretical Foundations');
-        const t2 = subtopics[1] || (isUrdu ? 'اشعار و امثلہ' : 'Experimental Analysis');
+        
+        for (let sIdx = 0; sIdx < subtopics.length && longQuestions.length < longTarget; sIdx += 2) {
+          const t1 = subtopics[sIdx] || (isUrdu ? 'قواعد و اصول' : 'Theoretical Foundations');
+          const t2 = subtopics[sIdx + 1] || subtopics[0] || (isUrdu ? 'اشعار و امثلہ' : 'Experimental Analysis');
 
-        longQuestions.push({
-          id: `gen_lq_${subject.toLowerCase()}_${addIdx++}`,
-          board: isIelts ? 'ielts' : board,
-          grade: isIelts ? 'IELTS' : grade,
-          subject,
-          chapter: ch.name,
-          chapterNumber: ch.number,
-          topic: t1,
-          question: isUrdu
-            ? `${ch.name} کے بنیادی اصول، قواعد اور تفصیلی ادبی و فنی وضاحت تحریر کریں۔`
-            : isIelts
-            ? `Comprehensive evaluation task for ${ch.name} in ${subject}: analysis, structure, and model response.`
-            : `Comprehensive examination of ${ch.name}: theoretical principles, derivations, and application problems.`,
-          parts: [
-            {
-              label: isUrdu ? '(الف)' : '(a)',
-              text: isUrdu
-                ? `${t1} کی جامع تعریف کریں اور اس کے بنیادی اجزا کو تفصیل سے بیان کریں۔`
-                : isIelts
-                ? `Analyze the prompt and key structural components for ${t1}.`
-                : `Explain in detail the fundamental laws and conceptual derivations governing ${t1} with necessary mathematical formulations.`,
-              marks: 5,
-            },
-            {
-              label: isUrdu ? '(ب)' : '(b)',
-              text: isUrdu
-                ? `${t2} کی مدد سے اس کا اطلاق اور روزمرہ یا اساتذہ کے کلام سے دو مثالیں پیش کریں۔`
-                : isIelts
-                ? `Provide an annotated model response covering ${t2} meeting Band 8+ marking criteria.`
-                : `Analyze the practical application and problem-solving scenario of ${t2} in ${subject}.`,
-              marks: 5,
-            },
-          ],
-          modelAnswer: isUrdu
-            ? `(الف) ${t1} کے تمام پہلوؤں کا احاطہ کرتے ہوئے جامع جواب۔\n(ب) مستند مثالوں اور اشعار کے تجزیے کے ساتھ مدلل تشریح۔`
-            : isIelts
-            ? `(a) Detailed structural analysis addressing all elements of ${t1}.\n(b) Comprehensive model answer fulfilling IELTS band descriptors for ${t2}.`
-            : `(a) Detailed theoretical derivation covering principles of ${t1}.\n(b) Practical application, diagrammatic representation, and analytical evaluation of ${t2}.`,
-          markingScheme: isUrdu
-            ? ['تعریف اور بنیادی اجزا پر 5 نمبر', 'مثالوں، اشعار اور قواعد کے انطباق پر 3 نمبر']
-            : isIelts
-            ? ['Task Achievement & Coherence on Part (a) (5 Marks)', 'Lexical Resource & Grammatical Accuracy on Part (b) (5 Marks)']
-            : ['Theoretical derivation and conceptual clarity (5 Marks)', 'Application, examples, or numerical solution (3 Marks)'],
-          marks: 10,
-          difficulty: 'hard',
-          verified: true,
-          source: 'curriculum-bank',
-          createdAt: new Date().toISOString(),
-        });
+          longQuestions.push({
+            id: `gen_lq_${subject.toLowerCase()}_${addIdx++}`,
+            board: isIelts ? 'ielts' : board,
+            grade: isIelts ? 'IELTS' : grade,
+            subject,
+            chapter: ch.name,
+            chapterNumber: ch.number,
+            topic: t1,
+            question: isUrdu
+              ? `${ch.name} کے بنیادی اصول، قواعد اور تفصیلی ادبی و فنی وضاحت تحریر کریں۔`
+              : isIelts
+              ? `Comprehensive evaluation task for ${ch.name} (${t1}): analytical synthesis and applied model response.`
+              : `Comprehensive examination of ${ch.name}: theoretical principles, derivations, and application problems.`,
+            parts: [
+              {
+                label: isUrdu ? '(الف)' : '(a)',
+                text: isUrdu
+                  ? `${t1} کی جامع تعریف کریں اور اس کے بنیادی اجزا کو تفصیل سے بیان کریں۔`
+                  : isIelts
+                  ? `Analyze the key grammatical/linguistic principles and structural components of ${t1}.`
+                  : `Explain in detail the fundamental laws and conceptual derivations governing ${t1} with necessary mathematical formulations.`,
+                marks: 5,
+              },
+              {
+                label: isUrdu ? '(ب)' : '(b)',
+                text: isUrdu
+                  ? `${t2} کی مدد سے اس کا اطلاق اور روزمرہ یا اساتذہ کے کلام سے دو مثالیں پیش کریں۔`
+                  : isIelts
+                  ? `Provide an annotated model analysis demonstrating mastery of ${t2} adhering to IELTS standards.`
+                  : `Analyze the practical application and problem-solving scenario of ${t2} in ${subject}.`,
+                marks: 5,
+              },
+            ],
+            modelAnswer: isUrdu
+              ? `(الف) ${t1} کے تمام پہلوؤں کا احاطہ کرتے ہوئے جامع جواب۔\n(ب) مستند مثالوں اور اشعار کے تجزیے کے ساتھ مدلل تشریح۔`
+              : isIelts
+              ? `(a) Detailed structural analysis addressing all elements of ${t1}.\n(b) Comprehensive model answer fulfilling IELTS band descriptors for ${t2}.`
+              : `(a) Detailed theoretical derivation covering principles of ${t1}.\n(b) Practical application, diagrammatic representation, and analytical evaluation of ${t2}.`,
+            markingScheme: isUrdu
+              ? ['تعریف اور بنیادی اجزا پر 5 نمبر', 'مثالوں، اشعار اور قواعد کے انطباق پر 3 نمبر']
+              : isIelts
+              ? ['Task Achievement & Coherence on Part (a) (5 Marks)', 'Lexical Resource & Grammatical Accuracy on Part (b) (5 Marks)']
+              : ['Theoretical derivation and conceptual clarity (5 Marks)', 'Application, examples, or numerical solution (3 Marks)'],
+            marks: 10,
+            difficulty: 'hard',
+            verified: true,
+            source: 'curriculum-bank',
+            createdAt: new Date().toISOString(),
+          });
+        }
       }
     }
   }
