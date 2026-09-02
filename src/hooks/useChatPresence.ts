@@ -12,15 +12,24 @@ import {
 interface UseChatPresenceOptions {
   currentUserId?: string;
   currentUserProfile?: Profile | null;
+  activeContactId?: string;
   onProfileUpdated?: (updatedProfile: Partial<Profile> & { id: string }) => void;
 }
 
 export function useChatPresence({
   currentUserId,
   currentUserProfile,
+  activeContactId,
   onProfileUpdated,
 }: UseChatPresenceOptions) {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  // Per-contact presence data store (keyed strictly by contact user_id)
+  const [contactPresenceMap, setContactPresenceMap] = useState<
+    Map<string, { is_online?: boolean; last_seen?: string | null; show_online_status?: boolean }>
+  >(new Map());
+  // Periodic ticker to recalculate relative timestamps ("just now", "5m ago", etc.)
+  const [, setTick] = useState(0);
+
   const hiddenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<any>(null);
@@ -29,6 +38,41 @@ export function useChatPresence({
   useEffect(() => {
     onProfileUpdatedRef.current = onProfileUpdated;
   }, [onProfileUpdated]);
+
+  // Periodic tick to automatically keep relative time strings fresh in the UI
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick((t) => (t + 1) % 10000);
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch fresh per-user presence whenever active conversation partner changes
+  useEffect(() => {
+    if (!activeContactId) return;
+
+    let isMounted = true;
+    (supabase as any)
+      .from('profiles')
+      .select('id, is_online, last_seen, show_online_status')
+      .eq('id', activeContactId)
+      .maybeSingle()
+      .then(({ data, error }: any) => {
+        if (!isMounted || error || !data) return;
+        setContactPresenceMap((prev) => {
+          const next = new Map(prev);
+          next.set(data.id, data);
+          return next;
+        });
+        if (onProfileUpdatedRef.current) {
+          onProfileUpdatedRef.current(data);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeContactId]);
 
   // Main presence channel effect
   useEffect(() => {
@@ -94,8 +138,20 @@ export function useChatPresence({
           table: 'profiles',
         },
         (payload) => {
-          if (payload.new && onProfileUpdatedRef.current) {
-            onProfileUpdatedRef.current(payload.new as any);
+          const updated = payload.new as any;
+          if (updated?.id && !isCleanedUp) {
+            setContactPresenceMap((prev) => {
+              const next = new Map(prev);
+              next.set(updated.id, {
+                is_online: updated.is_online,
+                last_seen: updated.last_seen,
+                show_online_status: updated.show_online_status,
+              });
+              return next;
+            });
+            if (onProfileUpdatedRef.current) {
+              onProfileUpdatedRef.current(updated);
+            }
           }
         }
       )
@@ -186,19 +242,25 @@ export function useChatPresence({
   }, [currentUserId]);
 
   /**
-   * Evaluates if a contact is online, factoring in mutual privacy settings.
+   * Evaluates if a contact is online, factoring in mutual privacy settings and per-contact presence map.
    */
   const isContactOnline = useCallback(
     (contactId?: string, contactProfile?: Profile | null): boolean => {
       if (!contactId) return false;
 
+      // Merge latest individual contact presence data
+      const override = contactPresenceMap.get(contactId);
+      const effectiveProfile = override
+        ? ({ ...contactProfile, ...override } as Profile)
+        : contactProfile;
+
       // Privacy check: if either user turned off status, hide
-      const allowed = isPresenceSharingAllowed(currentUserProfile, contactProfile);
+      const allowed = isPresenceSharingAllowed(currentUserProfile, effectiveProfile);
       if (!allowed) return false;
 
-      return computeIsUserOnline(contactId, onlineUserIds, contactProfile);
+      return computeIsUserOnline(contactId, onlineUserIds, effectiveProfile);
     },
-    [currentUserProfile, onlineUserIds]
+    [currentUserProfile, onlineUserIds, contactPresenceMap]
   );
 
   /**
@@ -212,8 +274,14 @@ export function useChatPresence({
         return { isOnline: false, statusText: '', isVisible: false };
       }
 
+      // Merge latest individual contact presence data
+      const override = contactPresenceMap.get(contactProfile.id);
+      const effectiveProfile = override
+        ? ({ ...contactProfile, ...override } as Profile)
+        : contactProfile;
+
       // Check mutual privacy
-      const allowed = isPresenceSharingAllowed(currentUserProfile, contactProfile);
+      const allowed = isPresenceSharingAllowed(currentUserProfile, effectiveProfile);
       if (!allowed) {
         return { isOnline: false, statusText: '', isVisible: false };
       }
@@ -221,21 +289,21 @@ export function useChatPresence({
       const online = computeIsUserOnline(
         contactProfile.id,
         onlineUserIds,
-        contactProfile
+        effectiveProfile
       );
 
       if (online) {
         return { isOnline: true, statusText: 'Online', isVisible: true };
       }
 
-      const lastSeenText = formatLastSeen(contactProfile.last_seen);
+      const lastSeenText = formatLastSeen(effectiveProfile.last_seen);
       return {
         isOnline: false,
         statusText: lastSeenText,
         isVisible: Boolean(lastSeenText),
       };
     },
-    [currentUserProfile, onlineUserIds]
+    [currentUserProfile, onlineUserIds, contactPresenceMap]
   );
 
   return {

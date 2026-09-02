@@ -1917,6 +1917,22 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     }
   });
 
+  app.post('/api/chat/presence/heartbeat', express.json(), async (req, res) => {
+    try {
+      const { userId, isOnline } = req.body || {};
+      if (userId && typeof userId === 'string') {
+        await pgPool.query(
+          'UPDATE public.profiles SET is_online = $1, last_seen = NOW() WHERE id = $2',
+          [isOnline !== false, userId]
+        );
+      }
+      return res.json({ success: true });
+    } catch (err) {
+      console.warn('[server /api/chat/presence/heartbeat] error:', err);
+      return res.status(200).json({ success: false });
+    }
+  });
+
   app.post('/api/chat/presence/offline', express.json(), express.text({ type: '*/*' }), async (req, res) => {
     try {
       let body = req.body;

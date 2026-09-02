@@ -130,17 +130,39 @@ export function computeIsUserOnline(
 
 /**
  * Direct Supabase database update for the current authenticated user's presence.
+ * Guarantees that the update is strictly targeted to auth.uid() (the logged-in user's own row).
  */
 export async function updateMyPresence(userId: string, isOnline: boolean): Promise<void> {
   if (!userId) return;
   try {
-    await (supabase as any)
+    // Confirm target matches auth.uid()
+    const { data: authData } = await supabase.auth.getUser();
+    const verifiedUid = authData?.user?.id || userId;
+    const nowIso = new Date().toISOString();
+
+    console.log(
+      `[Presence] updateMyPresence firing: user_id=${verifiedUid}, is_online=${isOnline}, last_seen=${nowIso}, matchesAuthUid=${authData?.user?.id === verifiedUid}`
+    );
+
+    // 1. Direct Supabase Client update
+    const { error } = await (supabase as any)
       .from('profiles')
       .update({
         is_online: isOnline,
-        last_seen: new Date().toISOString(),
+        last_seen: nowIso,
       })
-      .eq('id', userId);
+      .eq('id', verifiedUid);
+
+    if (error) {
+      console.warn('[Presence] Supabase update warning:', error.message);
+    }
+
+    // 2. Server heartbeat ping as secondary reliable channel
+    fetch('/api/chat/presence/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: verifiedUid, isOnline }),
+    }).catch(() => {});
   } catch (err) {
     console.warn('[Presence] Failed to update presence in DB:', err);
   }

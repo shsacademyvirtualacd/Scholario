@@ -99,11 +99,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
         return t;
       })
     );
+    setFetchedContacts(prev =>
+      prev.map(c => (c.id === updatedProfile.id ? { ...c, ...updatedProfile } : c))
+    );
   };
+
+  const activeContactId = useMemo(() => {
+    return threads.find(t => t.id === activeThreadId)?.other_participant?.id;
+  }, [threads, activeThreadId]);
 
   const { isContactOnline, getContactStatus } = useChatPresence({
     currentUserId,
     currentUserProfile: profile,
+    activeContactId,
     onProfileUpdated: handleProfileUpdated,
   });
 
