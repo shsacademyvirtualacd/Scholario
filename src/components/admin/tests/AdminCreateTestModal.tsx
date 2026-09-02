@@ -26,6 +26,7 @@ import { PdfPreviewViewer } from './PdfPreviewViewer';
 import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
 import { getSubjectsForStream } from '../../../lib/db';
 import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM } from '../../../lib/curriculumFBISE9';
+import { IELTS_CURRICULUM, isIELTSBoard } from '../../../lib/curriculumIELTS';
 import type {
   TestQuestionTypeCombination,
   StoredMCQ,
@@ -201,6 +202,12 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     return getGradesForBoard(board);
   }, [board]);
 
+  useEffect(() => {
+    if (availableGrades.length > 0 && !availableGrades.some((g) => g.grade === grade)) {
+      setGrade(availableGrades[0].grade);
+    }
+  }, [availableGrades, grade]);
+
   // Available streams for selected grade and board (strictly scoped per grade taxonomy)
   const availableStreams = useMemo(() => {
     return getStreamsForGrade(grade, board);
@@ -252,13 +259,21 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
 
   // Compute available chapters
   const availableChapters = useMemo(() => {
+    if (isIELTSBoard(board, grade)) {
+      const subjData = IELTS_CURRICULUM[subject];
+      if (subjData && subjData.chapters && subjData.chapters.length > 0) {
+        return [{ id: 'all', number: 0, name: 'All' }, ...subjData.chapters];
+      }
+      return [{ id: 'all', number: 0, name: 'All' }];
+    }
+
     const curriculum = grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
     const subjData = curriculum ? curriculum[subject] : undefined;
     if (subjData && subjData.chapters && subjData.chapters.length > 0) {
       return [{ id: 'all', number: 0, name: 'All' }, ...subjData.chapters];
     }
     return [{ id: 'all', number: 0, name: 'All' }];
-  }, [grade, subject]);
+  }, [board, grade, subject]);
 
   // Total Marks Calculation
   const totalCalculatedMarks = useMemo(() => {

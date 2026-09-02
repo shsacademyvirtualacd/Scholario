@@ -14,29 +14,43 @@ import type {
   TestQuestionTypeCombination,
 } from '../types/questionBank';
 import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM, normalizeFBISEGrade9Subject } from './curriculumFBISE9';
+import { IELTS_CURRICULUM, isIELTSBoard } from './curriculumIELTS';
 import { shortQuestionsBank } from '../data/banks/shortQuestionsBank';
 import { longQuestionsBank } from '../data/banks/longQuestionsBank';
 import { supabase } from './supabase';
 
 // Static fallback store loaded in bundle for instant zero-latency client access
-let cachedBankData: Record<string, Record<string, StoredMCQ[]>> | null = null;
+let cachedFbiseBankData: Record<string, Record<string, StoredMCQ[]>> | null = null;
+let cachedIeltsBankData: Record<string, Record<string, StoredMCQ[]>> | null = null;
 
 /**
  * Loads the stored bank data dynamically or from live server API
  */
-export async function loadBankData(forceRefresh = false): Promise<Record<string, Record<string, StoredMCQ[]>>> {
-  if (!forceRefresh && cachedBankData && Object.keys(cachedBankData).length > 0) {
-    return cachedBankData;
+export async function loadBankData(forceRefresh = false, board = 'fbise'): Promise<Record<string, Record<string, StoredMCQ[]>>> {
+  const isIelts = isIELTSBoard(board);
+
+  if (!forceRefresh) {
+    if (isIelts && cachedIeltsBankData && Object.keys(cachedIeltsBankData).length > 0) {
+      return cachedIeltsBankData;
+    }
+    if (!isIelts && cachedFbiseBankData && Object.keys(cachedFbiseBankData).length > 0) {
+      return cachedFbiseBankData;
+    }
   }
 
   // 1. Try live API first for real-time storage state
   try {
-    const res = await fetch('/api/mcq-bank/all', { cache: 'no-store' });
+    const res = await fetch(`/api/mcq-bank/all?board=${isIelts ? 'ielts' : 'fbise'}`, { cache: 'no-store' });
     if (res.ok) {
       const json: any = await res.json();
       if (json && json.data && typeof json.data === 'object') {
-        cachedBankData = json.data;
-        return cachedBankData!;
+        if (isIelts) {
+          cachedIeltsBankData = json.data;
+          return cachedIeltsBankData!;
+        } else {
+          cachedFbiseBankData = json.data;
+          return cachedFbiseBankData!;
+        }
       }
     }
   } catch {
@@ -45,22 +59,36 @@ export async function loadBankData(forceRefresh = false): Promise<Record<string,
 
   try {
     // Attempt dynamic import of modular pregenerated banks
-    const { grade9FbiseBank } = await import('../data/banks');
-    cachedBankData = grade9FbiseBank as Record<string, Record<string, StoredMCQ[]>>;
-    return cachedBankData;
+    const { grade9FbiseBank, ieltsBank } = await import('../data/banks');
+    if (isIelts) {
+      cachedIeltsBankData = ieltsBank as unknown as Record<string, Record<string, StoredMCQ[]>>;
+      return cachedIeltsBankData;
+    } else {
+      cachedFbiseBankData = grade9FbiseBank as unknown as Record<string, Record<string, StoredMCQ[]>>;
+      return cachedFbiseBankData;
+    }
   } catch (err) {
     console.warn('[QuestionBankService] Local JSON load notice, checking API or cache:', err);
-    if (!cachedBankData) cachedBankData = {};
-    return cachedBankData;
+    if (isIelts) {
+      if (!cachedIeltsBankData) cachedIeltsBankData = {};
+      return cachedIeltsBankData;
+    } else {
+      if (!cachedFbiseBankData) cachedFbiseBankData = {};
+      return cachedFbiseBankData;
+    }
   }
 }
 
 /**
  * Explicitly forces a fresh reload of the question bank from live storage
  */
-export async function refreshLiveBankData(): Promise<Record<string, Record<string, StoredMCQ[]>>> {
-  cachedBankData = null;
-  return loadBankData(true);
+export async function refreshLiveBankData(board = 'fbise'): Promise<Record<string, Record<string, StoredMCQ[]>>> {
+  if (isIELTSBoard(board)) {
+    cachedIeltsBankData = null;
+  } else {
+    cachedFbiseBankData = null;
+  }
+  return loadBankData(true, board);
 }
 
 /**
@@ -73,16 +101,16 @@ export async function getStoredMCQsForChapter(
   grade = '9',
   board = 'fbise'
 ): Promise<StoredMCQ[]> {
+  const isIelts = isIELTSBoard(board, grade);
   const isGrade9 = String(grade).trim() === '9' || String(grade).trim().toLowerCase() === '9th';
   const isFbise = (board || '').toLowerCase().includes('fbise') || (board || '').toLowerCase() === 'fbise';
 
-  // Only Grade 9 FBISE has stored MCQs in the current live bank
-  if (!isGrade9 || !isFbise) {
+  if (!isIelts && (!isGrade9 || !isFbise)) {
     return [];
   }
 
-  const bank = await loadBankData();
-  const normalizedSubject = normalizeFBISEGrade9Subject(subject) || subject;
+  const bank = await loadBankData(false, isIelts ? 'ielts' : 'fbise');
+  const normalizedSubject = isIelts ? subject : (normalizeFBISEGrade9Subject(subject) || subject);
   const subjectData = bank[normalizedSubject];
   if (!subjectData) return [];
 
@@ -98,6 +126,12 @@ export async function getStoredMCQsForChapter(
   );
   if (foundKey && Array.isArray(subjectData[foundKey])) {
     return subjectData[foundKey];
+  }
+
+  // If single key available in subject bank (e.g. Grammar or Comprehension)
+  const allKeys = Object.keys(subjectData);
+  if (allKeys.length === 1 && Array.isArray(subjectData[allKeys[0]])) {
+    return subjectData[allKeys[0]];
   }
 
   return [];
@@ -265,7 +299,8 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
   }
 
   // 2. Query local in-memory / bundled bank store instantly
-  const bank = await loadBankData();
+  const isIelts = isIELTSBoard(params.board, params.grade);
+  const bank = await loadBankData(false, isIelts ? 'ielts' : (params.board || 'fbise'));
   const subjectData = bank[normalizedSubject] || {};
   const availableChapters = Object.keys(subjectData);
 
@@ -308,6 +343,11 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
         (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
       );
       pool = shuffleArray(chQuestions);
+    } else if (availableChapters.length === 1 && subjectData[availableChapters[0]]) {
+      const chQuestions = subjectData[availableChapters[0]].filter(
+        (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
+      );
+      pool = shuffleArray(chQuestions);
     }
   }
 
@@ -324,26 +364,29 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
 /**
  * Computes coverage statistics for the question bank
  */
-export async function getQuestionBankStats(): Promise<QuestionBankSummary> {
-  const bank = await loadBankData();
+export async function getQuestionBankStats(board = 'fbise'): Promise<QuestionBankSummary> {
+  const isIelts = isIELTSBoard(board);
+  const bank = await loadBankData(false, isIelts ? 'ielts' : 'fbise');
   const summary: QuestionBankSummary = {
-    board: 'fbise',
-    grade: '9',
+    board: isIelts ? 'ielts' : 'fbise',
+    grade: isIelts ? 'IELTS' : '9',
     totalQuestions: 0,
     targetQuestions: 0,
     coveragePercentage: 0,
     subjects: {},
   };
 
-  for (const [subjName, subCurriculum] of Object.entries(FBISE_GRADE_9_CURRICULUM)) {
+  const targetCurriculum = isIelts ? IELTS_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
+
+  for (const [subjName, subCurriculum] of Object.entries(targetCurriculum)) {
     const chapList = subCurriculum.chapters;
     const subjData = bank[subjName] || {};
 
     const subjectStat: SubjectBankStat = {
       subject: subjName,
       totalQuestions: 0,
-      targetQuestions: chapList.length * 20,
-      totalChapters: chapList.length,
+      targetQuestions: Math.max(chapList.length * 20, 20),
+      totalChapters: Math.max(chapList.length, 1),
       completedChapters: 0,
       chapters: [],
     };
@@ -362,6 +405,21 @@ export async function getQuestionBankStats(): Promise<QuestionBankSummary> {
         targetCount: 20,
         isComplete: qCount >= 20,
       });
+    }
+
+    // If subjectData has non-standard chapter keys, include them
+    if (subjectStat.totalQuestions === 0 && Object.keys(subjData).length > 0) {
+      for (const [chKey, qList] of Object.entries(subjData)) {
+        subjectStat.totalQuestions += qList.length;
+        if (qList.length >= 20) subjectStat.completedChapters++;
+        subjectStat.chapters.push({
+          chapterNumber: subjectStat.chapters.length + 1,
+          chapterName: chKey,
+          count: qList.length,
+          targetCount: 20,
+          isComplete: qList.length >= 20,
+        });
+      }
     }
 
     summary.totalQuestions += subjectStat.totalQuestions;

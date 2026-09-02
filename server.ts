@@ -23,7 +23,8 @@ import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDat
 import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
 import { validateMCQQuestion, filterAndValidateMCQs, validateQuestionTopicRelevance, checkQuestionDuplicate } from './src/lib/mcqValidator';
 import { getChapterSyllabusScope, FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from './src/lib/curriculumFBISE9';
-import { grade9FbiseBank } from './src/data/banks/index';
+import { IELTS_CURRICULUM, isIELTSBoard } from './src/lib/curriculumIELTS';
+import { grade9FbiseBank, ieltsBank } from './src/data/banks/index';
 import type { StoredMCQ } from './src/types/questionBank';
 import {
   savePushSubscription,
@@ -669,7 +670,12 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return undefined;
   }
 
-  function getServerBankData(): Record<string, Record<string, StoredMCQ[]>> {
+  function getServerBankData(boardParam?: string, gradeParam?: string): Record<string, Record<string, StoredMCQ[]>> {
+    const isIelts = isIELTSBoard(boardParam, gradeParam);
+    if (isIelts) {
+      return (ieltsBank as unknown as Record<string, Record<string, StoredMCQ[]>>) || {};
+    }
+
     if (serverCachedBank && Object.keys(serverCachedBank).length > 0) {
       return serverCachedBank;
     }
@@ -705,9 +711,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         examMode = 'single_chapter',
       } = req.body || {};
 
+      const isIelts = isIELTSBoard(board, grade) || Object.keys(ieltsBank).includes(subject);
       const targetCount = Math.max(1, Number(count) || 10);
-      const normSubject = normalizeFBISEGrade9Subject(subject) || subject;
-      const bank = getServerBankData();
+      const normSubject = isIelts ? subject : (normalizeFBISEGrade9Subject(subject) || subject);
+      const bank = getServerBankData(isIelts ? 'ielts' : board, isIelts ? 'ielts' : grade);
       const subjectBank = bank[normSubject] || {};
       const availableChapters = Object.keys(subjectBank);
 
@@ -759,6 +766,11 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           pool = subjectBank[matchedKey].filter(
             (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
           );
+        } else if (availableChapters.length === 1 && subjectBank[availableChapters[0]]) {
+          // If subject has single master chapter key (e.g. Grammar or Comprehension)
+          pool = subjectBank[availableChapters[0]].filter(
+            (q) => !excludeSet.has(q.question.trim().toLowerCase()) && !excludeSet.has(q.id.toLowerCase())
+          );
         }
       }
 
@@ -775,8 +787,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           chapter || topic || 'Core Curriculum',
           needed * 2,
           difficulty,
-          grade,
-          board,
+          isIelts ? 'IELTS' : grade,
+          isIelts ? 'ielts' : board,
           currentExcludes
         );
 
@@ -784,8 +796,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           if (selected.length >= targetCount) break;
           selected.push({
             id: fq.id || `bank_${Date.now()}_${selected.length + 1}`,
-            board,
-            grade,
+            board: isIelts ? 'ielts' : board,
+            grade: isIelts ? 'ielts' : grade,
             subject: normSubject,
             chapter: chapter || topic || 'Core Curriculum',
             chapterNumber: 1,
@@ -830,13 +842,17 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   });
 
   // 2. Question Bank Stats and Coverage Breakdown
-  app.get('/api/mcq-bank/stats', (_req, res) => {
+  app.get('/api/mcq-bank/stats', (req, res) => {
     try {
-      const bank = getServerBankData();
+      const requestedBoard = String(req.query.board || 'fbise').toLowerCase();
+      const isIelts = requestedBoard === 'ielts' || requestedBoard.includes('ielts');
+      const bank = getServerBankData(isIelts ? 'ielts' : 'fbise');
       const stats: Record<string, { totalQuestions: number; chapters: Record<string, number> }> = {};
       let grandTotal = 0;
 
-      for (const [subjName, subCurriculum] of Object.entries(FBISE_GRADE_9_CURRICULUM)) {
+      const targetCurriculum = isIelts ? IELTS_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
+
+      for (const [subjName, subCurriculum] of Object.entries(targetCurriculum)) {
         const subjBank = bank[subjName] || {};
         let subjTotal = 0;
         const chapStats: Record<string, number> = {};
@@ -845,6 +861,14 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           const count = (subjBank[chap.name] || []).length;
           chapStats[chap.name] = count;
           subjTotal += count;
+        }
+
+        // If no chapter breakdown matched standard chapters, count any other chapters in subjBank
+        if (subjTotal === 0 && Object.keys(subjBank).length > 0) {
+          for (const [chKey, qList] of Object.entries(subjBank)) {
+            chapStats[chKey] = qList.length;
+            subjTotal += qList.length;
+          }
         }
 
         stats[subjName] = {
@@ -856,8 +880,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
       return res.json({
         success: true,
-        board: 'fbise',
-        grade: '9',
+        board: isIelts ? 'ielts' : 'fbise',
+        grade: isIelts ? 'IELTS' : '9',
         grandTotal,
         subjects: stats,
       });
@@ -867,14 +891,25 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   });
 
   // 3. Live Question Bank Full Retrieval (Admin & Direct Storage Access)
-  app.get('/api/mcq-bank/all', (_req, res) => {
+  app.get('/api/mcq-bank/all', (req, res) => {
     try {
-      // Force fresh read from disk file
+      const requestedBoard = String(req.query.board || '').toLowerCase();
+      const isIelts = requestedBoard === 'ielts' || requestedBoard.includes('ielts');
+
+      if (isIelts) {
+        return res.json({
+          success: true,
+          board: 'ielts',
+          grade: 'IELTS',
+          data: ieltsBank,
+        });
+      }
+
+      // Force fresh read from disk file for FBISE Grade 9
       const BANK_FILE_PATH = path.resolve('src/data/grade9FbiseBank.json');
       if (fs.existsSync(BANK_FILE_PATH)) {
         const raw = fs.readFileSync(BANK_FILE_PATH, 'utf-8');
         const data = JSON.parse(raw);
-        // Refresh cache
         serverCachedBank = data;
         return res.json({
           success: true,
@@ -883,7 +918,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           data,
         });
       }
-      return res.json({ success: true, board: 'fbise', grade: '9', data: {} });
+      return res.json({ success: true, board: 'fbise', grade: '9', data: grade9FbiseBank });
     } catch (err: any) {
       return res.status(500).json({ error: err?.message || 'Failed to load question bank data from storage' });
     }

@@ -25,6 +25,7 @@ import {
   FBISE_GRADE_10_CURRICULUM,
   normalizeFBISEGrade9Subject,
 } from '../../../lib/curriculumFBISE9';
+import { IELTS_CURRICULUM, isIELTSBoard } from '../../../lib/curriculumIELTS';
 import type {
   StoredMCQ,
   StoredShortQuestion,
@@ -71,7 +72,10 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       if (isManualRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const bankData = isManualRefresh ? await refreshLiveBankData() : await loadBankData();
+      const isIelts = isIELTSBoard(selectedBoard);
+      const bankData = isManualRefresh
+        ? await refreshLiveBankData(isIelts ? 'ielts' : 'fbise')
+        : await loadBankData(false, isIelts ? 'ielts' : 'fbise');
       setLiveBank(bankData || {});
 
       if (isManualRefresh) {
@@ -90,7 +94,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedBoard]);
 
   useEffect(() => {
     fetchLiveBank();
@@ -100,6 +104,12 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   const availableGrades = useMemo(() => {
     return getGradesForBoard(selectedBoard);
   }, [selectedBoard]);
+
+  useEffect(() => {
+    if (availableGrades.length > 0 && !availableGrades.some((g) => g.grade === selectedGrade)) {
+      setSelectedGrade(availableGrades[0].grade);
+    }
+  }, [availableGrades, selectedGrade]);
 
   const currentGradeDef = useMemo(() => {
     return availableGrades.find((g) => g.grade === selectedGrade) || availableGrades[0];
@@ -112,7 +122,10 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     currentGradeDef.commonSubjects?.forEach((s) => subjectsSet.add(s));
     currentGradeDef.streams?.forEach((st) => st.subjects.forEach((s) => subjectsSet.add(s)));
 
-    if (selectedGrade === '9' && selectedBoard === 'fbise') {
+    if (isIELTSBoard(selectedBoard)) {
+      Object.keys(IELTS_CURRICULUM).forEach((s) => subjectsSet.add(s));
+      Object.keys(liveBank).forEach((s) => subjectsSet.add(s));
+    } else if (selectedGrade === '9' && selectedBoard === 'fbise') {
       Object.keys(FBISE_GRADE_9_CURRICULUM).forEach((s) => subjectsSet.add(s));
       Object.keys(liveBank).forEach((s) => subjectsSet.add(s));
     }
@@ -128,6 +141,18 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
 
   // 3. Compute chapters for the selected subject
   const currentChapters = useMemo(() => {
+    if (isIELTSBoard(selectedBoard)) {
+      const curData = IELTS_CURRICULUM[selectedSubject];
+      if (curData && curData.chapters && curData.chapters.length > 0) {
+        return curData.chapters.map((ch, idx) => ({
+          number: ch.number || idx + 1,
+          name: ch.name,
+          category: ch.category,
+          subtopics: ch.subtopics,
+        }));
+      }
+    }
+
     if (selectedGrade === '9' && selectedBoard === 'fbise') {
       const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
       const curData = FBISE_GRADE_9_CURRICULUM[canonical];
@@ -192,9 +217,10 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   // Retrieve raw questions for current chapter based on active bank tab
   const rawMCQs: StoredMCQ[] = useMemo(() => {
     if (!selectedChapter) return [];
-    if (selectedGrade !== '9' || selectedBoard !== 'fbise') return [];
+    const isIelts = isIELTSBoard(selectedBoard);
+    if (!isIelts && (selectedGrade !== '9' || selectedBoard !== 'fbise')) return [];
 
-    const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
+    const canonical = isIelts ? selectedSubject : (normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject);
     const subjData = liveBank[canonical] || liveBank[selectedSubject] || {};
 
     if (subjData[selectedChapter] && Array.isArray(subjData[selectedChapter])) {
@@ -206,6 +232,12 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     );
     if (foundKey && Array.isArray(subjData[foundKey])) {
       return subjData[foundKey];
+    }
+
+    // Single key in subjData
+    const allKeys = Object.keys(subjData);
+    if (allKeys.length === 1 && Array.isArray(subjData[allKeys[0]])) {
+      return subjData[allKeys[0]];
     }
 
     return [];
@@ -224,9 +256,10 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   // Dynamic Chapter counts based on selected bank tab
   const chapterCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    const isIelts = isIELTSBoard(selectedBoard);
     currentChapters.forEach((ch) => {
       if (bankTab === 'mcq') {
-        const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
+        const canonical = isIelts ? selectedSubject : (normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject);
         const subjData = liveBank[canonical] || liveBank[selectedSubject] || {};
         const exactList = subjData[ch.name];
         if (exactList && Array.isArray(exactList)) {
@@ -235,7 +268,13 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           const foundKey = Object.keys(subjData).find(
             (k) => k.toLowerCase().trim() === ch.name.toLowerCase().trim()
           );
-          counts[ch.name] = foundKey ? (subjData[foundKey] || []).length : 0;
+          if (foundKey) {
+            counts[ch.name] = (subjData[foundKey] || []).length;
+          } else if (Object.keys(subjData).length === 1) {
+            counts[ch.name] = Object.values(subjData)[0]?.length || 0;
+          } else {
+            counts[ch.name] = 0;
+          }
         }
       } else if (bankTab === 'short') {
         const list = getStoredShortQuestions(selectedSubject, ch.name);
@@ -246,15 +285,16 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       }
     });
     return counts;
-  }, [currentChapters, selectedSubject, liveBank, bankTab]);
+  }, [currentChapters, selectedSubject, selectedBoard, liveBank, bankTab]);
 
   // Subject counts for the active bank tab
   const subjectCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    const isIelts = isIELTSBoard(selectedBoard);
     availableSubjects.forEach((subj) => {
       let total = 0;
       if (bankTab === 'mcq') {
-        const canonical = normalizeFBISEGrade9Subject(subj) || subj;
+        const canonical = isIelts ? subj : (normalizeFBISEGrade9Subject(subj) || subj);
         const subjData = liveBank[canonical] || liveBank[subj] || {};
         Object.values(subjData).forEach((qList) => {
           total += (qList || []).length;
@@ -269,7 +309,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       counts[subj] = total;
     });
     return counts;
-  }, [availableSubjects, liveBank, bankTab]);
+  }, [availableSubjects, selectedBoard, liveBank, bankTab]);
 
   // Filtered list based on active tab, search, difficulty
   const filteredMCQs = useMemo(() => {

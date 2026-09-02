@@ -6,20 +6,28 @@ import mathematics from './mathematics/index';
 import urdu from './urdu/index';
 import english from './english/index';
 import {
-  IELTS_MCQ_BANK,
+  ieltsMasterBank,
   IELTS_READING_ACADEMIC_BANK,
+  IELTS_READING_GT_BANK,
+  IELTS_GRAMMAR_BANK,
+  IELTS_COMPREHENSION_BANK,
+  IELTS_LISTENING_BANK,
+  IELTS_SPEAKING_BANK,
+  IELTS_WRITING_ACAD_BANK,
+  IELTS_WRITING_GT_BANK,
   IELTS_GRAMMAR_MCQS,
   IELTS_COMPREHENSION_MCQS,
   IELTS_READING_ACADEMIC_STORED,
+  IELTS_READING_GT_STORED,
+  ALL_IELTS_MCQS,
 } from './ielts/index';
 
 export type SubjectMCQBank = Record<string, StoredMCQ[]>;
 export type FullGrade9Bank = Record<string, SubjectMCQBank>;
 
 /**
- * Authoritative merged Question Banks.
- * Stored as separate per-subject JSON/TS files for maximum reliability & version control safety,
- * merged dynamically at build/runtime.
+ * Authoritative FBISE Grade 9 Question Bank.
+ * Strictly scoped to FBISE Grade 9 curriculum subjects (Physics, Biology, Chemistry, Mathematics, Urdu, English).
  */
 export const grade9FbiseBank: FullGrade9Bank = {
   Physics: physics as unknown as SubjectMCQBank,
@@ -28,14 +36,13 @@ export const grade9FbiseBank: FullGrade9Bank = {
   Mathematics: mathematics as unknown as SubjectMCQBank,
   Urdu: urdu as unknown as SubjectMCQBank,
   English: english as unknown as SubjectMCQBank,
-  'IELTS Reading (Academic)': IELTS_READING_ACADEMIC_BANK,
-  'IELTS Reading (GT)': IELTS_READING_ACADEMIC_BANK,
-  'IELTS Reading': IELTS_READING_ACADEMIC_BANK,
-  'IELTS Preparation': IELTS_MCQ_BANK,
-  'IELTS': IELTS_MCQ_BANK,
-  'Grammar': { 'Grammar': IELTS_GRAMMAR_MCQS },
-  'Comprehension of Passages': { 'Comprehension of Passages': IELTS_COMPREHENSION_MCQS },
 };
+
+/**
+ * Authoritative IELTS Preparation Question Bank.
+ * Strictly scoped to IELTS Preparation board & subjects.
+ */
+export const ieltsBank: Record<string, SubjectMCQBank> = ieltsMasterBank;
 
 export {
   physics,
@@ -44,11 +51,21 @@ export {
   mathematics,
   urdu,
   english,
-  IELTS_MCQ_BANK,
+  ieltsMasterBank,
   IELTS_READING_ACADEMIC_BANK,
+  IELTS_READING_GT_BANK,
+  IELTS_GRAMMAR_BANK,
+  IELTS_COMPREHENSION_BANK,
+  IELTS_LISTENING_BANK,
+  IELTS_SPEAKING_BANK,
+  IELTS_WRITING_ACAD_BANK,
+  IELTS_WRITING_GT_BANK,
   IELTS_READING_ACADEMIC_STORED,
+  IELTS_READING_GT_STORED,
   IELTS_GRAMMAR_MCQS,
   IELTS_COMPREHENSION_MCQS,
+  ALL_IELTS_MCQS,
 };
 
 export default grade9FbiseBank;
+
