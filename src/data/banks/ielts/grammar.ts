@@ -1,5 +1,5 @@
 /**
- * IELTS 1,500-Question Authoritative Grammar MCQ Bank
+ * IELTS 2,000-Question Authoritative Grammar MCQ Bank
  * Comprehensive syllabus covering:
  * - Subject-Verb Agreement
  * - Tenses, Aspect & Time Clauses
@@ -30,7 +30,7 @@ export interface RawIELTSMCQ {
 export type StoredMCQ = RawIELTSMCQ;
 
 // ==========================================
-// 1,500 GRAMMAR MCQS (SYLLABUS & IELTS ACCURATE)
+// 2,000 GRAMMAR MCQS (SYLLABUS & IELTS ACCURATE)
 // ==========================================
 export const IELTS_GRAMMAR_MCQS: RawIELTSMCQ[] = [
   {
@@ -22530,6 +22530,7506 @@ export const IELTS_GRAMMAR_MCQS: RawIELTSMCQ[] = [
     "correctAnswer": "D",
     "explanation": "The idiomatic passive adjective is 'composed of' (meaning made up of), not 'composed by'.",
     "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1501",
+    "question": "Fill in the blank: The array of deep-space optical sensors deployed along the observatory ridge _______ calibrated every evening at dusk.",
+    "options": [
+      "is",
+      "are",
+      "were",
+      "have been"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The head noun of the subject noun phrase is the singular 'array', which requires the singular verb 'is', despite the intervening plural noun 'sensors'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1502",
+    "question": "Choose the correct verb form: Neither the chief geotechnical engineer nor the site inspectors _______ able to account for the sudden subterranean subsidence.",
+    "options": [
+      "was",
+      "were",
+      "is",
+      "has been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "In 'neither... nor' constructions, the finite verb agrees with the closer subject ('site inspectors', plural), requiring the plural past verb 'were'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1503",
+    "question": "Fill in the blank: Ninety thousand metric tons of recycled aggregate _______ allocated for the construction of the secondary seawall.",
+    "options": [
+      "are",
+      "were",
+      "was",
+      "have been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Quantities of weight, volume, or mass acting as a unified collective sum take a singular verb ('was').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1504",
+    "question": "Choose the correct option: The compilation of multi-spectral satellite imagery and topographical surveys _______ the core dataset for the climate impact report.",
+    "options": [
+      "have constituted",
+      "constitute",
+      "are constituting",
+      "constitutes"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The grammatical subject is the singular noun 'compilation', requiring the third-person singular verb 'constitutes'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1505",
+    "question": "Fill in the blank: Every laboratory technician, research fellow, and visiting scholar _______ required to complete hazardous materials protocol training.",
+    "options": [
+      "is",
+      "are",
+      "were",
+      "have been"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Compound subjects preceded by 'every' or 'each' take a singular verb ('is') in standard formal English.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1506",
+    "question": "Choose the correct verb form: The majority of the municipal water supply _______ filtered through high-pressure ceramic membranes.",
+    "options": [
+      "are",
+      "is",
+      "were",
+      "have been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "When 'the majority of' modifies an uncountable noun ('water supply'), it takes a singular verb ('is').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1507",
+    "question": "Fill in the blank: A substantial proportion of the coastal aquaculture farms _______ sustained severe damage during the tropical cyclone.",
+    "options": [
+      "is",
+      "has",
+      "have",
+      "was"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'A proportion of' followed by a plural count noun ('farms') requires a plural auxiliary verb ('have').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1508",
+    "question": "Choose the correct option: Not only the senior curator but also the archival restoration specialists _______ that the fourteenth-century manuscript be kept at fifteen degrees Celsius.",
+    "options": [
+      "has recommended",
+      "recommends",
+      "is recommending",
+      "recommend"
+    ],
+    "correctAnswer": "D",
+    "explanation": "In 'not only... but also' constructions, the verb agrees with the closer subject ('specialists', plural), requiring 'recommend'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1509",
+    "question": "Fill in the blank: The proliferation of invasive aquatic macrophytes in the lower catchment basin _______ oxygen depletion across bottom strata.",
+    "options": [
+      "causes",
+      "cause",
+      "are causing",
+      "have caused"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The head noun 'proliferation' is singular, so it demands the singular verb 'causes'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1510",
+    "question": "Choose the correct verb form: Either the regional grid operator or the transmission substation managers _______ to issue the emergency load-shedding directive.",
+    "options": [
+      "has",
+      "have",
+      "is",
+      "was"
+    ],
+    "correctAnswer": "B",
+    "explanation": "With 'either... or', proximity concord dictates agreement with the plural noun 'managers', requiring 'have'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1511",
+    "question": "Fill in the blank: The lead author of the paleoclimatology monograph, along with two doctoral research assistants, _______ presenting the findings at the international symposium.",
+    "options": [
+      "were",
+      "are",
+      "is",
+      "have been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Parenthetical phrases introduced by 'along with' do not alter the number of the singular grammatical subject ('author'), which takes 'is'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1512",
+    "question": "Choose the correct option: Four hundred megawatt-hours of surplus battery storage _______ discharged into the metropolitan grid during peak evening demand.",
+    "options": [
+      "have been",
+      "were",
+      "are",
+      "was"
+    ],
+    "correctAnswer": "D",
+    "explanation": "A measurement expression functioning as a single aggregate entity takes a singular verb ('was').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1513",
+    "question": "Fill in the blank: The prevalence of microplastic residues in pelagic zooplankton populations _______ a critical bioaccumulation pathway in marine food webs.",
+    "options": [
+      "indicates",
+      "indicate",
+      "are indicating",
+      "have indicated"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The singular abstract noun 'prevalence' governs the verb 'indicates', regardless of intervening plural nouns.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1514",
+    "question": "Choose the correct verb form: Neither the primary cooling circuit nor the backup diesel generator pumps _______ activated during the scheduled emergency drill.",
+    "options": [
+      "was",
+      "were",
+      "is",
+      "has been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The plural noun 'pumps' is closer to the verb in the 'neither... nor' correlative structure, demanding 'were'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1515",
+    "question": "Fill in the blank: Each of the thirty-six acoustic sensors embedded in the wind turbine nacelle _______ vibration telemetry in real time.",
+    "options": [
+      "are transmitting",
+      "transmit",
+      "transmits",
+      "have transmitted"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The distributive pronoun 'each' is singular and requires the singular verb 'transmits'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1516",
+    "question": "Choose the correct option: The consortium of independent aerospace contractors _______ finalized the structural load specifications for the payload fairing.",
+    "options": [
+      "were",
+      "have",
+      "are",
+      "has"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The collective noun 'consortium' acts as a single institutional entity, taking the singular auxiliary 'has'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1517",
+    "question": "Fill in the blank: A cluster of hydrothermal mineral chimneys discovered off the volcanic ridge _______ unique extremophile bacterial communities.",
+    "options": [
+      "harbors",
+      "harbor",
+      "are harboring",
+      "have harbored"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The singular subject 'cluster' takes the singular verb 'harbors'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1518",
+    "question": "Choose the correct verb form: Not only the principal conductor but also the orchestral string players _______ that the acoustic canopy be lowered by two meters.",
+    "options": [
+      "insists",
+      "insist",
+      "is insisting",
+      "has insisted"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Under 'not only... but also', agreement with the adjacent plural noun 'players' requires the base plural verb 'insist'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1519",
+    "question": "Fill in the blank: The incidence of acute respiratory ailments among tunnel excavation workers _______ markedly following the installation of electrostatic precipitators.",
+    "options": [
+      "were dropping",
+      "have dropped",
+      "dropped",
+      "are dropped"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The singular head noun 'incidence' is the subject of the past action 'dropped'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1520",
+    "question": "Choose the correct option: Twenty-five thousand cubic meters of reinforced concrete _______ poured for the foundation raft of the suspension bridge pylon.",
+    "options": [
+      "have been",
+      "were",
+      "are",
+      "was"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Volumetric measurements acting as a single structural batch take a singular verb ('was').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1521",
+    "question": "Fill in the blank: The portfolio manager, together with her senior quantitative analysts, _______ to publish the quarterly risk assessment before the opening bell.",
+    "options": [
+      "intends",
+      "intend",
+      "are intending",
+      "have intended"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Prepositional phrases like 'together with' do not affect the singular subject 'manager', requiring 'intends'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1522",
+    "question": "Choose the correct verb form: The number of endemic bird species threatened by habitat fragmentation _______ steadily over the past two decades.",
+    "options": [
+      "have grown",
+      "has grown",
+      "are growing",
+      "were grown"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'The number of' is singular and takes 'has grown', distinct from 'a number of' which takes plural.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1523",
+    "question": "Fill in the blank: A number of external peer reviewers _______ raised reservations regarding the statistical methodology employed in Chapter 4.",
+    "options": [
+      "is",
+      "has",
+      "have",
+      "was"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'A number of' functions as an indefinite quantifier meaning 'several' and takes a plural verb ('have').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1524",
+    "question": "Choose the correct option: Neither the lead software architect nor the database administrators _______ access to the unencrypted production credential vault.",
+    "options": [
+      "has possessed",
+      "possesses",
+      "is possessing",
+      "possess"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Agreement with the plural subject 'administrators' nearest to the verb mandates the plural form 'possess'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1525",
+    "question": "Fill in the blank: The restoration of four historic Ottoman fountains in the old quarter _______ completed under the municipal heritage initiative.",
+    "options": [
+      "was",
+      "were",
+      "are",
+      "have been"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The singular head noun 'restoration' takes the singular verb 'was'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1526",
+    "question": "Choose the correct verb form: Every blueprint, mechanical schematic, and wiring diagram _______ archived in the redundant cloud repository.",
+    "options": [
+      "are",
+      "is",
+      "were",
+      "have been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Elements linked by 'and' but modified by 'every' take a singular verb ('is').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1527",
+    "question": "Fill in the blank: More than half of the petroleum extraction infrastructure in the offshore basin _______ decommissioned due to depleted reservoir pressure.",
+    "options": [
+      "are",
+      "were",
+      "was",
+      "have been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Infrastructure' is an uncountable collective noun; hence 'half of the infrastructure' takes the singular verb 'was'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1528",
+    "question": "Choose the correct option: Dr. Aris Thorne is one of those clinical epidemiologists who _______ that asymptomatic transmission drove the initial regional outbreak.",
+    "options": [
+      "has argued",
+      "argues",
+      "is arguing",
+      "argue"
+    ],
+    "correctAnswer": "D",
+    "explanation": "In 'one of those [plural noun] who [verb]', the relative pronoun 'who' refers to the plural antecedent 'epidemiologists', taking the plural verb 'argue'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1529",
+    "question": "Fill in the blank: Professor Vance is the only one of the museum trustees who _______ against the sale of the impressionist oil canvas.",
+    "options": [
+      "has voted",
+      "have voted",
+      "are voting",
+      "were voting"
+    ],
+    "correctAnswer": "A",
+    "explanation": "With 'the only one of...', the relative clause modifies the singular 'one', requiring the singular verb 'has voted'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1530",
+    "question": "Choose the correct verb form: Neither the commercial airline pilots nor the air traffic controllers' union _______ endorsed the new split-shift roster system.",
+    "options": [
+      "have",
+      "has",
+      "are",
+      "were"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The subject closer to the verb is the singular noun 'union', requiring the singular auxiliary 'has'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1531",
+    "question": "Fill in the blank: The logistics and supply chain optimization algorithm _______ freight delivery delays by fourteen percent across the regional network.",
+    "options": [
+      "are reducing",
+      "reduce",
+      "reduces",
+      "have reduced"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The singular noun 'algorithm' is the true head subject of the sentence, taking 'reduces'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1532",
+    "question": "Choose the correct option: Acoustics _______ a mandatory subject of study for postgraduate students specializing in architectural audio design.",
+    "options": [
+      "have been",
+      "are",
+      "were",
+      "is"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Academic disciplines ending in '-ics' (such as acoustics, physics, economics) are singular count nouns taking 'is'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1533",
+    "question": "Fill in the blank: The committee of international banking regulators _______ expected to deliver its final capital adequacy guidelines on Thursday.",
+    "options": [
+      "is",
+      "are",
+      "were",
+      "have been"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The collective subject 'committee' acting as a unified body takes the singular verb 'is' (signaled by the pronoun 'its').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1534",
+    "question": "Choose the correct verb form: A series of high-altitude balloon experiments _______ conducted over the Antarctic ice sheet to measure cosmic ray flux.",
+    "options": [
+      "were",
+      "was",
+      "are",
+      "have been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'A series of' functions as a singular count phrase, taking the singular verb 'was'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1535",
+    "question": "Fill in the blank: The prevalence of antibiotic residues in commercial poultry feed _______ stricter monitoring by agricultural authorities.",
+    "options": [
+      "are warranting",
+      "warrant",
+      "warrants",
+      "have warranted"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The singular subject 'prevalence' takes the singular verb 'warrants'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1536",
+    "question": "Choose the correct option: Either the municipal water authority or the private filtration contractors _______ responsible for maintaining secondary chlorination levels.",
+    "options": [
+      "has been",
+      "is",
+      "was",
+      "are"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Under proximity concord with 'either... or', the verb agrees with 'contractors' (plural), taking 'are'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1537",
+    "question": "Fill in the blank: The discovery of fossilized angiosperm pollen grains in lower Cretaceous strata _______ that flowering plants emerged earlier than previously estimated.",
+    "options": [
+      "suggests",
+      "suggest",
+      "are suggesting",
+      "have suggested"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The singular noun 'discovery' is the grammatical subject and takes the singular verb 'suggests'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1538",
+    "question": "Choose the correct verb form: Five hundred thousand dollars _______ disbursed from the disaster relief fund to repair the washed-out mountain highway.",
+    "options": [
+      "were",
+      "was",
+      "are",
+      "have been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Monetary sums functioning as a total aggregate disbursement take a singular verb ('was').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1539",
+    "question": "Fill in the blank: Neither the senior diplomat nor the embassy attach\u00e9s _______ informed of the impending treaty renegotiation schedule.",
+    "options": [
+      "is",
+      "was",
+      "were",
+      "has been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "In 'neither... nor', the verb agrees with the closer plural subject 'attach\u00e9s', requiring 'were'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1540",
+    "question": "Choose the correct option: The development of high-efficiency perovskite solar cells _______ significant interest from venture capital clean-energy funds.",
+    "options": [
+      "were attracted",
+      "have attracted",
+      "are attracting",
+      "has attracted"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The singular subject 'development' requires the singular verb 'has attracted'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1541",
+    "question": "Fill in the blank: A variety of non-destructive ultrasonic testing methods _______ employed to inspect the integrity of the aircraft fuselage.",
+    "options": [
+      "are",
+      "is",
+      "was",
+      "has been"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'A variety of' followed by a plural count noun ('methods') takes a plural verb ('are').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1542",
+    "question": "Choose the correct verb form: The chief archaeologist, as well as several visiting epigraphers, _______ that the marble stele dates to the Hellenistic era.",
+    "options": [
+      "believe",
+      "believes",
+      "are believing",
+      "have believed"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Phrases with 'as well as' are parenthetical and do not affect the singular subject 'archaeologist', which takes 'believes'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1543",
+    "question": "Fill in the blank: Three-fourths of the arable land in the river valley _______ dedicated to organic cereal crop rotation.",
+    "options": [
+      "were",
+      "are",
+      "is",
+      "have been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Fractional expressions modifying an uncountable mass noun ('land') take a singular verb ('is').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1544",
+    "question": "Choose the correct option: The installation of smart electricity meters across eighteen suburban districts _______ reduced transmission line losses by nine percent.",
+    "options": [
+      "were",
+      "have",
+      "are",
+      "has"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The singular subject 'installation' takes the singular auxiliary 'has'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1545",
+    "question": "Fill in the blank: Neither the regional environmental agency nor the municipal port authority _______ granted authorization for the dredging operation.",
+    "options": [
+      "has",
+      "have",
+      "are",
+      "were"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Both correlative subjects are singular, and the adjacent subject 'authority' is singular, requiring 'has'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Subject-Verb Agreement"
+  },
+  {
+    "id": "ielts-gram-1546",
+    "question": "Fill in the blank: By the time the maritime salvage vessel reached the coordinates of the shipwreck, the heavy swells _______ the remaining deck structures.",
+    "options": [
+      "have already submerged",
+      "had already submerged",
+      "already submerged",
+      "were already submerging"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Past perfect ('had already submerged') is required to denote an event completed prior to another past event ('reached').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1547",
+    "question": "Choose the correct verb form: For the past six months, the materials science laboratory _______ the tensile strength of graphene-reinforced carbon polymers under cryogenic conditions.",
+    "options": [
+      "evaluated",
+      "is evaluating",
+      "has been evaluating",
+      "had evaluated"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Present perfect continuous ('has been evaluating') expresses an action that began in the past ('for the past six months') and is still ongoing.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1548",
+    "question": "Fill in the blank: As soon as the regulatory board _______ the phase-three clinical trial protocol, the hospital network will commence patient enrollment.",
+    "options": [
+      "is approving",
+      "will approve",
+      "approved",
+      "approves"
+    ],
+    "correctAnswer": "D",
+    "explanation": "In future time clauses introduced by 'as soon as', standard English uses the present simple ('approves') rather than the future tense.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1549",
+    "question": "Choose the correct option: By December of next year, the civil engineering consortium _______ the subsea railway tunnel for over four uninterrupted years.",
+    "options": [
+      "will have been excavating",
+      "will be excavating",
+      "is excavating",
+      "will excavate"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Future perfect continuous ('will have been excavating') describes an ongoing duration viewed from a specific future checkpoint ('By December of next year').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1550",
+    "question": "Fill in the blank: While the seismologists were analyzing the foreshock recordings, a second subterranean tremor _______ the coastal monitoring station.",
+    "options": [
+      "was shaking",
+      "shook",
+      "had shaken",
+      "has shaken"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Simple past ('shook') describes a sudden, completed interruption against a background continuous past activity ('were analyzing').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1551",
+    "question": "Choose the correct verb form: The atmospheric research team _______ that global methane emissions from wetland ecosystems are significantly higher than previous estimates suggested.",
+    "options": [
+      "concluded",
+      "is concluding",
+      "has concluded",
+      "had concluded"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Present perfect simple ('has concluded') is used for a recently completed scientific finding whose conclusions have current relevance.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1552",
+    "question": "Fill in the blank: The ancient trade caravan route _______ across three mountain passes before the paved highland highway was constructed in 1964.",
+    "options": [
+      "operates",
+      "has operated",
+      "was operating",
+      "had operated"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Past perfect ('had operated') denotes a completed historical state prior to a defined past date ('before 1964').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1553",
+    "question": "Choose the correct option: When the international finance summit begins tomorrow morning, the delegates _______ the revised tariff schedule.",
+    "options": [
+      "will discuss",
+      "will have discussed",
+      "discussed",
+      "were discussing"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The main clause uses simple future ('will discuss') to express the planned future action scheduled upon arrival.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1554",
+    "question": "Fill in the blank: The endangered snow leopard population in the national park _______ by nearly twenty percent since strict anti-poaching patrols were instituted.",
+    "options": [
+      "rebounded",
+      "has rebounded",
+      "is rebounding",
+      "had rebounded"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Present perfect ('has rebounded') is required with 'since + simple past time clause' to show change up to the present.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1555",
+    "question": "Choose the correct verb form: Hardly _______ into the low-pressure chamber when the acoustic sensor array registered a sudden spike in ambient resonance.",
+    "options": [
+      "did the probe enter",
+      "the probe had entered",
+      "had the probe entered",
+      "the probe entered"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Negative time adverbial 'Hardly' at the sentence front triggers auxiliary inversion with the past perfect ('had the probe entered').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1556",
+    "question": "Fill in the blank: The neurobiology department _______ on the neural correlates of working memory since receiving the endowment grant in 2021.",
+    "options": [
+      "had focused",
+      "is focusing",
+      "focused",
+      "has been focusing"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Present perfect continuous ('has been focusing') marks continuous scientific activity extending from the past point 'since 2021' to the present.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1557",
+    "question": "Choose the correct option: By the time the volcanic eruption subsided, the pyroclastic flow _______ three agricultural valleys in volcanic ash.",
+    "options": [
+      "had blanketed",
+      "has blanketed",
+      "was blanketing",
+      "blanketed"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past perfect ('had blanketed') is required because the blanketing was finished before the eruption subsided.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1558",
+    "question": "Fill in the blank: The pharmaceutical company _______ the production of the pediatric suspension until quality assurance tests confirm microbial purity.",
+    "options": [
+      "does not resume",
+      "will not resume",
+      "did not resume",
+      "would not resume"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Future simple ('will not resume') is used in the main clause, governed by the conditional time clause with 'until + present simple'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1559",
+    "question": "Choose the correct verb form: Prior to accepting the university directorship, Professor Montgomery _______ the national economics advisory council for a decade.",
+    "options": [
+      "was chairing",
+      "has chaired",
+      "had chaired",
+      "chaired"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past perfect ('had chaired') shows an earlier past status completed before accepting the directorship.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1560",
+    "question": "Fill in the blank: Look at the satellite telemetry: the orbital thrusters _______ within forty seconds to prevent orbital decay.",
+    "options": [
+      "have fired",
+      "fire",
+      "will have fired",
+      "are going to fire"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Be going to' is used when present perceptual evidence ('Look at the satellite telemetry') indicates an imminent occurrence.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1561",
+    "question": "Choose the correct option: The agricultural research station _______ cold-tolerant wheat cultivars in the northern steppe since early spring.",
+    "options": [
+      "has been cultivating",
+      "cultivates",
+      "cultivated",
+      "had been cultivating"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Since early spring' with an ongoing present activity requires the present perfect continuous ('has been cultivating').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1562",
+    "question": "Fill in the blank: Once the geothermal boreholes _______ the target depth of three kilometers, engineers will install the titanium heat exchangers.",
+    "options": [
+      "will reach",
+      "reach",
+      "reached",
+      "are reaching"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Time clauses with 'once' referring to the future use the present simple ('reach').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1563",
+    "question": "Choose the correct verb form: In the seventeenth century, European cartographers _______ maritime charts based on celestial navigation and quadrant readings.",
+    "options": [
+      "had drawn",
+      "have drawn",
+      "drew",
+      "were drawing"
+    ],
+    "correctAnswer": "C",
+    "explanation": "A definite completed time period in history ('In the seventeenth century') requires the simple past ('drew').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1564",
+    "question": "Fill in the blank: By the end of this fiscal quarter, the municipal transit agency _______ over two million passenger commutes on the new light rail line.",
+    "options": [
+      "is logging",
+      "will log",
+      "logs",
+      "will have logged"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Future perfect ('will have logged') represents an action completed before a future deadline ('By the end of this fiscal quarter').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1565",
+    "question": "Choose the correct option: The planetary probe _______ scientific data across deep space for twenty-two years before its radioisotope generator finally depleted.",
+    "options": [
+      "had been transmitting",
+      "has been transmitting",
+      "was transmitting",
+      "transmits"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past perfect continuous ('had been transmitting') marks duration up to another past reference point ('before its generator depleted').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1566",
+    "question": "Fill in the blank: The municipal desalination facility _______ fresh drinking water to over fifty thousand arid households since its commissioning.",
+    "options": [
+      "provided",
+      "has provided",
+      "is providing",
+      "had provided"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Since its commissioning' links the past completion to ongoing present reality, necessitating the present perfect ('has provided').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1567",
+    "question": "Choose the correct verb form: While the excavation crew _______ the foundation trench, they uncovered a cache of late Roman amphorae.",
+    "options": [
+      "had dug",
+      "dug",
+      "was digging",
+      "has dug"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past continuous ('was digging') represents the extended backdrop activity interrupted by the simple past discovery ('uncovered').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1568",
+    "question": "Fill in the blank: Next Tuesday, the Supreme Court _______ oral arguments in the landmark intellectual property case.",
+    "options": [
+      "was hearing",
+      "has heard",
+      "had heard",
+      "will hear"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Simple future ('will hear') expresses a scheduled future event indicated by 'Next Tuesday'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1569",
+    "question": "Choose the correct option: The wildlife biologist _______ radio telemetry collars on forty gray wolves before the winter snowfall commenced.",
+    "options": [
+      "had fitted",
+      "has fitted",
+      "was fitting",
+      "fits"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past perfect ('had fitted') indicates the wolf-fitting was completed before the past onset of snowfall.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1570",
+    "question": "Fill in the blank: Up until the financial crisis of 2008, commercial mortgage securitization _______ largely unregulated in the domestic credit market.",
+    "options": [
+      "has remained",
+      "had remained",
+      "was remaining",
+      "remains"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Up until [past event]' establishes a past time boundary, requiring the past perfect ('had remained').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1571",
+    "question": "Choose the correct verb form: The research vessel _______ offshore oceanographic samples for three weeks when the propulsion shaft broke.",
+    "options": [
+      "was collecting",
+      "has been collecting",
+      "had been collecting",
+      "collected"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past perfect continuous ('had been collecting') emphasizes ongoing duration before a past disruptive event ('broke').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1572",
+    "question": "Fill in the blank: The international commission _______ its annual report on greenhouse gas concentrations until all member states verify their national inventories.",
+    "options": [
+      "has not published",
+      "does not publish",
+      "did not publish",
+      "will not publish"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The main clause expresses future refusal/postponement ('will not publish') contingent on 'until' + present simple.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1573",
+    "question": "Choose the correct option: In 1859, the solar superstorm known as the Carrington Event _______ telegraph networks across North America and Europe.",
+    "options": [
+      "crippled",
+      "has crippled",
+      "had crippled",
+      "was crippling"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Historical events occurring at a specific past point ('In 1859') require simple past ('crippled').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1574",
+    "question": "Fill in the blank: The clinical oncology trial _______ eighty-five percent of its target cohort by the end of next month.",
+    "options": [
+      "will enroll",
+      "will have enrolled",
+      "enrolled",
+      "has enrolled"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Future perfect ('will have enrolled') denotes completion prior to a future deadline ('by the end of next month').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1575",
+    "question": "Choose the correct verb form: The linguistics department _______ endangered indigenous dialects in the Amazon basin for over fifteen years.",
+    "options": [
+      "documented",
+      "documents",
+      "has been documenting",
+      "had been documenting"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Present perfect continuous ('has been documenting') indicates an activity continuing from 15 years ago to the present.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1576",
+    "question": "Fill in the blank: As soon as the air traffic control radar _______ the distress transponder, rescue helicopters were dispatched to the sector.",
+    "options": [
+      "has detected",
+      "detects",
+      "had detected",
+      "detected"
+    ],
+    "correctAnswer": "D",
+    "explanation": "In past narrative sequences with 'as soon as', simple past ('detected') pairs with the past result ('were dispatched').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1577",
+    "question": "Choose the correct option: Archaeologists _______ the temple precinct for nearly six months before discovering the royal burial crypt beneath the altar.",
+    "options": [
+      "had been surveying",
+      "have been surveying",
+      "were surveying",
+      "surveyed"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past perfect continuous ('had been surveying') conveys the ongoing duration leading up to the past discovery.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1578",
+    "question": "Fill in the blank: The hydroelectric dam _______ over twenty billion kilowatt-hours of clean electricity since entering commercial operation.",
+    "options": [
+      "generated",
+      "has generated",
+      "is generating",
+      "had generated"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Present perfect ('has generated') reflects the cumulative total output from the past point of entry up to the present.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1579",
+    "question": "Choose the correct verb form: While the automated rovers _______ the Martian crater floor, orbital orbiters photographed the surrounding canyon rim.",
+    "options": [
+      "had traversed",
+      "traversed",
+      "were traversing",
+      "have traversed"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past continuous ('were traversing') describes an ongoing simultaneous action introduced by 'while'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1580",
+    "question": "Fill in the blank: By the time the central bank convened the emergency monetary policy session, commercial lending rates _______ by fifty basis points.",
+    "options": [
+      "were already climbing",
+      "have already climbed",
+      "already climbed",
+      "had already climbed"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Past perfect ('had already climbed') establishes completion prior to the past convening of the session.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1581",
+    "question": "Choose the correct option: The software engineering team _______ the microservices architecture for three weeks before deploying the patch to production.",
+    "options": [
+      "had been testing",
+      "has been testing",
+      "was testing",
+      "tested"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past perfect continuous ('had been testing') emphasizes duration preceding the past deployment event.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1582",
+    "question": "Fill in the blank: Before the invention of the marine chronometer in the eighteenth century, navigators _______ to determine longitude at sea accurately.",
+    "options": [
+      "struggled",
+      "had struggled",
+      "have struggled",
+      "were struggling"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Past perfect ('had struggled') denotes a persistent condition antecedent to an 18th-century breakthrough.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1583",
+    "question": "Choose the correct verb form: The botanical garden _______ its rare orchid conservatory to the general public starting next Friday morning.",
+    "options": [
+      "had opened",
+      "has opened",
+      "will open",
+      "was opening"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Simple future ('will open') designates a definite upcoming scheduled event.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1584",
+    "question": "Fill in the blank: The public health agency _______ any new cases of viral hemorrhagic fever since quarantine measures took effect.",
+    "options": [
+      "is not recording",
+      "did not record",
+      "had not recorded",
+      "has not recorded"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Since [past clause]' requires the present perfect ('has not recorded') to cover the timespan up to the present.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1585",
+    "question": "Choose the correct option: By 2040, urban planners predict that eighty percent of the municipal bus fleet _______ to solid-state hydrogen fuel cells.",
+    "options": [
+      "will have transitioned",
+      "will transition",
+      "transitions",
+      "transitioned"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Future perfect ('will have transitioned') denotes completion by the projected target year 2040.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1586",
+    "question": "Fill in the blank: The economic analyst _______ the sovereign debt ratings of twelve emerging markets when the currency devaluation occurred.",
+    "options": [
+      "reviewed",
+      "was reviewing",
+      "had reviewed",
+      "has reviewed"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Past continuous ('was reviewing') depicts the ongoing analytical activity interrupted by the devaluation.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1587",
+    "question": "Choose the correct verb form: The conservation trust _______ over forty square kilometers of native cloud forest over the last decade.",
+    "options": [
+      "is reforesting",
+      "reforested",
+      "has reforested",
+      "had reforested"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Over the last decade' connects past efforts to current total achievement, necessitating the present perfect ('has reforested').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1588",
+    "question": "Fill in the blank: Once the aerospace engineers _______ the wind tunnel aerodynamic simulations, manufacturing of the prototype wing will begin.",
+    "options": [
+      "are completing",
+      "will complete",
+      "completed",
+      "complete"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Subordinate clauses of time with 'once' take the present simple ('complete') to indicate future conditions.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1589",
+    "question": "Choose the correct option: The medieval abbey _______ in ruins for three centuries until architectural historians initiated the restoration campaign in 1880.",
+    "options": [
+      "had lain",
+      "has lain",
+      "was lying",
+      "lay"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past perfect ('had lain') indicates the state of ruined persistence prior to 1880.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1590",
+    "question": "Fill in the blank: The university physics team _______ quantum entanglement across free-space optical links since last September.",
+    "options": [
+      "measures",
+      "has been measuring",
+      "measured",
+      "had been measuring"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Present perfect continuous ('has been measuring') specifies experimental measurement continuing from last September to now.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1591",
+    "question": "Choose the correct verb form: The geological survey team _______ their base camp at the glacier foot when the sudden blizzard struck.",
+    "options": [
+      "had established",
+      "established",
+      "was establishing",
+      "has established"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past continuous ('was establishing') represents the uncompleted background activity when the blizzard struck.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1592",
+    "question": "Fill in the blank: By midnight tonight, the planetary defense radar _______ the trajectory of the approaching near-Earth asteroid for seventy-two hours.",
+    "options": [
+      "will track",
+      "will be tracking",
+      "is tracking",
+      "will have been tracking"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Future perfect continuous ('will have been tracking') conveys continuous tracking duration up to midnight tonight.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1593",
+    "question": "Choose the correct option: The ancient Greek trireme _______ a crew of over one hundred and seventy oarsmen into naval combat.",
+    "options": [
+      "carried",
+      "has carried",
+      "had carried",
+      "was carrying"
+    ],
+    "correctAnswer": "A",
+    "explanation": "A general historical fact from antiquity uses the past simple ('carried').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1594",
+    "question": "Fill in the blank: The environmental watchdog _______ compliance reports from thirty industrial manufacturing plants over the past twelve months.",
+    "options": [
+      "collected",
+      "has collected",
+      "is collecting",
+      "had collected"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Over the past twelve months' indicates an open timeframe reaching the present, demanding the present perfect ('has collected').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1595",
+    "question": "Choose the correct verb form: By the time the fire suppression aircraft arrived over the forested canyon, the wildfire _______ across two ridges.",
+    "options": [
+      "was spreading",
+      "has spread",
+      "had spread",
+      "spread"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past perfect ('had spread') indicates that the spreading action took place prior to the arrival of the aircraft.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Tenses, Aspect & Time Clauses"
+  },
+  {
+    "id": "ielts-gram-1596",
+    "question": "Fill in the blank: Had the structural engineers _______ the micro-fractures in the suspension bridge cable anchorages, the catastrophic collapse could have been averted.",
+    "options": [
+      "have detected",
+      "detect",
+      "detecting",
+      "detected"
+    ],
+    "correctAnswer": "D",
+    "explanation": "In an inverted third conditional ('Had + subject + past participle'), the correct form is 'detected'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1597",
+    "question": "Choose the correct verb form: If the municipal council _______ more funding to urban flood defense infrastructure last decade, the riverfront commercial district would not be submerged today.",
+    "options": [
+      "had allocated",
+      "allocated",
+      "would allocate",
+      "has allocated"
+    ],
+    "correctAnswer": "A",
+    "explanation": "This mixed conditional pairs a past unfulfilled condition (past perfect 'had allocated') with a present hypothetical result ('would not be submerged today').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1598",
+    "question": "Fill in the blank: Were the central bank _______ the benchmark interest rate by fifty basis points tomorrow, domestic mortgage lending would contract sharply.",
+    "options": [
+      "raise",
+      "to raise",
+      "raised",
+      "raising"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Inverted second conditional uses 'Were + subject + to-infinitive' ('Were the central bank to raise').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1599",
+    "question": "Choose the correct option: Should the secondary containment valve _______ during the high-pressure steam test, the automated safety bypass will activate instantly.",
+    "options": [
+      "failed",
+      "fails",
+      "fail",
+      "will fail"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Inverted first conditional uses 'Should + subject + bare infinitive' ('Should the valve fail').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1600",
+    "question": "Fill in the blank: The endangered coral reef systems would have had a greater chance of survival if sea surface temperatures _______ below the critical bleaching threshold.",
+    "options": [
+      "have remained",
+      "remained",
+      "would remain",
+      "had remained"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Standard third conditional subordinate clause takes the past perfect ('had remained') to denote an unfulfilled past condition.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1601",
+    "question": "Choose the correct verb form: It is high time the international maritime tribunal _______ binding sanctions against illegal deep-sea bottom trawling.",
+    "options": [
+      "implemented",
+      "implement",
+      "implements",
+      "has implemented"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'It is high time + subject + past simple' ('implemented') is used to express that an action is already overdue.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1602",
+    "question": "Fill in the blank: The lead bioarchaeologist wishes the ancient DNA samples _______ stored in liquid nitrogen before the cooling system failed.",
+    "options": [
+      "were",
+      "had been",
+      "are",
+      "have been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "A wish about an unchangeable past event takes the past perfect ('had been').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1603",
+    "question": "Choose the correct option: If the autonomous transport vehicle _______ an unexpected pedestrian obstacle, its neural network initiates an immediate emergency braking sequence.",
+    "options": [
+      "will encounter",
+      "encountered",
+      "encounters",
+      "would encounter"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Zero conditional expresses a scientific/technical certainty, using present simple in both the condition ('encounters') and the result.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1604",
+    "question": "Fill in the blank: But for the swift intervention of the mountain rescue team, the stranded alpine climbers _______ from severe hypothermia during the blizzard.",
+    "options": [
+      "would perish",
+      "perished",
+      "will perish",
+      "would have perished"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'But for + noun phrase' implies an unfulfilled past condition ('if it had not been for...'), requiring 'would have perished' in the main clause.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1605",
+    "question": "Choose the correct verb form: The environmental minister spoke about the carbon neutrality targets as though the necessary renewable energy infrastructure _______ fully operational.",
+    "options": [
+      "were",
+      "is",
+      "has been",
+      "will be"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'As though' followed by an unreal/counterfactual present state requires the subjunctive past ('were').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1606",
+    "question": "Fill in the blank: Provided that all hazardous waste canisters _______ sealed in accordance with international safety protocols, transport authorization will be granted.",
+    "options": [
+      "will be",
+      "are",
+      "were",
+      "have been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Provided that' introduces a conditional clause taking the present simple ('are') for future reference.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1607",
+    "question": "Choose the correct option: If the quantum encryption key _______ generated with true photon entanglement, foreign interceptors would be unable to decrypt the telemetry.",
+    "options": [
+      "will be",
+      "is",
+      "were",
+      "has been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Second conditional (hypothetical present) takes the subjunctive past 'were' in the if-clause.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1608",
+    "question": "Fill in the blank: Unless the agricultural cooperative _______ its reliance on synthetic nitrogen fertilizers, groundwater nitrate contamination will continue to rise.",
+    "options": [
+      "does not reduce",
+      "will reduce",
+      "reduced",
+      "reduces"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Unless' already means 'if not' and takes the affirmative present simple ('reduces') for future conditions.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1609",
+    "question": "Choose the correct verb form: Had the aerospace corporation _______ the computational fluid dynamics analysis, the aerodynamic instability would have been identified much earlier.",
+    "options": [
+      "conducted",
+      "conduct",
+      "conducting",
+      "have conducted"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Inverted third conditional requires 'Had + subject + past participle' ('conducted').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1610",
+    "question": "Fill in the blank: If the research institute were not so heavily dependent on commercial sponsorship, its scientific publications _______ greater academic credibility.",
+    "options": [
+      "will enjoy",
+      "would enjoy",
+      "enjoyed",
+      "have enjoyed"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Second conditional uses 'were not' in the condition and 'would + bare infinitive' ('would enjoy') in the result.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1611",
+    "question": "Choose the correct option: I would rather the parliamentary committee _______ the antitrust investigation before publishing its preliminary findings.",
+    "options": [
+      "concludes",
+      "concluded",
+      "had concluded",
+      "has concluded"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Would rather + subject + past perfect' ('had concluded') expresses a preference regarding a past action.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1612",
+    "question": "Fill in the blank: Were the volcanic ash plume _______ a flight corridor altitude of thirty thousand feet, civil aviation authorities would ground all commercial flights.",
+    "options": [
+      "reaching",
+      "reach",
+      "reached",
+      "to reach"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Inverted conditional with 'Were' takes 'to-infinitive' ('to reach') for hypothetical future conditions.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1613",
+    "question": "Choose the correct verb form: The chief epidemiologist wishes that more rigorous genomic surveillance protocols _______ during the early stages of the epidemic.",
+    "options": [
+      "had been established",
+      "were established",
+      "are established",
+      "have been established"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past regret with 'wishes that' takes past perfect passive ('had been established').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1614",
+    "question": "Fill in the blank: If a metal alloy _______ heated beyond its critical recrystallization point, its internal crystal lattice reorganizes completely.",
+    "options": [
+      "was",
+      "is",
+      "will be",
+      "would be"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Zero conditional expressing physical laws uses present simple ('is') in both clauses.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1615",
+    "question": "Choose the correct option: If the venture capital consortium _______ the clean-tech startup three years ago, the carbon mineralization facility would be operating today.",
+    "options": [
+      "would back",
+      "backed",
+      "had backed",
+      "has backed"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Mixed conditional: unfulfilled past condition ('had backed three years ago') with current result ('would be operating today').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1616",
+    "question": "Fill in the blank: Supposing the lunar habitat _______ a loss of cabin pressure, the emergency oxygen scrubbers would maintain breathable atmosphere for twelve hours.",
+    "options": [
+      "has experienced",
+      "experiences",
+      "will experience",
+      "experienced"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Supposing' introducing a hypothetical scenario takes the past simple ('experienced') with 'would' in the main clause.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1617",
+    "question": "Choose the correct verb form: Without the prompt deployment of acoustic telemetry tags, marine biologists _______ unable to track the migratory route of the blue whales.",
+    "options": [
+      "would have been",
+      "were",
+      "will be",
+      "would be"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Without [noun phrase]' in a past counterfactual context requires 'would have been' in the main clause.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1618",
+    "question": "Fill in the blank: If the satellite payload fairing _______ during atmospheric ascent, the orbital deployment mission will proceed as scheduled.",
+    "options": [
+      "will jettison",
+      "jettisons",
+      "jettisoned",
+      "would jettison"
+    ],
+    "correctAnswer": "B",
+    "explanation": "First conditional uses present simple ('jettisons') in the if-clause and future ('will proceed') in the main clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1619",
+    "question": "Choose the correct option: It is time the municipal transit department _______ the outdated signaling hardware along the commuter rail corridor.",
+    "options": [
+      "upgrades",
+      "upgrade",
+      "upgraded",
+      "has upgraded"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'It is time + subject + past simple' ('upgraded') indicates an action that ought to be taken immediately.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1620",
+    "question": "Fill in the blank: Had the cybersecurity analysts _______ the anomalous traffic patterns emanating from the server cluster, the data breach could have been contained.",
+    "options": [
+      "have isolated",
+      "isolate",
+      "isolating",
+      "isolated"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Inverted third conditional uses 'Had + subject + past participle' ('isolated').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1621",
+    "question": "Choose the correct verb form: If the city _______ more electric vehicle charging hubs along the ring road, urban air quality would be substantially better than it is.",
+    "options": [
+      "had installed",
+      "installed",
+      "would install",
+      "has installed"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Mixed conditional: past unfulfilled installation ('had installed') pairs with present state of air quality ('would be').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1622",
+    "question": "Fill in the blank: The head of the archaeological mission wishes the ancient papyrus scrolls _______ unrolled before the humidity in the tomb spiked.",
+    "options": [
+      "were not",
+      "had not been",
+      "are not",
+      "have not been"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Unreal past wish about an unchangeable past event requires the past perfect ('had not been').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1623",
+    "question": "Choose the correct option: Should the temperature in the cryo-storage vault _______ above minus eighty degrees, an automated alert will notify the duty technician.",
+    "options": [
+      "rose",
+      "rises",
+      "rise",
+      "will rise"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Inverted first conditional: 'Should + subject + bare infinitive' ('rise').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1624",
+    "question": "Fill in the blank: If the geneticists _______ fluent in bioinformatics algorithms, they would not require external consultants to analyze the sequencing data.",
+    "options": [
+      "have been",
+      "are",
+      "will be",
+      "were"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Second conditional regarding an unreal present state takes the subjunctive past 'were'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1625",
+    "question": "Choose the correct verb form: If the ancient Roman concrete _______ volcanic ash from Pozzuoli, modern structures might replicate its thousand-year durability.",
+    "options": [
+      "had not contained",
+      "did not contain",
+      "does not contain",
+      "would not contain"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Mixed conditional: past historical condition ('had not contained') affecting a potential modern outcome ('might replicate').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1626",
+    "question": "Fill in the blank: Provided that the solar flare _______ the Earth's magnetosphere directly, satellite communication links will remain unaffected.",
+    "options": [
+      "will not strike",
+      "does not strike",
+      "did not strike",
+      "would not strike"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Provided that' takes the present simple ('does not strike') for future conditionality.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1627",
+    "question": "Choose the correct option: Were the regional power grid _______ an unexpected frequency oscillation, protective relays would disconnect the transmission line.",
+    "options": [
+      "experienced",
+      "experience",
+      "to experience",
+      "experiencing"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Inverted conditional with 'Were' requires 'to-infinitive' ('to experience').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1628",
+    "question": "Fill in the blank: The deep-sea exploration team talks about the abyssal trench as if it _______ a completely mapped ecosystem.",
+    "options": [
+      "will be",
+      "is",
+      "has been",
+      "were"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'As if' expressing a contrary-to-fact comparison requires the subjunctive past 'were'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1629",
+    "question": "Choose the correct verb form: But for the timely reinforcement of the levee walls, the storm surge _______ three coastal fishing communities.",
+    "options": [
+      "would have devastated",
+      "devastated",
+      "will devastate",
+      "would devastate"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'But for' with past implication takes 'would have devastated' in the result clause.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1630",
+    "question": "Fill in the blank: I would rather the pharmaceutical regulator _______ the drug's safety dossier more thoroughly before issuing market approval.",
+    "options": [
+      "examined",
+      "had examined",
+      "examines",
+      "has examined"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Would rather + subject + past perfect' ('had examined') denotes regret over a completed past action.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1631",
+    "question": "Choose the correct option: If an oceanic subduction zone _______ accumulated seismic strain, an undersea earthquake and tsunami occur.",
+    "options": [
+      "will release",
+      "released",
+      "releases",
+      "would release"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Zero conditional describing geological causality uses present simple ('releases').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1632",
+    "question": "Fill in the blank: Had the laboratory staff _______ the cold-chain transport container properly, the enzyme reagents would not have degraded.",
+    "options": [
+      "have insulated",
+      "insulate",
+      "insulating",
+      "insulated"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Inverted third conditional takes 'Had + subject + past participle' ('insulated').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1633",
+    "question": "Choose the correct verb form: If the urban transit authority _______ light rail lines into the western suburbs twenty years ago, traffic congestion would be far less severe today.",
+    "options": [
+      "had expanded",
+      "expanded",
+      "would expand",
+      "has expanded"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Mixed conditional: past action ('had expanded twenty years ago') with current consequence ('would be today').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1634",
+    "question": "Fill in the blank: It is high time the international community _______ a unified framework for sovereign space debris mitigation.",
+    "options": [
+      "ratify",
+      "ratified",
+      "ratifies",
+      "has ratified"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'It is high time + subject + past simple' ('ratified') indicates urgent overdue action.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1635",
+    "question": "Choose the correct option: Should the automated agricultural drone _______ GPS signal loss, it will automatically hover and return to the docking pad.",
+    "options": [
+      "encountered",
+      "encounters",
+      "encounter",
+      "will encounter"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Inverted first conditional uses 'Should + bare infinitive' ('encounter').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1636",
+    "question": "Fill in the blank: The wildlife ecologist wishes the migratory corridor _______ from commercial logging operations before the breeding season began.",
+    "options": [
+      "has been shielded",
+      "was shielded",
+      "is shielded",
+      "had been shielded"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Past unreal wish takes past perfect passive ('had been shielded').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1637",
+    "question": "Choose the correct verb form: Were the central heating plant _______ a catastrophic boiler failure, emergency electrical heaters would supply the ward.",
+    "options": [
+      "to suffer",
+      "suffer",
+      "suffered",
+      "suffering"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Inverted second conditional uses 'Were + subject + to-infinitive' ('to suffer').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1638",
+    "question": "Fill in the blank: Unless the industrial smelter _______ electrostatic scrubbers on its smokestacks, sulfur dioxide emissions will violate regional air standards.",
+    "options": [
+      "will install",
+      "installs",
+      "installed",
+      "does not install"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Unless' takes present simple affirmative ('installs') for future conditions.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1639",
+    "question": "Choose the correct option: If the ancient Babylonian astronomers _______ detailed cuneiform lunar records, modern astronomers would lack crucial eclipse historical data.",
+    "options": [
+      "do not keep",
+      "did not keep",
+      "had not kept",
+      "would not keep"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Mixed conditional: past historical keeping ('had not kept') linked to present data deficiency ('would lack').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1640",
+    "question": "Fill in the blank: Supposing the oceanic currents _______ their velocity by thirty percent, European winter temperatures would drop noticeably.",
+    "options": [
+      "have reduced",
+      "reduce",
+      "will reduce",
+      "reduced"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Supposing' with hypothetical present/future takes past simple ('reduced') and 'would drop'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conditionals & Unreal Past"
+  },
+  {
+    "id": "ielts-gram-1641",
+    "question": "Fill in the blank: The ancient limestone sarcophagus _______ to have been carved during the reign of the third dynasty Pharaohs.",
+    "options": [
+      "is believed",
+      "believes",
+      "is believing",
+      "has believed"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Impersonal passive structure ('is believed to have been carved') expresses widespread scholarly belief regarding a historical artifact.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1642",
+    "question": "Choose the correct verb form: The hospital administration had the air handling units in all intensive care suites _______ by an independent biomedical certification team.",
+    "options": [
+      "inspect",
+      "inspected",
+      "inspecting",
+      "to inspect"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Causative structure 'have + object + past participle' ('had the units inspected') is used when arranging for a service by a third party.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1643",
+    "question": "Fill in the blank: The endangered Mediterranean monk seal population _______ to be rebounding following the establishment of marine protected sanctuaries.",
+    "options": [
+      "is reporting",
+      "reports",
+      "is reported",
+      "has reported"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting verb ('is reported to be rebounding') conveys scientific observations without naming a specific narrator.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1644",
+    "question": "Choose the correct option: The university provost got the architecture faculty _______ the energy efficiency blueprints before submitting the planning proposal.",
+    "options": [
+      "revising",
+      "revise",
+      "revised",
+      "to revise"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Causative 'get + person + to-infinitive' ('got the faculty to revise') indicates persuading someone to complete a task.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1645",
+    "question": "Fill in the blank: All hazardous waste containers must _______ in double-walled stainless steel drums prior to highway transportation.",
+    "options": [
+      "be secured",
+      "secure",
+      "have secured",
+      "securing"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Passive with modal necessity ('must be secured') focuses on the requirement applied to the patient subject.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1646",
+    "question": "Choose the correct verb form: The forensic team made the suspect _______ his digital encryption password under judicial court order.",
+    "options": [
+      "to divulge",
+      "divulge",
+      "divulged",
+      "divulging"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Causative 'make + person + bare infinitive' ('made the suspect divulge') expresses coercion or legal compulsion.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1647",
+    "question": "Fill in the blank: The rare Renaissance fresco in the cathedral chapel was reported _______ by excessive ambient humidity before climate controls were installed.",
+    "options": [
+      "damaging",
+      "to damage",
+      "to have been damaged",
+      "to be damaging"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting with perfect infinitive ('was reported to have been damaged') denotes an event occurring prior to the reporting timeframe.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1648",
+    "question": "Choose the correct option: The port logistics manager had the container manifests _______ electronically to prevent customs clearance bottlenecks.",
+    "options": [
+      "to transmit",
+      "transmit",
+      "transmitting",
+      "transmitted"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Causative 'have + object + past participle' ('had the manifests transmitted') specifies the state achieved.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1649",
+    "question": "Fill in the blank: The structural integrity of the deep-sea telecommunications cable is _______ continually by autonomous underwater gliders.",
+    "options": [
+      "being monitored",
+      "monitored",
+      "monitoring",
+      "to monitor"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Present continuous passive ('is being monitored') describes an action currently in progress.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1650",
+    "question": "Choose the correct verb form: The laboratory director will not let unauthorized personnel _______ the pathogen containment facility.",
+    "options": [
+      "to enter",
+      "enter",
+      "entered",
+      "entering"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Causative 'let + person + bare infinitive' ('let personnel enter') denotes granting permission.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1651",
+    "question": "Fill in the blank: The high-speed maglev train is expected _______ commercial passenger operations along the coastal corridor by late 2028.",
+    "options": [
+      "commenced",
+      "commencing",
+      "to commence",
+      "to be commenced"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive construction 'is expected + to-infinitive' ('is expected to commence') indicates scheduled future action.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1652",
+    "question": "Choose the correct option: The environmental agency got the chemical manufacturing plant _______ its wastewater discharge pipe further offshore.",
+    "options": [
+      "relocating",
+      "relocate",
+      "relocated",
+      "to relocate"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Causative 'get + entity + to-infinitive' ('got the plant to relocate') indicates successful regulatory persuasion.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1653",
+    "question": "Fill in the blank: It is widely _______ that excessive groundwater extraction is the primary driver of coastal land subsidence.",
+    "options": [
+      "acknowledged",
+      "acknowledging",
+      "acknowledge",
+      "to acknowledge"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Impersonal passive structure 'It is widely acknowledged that...' introduces a consensus proposition.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1654",
+    "question": "Choose the correct verb form: The flight school made all cadet pilots _______ eighty hours of severe turbulence simulation before solo certification.",
+    "options": [
+      "to complete",
+      "complete",
+      "completed",
+      "completing"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Make + someone + bare infinitive' ('made all cadet pilots complete') denotes mandatory instruction.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1655",
+    "question": "Fill in the blank: The pharmaceutical compound was found _______ the proliferation of malignant glioblastoma cells in vitro.",
+    "options": [
+      "inhibited",
+      "inhibiting",
+      "to inhibit",
+      "to be inhibited"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting with infinitive ('was found to inhibit') expresses observed scientific efficacy.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1656",
+    "question": "Choose the correct option: The aerospace engineer had the carbon-fiber wing spar _______ under three times the maximum anticipated aerodynamic load.",
+    "options": [
+      "to stress-test",
+      "stress-test",
+      "stress-testing",
+      "stress-tested"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Causative 'had + object + past participle' ('had the wing spar stress-tested').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1657",
+    "question": "Fill in the blank: The fourteenth-century stone bridge is said _______ by master Venetian stonemasons using pozzolanic mortar.",
+    "options": [
+      "to have been constructed",
+      "to construct",
+      "constructing",
+      "to be constructed"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Passive reporting with perfect passive infinitive ('is said to have been constructed') denotes a past historical completion.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1658",
+    "question": "Choose the correct verb form: The chief editor got the foreign correspondent _______ the lead investigative article before printing.",
+    "options": [
+      "shorten",
+      "to shorten",
+      "shortened",
+      "shortening"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Causative 'get + person + to-infinitive' ('got the correspondent to shorten').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1659",
+    "question": "Fill in the blank: Several critical vulnerabilities in the cryptographic firmware _______ by the white-hat cybersecurity audit team last week.",
+    "options": [
+      "have identified",
+      "identified",
+      "were identified",
+      "are identifying"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past simple passive ('were identified') is used with the completed past time marker 'last week'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1660",
+    "question": "Choose the correct option: The maritime safety authority had the aging oil tanker _______ out of the sensitive coral lagoon.",
+    "options": [
+      "to tow",
+      "tow",
+      "towing",
+      "towed"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Causative 'have + object + past participle' ('had the tanker towed').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1661",
+    "question": "Fill in the blank: The subterranean magma chamber is estimated _______ over five hundred cubic kilometers of molten basaltic rock.",
+    "options": [
+      "to contain",
+      "containing",
+      "contained",
+      "to be contained"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Passive estimation structure 'is estimated to contain' pairs with a present state of volume.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1662",
+    "question": "Choose the correct verb form: The judge made the corporate executive _______ all unredacted email communications to the tribunal.",
+    "options": [
+      "to surrender",
+      "surrender",
+      "surrendered",
+      "surrendering"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Make + someone + bare infinitive' ('made the executive surrender') denotes legal compulsion.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1663",
+    "question": "Fill in the blank: The volcanic eruption was considered _______ the most climatically disruptive geophysical event of the nineteenth century.",
+    "options": [
+      "being",
+      "to be",
+      "to have been",
+      "having been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting with perfect infinitive ('was considered to have been') evaluates an event completed in the distant past.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1664",
+    "question": "Choose the correct option: The museum curator got the master glazier _______ the shattered medieval stained glass medallion.",
+    "options": [
+      "restoring",
+      "restore",
+      "restored",
+      "to restore"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Get + someone + to-infinitive' ('got the glazier to restore').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1665",
+    "question": "Fill in the blank: The clinical vaccine trial had to _______ temporarily after three participants reported unexpected allergic reactions.",
+    "options": [
+      "be paused",
+      "pause",
+      "have paused",
+      "pausing"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Passive modal infinitive ('had to be paused') reflects an external operational intervention on the trial.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1666",
+    "question": "Choose the correct verb form: The shipping company had the container vessel's hull _______ with non-toxic antifouling silicone paint.",
+    "options": [
+      "coat",
+      "coated",
+      "coating",
+      "to coat"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Have + object + past participle' ('had the hull coated').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1667",
+    "question": "Fill in the blank: The ancient sunken galleon is thought _______ over twenty tons of silver bullion when it sank during the 1715 hurricane.",
+    "options": [
+      "carrying",
+      "to carry",
+      "to have been carrying",
+      "to be carrying"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting with perfect continuous infinitive ('is thought to have been carrying') depicts an action in progress at the time of sinking.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1668",
+    "question": "Choose the correct option: The health inspection department made the industrial food processing facility _______ all batches produced on Monday.",
+    "options": [
+      "recalling",
+      "to recall",
+      "recalled",
+      "recall"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Make + entity + bare infinitive' ('made the facility recall').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1669",
+    "question": "Fill in the blank: The new astronomical observatory is designed _______ cosmic infrared radiation from the earliest galaxies in the universe.",
+    "options": [
+      "to detect",
+      "detecting",
+      "detected",
+      "to be detected"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Passive purpose structure 'is designed to detect' specifies the functional purpose of the apparatus.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1670",
+    "question": "Choose the correct verb form: The botanical research team had their field herbarium specimens _______ by the Royal Botanic Gardens taxonomists.",
+    "options": [
+      "verify",
+      "verified",
+      "verifying",
+      "to verify"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Have + object + past participle' ('had their specimens verified').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1671",
+    "question": "Fill in the blank: The extinct flightless moa is understood _______ hunted to extinction within two centuries of Polynesian settlement in New Zealand.",
+    "options": [
+      "being",
+      "to be",
+      "to have been",
+      "having been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting with perfect passive infinitive ('is understood to have been hunted') evaluates historical extinction.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1672",
+    "question": "Choose the correct option: The project coordinator got the geotechnical subcontractor _______ the borehole core samples by courier.",
+    "options": [
+      "dispatching",
+      "dispatch",
+      "dispatched",
+      "to dispatch"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Get + person + to-infinitive' ('got the subcontractor to dispatch').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1673",
+    "question": "Fill in the blank: Substantial improvements in solar cell conversion efficiency _______ by the university engineering department over the last five years.",
+    "options": [
+      "have been achieved",
+      "have achieved",
+      "are achieving",
+      "achieved"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Present perfect passive ('have been achieved') connects past engineering milestones with present ongoing status.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1674",
+    "question": "Choose the correct verb form: The IT department had the corporate firewall settings _______ to block unauthorized outbound port scanning.",
+    "options": [
+      "reconfigure",
+      "reconfigured",
+      "reconfiguring",
+      "to reconfigure"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Have + object + past participle' ('had the settings reconfigured').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1675",
+    "question": "Fill in the blank: The missing flight data recorder was reported _______ by the subsea acoustic search beacon sixty nautical miles off the coast.",
+    "options": [
+      "locating",
+      "to locate",
+      "to have been located",
+      "to be located"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting with perfect passive infinitive ('was reported to have been located').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1676",
+    "question": "Choose the correct option: The senior researcher made the graduate assistants _______ all spectroscopic calibration logs twice daily.",
+    "options": [
+      "recording",
+      "to record",
+      "recorded",
+      "record"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Make + someone + bare infinitive' ('made the assistants record').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1677",
+    "question": "Fill in the blank: The ancient city wall is believed _______ during the sixth century BCE to deter Persian cavalry raids.",
+    "options": [
+      "to have been fortified",
+      "to fortify",
+      "fortifying",
+      "to be fortified"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Passive belief structure with perfect passive infinitive ('is believed to have been fortified').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1678",
+    "question": "Choose the correct verb form: The hospital board had the emergency electrical generators _______ prior to the arrival of the hurricane.",
+    "options": [
+      "test",
+      "tested",
+      "testing",
+      "to test"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Had + object + past participle' ('had the generators tested').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1679",
+    "question": "Fill in the blank: The geothermal drilling apparatus is known _______ under ambient temperatures exceeding three hundred degrees Celsius.",
+    "options": [
+      "operated",
+      "operating",
+      "to operate",
+      "to be operated"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting with infinitive ('is known to operate') describes a continuous functional capability.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1680",
+    "question": "Choose the correct option: The environmental regulator got the mining operator _______ the acidic tailings pond with crushed agricultural limestone.",
+    "options": [
+      "neutralizing",
+      "neutralize",
+      "neutralized",
+      "to neutralize"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Get + someone + to-infinitive' ('got the operator to neutralize').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1681",
+    "question": "Fill in the blank: The rare manuscript must _______ in an airtight, argon-filled display case to prevent oxidative yellowing of the parchment.",
+    "options": [
+      "be preserved",
+      "preserve",
+      "have preserved",
+      "preserving"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Modal passive ('must be preserved') specifies the obligatory conservation protocol.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1682",
+    "question": "Choose the correct verb form: The flight school made all navigation instructors _______ annual re-qualification check-flights.",
+    "options": [
+      "to undergo",
+      "undergo",
+      "underwent",
+      "undergoing"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Make + someone + bare infinitive' ('made all instructors undergo').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1683",
+    "question": "Fill in the blank: The deep-sea hydrothermal vent ecosystem is reported _______ over thirty previously undescribed species of chemosynthetic crustaceans.",
+    "options": [
+      "supported",
+      "supporting",
+      "to support",
+      "to be supported"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Passive reporting verb with present infinitive ('is reported to support') conveys an active biological role.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1684",
+    "question": "Choose the correct option: The city council had the public park's irrigation system _______ to use treated municipal reclaimed water.",
+    "options": [
+      "to convert",
+      "convert",
+      "converting",
+      "converted"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Have + object + past participle' ('had the system converted').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1685",
+    "question": "Fill in the blank: The historical treaty was understood _______ in secret negotiations on the neutral island of Rhodes.",
+    "options": [
+      "to have been drafted",
+      "to draft",
+      "drafting",
+      "to be drafted"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Passive reporting with perfect passive infinitive ('was understood to have been drafted').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Passive Voice & Causatives"
+  },
+  {
+    "id": "ielts-gram-1686",
+    "question": "Fill in the blank: The research consortium published a catalog of sixty exoplanets, four _______ reside within the habitable zone of their parent red dwarf stars.",
+    "options": [
+      "of whom",
+      "of which",
+      "of that",
+      "which"
+    ],
+    "correctAnswer": "B",
+    "explanation": "With inanimate or celestial antecedents ('sixty exoplanets'), quantifier expressions take 'of which' ('four of which').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1687",
+    "question": "Choose the correct participle form: _______ the high-precision laser interferometer across three trial runs, the physicists confirmed the detection of gravitational waves.",
+    "options": [
+      "Calibrating",
+      "Calibrated",
+      "Having calibrated",
+      "Have calibrated"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Perfect participle ('Having calibrated') indicates that the calibration was completed prior to confirming the detection.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1688",
+    "question": "Fill in the blank: Dr. Eleanor Vance, _______ groundbreaking fieldwork in alpine glaciology won international acclaim, will deliver the keynote address.",
+    "options": [
+      "which",
+      "whom",
+      "who",
+      "whose"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Possessive relative pronoun 'whose' modifies 'groundbreaking fieldwork' in a non-defining relative clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1689",
+    "question": "Choose the correct option: _______ by the high thermal conductivity of copper alloys, the engineers selected the material for the nuclear reactor cooling jackets.",
+    "options": [
+      "Impressed",
+      "Impressing",
+      "Having impressed",
+      "To impress"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past participle clause ('Impressed by...') functions passively as a causal modifier explaining the engineers' decision.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1690",
+    "question": "Fill in the blank: The archaeological expedition uncovered a royal tomb _______ walls were adorned with intricate lapis lazuli mosaics.",
+    "options": [
+      "which",
+      "whose",
+      "where",
+      "that"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Possessive relative pronoun 'whose' can refer to inanimate objects ('a royal tomb whose walls...') in formal English.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1691",
+    "question": "Choose the correct verb form: Not _______ to disclose proprietary source code, the software development firm declined the government audit request.",
+    "options": [
+      "having wished",
+      "wished",
+      "wishing",
+      "to wish"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Negative present participle ('Not wishing...') expresses the concurrent psychological reason for the firm's refusal.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1692",
+    "question": "Fill in the blank: The senior diplomat spoke with twelve international trade ministers, several _______ expressed strong support for the multilateral tariff reduction.",
+    "options": [
+      "of whose",
+      "of which",
+      "of who",
+      "of whom"
+    ],
+    "correctAnswer": "D",
+    "explanation": "For human antecedents ('twelve international trade ministers'), the quantifier construction takes 'of whom' ('several of whom').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1693",
+    "question": "Choose the correct option: _______ into the upper stratosphere, the weather balloon began transmitting real-time barometric and ozone readings.",
+    "options": [
+      "Having ascended",
+      "Ascended",
+      "Ascending",
+      "To ascend"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Perfect active participle ('Having ascended') indicates the ascent was completed before the transmission began.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1694",
+    "question": "Fill in the blank: The historic city of Petra, _______ monumental facades were carved directly into rose-red sandstone cliffs, attracts thousands of historians annually.",
+    "options": [
+      "which",
+      "whose",
+      "where",
+      "that"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Possessive 'whose' relates 'monumental facades' to the antecedent 'historic city of Petra'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1695",
+    "question": "Choose the correct participle form: _______ with corrosion-resistant epoxy resin, the underwater bridge pylons are expected to withstand tidal scouring for fifty years.",
+    "options": [
+      "Having coated",
+      "Coating",
+      "Coated",
+      "To coat"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past participle 'Coated' acts as a passive modifier describing the protective state of the bridge pylons.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1696",
+    "question": "Fill in the blank: The pharmaceutical company initiated clinical trials on three novel antiviral peptides, none _______ showed cytotoxicity in human cell cultures.",
+    "options": [
+      "which",
+      "of whom",
+      "of that",
+      "of which"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'None of which' is the standard formal relative quantifier phrase for non-human antecedents ('antiviral peptides').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1697",
+    "question": "Choose the correct option: _______ all safety protocols during the evacuation drill, the laboratory technicians exited the containment zone in under three minutes.",
+    "options": [
+      "Following",
+      "Followed",
+      "Having been followed",
+      "To follow"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Present participle ('Following all safety protocols...') describes an action concurrent with the subject exiting.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1698",
+    "question": "Fill in the blank: The maritime court reviewed the testimony of four eyewitnesses, two _______ had recorded the collision on marine radar.",
+    "options": [
+      "of which",
+      "of whom",
+      "of whose",
+      "who"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Two of whom' correctly references the human antecedent 'eyewitnesses'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1699",
+    "question": "Choose the correct participle form: _______ by severe winter blizzards for three consecutive days, the high-altitude research station relied entirely on stored battery reserves.",
+    "options": [
+      "Having isolated",
+      "Isolating",
+      "Isolated",
+      "To isolate"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past participle 'Isolated' provides the passive causal backdrop for the research station's reliance on batteries.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1700",
+    "question": "Fill in the blank: The international treaty established a demilitarized maritime corridor, within _______ commercial shipping vessels may navigate without foreign naval escort.",
+    "options": [
+      "that",
+      "what",
+      "where",
+      "which"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Prepositional relative clause 'within which' refers to the antecedent 'demilitarized maritime corridor'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1701",
+    "question": "Choose the correct option: _______ the complex financial transactions between the offshore shell corporations, the forensic accountant uncovered systematic tax evasion.",
+    "options": [
+      "Having scrutinized",
+      "Scrutinized",
+      "Scrutinizing",
+      "To scrutinize"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Perfect active participle ('Having scrutinized') shows the investigation preceded the uncovering of tax evasion.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1702",
+    "question": "Fill in the blank: The botanical reserve harbors over four hundred native fern varieties, many _______ are endemic exclusively to this volcanic archipelago.",
+    "options": [
+      "of whom",
+      "of which",
+      "of that",
+      "which"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Many of which' modifies the non-human plural antecedent 'native fern varieties'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1703",
+    "question": "Choose the correct participle form: _______ in the fourteenth century, the Gothic cathedral features soaring rib vaults and flying buttresses.",
+    "options": [
+      "Having constructed",
+      "Constructing",
+      "Constructed",
+      "To construct"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past participle 'Constructed' describes the historical creation of the cathedral in a reduced passive clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1704",
+    "question": "Fill in the blank: The engineering committee interviewed seven chief subcontractors, all _______ possessed extensive experience in deep-caisson foundation drilling.",
+    "options": [
+      "who",
+      "of which",
+      "of whose",
+      "of whom"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'All of whom' modifies the plural human noun 'chief subcontractors'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1705",
+    "question": "Choose the correct option: _______ the experimental data for statistical anomalies, the biostatistician proceeded to write the final manuscript.",
+    "options": [
+      "Having verified",
+      "Verified",
+      "Verifying",
+      "To verify"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Perfect active participle ('Having verified') marks completion prior to beginning the manuscript.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1706",
+    "question": "Fill in the blank: The deep-space probe carried five spectrometer instruments, three _______ were damaged during the intense solar particle storm.",
+    "options": [
+      "of whom",
+      "of which",
+      "of that",
+      "which"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Three of which' refers to the non-human instruments.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1707",
+    "question": "Choose the correct participle form: _______ to avoid public panic, the municipal government delayed the announcement of the tap water contamination.",
+    "options": [
+      "Having hoped",
+      "Hoped",
+      "Hoping",
+      "To hope"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Present participle 'Hoping' expresses the prevailing intention motivating the government's delay.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1708",
+    "question": "Fill in the blank: The ancient library catalog contained titles of eighty philosophical treatises, few _______ have survived into modern times.",
+    "options": [
+      "which",
+      "of whom",
+      "of that",
+      "of which"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Few of which' is the proper quantifier relative phrase for the non-human treatises.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1709",
+    "question": "Choose the correct option: _______ by the unexpected seismic readings, the chief volcanologist ordered an immediate evacuation of the caldera basin.",
+    "options": [
+      "Alarmed",
+      "Alarming",
+      "Having alarmed",
+      "To alarm"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Past participle 'Alarmed' conveys the passive emotional reaction prompting the evacuation order.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1710",
+    "question": "Fill in the blank: The stratospheric solar observatory, _______ primary optical mirror was manufactured from zero-expansion glass ceramics, completed its inaugural orbital survey.",
+    "options": [
+      "which",
+      "whose",
+      "where",
+      "that"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Possessive relative pronoun 'whose' links 'primary optical mirror' to the inanimate antecedent 'observatory'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1711",
+    "question": "Choose the correct participle form: _______ the ancient cuneiform tablet with multi-spectral infrared imaging, the epigrapher deciphered three previously illegible lines.",
+    "options": [
+      "Scanning",
+      "Scanned",
+      "Having scanned",
+      "To scan"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Perfect active participle ('Having scanned') denotes completion prior to deciphering the inscription.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1712",
+    "question": "Fill in the blank: The national airline grounded twenty-four commercial jetliners, twelve _______ were found to have defective turbine blade coatings.",
+    "options": [
+      "which",
+      "of whom",
+      "of that",
+      "of which"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Twelve of which' refers to the non-human antecedent 'jetliners'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1713",
+    "question": "Choose the correct option: _______ under extreme hydrostatic pressure, deep-sea organisms possess specialized cellular membrane lipids.",
+    "options": [
+      "Living",
+      "Lived",
+      "Having lived",
+      "To live"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Present participle 'Living' modifies 'deep-sea organisms' in a continuous descriptive state.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1714",
+    "question": "Fill in the blank: The hospital network employs twenty-five pediatric surgeons, each _______ has completed advanced fellowships in minimally invasive cardiac surgery.",
+    "options": [
+      "of which",
+      "of whom",
+      "of who",
+      "whose"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Each of whom' refers to the plural human noun 'pediatric surgeons'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1715",
+    "question": "Choose the correct participle form: _______ of the high toxicity of the organic solvent, the laboratory technicians wore specialized respirator masks.",
+    "options": [
+      "Having warned",
+      "Warning",
+      "Warned",
+      "To warn"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past participle 'Warned' provides the passive background cause for wearing respirators.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1716",
+    "question": "Fill in the blank: The urban transit project was delayed by three complex legal challenges, the most significant _______ involved municipal eminent domain rights.",
+    "options": [
+      "which",
+      "of whom",
+      "of that",
+      "of which"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'The most significant of which' refers to the inanimate noun 'legal challenges'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1717",
+    "question": "Choose the correct option: _______ the final phase of the clinical trial, the pharmaceutical researchers compiled the adverse reaction report.",
+    "options": [
+      "Having completed",
+      "Completed",
+      "Completing",
+      "To complete"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Perfect active participle ('Having completed') shows the trial's completion preceded report compilation.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1718",
+    "question": "Fill in the blank: The university appointed five external auditors, two _______ were certified forensic accountants specializing in endowment fund governance.",
+    "options": [
+      "of which",
+      "of whom",
+      "of who",
+      "whose"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Two of whom' refers to the human auditors.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1719",
+    "question": "Choose the correct participle form: _______ by rapid glacial melting, the high-altitude moraine lake threatened downstream mountain villages.",
+    "options": [
+      "Having swollen",
+      "Swelling",
+      "Swollen",
+      "To swell"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past participle 'Swollen' functions adjectivally to describe the lake enlarged by meltwater.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1720",
+    "question": "Fill in the blank: The research vessel surveyed ten underwater seamounts, five _______ had never been mapped with high-resolution bathymetric sonar.",
+    "options": [
+      "which",
+      "of whom",
+      "of that",
+      "of which"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Five of which' refers to the non-human 'underwater seamounts'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1721",
+    "question": "Choose the correct option: _______ the severe economic sanctions imposed by the international community, the country suffered acute foreign currency shortages.",
+    "options": [
+      "Facing",
+      "Faced",
+      "Having faced",
+      "To face"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Present participle 'Facing' modifies the country concurrently undergoing economic sanctions.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1722",
+    "question": "Fill in the blank: The archaeological museum houses forty ancient Roman coins, the oldest _______ dates to the second century BCE.",
+    "options": [
+      "of whom",
+      "of which",
+      "of that",
+      "which"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'The oldest of which' refers to the inanimate antecedent 'coins'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1723",
+    "question": "Choose the correct participle form: _______ in the remote alpine valley for centuries, the rare dialect preserves archaic grammatical structures.",
+    "options": [
+      "Having isolated",
+      "Isolating",
+      "Isolated",
+      "To isolate"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past participle 'Isolated' describes the geographic circumstance of the dialect.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1724",
+    "question": "Fill in the blank: The university welcomed twelve visiting fellows, several _______ are leading experts in quantum cryptography.",
+    "options": [
+      "whose",
+      "of which",
+      "of who",
+      "of whom"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Several of whom' refers to the visiting human fellows.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1725",
+    "question": "Choose the correct option: _______ the initial seismic tremors, the automated shutoff valves immediately stopped the flow of natural gas through the pipeline.",
+    "options": [
+      "Having detected",
+      "Detected",
+      "Detecting",
+      "To detect"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Perfect active participle ('Having detected') establishes that detection happened prior to triggering the shutoff.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1726",
+    "question": "Fill in the blank: The architectural firm designed eight public libraries, three _______ received national awards for sustainable timber engineering.",
+    "options": [
+      "of whom",
+      "of which",
+      "of that",
+      "which"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Three of which' refers to the libraries.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1727",
+    "question": "Choose the correct participle form: _______ by the high cost of titanium raw materials, the manufacturer substituted a reinforced ceramic composite.",
+    "options": [
+      "Having deterred",
+      "Deterring",
+      "Deterred",
+      "To deter"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Past participle 'Deterred' explains the passive reason for the material substitution.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1728",
+    "question": "Fill in the blank: The clinical trial recruited fifty asthma patients, all _______ had failed to respond to standard corticosteroid inhalers.",
+    "options": [
+      "whose",
+      "of which",
+      "of who",
+      "of whom"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'All of whom' refers to the human patients.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1729",
+    "question": "Choose the correct option: _______ to reduce municipal carbon emissions, the city council banned private diesel vehicles from the historical center.",
+    "options": [
+      "Seeking",
+      "Sought",
+      "Having sought",
+      "To seek"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Present participle 'Seeking' conveys the active goal guiding the municipal policy.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1730",
+    "question": "Fill in the blank: The space agency tested four prototype heat shields, none _______ exhibited structural delamination during atmospheric re-entry testing.",
+    "options": [
+      "of whom",
+      "of which",
+      "of that",
+      "which"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'None of which' modifies the non-human 'heat shields'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Relative Clauses & Participles"
+  },
+  {
+    "id": "ielts-gram-1731",
+    "question": "Fill in the blank: The forensic investigation concluded that the electrical short-circuit _______ the primary cause of the warehouse fire, as all main circuit breakers remained untripped.",
+    "options": [
+      "should have been",
+      "must have been",
+      "cannot have been",
+      "might have been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Cannot have been' expresses logical impossibility/improbability in the past based on strong counter-evidence ('circuit breakers remained untripped').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1732",
+    "question": "Choose the correct modal form: The deep-sea salvage divers _______ to recover the black box from the wreckage despite torrential surface swells and zero abyssal visibility.",
+    "options": [
+      "should",
+      "could",
+      "might",
+      "were able"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Were able to' is required (rather than 'could') to express successful achievement in a specific, challenging past event.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1733",
+    "question": "Fill in the blank: Given that the seismic monitoring station recorded tremors thirty minutes before the landslide, the municipal emergency sirens _______ sounded immediately.",
+    "options": [
+      "should have been",
+      "must have been",
+      "cannot have been",
+      "might have been"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Should have been' denotes an unfulfilled past moral/procedural obligation that was neglected.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1734",
+    "question": "Choose the correct option: The pharmaceutical trial team _______ the entire batch of trial vaccines, as subsequent laboratory tests confirmed the cold-chain temperature remained intact throughout transit.",
+    "options": [
+      "did not need to discard",
+      "need not have discarded",
+      "could not discard",
+      "must not discard"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Need not have discarded' expresses that an action was performed unnecessarily in the past.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1735",
+    "question": "Fill in the blank: The ancient Minoan civilization _______ advanced hydraulic drainage systems, judging from the terracotta pipes excavated at Knossos.",
+    "options": [
+      "cannot have possessed",
+      "should have possessed",
+      "must have possessed",
+      "might possess"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Must have possessed' expresses strong logical deduction about a past state supported by archaeological evidence.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1736",
+    "question": "Choose the correct modal form: Because the museum had already digitized all nineteenth-century municipal ledgers, researchers _______ handle the fragile original parchment volumes.",
+    "options": [
+      "could not have",
+      "need not have",
+      "must not",
+      "did not need to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Did not need to' indicates there was no necessity to do something in the past (and consequently it was not done).",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1737",
+    "question": "Fill in the blank: The aerospace engineering crew _______ the anomalous telemetry reading before authorizing the rocket ignition sequence.",
+    "options": [
+      "ought to have investigated",
+      "must investigate",
+      "cannot have investigated",
+      "might investigate"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Ought to have investigated' expresses past duty or standard procedure that was regrettably overlooked.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1738",
+    "question": "Choose the correct option: The planetary rover's solar panels were covered in fine Martian dust; otherwise, it _______ transmitting signals for another six months.",
+    "options": [
+      "must continue",
+      "might have continued",
+      "should continue",
+      "could not continue"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Might have continued' expresses a past hypothetical possibility that was prevented by circumstances.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1739",
+    "question": "Fill in the blank: The defense counsel argued that the corporate defendant _______ of the financial embezzlement because she was hospitalized abroad when the transfers occurred.",
+    "options": [
+      "should have known",
+      "must have known",
+      "could not have known",
+      "might know"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Could not have known' denotes negative past deduction based on physical impossibility.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1740",
+    "question": "Choose the correct modal form: Despite the dense alpine fog, the search-and-rescue helicopter _______ land safely on the narrow mountain ridge.",
+    "options": [
+      "would",
+      "could",
+      "might",
+      "managed to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Managed to' expresses past achievement of a difficult task on a specific occasion.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1741",
+    "question": "Fill in the blank: The archaeological team _______ the excavation trench when torrential rains threatened to erode the exposed mudbrick foundations.",
+    "options": [
+      "had to cover",
+      "must cover",
+      "should cover",
+      "might cover"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Had to cover' expresses past external obligation necessitated by sudden weather.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1742",
+    "question": "Choose the correct option: The sudden surge in sulfur dioxide emissions _______ that magma was ascending toward the volcanic vent.",
+    "options": [
+      "should indicate",
+      "must have indicated",
+      "cannot indicate",
+      "need not indicate"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Must have indicated' expresses logical past deduction based on volcanic chemical readings.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1743",
+    "question": "Fill in the blank: You _______ the confidential clinical patient records without encrypted two-factor authentication, as it violated federal medical privacy laws.",
+    "options": [
+      "cannot transmit",
+      "must not transmit",
+      "should not have transmitted",
+      "need not transmit"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Should not have transmitted' expresses strong criticism of an improper action completed in the past.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1744",
+    "question": "Choose the correct modal form: The meteorologists _______ the severity of the coastal storm surge, causing thousands of residents to delay evacuation.",
+    "options": [
+      "should underestimate",
+      "cannot have underestimated",
+      "need not underestimate",
+      "must have underestimated"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Must have underestimated' denotes past deduction explaining the delayed evacuation.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1745",
+    "question": "Fill in the blank: The expedition leaders _______ additional satellite communication batteries; the base camp had ample solar recharging panels.",
+    "options": [
+      "need not have brought",
+      "did not need to bring",
+      "could not bring",
+      "must not bring"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Need not have brought' conveys that bringing the extra batteries was an unnecessary past action actually carried out.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1746",
+    "question": "Choose the correct option: The flight crew _______ the secondary fuel tank valve, which caused the right engine to flame out during final approach.",
+    "options": [
+      "should forget to open",
+      "must have forgotten to open",
+      "cannot have forgotten to open",
+      "might forget to open"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Must have forgotten to open' provides the past logical deduction accounting for the engine flameout.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1747",
+    "question": "Fill in the blank: The ancient navigators _______ by stellar constellations, as magnetic compasses were unknown in the Mediterranean during the Bronze Age.",
+    "options": [
+      "should have steered",
+      "cannot have steered",
+      "must have steered",
+      "might steer"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Must have steered' indicates a high-confidence past deduction derived from historical facts.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1748",
+    "question": "Choose the correct modal form: The cybersecurity team _______ to repel the distributed denial-of-service attack before any database servers crashed.",
+    "options": [
+      "should",
+      "could",
+      "might",
+      "was able"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Was able to' expresses success in overcoming a specific past crisis.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1749",
+    "question": "Fill in the blank: The construction contractor _______ high-sulfate resistant cement for the coastal sea wall, which is why the concrete is already spalling.",
+    "options": [
+      "ought to have used",
+      "must use",
+      "cannot have used",
+      "need not have used"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Ought to have used' expresses past failure to use the required material.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1750",
+    "question": "Choose the correct option: The paleontologist _______ the fossil specimen to be an adult velociraptor; subsequent tomography revealed juvenile cranial sutures.",
+    "options": [
+      "must confirm",
+      "cannot have confirmed",
+      "should confirm",
+      "might confirm"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Cannot have confirmed' expresses past logical impossibility in light of subsequent disproving evidence.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1751",
+    "question": "Fill in the blank: The laboratory staff _______ the biological samples into cold storage immediately after centrifuge extraction, but they left them on the counter.",
+    "options": [
+      "cannot transfer",
+      "must have transferred",
+      "should have transferred",
+      "might transfer"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Should have transferred' criticizes the failure to execute standard operating procedure.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1752",
+    "question": "Choose the correct modal form: The wildlife tracking team _______ locate the elusive Amur leopard after three weeks of snow tracking in the taiga.",
+    "options": [
+      "would",
+      "could",
+      "might",
+      "managed to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Managed to' denotes successful achievement of a difficult past objective.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1753",
+    "question": "Fill in the blank: The ancient city _______ an extensive earthquake disaster around 1200 BCE, as thick layers of collapsed masonry and ash were found throughout the stratigraphy.",
+    "options": [
+      "must have suffered",
+      "cannot have suffered",
+      "should have suffered",
+      "might suffer"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Must have suffered' expresses a high-probability past deduction grounded in archaeological evidence.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1754",
+    "question": "Choose the correct option: The regional power grid operator _______ additional gas peaking turbines; wind generation unexpectedly surged throughout the evening.",
+    "options": [
+      "did not need to fire up",
+      "need not have fired up",
+      "could not fire up",
+      "must not fire up"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Need not have fired up' denotes that the turbines were activated, but in hindsight it was unnecessary.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1755",
+    "question": "Fill in the blank: The research vessel _______ into the restricted marine sanctuary without explicit diplomatic clearance from the coastal state.",
+    "options": [
+      "cannot sail",
+      "must not sail",
+      "should not have sailed",
+      "need not sail"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Should not have sailed' expresses retrospective condemnation of an unlawful past action.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1756",
+    "question": "Choose the correct modal form: Given the pristine condition of the copper coinage, the burial hoard _______ deposited immediately before the enemy siege.",
+    "options": [
+      "might be",
+      "cannot have been",
+      "should have been",
+      "must have been"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Must have been' expresses confident deduction regarding the past timing of deposition.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1757",
+    "question": "Fill in the blank: The rescue team _______ through three meters of avalanche debris to reach the trapped mountaineers.",
+    "options": [
+      "was able to dig",
+      "could dig",
+      "might dig",
+      "should dig"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Was able to dig' conveys successful physical achievement in a specific emergency.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1758",
+    "question": "Choose the correct option: The spacecraft engineers _______ the optical communications laser during solar transit, resulting in telemetry corruption.",
+    "options": [
+      "must not operate",
+      "should not have operated",
+      "cannot operate",
+      "need not operate"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Should not have operated' reflects retrospective error in technical operational judgment.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1759",
+    "question": "Fill in the blank: The ancient manuscript _______ written by a single scribe, as paleographical analysis shows four distinct handwriting styles.",
+    "options": [
+      "should have been",
+      "must have been",
+      "cannot have been",
+      "might have been"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Cannot have been' expresses past logical impossibility based on paleographical proof.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1760",
+    "question": "Choose the correct modal form: Because the weather station provided hourly storm forecasts, local mariners _______ venture out into the treacherous passage.",
+    "options": [
+      "could not have",
+      "need not have",
+      "must not have",
+      "did not need to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Did not need to' indicates there was no necessity to go out, and mariners avoided doing so.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1761",
+    "question": "Fill in the blank: The mining company _______ the tailing dam walls prior to the onset of the monsoon season.",
+    "options": [
+      "ought to have reinforced",
+      "must reinforce",
+      "cannot have reinforced",
+      "might reinforce"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Ought to have reinforced' highlights a neglected past safety duty.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1762",
+    "question": "Choose the correct option: The deep-sea submersible _______ at a depth of four thousand meters; its titanium pressure hull showed no structural deformation.",
+    "options": [
+      "must have imploded",
+      "could not have imploded",
+      "should have imploded",
+      "might implode"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Could not have imploded' reflects deduction of impossibility given the hull's intact condition.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1763",
+    "question": "Fill in the blank: The hospital administration _______ emergency oxygen supplies when the regional liquid oxygen plant experienced a compressor breakdown.",
+    "options": [
+      "should ration",
+      "must ration",
+      "had to ration",
+      "might ration"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Had to ration' denotes past unavoidable necessity.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1764",
+    "question": "Choose the correct modal form: The botanical expedition _______ five new species of epiphytic orchids in the cloud forest canopy.",
+    "options": [
+      "would discover",
+      "could discover",
+      "might discover",
+      "managed to discover"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Managed to discover' denotes actual past achievement in exploration.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1765",
+    "question": "Fill in the blank: The financial audit team concluded that the bank executive _______ unauthorized transfers to offshore accounts over three years.",
+    "options": [
+      "must have authorized",
+      "should authorize",
+      "cannot authorize",
+      "need not authorize"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Must have authorized' indicates a past logical conclusion reached after extensive audit.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1766",
+    "question": "Choose the correct option: You _______ all the dry ice pellets; the refrigeration technician arrived twenty minutes later with replacement coolant coils.",
+    "options": [
+      "did not need to purchase",
+      "need not have purchased",
+      "could not purchase",
+      "must not purchase"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Need not have purchased' indicates an unnecessary action that was actually carried out.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1767",
+    "question": "Fill in the blank: The structural engineers _______ the load-bearing capacity of the historic arch bridge before approving the transit of heavy military transport vehicles.",
+    "options": [
+      "cannot verify",
+      "must verify",
+      "should have verified",
+      "might verify"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Should have verified' criticizes the past lapse in engineering due diligence.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1768",
+    "question": "Choose the correct modal form: Despite intense diplomatic friction, the international delegation _______ negotiate a mutually acceptable fishing quota treaty.",
+    "options": [
+      "should",
+      "could",
+      "might",
+      "was able to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Was able to' expresses success in concluding difficult negotiations.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1769",
+    "question": "Fill in the blank: The ancient library _______ destroyed by fire in a single afternoon, as stratigraphic layers show multiple progressive burn episodes over centuries.",
+    "options": [
+      "cannot have been",
+      "must have been",
+      "should have been",
+      "might have been"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Cannot have been' expresses past deduction of impossibility based on multi-layered burn stratigraphy.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1770",
+    "question": "Choose the correct option: The pharmaceutical laboratory _______ all preclinical animal testing data with the regulatory dossier, as required by law.",
+    "options": [
+      "must file",
+      "ought to have filed",
+      "cannot file",
+      "might file"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Ought to have filed' denotes a past legal and regulatory duty that was omitted.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Modals & Past Deduction"
+  },
+  {
+    "id": "ielts-gram-1771",
+    "question": "Fill in the blank: The volcanic eruption on the island of Java disrupted air traffic across _______ Indian Ocean for several weeks.",
+    "options": [
+      "an",
+      "a",
+      "the",
+      "no article"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Names of oceans, seas, and rivers require the definite article 'the' ('the Indian Ocean').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1772",
+    "question": "Choose the correct quantifier: Due to the rigorous confidentiality agreement, _______ details regarding the proprietary semiconductor patent have been released to the press.",
+    "options": [
+      "a little",
+      "a few",
+      "little",
+      "few"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Few' (with plural count noun 'details') has a negative connotation meaning 'scarcely any' or 'almost none'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1773",
+    "question": "Fill in the blank: The newly appointed ambassador has spent nearly _______ decade negotiating bilateral trade agreements in Southeast Asia.",
+    "options": [
+      "a",
+      "the",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'A decade' uses the indefinite article 'a' before a singular countable unit of time.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1774",
+    "question": "Choose the correct option: The historical research monograph examines the socio-economic impact of _______ silk trade across Eurasia during the Tang Dynasty.",
+    "options": [
+      "a",
+      "the",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Definite article 'the' is used when the trade is specified and defined by the following prepositional modifier ('the silk trade across Eurasia').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1775",
+    "question": "Fill in the blank: The environmental survey revealed that _______ progress had been made in reducing municipal landfill runoff into the bay.",
+    "options": [
+      "a few",
+      "few",
+      "little",
+      "many"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Little' modifies uncountable nouns ('progress') with a negative connotation, meaning 'almost no progress'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1776",
+    "question": "Choose the correct article usage: The Challenger Deep, situated in the Mariana Trench, is the deepest surveyed point in _______ world ocean.",
+    "options": [
+      "no article",
+      "a",
+      "an",
+      "the"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Unique planetary entities and superlative expressions take the definite article 'the' ('in the world ocean').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1777",
+    "question": "Fill in the blank: The economic report noted that _______ of the commercial retail units in the downtown arcade remained vacant after the financial downturn.",
+    "options": [
+      "most",
+      "almost",
+      "the most",
+      "mostly"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Most of the [plural noun]' is the standard quantifier structure meaning the majority.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1778",
+    "question": "Choose the correct option: Dr. Aris delivered a lecture on the ethics of _______ artificial intelligence in biomedical diagnostics.",
+    "options": [
+      "the",
+      "no article",
+      "a",
+      "an"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Abstract fields of study and technology in general ('artificial intelligence') take zero article.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1779",
+    "question": "Fill in the blank: Although the expedition faced severe blizzards, they had _______ food remaining in their emergency survival cache.",
+    "options": [
+      "few",
+      "little",
+      "a little",
+      "a few"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'A little' modifies uncountable mass nouns ('food') with a positive sense, meaning 'some / a modest amount'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1780",
+    "question": "Choose the correct quantifier: The wildlife preserve is home to eight species of hornbills, _______ of which are listed as critically endangered.",
+    "options": [
+      "neither",
+      "every",
+      "either",
+      "each"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Each of which' is used with pronouns/quantifiers referencing individual members of a specified group.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1781",
+    "question": "Fill in the blank: The international conference on renewable energy was held in _______ Netherlands last November.",
+    "options": [
+      "the",
+      "a",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Country names that are plural in form (e.g. 'the Netherlands', 'the Philippines') take the definite article 'the'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1782",
+    "question": "Choose the correct option: The pharmaceutical chemist synthesized _______ compound that exhibited potent antimicrobial activity against resistant biofilms.",
+    "options": [
+      "the",
+      "a",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Indefinite article 'a' introduces a single, previously unmentioned countable noun ('a compound').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1783",
+    "question": "Fill in the blank: The archaeological catalog detailed _______ historical artifact excavated from the Mesopotamian mound.",
+    "options": [
+      "most",
+      "all",
+      "every",
+      "both"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Every' modifies a singular countable noun ('artifact') to emphasize all items individually.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1784",
+    "question": "Choose the correct quantifier: Neither of the two proposed subway expansion routes _______ approved by the municipal planning board.",
+    "options": [
+      "have been",
+      "were",
+      "are",
+      "was"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Neither of the two...' is grammatically singular and takes the singular verb 'was'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1785",
+    "question": "Fill in the blank: The laboratory requires _______ ultra-high vacuum chamber for the surface spectroscopy experiments.",
+    "options": [
+      "an",
+      "a",
+      "the",
+      "no article"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Indefinite article 'an' is used before vowel sounds ('ultra-high').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1786",
+    "question": "Choose the correct option: The ancient maritime trade route connected the port of Alexandria with _______ Red Sea.",
+    "options": [
+      "a",
+      "the",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Bodies of water such as seas, gulfs, and oceans take 'the' ('the Red Sea').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1787",
+    "question": "Fill in the blank: After the currency devaluation, _______ international investors withdrew capital from the domestic bond market.",
+    "options": [
+      "a much",
+      "much",
+      "many",
+      "every"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Many' modifies plural countable nouns ('investors').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1788",
+    "question": "Choose the correct quantifier: The clinical trial was discontinued because _______ patients experienced severe adverse hepatic reactions.",
+    "options": [
+      "every",
+      "much",
+      "each",
+      "several"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Several' modifies plural countable nouns ('patients') indicating an appreciable number.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1789",
+    "question": "Fill in the blank: Professor Thorne has contributed extensively to the study of _______ European history in the early modern era.",
+    "options": [
+      "no article",
+      "the",
+      "a",
+      "an"
+    ],
+    "correctAnswer": "A",
+    "explanation": "General historical periods or fields of study when unmodified by defining restrictive clauses take zero article.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1790",
+    "question": "Choose the correct option: The team identified _______ unique geological formation at the base of the rift valley.",
+    "options": [
+      "an",
+      "a",
+      "the",
+      "no article"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Unique' begins with a consonant sound (/ju\u02d0/), requiring 'a' rather than 'an'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1791",
+    "question": "Fill in the blank: The regional water reservoir has _______ water left following eight months of drought.",
+    "options": [
+      "a few",
+      "very few",
+      "very little",
+      "many"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Very little' is used with the uncountable noun 'water' to indicate an extremely scarce amount.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1792",
+    "question": "Choose the correct quantifier: _______ the lead researcher and the chief laboratory technician signed the data verification certificate.",
+    "options": [
+      "Neither",
+      "Each",
+      "Either",
+      "Both"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Both... and' joins two entities in an affirmative compound subject.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1793",
+    "question": "Fill in the blank: The spacecraft entered _______ orbit around Saturn after a seven-year interplanetary voyage.",
+    "options": [
+      "no article",
+      "the",
+      "a",
+      "an"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The idiomatic phrase is 'enter orbit' or 'in orbit' with zero article.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1794",
+    "question": "Choose the correct option: The botanical garden houses _______ hundred varieties of medicinal herbs from the Andes.",
+    "options": [
+      "much",
+      "several",
+      "every",
+      "neither"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Several hundred' modifies the plural count noun 'varieties'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1795",
+    "question": "Fill in the blank: The ancient Greek philosopher Plato founded the Academy in _______ Athens around 387 BCE.",
+    "options": [
+      "a",
+      "the",
+      "no article",
+      "an"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Names of cities (e.g. 'Athens', 'Rome', 'London') take zero article.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1796",
+    "question": "Choose the correct quantifier: There is _______ doubt that the burning of fossil fuels is accelerating atmospheric warming.",
+    "options": [
+      "many",
+      "few",
+      "a few",
+      "little"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Little doubt' is the idiomatic phrase meaning 'almost no doubt' (uncountable).",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1797",
+    "question": "Fill in the blank: The municipal authority planted _______ row of native cypress trees along the western perimeter of the reservoir.",
+    "options": [
+      "a",
+      "an",
+      "the",
+      "no article"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Indefinite article 'a' modifies the singular countable collective noun 'row'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1798",
+    "question": "Choose the correct option: The expedition spent three months traversing _______ Sahara Desert on camelback.",
+    "options": [
+      "a",
+      "the",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Names of deserts take the definite article 'the' ('the Sahara Desert', 'the Gobi').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1799",
+    "question": "Fill in the blank: The research paper provided _______ examples of successful municipal rainwater harvesting initiatives.",
+    "options": [
+      "much",
+      "a little",
+      "a few",
+      "every"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'A few' modifies plural count nouns ('examples') indicating a small but positive number.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1800",
+    "question": "Choose the correct quantifier: _______ applicant was required to submit three letters of recommendation and a research proposal.",
+    "options": [
+      "Several",
+      "All",
+      "Both",
+      "Each"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Each' takes a singular count noun ('applicant') and singular verb ('was').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1801",
+    "question": "Fill in the blank: The historic university library was founded in _______ sixteenth century.",
+    "options": [
+      "the",
+      "a",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Ordinal numbers designating historical centuries take 'the' ('the sixteenth century').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1802",
+    "question": "Choose the correct option: The doctor advised the patient to avoid _______ sodium-rich processed foods to lower hypertension risk.",
+    "options": [
+      "the",
+      "no article",
+      "a",
+      "an"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Plural countable nouns used generically ('sodium-rich processed foods') take zero article.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1803",
+    "question": "Fill in the blank: The archaeological mission discovered _______ ancient bronze dagger in the ceremonial burial mound.",
+    "options": [
+      "the",
+      "a",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'An' is used before vowel sounds ('ancient').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1804",
+    "question": "Choose the correct quantifier: _______ members of the advisory board voted in favor of divesting from non-renewable energy holdings.",
+    "options": [
+      "Much",
+      "Every",
+      "Each",
+      "All"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'All' modifies the plural count noun 'members' directly.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1805",
+    "question": "Fill in the blank: The newly discovered marine species lives at the bottom of _______ Pacific Ocean.",
+    "options": [
+      "the",
+      "a",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Oceans take the definite article 'the' ('the Pacific Ocean').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1806",
+    "question": "Choose the correct option: The economist argued that _______ inflation remains a primary concern for central banking authorities.",
+    "options": [
+      "the",
+      "no article",
+      "a",
+      "an"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Uncountable economic concepts used in a general sense ('inflation') take zero article.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1807",
+    "question": "Fill in the blank: There were _______ complaints from airline passengers regarding the flight rescheduling.",
+    "options": [
+      "a little",
+      "little",
+      "few",
+      "much"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Few' modifies the plural count noun 'complaints' with negative meaning ('very few / almost none').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1808",
+    "question": "Choose the correct quantifier: The engineers evaluated _______ of the two hydraulic turbine designs before making their final procurement choice.",
+    "options": [
+      "much",
+      "every",
+      "all",
+      "both"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Both of the two...' refers specifically to a pair of items.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1809",
+    "question": "Fill in the blank: The team spent three weeks conducting oceanographic research in _______ Lake Baikal.",
+    "options": [
+      "no article",
+      "the",
+      "a",
+      "an"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Individual lakes preceded by the word 'Lake' (e.g. 'Lake Baikal', 'Lake Superior') take zero article.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1810",
+    "question": "Choose the correct option: The museum exhibition features _______ rare Stradivarius violin manufactured in 1714.",
+    "options": [
+      "an",
+      "a",
+      "the",
+      "no article"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Indefinite article 'a' is used before the singular countable noun phrase 'rare Stradivarius violin'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1811",
+    "question": "Fill in the blank: With _______ patience and meticulous micro-drilling, the conservator was able to remove the calcite encrustation from the ancient coin.",
+    "options": [
+      "few",
+      "little",
+      "a little",
+      "a few"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'A little' modifies uncountable 'patience' in a positive sense ('with some patience').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1812",
+    "question": "Choose the correct quantifier: _______ student enrolled in the postgraduate diploma program must submit an independent capstone project.",
+    "options": [
+      "Several",
+      "All",
+      "Both",
+      "Every"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Every' modifies the singular noun 'student' and takes a singular verb 'must submit'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1813",
+    "question": "Fill in the blank: The physics department purchased _______ electronic microscope capable of atomic-scale spatial resolution.",
+    "options": [
+      "an",
+      "a",
+      "the",
+      "no article"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'An' is required before vowel sounds ('electronic').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1814",
+    "question": "Choose the correct option: The trade delegation traveled across _______ Andes mountain range to inspect the newly completed trans-continental railway.",
+    "options": [
+      "a",
+      "the",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Mountain ranges in the plural take 'the' ('the Andes', 'the Alps', 'the Himalayas').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1815",
+    "question": "Fill in the blank: The biophysicist presented _______ innovative hypothesis regarding protein folding pathways.",
+    "options": [
+      "the",
+      "a",
+      "an",
+      "no article"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'An' is used before 'innovative' (vowel sound).",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Articles & Quantifiers"
+  },
+  {
+    "id": "ielts-gram-1816",
+    "question": "Fill in the blank: The implementation of the cross-border carbon pricing mechanism is strictly contingent _______ unanimous approval by all member state parliaments.",
+    "options": [
+      "for",
+      "with",
+      "to",
+      "upon"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The formal adjective 'contingent' collocates with the preposition 'upon' (or 'on') to denote conditional dependence.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1817",
+    "question": "Choose the correct preposition: The municipal environmental department attributed the sudden drop in river dissolved oxygen _______ untreated effluent discharges from the upstream distillery.",
+    "options": [
+      "to",
+      "from",
+      "with",
+      "for"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The transitive verb 'attribute [effect] to [cause]' requires the preposition 'to'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1818",
+    "question": "Fill in the blank: The rare high-altitude alpine lichen is exceptionally susceptible _______ airborne sulfur dioxide pollutants.",
+    "options": [
+      "with",
+      "to",
+      "for",
+      "against"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The adjective 'susceptible' governs the preposition 'to' ('susceptible to pollutants').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1819",
+    "question": "Choose the correct option: The diplomatic summit concluded _______ a joint declaration pledging bilateral maritime cooperation in the South China Sea.",
+    "options": [
+      "in",
+      "by",
+      "with",
+      "from"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The verb 'conclude' when meaning to end by producing a result takes 'with' ('concluded with a joint declaration').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1820",
+    "question": "Fill in the blank: The archaeological conservators worked _______ a view to stabilizing the fragile Roman wall plaster before public display.",
+    "options": [
+      "for",
+      "in",
+      "by",
+      "with"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The fixed prepositional idiom is 'with a view to + -ing' (meaning with the purpose or intention of).",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1821",
+    "question": "Choose the correct preposition: Deep-sea coral reefs are immune _______ the direct effects of surface atmospheric storms but remain vulnerable to ocean acidification.",
+    "options": [
+      "to",
+      "from",
+      "against",
+      "with"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The adjective 'immune' takes 'to' in standard medical and scientific English ('immune to effects').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1822",
+    "question": "Fill in the blank: The committee commended the lead civil engineer _______ her decisive action during the tunnel flooding emergency.",
+    "options": [
+      "to",
+      "for",
+      "with",
+      "on"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The verb 'commend [someone] for [something]' requires 'for'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1823",
+    "question": "Choose the correct option: The new cryptographic security architecture is fully compatible _______ existing legacy database management systems.",
+    "options": [
+      "for",
+      "to",
+      "with",
+      "against"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The adjective 'compatible' collocates with 'with' ('compatible with systems').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1824",
+    "question": "Fill in the blank: The university research team was deterred _______ publishing their preliminary results due to ongoing patent litigation.",
+    "options": [
+      "with",
+      "to",
+      "by",
+      "from"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The passive verb phrase 'be deterred from [gerund]' requires the preposition 'from'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1825",
+    "question": "Choose the correct preposition: The financial regulatory body acted _______ accordance with the statutory mandates set forth in the 2010 Banking Reform Act.",
+    "options": [
+      "in",
+      "with",
+      "by",
+      "under"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The standard legal collocation is 'in accordance with'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1826",
+    "question": "Fill in the blank: The sudden decline in migratory songbird populations stems _______ the widespread destruction of hedgerows and riparian corridors.",
+    "options": [
+      "to",
+      "from",
+      "in",
+      "with"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The phrasal verb 'stem from' means to originate or result from.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1827",
+    "question": "Choose the correct option: The medical board required all surgical residents to abstain _______ alcohol consumption for twelve hours prior to an on-call shift.",
+    "options": [
+      "of",
+      "to",
+      "from",
+      "with"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The verb 'abstain' governs the preposition 'from' ('abstain from alcohol').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1828",
+    "question": "Fill in the blank: The expedition to the Antarctic interior was fraught _______ logistical difficulties, including sub-zero temperatures and crevassed glaciers.",
+    "options": [
+      "in",
+      "by",
+      "of",
+      "with"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The adjective 'fraught' collocates with 'with' ('fraught with difficulties').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1829",
+    "question": "Choose the correct preposition: The aerospace engineers succeeded _______ developing an ultra-lightweight titanium turbine blade that reduces fuel burn by four percent.",
+    "options": [
+      "in",
+      "on",
+      "at",
+      "with"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The verb 'succeed' takes 'in + gerund' ('succeeded in developing').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1830",
+    "question": "Fill in the blank: The international conference on public health was held _______ the auspices of the World Health Organization.",
+    "options": [
+      "in",
+      "under",
+      "with",
+      "by"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The fixed formal idiom is 'under the auspices of' (meaning with the patronage or sponsorship of).",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1831",
+    "question": "Choose the correct option: The newly enacted data privacy regulation applies _______ all corporate entities operating within the sovereign jurisdiction.",
+    "options": [
+      "with",
+      "for",
+      "to",
+      "towards"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Apply to [entities]' is the correct prepositional pairing for legal applicability.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1832",
+    "question": "Fill in the blank: The rapid expansion of suburban housing developments occurred _______ the expense of prime agricultural topsoil.",
+    "options": [
+      "by",
+      "in",
+      "with",
+      "at"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The fixed prepositional phrase is 'at the expense of'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1833",
+    "question": "Choose the correct preposition: The research fellow is deeply proficient _______ mathematical modeling of non-linear fluid dynamics.",
+    "options": [
+      "in",
+      "at",
+      "with",
+      "for"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The adjective 'proficient' collocates with 'in' (or 'at') when referencing academic/technical fields ('proficient in modeling').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1834",
+    "question": "Fill in the blank: The central bank's emergency intervention coincided _______ a sharp rebound in regional equity indices.",
+    "options": [
+      "to",
+      "with",
+      "by",
+      "at"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The verb 'coincide' takes 'with' ('coincided with a rebound').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1835",
+    "question": "Choose the correct option: By virtue _______ its extensive geothermal reserves, Iceland generates nearly one hundred percent of its electrical power from renewables.",
+    "options": [
+      "with",
+      "for",
+      "of",
+      "by"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The fixed idiom is 'by virtue of' (meaning because of or through the merit of).",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1836",
+    "question": "Fill in the blank: The hospital ethics committee was oblivious _______ the conflict of interest between the clinical investigator and the drug sponsor.",
+    "options": [
+      "from",
+      "of",
+      "with",
+      "to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The adjective 'oblivious' collocates with 'to' (or 'of') ('oblivious to the conflict').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1837",
+    "question": "Choose the correct preposition: The maritime salvage operation culminated _______ the successful lifting of the seventeenth-century bronze cannon from the seabed.",
+    "options": [
+      "in",
+      "to",
+      "with",
+      "at"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The verb 'culminate' takes 'in' to indicate the final climactic result ('culminated in the lifting').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1838",
+    "question": "Fill in the blank: The wildlife biologist expressed concern _______ the rapid fragmentation of the primary forest corridor.",
+    "options": [
+      "to",
+      "about",
+      "for",
+      "with"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Express concern about (or over)' is the standard collocation.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1839",
+    "question": "Choose the correct option: The pharmaceutical trial adhered strictly _______ the international ethical standards outlined in the Declaration of Helsinki.",
+    "options": [
+      "for",
+      "with",
+      "to",
+      "by"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The verb 'adhere' requires 'to' ('adhered strictly to standards').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1840",
+    "question": "Fill in the blank: The old railway viaduct was _______ the verge of structural collapse before the emergency underpinning was completed.",
+    "options": [
+      "by",
+      "at",
+      "in",
+      "on"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The fixed prepositional idiom is 'on the verge of'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1841",
+    "question": "Choose the correct preposition: The legal team advised the defendant to plead guilty _______ deference to the overwhelming documentary evidence.",
+    "options": [
+      "in",
+      "with",
+      "by",
+      "for"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The formal collocation is 'in deference to' (meaning out of respect or submission to).",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1842",
+    "question": "Fill in the blank: The university faculty decided to dispense _______ the traditional paper examination in favor of continuous digital assessment.",
+    "options": [
+      "from",
+      "with",
+      "of",
+      "for"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The phrasal verb 'dispense with' means to manage without or get rid of.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1843",
+    "question": "Choose the correct option: The public health agency's recommendation is based _______ rigorous meta-analyses of seventy randomized clinical trials.",
+    "options": [
+      "to",
+      "in",
+      "on",
+      "with"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The passive verb phrase 'be based on' takes the preposition 'on'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1844",
+    "question": "Fill in the blank: The company's expansion strategy is fraught _______ financial risks due to volatile foreign exchange fluctuations.",
+    "options": [
+      "of",
+      "by",
+      "in",
+      "with"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Fraught with' is the fixed collocation.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1845",
+    "question": "Choose the correct preposition: The environmental group called for policies that prioritize long-term ecological sustainability _______ short-term industrial profit.",
+    "options": [
+      "over",
+      "to",
+      "than",
+      "against"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The verb 'prioritize [X] over [Y]' requires 'over'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1846",
+    "question": "Fill in the blank: The research findings are consistent _______ the predictions generated by the general circulation climate model.",
+    "options": [
+      "to",
+      "with",
+      "for",
+      "in"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The adjective 'consistent' collocates with 'with'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1847",
+    "question": "Choose the correct option: The archaeological expedition succeeded _______ uncovering three monumental stone relief panels depicting Assyrian royal hunts.",
+    "options": [
+      "at",
+      "on",
+      "in",
+      "with"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Succeed in [gerund]' requires 'in'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1848",
+    "question": "Fill in the blank: The coastal village is prone _______ severe storm surge inundation during the autumn hurricane season.",
+    "options": [
+      "at",
+      "for",
+      "with",
+      "to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The adjective 'prone' collocates with 'to' ('prone to inundation').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1849",
+    "question": "Choose the correct preposition: The economist refused to subscribe _______ the assumption that free markets automatically eliminate wealth inequality.",
+    "options": [
+      "to",
+      "with",
+      "for",
+      "in"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The verb 'subscribe to [an idea/theory]' requires 'to'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1850",
+    "question": "Fill in the blank: The new hospital wing was constructed _______ compliance with international earthquake resilience standards.",
+    "options": [
+      "with",
+      "in",
+      "by",
+      "under"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The formal collocation is 'in compliance with'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1851",
+    "question": "Choose the correct option: The research institute was founded _______ the intent of promoting interdisciplinary scientific collaboration across the continent.",
+    "options": [
+      "by",
+      "in",
+      "with",
+      "for"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The standard idiom is 'with the intent of + -ing'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1852",
+    "question": "Fill in the blank: The laboratory technician was reprimanded _______ failing to document the disposal of hazardous chemical waste.",
+    "options": [
+      "about",
+      "to",
+      "with",
+      "for"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The passive structure 'be reprimanded for [doing something]' requires 'for'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1853",
+    "question": "Choose the correct preposition: The historical monograph sheds light _______ the diplomatic negotiations that preceded the outbreak of the Seven Years' War.",
+    "options": [
+      "on",
+      "to",
+      "with",
+      "at"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The idiomatic phrase is 'shed light on [a subject]'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1854",
+    "question": "Fill in the blank: The endangered plant species is native _______ the limestone karst formations of northern Vietnam.",
+    "options": [
+      "in",
+      "to",
+      "with",
+      "from"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The adjective 'native' governing origin or habitat takes 'to' ('native to the formations').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1855",
+    "question": "Choose the correct option: The government instituted strict price controls _______ a bid to curb runaway inflation.",
+    "options": [
+      "at",
+      "with",
+      "in",
+      "by"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The idiom is 'in a bid to [infinitive]' (meaning in an attempt to).",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1856",
+    "question": "Fill in the blank: The new corporate policy is incompatible _______ existing employment contracts and requires renegotiation.",
+    "options": [
+      "for",
+      "to",
+      "against",
+      "with"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The adjective 'incompatible' collocates with 'with'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1857",
+    "question": "Choose the correct preposition: The academic department prides itself _______ its high rate of graduate student employment in research institutes.",
+    "options": [
+      "on",
+      "in",
+      "with",
+      "for"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The reflexive verb 'pride oneself on [something]' requires 'on'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1858",
+    "question": "Fill in the blank: The volcanic eruption resulted _______ the displacement of twelve thousand residents from surrounding villages.",
+    "options": [
+      "to",
+      "in",
+      "from",
+      "with"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The verb 'result in [effect]' requires 'in' (contrasted with 'result from [cause]').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1859",
+    "question": "Choose the correct option: The museum exhibition was curated _______ collaboration with the National Archaeological Institute.",
+    "options": [
+      "by",
+      "with",
+      "in",
+      "under"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The standard phrase is 'in collaboration with'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1860",
+    "question": "Fill in the blank: The researcher's hypothesis is devoid _______ empirical support from contemporary observational data.",
+    "options": [
+      "in",
+      "from",
+      "with",
+      "of"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The adjective 'devoid' takes the preposition 'of' ('devoid of support').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Prepositions & Collocations"
+  },
+  {
+    "id": "ielts-gram-1861",
+    "question": "Fill in the blank: Never before _______ such detailed spectroscopic measurements of an exoplanetary atmosphere been acquired by ground-based observatories.",
+    "options": [
+      "have",
+      "has",
+      "had",
+      "did"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Fronted negative adverbial 'Never before' triggers auxiliary inversion with the plural subject 'such detailed spectroscopic measurements', taking 'have'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1862",
+    "question": "Choose the correct subjunctive form: The bioethics committee insisted that the clinical trial _______ immediately until independent monitors inspect the laboratory records.",
+    "options": [
+      "is suspended",
+      "be suspended",
+      "was suspended",
+      "will be suspended"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Mandative subjunctive following 'insisted that' requires the uninflected bare subjunctive passive form 'be suspended'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1863",
+    "question": "Fill in the blank: Only after the secondary coolant pumps were reactivated _______ the reactor core temperature begin to stabilize.",
+    "options": [
+      "had",
+      "was",
+      "did",
+      "does"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Only after [clause]' at the start of a sentence requires subject-auxiliary inversion in the main clause ('did the temperature begin').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1864",
+    "question": "Choose the correct option: Seldom _______ such a profound correlation between solar magnetic cycles and high-latitude auroral intensity.",
+    "options": [
+      "have observed astrophysicists",
+      "astrophysicists have observed",
+      "astrophysicists observed",
+      "have astrophysicists observed"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Fronted limiting adverb 'Seldom' triggers subject-auxiliary inversion ('have astrophysicists observed').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1865",
+    "question": "Fill in the blank: It is essential that every visiting researcher _______ to the bio-containment safety protocols posted at the airlock entrance.",
+    "options": [
+      "adhere",
+      "adheres",
+      "adhered",
+      "will adhere"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Mandative subjunctive after 'It is essential that' requires the base form of the verb 'adhere' (not 'adheres').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1866",
+    "question": "Choose the correct verb form: Scarcely _______ the high-altitude research aircraft entered the stratospheric jet stream when extreme turbulence sheared the starboard pitot tube.",
+    "options": [
+      "did",
+      "had",
+      "was",
+      "has"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Scarcely... when' triggers negative inversion with past perfect ('Scarcely had the aircraft entered...').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1867",
+    "question": "Fill in the blank: Under no circumstances _______ unauthorized personnel to enter the cryogenic storage vault without two-factor biometric authentication.",
+    "options": [
+      "were",
+      "is",
+      "are",
+      "have"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Fronted negative prepositional phrase 'Under no circumstances' triggers inversion with plural subject ('are unauthorized personnel to enter').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1868",
+    "question": "Choose the correct option: The university ombudsman recommended that the disciplinary inquiry _______ conducted by an impartial external barrister.",
+    "options": [
+      "should be being",
+      "is",
+      "was",
+      "be"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Mandative subjunctive following 'recommended that' takes the bare form 'be'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1869",
+    "question": "Fill in the blank: So rapid _______ the retreat of the alpine glacier that new proglacial moraine lakes formed within a single summer.",
+    "options": [
+      "was",
+      "were",
+      "is",
+      "did"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'So + adjective' fronting triggers inversion: 'So rapid was [subject]' with singular 'the retreat'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1870",
+    "question": "Choose the correct verb form: Little _______ the cybersecurity forensic analysts suspect that the malicious rootkit had compromised the kernel layer three months prior.",
+    "options": [
+      "had",
+      "did",
+      "were",
+      "do"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Negative adverbial 'Little' fronted before a past mental verb triggers auxiliary inversion with 'did [subject] suspect'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1871",
+    "question": "Fill in the blank: The public health authority demanded that the pharmaceutical manufacturer _______ all batches of the contaminated cough syrup within forty-eight hours.",
+    "options": [
+      "recalled",
+      "recalls",
+      "recall",
+      "will recall"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Mandative subjunctive after 'demanded that' requires the uninflected bare verb 'recall'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1872",
+    "question": "Choose the correct option: No sooner _______ the deep-sea dredge reached the abyssal seabed than its telemetry cable was severed by a submarine turbidity current.",
+    "options": [
+      "has",
+      "did",
+      "was",
+      "had"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'No sooner... than' requires past perfect inversion ('No sooner had [subject] reached...').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1873",
+    "question": "Fill in the blank: High above the volcanic caldera _______ a dense plume of sulfurous gas and tephra.",
+    "options": [
+      "rose",
+      "did rise",
+      "was rising it",
+      "rising"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Locative/directional prepositional fronting triggers full verb inversion ('High above the caldera rose a dense plume').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1874",
+    "question": "Choose the correct verb form: It is crucial that the lead civil engineer _______ the bridge's expansion joints before heavy traffic resumes.",
+    "options": [
+      "inspects",
+      "inspect",
+      "inspected",
+      "will inspect"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Mandative subjunctive after 'It is crucial that' requires the base form 'inspect'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1875",
+    "question": "Fill in the blank: Rarely _______ such intense magnetic field fluctuations been detected outside of active solar flare events.",
+    "options": [
+      "had",
+      "has",
+      "have",
+      "did"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Fronted negative adverb 'Rarely' triggers auxiliary inversion with plural subject 'fluctuations', taking 'have'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1876",
+    "question": "Choose the correct option: The judge ruled that the corporate defendant _______ all unredacted financial ledgers to the bankruptcy trustee by Friday.",
+    "options": [
+      "will provide",
+      "provides",
+      "provided",
+      "provide"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Mandative subjunctive following 'ruled that' in legal contexts takes the bare infinitive 'provide'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1877",
+    "question": "Fill in the blank: Such _______ the intensity of the seismic shockwave that masonry buildings twenty miles away suffered severe structural damage.",
+    "options": [
+      "was",
+      "were",
+      "is",
+      "did"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Such was + noun phrase' fronting triggers subject-verb inversion with singular 'the intensity'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1878",
+    "question": "Choose the correct verb form: Only by conducting extensive multi-spectral satellite surveys _______ the archaeologists able to map the hidden Mayan roadways beneath the jungle canopy.",
+    "options": [
+      "did",
+      "were",
+      "had",
+      "are"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Only by + gerund' fronting triggers inversion in the main clause ('were the archaeologists able').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1879",
+    "question": "Fill in the blank: On no account _______ the high-voltage testing apparatus be energized while technicians are inside the safety enclosure.",
+    "options": [
+      "is",
+      "does",
+      "must",
+      "will"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Fronted negative phrase 'On no account' triggers modal inversion ('must the apparatus be energized').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1880",
+    "question": "Choose the correct option: The aviation safety board recommended that the maximum flight duty period for long-haul crews _______ reduced to eleven consecutive hours.",
+    "options": [
+      "will be",
+      "is",
+      "was",
+      "be"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Mandative subjunctive after 'recommended that' takes the bare form 'be'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1881",
+    "question": "Fill in the blank: Not only _______ the newly discovered microorganism thrive in boiling acidic springs, but it also synthesizes unique thermo-stable enzymes.",
+    "options": [
+      "does",
+      "is",
+      "has",
+      "did"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Not only' fronting in present tense triggers auxiliary inversion with 'does [singular subject] thrive'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1882",
+    "question": "Choose the correct verb form: The defense treaty requires that each signatory nation _______ five percent of its gross domestic product to collective defense readiness.",
+    "options": [
+      "contributes",
+      "contribute",
+      "contributed",
+      "will contribute"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Mandative subjunctive after 'requires that' requires the uninflected base verb 'contribute'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1883",
+    "question": "Fill in the blank: Down the steep embankment _______ the runaway freight train, crashing through the safety barriers.",
+    "options": [
+      "was careening it",
+      "did careen",
+      "careened",
+      "careening"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Directional prepositional fronting ('Down the steep embankment') triggers full verb inversion ('careened the freight train').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1884",
+    "question": "Choose the correct option: It is vital that the attending physician _______ the patient's blood pressure every twenty minutes during the infusion.",
+    "options": [
+      "will monitor",
+      "monitors",
+      "monitored",
+      "monitor"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Mandative subjunctive after 'It is vital that' takes the base form 'monitor'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1885",
+    "question": "Fill in the blank: At no time _______ the flight crew receive any visual or audible stall warnings prior to the aerodynamic upset.",
+    "options": [
+      "did",
+      "were",
+      "had",
+      "does"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Fronted negative phrase 'At no time' triggers past auxiliary inversion ('did the flight crew receive').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1886",
+    "question": "Choose the correct verb form: The treaty negotiators proposed that a neutral demilitarized buffer zone _______ established along the disputed border.",
+    "options": [
+      "is",
+      "be",
+      "was",
+      "will be"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Subjunctive passive 'be established' is required after 'proposed that'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1887",
+    "question": "Fill in the blank: Only when the volcanic ash cloud dissipated _______ rescue helicopters able to evacuate stranded residents from the mountain village.",
+    "options": [
+      "had",
+      "did",
+      "were",
+      "are"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Only when [clause]' fronting requires inversion in the main clause ('were rescue helicopters able').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1888",
+    "question": "Choose the correct option: In no way _______ the statistical anomalies in the preliminary dataset undermine the core conclusions of the clinical trial.",
+    "options": [
+      "have",
+      "is",
+      "are",
+      "do"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Fronted negative phrase 'In no way' triggers present auxiliary inversion ('do the anomalies undermine').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1889",
+    "question": "Fill in the blank: The hospital director requested that all senior surgeons _______ present at the clinical morbidity conference on Thursday.",
+    "options": [
+      "be",
+      "are",
+      "were",
+      "will be"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Mandative subjunctive after 'requested that' takes 'be'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1890",
+    "question": "Choose the correct verb form: Barely _______ the automated telescope focused on the distant gamma-ray burst when thick coastal fog obscured the optical lens.",
+    "options": [
+      "did",
+      "had",
+      "was",
+      "has"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Barely... when' triggers past perfect inversion ('Barely had the telescope focused...').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1891",
+    "question": "Fill in the blank: It is imperative that the lab technician _______ the autoclave cycle before opening the biological waste chamber.",
+    "options": [
+      "verified",
+      "verifies",
+      "verify",
+      "will verify"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Mandative subjunctive after 'It is imperative that' takes 'verify'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1892",
+    "question": "Choose the correct option: Out of the dense jungle undergrowth _______ a family of rare Sumatran rhinoceroses, stunning the conservation biologists.",
+    "options": [
+      "emerging",
+      "did emerge",
+      "was emerging they",
+      "emerged"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Locative fronting ('Out of the jungle undergrowth') triggers full verb inversion ('emerged a family').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1893",
+    "question": "Fill in the blank: Seldom _______ such extraordinary fossil preservation in terrestrial amber deposits dating to the mid-Cretaceous period.",
+    "options": [
+      "have paleontologists encountered",
+      "paleontologists have encountered",
+      "paleontologists encountered",
+      "have encountered paleontologists"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Fronted 'Seldom' requires subject-auxiliary inversion ('have paleontologists encountered').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1894",
+    "question": "Choose the correct verb form: The environmental court mandated that the industrial chemical plant _______ its toxic effluent discharge into the estuary by eighty percent.",
+    "options": [
+      "curtails",
+      "curtail",
+      "curtailed",
+      "will curtail"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Mandative subjunctive after 'mandated that' requires the uninflected bare verb 'curtail'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1895",
+    "question": "Fill in the blank: Only after months of painstaking archival research _______ the historian discover the lost diplomatic correspondence between the two rival monarchs.",
+    "options": [
+      "had",
+      "was",
+      "did",
+      "does"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Only after [phrase]' fronting triggers past auxiliary inversion ('did the historian discover').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1896",
+    "question": "Choose the correct option: So dense _______ the particulate air pollution in the metropolitan basin that visibility dropped below one hundred meters.",
+    "options": [
+      "did",
+      "were",
+      "is",
+      "was"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'So dense was [subject]' is the inverted result structure.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1897",
+    "question": "Fill in the blank: It is recommended that the patient _______ the course of oral antibiotics for the full ten days even if symptoms subside.",
+    "options": [
+      "continue",
+      "continues",
+      "continued",
+      "will continue"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Mandative subjunctive after 'It is recommended that' takes 'continue'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1898",
+    "question": "Choose the correct verb form: Under no circumstances _______ the fire suppression sprinklers be shut off during warehouse operating hours.",
+    "options": [
+      "do",
+      "should",
+      "are",
+      "will"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Under no circumstances' triggers modal inversion ('should the sprinklers be shut off').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1899",
+    "question": "Fill in the blank: Little _______ the software developers anticipate that the smart contract code contained a reentrancy vulnerability.",
+    "options": [
+      "were",
+      "had",
+      "did",
+      "do"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Fronted 'Little' triggers past auxiliary inversion ('did the developers anticipate').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1900",
+    "question": "Choose the correct option: The ethics board urged that the genetic screening study _______ paused pending an independent bioethical review.",
+    "options": [
+      "will be",
+      "is",
+      "was",
+      "be"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Mandative subjunctive after 'urged that' requires 'be'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Inversion, Fronting & Subjunctive"
+  },
+  {
+    "id": "ielts-gram-1901",
+    "question": "Fill in the blank: _______ severe budgetary constraints and protracted supply chain delays, the high-speed rail consortium completed the viaduct ahead of schedule.",
+    "options": [
+      "Despite",
+      "Although",
+      "Even though",
+      "In spite"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Despite' functions as a preposition taking a noun phrase complement ('severe budgetary constraints...'), whereas 'Although' and 'Even though' require full subordinate clauses.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1902",
+    "question": "Choose the correct conjunction: The lead bioarchaeologist sealed the fragile fossil specimens in airtight nitrogen chambers _______ they degrade from atmospheric moisture.",
+    "options": [
+      "unless",
+      "lest",
+      "in case",
+      "so that"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Lest' (meaning 'for fear that' or 'to prevent the possibility that') introduces a purpose clause with the bare subjunctive verb 'degrade'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1903",
+    "question": "Fill in the blank: _______ the global economic recession dampened consumer demand, semiconductor manufacturers expanded their research and development investments.",
+    "options": [
+      "In spite of",
+      "Despite",
+      "Although",
+      "Regardless"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Although' introduces a subordinate concessive clause containing a subject and finite verb ('the recession dampened...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1904",
+    "question": "Choose the correct option: The municipal transit board approved the new bus rapid transit corridor _______ private commuter vehicle traffic might increase slightly during peak hours.",
+    "options": [
+      "whereas",
+      "in spite of",
+      "despite",
+      "even though"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Even though' introduces a full concessive clause with subject and verb.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1905",
+    "question": "Fill in the blank: _______ the extreme hydrostatic pressure and total darkness of the Marianas Trench, diverse extremophile ecosystems thrive around hydrothermal vents.",
+    "options": [
+      "Notwithstanding",
+      "Although",
+      "Even though",
+      "Whereas"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Notwithstanding' functions as a formal preposition taking a noun phrase ('the extreme hydrostatic pressure...').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1906",
+    "question": "Choose the correct conjunction: The pharmaceutical trial was paused _______ unexpected hepatic enzyme elevations were detected in several phase-two participants.",
+    "options": [
+      "because of",
+      "because",
+      "due to",
+      "owing to"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Because' introduces a subordinate clause containing a finite verb ('were detected').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1907",
+    "question": "Fill in the blank: The spacecraft engineers designed redundant power busses _______ a primary solar panel fail during planetary orbit insertion.",
+    "options": [
+      "so that",
+      "unless",
+      "should",
+      "lest"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Should + subject + bare infinitive' is an inverted conditional clause expressing a contingency ('in case a primary solar panel should fail').",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1908",
+    "question": "Choose the correct option: The agricultural cooperative must decide _______ to invest in automated drip irrigation systems or to continue relying on seasonal groundwater extraction.",
+    "options": [
+      "neither",
+      "if",
+      "either",
+      "whether"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Whether... or' is required (rather than 'if') when followed by an infinitive construction ('whether to invest... or to continue').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1909",
+    "question": "Fill in the blank: _______ the ancient papyrus fragments were heavily carbonized by the volcanic eruption, modern multi-spectral scanning revealed legible Greek text.",
+    "options": [
+      "While",
+      "Despite",
+      "In spite of",
+      "Regardless"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'While' (functioning concessively like 'although') introduces a finite clause ('the fragments were carbonized').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1910",
+    "question": "Choose the correct conjunction: The central bank lowered the reserve requirement _______ commercial financial institutions would expand lending to small technology startups.",
+    "options": [
+      "in order",
+      "so that",
+      "lest",
+      "for"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'So that' introduces a purpose clause followed by a modal auxiliary ('would expand').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1911",
+    "question": "Fill in the blank: _______ the fact that all preliminary safety audits were completed, the civil aviation authority withheld certification for the prototype aircraft.",
+    "options": [
+      "Even though",
+      "Although",
+      "Despite",
+      "Whereas"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Despite the fact that...' is the standard prepositional frame followed by a content clause.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1912",
+    "question": "Choose the correct option: The deep-sea exploration submarine had to surface immediately _______ of a critical malfunction in the life-support CO2 scrubbers.",
+    "options": [
+      "whereas",
+      "since",
+      "as",
+      "because"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Because of [noun phrase]' requires 'because' before 'of'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1913",
+    "question": "Fill in the blank: Photovoltaic solar generation peaks during midday hours, _______ wind turbine generation tends to reach maximum output during late evening and night.",
+    "options": [
+      "whereas",
+      "despite",
+      "in spite of",
+      "regardless"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Whereas' is used to contrast two parallel factual propositions in coordinate/subordinate structure.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1914",
+    "question": "Choose the correct conjunction: The clinical oncology team initiated radiation therapy _______ the malignant tumor had metastasized into surrounding lymph nodes.",
+    "options": [
+      "during",
+      "before",
+      "while",
+      "until"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Before' establishes the chronological precedence of the therapy prior to metastasis.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1915",
+    "question": "Fill in the blank: _______ the university faculty approved the revised doctoral curriculum, several senior professors expressed reservations about the reduced coursework requirements.",
+    "options": [
+      "In spite of",
+      "Despite",
+      "Even though",
+      "Notwithstanding"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Even though' introduces a finite concessive clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1916",
+    "question": "Choose the correct option: The ancient Mayan city-states developed advanced astronomical calendars _______ lacking telescopic optical instruments.",
+    "options": [
+      "whereas",
+      "although",
+      "even though",
+      "despite"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Despite' takes a gerund phrase ('lacking telescopic instruments') as a prepositional complement.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1917",
+    "question": "Fill in the blank: The structural engineers reinforced the suspension bridge foundation with steel micro-piles _______ prevent liquefaction during high-magnitude earthquakes.",
+    "options": [
+      "in order to",
+      "so that",
+      "so as",
+      "in order that"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'In order to + base verb' expresses purpose.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1918",
+    "question": "Choose the correct conjunction: _______ the team worked throughout the night, they were unable to resolve the cryptographic race condition before the system launch.",
+    "options": [
+      "Despite",
+      "Although",
+      "In spite of",
+      "Regardless"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Although' introduces a finite clause ('the team worked...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1919",
+    "question": "Fill in the blank: The wildlife reserve was established _______ protect the breeding grounds of the critically endangered Siberian crane.",
+    "options": [
+      "in order that",
+      "so that",
+      "so as to",
+      "such as to"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'So as to + infinitive' expresses intended purpose.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1920",
+    "question": "Choose the correct option: The government imposed emergency price controls on essential grains _______ domestic food inflation would not destabilize the urban economy.",
+    "options": [
+      "for",
+      "in order",
+      "lest",
+      "so that"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'So that' introduces a purpose clause with modal 'would not'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1921",
+    "question": "Fill in the blank: _______ extensive geological core drilling, the prospecting firm failed to locate commercially viable lithium deposits.",
+    "options": [
+      "In spite of",
+      "Although",
+      "Even though",
+      "Whereas"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'In spite of' takes a noun phrase ('extensive geological core drilling').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1922",
+    "question": "Choose the correct conjunction: The archaeological team documented every artifact in situ _______ any contextual stratigraphic information be lost.",
+    "options": [
+      "unless",
+      "lest",
+      "in case",
+      "so that"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Lest... be lost' introduces a cautionary purpose clause with subjunctive.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1923",
+    "question": "Fill in the blank: The industrial chemical plant ceased operations _______ strict new environmental emissions regulations were implemented by the federal government.",
+    "options": [
+      "while",
+      "during",
+      "after",
+      "despite"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'After' establishes the chronological consequence following the implementation.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1924",
+    "question": "Choose the correct option: Hydroelectric dams provide dependable baseline electricity, _______ solar and wind installations depend upon fluctuating meteorological conditions.",
+    "options": [
+      "regardless",
+      "despite",
+      "in spite of",
+      "while"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'While' contrasts two independent factual states.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1925",
+    "question": "Fill in the blank: _______ the trade embargo imposed by neighboring states, the island nation maintained economic stability through bilateral maritime treaties.",
+    "options": [
+      "Notwithstanding",
+      "Although",
+      "Even though",
+      "Whereas"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Notwithstanding' functions as a preposition taking the noun phrase 'the trade embargo'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1926",
+    "question": "Choose the correct conjunction: The hospital acquired two advanced surgical robots _______ reduce patient recovery times and minimize postoperative complications.",
+    "options": [
+      "so that",
+      "in order to",
+      "so as",
+      "in order that"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'In order to + base verb' is the correct purpose infinitive.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1927",
+    "question": "Fill in the blank: The spacecraft entered safe mode _______ an anomalous voltage spike was detected in the secondary telemetry subsystem.",
+    "options": [
+      "during",
+      "while",
+      "as soon as",
+      "despite"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'As soon as' denotes immediate temporal succession following the detection.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1928",
+    "question": "Choose the correct option: _______ the severe drought depleted regional water tables, local farmers successfully harvested a crop of drought-resistant sorghum.",
+    "options": [
+      "Notwithstanding",
+      "Despite",
+      "In spite of",
+      "Even though"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Even though' introduces the finite clause ('the severe drought depleted...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1929",
+    "question": "Fill in the blank: The university requires all doctoral dissertations to be submitted electronically _______ paper archiving costs may be eliminated.",
+    "options": [
+      "so that",
+      "in order",
+      "lest",
+      "for"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'So that' introduces a purpose clause with modal 'may be eliminated'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1930",
+    "question": "Choose the correct conjunction: The deep-sea diving expedition had to be aborted _______ adverse weather conditions and four-meter ocean swells.",
+    "options": [
+      "because",
+      "due to",
+      "since",
+      "as"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Due to [noun phrase]' takes the noun phrase complement 'adverse weather conditions'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1931",
+    "question": "Fill in the blank: _______ the historical treaty was signed over three centuries ago, its territorial boundary stipulations remain legally binding under international law.",
+    "options": [
+      "In spite of",
+      "Despite",
+      "Although",
+      "Regardless"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Although' introduces a finite subordinate clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1932",
+    "question": "Choose the correct option: The laboratory technicians wore pressurized biohazard suits _______ become exposed to the airborne filovirus.",
+    "options": [
+      "lest not",
+      "so that",
+      "in order that",
+      "so as not to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'So as not to + infinitive' expresses negative purpose.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1933",
+    "question": "Fill in the blank: The volcanic observatory issued an immediate red alert _______ seismic tremors indicated magma movement toward the crater vent.",
+    "options": [
+      "inasmuch as",
+      "despite",
+      "in spite of",
+      "whereas"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Inasmuch as' (meaning 'since' or 'considering that') introduces a causal explanatory clause.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1934",
+    "question": "Choose the correct conjunction: The maritime search operation continued for twelve days _______ dense sea fog severely limited visual reconnaissance from rescue aircraft.",
+    "options": [
+      "despite",
+      "even though",
+      "in spite of",
+      "notwithstanding"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Even though' introduces a full finite concessive clause ('sea fog limited...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1935",
+    "question": "Fill in the blank: Urban centers consume vast amounts of electrical energy, _______ rural agricultural districts primarily generate renewable wind and biomass power.",
+    "options": [
+      "in spite of",
+      "despite",
+      "whereas",
+      "regardless"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Whereas' contrasts the two geographic sectors.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1936",
+    "question": "Choose the correct option: The ancient Roman aqueduct stands intact today _______ experiencing over fifteen centuries of seismic activity and weathering.",
+    "options": [
+      "whereas",
+      "although",
+      "even though",
+      "despite"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'Despite' takes a gerund phrase ('experiencing fifteen centuries...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1937",
+    "question": "Fill in the blank: The flight was diverted to an alternate airfield _______ the primary runway was obstructed by a disabled cargo aircraft.",
+    "options": [
+      "since",
+      "because of",
+      "due to",
+      "owing to"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Since' introduces a causal clause with a finite verb ('was obstructed').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1938",
+    "question": "Choose the correct conjunction: The research institute established an open-access repository _______ global scientists could freely download genomic sequence datasets.",
+    "options": [
+      "in order",
+      "so that",
+      "lest",
+      "for"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'So that' introduces a purpose clause with modal 'could freely download'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1939",
+    "question": "Fill in the blank: The pharmaceutical company halted the distribution of the painkiller _______ mounting reports of adverse cardiovascular events.",
+    "options": [
+      "even though",
+      "although",
+      "in light of",
+      "whereas"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'In light of [noun phrase]' is a prepositional phrase expressing reason/consideration.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1940",
+    "question": "Choose the correct option: The architectural design incorporated triple-glazed insulated windows _______ minimize thermal transmission during harsh winter months.",
+    "options": [
+      "in order that",
+      "so that",
+      "so as",
+      "in order to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'In order to + base verb' denotes intended functional purpose.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1941",
+    "question": "Fill in the blank: _______ the fact that the experimental cancer drug was highly toxic at high doses, micro-dosed delivery showed remarkable tumor regression.",
+    "options": [
+      "Notwithstanding",
+      "Although",
+      "Even though",
+      "Whereas"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Notwithstanding the fact that...' is a formal concessive structure.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1942",
+    "question": "Choose the correct conjunction: The archaeological survey was completed on time _______ torrential monsoon rains flooded low-lying excavation trenches.",
+    "options": [
+      "despite",
+      "even though",
+      "in spite of",
+      "notwithstanding"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Even though' introduces a finite concessive clause ('rains flooded...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1943",
+    "question": "Fill in the blank: The deep-sea oceanographic probe was reinforced with a titanium spherical hull _______ it collapse under five hundred atmospheres of ambient hydrostatic pressure.",
+    "options": [
+      "in case",
+      "unless",
+      "lest",
+      "so that"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'Lest' introduces a cautionary purpose clause with the bare subjunctive 'collapse'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1944",
+    "question": "Choose the correct option: The central bank intervened in the currency markets _______ stabilize the domestic exchange rate against foreign speculative selling.",
+    "options": [
+      "such as to",
+      "so that",
+      "in order that",
+      "so as to"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'So as to + base verb' expresses purpose.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1945",
+    "question": "Fill in the blank: _______ the spacecraft was traveling at twenty-eight thousand kilometers per hour, its onboard star tracker maintained precise optical navigation locks.",
+    "options": [
+      "Although",
+      "Despite",
+      "In spite of",
+      "Regardless"
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Although' introduces a finite concessive clause with subject and verb.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Conjunctions & Sentence Structure"
+  },
+  {
+    "id": "ielts-gram-1946",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The initial clinical trial results were highly promising, however, long-term cardiovascular safety data will not be available until next year.",
+      "The initial clinical trial results were highly promising; however, long-term cardiovascular safety data will not be available until next year.",
+      "The initial clinical trial results were highly promising however; long-term cardiovascular safety data will not be available until next year.",
+      "The initial clinical trial results were highly promising; however long-term cardiovascular safety data, will not be available until next year."
+    ],
+    "correctAnswer": "B",
+    "explanation": "Two independent clauses joined by the conjunctive adverb 'however' require a semicolon before the adverb and a comma immediately following it.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1947",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The architectural restoration team identified: three structural vulnerabilities, corroded iron tie-rods, spalling sandstone lintels, and decaying timber roof joists.",
+      "The architectural restoration team identified three structural vulnerabilities; corroded iron tie-rods, spalling sandstone lintels, and decaying timber roof joists.",
+      "The architectural restoration team identified three structural vulnerabilities: corroded iron tie-rods, spalling sandstone lintels, and decaying timber roof joists.",
+      "The architectural restoration team identified three structural vulnerabilities, corroded iron tie-rods; spalling sandstone lintels; and decaying timber roof joists."
+    ],
+    "correctAnswer": "C",
+    "explanation": "A colon is correctly used after an independent clause to introduce an appositive list detailing the 'three structural vulnerabilities'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1948",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "Dr. Miriam Thorne who previously served as the chief oceanographer at the Marine Science Institute, will lead the deep-sea expedition.",
+      "Dr. Miriam Thorne who previously served as the chief oceanographer at the Marine Science Institute will lead the deep-sea expedition.",
+      "Dr. Miriam Thorne, who previously served as the chief oceanographer at the Marine Science Institute will lead the deep-sea expedition.",
+      "Dr. Miriam Thorne, who previously served as the chief oceanographer at the Marine Science Institute, will lead the deep-sea expedition."
+    ],
+    "correctAnswer": "D",
+    "explanation": "Non-restrictive relative clauses providing additional parenthetical information must be enclosed by paired commas.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1949",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The archaeological expedition uncovered a beautifully preserved Roman mosaic\u2014an intricate pattern depicting Neptune surrounded by sea nymphs\u2014beneath the basilica floor.",
+      "The archaeological expedition uncovered a beautifully preserved Roman mosaic, an intricate pattern depicting Neptune surrounded by sea nymphs beneath the basilica floor.",
+      "The archaeological expedition uncovered a beautifully preserved Roman mosaic\u2014an intricate pattern depicting Neptune surrounded by sea nymphs beneath the basilica floor.",
+      "The archaeological expedition uncovered a beautifully preserved Roman mosaic; an intricate pattern depicting Neptune surrounded by sea nymphs; beneath the basilica floor."
+    ],
+    "correctAnswer": "A",
+    "explanation": "Em-dashes are correctly used in pairs to set off an emphatic parenthetical appositive phrase within the sentence.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1950",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The laboratory installed a state of the art mass spectrometer to analyze isotopic ratios in ancient ice core samples.",
+      "The laboratory installed a state-of-the-art mass spectrometer to analyze isotopic ratios in ancient ice core samples.",
+      "The laboratory installed a state-of-the art mass spectrometer to analyze isotopic ratios in ancient ice core samples.",
+      "The laboratory installed a state of-the-art mass spectrometer to analyze isotopic ratios in ancient ice core samples."
+    ],
+    "correctAnswer": "B",
+    "explanation": "Compound adjectives preceding the noun they modify ('state-of-the-art mass spectrometer') must be hyphenated.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1951",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The researchers findings regarding microbial resistance in wastewater treatment plants were published in the international journal.",
+      "The researcher's findings regarding microbial resistance in wastewater treatment plants were published in the international journal.",
+      "The researchers' findings regarding microbial resistance in wastewater treatment plants were published in the international journal.",
+      "The researchers findings' regarding microbial resistance in wastewater treatment plants were published in the international journal."
+    ],
+    "correctAnswer": "C",
+    "explanation": "Plural possessive for multiple researchers is 'researchers'' with the apostrophe following the plural 's'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1952",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The spacecraft's primary telemetry antenna malfunctioned consequently; the flight operations team switched to the secondary omnidirectional transmitter.",
+      "The spacecraft's primary telemetry antenna malfunctioned, consequently, the flight operations team switched to the secondary omnidirectional transmitter.",
+      "The spacecraft's primary telemetry antenna malfunctioned; consequently the flight operations team switched, to the secondary omnidirectional transmitter.",
+      "The spacecraft's primary telemetry antenna malfunctioned; consequently, the flight operations team switched to the secondary omnidirectional transmitter."
+    ],
+    "correctAnswer": "D",
+    "explanation": "Independent clauses linked by 'consequently' require a semicolon before the conjunctive adverb and a comma following it.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1953",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "Having reviewed the seismic risk assessment, the municipal building committee voted unanimously to mandate base-isolation dampers for all new hospitals.",
+      "Having reviewed the seismic risk assessment the municipal building committee voted unanimously to mandate base-isolation dampers for all new hospitals.",
+      "Having reviewed the seismic risk assessment, the municipal building committee voted unanimously, to mandate base-isolation dampers for all new hospitals.",
+      "Having reviewed the seismic risk assessment the municipal building committee voted unanimously, to mandate base-isolation dampers for all new hospitals."
+    ],
+    "correctAnswer": "A",
+    "explanation": "An introductory participial phrase ('Having reviewed the seismic risk assessment') must be followed by a comma before the main clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1954",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The botanical survey documented flora in three distinct habitats; coastal mangroves, inland freshwater marshes, and upland pine savannahs.",
+      "The botanical survey documented flora in three distinct habitats: coastal mangroves, inland freshwater marshes, and upland pine savannahs.",
+      "The botanical survey documented flora in: three distinct habitats, coastal mangroves, inland freshwater marshes, and upland pine savannahs.",
+      "The botanical survey documented flora in three distinct habitats, coastal mangroves; inland freshwater marshes; and upland pine savannahs."
+    ],
+    "correctAnswer": "B",
+    "explanation": "A colon introduces the three specific habitat types following an independent clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1955",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "Although the international trade negotiations were contentious both delegations signed the bilateral tariff agreement on Friday afternoon.",
+      "Although the international trade negotiations were contentious; both delegations signed the bilateral tariff agreement on Friday afternoon.",
+      "Although the international trade negotiations were contentious, both delegations signed the bilateral tariff agreement on Friday afternoon.",
+      "Although the international trade negotiations were contentious, but both delegations signed the bilateral tariff agreement on Friday afternoon."
+    ],
+    "correctAnswer": "C",
+    "explanation": "An introductory dependent clause starting with 'Although' is followed by a comma before the main clause without a redundant coordinating conjunction.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1956",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The university's advanced computational cluster; comprising over five hundred high-density GPU nodes; accelerated neural network training by forty percent.",
+      "The university's advanced computational cluster, comprising over five hundred high-density GPU nodes accelerated neural network training by forty percent.",
+      "The university's advanced computational cluster\u2014comprising over five hundred high-density GPU nodes, accelerated neural network training by forty percent.",
+      "The university's advanced computational cluster\u2014comprising over five hundred high-density GPU nodes\u2014accelerated neural network training by forty percent."
+    ],
+    "correctAnswer": "D",
+    "explanation": "Em-dashes in pairs properly isolate the parenthetical descriptive clause.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1957",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The historical analysis investigated the socio-political effects of the 1918 influenza pandemic on European labor markets.",
+      "The historical analysis investigated the socio political effects of the 1918 influenza pandemic on European labor markets.",
+      "The historical analysis investigated the socio, political effects of the 1918 influenza pandemic on European labor markets.",
+      "The historical analysis investigated the socio-political effects, of the 1918 influenza pandemic on European labor markets."
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Socio-political' is a hyphenated compound adjective modifying 'effects'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1958",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The deep-sea submersible lost acoustic telemetry with the surface vessel, nevertheless, the autonomous guidance system safely steered the craft to the recovery beacon.",
+      "The deep-sea submersible lost acoustic telemetry with the surface vessel; nevertheless, the autonomous guidance system safely steered the craft to the recovery beacon.",
+      "The deep-sea submersible lost acoustic telemetry with the surface vessel; nevertheless the autonomous guidance system safely steered the craft, to the recovery beacon.",
+      "The deep-sea submersible lost acoustic telemetry with the surface vessel nevertheless; the autonomous guidance system safely steered the craft to the recovery beacon."
+    ],
+    "correctAnswer": "B",
+    "explanation": "Semicolon before 'nevertheless' and comma after it correctly coordinate the two independent clauses.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1959",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The pharmaceutical regulator issued a warning to: three manufacturers, Pfizer, Novartis, and AstraZeneca.",
+      "The pharmaceutical regulator issued a warning to three manufacturers; Pfizer, Novartis, and AstraZeneca.",
+      "The pharmaceutical regulator issued a warning to three manufacturers: Pfizer, Novartis, and AstraZeneca.",
+      "The pharmaceutical regulator issued a warning to three manufacturers, Pfizer; Novartis; and AstraZeneca."
+    ],
+    "correctAnswer": "C",
+    "explanation": "A colon introduces a specific list following a complete grammatical clause.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1960",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "Professor Aris whose research on gravitational lensing earned widespread international acclaim, presented the opening lecture at the astrophysics symposium.",
+      "Professor Aris whose research on gravitational lensing earned widespread international acclaim presented the opening lecture at the astrophysics symposium.",
+      "Professor Aris, whose research on gravitational lensing earned widespread international acclaim presented the opening lecture at the astrophysics symposium.",
+      "Professor Aris, whose research on gravitational lensing earned widespread international acclaim, presented the opening lecture at the astrophysics symposium."
+    ],
+    "correctAnswer": "D",
+    "explanation": "Paired commas enclose the non-defining relative clause modifying 'Professor Aris'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1961",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The aerospace corporation conducted a series of high-altitude flight tests to evaluate the aircraft's aerodynamic stability.",
+      "The aerospace corporation conducted a series of high altitude flight tests to evaluate the aircraft's aerodynamic stability.",
+      "The aerospace corporation conducted a series of high-altitude flight tests to evaluate the aircrafts' aerodynamic stability.",
+      "The aerospace corporation conducted a series of high, altitude flight tests to evaluate the aircraft's aerodynamic stability."
+    ],
+    "correctAnswer": "A",
+    "explanation": "'High-altitude' is hyphenated as a compound modifier before 'flight tests', and 'aircraft's' is the correct singular possessive.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1962",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The regional electrical grid experienced a severe voltage drop, therefore, automated relays disconnected the industrial manufacturing zone.",
+      "The regional electrical grid experienced a severe voltage drop; therefore, automated relays disconnected the industrial manufacturing zone.",
+      "The regional electrical grid experienced a severe voltage drop; therefore automated relays disconnected, the industrial manufacturing zone.",
+      "The regional electrical grid experienced a severe voltage drop therefore; automated relays disconnected the industrial manufacturing zone."
+    ],
+    "correctAnswer": "B",
+    "explanation": "Independent clauses connected by 'therefore' require a semicolon before 'therefore' and a comma after.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1963",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "To qualify for the international research grant, applicants must satisfy: three strict criteria, hold a doctoral degree, demonstrate prior peer-reviewed publications, and provide institutional sponsorship.",
+      "To qualify for the international research grant, applicants must satisfy three strict criteria; hold a doctoral degree, demonstrate prior peer-reviewed publications, and provide institutional sponsorship.",
+      "To qualify for the international research grant, applicants must satisfy three strict criteria: hold a doctoral degree, demonstrate prior peer-reviewed publications, and provide institutional sponsorship.",
+      "To qualify for the international research grant applicants must satisfy three strict criteria, hold a doctoral degree; demonstrate prior peer-reviewed publications; and provide institutional sponsorship."
+    ],
+    "correctAnswer": "C",
+    "explanation": "A colon introduces the three criteria following a complete independent clause.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1964",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The archaeological excavation uncovered several children's toys' carved from boxwood in the ancient residential quarter.",
+      "The archaeological excavation uncovered several childrens' toys carved from boxwood in the ancient residential quarter.",
+      "The archaeological excavation uncovered several childrens toys carved from boxwood in the ancient residential quarter.",
+      "The archaeological excavation uncovered several children's toys carved from boxwood in the ancient residential quarter."
+    ],
+    "correctAnswer": "D",
+    "explanation": "The irregular plural noun 'children' forms its possessive with an apostrophe and 's' ('children's').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1965",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The city's historic canal system\u2014constructed during the seventeenth century\u2014remains a vital commercial freight artery today.",
+      "The city's historic canal system, constructed during the seventeenth century remains a vital commercial freight artery today.",
+      "The city's historic canal system\u2014constructed during the seventeenth century, remains a vital commercial freight artery today.",
+      "The city's historic canal system; constructed during the seventeenth century; remains a vital commercial freight artery today."
+    ],
+    "correctAnswer": "A",
+    "explanation": "Paired em-dashes correctly set off the parenthetical descriptive participial phrase.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1966",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The economic recession severely reduced tax revenues, furthermore, municipal debt servicing costs increased by twelve percent.",
+      "The economic recession severely reduced tax revenues; furthermore, municipal debt servicing costs increased by twelve percent.",
+      "The economic recession severely reduced tax revenues; furthermore municipal debt servicing costs increased, by twelve percent.",
+      "The economic recession severely reduced tax revenues furthermore; municipal debt servicing costs increased by twelve percent."
+    ],
+    "correctAnswer": "B",
+    "explanation": "Semicolon before 'furthermore' and comma after it correctly connect the independent clauses.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1967",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The wildlife conservationist tracked the elusive snow leopard across: three remote Himalayan valleys, the Spiti Valley, the Pin Valley, and the Kibber Sanctuary.",
+      "The wildlife conservationist tracked the elusive snow leopard across three remote Himalayan valleys; the Spiti Valley, the Pin Valley, and the Kibber Sanctuary.",
+      "The wildlife conservationist tracked the elusive snow leopard across three remote Himalayan valleys: the Spiti Valley, the Pin Valley, and the Kibber Sanctuary.",
+      "The wildlife conservationist tracked the elusive snow leopard across three remote Himalayan valleys, the Spiti Valley; the Pin Valley; and the Kibber Sanctuary."
+    ],
+    "correctAnswer": "C",
+    "explanation": "Colon introduces the specific list of the three valleys.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1968",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The newly discovered dinosaur fossil; a remarkably complete juvenile tyrannosaur; was transported to the natural history museum for tomography scanning.",
+      "The newly discovered dinosaur fossil, a remarkably complete juvenile tyrannosaur was transported to the natural history museum for tomography scanning.",
+      "The newly discovered dinosaur fossil\u2014a remarkably complete juvenile tyrannosaur, was transported to the natural history museum for tomography scanning.",
+      "The newly discovered dinosaur fossil\u2014a remarkably complete juvenile tyrannosaur\u2014was transported to the natural history museum for tomography scanning."
+    ],
+    "correctAnswer": "D",
+    "explanation": "Em-dashes in pairs enclose the parenthetical appositive noun phrase.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1969",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The materials laboratory developed a heat-resistant ceramic coating for aerospace rocket nozzles.",
+      "The materials laboratory developed a heat resistant ceramic coating for aerospace rocket nozzles.",
+      "The materials laboratory developed a heat, resistant ceramic coating for aerospace rocket nozzles.",
+      "The materials laboratory developed a heat-resistant ceramic coating, for aerospace rocket nozzles."
+    ],
+    "correctAnswer": "A",
+    "explanation": "'Heat-resistant' is a hyphenated compound modifier before the noun 'coating'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1970",
+    "question": "Choose the correctly punctuated sentence:",
+    "options": [
+      "The satellite's primary reaction wheels failed during the orbital maneuver, however, the secondary cold-gas thrusters successfully stabilized the spacecraft.",
+      "The satellite's primary reaction wheels failed during the orbital maneuver; however, the secondary cold-gas thrusters successfully stabilized the spacecraft.",
+      "The satellite's primary reaction wheels failed during the orbital maneuver; however the secondary cold-gas thrusters successfully stabilized, the spacecraft.",
+      "The satellite's primary reaction wheels failed during the orbital maneuver however; the secondary cold-gas thrusters successfully stabilized the spacecraft."
+    ],
+    "correctAnswer": "B",
+    "explanation": "Semicolon before 'however' and comma after it correctly separate the independent clauses.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Punctuation & Syntax Mechanics"
+  },
+  {
+    "id": "ielts-gram-1971",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe consortium of international geotechnical engineers (A) have concluded that the proposed subsea railway tunnel (B) requires additional seismic reinforcement (C) to withstand potential seabed fault (D) displacements.",
+    "options": [
+      "(C) to withstand",
+      "(B) requires",
+      "(A) have concluded",
+      "(D) displacements"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The head subject of the sentence is the singular collective noun 'consortium', requiring the singular verb 'has concluded', not 'have concluded'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1972",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nBetween the three proposed alternative flight corridors (A) across the Arctic Circle, the second route is (B) clearly the most fuel-efficient (C) and minimizes exposure (D) to severe geomagnetic storms.",
+    "options": [
+      "(D) to severe",
+      "(B) clearly the most",
+      "(C) and minimizes",
+      "(A) Between the three"
+    ],
+    "correctAnswer": "D",
+    "explanation": "When referring to three or more entities ('the three proposed flight corridors'), the preposition 'Among' is required rather than 'Between'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1973",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe medical research board insisted that every clinical investigator (A) submits their raw experimental datasets (B) to the independent data safety monitoring committee (C) prior to publication in the (D) international journal.",
+    "options": [
+      "(A) submits their",
+      "(B) to the independent",
+      "(C) prior to publication",
+      "(D) international journal"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Mandative subjunctive following 'insisted that' requires the uninflected base verb 'submit', not the third-person singular 'submits'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1974",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nDespite of the unprecedented financial volatility (A) in the foreign exchange markets, the central bank (B) maintained its benchmark interest rate (C) throughout the third (D) fiscal quarter.",
+    "options": [
+      "(B) maintained its",
+      "(A) Despite of the",
+      "(C) throughout the",
+      "(D) fiscal quarter"
+    ],
+    "correctAnswer": "B",
+    "explanation": "'Despite' is a preposition and is never followed by 'of' ('Despite the unprecedented volatility' or 'In spite of the...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1975",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe deep-sea submersible was equipped (A) by a robotic titanium arm, (B) high-resolution stereoscopic cameras, and (C) an acoustic transponder capable of (D) abyssal navigation.",
+    "options": [
+      "(C) an acoustic",
+      "(B) high-resolution",
+      "(A) by a robotic",
+      "(D) abyssal navigation"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The correct prepositional collocation for being furnished with equipment is 'equipped with', not 'equipped by'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1976",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nHaving completed the thermodynamic simulation, (A) several anomalies in the cooling system (B) were identified by the aerospace engineers (C) before the prototype engine (D) was fabricated.",
+    "options": [
+      "(D) was fabricated",
+      "(B) were identified by",
+      "(C) before the prototype",
+      "(A) several anomalies in"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Dangling participle modifier: the introductory participial phrase 'Having completed the thermodynamic simulation' improperly modifies 'several anomalies' instead of the engineers who completed the simulation.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1977",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe committee interviewed five prospective candidates for the directorship, (A) all of which possessed (B) extensive experience in managing (C) sovereign endowment funds and (D) international bond portfolios.",
+    "options": [
+      "(A) all of which possessed",
+      "(B) extensive experience",
+      "(C) sovereign endowment",
+      "(D) international bond"
+    ],
+    "correctAnswer": "A",
+    "explanation": "For human antecedents ('five prospective candidates'), the relative pronoun must be 'whom' ('all of whom'), not 'which'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1978",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe paleoclimatology team discovered that the rate of glacier retreat (A) in the western Himalayas (B) have accelerated noticeably (C) over the past three (D) decades.",
+    "options": [
+      "(A) in the western",
+      "(B) have accelerated",
+      "(C) over the past",
+      "(D) decades"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The subject noun is the singular count noun 'rate', which requires the singular auxiliary verb 'has accelerated', not 'have accelerated'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1979",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nIf the municipal transit authority (A) would have invested in light rail transit twenty years ago, (B) traffic congestion in the metropolitan center (C) would be substantially less severe (D) today.",
+    "options": [
+      "(C) would be substantially",
+      "(B) traffic congestion in",
+      "(A) would have invested",
+      "(D) today"
+    ],
+    "correctAnswer": "C",
+    "explanation": "In the if-clause of a third/mixed conditional, standard grammar uses the past perfect 'had invested', never 'would have invested'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1980",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe newly appointed chief diplomat is known (A) for being extremely articulate, (B) highly persuasive in bilateral negotiations, (C) and having dedication (D) to public service.",
+    "options": [
+      "(D) to public service",
+      "(A) for being extremely",
+      "(B) highly persuasive in",
+      "(C) and having dedication"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Faulty parallel structure: the series coordinates adjectives/adjective phrases ('extremely articulate', 'highly persuasive') and should conclude with 'deeply dedicated' (or 'dedicated to public service'), not the participial phrase 'and having dedication'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1981",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nNeither the senior project architect nor the structural engineers (A) was aware that the foundation bedrock (B) contained porous limestone caverns (C) prone to catastrophic sinkhole (D) formation.",
+    "options": [
+      "(A) was aware that",
+      "(B) contained porous",
+      "(C) prone to catastrophic",
+      "(D) formation"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Under proximity concord in 'neither... nor' constructions, the verb agrees with the closer plural subject 'engineers', requiring 'were aware', not 'was aware'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1982",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe chemical manufacturing plant was fined for discharging toxic effluents (A) in the river (B) in direct violation (C) from federal environmental (D) protection standards.",
+    "options": [
+      "(A) in the river",
+      "(C) from federal environmental",
+      "(B) in direct violation",
+      "(D) protection standards"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The correct prepositional idiom is 'in direct violation of', not 'in direct violation from'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1983",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nScarcely the high-altitude meteorological balloon (A) had reached the stratosphere (B) when an unexpected electrical storm (C) destroyed its atmospheric sensor (D) payload.",
+    "options": [
+      "(C) destroyed its",
+      "(B) when an unexpected",
+      "(A) had reached the",
+      "(D) payload"
+    ],
+    "correctAnswer": "C",
+    "explanation": "When 'Scarcely' begins a sentence, negative subject-auxiliary inversion is mandatory: 'Scarcely had the high-altitude meteorological balloon reached...'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1984",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe pharmaceutical company had the vaccine formulation (A) to test by an independent laboratory (B) before applying for commercial distribution authorization (C) from the international health (D) regulatory agency.",
+    "options": [
+      "(D) regulatory agency",
+      "(B) before applying for",
+      "(C) from the international",
+      "(A) to test by"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The causative structure 'have + object + past participle' requires 'tested by', not 'to test by'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1985",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nBetween the two architectural designs submitted for the national museum, the jury found the second proposal (A) by far the most innovative (B) in terms of structural sustainability (C) and natural lighting (D) efficiency.",
+    "options": [
+      "(A) by far the most innovative",
+      "(B) in terms of",
+      "(C) and natural lighting",
+      "(D) efficiency"
+    ],
+    "correctAnswer": "A",
+    "explanation": "When comparing exactly two entities ('Between the two architectural designs'), the comparative form 'more innovative' is grammatically required rather than the superlative 'most innovative'.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1986",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe university department boasts (A) a high-speed computational cluster, (B) three advanced electron microscopes, and (C) several state of the art mass spectrometers (D) for geochemical analysis.",
+    "options": [
+      "(A) a high-speed",
+      "(C) several state of the art",
+      "(B) three advanced",
+      "(D) for geochemical"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Compound adjectives preceding the noun must be hyphenated: 'state-of-the-art mass spectrometers'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1987",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe lead archaeologist, accompanied by two doctoral research assistants, (A) are currently conducting stratigraphic excavations (B) at the Bronze Age settlement mound (C) in central Anatolia (D) Turkey.",
+    "options": [
+      "(C) in central Anatolia",
+      "(B) at the Bronze Age",
+      "(A) are currently conducting",
+      "(D) Turkey"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Parenthetical expressions introduced by 'accompanied by' do not change the singular number of the grammatical subject 'lead archaeologist', requiring 'is currently conducting'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1988",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe court mandated that the corporation (A) ceases all mining activities (B) in the protected indigenous ecological reserve (C) with immediate effect (D) until environmental hearings conclude.",
+    "options": [
+      "(D) until environmental",
+      "(B) in the protected",
+      "(C) with immediate effect",
+      "(A) ceases all mining"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Mandative subjunctive after 'mandated that' requires the uninflected bare verb 'cease', not 'ceases'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1989",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe archaeological conservator was oblivious (A) for the fact that exposure to ultraviolet light (B) would degrade the organic pigments (C) in the ancient polychrome (D) funerary mask.",
+    "options": [
+      "(A) for the fact that",
+      "(B) would degrade the",
+      "(C) in the ancient",
+      "(D) funerary mask"
+    ],
+    "correctAnswer": "A",
+    "explanation": "The adjective 'oblivious' collocates with 'to' (or 'of'), not 'for' ('oblivious to the fact that...').",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1990",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nBy the end of this decade, the urban transit authority (A) will operate over five hundred electric buses (B) across twenty-eight dedicated commuter routes, (C) reducing municipal carbon emissions (D) substantially.",
+    "options": [
+      "(B) across twenty-eight",
+      "(A) will operate over",
+      "(C) reducing municipal",
+      "(D) substantially"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The time frame 'By the end of this decade' denotes completion prior to a future deadline, requiring future perfect 'will have operated' (or 'will be operating' for ongoing continuous state).",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1991",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe wildlife conservation trust purchased forty square kilometers of cloud forest (A) so as that the critically endangered golden langur (B) would be shielded (C) from commercial logging (D) operations.",
+    "options": [
+      "(C) from commercial",
+      "(B) would be shielded",
+      "(A) so as that the",
+      "(D) operations"
+    ],
+    "correctAnswer": "C",
+    "explanation": "'So as that' is ungrammatical; the conjunction introducing a full purpose clause with a subject and modal verb is 'so that' (or 'in order that').",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1992",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe engineering report noted that the number of structural micro-cracks (A) in the concrete spillway (B) have increased significantly (C) following the recent (D) seismic tremor.",
+    "options": [
+      "(D) seismic tremor",
+      "(A) in the concrete spillway",
+      "(C) following the recent",
+      "(B) have increased significantly"
+    ],
+    "correctAnswer": "D",
+    "explanation": "'The number of...' is grammatically singular and requires 'has increased significantly', unlike 'a number of' which is plural.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1993",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nHaving surveyed the volcanic crater rim for three hours, (A) the sudden sulfur dioxide gas eruption (B) forced the volcanology expedition (C) to retreat to the base camp (D) immediately.",
+    "options": [
+      "(A) the sudden sulfur dioxide",
+      "(B) forced the volcanology",
+      "(C) to retreat to the",
+      "(D) immediately"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Dangling participle modifier: 'Having surveyed the crater rim for three hours' illogically modifies 'the sudden sulfur dioxide gas eruption' rather than the expedition team.",
+    "difficulty": "hard",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1994",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe forensic laboratory confirmed that the ancient document was (A) composed by parchment, gallic ink, and (B) crushed lapis lazuli pigments, (C) confirming its medieval Italian (D) provenance.",
+    "options": [
+      "(B) crushed lapis lazuli",
+      "(A) composed by parchment",
+      "(C) confirming its medieval",
+      "(D) provenance"
+    ],
+    "correctAnswer": "B",
+    "explanation": "The idiomatic passive adjective meaning made up of parts is 'composed of', not 'composed by'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1995",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nUnder no circumstances (A) the safety valves in the nuclear power plant (B) should be bypassed (C) during high-pressure reactor coolant system (D) operations.",
+    "options": [
+      "(C) during high-pressure",
+      "(B) should be bypassed",
+      "(A) the safety valves in",
+      "(D) operations"
+    ],
+    "correctAnswer": "C",
+    "explanation": "Fronted negative phrase 'Under no circumstances' mandates subject-auxiliary inversion: 'Under no circumstances should the safety valves... be bypassed'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1996",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe international commission concluded that each of the member states (A) are obligated to submit (B) an annual verified carbon inventory (C) to the climate secretariat (D) in Bonn.",
+    "options": [
+      "(D) in Bonn",
+      "(B) an annual verified",
+      "(C) to the climate",
+      "(A) are obligated to submit"
+    ],
+    "correctAnswer": "D",
+    "explanation": "The distributive pronoun 'each' is singular and requires 'is obligated', not 'are obligated'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1997",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe historical monograph provides a comprehensive overview of the Silk Road trade, (A) focusing on economic exchanges, (B) diplomatic treaties, and (C) how cultural ideas were transmitted (D) across central Eurasia.",
+    "options": [
+      "(C) how cultural ideas were transmitted",
+      "(A) focusing on economic exchanges",
+      "(B) diplomatic treaties",
+      "(D) across central Eurasia"
+    ],
+    "correctAnswer": "A",
+    "explanation": "Faulty parallel structure: the coordinated prepositional objects are noun phrases ('economic exchanges', 'diplomatic treaties'); the third element should be a parallel noun phrase like 'the transmission of cultural ideas'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1998",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nIt is imperative that the research fellow (A) adheres strictly to the bio-safety guidelines (B) when handling the pathogenic fungal spores (C) inside the negative-pressure (D) isolation room.",
+    "options": [
+      "(B) when handling the",
+      "(A) adheres strictly to",
+      "(C) inside the negative-pressure",
+      "(D) isolation room"
+    ],
+    "correctAnswer": "B",
+    "explanation": "Mandative subjunctive after 'It is imperative that' requires the bare infinitive 'adhere', not 'adheres'.",
+    "difficulty": "medium",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-1999",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nThe regional water utility company has dispensed (A) from the mandatory fluoride treatment (B) in response to recent public health concerns (C) raised by municipal consumer advocacy (D) groups.",
+    "options": [
+      "(C) raised by municipal",
+      "(B) in response to",
+      "(A) from the mandatory",
+      "(D) groups"
+    ],
+    "correctAnswer": "C",
+    "explanation": "The phrasal verb meaning to do away with or forgo is 'dispensed with', not 'dispensed from'.",
+    "difficulty": "easy",
+    "chapter": "Grammar",
+    "topic": "Error Identification & Correction"
+  },
+  {
+    "id": "ielts-gram-2000",
+    "question": "Identify the underlined portion containing a grammatical error:\n\nSeldom (A) astronomers have detected (B) such a high concentration of organic polycyclic aromatic hydrocarbons (C) in a protoplanetary accretion disc (D) surrounding a young star.",
+    "options": [
+      "(D) surrounding a young",
+      "(B) such a high concentration",
+      "(C) in a protoplanetary",
+      "(A) astronomers have detected"
+    ],
+    "correctAnswer": "D",
+    "explanation": "Fronted negative adverb 'Seldom' triggers subject-auxiliary inversion: 'Seldom have astronomers detected...'.",
+    "difficulty": "medium",
     "chapter": "Grammar",
     "topic": "Error Identification & Correction"
   }
