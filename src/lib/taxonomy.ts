@@ -480,6 +480,18 @@ export function getStudentGradeLabel(
   return 'General';
 }
 
+/** Format grade/class label cleanly respecting IELTS (which should never show "Grade IELTS") */
+export function formatGradeDisplay(grade?: string | null, board?: string | null): string {
+  if (!grade) return 'General';
+  const gNorm = String(grade).trim().toLowerCase();
+  const bNorm = String(board || '').trim().toLowerCase();
+  if (gNorm === 'ielts' || bNorm === 'ielts' || gNorm.includes('ielts')) {
+    return 'IELTS Preparation';
+  }
+  if (gNorm.startsWith('grade')) return grade;
+  return `Grade ${grade}`;
+}
+
 /** Resolves the formatted stream label for a student */
 export function getStudentStreamLabel(student: {
   stream?: string | null;

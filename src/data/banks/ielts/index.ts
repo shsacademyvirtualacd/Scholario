@@ -1,13 +1,15 @@
 /**
  * Master IELTS Question Bank
- * Exclusively provides the two authorized chapters:
- * 1. Grammar (100 MCQs)
- * 2. Comprehension of Passages (100 MCQs)
- * Total: 200 high-quality, curriculum-accurate MCQs
+ * Includes:
+ * 1. IELTS Reading (Academic) - 332 genuine MCQs across 12 authentic academic domains
+ * 2. Grammar - 100 MCQs
+ * 3. Comprehension of Passages - 100 MCQs
+ * Total: 532+ high-quality, curriculum-accurate MCQs
  */
 
 import { IELTS_GRAMMAR_MCQS as RAW_GRAMMAR, type RawIELTSMCQ } from './grammar';
 import { IELTS_COMPREHENSION_MCQS as RAW_COMPREHENSION } from './comprehension';
+import { IELTS_READING_ACADEMIC_MCQS as RAW_READING_ACADEMIC, type IELTSReadingMCQ } from './readingAcademic';
 import type { StoredMCQ } from '../../../types/questionBank';
 
 function toStoredMCQ(raw: RawIELTSMCQ, subject: string, index: number): StoredMCQ {
@@ -41,21 +43,69 @@ function toStoredMCQ(raw: RawIELTSMCQ, subject: string, index: number): StoredMC
   };
 }
 
+function readingMCQToStored(raw: IELTSReadingMCQ): StoredMCQ {
+  return {
+    id: raw.id,
+    board: 'ielts',
+    grade: 'ielts',
+    subject: 'IELTS Reading (Academic)',
+    chapter: raw.chapter,
+    chapterNumber: raw.chapterNumber,
+    topic: raw.topic,
+    question: raw.question,
+    options: {
+      A: raw.options[0] || 'Option A',
+      B: raw.options[1] || 'Option B',
+      C: raw.options[2] || 'Option C',
+      D: raw.options[3] || 'Option D',
+    },
+    correctAnswer: raw.correctAnswer,
+    explanation: raw.explanation,
+    difficulty: raw.difficulty,
+    verified: raw.verified,
+    source: raw.source,
+    createdAt: raw.createdAt,
+  };
+}
+
 export const IELTS_GRAMMAR_MCQS: StoredMCQ[] = RAW_GRAMMAR.map((q, idx) => toStoredMCQ(q, 'Grammar', idx));
 export const IELTS_COMPREHENSION_MCQS: StoredMCQ[] = RAW_COMPREHENSION.map((q, idx) => toStoredMCQ(q, 'Comprehension of Passages', idx));
+export const IELTS_READING_ACADEMIC_STORED: StoredMCQ[] = RAW_READING_ACADEMIC.map((q) => readingMCQToStored(q));
+
+/** Group Reading Academic MCQs by chapter */
+export const IELTS_READING_ACADEMIC_BANK: Record<string, StoredMCQ[]> = IELTS_READING_ACADEMIC_STORED.reduce(
+  (acc, q) => {
+    const ch = q.chapter || 'Natural Sciences, Climate & Environmental Systems';
+    if (!acc[ch]) {
+      acc[ch] = [];
+    }
+    acc[ch].push(q);
+    return acc;
+  },
+  {} as Record<string, StoredMCQ[]>
+);
 
 export const IELTS_MCQ_BANK: Record<string, StoredMCQ[]> = {
+  ...IELTS_READING_ACADEMIC_BANK,
   'Grammar': IELTS_GRAMMAR_MCQS,
   'Comprehension of Passages': IELTS_COMPREHENSION_MCQS,
 };
 
+export const IELTS_READING_CHAPTERS = Object.keys(IELTS_READING_ACADEMIC_BANK).map((name, idx) => ({
+  id: `ielts-read-ch${String(idx + 1).padStart(2, '0')}`,
+  number: idx + 1,
+  name,
+  totalMCQs: IELTS_READING_ACADEMIC_BANK[name].length,
+}));
+
 export const IELTS_CHAPTERS = [
-  { id: 'ielts-ch-grammar', name: 'Grammar', totalMCQs: IELTS_GRAMMAR_MCQS.length },
-  { id: 'ielts-ch-comprehension', name: 'Comprehension of Passages', totalMCQs: IELTS_COMPREHENSION_MCQS.length },
+  ...IELTS_READING_CHAPTERS,
+  { id: 'ielts-ch-grammar', number: 13, name: 'Grammar', totalMCQs: IELTS_GRAMMAR_MCQS.length },
+  { id: 'ielts-ch-comprehension', number: 14, name: 'Comprehension of Passages', totalMCQs: IELTS_COMPREHENSION_MCQS.length },
 ];
 
 export const ALL_IELTS_MCQS: StoredMCQ[] = [
+  ...IELTS_READING_ACADEMIC_STORED,
   ...IELTS_GRAMMAR_MCQS,
   ...IELTS_COMPREHENSION_MCQS,
 ];
-
