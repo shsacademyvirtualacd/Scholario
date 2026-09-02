@@ -44,6 +44,11 @@ function toStoredMCQ(raw: RawIELTSMCQ, subject: string, index: number): StoredMC
 }
 
 function readingMCQToStored(raw: IELTSReadingMCQ): StoredMCQ {
+  const source: StoredMCQ['source'] =
+    raw.source === 'expert-verified' || raw.source === 'ai-pregenerated'
+      ? raw.source
+      : 'curriculum-bank';
+
   return {
     id: raw.id,
     board: 'ielts',
@@ -63,7 +68,7 @@ function readingMCQToStored(raw: IELTSReadingMCQ): StoredMCQ {
     explanation: raw.explanation,
     difficulty: raw.difficulty,
     verified: raw.verified,
-    source: raw.source,
+    source,
     createdAt: raw.createdAt,
   };
 }

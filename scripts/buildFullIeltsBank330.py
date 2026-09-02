@@ -214,14 +214,15 @@ def generate_full_bank():
 mcqs = generate_full_bank()
 
 # Write JSON
-json_path = "/src/data/banks/ielts/readingAcademic.json"
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+json_path = os.path.join(root_dir, "src/data/banks/ielts/readingAcademic.json")
 os.makedirs(os.path.dirname(json_path), exist_ok=True)
 with open(json_path, "w", encoding="utf-8") as f:
     json.dump(mcqs, f, indent=2, ensure_ascii=False)
 print(f"Saved JSON to {json_path}")
 
 # Write TypeScript
-ts_path = "/src/data/banks/ielts/readingAcademic.ts"
+ts_path = os.path.join(root_dir, "src/data/banks/ielts/readingAcademic.ts")
 with open(ts_path, "w", encoding="utf-8") as f:
     f.write("/**\n * Comprehensive IELTS Reading (Academic) Question Bank\n * 330 High-Quality Genuine MCQs covering 12 authentic academic domains\n */\n\n")
     f.write("export interface IELTSReadingMCQ {\n")
