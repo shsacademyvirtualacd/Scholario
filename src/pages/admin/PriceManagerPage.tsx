@@ -118,7 +118,7 @@ export const PriceManagerPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SectionHeader
             title="Syllabus Price & Fee Manager"
-            description="Configure official tuition pricing and fee rates across all boards (Federal Board / FBISE & Sindh Board). Changes apply instantly across student onboarding, checkout, and the public fee calculator."
+            description="Configure official tuition pricing and fee rates across all boards (FBISE, Sindh Board & IELTS Preparation). Changes apply instantly across student onboarding, checkout, and the public fee calculator."
           />
         </div>
 
@@ -251,7 +251,9 @@ export const PriceManagerPage: React.FC = () => {
                         <div key={cls.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-bold text-[#111111] leading-tight">Class {cls.display_name}</span>
+                              <span className="text-sm font-bold text-[#111111] leading-tight">
+                                {cls.board_id === 'ielts' ? cls.display_name : `Class ${cls.display_name}`}
+                              </span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
                                 {cls.board_name}
                               </span>

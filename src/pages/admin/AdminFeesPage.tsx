@@ -209,7 +209,7 @@ export const AdminFeesPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SectionHeader
             title="Institutional Fee Management"
-            description="Manage active student billing, per-class tuition rates across all boards (FBISE & Sindh Board), and WhatsApp verification."
+            description="Manage active student billing, per-class tuition rates across all boards (FBISE, Sindh Board & IELTS Preparation), and WhatsApp verification."
           />
         </div>
 
@@ -366,7 +366,7 @@ export const AdminFeesPage: React.FC = () => {
                           Per-Class Tuition Rates (All Boards & Classes)
                         </h2>
                         <p className="text-xs text-[#737373] mt-0.5">
-                          Configure official tuition fee amounts across Federal Board (FBISE) and Sindh Board. Prices set here apply instantly across student onboarding, checkout, and the public fee calculator.
+                          Configure official tuition fee amounts across Federal Board (FBISE), Sindh Board, and IELTS Preparation. Prices set here apply instantly across student onboarding, checkout, and the public fee calculator.
                         </p>
                       </div>
                     </div>
@@ -415,7 +415,9 @@ export const AdminFeesPage: React.FC = () => {
                           <div key={cls.id} className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-bold text-[#111111]">Class {cls.display_name}</span>
+                                <span className="text-sm font-bold text-[#111111]">
+                                  {cls.board_id === 'ielts' ? cls.display_name : `Class ${cls.display_name}`}
+                                </span>
                                 <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
                                   {cls.board_name}
                                 </span>

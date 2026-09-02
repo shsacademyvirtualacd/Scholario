@@ -2583,7 +2583,7 @@ export async function getAllLiveFeeConfigs(): Promise<{
 }> {
   const { data, error } = await (supabase as any)
     .from('fee_configs')
-    .select('amount, payment_instructions, whatsapp_number, class_id, classes:classes(id, grade, board_id)');
+    .select('amount, payment_instructions, whatsapp_number, class_id, classes:classes(id, grade, display_name, board_id)');
 
   const byKey: Record<string, number> = {};
   const byClassId: Record<string, LiveGradeFee> = {};
@@ -2605,6 +2605,13 @@ export async function getAllLiveFeeConfigs(): Promise<{
         byKey[`${cls.board_id}-${cls.grade}`] = amt;
         if (cls.board_id === 'fbise') {
           byKey[String(cls.grade)] = amt;
+        }
+        if (cls.display_name) {
+          const normName = String(cls.display_name).trim().toLowerCase();
+          byKey[`${cls.board_id}-${normName.replace(/\s+/g, '-')}`] = amt;
+          byKey[`${cls.board_id}-${cls.display_name}`] = amt;
+          byKey[cls.display_name] = amt;
+          byKey[normName] = amt;
         }
         byClassId[cls.id] = item;
         list.push(item);
@@ -2654,7 +2661,12 @@ export async function getUniversalFeeConfig(): Promise<any | null> {
 }
 
 /** Resolve live fee configuration for a given grade / class with single source of truth resolution */
-export async function resolveGradeFeeConfig(grade: string, classId?: string | null, boardId?: string): Promise<{
+export async function resolveGradeFeeConfig(
+  grade: string,
+  classId?: string | null,
+  boardId?: string,
+  streamName?: string
+): Promise<{
   amount: number;
   payment_instructions: string;
   whatsapp_number: string;
@@ -2662,13 +2674,26 @@ export async function resolveGradeFeeConfig(grade: string, classId?: string | nu
   let targetClassId = classId;
   const targetBoard = boardId || 'fbise';
   if (!targetClassId) {
-    const { data: clsData } = await (supabase as any)
-      .from('classes')
-      .select('id')
-      .eq('board_id', targetBoard)
-      .eq('grade', grade)
-      .limit(1);
-    if (clsData?.[0]?.id) targetClassId = clsData[0].id;
+    const isIelts = targetBoard === 'ielts' || grade === 'IELTS' || grade === 'ielts';
+    if (isIelts && streamName) {
+      const isGt = streamName.toLowerCase().includes('general') || streamName.toLowerCase().includes('gt');
+      const { data: clsData } = await (supabase as any)
+        .from('classes')
+        .select('id')
+        .eq('board_id', 'ielts')
+        .ilike('display_name', isGt ? '%General%' : '%Academic%')
+        .limit(1);
+      if (clsData?.[0]?.id) targetClassId = clsData[0].id;
+    }
+    if (!targetClassId) {
+      const { data: clsData } = await (supabase as any)
+        .from('classes')
+        .select('id')
+        .eq('board_id', targetBoard)
+        .eq('grade', grade)
+        .limit(1);
+      if (clsData?.[0]?.id) targetClassId = clsData[0].id;
+    }
   }
 
   let amount: number | null = null;
@@ -2686,7 +2711,8 @@ export async function resolveGradeFeeConfig(grade: string, classId?: string | nu
   }
   if (amount === null || amount <= 0) {
     if (targetBoard === 'ielts' || grade === 'IELTS' || grade === 'ielts') {
-      amount = 5000;
+      const isGt = streamName && (streamName.toLowerCase().includes('general') || streamName.toLowerCase().includes('gt'));
+      amount = isGt || grade === '12' ? 3000 : 2500;
     } else {
       const fallbackPrice = ['11', '12'].includes(grade) ? 4000 : 3000;
       amount = fallbackPrice;

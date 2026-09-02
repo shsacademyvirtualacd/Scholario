@@ -185,9 +185,23 @@ export function getBoardDef(boardId?: string | null): BoardDef {
   return BOARDS.find((b) => b.id === boardId) || BOARDS[0];
 }
 
-/** Default monthly tuition price by grade (aligned with database fee_configs) */
-export function getDefaultPrice(grade: string, boardId?: string): number {
-  if (boardId === 'ielts' || grade === 'IELTS' || grade === 'ielts') return 5000;
+/** Default monthly/term tuition price by grade and stream (aligned with database fee_configs) */
+export function getDefaultPrice(grade: string, boardId?: string, streamName?: string): number {
+  const isIelts =
+    boardId === 'ielts' ||
+    grade === 'IELTS' ||
+    grade === 'ielts' ||
+    (streamName && streamName.toLowerCase().includes('ielts'));
+
+  if (isIelts) {
+    if (
+      (streamName && (streamName.toLowerCase().includes('general') || streamName.toLowerCase().includes('gt'))) ||
+      grade === '12'
+    ) {
+      return 3000;
+    }
+    return 2500;
+  }
   return ['11', '12'].includes(grade) ? 4000 : 3000;
 }
 

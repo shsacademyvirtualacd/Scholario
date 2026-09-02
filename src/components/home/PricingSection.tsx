@@ -7,10 +7,11 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 const PricingSection: React.FC = () => {
   const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh' | 'ielts'>('fbise');
   const [selectedGradeValue, setSelectedGradeValue] = useState('10');
+  const [selectedIeltsStream, setSelectedIeltsStream] = useState<'Academic' | 'General Training'>('Academic');
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   const currentBoardDef = BOARDS.find((b) => b.id === selectedBoardId) || BOARDS[0];
-  const gradesForSelectedBoard = getGradesForBoard(selectedBoardId);
+  const isIelts = selectedBoardId === 'ielts';
 
   const loadAllPrices = useCallback(async () => {
     try {
@@ -25,14 +26,6 @@ const PricingSection: React.FC = () => {
     loadAllPrices();
   }, [loadAllPrices]);
 
-  // Ensure selectedGradeValue is valid when selectedBoardId changes
-  useEffect(() => {
-    const grades = getGradesForBoard(selectedBoardId);
-    if (!grades.some((g) => g.grade === selectedGradeValue)) {
-      setSelectedGradeValue(grades[0]?.grade || '10');
-    }
-  }, [selectedBoardId]);
-
   // Subscribe to realtime fee_configs updates
   useRealtimeTable({
     table: 'fee_configs',
@@ -41,23 +34,67 @@ const PricingSection: React.FC = () => {
     onDelete: loadAllPrices,
   });
 
-  const activeGradesList = gradesForSelectedBoard.map((g) => {
-    // Collect unique subjects across streams
-    const allSubjs = new Set<string>();
-    g.streams.forEach((s) => s.subjects.forEach((sub) => allSubjs.add(sub)));
-    const key = `${selectedBoardId}-${g.grade}`;
-    const livePrice = livePrices[key] ?? (selectedBoardId === 'fbise' ? livePrices[g.grade] : undefined);
-    return {
-      value: g.grade,
-      label: `Class ${g.displayName}`,
-      subjects: Array.from(allSubjs),
-      basePrice: livePrice ?? getDefaultPrice(g.grade),
-    };
-  });
+  // Calculate active subjects and dynamic price based on board and stream/grade
+  let activeSubjects: string[] = [];
+  let displayPrice = 0;
+  let planTitle = 'Academic Plan';
+  let planDescription = '';
+  let activeBadgeLabel = '';
+  let registerUrl = '';
 
-  // Find currently active grade option, fall back to first if none matches
-  const activeGrade = activeGradesList.find((g) => g.value === selectedGradeValue) || activeGradesList[0];
-  const displayPrice = activeGrade ? activeGrade.basePrice : getDefaultPrice(selectedGradeValue);
+  if (isIelts) {
+    const isGt = selectedIeltsStream === 'General Training';
+    activeSubjects = isGt
+      ? [
+          'IELTS Listening',
+          'IELTS Reading (GT)',
+          'IELTS Writing (GT)',
+          'IELTS Speaking',
+          'IELTS Reading (Academic)',
+          'IELTS Writing (Academic)',
+        ]
+      : [
+          'IELTS Listening',
+          'IELTS Reading (Academic)',
+          'IELTS Writing (Academic)',
+          'IELTS Speaking',
+        ];
+
+    const lookupKey = isGt ? 'ielts-general-training' : 'ielts-academic';
+    const altGradeKey = isGt ? 'ielts-12' : 'ielts-10';
+    const altNameKey = selectedIeltsStream;
+    
+    displayPrice =
+      livePrices[lookupKey] ??
+      livePrices[altGradeKey] ??
+      livePrices[altNameKey] ??
+      livePrices[altNameKey.toLowerCase()] ??
+      getDefaultPrice(isGt ? '12' : '10', 'ielts', selectedIeltsStream);
+
+    planTitle = `${selectedIeltsStream} Plan`;
+    planDescription = `Structured IELTS preparation, syllabus schedules, and interactive note vaults for ${selectedIeltsStream} stream.`;
+    activeBadgeLabel = `IELTS Preparation · ${selectedIeltsStream}`;
+    registerUrl = `/register?board=ielts&stream=${encodeURIComponent(selectedIeltsStream)}`;
+  } else {
+    const gradesForSelectedBoard = getGradesForBoard(selectedBoardId);
+    const gradeDef = gradesForSelectedBoard.find((g) => g.grade === selectedGradeValue) || gradesForSelectedBoard[0];
+    const gradeVal = gradeDef?.grade || selectedGradeValue;
+
+    const allSubjs = new Set<string>();
+    if (gradeDef) {
+      gradeDef.streams.forEach((s) => s.subjects.forEach((sub) => allSubjs.add(sub)));
+    }
+    activeSubjects = Array.from(allSubjs);
+
+    const key = `${selectedBoardId}-${gradeVal}`;
+    const livePrice = livePrices[key] ?? (selectedBoardId === 'fbise' ? livePrices[gradeVal] : undefined);
+    displayPrice = livePrice ?? getDefaultPrice(gradeVal, selectedBoardId);
+
+    planTitle = 'Academic Plan';
+    planDescription = `Structured daily classes, syllabus schedules and interactive note vaults for Class ${gradeVal}th.`;
+    activeBadgeLabel = `${currentBoardDef.name} · Class ${gradeVal}th`;
+    registerUrl = `/register?board=${selectedBoardId}&grade=${gradeVal}`;
+  }
 
   return (
     <section className="py-28 bg-white">
@@ -67,18 +104,18 @@ const PricingSection: React.FC = () => {
         <div className="text-center mb-12">
           <span className="section-label justify-center mb-4">Pricing Calculator</span>
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#111111] mb-5 leading-tight">
-            Select your Board & Class
+            Select your Board & Program
           </h2>
           <p className="text-xl text-[#737373] max-w-2xl mx-auto mb-8">
-            Choose your academic education board and class below to see the exact subjects and personalized monthly pricing plans.
+            Choose your education board and program below to see the exact subjects and official fee rates.
           </p>
 
           {/* Interactive Selectors Bar */}
-          <div className="max-w-xl mx-auto bg-[#FAFAFA] border border-[#E5E5E5] p-5 rounded-2xl mb-12 space-y-4">
+          <div className="max-w-xl mx-auto bg-[#FAFAFA] border border-[#E5E5E5] p-5 rounded-2xl mb-12 space-y-4 shadow-sm">
             {/* Board Selector Pills */}
             <div>
               <label className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
-                Select Education Board
+                Select Education Board / Stream
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#EFEFEF] p-1 rounded-xl">
                 {BOARDS.map((board) => (
@@ -101,27 +138,47 @@ const PricingSection: React.FC = () => {
               </div>
             </div>
 
-            {/* Grade Selector */}
+            {/* Stream / Grade Selector */}
             <div>
-              <label htmlFor="grade-select" className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
-                Select Stream / Course ({currentBoardDef.name})
+              <label className="block text-left text-xs font-bold text-[#737373] uppercase tracking-wider mb-2">
+                {isIelts ? 'Select IELTS Stream' : `Select Class (${currentBoardDef.name})`}
               </label>
-              <div className={`grid ${activeGradesList.length === 1 ? 'grid-cols-1' : activeGradesList.length === 2 ? 'grid-cols-2' : 'grid-cols-4'} gap-1.5 bg-[#EFEFEF] p-1 rounded-xl`}>
-                {activeGradesList.map((g) => (
-                  <button
-                    key={g.value}
-                    type="button"
-                    onClick={() => setSelectedGradeValue(g.value)}
-                    className={`py-2 px-2 rounded-lg text-xs font-bold transition-all text-center ${
-                      selectedGradeValue === g.value
-                        ? 'bg-[#111111] text-white shadow-sm'
-                        : 'text-[#737373] hover:text-[#111111] bg-white/40'
-                    }`}
-                  >
-                    {g.label}
-                  </button>
-                ))}
-              </div>
+
+              {isIelts ? (
+                <div className="grid grid-cols-2 gap-2 bg-[#EFEFEF] p-1 rounded-xl">
+                  {(['Academic', 'General Training'] as const).map((stream) => (
+                    <button
+                      key={stream}
+                      type="button"
+                      onClick={() => setSelectedIeltsStream(stream)}
+                      className={`py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-center ${
+                        selectedIeltsStream === stream
+                          ? 'bg-[#111111] text-white shadow-sm'
+                          : 'text-[#737373] hover:text-[#111111] bg-white/40'
+                      }`}
+                    >
+                      {stream}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-1.5 bg-[#EFEFEF] p-1 rounded-xl">
+                  {['9', '10', '11', '12'].map((gr) => (
+                    <button
+                      key={gr}
+                      type="button"
+                      onClick={() => setSelectedGradeValue(gr)}
+                      className={`py-2 px-2 rounded-lg text-xs font-bold transition-all text-center ${
+                        selectedGradeValue === gr
+                          ? 'bg-[#111111] text-white shadow-sm'
+                          : 'text-[#737373] hover:text-[#111111] bg-white/40'
+                      }`}
+                    >
+                      Class {gr}th
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -138,15 +195,15 @@ const PricingSection: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-[#111111] text-lg">Active Subjects Included</h3>
-                  <p className="text-[11px] font-semibold text-[#D4A017]">{currentBoardDef.name} · Class {activeGrade?.value}th</p>
+                  <p className="text-[11px] font-semibold text-[#D4A017]">{activeBadgeLabel}</p>
                 </div>
               </div>
               <p className="text-xs text-[#737373] mb-5 leading-relaxed">
-                You will get comprehensive access to live lectures, notes vaults and announcements for the following curriculum subjects:
+                You will get comprehensive access to live lectures, notes vaults and announcements for the following curriculum modules:
               </p>
 
               <ul className="space-y-2.5">
-                {activeGrade?.subjects.map((sub) => (
+                {activeSubjects.map((sub) => (
                   <li key={sub} className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#F0F0F0]">
                     <div className="w-5 h-5 rounded-full bg-green-50 flex items-center justify-center border border-green-100 shrink-0">
                       <Check size={12} className="text-[#22c55e]" />
@@ -159,7 +216,9 @@ const PricingSection: React.FC = () => {
 
             <div className="mt-8 pt-6 border-t border-[#E5E5E5] text-[11px] text-[#737373] flex items-center gap-2">
               <BookOpen size={13} className="text-[#F4C430] shrink-0" />
-              <span>Full curriculum aligned with {currentBoardDef.name} syllabus guidelines.</span>
+              <span>
+                Full curriculum aligned with {isIelts ? 'IELTS syllabus guidelines' : `${currentBoardDef.name} syllabus guidelines`}.
+              </span>
             </div>
           </div>
 
@@ -171,17 +230,17 @@ const PricingSection: React.FC = () => {
               {/* Badge */}
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span
-                  className="px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide"
+                  className="px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide shadow-sm"
                   style={{ background: '#F4C430', color: '#111111' }}
                 >
-                  Limited Time!
+                  Active Syllabus
                 </span>
               </div>
 
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-white">Academic Plan</span>
+                    <span className="text-base font-bold text-white">{planTitle}</span>
                     <Zap size={14} style={{ color: '#F4C430' }} />
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#262626] text-[#F4C430]">
@@ -189,17 +248,17 @@ const PricingSection: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-[#A3A3A3] leading-relaxed mb-6">
-                  Structured daily classes, syllabus schedules and interactive note vaults for Class {activeGrade?.value}th.
+                  {planDescription}
                 </p>
 
                 {/* Dynamic Price */}
                 <div className="mb-6 pb-6 border-b border-[#262626]">
                   <div className="flex items-baseline gap-1">
                     <span className="text-xs font-semibold text-[#737373]">PKR</span>
-                    <span className="text-4xl font-extrabold tracking-tight text-white">
+                    <span className="text-4xl font-extrabold tracking-tight text-white font-mono">
                       {displayPrice.toLocaleString()}
                     </span>
-                    <span className="text-xs font-semibold text-[#737373]">/mo</span>
+                    <span className="text-xs font-semibold text-[#737373]">/term</span>
                   </div>
                 </div>
 
@@ -207,7 +266,7 @@ const PricingSection: React.FC = () => {
                 <ul className="space-y-2.5 mb-6 text-xs text-[#D4D4D4]">
                   <li className="flex items-center gap-2">
                     <Check size={12} className="text-[#F4C430]" />
-                    <span>Complete {currentBoardDef.name} Course access</span>
+                    <span>Complete {currentBoardDef.name} Program access</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check size={12} className="text-[#F4C430]" />
@@ -215,14 +274,14 @@ const PricingSection: React.FC = () => {
                   </li>
                   <li className="flex items-center gap-2">
                     <Check size={12} className="text-[#F4C430]" />
-                    <span>Resource library & solved vaults</span>
+                    <span>Resource library & solved practice vaults</span>
                   </li>
                 </ul>
               </div>
 
               <a
-                href={`/register?board=${selectedBoardId}&grade=${selectedGradeValue}`}
-                className="btn btn-gold btn-md w-full flex items-center justify-center gap-1 interactive"
+                href={registerUrl}
+                className="btn btn-gold btn-md w-full flex items-center justify-center gap-1 interactive mt-4"
               >
                 Get Started with {currentBoardDef.name}
                 <ArrowRight size={14} />
@@ -234,7 +293,7 @@ const PricingSection: React.FC = () => {
 
         {/* Footnote */}
         <p className="text-center text-sm text-[#A3A3A3] mt-12">
-          All pricing options denominated in Pakistani Rupees (PKR).
+          All tuition pricing denominated in Pakistani Rupees (PKR) and billed per academic term.
         </p>
       </div>
     </section>
@@ -242,3 +301,4 @@ const PricingSection: React.FC = () => {
 };
 
 export default PricingSection;
+
