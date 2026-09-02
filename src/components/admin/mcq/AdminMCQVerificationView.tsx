@@ -498,7 +498,11 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                   key={b.id}
                   onClick={() => {
                     setSelectedBoard(b.id);
-                    setSelectedGrade('9');
+                    if (b.id === 'ielts') {
+                      setSelectedGrade('IELTS');
+                    } else {
+                      setSelectedGrade('9');
+                    }
                   }}
                   className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer border ${
                     isSelected
@@ -536,7 +540,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                 >
                   <div>
                     <div className={`text-xs font-black ${isSelected ? 'text-white' : 'text-[#111111]'}`}>
-                      Grade {g.grade} ({g.displayName})
+                      {g.grade === 'IELTS' || selectedBoard === 'ielts' ? g.displayName : `Grade ${g.grade} (${g.displayName})`}
                     </div>
                     <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/70' : 'text-[#737373]'}`}>
                       {selectedBoard.toUpperCase()} Curriculum

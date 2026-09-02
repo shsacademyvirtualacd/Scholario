@@ -6,7 +6,7 @@
 import type { ChapterDef, FBISEGrade9SubjectCurriculum } from './curriculumFBISE9';
 import { IELTS_READING_CHAPTERS } from '../data/banks/ielts/index';
 
-export const IELTS_READING_ACADEMIC_CHAPTERS: ChapterDef[] = IELTS_READING_CHAPTERS.map((ch) => ({
+export const IELTS_READING_ACADEMIC_CHAPTERS: ChapterDef[] = IELTS_READING_CHAPTERS.map((ch: { id: string; number: number; name: string }) => ({
   id: ch.id,
   number: ch.number,
   chapterNumber: ch.number,
@@ -24,7 +24,7 @@ export const IELTS_READING_ACADEMIC_CHAPTERS: ChapterDef[] = IELTS_READING_CHAPT
   description: `Authentic academic reading comprehension passage and analysis for ${ch.name}.`,
 }));
 
-export const IELTS_READING_GT_CHAPTERS: ChapterDef[] = IELTS_READING_CHAPTERS.map((ch) => ({
+export const IELTS_READING_GT_CHAPTERS: ChapterDef[] = IELTS_READING_CHAPTERS.map((ch: { id: string; number: number; name: string }) => ({
   id: ch.id.replace('read', 'gt-read'),
   number: ch.number,
   chapterNumber: ch.number,
