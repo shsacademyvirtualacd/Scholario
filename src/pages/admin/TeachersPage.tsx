@@ -62,8 +62,24 @@ export const TeachersPage: React.FC = () => {
     const classesCount = slots.filter((s) => offeringIds.includes(s.offering_id || '')).length;
     const studentCount = enrollments.filter((e) => offeringIds.includes(e.offering_id || '')).length;
     
-    // Unique streams count
-    const streams = Array.from(new Set(teacherOfferings.map((o) => o.subject))).join(', ') || 'N/A';
+    // Unique streams count with unified IELTS Preparation
+    const rawSubjects = teacherOfferings.map((o) => o.subject || o.subject_name || '');
+    const hasIelts = teacherOfferings.some((o) => {
+      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      const s = (o.subject_name || o.subject || '').toLowerCase();
+      return b === 'ielts' || s.includes('ielts');
+    });
+
+    const nonIeltsSubjects = rawSubjects.filter(s => {
+      const sLower = s.toLowerCase();
+      return !sLower.includes('ielts') && s !== '';
+    });
+
+    const uniqueSubjects = Array.from(new Set(nonIeltsSubjects));
+    if (hasIelts) {
+      uniqueSubjects.unshift('IELTS Preparation');
+    }
+    const streams = uniqueSubjects.join(', ') || 'N/A';
     return { classesCount, studentCount, streams };
   };
 

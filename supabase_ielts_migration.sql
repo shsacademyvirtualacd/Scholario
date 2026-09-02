@@ -28,6 +28,7 @@ ON CONFLICT (class_id, name) DO NOTHING;
 
 -- 4. Ensure public.subjects includes all IELTS modular subjects
 INSERT INTO public.subjects (name) VALUES
+  ('IELTS Preparation'),
   ('IELTS Listening'),
   ('IELTS Reading'),
   ('IELTS Reading (Academic)'),
@@ -55,19 +56,12 @@ JOIN public.subjects subj ON subj.name IN ('IELTS Listening', 'IELTS Reading (GT
 WHERE c.board_id = 'ielts' AND c.grade = '12' AND s.name = 'General Training'
 ON CONFLICT (stream_id, subject_id) DO NOTHING;
 
--- 6. Insert class_offerings for IELTS
+-- 6. Insert class_offerings for IELTS (Single Unified "IELTS Preparation" per class for Teacher Assignment)
 INSERT INTO public.class_offerings (class_id, subject_id)
 SELECT c.id, s.id
 FROM public.classes c
-JOIN public.subjects s ON s.name IN ('IELTS Listening', 'IELTS Reading (Academic)', 'IELTS Writing (Academic)', 'IELTS Speaking')
-WHERE c.board_id = 'ielts' AND c.grade = '10'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.class_offerings (class_id, subject_id)
-SELECT c.id, s.id
-FROM public.classes c
-JOIN public.subjects s ON s.name IN ('IELTS Listening', 'IELTS Reading (GT)', 'IELTS Writing (GT)', 'IELTS Speaking')
-WHERE c.board_id = 'ielts' AND c.grade = '12'
+CROSS JOIN public.subjects s
+WHERE c.board_id = 'ielts' AND s.name = 'IELTS Preparation'
 ON CONFLICT DO NOTHING;
 
 -- 7. Ensure fee_configs has default pricing for IELTS classes

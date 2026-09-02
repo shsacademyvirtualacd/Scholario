@@ -388,15 +388,36 @@ export const RosterManagerPage: React.FC = () => {
     if (!entry.class_ids || entry.class_ids.length === 0) {
       return <span className="text-zinc-400 italic text-[11px]">No schedule classes assigned</span>;
     }
-    return entry.class_ids.map(cid => {
+    const badges: React.ReactNode[] = [];
+    let hasIelts = false;
+
+    for (const cid of entry.class_ids) {
       const off = offerings.find(o => o.id === cid);
-      if (!off) return null;
-      return (
-        <span key={cid} className="inline-block bg-[#F5F5F5] border border-[#E5E5E5] text-[#404040] text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5">
-          {off.subject_name} (Gr. {off.grade})
-        </span>
-      );
-    }).filter(Boolean);
+      if (!off) continue;
+      const isIeltsOff = (off.board_id || off.board || off.class?.board_id || '').toLowerCase() === 'ielts' || 
+                         (off.subject_name || off.subject || '').toLowerCase().includes('ielts');
+      if (isIeltsOff) {
+        if (!hasIelts) {
+          hasIelts = true;
+          badges.push(
+            <span key="ielts-unified-badge" className="inline-block bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5">
+              IELTS Preparation
+            </span>
+          );
+        }
+      } else {
+        badges.push(
+          <span key={cid} className="inline-block bg-[#F5F5F5] border border-[#E5E5E5] text-[#404040] text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5">
+            {off.subject_name} (Gr. {off.grade})
+          </span>
+        );
+      }
+    }
+
+    if (badges.length === 0) {
+      return <span className="text-zinc-400 italic text-[11px]">No schedule classes assigned</span>;
+    }
+    return badges;
   };
 
   // Student Edit and Access Actions
@@ -671,12 +692,20 @@ export const RosterManagerPage: React.FC = () => {
   }, [offerings]);
 
   const ieltsOfferings = useMemo(() => {
-    return offerings
-      .filter(o => {
-        const b = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
-        return b === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts');
-      })
-      .sort((a, b) => (a.subject_name || '').localeCompare(b.subject_name || ''));
+    const allIelts = offerings.filter(o => {
+      const b = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
+      return b === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts');
+    });
+    if (allIelts.length === 0) return [];
+    
+    // Return a single unified IELTS Preparation offering
+    const exact = allIelts.find(o => (o.subject_name || o.subject || '').toLowerCase() === 'ielts preparation');
+    if (exact) return [exact];
+    return [{
+      ...allIelts[0],
+      subject_name: 'IELTS Preparation',
+      subject: 'IELTS Preparation',
+    }];
   }, [offerings]);
 
   const otherOfferings = useMemo(() => {
@@ -1524,73 +1553,73 @@ export const RosterManagerPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* ── SECTION 3: IELTS (Academic & General Training) ── */}
+                  {/* ── SECTION 3: IELTS (Unified Single Subject) ── */}
                   <div className="space-y-2.5 pt-2">
                     <div className="flex items-center justify-between pb-1">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-amber-100 shrink-0" />
                         <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                          IELTS (International English)
+                          IELTS Preparation
                         </h4>
-                        <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
-                          {ieltsOfferings.length}
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+                          1 Subject
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {selectedClasses.filter(id => ieltsOfferings.some(o => o.id === id)).length > 0 && (
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md">
-                            {selectedClasses.filter(id => ieltsOfferings.some(o => o.id === id)).length} selected
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const ieltsIds = ieltsOfferings.map(o => o.id);
-                            const allSelected = ieltsIds.length > 0 && ieltsIds.every(id => selectedClasses.includes(id));
-                            if (allSelected) {
-                              setSelectedClasses(prev => prev.filter(id => !ieltsIds.includes(id)));
-                            } else {
-                              setSelectedClasses(prev => Array.from(new Set([...prev, ...ieltsIds])));
-                            }
-                          }}
-                          className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
-                        >
-                          {ieltsOfferings.length > 0 && ieltsOfferings.every(o => selectedClasses.includes(o.id)) ? 'Deselect All' : 'Select All'}
-                        </button>
-                      </div>
+                      {selectedClasses.some(id => ieltsOfferings.some(o => o.id === id) || offerings.filter(o => (o.board_id || o.board || '').toLowerCase() === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts')).some(o => o.id === id)) && (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md">
+                          Assigned
+                        </span>
+                      )}
                     </div>
 
-                    <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
+                    <div className="border border-[#E5E5E5] rounded-2xl bg-[#FAFAFA]/50 shadow-inner p-1">
                       {ieltsOfferings.length === 0 ? (
                         <div className="p-4 text-xs text-[#737373] text-center">No IELTS offerings found.</div>
                       ) : (
                         ieltsOfferings.map(off => {
-                          const isChecked = selectedClasses.includes(off.id);
+                          // Check if checked directly or if any IELTS offering was selected
+                          const allIeltsOfferingIds = offerings
+                            .filter(o => (o.board_id || o.board || '').toLowerCase() === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts'))
+                            .map(o => o.id);
+                          const isChecked = selectedClasses.includes(off.id) || allIeltsOfferingIds.some(id => selectedClasses.includes(id));
+                          
                           const isAssignedToThisTeacher = selectedEntry && (
                             off.teacher_id === selectedEntry.id || 
                             off.teacher_id === selectedEntry.profile_id || 
                             off.teacher?.id === selectedEntry.id || 
                             off.teacher?.id === selectedEntry.profile_id
                           );
+
+                          const handleToggleIelts = () => {
+                            if (isChecked) {
+                              // Uncheck all IELTS IDs
+                              setSelectedClasses(prev => prev.filter(id => id !== off.id && !allIeltsOfferingIds.includes(id)));
+                            } else {
+                              // Assign unified IELTS offering
+                              setSelectedClasses(prev => Array.from(new Set([...prev.filter(id => !allIeltsOfferingIds.includes(id)), off.id])));
+                            }
+                          };
+
                           return (
                             <label 
                               key={off.id}
-                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-amber-50/70 font-semibold' : ''}`}
+                              className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer hover:bg-white transition-all ${isChecked ? 'bg-amber-50/80 font-semibold border border-amber-200/80 shadow-xs' : ''}`}
                             >
                               <div className="pr-3">
                                 <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
-                                  <span>{off.subject_name}</span>
-                                  {off.stream && (
-                                    <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
-                                      {off.stream}
-                                    </span>
-                                  )}
+                                  <span className="text-sm font-extrabold text-zinc-900">IELTS Preparation</span>
+                                  <span className="text-[9px] font-bold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    Unified Track
+                                  </span>
                                 </div>
-                                <div className="text-[11px] mt-0.5">
+                                <p className="text-[11px] text-zinc-500 mt-1 font-normal leading-relaxed">
+                                  Responsible for the complete IELTS course program (Listening, Reading, Writing, Speaking & Grammar) across Academic & General Training tracks.
+                                </p>
+                                <div className="text-[11px] mt-1.5 font-medium">
                                   {off.teacher ? (
                                     <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
                                       Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
-                                      {isAssignedToThisTeacher && ' (Assigned)'}
+                                      {isAssignedToThisTeacher && ' (Assigned to this faculty)'}
                                     </span>
                                   ) : (
                                     <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
@@ -1600,8 +1629,8 @@ export const RosterManagerPage: React.FC = () => {
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => toggleClassSelect(off.id)}
-                                className="rounded border-[#D4D4D4] text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer shrink-0"
+                                onChange={handleToggleIelts}
+                                className="rounded border-[#D4D4D4] text-amber-600 focus:ring-amber-500 w-5 h-5 cursor-pointer shrink-0"
                               />
                             </label>
                           );

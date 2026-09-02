@@ -114,14 +114,43 @@ const AdminDashboardPage: React.FC = () => {
   const teacherWorkload = teachers.map(teacher => {
     const teacherOfferings = offerings.filter(o => o.teacher_id === teacher.id);
     
-    // Unique subjects
-    const subjects = Array.from(new Set(teacherOfferings.map(o => o.subject_name))).join(', ') || 'N/A';
+    // Unique subjects with unified IELTS Preparation
+    const rawSubjects = teacherOfferings.map(o => o.subject_name || o.subject || '');
+    const hasIelts = teacherOfferings.some(o => {
+      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      const s = (o.subject_name || o.subject || '').toLowerCase();
+      return b === 'ielts' || s.includes('ielts');
+    });
+
+    const nonIeltsSubjects = rawSubjects.filter(s => {
+      const sLower = s.toLowerCase();
+      return !sLower.includes('ielts') && s !== '';
+    });
+
+    const uniqueSubjects = Array.from(new Set(nonIeltsSubjects));
+    if (hasIelts) {
+      uniqueSubjects.unshift('IELTS Preparation');
+    }
+    const subjects = uniqueSubjects.join(', ') || 'N/A';
     
     // Unique boards
-    const boards = 'FBISE';
+    const rawBoards = teacherOfferings.map(o => {
+      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      const s = (o.subject_name || o.subject || '').toLowerCase();
+      if (b === 'ielts' || s.includes('ielts')) return 'IELTS';
+      if (b === 'sindh') return 'Sindh';
+      return 'FBISE';
+    });
+    const boards = Array.from(new Set(rawBoards)).join(', ') || 'FBISE';
     
     // Unique grades
-    const grades = Array.from(new Set(teacherOfferings.map(o => o.grade))).join(' & ') || 'N/A';
+    const rawGrades = teacherOfferings.map(o => {
+      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      const s = (o.subject_name || o.subject || '').toLowerCase();
+      if (b === 'ielts' || s.includes('ielts')) return 'IELTS';
+      return o.grade;
+    }).filter(Boolean);
+    const grades = Array.from(new Set(rawGrades)).join(' & ') || 'N/A';
     
     // Unique students count
     const offeringIds = teacherOfferings.map(o => o.id);

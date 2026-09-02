@@ -31,16 +31,21 @@ function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
 
 function mapOffering(off: any): any {
   if (!off) return off;
-  const subjName = off.subject?.name || (typeof off.subject === 'string' ? off.subject : null) || off.subject_name || 'Subject';
+  const rawSubjName = off.subject?.name || (typeof off.subject === 'string' ? off.subject : null) || off.subject_name || 'Subject';
   const rawBoard = off.class?.board_id || off.class?.board?.id || off.board_id || off.board || 'fbise';
   const boardId = String(rawBoard).toLowerCase();
-  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : boardId === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)');
+  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : boardId === 'ielts' ? 'IELTS Preparation' : 'Federal Board (FBISE)');
+  
+  // Unify subject name for IELTS teacher assignment offerings
+  const isIelts = boardId === 'ielts' || String(off.class?.grade || off.grade || '').toLowerCase() === 'ielts' || rawSubjName.toLowerCase().includes('ielts');
+  const subjName = isIelts ? 'IELTS Preparation' : rawSubjName;
+
   return {
     ...off,
     board: boardId,
     board_id: boardId,
     board_name: boardName,
-    grade: off.class?.grade || off.grade || '10',
+    grade: isIelts ? 'IELTS' : (off.class?.grade || off.grade || '10'),
     stream_id: off.stream_id || off.stream?.id || null,
     stream: typeof off.stream === 'string' ? off.stream : (off.stream?.name || off.stream_name || null),
     subject_name: subjName,
@@ -1692,8 +1697,15 @@ export async function getTestsForTeacher(
       .map((o) => ({
         grade: String(o.class?.grade || o.grade || '').trim(),
         subject: (o.subject?.name || o.subject_name || '').trim().toLowerCase(),
+        board: String(o.board_id || o.board || o.class?.board_id || '').trim().toLowerCase(),
       }))
-      .filter((p) => p.grade && p.subject);
+      .filter((p) => (p.grade && p.subject) || p.board === 'ielts' || p.subject.includes('ielts'));
+
+    const isTeacherIeltsAssigned = assignedOfferings.some(o => {
+      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      const s = (o.subject_name || o.subject || '').toLowerCase();
+      return b === 'ielts' || s.includes('ielts');
+    });
 
     // Strict filter:
     // 1) Test MUST be assigned to this teacher (by matching teacher_id or teacher_name)
@@ -1706,8 +1718,15 @@ export async function getTestsForTeacher(
       if (!isTeacherAssigned) return false;
 
       if (validPairs.length > 0) {
+        const tBoard = String(t.board || '').trim().toLowerCase();
         const tGrade = String(t.grade || '').trim();
         const tSub = (t.subject || '').trim().toLowerCase();
+        const isIeltsTest = tBoard === 'ielts' || tGrade.toLowerCase() === 'ielts' || tSub.includes('ielts');
+
+        if (isTeacherIeltsAssigned && isIeltsTest) {
+          return true;
+        }
+
         const matchesOffering = validPairs.some(
           (p) =>
             p.grade === tGrade &&
@@ -2210,8 +2229,15 @@ export async function getStudentMCQAttemptsForTeacher(
       .map((o) => ({
         grade: String(o.class?.grade || o.grade || '').trim(),
         subject: (o.subject?.name || o.subject_name || o.subject || '').trim().toLowerCase(),
+        board: String(o.board_id || o.board || o.class?.board_id || '').trim().toLowerCase(),
       }))
-      .filter((p) => p.grade && p.subject);
+      .filter((p) => (p.grade && p.subject) || p.board === 'ielts' || p.subject.includes('ielts'));
+
+    const isTeacherIeltsAssigned = assignedOfferings.some(o => {
+      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      const s = (o.subject_name || o.subject || '').toLowerCase();
+      return b === 'ielts' || s.includes('ielts');
+    });
 
     // If teacher has NO assigned offerings, they must see NO results (strict zero-trust scoping)
     if (validPairs.length === 0) {
@@ -2225,6 +2251,11 @@ export async function getStudentMCQAttemptsForTeacher(
     const filtered = allAttempts.filter((att) => {
       const attGrade = String(att.grade || '').trim();
       const attSub = (att.subject || '').trim().toLowerCase();
+      const isIeltsAttempt = attGrade.toLowerCase() === 'ielts' || attSub.includes('ielts');
+
+      if (isTeacherIeltsAssigned && isIeltsAttempt) {
+        return true;
+      }
 
       return validPairs.some((p) => {
         const gradeMatches = p.grade === attGrade;

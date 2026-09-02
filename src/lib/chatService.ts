@@ -333,7 +333,7 @@ export function enrichProfilesList(
 
     if (p.role === 'teacher') {
       // Look up subjects
-      const subjects = [...(teacherSubjectsMap?.get(p.id) || [])];
+      const rawSubjects = [...(teacherSubjectsMap?.get(p.id) || [])];
       
       // Also look up in teachers table if name or email matches
       if (teachersTableData && teachersTableData.length > 0) {
@@ -344,10 +344,18 @@ export function enrichProfilesList(
           if ((!enriched.full_name || enriched.full_name.toLowerCase() === 'teacher') && teacherRec.full_name) {
             enriched.full_name = teacherRec.full_name;
           }
-          if (teacherRec.subject && !subjects.includes(teacherRec.subject)) {
-            subjects.push(teacherRec.subject);
+          if (teacherRec.subject && !rawSubjects.includes(teacherRec.subject)) {
+            rawSubjects.push(teacherRec.subject);
           }
         }
+      }
+
+      // Unify IELTS sub-skills to single "IELTS Preparation" subject
+      const hasIelts = rawSubjects.some(s => s.toLowerCase().includes('ielts'));
+      const nonIelts = rawSubjects.filter(s => !s.toLowerCase().includes('ielts') && s.trim() !== '');
+      const subjects = Array.from(new Set(nonIelts));
+      if (hasIelts) {
+        subjects.unshift('IELTS Preparation');
       }
 
       enriched.teacher_subjects = subjects;
