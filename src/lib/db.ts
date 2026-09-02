@@ -8,7 +8,7 @@
 import { supabase } from './supabase';
 import { pageCache } from './pageCache';
 import { getPKTNow } from './scheduleUtils';
-import { BOARDS, FBISE_GRADES, SINDH_GRADES, IELTS_GRADES, getGradesForBoard } from './taxonomy';
+import { BOARDS, getGradesForBoard } from './taxonomy';
 // getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
   Profile, Teacher, ClassOffering, ClassSlot, ClassSessionLink,

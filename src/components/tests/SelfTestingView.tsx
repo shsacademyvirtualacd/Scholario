@@ -38,7 +38,7 @@ import {
   getWeakTopicsForStudent,
 } from '../../lib/selfTestService';
 import { saveStudentMCQAttempt } from '../../lib/db';
-import { BOARDS, FBISE_GRADES, SINDH_GRADES, IELTS_GRADES, getGradesForBoard, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   isGrade9FBISE,

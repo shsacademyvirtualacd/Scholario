@@ -138,12 +138,41 @@ export const SINDH_GRADES: GradeDef[] = [
   },
 ];
 
+export const IELTS_GRADES: GradeDef[] = [
+  {
+    grade: '10',
+    displayName: 'Academic',
+    boardId: 'ielts',
+    commonSubjects: ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'],
+    streams: [
+      {
+        name: 'Academic',
+        subjects: ['IELTS Listening', 'IELTS Reading (Academic)', 'IELTS Writing (Academic)', 'IELTS Speaking'],
+      },
+    ],
+  },
+  {
+    grade: '12',
+    displayName: 'General Training',
+    boardId: 'ielts',
+    commonSubjects: ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'],
+    streams: [
+      {
+        name: 'General Training',
+        subjects: ['IELTS Listening', 'IELTS Reading (GT)', 'IELTS Writing (GT)', 'IELTS Speaking'],
+      },
+    ],
+  },
+];
+
 // GRADES default alias (FBISE for backward compatibility)
 export const GRADES: GradeDef[] = FBISE_GRADES;
 
 /** Get grades for a specific board */
 export function getGradesForBoard(boardId: string): GradeDef[] {
-  if (boardId === 'sindh') return SINDH_GRADES;
+  const norm = (boardId || '').toLowerCase();
+  if (norm === 'sindh') return SINDH_GRADES;
+  if (norm === 'ielts') return IELTS_GRADES;
   return FBISE_GRADES;
 }
 
@@ -160,7 +189,7 @@ export function getDefaultPrice(grade: string): number {
 /** All unique subject names used across the entire taxonomy */
 export function getAllSubjectNames(): string[] {
   const set = new Set<string>();
-  const allGrades = [...FBISE_GRADES, ...SINDH_GRADES];
+  const allGrades = [...FBISE_GRADES, ...SINDH_GRADES, ...IELTS_GRADES];
   for (const g of allGrades) {
     for (const s of g.streams) {
       for (const sub of s.subjects) {
