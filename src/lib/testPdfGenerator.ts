@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 import type { GeneratedTestSpecification } from '../types/questionBank';
 import { renderLaTeXToText } from './latexRenderer';
 import { containsUrdu } from './urduReshaper';
+import { isIELTSBoard } from './curriculumIELTS';
 
 export const SHS_OFFICIAL_LOGO_URL =
   'https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png';
@@ -303,7 +304,11 @@ async function generateTestPaperHtmlPDF(
             ${test.title}
           </h2>
           <div style="font-size: 10.5px; font-weight: 600; color: #525252; margin-top: 2px;">
-            Grade ${test.grade} (${test.stream || 'Science'}) • ${test.subject} • ${test.board.toUpperCase()} Curriculum ${test.chapter && test.chapter !== 'All' ? '• ' + test.chapter : ''}
+            ${
+              isIELTSBoard(test.board, test.grade)
+                ? `IELTS Preparation (${test.stream || 'Academic'}) • ${test.subject} • ${test.chapter && test.chapter !== 'All' ? test.chapter : 'All Sections'}`
+                : `Grade ${test.grade} (${test.stream || 'Science'}) • ${test.subject} • ${test.board.toUpperCase()} Curriculum ${test.chapter && test.chapter !== 'All' ? '• ' + test.chapter : ''}`
+            }
           </div>
         </div>
 
@@ -328,12 +333,13 @@ async function generateTestPaperHtmlPDF(
       `;
     } else {
       // Identical top header + running continuation bar on subsequent pages
+      const isIelts = isIELTSBoard(test.board, test.grade);
       headerEl.innerHTML = `
         ${brandedTopBar}
 
         <!-- Running Sub-bar on Continuation Pages -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 9.5px; font-weight: 700; color: #475569; margin-top: 4px; margin-bottom: 6px;">
-          <span>${test.subject} • Grade ${test.grade} (${test.stream || 'Science'})</span>
+          <span>${test.subject} • ${isIelts ? `IELTS Preparation (${test.stream || 'Academic'})` : `Grade ${test.grade} (${test.stream || 'Science'})`}</span>
           <span style="color: #0f172a; font-weight: 800;">${test.title}</span>
           <span style="color: #94a3b8; font-size: 9px; font-weight: 700; text-transform: uppercase;">Continued</span>
         </div>

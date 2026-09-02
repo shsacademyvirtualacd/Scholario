@@ -18,6 +18,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
 import { containsUrdu } from '../../../lib/urduReshaper';
 import { generateTestPaperPDF } from '../../../lib/testPdfGenerator';
+import { isIELTSBoard } from '../../../lib/curriculumIELTS';
 import type { GeneratedTestSpecification } from '../../../types/questionBank';
 
 // Configure pdfjs worker source safely
@@ -111,11 +112,14 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
         filename: teacherCopy.filename,
       };
     }
+    const isIelts = isIELTSBoard(testSpec.board, testSpec.grade);
     return {
       blob: pdfBlob,
       dataUrl: pdfDataUrl,
       arrayBuffer: pdfArrayBuffer,
-      filename: `SHS_Test_${testSpec.subject || 'Assessment'}_Grade${testSpec.grade || 'Paper'}.pdf`,
+      filename: isIelts
+        ? `SHS_Test_IELTS_${(testSpec.subject || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+        : `SHS_Test_${testSpec.subject || 'Assessment'}_Grade${testSpec.grade || 'Paper'}.pdf`,
     };
   }, [copyMode, studentCopy, teacherCopy, pdfBlob, pdfDataUrl, pdfArrayBuffer, testSpec]);
 
@@ -380,10 +384,15 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       return;
     }
 
+    const isIelts = isIELTSBoard(testSpec.board, testSpec.grade);
     const tempUrl = URL.createObjectURL(copy.blob);
     const link = document.createElement('a');
     link.href = tempUrl;
-    link.download = copy.filename || `SHS_Test_${testSpec.subject || 'Subject'}_Grade${testSpec.grade || 'Paper'}_Student_Copy.pdf`;
+    link.download =
+      copy.filename ||
+      (isIelts
+        ? `SHS_Test_IELTS_${(testSpec.subject || 'Subject').replace(/[^a-zA-Z0-9]/g, '_')}_Student_Copy.pdf`
+        : `SHS_Test_${testSpec.subject || 'Subject'}_Grade${testSpec.grade || 'Paper'}_Student_Copy.pdf`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -401,10 +410,15 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
       return;
     }
 
+    const isIelts = isIELTSBoard(testSpec.board, testSpec.grade);
     const tempUrl = URL.createObjectURL(copy.blob);
     const link = document.createElement('a');
     link.href = tempUrl;
-    link.download = copy.filename || `SHS_Test_${testSpec.subject || 'Subject'}_Grade${testSpec.grade || 'Paper'}_Teacher_Copy.pdf`;
+    link.download =
+      copy.filename ||
+      (isIelts
+        ? `SHS_Test_IELTS_${(testSpec.subject || 'Subject').replace(/[^a-zA-Z0-9]/g, '_')}_Teacher_Copy.pdf`
+        : `SHS_Test_${testSpec.subject || 'Subject'}_Grade${testSpec.grade || 'Paper'}_Teacher_Copy.pdf`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -847,7 +861,9 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
                 {testSpec.title}
               </h2>
               <div className="text-xs font-semibold text-neutral-600">
-                Grade {testSpec.grade} ({testSpec.stream || 'Science'}) • {testSpec.subject} • {testSpec.board.toUpperCase()} Curriculum
+                {isIELTSBoard(testSpec.board, testSpec.grade)
+                  ? `IELTS Preparation (${testSpec.stream || 'Academic'}) • ${testSpec.subject}`
+                  : `Grade ${testSpec.grade} (${testSpec.stream || 'Science'}) • ${testSpec.subject} • ${testSpec.board?.toUpperCase()} Curriculum`}
                 {testSpec.chapter && testSpec.chapter !== 'All' ? ` • ${testSpec.chapter}` : ''}
               </div>
             </div>

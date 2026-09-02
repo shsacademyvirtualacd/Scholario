@@ -440,11 +440,12 @@ export async function getQuestionBankStats(board = 'fbise'): Promise<QuestionBan
 export function getStoredShortQuestions(
   subject: string,
   chapter?: string,
-  _grade = '9',
-  _board = 'fbise'
+  grade = '9',
+  board = 'fbise'
 ): StoredShortQuestion[] {
-  const normSub = normalizeFBISEGrade9Subject(subject) || subject;
-  const subjData = shortQuestionsBank[normSub] || {};
+  const isIelts = isIELTSBoard(board, grade);
+  const normSub = isIelts ? subject : (normalizeFBISEGrade9Subject(subject) || subject);
+  const subjData = shortQuestionsBank[normSub] || shortQuestionsBank[subject] || {};
 
   if (!chapter || chapter === 'All' || chapter === 'Full Syllabus') {
     const all: StoredShortQuestion[] = [];
@@ -457,6 +458,11 @@ export function getStoredShortQuestions(
     return subjData[matchedKey];
   }
 
+  const firstKey = Object.keys(subjData)[0];
+  if (firstKey && subjData[firstKey] && Object.keys(subjData).length === 1) {
+    return subjData[firstKey];
+  }
+
   return [];
 }
 
@@ -466,11 +472,12 @@ export function getStoredShortQuestions(
 export function getStoredLongQuestions(
   subject: string,
   chapter?: string,
-  _grade = '9',
-  _board = 'fbise'
+  grade = '9',
+  board = 'fbise'
 ): StoredLongQuestion[] {
-  const normSub = normalizeFBISEGrade9Subject(subject) || subject;
-  const subjData = longQuestionsBank[normSub] || {};
+  const isIelts = isIELTSBoard(board, grade);
+  const normSub = isIelts ? subject : (normalizeFBISEGrade9Subject(subject) || subject);
+  const subjData = longQuestionsBank[normSub] || longQuestionsBank[subject] || {};
 
   if (!chapter || chapter === 'All' || chapter === 'Full Syllabus') {
     const all: StoredLongQuestion[] = [];
@@ -481,6 +488,11 @@ export function getStoredLongQuestions(
   const matchedKey = matchChapterKeyInBank(Object.keys(subjData), chapter);
   if (matchedKey && subjData[matchedKey] && Array.isArray(subjData[matchedKey])) {
     return subjData[matchedKey];
+  }
+
+  const firstKey = Object.keys(subjData)[0];
+  if (firstKey && subjData[firstKey] && Object.keys(subjData).length === 1) {
+    return subjData[firstKey];
   }
 
   return [];
@@ -514,6 +526,7 @@ export async function pullTestQuestionsFromBanks(params: {
   longQuestions: StoredLongQuestion[];
 }> {
   const { combination, board, grade, subject, chapter, chapters } = params;
+  const isIelts = isIELTSBoard(board, grade);
   
   // Support either explicit flags or combination identifier
   const needMCQs =
@@ -553,8 +566,8 @@ export async function pullTestQuestionsFromBanks(params: {
     const rawMCQRes = await fetchStoredMCQTest({
       subject,
       chapter: chapter && chapter !== 'All' ? chapter : undefined,
-      grade,
-      board,
+      grade: isIelts ? 'IELTS' : grade,
+      board: isIelts ? 'ielts' : board,
       count: mcqTarget,
       selectedChapters: chapters && chapters.length > 0 ? chapters : undefined,
       examMode: chapters && chapters.length > 1 ? 'multi_chapter' : (chapter && chapter !== 'All') ? 'chapter' : 'full_syllabus',
@@ -562,8 +575,8 @@ export async function pullTestQuestionsFromBanks(params: {
 
     mcqs = rawMCQRes.questions.map((q, idx) => ({
       id: q.id || `mcq_test_${idx + 1}`,
-      board,
-      grade,
+      board: isIelts ? 'ielts' : board,
+      grade: isIelts ? 'IELTS' : grade,
       subject,
       chapter: q.chapter || chapter || subject,
       question: q.question,
@@ -579,13 +592,15 @@ export async function pullTestQuestionsFromBanks(params: {
 
   // 2. Fetch Short Questions if needed
   if (needShort) {
-    const rawShort = await getStoredShortQuestions(subject, chapter, grade, board);
+    const rawShort = await getStoredShortQuestions(subject, chapter, isIelts ? 'IELTS' : grade, isIelts ? 'ielts' : board);
     if (rawShort.length >= shortTarget) {
       shortQuestions = shuffleArray(rawShort).slice(0, shortTarget);
     } else {
       shortQuestions = [...rawShort];
       // Generate syllabus-derived short questions if bank needs more
-      const curriculum = grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
+      const curriculum = isIelts
+        ? IELTS_CURRICULUM
+        : (grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM);
       const subjSpec = curriculum[subject] || Object.values(curriculum)[0];
       const chapList = subjSpec ? subjSpec.chapters : [];
       let addIdx = shortQuestions.length + 1;
@@ -599,20 +614,26 @@ export async function pullTestQuestionsFromBanks(params: {
           if (shortQuestions.length >= shortTarget) break;
           shortQuestions.push({
             id: `gen_sq_${subject.toLowerCase()}_${addIdx++}`,
-            board,
-            grade,
+            board: isIelts ? 'ielts' : board,
+            grade: isIelts ? 'IELTS' : grade,
             subject,
             chapter: ch.name,
             chapterNumber: ch.number,
             topic,
             question: isUrdu
               ? `${ch.name} کے تحت ${topic} کی تعریف کریں اور دو مثالوں کے ساتھ وضاحت کریں۔`
+              : isIelts
+              ? `Explain the key strategy or requirement for ${topic} in ${subject} (${ch.name}).`
               : `Explain the fundamental concept of ${topic} and discuss its significance in ${subject}.`,
             modelAnswer: isUrdu
               ? `درسی نصاب کے مطابق ${topic} ایک بنیادی تصور ہے۔ طلبہ اس کی جامع تعریف، قواعد اور دو معیاری مثالیں تحریر کریں۔`
+              : isIelts
+              ? `Candidates should demonstrate precision in ${topic}, following IELTS standards for ${ch.name} with appropriate academic register and task adherence.`
               : `According to the ${board.toUpperCase()} syllabus for ${subject}, ${topic} forms a foundational principle. Students are expected to state the formal definition, write relevant formulas or equations, and describe practical applications.`,
             keyPoints: isUrdu
               ? [`${topic} کی درست اور جامع تعریف`, 'دو مستند مثالیں اور قواعد کا انطباق']
+              : isIelts
+              ? [`Core requirements of ${topic}`, 'Task achievement and lexical resource', 'Adherence to IELTS format']
               : [`Accurate definition of ${topic}`, 'Formulas, SI units or balanced chemical/biological relations', 'Two practical applications'],
             marks: 3,
             difficulty: 'medium',
@@ -627,13 +648,15 @@ export async function pullTestQuestionsFromBanks(params: {
 
   // 3. Fetch Long Questions if needed
   if (needLong) {
-    const rawLong = await getStoredLongQuestions(subject, chapter, grade, board);
+    const rawLong = await getStoredLongQuestions(subject, chapter, isIelts ? 'IELTS' : grade, isIelts ? 'ielts' : board);
     if (rawLong.length >= longTarget) {
       longQuestions = shuffleArray(rawLong).slice(0, longTarget);
     } else {
       longQuestions = [...rawLong];
       // Generate syllabus-derived long questions if bank needs more
-      const curriculum = grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM;
+      const curriculum = isIelts
+        ? IELTS_CURRICULUM
+        : (grade === '10' ? FBISE_GRADE_10_CURRICULUM : FBISE_GRADE_9_CURRICULUM);
       const subjSpec = curriculum[subject] || Object.values(curriculum)[0];
       const chapList = subjSpec ? subjSpec.chapters : [];
       let addIdx = longQuestions.length + 1;
@@ -648,20 +671,24 @@ export async function pullTestQuestionsFromBanks(params: {
 
         longQuestions.push({
           id: `gen_lq_${subject.toLowerCase()}_${addIdx++}`,
-          board,
-          grade,
+          board: isIelts ? 'ielts' : board,
+          grade: isIelts ? 'IELTS' : grade,
           subject,
           chapter: ch.name,
           chapterNumber: ch.number,
           topic: t1,
           question: isUrdu
             ? `${ch.name} کے بنیادی اصول، قواعد اور تفصیلی ادبی و فنی وضاحت تحریر کریں۔`
+            : isIelts
+            ? `Comprehensive evaluation task for ${ch.name} in ${subject}: analysis, structure, and model response.`
             : `Comprehensive examination of ${ch.name}: theoretical principles, derivations, and application problems.`,
           parts: [
             {
               label: isUrdu ? '(الف)' : '(a)',
               text: isUrdu
                 ? `${t1} کی جامع تعریف کریں اور اس کے بنیادی اجزا کو تفصیل سے بیان کریں۔`
+                : isIelts
+                ? `Analyze the prompt and key structural components for ${t1}.`
                 : `Explain in detail the fundamental laws and conceptual derivations governing ${t1} with necessary mathematical formulations.`,
               marks: 5,
             },
@@ -669,21 +696,23 @@ export async function pullTestQuestionsFromBanks(params: {
               label: isUrdu ? '(ب)' : '(b)',
               text: isUrdu
                 ? `${t2} کی مدد سے اس کا اطلاق اور روزمرہ یا اساتذہ کے کلام سے دو مثالیں پیش کریں۔`
+                : isIelts
+                ? `Provide an annotated model response covering ${t2} meeting Band 8+ marking criteria.`
                 : `Analyze the practical application and problem-solving scenario of ${t2} in ${subject}.`,
-              marks: 3,
+              marks: 5,
             },
           ],
           modelAnswer: isUrdu
             ? `(الف) ${t1} کے تمام پہلوؤں کا احاطہ کرتے ہوئے جامع جواب۔\n(ب) مستند مثالوں اور اشعار کے تجزیے کے ساتھ مدلل تشریح۔`
+            : isIelts
+            ? `(a) Detailed structural analysis addressing all elements of ${t1}.\n(b) Comprehensive model answer fulfilling IELTS band descriptors for ${t2}.`
             : `(a) Detailed theoretical derivation covering principles of ${t1}.\n(b) Practical application, diagrammatic representation, and analytical evaluation of ${t2}.`,
           markingScheme: isUrdu
             ? ['تعریف اور بنیادی اجزا پر 5 نمبر', 'مثالوں، اشعار اور قواعد کے انطباق پر 3 نمبر']
-            : [
-              '2 marks for theoretical statement and assumptions',
-              '3 marks for mathematical derivation or structural diagrams',
-              '3 marks for analytical problem solution or case application'
-            ],
-          marks: 8,
+            : isIelts
+            ? ['Task Achievement & Coherence on Part (a) (5 Marks)', 'Lexical Resource & Grammatical Accuracy on Part (b) (5 Marks)']
+            : ['Theoretical derivation and conceptual clarity (5 Marks)', 'Application, examples, or numerical solution (3 Marks)'],
+          marks: 10,
           difficulty: 'hard',
           verified: true,
           source: 'curriculum-bank',

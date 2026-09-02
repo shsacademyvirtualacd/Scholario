@@ -1,13 +1,15 @@
 import type { StoredLongQuestion } from '../../types/questionBank';
 import { urduLongQuestions } from './urduLongQuestions';
+import { ALL_IELTS_LONG_QUESTIONS } from './ielts';
 
 /**
  * Authoritative Curated Long Question Bank
  * Comprehensive multi-part long questions, theoretical derivations,
- * and numerical problems for Grade 9, 10, 11, 12 FBISE & Sindh Board.
+ * and numerical problems for Grade 9, 10, 11, 12 FBISE, Sindh Board, and IELTS Preparation.
  */
 export const longQuestionsBank: Record<string, Record<string, StoredLongQuestion[]>> = {
   Urdu: urduLongQuestions,
+  ...ALL_IELTS_LONG_QUESTIONS,
   Physics: {
     'Physical Quantities and Measurement': [
       {

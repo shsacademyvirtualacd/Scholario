@@ -644,7 +644,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
           instructions,
           board,
           subject,
-          grade,
+          grade: isIELTSBoard(board, grade) ? 'IELTS' : grade,
           stream,
           total_marks: totalCalculatedMarks,
           due_date: dueDate,
@@ -652,7 +652,9 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
           teacher_name: selectedTeacherName,
           combination: derivedCombination,
           pdfBase64,
-          filename: `SHS_Test_${subject}_Grade${grade}.pdf`,
+          filename: isIELTSBoard(board, grade)
+            ? `SHS_Test_IELTS_${subject.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+            : `SHS_Test_${subject}_Grade${grade}.pdf`,
         }),
       });
 
@@ -688,7 +690,13 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
           toast.loading('Securing teacher marking scheme & answer key...', { id: 'publish-toast' });
           const teacherPdfResult = await generateTeacherCopyPDF(currentTestSpec);
           const teacherFormData = new FormData();
-          teacherFormData.append('file', teacherPdfResult.blob, `SHS_Answer_Key_${subject}_Grade${grade}.pdf`);
+          teacherFormData.append(
+            'file',
+            teacherPdfResult.blob,
+            isIELTSBoard(board, grade)
+              ? `SHS_Answer_Key_IELTS_${subject.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+              : `SHS_Answer_Key_${subject}_Grade${grade}.pdf`
+          );
           
           await fetch(`/api/tests/answer-key/upload/${createdTestId}`, {
             method: 'POST',
@@ -795,10 +803,16 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Board */}
                 <div>
-                  <label className="block text-xs font-extrabold text-[#111111] mb-1.5">Board</label>
+                  <label className="block text-xs font-extrabold text-[#111111] mb-1.5">Educational Board / Track</label>
                   <select
                     value={board}
-                    onChange={(e) => setBoard(e.target.value)}
+                    onChange={(e) => {
+                      const nextBoard = e.target.value;
+                      setBoard(nextBoard);
+                      if (isIELTSBoard(nextBoard)) {
+                        setGrade('IELTS');
+                      }
+                    }}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
                   >
                     {BOARDS.map((b) => (
@@ -811,7 +825,9 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
 
                 {/* Grade */}
                 <div>
-                  <label className="block text-xs font-extrabold text-[#111111] mb-1.5">Class / Grade</label>
+                  <label className="block text-xs font-extrabold text-[#111111] mb-1.5">
+                    {isIELTSBoard(board, grade) ? 'Course Track' : 'Class / Grade'}
+                  </label>
                   <select
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
@@ -819,7 +835,9 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                   >
                     {availableGrades.map((g) => (
                       <option key={g.grade} value={g.grade}>
-                        Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : board === 'ielts' ? 'IELTS' : 'FBISE'})
+                        {isIELTSBoard(board, g.grade)
+                          ? g.displayName
+                          : `Grade ${g.grade} (${g.displayName} ${board === 'sindh' ? 'Sindh' : 'FBISE'})`}
                       </option>
                     ))}
                   </select>
@@ -1549,7 +1567,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                       Review & Refine Test Paper Questions
                     </h3>
                     <p className="text-xs text-[#737373]">
-                      Review questions configured for Grade {grade} {subject} ({selectedChapter}). You can edit any question inline before generating the PDF.
+                      Review questions configured for {isIELTSBoard(board, grade) ? '' : `Grade ${grade} `}{subject} ({selectedChapter}). You can edit any question inline before generating the PDF.
                     </p>
                   </div>
                   <button
@@ -1580,7 +1598,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                             Question Bank Notice: Insufficient Questions Found for {emptySections.join(', ')}
                           </h4>
                           <p className="text-[11px] text-amber-800 leading-relaxed">
-                            The question bank currently does not have enough pre-loaded questions for <strong>Grade {grade} {subject}</strong> with scope <strong>{selectedChapter}</strong>. To proceed without generating a blank test paper, you can write questions manually or broaden the syllabus scope.
+                            The question bank currently does not have enough pre-loaded questions for <strong>{isIELTSBoard(board, grade) ? '' : `Grade ${grade} `}{subject}</strong> with scope <strong>{selectedChapter}</strong>. To proceed without generating a blank test paper, you can write questions manually or broaden the syllabus scope.
                           </p>
                         </div>
                       </div>

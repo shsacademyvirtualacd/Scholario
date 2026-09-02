@@ -100,6 +100,8 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     fetchLiveBank();
   }, [fetchLiveBank]);
 
+  const isIelts = useMemo(() => isIELTSBoard(selectedBoard, selectedGrade), [selectedBoard, selectedGrade]);
+
   // 2. Compute available subjects for the selected grade and board
   const availableGrades = useMemo(() => {
     return getGradesForBoard(selectedBoard);
@@ -680,7 +682,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#F0F0F0]">
               <div>
                 <div className="flex items-center gap-2 text-[11px] font-bold text-[#737373]">
-                  <span>Grade {selectedGrade}</span>
+                  <span>{isIelts || selectedGrade === 'IELTS' ? 'IELTS Preparation' : `Grade ${selectedGrade}`}</span>
                   <span>•</span>
                   <span>{selectedSubject}</span>
                   <span>•</span>

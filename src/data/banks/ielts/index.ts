@@ -81,13 +81,14 @@ function readingMCQToStored(raw: IELTSReadingMCQ, subject = 'IELTS Reading (Acad
   };
 }
 
-// ── 1. Grammar & Comprehension MCQs (100 each) ───────────────
+// ── 1. Grammar & Comprehension MCQs (500 Grammar, 100 Comprehension) ───────────────
 export const IELTS_GRAMMAR_MCQS: StoredMCQ[] = RAW_GRAMMAR.map((q, idx) => toStoredMCQ(q, 'Grammar', idx));
 export const IELTS_COMPREHENSION_MCQS: StoredMCQ[] = RAW_COMPREHENSION.map((q, idx) => toStoredMCQ(q, 'Comprehension of Passages', idx));
 
 // Group Grammar into Chapter Map
 export const IELTS_GRAMMAR_BANK: Record<string, StoredMCQ[]> = {
   'Grammar & Sentence Structure': IELTS_GRAMMAR_MCQS,
+  'Grammar': IELTS_GRAMMAR_MCQS,
 };
 
 // Group Comprehension into Chapter Map
@@ -147,6 +148,22 @@ export {
   IELTS_WRITING_GT_MCQS,
   IELTS_WRITING_GT_BANK,
 };
+
+export {
+  IELTS_LISTENING_SHORT_QUESTIONS,
+  IELTS_SPEAKING_SHORT_QUESTIONS,
+  IELTS_WRITING_ACADEMIC_SHORT_QUESTIONS,
+  IELTS_WRITING_GT_SHORT_QUESTIONS,
+  ALL_IELTS_SHORT_QUESTIONS,
+} from './shortQuestions';
+
+export {
+  IELTS_LISTENING_LONG_QUESTIONS,
+  IELTS_SPEAKING_LONG_QUESTIONS,
+  IELTS_WRITING_ACADEMIC_LONG_QUESTIONS,
+  IELTS_WRITING_GT_LONG_QUESTIONS,
+  ALL_IELTS_LONG_QUESTIONS,
+} from './longQuestions';
 
 // ── 4. Master Consolidated IELTS Question Bank Dictionary ─────
 export const ieltsMasterBank: Record<string, Record<string, StoredMCQ[]>> = {
