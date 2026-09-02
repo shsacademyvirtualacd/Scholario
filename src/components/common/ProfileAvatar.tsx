@@ -12,6 +12,7 @@ interface ProfileAvatarProps {
   editable?: boolean;
   onAvatarChange?: (newUrl: string | null) => void;
   className?: string;
+  showOnlineBadge?: boolean;
 }
 
 const SIZE_CLASSES = {
@@ -37,6 +38,7 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   editable = false,
   onAvatarChange,
   className = '',
+  showOnlineBadge = false,
 }) => {
   const { refreshProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -176,6 +178,22 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
             className="hidden"
             onChange={handleFileSelect}
             aria-label="Upload profile picture"
+          />
+        )}
+
+        {/* iOS-Style Online Presence Badge */}
+        {showOnlineBadge && (
+          <span
+            className={`absolute z-20 bg-emerald-500 rounded-full border-2 border-white ring-1 ring-emerald-500/20 shadow-2xs pointer-events-none transition-transform duration-200 animate-in zoom-in-50 ${
+              size === 'sm'
+                ? 'w-2.5 h-2.5 -bottom-0.5 -right-0.5'
+                : size === 'md'
+                ? 'w-3 h-3 -bottom-0.5 -right-0.5'
+                : size === 'lg'
+                ? 'w-3.5 h-3.5 -bottom-0.5 -right-0.5'
+                : 'w-4 h-4 bottom-0 right-0'
+            }`}
+            title="Online"
           />
         )}
       </div>

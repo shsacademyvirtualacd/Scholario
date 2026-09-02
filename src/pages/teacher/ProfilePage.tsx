@@ -7,6 +7,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { getOfferingsForTeacher } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
 import type { ClassOffering } from '../../types';
+import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
 
 export const ProfilePage: React.FC = () => {
   const { profile, user } = useAuth();
@@ -137,6 +138,9 @@ export const ProfilePage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Chat Presence & Privacy Card */}
+          <ChatPrivacySettingCard />
         </div>
       </div>
     </TeacherShell>

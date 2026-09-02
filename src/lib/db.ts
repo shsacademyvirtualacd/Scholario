@@ -120,7 +120,7 @@ export async function deleteStudent(id: string): Promise<void> {
 /** Update any profile details */
 export async function updateProfile(
   id: string,
-  payload: Partial<Pick<Profile, 'full_name' | 'phone' | 'stream' | 'board_id' | 'class_id' | 'stream_id' | 'onboarding_complete'>>
+  payload: Partial<Pick<Profile, 'full_name' | 'phone' | 'stream' | 'board_id' | 'class_id' | 'stream_id' | 'onboarding_complete' | 'is_online' | 'last_seen' | 'show_online_status'>>
 ): Promise<Profile> {
   const { data, error } = await (supabase as any)
     .from('profiles')

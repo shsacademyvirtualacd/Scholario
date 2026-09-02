@@ -55,6 +55,15 @@ async function main() {
   await run('profiles.onboarding_complete column',
     `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_complete boolean DEFAULT false`);
 
+  await run('profiles.is_online column',
+    `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_online boolean DEFAULT false`);
+
+  await run('profiles.last_seen column',
+    `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen timestamptz DEFAULT now()`);
+
+  await run('profiles.show_online_status column',
+    `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS show_online_status boolean DEFAULT true`);
+
   await run('teachers.avatar_url column',
     `ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS avatar_url text`);
 

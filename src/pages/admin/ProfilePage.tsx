@@ -7,6 +7,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getDashboardCounts } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
+import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
 
 export const ProfilePage: React.FC = () => {
   const isMobile = useMobile();
@@ -266,6 +267,9 @@ export const ProfilePage: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Chat Presence & Privacy Card */}
+          <ChatPrivacySettingCard />
         </div>
       </div>
     </AdminShell>

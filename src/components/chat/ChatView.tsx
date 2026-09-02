@@ -17,7 +17,9 @@ import {
   Mic,
   Paperclip,
   Image as ImageIcon,
-  FileText
+  FileText,
+  SlidersHorizontal,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -27,7 +29,9 @@ import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { VoiceRecorderBar } from './VoiceRecorderBar';
 import { ChatImageBubble } from './ChatImageBubble';
 import { ChatFileBubble } from './ChatFileBubble';
+import { ChatPrivacySettingCard } from './ChatPrivacySettingCard';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
+import { useChatPresence } from '../../hooks/useChatPresence';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
 import {
   getChatThreadsForUser,
@@ -77,6 +81,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [mobileViewActiveThread, setMobileViewActiveThread] = useState(false);
   const [fetchedContacts, setFetchedContacts] = useState<Profile[]>([]);
   const [loadingModalContacts, setLoadingModalContacts] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+
+  // Realtime Presence Tracking & Status synchronization
+  const handleProfileUpdated = (updatedProfile: Partial<Profile> & { id: string }) => {
+    setThreads(prev =>
+      prev.map(t => {
+        if (t.other_participant?.id === updatedProfile.id) {
+          return {
+            ...t,
+            other_participant: {
+              ...t.other_participant,
+              ...updatedProfile,
+            },
+          };
+        }
+        return t;
+      })
+    );
+  };
+
+  const { isContactOnline, getContactStatus } = useChatPresence({
+    currentUserId,
+    currentUserProfile: profile,
+    onProfileUpdated: handleProfileUpdated,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -722,19 +751,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setShowNewChatModal(true);
-                  setNewChatSearch('');
-                  setContactRoleFilter('all');
-                  setModalError(null);
-                }}
-                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#111111] text-white hover:bg-[#262626] transition-colors shadow-2xs interactive flex items-center gap-1.5"
-                title={onStartNewChatTitle}
-              >
-                <UserPlus size={16} />
-                <span className="hidden sm:inline text-xs font-bold">New Chat</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setShowPrivacyModal(true)}
+                  className="p-2 rounded-xl border border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors interactive flex items-center justify-center"
+                  title="Chat privacy & presence settings"
+                >
+                  <SlidersHorizontal size={15} />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowNewChatModal(true);
+                    setNewChatSearch('');
+                    setContactRoleFilter('all');
+                    setModalError(null);
+                  }}
+                  className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#111111] text-white hover:bg-[#262626] transition-colors shadow-2xs interactive flex items-center gap-1.5"
+                  title={onStartNewChatTitle}
+                >
+                  <UserPlus size={16} />
+                  <span className="hidden sm:inline text-xs font-bold">New Chat</span>
+                </button>
+              </div>
             </div>
 
             {/* Search Input */}
@@ -806,6 +845,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         name={other?.full_name || 'User'}
                         role={other?.role || 'student'}
                         size="md"
+                        showOnlineBadge={isContactOnline(other?.id, other)}
                       />
                       {hasUnread && (
                         <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#F4C430] ring-2 ring-white" />
@@ -898,6 +938,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     name={activeThread.other_participant?.full_name || 'User'}
                     role={activeThread.other_participant?.role || 'student'}
                     size="md"
+                    showOnlineBadge={isContactOnline(activeThread.other_participant?.id, activeThread.other_participant)}
                   />
 
                   <div className="min-w-0">
@@ -915,15 +956,46 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         }
                       )}
                     </div>
-                    <p className="text-[10px] text-[#737373] truncate font-medium flex items-center gap-1.5 mt-0.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                      {activeThread.other_participant?.role === 'teacher'
-                        ? ((activeThread.other_participant as any)?.teacher_display_title || 'Faculty Teacher • Direct Academic Channel')
-                        : activeThread.other_participant?.role === 'admin'
-                        ? ((activeThread.other_participant as any)?.admin_tag || 'Institutional Administration • Official Support')
-                        : (activeThread.other_participant?.class?.display_name || 'Student • Direct 1-on-1')}
-                    </p>
+                    {(() => {
+                      const status = getContactStatus(activeThread.other_participant);
+                      if (status.isVisible) {
+                        if (status.isOnline) {
+                          return (
+                            <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1.5 mt-0.5 animate-in fade-in duration-200">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ring-2 ring-emerald-500/20" />
+                              <span>Online</span>
+                            </p>
+                          );
+                        } else if (status.statusText) {
+                          return (
+                            <p className="text-[10px] text-[#737373] font-medium flex items-center gap-1 mt-0.5">
+                              <span>{status.statusText}</span>
+                            </p>
+                          );
+                        }
+                      }
+
+                      return (
+                        <p className="text-[10px] text-[#737373] truncate font-medium flex items-center gap-1.5 mt-0.5">
+                          {activeThread.other_participant?.role === 'teacher'
+                            ? ((activeThread.other_participant as any)?.teacher_display_title || 'Faculty Teacher • Direct Academic Channel')
+                            : activeThread.other_participant?.role === 'admin'
+                            ? ((activeThread.other_participant as any)?.admin_tag || 'Institutional Administration • Official Support')
+                            : (activeThread.other_participant?.class?.display_name || 'Student • Direct 1-on-1')}
+                        </p>
+                      );
+                    })()}
                   </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => setShowPrivacyModal(true)}
+                    className="p-2 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] border border-transparent hover:border-[#E5E5E5] transition-colors"
+                    title="Chat privacy & presence settings"
+                  >
+                    <SlidersHorizontal size={16} />
+                  </button>
                 </div>
               </div>
 
@@ -1390,6 +1462,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           name={contact.full_name}
                           role={contact.role}
                           size="sm"
+                          showOnlineBadge={isContactOnline(contact.id, contact)}
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -1400,9 +1473,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
                               stream: contact.stream_obj?.name || contact.stream || undefined,
                             })}
                           </div>
-                          <p className="text-[10px] text-[#737373] truncate mt-0.5 font-medium">
-                            {contactSubtitle}
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {isContactOnline(contact.id, contact) && (
+                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-bold shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Online
+                              </span>
+                            )}
+                            <p className="text-[10px] text-[#737373] truncate font-medium">
+                              {contactSubtitle}
+                            </p>
+                          </div>
                         </div>
                       </div>
                       <span className="text-[11px] font-bold text-[#111111] bg-[#F4C430] hover:bg-[#e6b82a] px-3 py-1 rounded-lg shrink-0 flex items-center gap-1.5 shadow-2xs">
@@ -1431,6 +1512,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 className="px-4 py-2 rounded-xl text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] disabled:opacity-50"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Chat Privacy Settings Modal ── */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-[#E5E5E5] animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F0F0F0] mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#111111] text-white flex items-center justify-center">
+                  <Shield size={14} />
+                </div>
+                <h3 className="text-sm font-bold text-[#111111]">Chat Privacy Settings</h3>
+              </div>
+              <button
+                onClick={() => setShowPrivacyModal(false)}
+                className="p-1 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors"
+                title="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <ChatPrivacySettingCard className="border-0 shadow-none p-0" />
+
+            <div className="mt-5 pt-3 border-t border-[#F0F0F0] flex justify-end">
+              <button
+                onClick={() => setShowPrivacyModal(false)}
+                className="btn btn-primary font-bold text-xs bg-[#111111] hover:bg-black text-white px-4 py-2 rounded-xl interactive"
+              >
+                Done
               </button>
             </div>
           </div>

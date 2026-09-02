@@ -9,6 +9,7 @@ import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
 import type { Enrollment } from '../../types';
+import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
 
 export const ProfilePage: React.FC = () => {
   const { profile, refreshProfile } = useAuth();
@@ -327,6 +328,9 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Chat Presence & Privacy Card */}
+            <ChatPrivacySettingCard />
           </div>
         </div>
       )}

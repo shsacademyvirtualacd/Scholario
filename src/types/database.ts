@@ -49,6 +49,11 @@ export interface Profile {
   stream_id?: string | null;
   /** False until a student completes the onboarding grade/board/stream flow */
   onboarding_complete?: boolean;
+  /** Presence tracking */
+  is_online?: boolean;
+  last_seen?: string | null;
+  /** Privacy toggle: whether to show online status & last seen (default true) */
+  show_online_status?: boolean;
   // joined
   board?: BoardEntry;
   class?: ClassEntry;

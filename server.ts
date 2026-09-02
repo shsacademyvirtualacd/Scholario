@@ -5,6 +5,13 @@ import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
+import pg from 'pg';
+const { Pool } = pg;
+
+const pgPool = new Pool({
+  connectionString: process.env.SUPABASE_DB_URL || 'postgresql://postgres:Marcelmmm23155@@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres',
+  ssl: { rejectUnauthorized: false },
+});
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Z3J4amx5cmZ6b2p2aXJraGRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNTc3OTksImV4cCI6MjA5ODkzMzc5OX0.ggAT2JiBTg6VG5tbZNnjkig7F73JE0ZzPl_145yuow4';
@@ -1907,6 +1914,25 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     } catch (err: any) {
       console.error('[server /api/chat/upload] Error:', err);
       return res.status(500).json({ error: err.message || 'Internal error uploading attachment' });
+    }
+  });
+
+  app.post('/api/chat/presence/offline', express.json(), express.text({ type: '*/*' }), async (req, res) => {
+    try {
+      let body = req.body;
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch {}
+      }
+      const userId = body?.userId;
+      if (userId && typeof userId === 'string') {
+        await pgPool.query('UPDATE public.profiles SET is_online = false, last_seen = NOW() WHERE id = $1', [userId]);
+      }
+      return res.json({ success: true });
+    } catch (err) {
+      console.warn('[server /api/chat/presence/offline] error:', err);
+      return res.status(200).json({ success: false });
     }
   });
 
