@@ -1,6 +1,6 @@
 /**
  * Authoritative IELTS Question Bank (Scoped exclusively to board: 'ielts' / grade: 'ielts')
- * Cleaned to contain the 1,000 authoritative IELTS Grammar MCQs.
+ * Cleaned to contain the 1,500 authoritative IELTS Grammar MCQs.
  * All non-Grammar MCQ banks (Reading Academic, Reading GT, Comprehension, Listening, Speaking, Writing) are set to 0.
  */
 
@@ -38,7 +38,7 @@ function toStoredMCQ(raw: RawIELTSMCQ, subject: string, index: number): StoredMC
   };
 }
 
-// ── 1. 1,000 Authoritative Grammar MCQs ──────────────────────────────
+// ── 1. 1,500 Authoritative Grammar MCQs ──────────────────────────────
 export const IELTS_GRAMMAR_MCQS: StoredMCQ[] = RAW_GRAMMAR.map((q, idx) => toStoredMCQ(q, 'Grammar', idx));
 
 // Group Grammar into Chapter Map
@@ -104,7 +104,7 @@ export {
 } from './longQuestions';
 
 // ── 3. Master Consolidated IELTS Question Bank Dictionary ─────
-// Contains ONLY Grammar (1,000 questions) and empty arrays for other subjects
+// Contains ONLY Grammar (1,500 questions) and empty arrays for other subjects
 export const ieltsMasterBank: Record<string, Record<string, StoredMCQ[]>> = {
   'Grammar': IELTS_GRAMMAR_BANK,
   'IELTS Reading (Academic)': IELTS_READING_ACADEMIC_BANK,
@@ -116,7 +116,7 @@ export const ieltsMasterBank: Record<string, Record<string, StoredMCQ[]>> = {
   'IELTS Writing (GT)': IELTS_WRITING_GT_BANK,
 };
 
-// Exclusively 1,000 Grammar MCQs
+// Exclusively 1,500 Grammar MCQs
 export const ALL_IELTS_MCQS: StoredMCQ[] = [
   ...IELTS_GRAMMAR_MCQS,
 ];
