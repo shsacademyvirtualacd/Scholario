@@ -766,3 +766,65 @@ export async function handleNewChatMessage(
     return false;
   }
 }
+
+/**
+ * Explicit test trigger for teacher reminders:
+ * Simulates a class starting in N minutes (default 3 minutes) and delivers an OS lockscreen push.
+ */
+export async function testTeacherPushReminder(
+  params: {
+    teacherId?: string;
+    subject?: string;
+    minsUntilStart?: number;
+  },
+  supabase: SupabaseClient
+): Promise<{ success: boolean; deliveredCount: number; message: string }> {
+  let targetTeacherId = params.teacherId;
+  const minsLeft = params.minsUntilStart || 3;
+  const subject = params.subject || 'Mathematics';
+
+  if (!targetTeacherId) {
+    const teacherSubs = getAllPushSubscriptions().filter((s) => s.role === 'teacher');
+    if (teacherSubs.length > 0) {
+      targetTeacherId = teacherSubs[0].user_id;
+    } else {
+      const { data: teacherProfile } = await (supabase as any)
+        .from('profiles')
+        .select('id')
+        .eq('role', 'teacher')
+        .limit(1)
+        .maybeSingle();
+      if (teacherProfile) {
+        targetTeacherId = teacherProfile.id;
+      }
+    }
+  }
+
+  if (!targetTeacherId) {
+    return { success: false, deliveredCount: 0, message: 'No teacher profile or subscription found to test' };
+  }
+
+  const title = `${subject} starts in ${minsLeft} minute${minsLeft > 1 ? 's' : ''}`;
+  const body = 'Please post your class link now — students are waiting.';
+
+  const payload: PushPayload = {
+    title,
+    body,
+    icon: '/logo.png',
+    badge: '/logo.png',
+    tag: `teacher-reminder-test-${Date.now()}`,
+    data: {
+      url: '/teacher#live-link-editor-test',
+      role: 'teacher',
+      type: 'teacher_reminder',
+      minsLeft,
+    },
+  };
+
+  const result = await sendPushToUsers([targetTeacherId], payload, supabase);
+  return {
+    success: true,
+    deliveredCount: result.deliveredCount,
+    message: `Dispatched test reminder push for ${subject} (${minsLeft}m) to teacher ${targetTeacherId} (${result.deliveredCount} devices reached)`,
+  };
+}

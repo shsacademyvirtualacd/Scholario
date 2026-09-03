@@ -42,6 +42,7 @@ import {
   sendClassLinkPostedPush,
   sendPushToUsers,
   handleNewChatMessage,
+  testTeacherPushReminder,
   type PushPayload,
 } from './src/lib/serverPushService';
 
@@ -1111,13 +1112,31 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       }
 
       if (targetUserIds.length === 0 && role) {
-        // Query all users with this role
+        // 1. Query all users with this role from database
         const { data: profiles } = await (supabaseServer as any)
           .from('profiles')
           .select('id')
           .eq('role', role);
-        if (profiles) {
+        if (profiles && profiles.length > 0) {
           targetUserIds = profiles.map((p: any) => p.id);
+        }
+
+        // 2. Also include any registered push subscriptions for this role
+        const roleSubs = getAllPushSubscriptions().filter((s) => s.role === role);
+        roleSubs.forEach((s) => {
+          if (!targetUserIds.includes(s.user_id)) {
+            targetUserIds.push(s.user_id);
+          }
+        });
+
+        if (targetUserIds.length === 0) {
+          return res.json({
+            success: true,
+            deliveredCount: 0,
+            failedCount: 0,
+            targetUserCount: 0,
+            message: `No active registered devices or profiles found for role: ${role}`,
+          });
         }
       }
 
@@ -1146,6 +1165,104 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     } catch (err: any) {
       console.error('[server /api/notifications/send error]:', err);
       return res.status(500).json({ error: err.message || 'Failed to send notification' });
+    }
+  });
+
+  // ── Cloudflare Worker / External Cron Trigger Endpoint ─
+  app.all('/api/cron/teacher-reminders', async (_req, res) => {
+    try {
+      const remindersSent = await checkAndSendTeacherPushReminders(supabaseServer);
+      return res.json({
+        success: true,
+        remindersSent,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      console.error('[server /api/cron/teacher-reminders error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to check teacher reminders' });
+    }
+  });
+
+  // ── Explicit Test Endpoints for Push Notifications ──────
+  // 1. Test Teacher Reminder (Simulate class starting in 3 minutes)
+  app.post('/api/test/push/teacher-reminder', async (req, res) => {
+    try {
+      const { teacher_id, teacherId, subject, minsUntilStart } = req.body;
+      const result = await testTeacherPushReminder(
+        {
+          teacherId: teacher_id || teacherId,
+          subject: subject || 'Mathematics',
+          minsUntilStart: minsUntilStart || 3,
+        },
+        supabaseServer
+      );
+      return res.json(result);
+    } catch (err: any) {
+      console.error('[server /api/test/push/teacher-reminder error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to test teacher reminder push' });
+    }
+  });
+
+  // 2. Test Class Link Push (Sends "New class link posted" to Admins and "{Subject} class link posted" to Students)
+  app.post('/api/test/push/class-link', async (req, res) => {
+    try {
+      const { teacher_name, teacherName, subject_name, subjectName, class_name, className, link_url, linkUrl, slot_id, slotId } = req.body;
+      const result = await sendClassLinkPostedPush(
+        {
+          teacherName: teacher_name || teacherName || 'Demo Teacher',
+          subjectName: subject_name || subjectName || 'Physics',
+          className: class_name || className || 'Grade 9',
+          linkUrl: link_url || linkUrl || 'https://meet.google.com/test-live-session',
+          slotId: slot_id || slotId || 'test_slot_demo',
+        },
+        supabaseServer
+      );
+      return res.json({
+        success: true,
+        adminsNotified: result.adminsSent,
+        studentsNotified: result.studentsSent,
+      });
+    } catch (err: any) {
+      console.error('[server /api/test/push/class-link error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to test class link push' });
+    }
+  });
+
+  // 3. Test Chat Message Push (Immediate lockscreen push preview to recipient)
+  app.post('/api/test/push/chat-message', async (req, res) => {
+    try {
+      const { recipient_id, recipientId, sender_name, senderName, content, message_type } = req.body;
+      const targetUser = recipient_id || recipientId;
+      if (!targetUser) {
+        return res.status(400).json({ error: 'recipient_id is required' });
+      }
+
+      let bodyText = content || 'Sent a test message';
+      if (message_type === 'image') bodyText = '📷 Sent an image';
+      else if (message_type === 'voice') bodyText = '🎤 Voice message';
+
+      const payload: PushPayload = {
+        title: sender_name || senderName || 'Ahmad Khan',
+        body: bodyText,
+        icon: '/logo.png',
+        badge: '/logo.png',
+        tag: `test-chat-${Date.now()}`,
+        data: {
+          url: '/chat',
+          type: 'chat_message',
+        },
+      };
+
+      const result = await sendPushToUsers([targetUser], payload, supabaseServer);
+      return res.json({
+        success: true,
+        deliveredCount: result.deliveredCount,
+        failedCount: result.failedCount,
+        recipient: targetUser,
+      });
+    } catch (err: any) {
+      console.error('[server /api/test/push/chat-message error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to test chat push' });
     }
   });
 
