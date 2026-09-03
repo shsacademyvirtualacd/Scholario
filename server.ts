@@ -12,6 +12,10 @@ const { Pool } = pg;
 const pgPool = new Pool({
   connectionString: process.env.SUPABASE_DB_URL || 'postgresql://postgres:Marcelmmm23155@@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres',
   ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 5000,
+});
+pgPool.on('error', (err) => {
+  console.warn('[Postgres Pool Error]:', err.message);
 });
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
