@@ -125,7 +125,11 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
       });
       await loadRequests();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to approve request');
+      console.error('[AdminVisibilityRequestsPage] Error approving request:', err);
+      const detailedError = err?.message || 'Failed to approve request';
+      toast.error('Failed to approve request', {
+        description: detailedError,
+      });
     } finally {
       setProcessingId(null);
     }
@@ -154,7 +158,11 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
       setRejectTarget(null);
       await loadRequests();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to reject request');
+      console.error('[AdminVisibilityRequestsPage] Error rejecting request:', err);
+      const detailedError = err?.message || 'Failed to reject request';
+      toast.error('Failed to reject request', {
+        description: detailedError,
+      });
     } finally {
       setProcessingId(null);
     }

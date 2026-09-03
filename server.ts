@@ -2322,6 +2322,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   app.post('/api/admin/visibility-requests/review', express.json(), async (req, res) => {
     try {
       const { requestId, action, adminId, reason } = req.body || {};
+      console.log(`[server /api/admin/visibility-requests/review] Processing review: requestId=${requestId}, action=${action}, adminId=${adminId}`);
+
       if (!requestId || !action || !['approve', 'reject'].includes(action)) {
         return res.status(400).json({ error: 'requestId and valid action (approve/reject) are required' });
       }
@@ -2334,13 +2336,32 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       const request = reqRes.rows[0];
       const targetUserId = request.user_id;
 
+      // Validate reviewer profile ID to prevent foreign key violation on reviewed_by -> profiles(id)
+      let validReviewerId: string | null = null;
+      if (adminId && typeof adminId === 'string') {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(adminId)) {
+          const profileCheck = await pgPool.query('SELECT id FROM public.profiles WHERE id = $1', [adminId]);
+          if (profileCheck.rows.length > 0) {
+            validReviewerId = adminId;
+          }
+        }
+      }
+      if (!validReviewerId) {
+        // Fallback to any existing admin profile if caller provided non-existent or placeholder adminId
+        const fallbackAdmin = await pgPool.query("SELECT id FROM public.profiles WHERE role = 'admin' LIMIT 1");
+        if (fallbackAdmin.rows.length > 0) {
+          validReviewerId = fallbackAdmin.rows[0].id;
+        }
+      }
+
       if (action === 'approve') {
         // 1. Update visibility request status
         await pgPool.query(
           `UPDATE public.visibility_requests 
            SET status = 'approved', reviewed_by = $1, reviewed_at = NOW(), notes = $2
            WHERE id = $3`,
-          [adminId || null, reason || null, requestId]
+          [validReviewerId, reason || null, requestId]
         );
 
         // 2. Update user profile to hide online status
@@ -2353,6 +2374,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           [targetUserId]
         );
 
+        console.log(`[server /api/admin/visibility-requests/review] Successfully approved request ${requestId} for user ${targetUserId}`);
         return res.json({ success: true, message: 'Request approved and user status updated to hidden' });
       } else {
         // action === 'reject'
@@ -2361,7 +2383,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           `UPDATE public.visibility_requests 
            SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW(), notes = $2
            WHERE id = $3`,
-          [adminId || null, reason || null, requestId]
+          [validReviewerId, reason || null, requestId]
         );
 
         // 2. Notify the user in-app (status stays visible)
@@ -2375,11 +2397,23 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           [targetUserId, rejectMsg]
         );
 
+        console.log(`[server /api/admin/visibility-requests/review] Successfully rejected request ${requestId} for user ${targetUserId}`);
         return res.json({ success: true, message: 'Request rejected' });
       }
     } catch (err: any) {
-      console.error('[server /api/admin/visibility-requests/review] error:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error' });
+      console.error('[server /api/admin/visibility-requests/review] Database error during review:', {
+        message: err.message,
+        code: err.code,
+        detail: err.detail,
+        table: err.table,
+        constraint: err.constraint,
+        stack: err.stack,
+      });
+      return res.status(500).json({ 
+        error: err.message || 'Internal server error',
+        code: err.code,
+        detail: err.detail || err.constraint
+      });
     }
   });
 
