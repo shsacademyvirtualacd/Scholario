@@ -157,7 +157,59 @@ export function getAllPushSubscriptions(): PushSubscriptionRecord[] {
   return Array.from(subscriptionsMemory.values());
 }
 
-export function getSubscriptionsForRole(role: string): PushSubscriptionRecord[] {
+export async function getUserSubscriptions(
+  userIds: string[],
+  supabase?: SupabaseClient
+): Promise<PushSubscriptionRecord[]> {
+  if (!userIds || userIds.length === 0) return [];
+  const set = new Set(userIds);
+
+  // 1. Fetch from Supabase DB push_subscriptions table
+  if (supabase) {
+    try {
+      const { data: dbSubs, error } = await (supabase as any)
+        .from('push_subscriptions')
+        .select('*')
+        .in('user_id', userIds);
+
+      if (!error && dbSubs && dbSubs.length > 0) {
+        for (const sub of dbSubs) {
+          if (sub.endpoint) {
+            subscriptionsMemory.set(sub.endpoint, sub);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[ServerPush] Error querying DB push_subscriptions:', err);
+    }
+  }
+
+  // 2. Return all matching from unified in-memory + DB map
+  return Array.from(subscriptionsMemory.values()).filter((s) => set.has(s.user_id));
+}
+
+export async function getSubscriptionsForRole(
+  role: string,
+  supabase?: SupabaseClient
+): Promise<PushSubscriptionRecord[]> {
+  if (supabase) {
+    try {
+      const { data: dbSubs, error } = await (supabase as any)
+        .from('push_subscriptions')
+        .select('*')
+        .eq('role', role);
+
+      if (!error && dbSubs && dbSubs.length > 0) {
+        for (const sub of dbSubs) {
+          if (sub.endpoint) {
+            subscriptionsMemory.set(sub.endpoint, sub);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[ServerPush] Error querying DB push_subscriptions by role:', err);
+    }
+  }
   return Array.from(subscriptionsMemory.values()).filter((s) => s.role === role);
 }
 
@@ -200,7 +252,7 @@ export async function sendWebPush(
     const statusCode = err?.statusCode || err?.status;
     console.warn(`[ServerPush] Push delivery failed for ${subscription.endpoint.slice(0, 35)}... status=${statusCode}`);
 
-    // If subscription is expired, unregistered, or invalid (404 / 410), delete it
+    // If subscription is expired, unregistered, or invalid (404 / 410 / 400), delete it
     if (statusCode === 404 || statusCode === 410 || statusCode === 400) {
       console.log(`[ServerPush] Removing stale/invalid subscription (${statusCode}): ${subscription.endpoint.slice(0, 35)}...`);
       await removePushSubscription(subscription.endpoint, supabase);
@@ -209,7 +261,183 @@ export async function sendWebPush(
   }
 }
 
+/**
+ * Sends a notification payload to one or more user IDs via Web Push.
+ */
+export async function sendPushToUsers(
+  userIds: string[],
+  payload: PushPayload,
+  supabase?: SupabaseClient
+): Promise<{ attemptedCount: number; deliveredCount: number; failedCount: number }> {
+  if (!userIds || userIds.length === 0) {
+    return { attemptedCount: 0, deliveredCount: 0, failedCount: 0 };
+  }
+
+  const subs = await getUserSubscriptions(userIds, supabase);
+  let attemptedCount = 0;
+  let deliveredCount = 0;
+  let failedCount = 0;
+
+  for (const sub of subs) {
+    attemptedCount++;
+    const success = await sendWebPush(sub, payload, supabase);
+    if (success) {
+      deliveredCount++;
+    } else {
+      failedCount++;
+    }
+  }
+
+  return { attemptedCount, deliveredCount, failedCount };
+}
+
 // ── Event-Based Push Triggers ────────────────────────────────────────────────
+
+/**
+ * Triggered when a teacher posts/shares a class link (e.g. Zoom / Meet / Teams).
+ * 1. Notifies all Admins: title "New class link posted", body "{Teacher name} posted a link for {Class/Subject}"
+ * 2. Notifies Enrolled Students: title "{Subject} class link posted", body "{Teacher name} just shared the link for {Subject} — tap to join."
+ */
+export async function sendClassLinkPostedPush(
+  params: {
+    slotId?: string;
+    sessionDate?: string;
+    linkUrl: string;
+    offeringId?: string | null;
+    teacherId?: string | null;
+    teacherName?: string | null;
+    subjectName?: string | null;
+    className?: string | null;
+    gradeId?: string | null;
+  },
+  supabase: SupabaseClient
+): Promise<{ adminsSent: number; studentsSent: number }> {
+  const { slotId, sessionDate, linkUrl } = params;
+  if (!linkUrl) return { adminsSent: 0, studentsSent: 0 };
+
+  let teacherName = params.teacherName || 'Teacher';
+  let subjectName = params.subjectName || 'Class';
+  let className = params.className || '';
+  let offeringId = params.offeringId;
+
+  // Enrich with slot details if slotId is provided
+  if (slotId) {
+    try {
+      const { data: slot } = await (supabase as any)
+        .from('class_slots')
+        .select('*, offering:class_offerings(*, teacher:teachers(*), class:classes(*), subject:subjects(*))')
+        .eq('id', slotId)
+        .maybeSingle();
+
+      if (slot) {
+        offeringId = offeringId || slot.offering_id || slot.offering?.id;
+        const teacherObj = slot.offering?.teacher;
+        if (teacherObj?.full_name) {
+          teacherName = teacherObj.full_name;
+        }
+        const subjObj = slot.offering?.subject;
+        if (subjObj?.name) {
+          subjectName = subjObj.name;
+        } else if (slot.custom_title) {
+          subjectName = slot.custom_title;
+        }
+        const classObj = slot.offering?.class;
+        if (classObj?.display_name) {
+          className = classObj.display_name;
+        } else if (classObj?.grade) {
+          className = `Grade ${classObj.grade}`;
+        }
+      }
+    } catch (e) {
+      console.warn('[ServerPush] Error enriching class link slot details:', e);
+    }
+  }
+
+  const displayTarget = className ? `${teacherName} posted a link for ${className} ${subjectName}` : `${teacherName} posted a link for ${subjectName}`;
+
+  // 1. Notify All Admins
+  const adminPayload: PushPayload = {
+    title: 'New class link posted',
+    body: displayTarget,
+    icon: '/logo.png',
+    badge: '/logo.png',
+    tag: `admin-class-link-${slotId || 'general'}-${sessionDate || 'today'}`,
+    data: {
+      url: '/admin/schedule',
+      class_link: linkUrl,
+      slot_id: slotId,
+      role: 'admin',
+      type: 'class_link',
+    },
+  };
+
+  let adminUserIds: string[] = [];
+  try {
+    const { data: adminProfiles } = await (supabase as any)
+      .from('profiles')
+      .select('id')
+      .eq('role', 'admin');
+    if (adminProfiles && adminProfiles.length > 0) {
+      adminUserIds = adminProfiles.map((p: any) => p.id);
+    }
+  } catch (err) {
+    console.warn('[ServerPush] Error fetching admin profiles for class link push:', err);
+  }
+
+  const adminResult = await sendPushToUsers(adminUserIds, adminPayload, supabase);
+
+  // 2. Notify Enrolled Students (Personalized)
+  const studentPayload: PushPayload = {
+    title: `${subjectName} class link posted`,
+    body: `${teacherName} just shared the link for ${subjectName} — tap to join.`,
+    icon: '/logo.png',
+    badge: '/logo.png',
+    tag: `student-class-link-${slotId || 'general'}-${sessionDate || 'today'}`,
+    data: {
+      url: linkUrl,
+      class_link: linkUrl,
+      slot_id: slotId,
+      role: 'student',
+      type: 'class_link',
+    },
+  };
+
+  let studentUserIds: string[] = [];
+  try {
+    if (offeringId) {
+      const { data: enrollments } = await (supabase as any)
+        .from('enrollments')
+        .select('student_id')
+        .eq('offering_id', offeringId);
+      if (enrollments && enrollments.length > 0) {
+        studentUserIds = enrollments.map((e: any) => e.student_id);
+      }
+    }
+
+    if (studentUserIds.length === 0 && (params.gradeId || className)) {
+      const g = (params.gradeId || className).replace(/^grade\s*/i, '').trim();
+      const { data: gradeProfiles } = await (supabase as any)
+        .from('profiles')
+        .select('id, grade, class_id')
+        .eq('role', 'student');
+      if (gradeProfiles) {
+        studentUserIds = gradeProfiles
+          .filter((p: any) => {
+            const pGrade = String(p.grade || p.class_id || '').replace(/^grade\s*/i, '').trim();
+            return !g || pGrade === g || pGrade.includes(g);
+          })
+          .map((p: any) => p.id);
+      }
+    }
+  } catch (err) {
+    console.warn('[ServerPush] Error fetching enrolled students for class link push:', err);
+  }
+
+  const studentResult = await sendPushToUsers(studentUserIds, studentPayload, supabase);
+
+  console.log(`[ServerPush] Class link push dispatched: ${adminResult.deliveredCount} admins, ${studentResult.deliveredCount} students`);
+  return { adminsSent: adminResult.deliveredCount, studentsSent: studentResult.deliveredCount };
+}
 
 /**
  * Sends real Web Push notifications when a live class session starts/transitions to 'live':
@@ -222,6 +450,7 @@ export async function sendLiveSessionPushAlerts(
     subject_id?: string;
     grade_id?: string;
     offering_id?: string;
+    slot_id?: string;
     teacher_id?: string;
     teacher_name?: string;
     subject_name?: string;
@@ -229,112 +458,19 @@ export async function sendLiveSessionPushAlerts(
   },
   supabase: SupabaseClient
 ): Promise<{ studentsSent: number; adminsSent: number }> {
-  if (!session?.id || !session.class_link) {
-    return { studentsSent: 0, adminsSent: 0 };
-  }
-
-  const rawSubject = (session.subject_name || 'Class').trim();
-  const subjectName = rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1);
-  const teacherName = (session.teacher_name || 'Your teacher').trim();
-
-  const formatGrade = (raw?: string | null) => {
-    if (!raw) return 'All Grades';
-    const trimmed = raw.trim();
-    if (/^\d+$/.test(trimmed)) return `Grade ${trimmed}`;
-    return trimmed;
-  };
-  const gradeName = formatGrade(session.grade_id);
-
-  // ── 1. Students Payload & Scoping ────────────────────────
-  // Title: "{Subject} class is live"
-  // Body: "{Teacher name} started the class — tap to join"
-  // Tag: "live-session-{sessionId}"
-  const studentPayload: PushPayload = {
-    title: `${subjectName} class is live`,
-    body: `${teacherName} started the class — tap to join`,
-    icon: '/logo.png',
-    badge: '/logo.png',
-    tag: `live-session-${session.id}`,
-    data: {
-      url: session.class_link.trim(),
-      class_link: session.class_link.trim(),
-      sessionId: session.id,
-      role: 'student',
+  return sendClassLinkPostedPush(
+    {
+      slotId: session.slot_id,
+      sessionDate: session.id ? session.id.split('_')[1] : undefined,
+      linkUrl: session.class_link || '',
+      offeringId: session.offering_id,
+      teacherId: session.teacher_id,
+      teacherName: session.teacher_name,
+      subjectName: session.subject_name,
+      gradeId: session.grade_id,
     },
-  };
-
-  // Find enrolled students for this offering / grade / subject
-  let studentUserIds: string[] = [];
-  try {
-    if (session.offering_id) {
-      const { data: enrollments } = await (supabase as any)
-        .from('enrollments')
-        .select('student_id')
-        .eq('offering_id', session.offering_id);
-
-      if (enrollments && enrollments.length > 0) {
-        studentUserIds = enrollments.map((e: any) => e.student_id);
-      }
-    }
-
-    if (studentUserIds.length === 0 && session.grade_id) {
-      // Fallback: match by grade
-      const normGrade = session.grade_id.replace(/^grade\s*/i, '').trim();
-      const { data: profiles } = await (supabase as any)
-        .from('profiles')
-        .select('id, grade, class_id')
-        .eq('role', 'student');
-
-      if (profiles && profiles.length > 0) {
-        studentUserIds = profiles
-          .filter((p: any) => {
-            const pGrade = String(p.grade || p.class_id || '').replace(/^grade\s*/i, '').trim();
-            return !normGrade || pGrade === normGrade || pGrade.includes(normGrade);
-          })
-          .map((p: any) => p.id);
-      }
-    }
-  } catch (err) {
-    console.warn('[ServerPush] Error querying enrolled students:', err);
-  }
-
-  // Get matching student subscriptions
-  const studentSubs = studentUserIds.length > 0
-    ? getSubscriptionsForUsers(studentUserIds).filter((s) => s.role === 'student')
-    : getSubscriptionsForRole('student');
-
-  let studentsSent = 0;
-  for (const sub of studentSubs) {
-    const success = await sendWebPush(sub, studentPayload, supabase);
-    if (success) studentsSent++;
-  }
-
-  // ── 2. Admin Payload & Scoping ───────────────────────────
-  // Title: "{Teacher name} posted a class link"
-  // Body: "{Subject} — {Grade} is now live"
-  // Tag: "admin-link-posted-{sessionId}"
-  const adminPayload: PushPayload = {
-    title: `${teacherName} posted a class link`,
-    body: `${subjectName} — ${gradeName} is now live`,
-    icon: '/logo.png',
-    badge: '/logo.png',
-    tag: `admin-link-posted-${session.id}`,
-    data: {
-      url: '/admin/schedule',
-      sessionId: session.id,
-      role: 'admin',
-    },
-  };
-
-  const adminSubs = getSubscriptionsForRole('admin');
-  let adminsSent = 0;
-  for (const sub of adminSubs) {
-    const success = await sendWebPush(sub, adminPayload, supabase);
-    if (success) adminsSent++;
-  }
-
-  console.log(`[ServerPush] Live session push alert sent: ${studentsSent} students, ${adminsSent} admins`);
-  return { studentsSent, adminsSent };
+    supabase
+  );
 }
 
 // ── Teacher Scheduled Reminders Background Task ──────────────────────────────
@@ -369,9 +505,11 @@ function timeStringToMinutes(timeStr: string): number {
 }
 
 /**
- * Runs a background scheduled check (called every ~1-2 minutes)
- * to verify which teacher classes are within the 30m reminder window and still unposted.
- * Sends Web Push reminders directly to teachers whose tabs are closed.
+ * Runs a background scheduled check (called every 1-2 minutes).
+ * For each upcoming class starting within the next 10 minutes, sends a reminder push
+ * to that teacher recurring every 2 minutes until the class start time, then stops.
+ * Also stops if the teacher has already posted their link.
+ * Tracks last_reminder_sent_at per class/slot in Supabase class_slots and in-memory.
  */
 export async function checkAndSendTeacherPushReminders(
   supabase: SupabaseClient
@@ -382,7 +520,7 @@ export async function checkAndSendTeacherPushReminders(
     // 1. Query today's class slots
     const { data: slots, error: slotsErr } = await (supabase as any)
       .from('class_slots')
-      .select('id, day_of_week, start_time, end_time, custom_title, offering_id, is_cancelled, class_id, offering:class_offerings(*, teacher:teachers(*))')
+      .select('id, day_of_week, start_time, end_time, custom_title, offering_id, is_cancelled, class_id, last_reminder_sent_at, offering:class_offerings(*, teacher:teachers(*), subject:subjects(*))')
       .eq('day_of_week', dayIndex)
       .eq('is_cancelled', false);
 
@@ -431,22 +569,18 @@ export async function checkAndSendTeacherPushReminders(
       }
 
       const startMins = timeStringToMinutes(slot.start_time || '09:00:00');
-      const endMins = timeStringToMinutes(slot.end_time || '10:00:00');
       const minsUntilStart = startMins - totalMins;
-      const minsPastEnd = totalMins - endMins;
 
-      // Only remind if class ended less than 60 mins ago
-      if (minsPastEnd > 60) {
-        continue;
-      }
+      // Only remind if class has NOT started yet AND is within the 10-minute window
+      // (stops once class starts: minsUntilStart <= 0)
+      if (minsUntilStart > 0 && minsUntilStart <= 10) {
+        // Enforce 2-minute (110 seconds) throttle between pushes for the same scheduleId / slot
+        const lastSentDb = slot.last_reminder_sent_at ? new Date(slot.last_reminder_sent_at).getTime() : 0;
+        const lastSentMem = lastTeacherPushSentAt.get(scheduleId) || 0;
+        const lastSent = Math.max(lastSentDb, lastSentMem);
 
-      // Check if slot is within the 30-minute reminder window
-      // (from 30 mins before start until class end)
-      if (minsUntilStart <= 30) {
-        // Enforce 2-minute (110 seconds) throttle between pushes for the same scheduleId
-        const lastSent = lastTeacherPushSentAt.get(scheduleId) || 0;
         if (now - lastSent < 110 * 1000) {
-          continue;
+          continue; // less than 2 minutes since last reminder
         }
 
         const teacherId =
@@ -458,7 +592,7 @@ export async function checkAndSendTeacherPushReminders(
           continue;
         }
 
-        const teacherSubs = getSubscriptionsForUsers([teacherId]).filter(
+        const teacherSubs = (await getUserSubscriptions([teacherId], supabase)).filter(
           (s) => s.role === 'teacher'
         );
 
@@ -468,20 +602,14 @@ export async function checkAndSendTeacherPushReminders(
 
         const rawSubj =
           slot.custom_title ||
+          slot.offering?.subject?.name ||
           slot.offering?.subject_name ||
-          (slot.offering?.subject as any)?.name ||
           'Class';
         const subject = typeof rawSubj === 'string' ? rawSubj : 'Class';
 
-        const isFirstReminder = minsUntilStart >= 28 && minsUntilStart <= 32;
-
-        const title = isFirstReminder
-          ? `${subject} starts in 30 minutes`
-          : `${subject} class link not posted yet`;
-
-        const body = isFirstReminder
-          ? "Post your class link when you're ready."
-          : "Tap to post your class link now.";
+        const minsLeft = Math.ceil(minsUntilStart);
+        const title = `${subject} starts in ${minsLeft} minute${minsLeft > 1 ? 's' : ''}`;
+        const body = 'Please post your class link now — students are waiting.';
 
         const payload: PushPayload = {
           title,
@@ -507,6 +635,16 @@ export async function checkAndSendTeacherPushReminders(
           lastTeacherPushSentAt.set(scheduleId, now);
           remindersSent += slotSentCount;
           console.log(`[ServerPush] Sent teacher reminder push for ${scheduleId} (${title})`);
+
+          // Update last_reminder_sent_at in Supabase class_slots table
+          try {
+            await (supabase as any)
+              .from('class_slots')
+              .update({ last_reminder_sent_at: new Date().toISOString() })
+              .eq('id', slot.id);
+          } catch (dbErr) {
+            console.warn('[ServerPush] Error updating slot last_reminder_sent_at:', dbErr);
+          }
         }
       }
     }
@@ -515,5 +653,116 @@ export async function checkAndSendTeacherPushReminders(
   } catch (err) {
     console.warn('[ServerPush] Error during teacher push reminder check:', err);
     return 0;
+  }
+}
+
+// ── Chat Messages Immediate Push Notification ────────────────────────────────
+
+/**
+ * Handles incoming chat messages inserted into `chat_messages` or `messages`.
+ * Sends an immediate Web Push notification to the recipient ONLY if the recipient
+ * is not currently active in that chat thread.
+ */
+export async function handleNewChatMessage(
+  newMsg: {
+    thread_id: string;
+    sender_id: string;
+    content?: string;
+    message_type?: string;
+    attachment_name?: string;
+    attachment_key?: string;
+    mime_type?: string;
+  },
+  supabase: SupabaseClient,
+  isRecipientActiveFn: (userId: string, threadId: string) => boolean
+): Promise<boolean> {
+  if (!newMsg?.thread_id || !newMsg.sender_id) return false;
+
+  try {
+    // 1. Fetch thread to identify recipient
+    const { data: thread, error: threadErr } = await (supabase as any)
+      .from('chat_threads')
+      .select('*')
+      .eq('id', newMsg.thread_id)
+      .maybeSingle();
+
+    if (threadErr || !thread) {
+      console.warn('[ChatPush] Could not find thread for message:', newMsg.thread_id);
+      return false;
+    }
+
+    // 2. Identify the recipient (participant who is NOT the sender)
+    let recipientId: string | null = null;
+    if (thread.participant_one_id && thread.participant_one_id !== newMsg.sender_id) {
+      recipientId = thread.participant_one_id;
+    } else if (thread.participant_two_id && thread.participant_two_id !== newMsg.sender_id) {
+      recipientId = thread.participant_two_id;
+    } else if (thread.student_id && thread.student_id !== newMsg.sender_id) {
+      recipientId = thread.student_id;
+    } else if (thread.staff_id && thread.staff_id !== newMsg.sender_id) {
+      recipientId = thread.staff_id;
+    }
+
+    if (!recipientId) {
+      console.warn('[ChatPush] Could not determine recipient for thread:', newMsg.thread_id);
+      return false;
+    }
+
+    // 3. Check if recipient is active in this specific thread right now
+    if (isRecipientActiveFn(recipientId, newMsg.thread_id)) {
+      console.log(`[ChatPush] Recipient ${recipientId} is currently active in thread ${newMsg.thread_id}, skipping push`);
+      return false;
+    }
+
+    // 4. Fetch sender's profile for display name
+    let senderName = 'Scholario Message';
+    try {
+      const { data: senderProfile } = await (supabase as any)
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', newMsg.sender_id)
+        .maybeSingle();
+
+      if (senderProfile?.full_name) {
+        senderName = senderProfile.full_name;
+      }
+    } catch (profErr) {
+      console.warn('[ChatPush] Error fetching sender profile:', profErr);
+    }
+
+    // 5. iOS-style message preview formatting
+    let bodyText = 'Sent a message';
+    if (newMsg.message_type === 'voice') {
+      bodyText = '🎤 Voice message';
+    } else if (newMsg.message_type === 'image' || newMsg.mime_type?.startsWith('image/')) {
+      bodyText = '📷 Sent an image';
+    } else if (newMsg.attachment_name) {
+      bodyText = `📎 Sent ${newMsg.attachment_name}`;
+    } else if (newMsg.attachment_key) {
+      bodyText = '📎 Sent an attachment';
+    } else if (newMsg.content) {
+      bodyText = newMsg.content.trim().slice(0, 100);
+    }
+
+    const payload: PushPayload = {
+      title: senderName,
+      body: bodyText,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      tag: `chat-thread-${newMsg.thread_id}`,
+      data: {
+        url: `/chat?threadId=${newMsg.thread_id}`,
+        thread_id: newMsg.thread_id,
+        sender_id: newMsg.sender_id,
+        type: 'chat_message',
+      },
+    };
+
+    const result = await sendPushToUsers([recipientId], payload, supabase);
+    console.log(`[ChatPush] Sent chat push to recipient ${recipientId} (${result.deliveredCount} devices notified)`);
+    return result.deliveredCount > 0;
+  } catch (err) {
+    console.error('[ChatPush] Error handling new chat message push:', err);
+    return false;
   }
 }

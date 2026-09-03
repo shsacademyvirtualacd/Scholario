@@ -66,6 +66,7 @@ const AdminProfilePage     = lazy(() => import('../pages/admin/ProfilePage'));
 const PriceManagerPage     = lazy(() => import('../pages/admin/PriceManagerPage'));
 const RosterManagerPage    = lazy(() => import('../pages/admin/RosterManagerPage'));
 const AdminChatPage        = lazy(() => import('../pages/admin/AdminChatPage'));
+const AdminVisibilityRequestsPage = lazy(() => import('../pages/admin/AdminVisibilityRequestsPage'));
 
 // ─── Page loader ────────────────────────────
 const PageLoader: React.FC = () => {
@@ -230,6 +231,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/admin/fees"
             element={<ProtectedRoute requiredRole="admin"><AdminFeesPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/visibility-requests"
+            element={<ProtectedRoute requiredRole="admin"><AdminVisibilityRequestsPage /></ProtectedRoute>}
           />
 
           {/* Teacher Portal */}

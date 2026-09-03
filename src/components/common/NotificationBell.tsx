@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Calendar, BookMarked, AlertCircle } from 'lucide-react';
+import { Bell, Calendar, BookMarked, AlertCircle, Shield } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useMobile } from '../../hooks/useMobile';
 import { supabase } from '../../lib/supabase';
@@ -220,6 +220,8 @@ export const NotificationBell: React.FC = () => {
                             ? 'bg-[#FFE4E6] text-[#E11D48] border border-[#FECDD3]'
                             : notif.type === 'class_reminder'
                             ? 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]'
+                            : (notif.type as string) === 'privacy'
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
                             : 'bg-blue-50 text-blue-700 border border-blue-100'
                         }`}
                       >
@@ -227,6 +229,8 @@ export const NotificationBell: React.FC = () => {
                           <AlertCircle size={14} />
                         ) : notif.type === 'class_reminder' ? (
                           <Calendar size={14} />
+                        ) : (notif.type as string) === 'privacy' ? (
+                          <Shield size={14} />
                         ) : (
                           <BookMarked size={14} />
                         )}

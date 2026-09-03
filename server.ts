@@ -39,6 +39,10 @@ import {
   getAllPushSubscriptions,
   sendLiveSessionPushAlerts,
   checkAndSendTeacherPushReminders,
+  sendClassLinkPostedPush,
+  sendPushToUsers,
+  handleNewChatMessage,
+  type PushPayload,
 } from './src/lib/serverPushService';
 
 let geminiClient: GoogleGenAI | null = null;
@@ -1062,6 +1066,89 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     });
   });
 
+  // ── Active Chat Thread In-Memory Tracking ───────────
+  const activeChatThreads = new Map<string, { threadId: string; updatedAt: number }>();
+
+  function isRecipientActiveInThread(userId: string, threadId: string): boolean {
+    const record = activeChatThreads.get(userId);
+    if (!record) return false;
+    const isRecent = Date.now() - record.updatedAt < 25_000;
+    return isRecent && record.threadId === threadId;
+  }
+
+  // ── Chat Active Thread Presence Heartbeat ────────────
+  app.post('/api/chat/presence/active-thread', (req, res) => {
+    const { userId, threadId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    if (threadId) {
+      activeChatThreads.set(userId, { threadId, updatedAt: Date.now() });
+    } else {
+      activeChatThreads.delete(userId);
+    }
+    return res.json({ success: true });
+  });
+
+  // ── General Push Notification Dispatcher Route ──────
+  // Accepts: { user_id | userId | user_ids | userIds | role, title, body, data, tag, icon, badge }
+  app.post('/api/notifications/send', async (req, res) => {
+    try {
+      const { user_id, userId, user_ids, userIds, role, title, body, data, tag, icon, badge } = req.body;
+
+      if (!title || !body) {
+        return res.status(400).json({ error: 'title and body are required' });
+      }
+
+      let targetUserIds: string[] = [];
+
+      if (Array.isArray(userIds)) {
+        targetUserIds.push(...userIds);
+      } else if (Array.isArray(user_ids)) {
+        targetUserIds.push(...user_ids);
+      } else if (user_id || userId) {
+        targetUserIds.push(String(user_id || userId));
+      }
+
+      if (targetUserIds.length === 0 && role) {
+        // Query all users with this role
+        const { data: profiles } = await (supabaseServer as any)
+          .from('profiles')
+          .select('id')
+          .eq('role', role);
+        if (profiles) {
+          targetUserIds = profiles.map((p: any) => p.id);
+        }
+      }
+
+      if (targetUserIds.length === 0) {
+        return res.status(400).json({ error: 'At least one user_id, userIds array, or role must be specified' });
+      }
+
+      const payload: PushPayload = {
+        title,
+        body,
+        icon: icon || '/logo.png',
+        badge: badge || '/logo.png',
+        tag: tag || `scholario-notify-${Date.now()}`,
+        data: data || {},
+      };
+
+      const result = await sendPushToUsers(targetUserIds, payload, supabaseServer);
+
+      return res.json({
+        success: true,
+        deliveredCount: result.deliveredCount,
+        failedCount: result.failedCount,
+        targetUserCount: targetUserIds.length,
+        subscriptionsAttempted: result.attemptedCount,
+      });
+    } catch (err: any) {
+      console.error('[server /api/notifications/send error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to send notification' });
+    }
+  });
+
   app.post('/api/live-sessions/end', async (req, res) => {
     try {
       const { id } = req.body;
@@ -1952,6 +2039,228 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     }
   });
 
+  // ─── Visibility Requests Endpoints ──────────────────────────────
+  // Submit request to hide status (requires admin approval for students/teachers)
+  app.post('/api/visibility-requests/submit', express.json(), async (req, res) => {
+    try {
+      const { userId, notes } = req.body || {};
+      if (!userId || typeof userId !== 'string') {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+
+      // Check user role
+      const userRes = await pgPool.query('SELECT id, role, show_online_status FROM public.profiles WHERE id = $1', [userId]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'User profile not found' });
+      }
+      const user = userRes.rows[0];
+
+      // If user is already an admin, they can toggle directly
+      if (user.role === 'admin') {
+        await pgPool.query('UPDATE public.profiles SET show_online_status = false WHERE id = $1', [userId]);
+        return res.json({ success: true, autoApproved: true });
+      }
+
+      // Check for existing pending request
+      const existing = await pgPool.query(
+        "SELECT * FROM public.visibility_requests WHERE user_id = $1 AND status = 'pending' ORDER BY requested_at DESC LIMIT 1",
+        [userId]
+      );
+
+      if (existing.rows.length > 0) {
+        return res.json({
+          success: true,
+          message: 'Request sent — pending admin approval',
+          request: existing.rows[0],
+          alreadyPending: true,
+        });
+      }
+
+      // Insert new pending request
+      const insertRes = await pgPool.query(
+        `INSERT INTO public.visibility_requests (user_id, requested_status, status, requested_at, notes)
+         VALUES ($1, 'hidden', 'pending', NOW(), $2)
+         RETURNING *`,
+        [userId, notes || null]
+      );
+
+      return res.json({
+        success: true,
+        message: 'Request sent — pending admin approval',
+        request: insertRes.rows[0],
+      });
+    } catch (err: any) {
+      console.error('[server /api/visibility-requests/submit] error:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  // Turn visibility back ON (instant, self-serve, no admin approval needed)
+  app.post('/api/visibility-requests/turn-on', express.json(), async (req, res) => {
+    try {
+      const { userId } = req.body || {};
+      if (!userId || typeof userId !== 'string') {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+
+      // Immediately set show_online_status = true
+      await pgPool.query('UPDATE public.profiles SET show_online_status = true WHERE id = $1', [userId]);
+
+      // Cancel any pending 'hidden' requests
+      await pgPool.query(
+        "UPDATE public.visibility_requests SET status = 'cancelled' WHERE user_id = $1 AND status = 'pending'",
+        [userId]
+      );
+
+      return res.json({ success: true, message: 'Online status is now visible' });
+    } catch (err: any) {
+      console.error('[server /api/visibility-requests/turn-on] error:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  // Cancel a pending visibility request
+  app.post('/api/visibility-requests/cancel', express.json(), async (req, res) => {
+    try {
+      const { userId } = req.body || {};
+      if (!userId || typeof userId !== 'string') {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+
+      await pgPool.query(
+        "UPDATE public.visibility_requests SET status = 'cancelled' WHERE user_id = $1 AND status = 'pending'",
+        [userId]
+      );
+
+      return res.json({ success: true, message: 'Request cancelled' });
+    } catch (err: any) {
+      console.error('[server /api/visibility-requests/cancel] error:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  // Get current user's visibility request status
+  app.get('/api/visibility-requests/status/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const pendingRes = await pgPool.query(
+        "SELECT * FROM public.visibility_requests WHERE user_id = $1 AND status = 'pending' ORDER BY requested_at DESC LIMIT 1",
+        [userId]
+      );
+      const latestRes = await pgPool.query(
+        "SELECT * FROM public.visibility_requests WHERE user_id = $1 ORDER BY requested_at DESC LIMIT 5",
+        [userId]
+      );
+
+      return res.json({
+        pendingRequest: pendingRes.rows[0] || null,
+        history: latestRes.rows || [],
+      });
+    } catch (err: any) {
+      console.error('[server /api/visibility-requests/status/:userId] error:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  // Admin: List all visibility requests
+  app.get('/api/admin/visibility-requests', async (req, res) => {
+    try {
+      const result = await pgPool.query(`
+        SELECT 
+          vr.*,
+          u.full_name as user_name,
+          u.role as user_role,
+          u.phone as user_phone,
+          u.avatar_url as user_avatar,
+          u.show_online_status as user_current_show_online,
+          rev.full_name as reviewer_name
+        FROM public.visibility_requests vr
+        LEFT JOIN public.profiles u ON vr.user_id = u.id
+        LEFT JOIN public.profiles rev ON vr.reviewed_by = rev.id
+        ORDER BY 
+          CASE WHEN vr.status = 'pending' THEN 0 ELSE 1 END,
+          vr.requested_at DESC
+      `);
+
+      const pendingCountRes = await pgPool.query(
+        "SELECT COUNT(*)::int as count FROM public.visibility_requests WHERE status = 'pending'"
+      );
+
+      return res.json({
+        requests: result.rows,
+        pendingCount: pendingCountRes.rows[0]?.count || 0,
+      });
+    } catch (err: any) {
+      console.error('[server /api/admin/visibility-requests] error:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  // Admin: Review a visibility request (Approve or Reject)
+  app.post('/api/admin/visibility-requests/review', express.json(), async (req, res) => {
+    try {
+      const { requestId, action, adminId, reason } = req.body || {};
+      if (!requestId || !action || !['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ error: 'requestId and valid action (approve/reject) are required' });
+      }
+
+      // Fetch the request
+      const reqRes = await pgPool.query('SELECT * FROM public.visibility_requests WHERE id = $1', [requestId]);
+      if (reqRes.rows.length === 0) {
+        return res.status(404).json({ error: 'Visibility request not found' });
+      }
+      const request = reqRes.rows[0];
+      const targetUserId = request.user_id;
+
+      if (action === 'approve') {
+        // 1. Update visibility request status
+        await pgPool.query(
+          `UPDATE public.visibility_requests 
+           SET status = 'approved', reviewed_by = $1, reviewed_at = NOW(), notes = $2
+           WHERE id = $3`,
+          [adminId || null, reason || null, requestId]
+        );
+
+        // 2. Update user profile to hide online status
+        await pgPool.query('UPDATE public.profiles SET show_online_status = false WHERE id = $1', [targetUserId]);
+
+        // 3. Notify the user in-app
+        await pgPool.query(
+          `INSERT INTO public.notifications (recipient_id, title, message, type, severity, is_read, created_at)
+           VALUES ($1, 'Visibility Request Approved', 'Your request to hide your online status and last seen has been approved by administration. Your status is now private.', 'privacy', 'normal', false, NOW())`,
+          [targetUserId]
+        );
+
+        return res.json({ success: true, message: 'Request approved and user status updated to hidden' });
+      } else {
+        // action === 'reject'
+        // 1. Update visibility request status
+        await pgPool.query(
+          `UPDATE public.visibility_requests 
+           SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW(), notes = $2
+           WHERE id = $3`,
+          [adminId || null, reason || null, requestId]
+        );
+
+        // 2. Notify the user in-app (status stays visible)
+        const rejectMsg = reason
+          ? `Your request to hide your online status was declined by administration: ${reason}. Your status remains visible.`
+          : 'Your request to hide your online status and last seen was declined by administration. Your status remains visible.';
+
+        await pgPool.query(
+          `INSERT INTO public.notifications (recipient_id, title, message, type, severity, is_read, created_at)
+           VALUES ($1, 'Visibility Request Declined', $2, 'privacy', 'normal', false, NOW())`,
+          [targetUserId, rejectMsg]
+        );
+
+        return res.json({ success: true, message: 'Request rejected' });
+      }
+    } catch (err: any) {
+      console.error('[server /api/admin/visibility-requests/review] error:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
   app.get('/api/chat/attachment/{*key}', async (req, res) => {
     try {
       let key = (req.params as any)?.key || (req.params as any)[0] || '';
@@ -2058,8 +2367,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.status(404).send('Service worker not found');
   });
 
-  // ── Background Realtime Listener for Live Sessions Push ──
+  // ── Background Realtime Listeners for Push Notifications ──
   try {
+    // 1. Live Sessions
     supabaseServer
       .channel('server-global-live-push-channel')
       .on(
@@ -2077,8 +2387,65 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       .subscribe((status: string) => {
         console.log(`[ServerPush] Realtime live_sessions channel status: ${status}`);
       });
+
+    // 2. Class Session Links (when teacher shares Zoom/Meet/Teams link)
+    supabaseServer
+      .channel('server-class-links-push-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'class_session_links' },
+        (payload: any) => {
+          const row = payload.new;
+          if (row && row.link_url && row.link_url.trim().length > 0) {
+            sendClassLinkPostedPush(
+              {
+                slotId: row.slot_id,
+                sessionDate: row.session_date,
+                linkUrl: row.link_url,
+                offeringId: row.offering_id,
+                teacherId: row.created_by,
+              },
+              supabaseServer
+            ).catch((err) => {
+              console.warn('[ServerPush] Class session link push error:', err);
+            });
+          }
+        }
+      )
+      .subscribe((status: string) => {
+        console.log(`[ServerPush] Realtime class_session_links channel status: ${status}`);
+      });
+
+    // 3. Chat Messages (Immediate push to recipient if not actively looking at thread)
+    supabaseServer
+      .channel('server-chat-messages-push-channel')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        (payload: any) => {
+          if (payload.new) {
+            handleNewChatMessage(payload.new, supabaseServer, isRecipientActiveInThread).catch((err) => {
+              console.warn('[ServerPush] Chat message push error:', err);
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload: any) => {
+          if (payload.new) {
+            handleNewChatMessage(payload.new, supabaseServer, isRecipientActiveInThread).catch((err) => {
+              console.warn('[ServerPush] Messages push error:', err);
+            });
+          }
+        }
+      )
+      .subscribe((status: string) => {
+        console.log(`[ServerPush] Realtime chat_messages channel status: ${status}`);
+      });
   } catch (chanErr) {
-    console.warn('[ServerPush] Warning creating realtime channel:', chanErr);
+    console.warn('[ServerPush] Warning creating realtime channels:', chanErr);
   }
 
   // ── Background Server-Side Cron: Teacher Reminders (Every 60s) ──
@@ -2091,7 +2458,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   // Vite middleware for dev or static serving for production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: process.env.DISABLE_HMR === 'true' ? false : undefined,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

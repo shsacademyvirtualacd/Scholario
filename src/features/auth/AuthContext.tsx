@@ -63,14 +63,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     profileRef.current = profile;
 
-    // Synchronize Web Push subscription if permission is already granted in browser
-    if (profile?.id && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    // Synchronize Web Push subscription or prompt on first login
+    if (profile?.id && typeof window !== 'undefined' && 'Notification' in window) {
       import('../../lib/pushSubscriptionService')
         .then(({ registerPushServiceWorker, subscribeUserToPush }) => {
           registerPushServiceWorker().catch(() => {});
-          subscribeUserToPush(profile).catch((err) => {
-            console.warn('[AuthContext] Push sync warning:', err);
-          });
+          if (Notification.permission === 'granted') {
+            subscribeUserToPush(profile).catch((err) => {
+              console.warn('[AuthContext] Push sync warning:', err);
+            });
+          } else if (Notification.permission === 'default') {
+            const promptKey = `scholario_push_prompted_${profile.id}`;
+            if (!localStorage.getItem(promptKey)) {
+              localStorage.setItem(promptKey, 'true');
+              setTimeout(() => {
+                Notification.requestPermission()
+                  .then((perm) => {
+                    if (perm === 'granted') {
+                      subscribeUserToPush(profile).catch(() => {});
+                    }
+                  })
+                  .catch(() => {});
+              }, 1200);
+            }
+          }
         })
         .catch(() => {});
     }

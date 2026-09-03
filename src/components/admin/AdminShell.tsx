@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -17,11 +17,13 @@ import {
   Coins,
   Sparkles,
   Loader2,
-  ClipboardCheck
+  ClipboardCheck,
+  ShieldAlert
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
+import { supabase } from '../../lib/supabase';
 import ProfileAvatar from '../common/ProfileAvatar';
 
 interface AdminShellProps {
@@ -38,6 +40,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard',  path: '/admin' },
   { icon: MessageSquare,   label: 'Chat',       path: '/admin/chat' },
+  { icon: ShieldAlert,     label: 'Visibility Requests', path: '/admin/visibility-requests' },
   { icon: ClipboardCheck,  label: 'Attendance', path: '/admin/attendance' },
   { icon: UserCheck,       label: 'Roster Manager', path: '/admin/roster' },
   { icon: Calendar,        label: 'Schedule',   path: '/admin/schedule' },
@@ -58,6 +61,35 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [pendingVisibilityCount, setPendingVisibilityCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPending = async () => {
+      try {
+        const res = await fetch('/api/admin/visibility-requests');
+        if (res.ok) {
+          const data: any = await res.json();
+          if (isMounted) setPendingVisibilityCount(data?.pendingCount || 0);
+        }
+      } catch (err) {
+        console.warn('[AdminShell] Failed to fetch pending visibility requests:', err);
+      }
+    };
+    fetchPending();
+
+    const channel = supabase
+      .channel('admin-shell-visibility-requests')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'visibility_requests' }, () => {
+        fetchPending();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -116,6 +148,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           {NAV_ITEMS.map(({ icon: Icon, label, path, disabled }) => {
             const isActive = !disabled && isPathActive(path);
             const isChat = path === '/admin/chat';
+            const isVisibility = path === '/admin/visibility-requests';
             return (
               <button
                 key={path}
@@ -130,6 +163,11 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                 {isChat && unreadCount > 0 && !disabled && (
                   <span className="shrink-0 px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none shadow-sm animate-pulse">
                     {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+                {isVisibility && pendingVisibilityCount > 0 && !disabled && (
+                  <span className="shrink-0 px-2 py-0.5 text-[11px] font-bold rounded-full bg-amber-500 text-white leading-none shadow-sm animate-pulse">
+                    {pendingVisibilityCount > 99 ? '99+' : pendingVisibilityCount}
                   </span>
                 )}
               </button>

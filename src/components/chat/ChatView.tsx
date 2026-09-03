@@ -17,9 +17,7 @@ import {
   Mic,
   Paperclip,
   Image as ImageIcon,
-  FileText,
-  SlidersHorizontal,
-  X
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -29,7 +27,6 @@ import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { VoiceRecorderBar } from './VoiceRecorderBar';
 import { ChatImageBubble } from './ChatImageBubble';
 import { ChatFileBubble } from './ChatFileBubble';
-import { ChatPrivacySettingCard } from './ChatPrivacySettingCard';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
@@ -81,7 +78,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [mobileViewActiveThread, setMobileViewActiveThread] = useState(false);
   const [fetchedContacts, setFetchedContacts] = useState<Profile[]>([]);
   const [loadingModalContacts, setLoadingModalContacts] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   // Realtime Presence Tracking & Status synchronization
   const handleProfileUpdated = (updatedProfile: Partial<Profile> & { id: string }) => {
@@ -114,6 +110,47 @@ export const ChatView: React.FC<ChatViewProps> = ({
     activeContactId,
     onProfileUpdated: handleProfileUpdated,
   });
+
+  // Report active chat thread presence to server to avoid double-notifying
+  // someone who is already actively viewing this chat thread in foreground
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const reportActive = (threadId: string | null) => {
+      fetch('/api/chat/presence/active-thread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId, threadId }),
+      }).catch(() => {});
+    };
+
+    if (activeThreadId && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      reportActive(activeThreadId);
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          reportActive(activeThreadId);
+        }
+      }, 10_000);
+
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          reportActive(null);
+        } else if (document.visibilityState === 'visible' && activeThreadId) {
+          reportActive(activeThreadId);
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        reportActive(null);
+      };
+    } else {
+      reportActive(null);
+    }
+  }, [activeThreadId, currentUserId]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -761,14 +798,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setShowPrivacyModal(true)}
-                  className="p-2 rounded-xl border border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors interactive flex items-center justify-center"
-                  title="Chat privacy & presence settings"
-                >
-                  <SlidersHorizontal size={15} />
-                </button>
-
-                <button
                   onClick={() => {
                     setShowNewChatModal(true);
                     setNewChatSearch('');
@@ -994,16 +1023,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       );
                     })()}
                   </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => setShowPrivacyModal(true)}
-                    className="p-2 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] border border-transparent hover:border-[#E5E5E5] transition-colors"
-                    title="Chat privacy & presence settings"
-                  >
-                    <SlidersHorizontal size={16} />
-                  </button>
                 </div>
               </div>
 
@@ -1520,40 +1539,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 className="px-4 py-2 rounded-xl text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] disabled:opacity-50"
               >
                 Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Chat Privacy Settings Modal ── */}
-      {showPrivacyModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-[#E5E5E5] animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-[#F0F0F0] mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-[#111111] text-white flex items-center justify-center">
-                  <Shield size={14} />
-                </div>
-                <h3 className="text-sm font-bold text-[#111111]">Chat Privacy Settings</h3>
-              </div>
-              <button
-                onClick={() => setShowPrivacyModal(false)}
-                className="p-1 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors"
-                title="Close"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <ChatPrivacySettingCard className="border-0 shadow-none p-0" />
-
-            <div className="mt-5 pt-3 border-t border-[#F0F0F0] flex justify-end">
-              <button
-                onClick={() => setShowPrivacyModal(false)}
-                className="btn btn-primary font-bold text-xs bg-[#111111] hover:bg-black text-white px-4 py-2 rounded-xl interactive"
-              >
-                Done
               </button>
             </div>
           </div>

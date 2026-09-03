@@ -481,7 +481,35 @@ export interface Database {
         Insert: Omit<ChatMessage, 'id' | 'created_at'> & { id?: string; created_at?: string };
         Update: Partial<Omit<ChatMessage, 'id' | 'created_at'>>;
       };
+      visibility_requests: {
+        Row: VisibilityRequest;
+        Insert: Omit<VisibilityRequest, 'id' | 'created_at' | 'requested_at' | 'user' | 'reviewer'> & { id?: string; created_at?: string; requested_at?: string };
+        Update: Partial<Omit<VisibilityRequest, 'id' | 'created_at' | 'user' | 'reviewer'>>;
+      };
     };
   };
 }
+
+// ─── visibility_requests ─────────────────────
+export interface VisibilityRequest {
+  id: string;
+  user_id: string;
+  requested_status: 'hidden' | 'visible';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  requested_at: string;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  notes?: string | null;
+  created_at: string;
+  // Joined or populated fields
+  user_name?: string;
+  user_role?: string;
+  user_phone?: string;
+  user_avatar?: string | null;
+  user_current_show_online?: boolean;
+  reviewer_name?: string | null;
+  user?: Profile;
+  reviewer?: Profile;
+}
+
 
