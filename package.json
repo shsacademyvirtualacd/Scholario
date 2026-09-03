@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1125.0",
     "@emailjs/browser": "^4.4.1",
     "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@google/genai": "^2.18.0",

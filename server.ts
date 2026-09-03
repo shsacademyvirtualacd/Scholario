@@ -5,6 +5,7 @@ import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import pg from 'pg';
 const { Pool } = pg;
 
@@ -2470,6 +2471,198 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       console.error('[server /api/chat/attachment] Error:', err);
       return res.status(500).json({ error: err.message });
     }
+  });
+
+  // ── Helper: Delete Chat Attachment from Cloudflare R2 / Storage ─────────
+  async function deleteR2Attachment(attachmentKey: string): Promise<boolean> {
+    if (!attachmentKey || typeof attachmentKey !== 'string') return false;
+
+    // 1. Delete from local in-memory storage
+    fileStorage.delete(attachmentKey);
+    const keyParts = attachmentKey.split('/');
+    const cleanFilename = keyParts[keyParts.length - 1];
+    if (cleanFilename) {
+      fileStorage.delete(cleanFilename);
+    }
+
+    // 2. Cloudflare R2 Bucket deletion (scholario-chat-attachments)
+    const r2AccountId = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
+    const r2AccessKey = process.env.R2_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+    const r2SecretKey = process.env.R2_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+    const r2Bucket = process.env.R2_BUCKET_NAME || process.env.CLOUDFLARE_R2_BUCKET || 'scholario-chat-attachments';
+
+    if (r2AccountId && r2AccessKey && r2SecretKey) {
+      try {
+        const s3Client = new S3Client({
+          region: 'auto',
+          endpoint: process.env.R2_ENDPOINT || `https://${r2AccountId}.r2.cloudflarestorage.com`,
+          credentials: {
+            accessKeyId: r2AccessKey,
+            secretAccessKey: r2SecretKey,
+          },
+        });
+
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: r2Bucket,
+            Key: attachmentKey,
+          })
+        );
+        console.log(`[R2] Deleted attachment "${attachmentKey}" from bucket "${r2Bucket}"`);
+      } catch (r2Err: any) {
+        console.warn(`[R2] Delete object warning for "${attachmentKey}":`, r2Err?.message || r2Err);
+      }
+    }
+
+    // 3. Also remove from Supabase Storage buckets if stored there
+    try {
+      await supabaseServer.storage.from('scholario-chat-attachments').remove([attachmentKey]);
+      await supabaseServer.storage.from('chat-attachments').remove([attachmentKey]);
+      await supabaseServer.storage.from('voice-messages').remove([attachmentKey]);
+    } catch {
+      // Non-fatal
+    }
+
+    return true;
+  }
+
+  // ── Hard Delete Chat Message (Zero Trace) ──────────────────────────
+  app.delete('/api/chat/messages/:messageId', async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      if (!messageId) {
+        return res.status(400).json({ error: 'messageId is required' });
+      }
+
+      // 1. Authenticate user from Bearer token or x-user-id header
+      let userId = '';
+      let userRole = '';
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
+          userId = payload?.sub || '';
+          userRole = payload?.user_metadata?.role || payload?.role || '';
+        } catch {}
+      }
+
+      if (!userId && req.headers['x-user-id']) {
+        userId = String(req.headers['x-user-id']).trim();
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized: Valid authentication token required' });
+      }
+
+      // 2. Fetch existing message record from database to verify ownership & attachment details
+      let messageData: any = null;
+      try {
+        const { rows } = await pgPool.query(
+          `SELECT id, sender_id, thread_id, attachment_key, audio_url, message_type
+           FROM public.chat_messages WHERE id = $1
+           UNION
+           SELECT id, sender_id, thread_id, attachment_key, audio_url, message_type
+           FROM public.messages WHERE id = $1
+           LIMIT 1`,
+          [messageId]
+        );
+        if (rows.length > 0) {
+          messageData = rows[0];
+        }
+      } catch (dbErr: any) {
+        console.warn('[server message delete query warning]:', dbErr.message);
+      }
+
+      if (!messageData) {
+        const { data: supaMsg } = await (supabaseServer as any)
+          .from('chat_messages')
+          .select('id, sender_id, thread_id, attachment_key, audio_url, message_type')
+          .eq('id', messageId)
+          .maybeSingle();
+        messageData = supaMsg;
+      }
+
+      if (messageData) {
+        // Ownership check: only sender or admin can delete
+        const isSender = messageData.sender_id === userId;
+        let isAdmin = userRole === 'admin' || userRole === 'super_admin';
+        if (!isSender && !isAdmin) {
+          try {
+            const { rows: profileRows } = await pgPool.query(
+              'SELECT role FROM public.profiles WHERE id = $1',
+              [userId]
+            );
+            if (profileRows.length > 0 && (profileRows[0].role === 'admin' || profileRows[0].role === 'super_admin')) {
+              isAdmin = true;
+            }
+          } catch {}
+        }
+
+        if (!isSender && !isAdmin) {
+          return res.status(403).json({ error: 'Forbidden: You can only delete your own sent messages' });
+        }
+
+        // If message had an attachment, delete object from scholario-chat-attachments R2 bucket
+        if (messageData.attachment_key) {
+          await deleteR2Attachment(messageData.attachment_key);
+        }
+
+        // If message had a voice recording
+        if (messageData.audio_url) {
+          const match = messageData.audio_url.match(/voice_[^/.]+/);
+          if (match) {
+            await deleteR2Attachment(match[0]);
+          }
+        }
+      }
+
+      // 3. Permanently hard delete row from both messages and chat_messages tables in Supabase
+      await pgPool.query('DELETE FROM public.messages WHERE id = $1', [messageId]);
+      await pgPool.query('DELETE FROM public.chat_messages WHERE id = $1', [messageId]);
+
+      await (supabaseServer as any).from('messages').delete().eq('id', messageId);
+      await (supabaseServer as any).from('chat_messages').delete().eq('id', messageId);
+
+      const threadId = messageData?.thread_id;
+
+      // 4. Real-time removal: broadcast the deletion via Supabase Realtime so it instantly disappears from recipient's view
+      if (threadId) {
+        try {
+          const threadChannel = supabaseServer.channel(`chat-thread-${threadId}`);
+          await threadChannel.send({
+            type: 'broadcast',
+            event: 'message_deleted',
+            payload: { messageId, threadId },
+          });
+          supabaseServer.removeChannel(threadChannel);
+        } catch (bcErr) {
+          console.warn('[server message delete broadcast warning]:', bcErr);
+        }
+      }
+
+      return res.json({
+        success: true,
+        messageId,
+        threadId,
+      });
+    } catch (err: any) {
+      console.error('[server /api/chat/messages/:messageId DELETE error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to hard delete message' });
+    }
+  });
+
+  // POST fallback for clients
+  app.post('/api/chat/messages/delete', express.json(), async (req, res) => {
+    const messageId = req.body?.message_id || req.body?.messageId;
+    if (!messageId) {
+      return res.status(400).json({ error: 'messageId is required' });
+    }
+    req.params.messageId = messageId;
+    // Pass to DELETE route
+    (app as any)._router.handle(
+      { ...req, method: 'DELETE', url: `/api/chat/messages/${messageId}` },
+      res
+    );
   });
 
   // ── Explicit Service Worker Handler ─────────────────

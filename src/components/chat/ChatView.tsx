@@ -17,7 +17,8 @@ import {
   Mic,
   Paperclip,
   Image as ImageIcon,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -39,7 +40,8 @@ import {
   sendAttachmentChatMessage,
   markChatThreadMessagesAsRead,
   getOrCreateChatThread,
-  getStudentChatContacts
+  getStudentChatContacts,
+  deleteChatMessage
 } from '../../lib/chatService';
 
 interface ChatViewProps {
@@ -78,6 +80,123 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [mobileViewActiveThread, setMobileViewActiveThread] = useState(false);
   const [fetchedContacts, setFetchedContacts] = useState<Profile[]>([]);
   const [loadingModalContacts, setLoadingModalContacts] = useState(false);
+
+  // Message Deletion & Long-Press State (Zero Trace)
+  const [actionMenuMessage, setActionMenuMessage] = useState<ChatMessage | null>(null);
+  const [actionMenuCoords, setActionMenuCoords] = useState<{ x: number; y: number } | null>(null);
+  const [deleteConfirmMessage, setDeleteConfirmMessage] = useState<ChatMessage | null>(null);
+  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
+
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartCoordRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Reactive state removal for message deletions (Zero Trace - no placeholder)
+  const handleMessageDeletedRealtime = (deletedId: string) => {
+    if (!deletedId) return;
+    setMessages(prev => prev.filter(m => m.id !== deletedId));
+    setThreads(prev => {
+      return prev.map(t => {
+        if (t.latest_message?.id === deletedId) {
+          return { ...t, latest_message: undefined };
+        }
+        return t;
+      });
+    });
+    // Silently re-sync thread preview
+    if (currentUserId) {
+      getChatThreadsForUser(currentUserId).then(setThreads).catch(() => {});
+    }
+  };
+
+  const triggerLongPressAction = (msg: ChatMessage, x: number, y: number) => {
+    if (msg.sender_id !== currentUserId) return;
+    if (window.navigator?.vibrate) {
+      try {
+        window.navigator.vibrate(40);
+      } catch {}
+    }
+    setActionMenuMessage(msg);
+    setActionMenuCoords({ x, y });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent, msg: ChatMessage) => {
+    if (msg.sender_id !== currentUserId) return;
+    const touch = e.touches[0];
+    touchStartCoordRef.current = { x: touch.clientX, y: touch.clientY };
+
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      triggerLongPressAction(msg, touch.clientX, touch.clientY);
+    }, 450);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartCoordRef.current || !longPressTimerRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartCoordRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartCoordRef.current.y);
+    if (dx > 12 || dy > 12) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartCoordRef.current = null;
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, msg: ChatMessage) => {
+    if (msg.sender_id !== currentUserId || e.button !== 0) return;
+    const { clientX, clientY } = e;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      triggerLongPressAction(msg, clientX, clientY);
+    }, 450);
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, msg: ChatMessage) => {
+    if (msg.sender_id !== currentUserId) return;
+    e.preventDefault();
+    triggerLongPressAction(msg, e.clientX, e.clientY);
+  };
+
+  const handleDeleteMenuClick = (msg: ChatMessage) => {
+    setActionMenuMessage(null);
+    setActionMenuCoords(null);
+    setDeleteConfirmMessage(msg);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmMessage || isDeletingMessage) return;
+    const targetMsg = deleteConfirmMessage;
+    setIsDeletingMessage(true);
+
+    // Optimistically remove from state instantly with zero placeholder
+    handleMessageDeletedRealtime(targetMsg.id);
+
+    try {
+      await deleteChatMessage(targetMsg.id, activeThreadId || undefined);
+      setDeleteConfirmMessage(null);
+    } catch (err: any) {
+      console.error('Delete chat message failed:', err);
+      toast.error('Failed to delete message. Please try again.');
+    } finally {
+      setIsDeletingMessage(false);
+    }
+  };
 
   // Realtime Presence Tracking & Status synchronization
   const handleProfileUpdated = (updatedProfile: Partial<Profile> & { id: string }) => {
@@ -423,14 +542,75 @@ export const ChatView: React.FC<ChatViewProps> = ({
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'chat_messages',
+        },
+        (payload) => {
+          const deletedId = (payload.old as any)?.id;
+          if (deletedId) {
+            handleMessageDeletedRealtime(deletedId);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          const deletedId = (payload.old as any)?.id;
+          if (deletedId) {
+            handleMessageDeletedRealtime(deletedId);
+          }
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'message_deleted' },
+        ({ payload }) => {
+          if (payload?.messageId) {
+            handleMessageDeletedRealtime(payload.messageId);
+          }
+        }
+      )
       .subscribe((status, err) => {
         if (err) {
           console.warn('[Chat Realtime] Subscription status:', status, 'error:', err);
         }
       });
 
+    // Also subscribe to the active thread's direct broadcast channel for instant recipient removal
+    let threadChannel: any = null;
+    if (activeThreadId) {
+      threadChannel = supabase
+        .channel(`chat-thread-${activeThreadId}`)
+        .on('broadcast', { event: 'message_deleted' }, ({ payload }) => {
+          if (payload?.messageId) {
+            handleMessageDeletedRealtime(payload.messageId);
+          }
+        })
+        .subscribe();
+    }
+
+    // Local in-window event listener for immediate reactive zero-trace removal
+    const onWindowMessageDeleted = (e: Event) => {
+      const customEvent = e as CustomEvent<{ messageId: string }>;
+      if (customEvent.detail?.messageId) {
+        handleMessageDeletedRealtime(customEvent.detail.messageId);
+      }
+    };
+    window.addEventListener('scholario-message-deleted', onWindowMessageDeleted);
+
     return () => {
       supabase.removeChannel(channel);
+      if (threadChannel) supabase.removeChannel(threadChannel);
+      window.removeEventListener('scholario-message-deleted', onWindowMessageDeleted);
     };
   }, [currentUserId, activeThreadId]);
 
@@ -1077,7 +1257,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         )}
 
                         <div
-                          className={`flex items-end gap-2 ${
+                          className={`group relative flex items-end gap-2 ${
                             isMe ? 'justify-end' : 'justify-start'
                           }`}
                         >
@@ -1091,68 +1271,98 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             />
                           )}
 
-                          {msg.message_type === 'voice' || msg.audio_url ? (
-                            <VoiceMessageBubble
-                              messageId={msg.id}
-                              audioUrl={msg.audio_url || ''}
-                              durationSeconds={msg.audio_duration_seconds}
-                              createdAt={msg.created_at}
-                              readAt={msg.read_at}
-                              isMe={isMe}
-                            />
-                          ) : msg.message_type === 'image' && msg.attachment_key ? (
-                            <ChatImageBubble
-                              messageId={msg.id}
-                              attachmentKey={msg.attachment_key}
-                              attachmentName={msg.attachment_name}
-                              attachmentSize={msg.attachment_size}
-                              content={msg.content}
-                              createdAt={msg.created_at}
-                              readAt={msg.read_at}
-                              isMe={isMe}
-                            />
-                          ) : msg.message_type === 'file' && msg.attachment_key ? (
-                            <ChatFileBubble
-                              messageId={msg.id}
-                              attachmentKey={msg.attachment_key}
-                              attachmentName={msg.attachment_name}
-                              attachmentSize={msg.attachment_size}
-                              mimeType={msg.mime_type}
-                              content={msg.content}
-                              createdAt={msg.created_at}
-                              readAt={msg.read_at}
-                              isMe={isMe}
-                            />
-                          ) : (
-                            <div
-                              className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-2xs ${
-                                isMe
-                                  ? 'bg-[#111111] text-white rounded-br-xs'
-                                  : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
-                              }`}
-                            >
-                              <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words select-text">
-                                {msg.content}
-                              </p>
-
-                              <div
-                                className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
-                                  isMe ? 'text-white/60' : 'text-[#A3A3A3]'
-                                }`}
+                          {/* Desktop quick-delete hover trigger for sender's messages */}
+                          {isMe && (
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center self-center shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteMenuClick(msg);
+                                }}
+                                className="p-1.5 text-[#A3A3A3] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Delete message"
+                                aria-label="Delete message"
                               >
-                                <span>{formatMessageTime(msg.created_at)}</span>
-                                {isMe && (
-                                  <span title={isRead ? 'Read' : 'Delivered'}>
-                                    {isRead ? (
-                                      <CheckCheck size={12} className="text-[#F4C430]" />
-                                    ) : (
-                                      <Check size={12} />
-                                    )}
-                                  </span>
-                                )}
-                              </div>
+                                <Trash2 size={13} />
+                              </button>
                             </div>
                           )}
+
+                          <div
+                            className={`relative ${isMe ? 'cursor-pointer select-none active:scale-[0.99] transition-transform' : ''}`}
+                            onTouchStart={(e) => handleTouchStart(e, msg)}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onTouchCancel={handleTouchEnd}
+                            onMouseDown={(e) => handleMouseDown(e, msg)}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onContextMenu={(e) => handleContextMenu(e, msg)}
+                          >
+                            {msg.message_type === 'voice' || msg.audio_url ? (
+                              <VoiceMessageBubble
+                                messageId={msg.id}
+                                audioUrl={msg.audio_url || ''}
+                                durationSeconds={msg.audio_duration_seconds}
+                                createdAt={msg.created_at}
+                                readAt={msg.read_at}
+                                isMe={isMe}
+                              />
+                            ) : msg.message_type === 'image' && msg.attachment_key ? (
+                              <ChatImageBubble
+                                messageId={msg.id}
+                                attachmentKey={msg.attachment_key}
+                                attachmentName={msg.attachment_name}
+                                attachmentSize={msg.attachment_size}
+                                content={msg.content}
+                                createdAt={msg.created_at}
+                                readAt={msg.read_at}
+                                isMe={isMe}
+                              />
+                            ) : msg.message_type === 'file' && msg.attachment_key ? (
+                              <ChatFileBubble
+                                messageId={msg.id}
+                                attachmentKey={msg.attachment_key}
+                                attachmentName={msg.attachment_name}
+                                attachmentSize={msg.attachment_size}
+                                mimeType={msg.mime_type}
+                                content={msg.content}
+                                createdAt={msg.created_at}
+                                readAt={msg.read_at}
+                                isMe={isMe}
+                              />
+                            ) : (
+                              <div
+                                className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-2xs ${
+                                  isMe
+                                    ? 'bg-[#111111] text-white rounded-br-xs'
+                                    : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
+                                }`}
+                              >
+                                <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words select-text">
+                                  {msg.content}
+                                </p>
+
+                                <div
+                                  className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
+                                    isMe ? 'text-white/60' : 'text-[#A3A3A3]'
+                                  }`}
+                                >
+                                  <span>{formatMessageTime(msg.created_at)}</span>
+                                  {isMe && (
+                                    <span title={isRead ? 'Read' : 'Delivered'}>
+                                      {isRead ? (
+                                        <CheckCheck size={12} className="text-[#F4C430]" />
+                                      ) : (
+                                        <Check size={12} />
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </React.Fragment>
                     );
@@ -1539,6 +1749,106 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 className="px-4 py-2 rounded-xl text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] disabled:opacity-50"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contextual Long-Press / Right-Click Action Menu */}
+      {actionMenuMessage && (
+        <div
+          className="fixed inset-0 z-50 select-none"
+          onClick={() => {
+            setActionMenuMessage(null);
+            setActionMenuCoords(null);
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setActionMenuMessage(null);
+            setActionMenuCoords(null);
+          }}
+        >
+          <div
+            className="fixed bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#E5E5E5] p-1.5 z-50 min-w-[160px] animate-in fade-in zoom-in-95 duration-150"
+            style={{
+              top: Math.min(
+                Math.max(16, (actionMenuCoords?.y || 200) - 50),
+                typeof window !== 'undefined' ? window.innerHeight - 100 : 300
+              ),
+              left: Math.min(
+                Math.max(16, (actionMenuCoords?.x || 200) - 80),
+                typeof window !== 'undefined' ? window.innerWidth - 180 : 200
+              ),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => handleDeleteMenuClick(actionMenuMessage)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors text-left cursor-pointer"
+            >
+              <Trash2 size={15} className="shrink-0 text-red-600" />
+              <span>Delete</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Message Confirmation Dialog (Zero Trace) */}
+      {deleteConfirmMessage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => {
+            if (!isDeletingMessage) setDeleteConfirmMessage(null);
+          }}
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-[#E5E5E5] space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#111111]">Delete message?</h3>
+                <p className="text-xs text-[#737373]">
+                  Permanently remove for everyone
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#525252] leading-relaxed">
+              This message will be completely removed for both you and the recipient. There will be zero trace or placeholder left behind.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F0F0F0]">
+              <button
+                type="button"
+                disabled={isDeletingMessage}
+                onClick={() => setDeleteConfirmMessage(null)}
+                className="px-4 py-2 text-xs font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingMessage}
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+              >
+                {isDeletingMessage ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Delete</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
