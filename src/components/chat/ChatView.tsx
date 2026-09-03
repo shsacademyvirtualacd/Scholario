@@ -52,6 +52,27 @@ interface ChatViewProps {
   allowNewChatWithAllStudents?: boolean;
 }
 
+// Pure helper to compare message lists and prevent unnecessary state updates during background polling
+function areMessagesEqual(prev: ChatMessage[], next: ChatMessage[]): boolean {
+  if (prev === next) return true;
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < prev.length; i++) {
+    const a = prev[i];
+    const b = next[i];
+    if (
+      a.id !== b.id ||
+      a.read_at !== b.read_at ||
+      a.content !== b.content ||
+      a.created_at !== b.created_at ||
+      a.audio_url !== b.audio_url ||
+      a.attachment_key !== b.attachment_key
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export const ChatView: React.FC<ChatViewProps> = ({
   role,
   availableContacts: initialAvailableContacts = [],
@@ -341,12 +362,45 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [activeThreadId, currentUserId]);
 
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Scroll state & message tracking refs
+  const prevMessagesLengthRef = useRef<number>(0);
+  const prevLastMessageIdRef = useRef<string | null>(null);
+  const isInitialThreadLoadRef = useRef<boolean>(true);
+  const isNearBottomRef = useRef<boolean>(true);
+
+  // Check if messages container is scrolled within ~100px of bottom
+  const checkIfNearBottom = (threshold = 100): boolean => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    return distanceFromBottom <= threshold;
+  };
+
+  // Keep track of scroll position so we know if user scrolled up to read older messages
+  const handleMessagesScroll = () => {
+    isNearBottomRef.current = checkIfNearBottom(100);
+  };
+
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    const container = messagesContainerRef.current;
+    if (container) {
+      if (behavior === 'auto') {
+        container.scrollTop = container.scrollHeight;
+      } else {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }
+    isNearBottomRef.current = true;
   };
 
   // Autonomous loading of contacts if not provided by parent
@@ -490,7 +544,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!silent) setLoadingMessages(true);
     try {
       const msgs = await getChatMessages(activeThreadId);
-      setMessages(msgs);
+      if (silent) {
+        setMessages(prev => (areMessagesEqual(prev, msgs) ? prev : msgs));
+      } else {
+        setMessages(msgs);
+      }
       
       // If there are unread messages from other user, mark as read
       const hasUnread = msgs.some(m => m.sender_id !== currentUserId && !m.read_at);
@@ -510,6 +568,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   useEffect(() => {
     setIsVoiceRecording(false);
+    // Mark as a new conversation view: scroll to bottom on initial load
+    isInitialThreadLoadRef.current = true;
+    isNearBottomRef.current = true;
+    prevMessagesLengthRef.current = 0;
+    prevLastMessageIdRef.current = null;
     fetchActiveMessages(false);
   }, [activeThreadId, currentUserId]);
 
@@ -540,10 +603,52 @@ export const ChatView: React.FC<ChatViewProps> = ({
     };
   }, [currentUserId, activeThreadId]);
 
-  // Scroll to bottom whenever messages change
+  // Scoped scroll-to-bottom: ONLY fires on initial thread load or when a genuinely new message is appended
+  // AND the user was already near the bottom (or sent the message themselves)
   useEffect(() => {
-    scrollToBottom(messages.length <= 1 ? 'auto' : 'smooth');
-  }, [messages]);
+    if (messages.length === 0) {
+      prevMessagesLengthRef.current = 0;
+      prevLastMessageIdRef.current = null;
+      return;
+    }
+
+    const lastMsg = messages[messages.length - 1];
+    const prevCount = prevMessagesLengthRef.current;
+    const prevLastId = prevLastMessageIdRef.current;
+
+    // 1. Initial thread load — always start at the newest messages
+    if (isInitialThreadLoadRef.current) {
+      isInitialThreadLoadRef.current = false;
+      prevMessagesLengthRef.current = messages.length;
+      prevLastMessageIdRef.current = lastMsg?.id || null;
+      isNearBottomRef.current = true;
+      scrollToBottom('auto');
+      requestAnimationFrame(() => {
+        scrollToBottom('auto');
+      });
+      return;
+    }
+
+    // 2. Detect if a genuinely new message was appended at the end of the array
+    const isMessageAppended = messages.length > prevCount && Boolean(lastMsg && lastMsg.id !== prevLastId);
+    const isSentByMe = Boolean(lastMsg && lastMsg.sender_id === currentUserId);
+
+    if (isMessageAppended) {
+      // Check if user is already scrolled near the bottom (within ~100px)
+      const nearBottom = isNearBottomRef.current || checkIfNearBottom(100);
+
+      // Auto-scroll ONLY if sent by current user, or if already near bottom
+      if (isSentByMe || nearBottom) {
+        scrollToBottom(messages.length <= 1 ? 'auto' : 'smooth');
+      }
+      // If user scrolled up to read older messages and received a new message from someone else,
+      // preserve their scroll position and do NOT yank them down
+    }
+
+    // Update tracking refs (for deletions, re-renders, updates, scroll position is naturally preserved)
+    prevMessagesLengthRef.current = messages.length;
+    prevLastMessageIdRef.current = lastMsg?.id || null;
+  }, [messages, currentUserId]);
 
   // 3. Realtime Subscription on chat_messages & chat_threads
   useEffect(() => {
@@ -1277,7 +1382,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
 
               {/* Messages Scroll Area */}
-              <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-[#FBFBFB]">
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleMessagesScroll}
+                className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-[#FBFBFB]"
+              >
                 {/* Security & Permanent Notice */}
                 <div className="flex justify-center my-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E5E5E5] text-[11px] text-[#737373] shadow-2xs">
