@@ -18,7 +18,8 @@ import {
   Paperclip,
   Image as ImageIcon,
   FileText,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -89,6 +90,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartCoordRef = useRef<{ x: number; y: number } | null>(null);
+  const isLongPressActiveRef = useRef(false);
+  const longPressOpenedAtRef = useRef<number>(0);
 
   // Reactive state removal for message deletions (Zero Trace - no placeholder)
   const handleMessageDeletedRealtime = (deletedId: string) => {
@@ -110,6 +113,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const triggerLongPressAction = (msg: ChatMessage, x: number, y: number) => {
     if (msg.sender_id !== currentUserId) return;
+    isLongPressActiveRef.current = true;
+    longPressOpenedAtRef.current = Date.now();
     if (window.navigator?.vibrate) {
       try {
         window.navigator.vibrate(40);
@@ -123,6 +128,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (msg.sender_id !== currentUserId) return;
     const touch = e.touches[0];
     touchStartCoordRef.current = { x: touch.clientX, y: touch.clientY };
+    isLongPressActiveRef.current = false;
 
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
@@ -143,33 +149,57 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
     touchStartCoordRef.current = null;
+
+    if (isLongPressActiveRef.current) {
+      // The gesture was a long-press that opened the action menu!
+      // CRITICAL: Stop propagation and prevent default so browser does NOT emit
+      // synthetic pointerup/mouseup/click events that hit the newly mounted backdrop and dismiss it.
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+
+      // Keep isLongPressActiveRef true for a short cooldown window to absorb any delayed synthetic clicks
+      setTimeout(() => {
+        isLongPressActiveRef.current = false;
+      }, 400);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent, msg: ChatMessage) => {
     if (msg.sender_id !== currentUserId || e.button !== 0) return;
     const { clientX, clientY } = e;
+    isLongPressActiveRef.current = false;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       triggerLongPressAction(msg, clientX, clientY);
     }, 450);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
+    }
+    if (isLongPressActiveRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      setTimeout(() => {
+        isLongPressActiveRef.current = false;
+      }, 400);
     }
   };
 
   const handleContextMenu = (e: React.MouseEvent, msg: ChatMessage) => {
     if (msg.sender_id !== currentUserId) return;
     e.preventDefault();
+    e.stopPropagation();
     triggerLongPressAction(msg, e.clientX, e.clientY);
   };
 
@@ -178,6 +208,46 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setActionMenuCoords(null);
     setDeleteConfirmMessage(msg);
   };
+
+  // Action Menu outside tap / click dismiss listener (attached AFTER current tick to prevent instant dismiss)
+  useEffect(() => {
+    if (!actionMenuMessage) return;
+
+    const openedAt = longPressOpenedAtRef.current || Date.now();
+
+    const handlePointerDownOutside = (e: PointerEvent | MouseEvent | TouchEvent) => {
+      // Must be at least 350ms after the menu was opened so the release of the long press never dismisses it
+      if (Date.now() - openedAt < 350) return;
+
+      const target = e.target as HTMLElement | null;
+      // If clicking inside the menu popup, don't dismiss
+      if (target && target.closest('[data-action-menu-popup]')) {
+        return;
+      }
+
+      setActionMenuMessage(null);
+      setActionMenuCoords(null);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActionMenuMessage(null);
+        setActionMenuCoords(null);
+      }
+    };
+
+    // Attach listeners on the NEXT event loop tick so the current gesture's release cannot trigger it
+    const attachTimer = setTimeout(() => {
+      window.addEventListener('pointerdown', handlePointerDownOutside, true);
+      window.addEventListener('keydown', handleKeyDown);
+    }, 100);
+
+    return () => {
+      clearTimeout(attachTimer);
+      window.removeEventListener('pointerdown', handlePointerDownOutside, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [actionMenuMessage]);
 
   const handleConfirmDelete = async () => {
     if (!deleteConfirmMessage || isDeletingMessage) return;
@@ -1291,6 +1361,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                           <div
                             className={`relative ${isMe ? 'cursor-pointer select-none active:scale-[0.99] transition-transform' : ''}`}
+                            style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                             onTouchStart={(e) => handleTouchStart(e, msg)}
                             onTouchMove={handleTouchMove}
                             onTouchEnd={handleTouchEnd}
@@ -1299,6 +1370,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             onMouseUp={handleMouseUp}
                             onMouseLeave={handleMouseUp}
                             onContextMenu={(e) => handleContextMenu(e, msg)}
+                            onClickCapture={(e) => {
+                              if (
+                                isLongPressActiveRef.current ||
+                                (longPressOpenedAtRef.current > 0 && Date.now() - longPressOpenedAtRef.current < 450)
+                              ) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }
+                            }}
                           >
                             {msg.message_type === 'voice' || msg.audio_url ? (
                               <VoiceMessageBubble
@@ -1340,7 +1420,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                     : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
                                 }`}
                               >
-                                <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words select-text">
+                                <p className={`text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words ${isMe ? 'select-none md:select-text' : 'select-text'}`}>
                                   {msg.content}
                                 </p>
 
@@ -1758,38 +1838,61 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {/* Contextual Long-Press / Right-Click Action Menu */}
       {actionMenuMessage && (
         <div
-          className="fixed inset-0 z-50 select-none"
-          onClick={() => {
-            setActionMenuMessage(null);
-            setActionMenuCoords(null);
+          className="fixed inset-0 z-50 select-none bg-black/15 backdrop-blur-2xs transition-opacity animate-in fade-in duration-150"
+          onClick={(e) => {
+            // Guard: Ignore if clicked within 350ms of opening (gesture release)
+            if (Date.now() - (longPressOpenedAtRef.current || 0) < 350) {
+              e.stopPropagation();
+              return;
+            }
+            if (e.target === e.currentTarget) {
+              setActionMenuMessage(null);
+              setActionMenuCoords(null);
+            }
           }}
           onContextMenu={(e) => {
             e.preventDefault();
-            setActionMenuMessage(null);
-            setActionMenuCoords(null);
+            e.stopPropagation();
           }}
         >
           <div
-            className="fixed bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#E5E5E5] p-1.5 z-50 min-w-[160px] animate-in fade-in zoom-in-95 duration-150"
+            data-action-menu-popup="true"
+            className="fixed bg-white rounded-2xl shadow-xl border border-[#E5E5E5] p-1.5 z-50 min-w-[170px] animate-in fade-in zoom-in-95 duration-150 space-y-1"
             style={{
               top: Math.min(
-                Math.max(16, (actionMenuCoords?.y || 200) - 50),
-                typeof window !== 'undefined' ? window.innerHeight - 100 : 300
+                Math.max(16, (actionMenuCoords?.y || 200) - 60),
+                typeof window !== 'undefined' ? window.innerHeight - 130 : 300
               ),
               left: Math.min(
-                Math.max(16, (actionMenuCoords?.x || 200) - 80),
-                typeof window !== 'undefined' ? window.innerWidth - 180 : 200
+                Math.max(16, (actionMenuCoords?.x || 200) - 85),
+                typeof window !== 'undefined' ? window.innerWidth - 190 : 200
               ),
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
-              onClick={() => handleDeleteMenuClick(actionMenuMessage)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteMenuClick(actionMenuMessage);
+              }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors text-left cursor-pointer"
             >
               <Trash2 size={15} className="shrink-0 text-red-600" />
-              <span>Delete</span>
+              <span>Delete message</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActionMenuMessage(null);
+                setActionMenuCoords(null);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors text-left cursor-pointer border-t border-[#F5F5F5] pt-1.5"
+            >
+              <X size={15} className="shrink-0 text-[#737373]" />
+              <span>Cancel</span>
             </button>
           </div>
         </div>
