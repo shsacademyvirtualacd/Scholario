@@ -1469,7 +1469,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           )}
 
                           <div
-                            className={`relative ${isMe ? 'cursor-pointer select-none active:scale-[0.99] transition-transform' : ''}`}
+                            className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] min-w-0 flex flex-col ${
+                              isMe
+                                ? 'items-end cursor-pointer select-none active:scale-[0.99] transition-transform'
+                                : 'items-start'
+                            }`}
                             style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                             onTouchStart={(e) => handleTouchStart(e, msg)}
                             onTouchMove={handleTouchMove}
@@ -1523,13 +1527,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
                               />
                             ) : (
                               <div
-                                className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-2xs ${
+                                className={`w-fit max-w-full rounded-2xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xs ${
                                   isMe
                                     ? 'bg-[#111111] text-white rounded-br-xs'
                                     : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
                                 }`}
                               >
-                                <p className={`text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words ${isMe ? 'select-none md:select-text' : 'select-text'}`}>
+                                <p className={`text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] ${isMe ? 'select-none md:select-text' : 'select-text'}`}>
                                   {msg.content}
                                 </p>
 
@@ -1538,7 +1542,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                     isMe ? 'text-white/60' : 'text-[#A3A3A3]'
                                   }`}
                                 >
-                                  <span>{formatMessageTime(msg.created_at)}</span>
+                                  <span className="whitespace-nowrap">{formatMessageTime(msg.created_at)}</span>
                                   {isMe && (
                                     <span title={isRead ? 'Read' : 'Delivered'}>
                                       {isRead ? (

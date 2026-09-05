@@ -77,7 +77,7 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
   return (
     <div
       id={`chat-file-${messageId}`}
-      className={`max-w-[85%] sm:max-w-[75%] md:max-w-[320px] rounded-2xl p-3 shadow-2xs transition-all ${
+      className={`w-full max-w-[320px] rounded-2xl p-3 shadow-2xs transition-all ${
         isMe
           ? 'bg-[#111111] text-white rounded-br-xs'
           : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
@@ -144,7 +144,7 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
 
       {/* Optional Caption */}
       {hasCaption && (
-        <p className="text-xs whitespace-pre-wrap leading-relaxed break-words mt-2 px-1 select-text">
+        <p className="text-xs whitespace-pre-wrap leading-relaxed break-words [word-break:normal] mt-2 px-1 select-text">
           {content}
         </p>
       )}

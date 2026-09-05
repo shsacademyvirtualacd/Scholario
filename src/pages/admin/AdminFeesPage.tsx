@@ -14,6 +14,7 @@ import {
 import { BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
+import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 
 export const AdminFeesPage: React.FC = () => {
   const isMobile = useMobile();
@@ -36,8 +37,43 @@ export const AdminFeesPage: React.FC = () => {
 
   // Config Form States
   const [instructions, setInstructions] = useState<string>('');
-  const [whatsappNum, setWhatsappNum] = useState<string>('03222314436');
+  const [whatsappNum, setWhatsappNum] = useState<string>('+92 3222314436');
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
+  const [whatsappTouched, setWhatsappTouched] = useState<boolean>(false);
+  const [suggestedFix, setSuggestedFix] = useState<string | null>(null);
   const [approvingIds, setApprovingIds] = useState<Record<string, boolean>>({});
+
+  const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setWhatsappNum(val);
+    setWhatsappTouched(true);
+
+    if (val.trim()) {
+      const res = validatePakistaniPhoneNumber(val, true);
+      if (!res.isValid) {
+        setWhatsappError(res.error);
+        setSuggestedFix(res.suggestedFix || null);
+      } else {
+        setWhatsappError(null);
+        setSuggestedFix(null);
+      }
+    } else {
+      setWhatsappError('WhatsApp phone number is required.');
+      setSuggestedFix(null);
+    }
+  };
+
+  const handleWhatsappBlur = () => {
+    setWhatsappTouched(true);
+    const res = validatePakistaniPhoneNumber(whatsappNum, true);
+    if (!res.isValid) {
+      setWhatsappError(res.error);
+      setSuggestedFix(res.suggestedFix || null);
+    } else {
+      setWhatsappError(null);
+      setSuggestedFix(null);
+    }
+  };
 
   // Search filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -151,10 +187,19 @@ export const AdminFeesPage: React.FC = () => {
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    const phoneValidation = validatePakistaniPhoneNumber(whatsappNum, true);
+    if (!phoneValidation.isValid) {
+      setWhatsappTouched(true);
+      setWhatsappError(phoneValidation.error);
+      setSuggestedFix(phoneValidation.suggestedFix || null);
+      setError(phoneValidation.error);
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
-      await saveUniversalFeeConfig(instructions.trim(), whatsappNum.trim());
+      await saveUniversalFeeConfig(instructions.trim(), phoneValidation.normalized);
       showNotification('Universal fee configuration successfully saved!');
     } catch (err: any) {
       setError(err.message || 'Failed to save configuration.');
@@ -503,19 +548,47 @@ export const AdminFeesPage: React.FC = () => {
                   <div className="space-y-4">
                     {/* WhatsApp Phone */}
                     <div>
-                      <label className="block text-xs font-bold text-[#262626] mb-1.5">
-                        WhatsApp Verification Line (wa.me Number)
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-[#262626]">
+                          WhatsApp Verification Line (wa.me Number)
+                        </label>
+                        <span className="text-[10px] text-[#737373] font-medium">🇵🇰 +92 3XXXXXXXXX</span>
+                      </div>
                       <input
                         type="text"
                         required
                         value={whatsappNum}
-                        onChange={(e) => setWhatsappNum(e.target.value)}
-                        placeholder="e.g. 03222314436"
-                        className="input py-2 text-xs"
+                        onChange={handleWhatsappChange}
+                        onBlur={handleWhatsappBlur}
+                        placeholder="+92 3058969050"
+                        className={`input py-2 text-xs w-full transition-colors ${
+                          whatsappError && whatsappTouched
+                            ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20'
+                            : ''
+                        }`}
                       />
+                      {whatsappError && whatsappTouched && (
+                        <div className="mt-1 text-left">
+                          <p className="text-[11px] text-red-600 font-semibold leading-tight">
+                            {whatsappError}
+                          </p>
+                          {suggestedFix && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWhatsappNum(suggestedFix);
+                                setWhatsappError(null);
+                                setSuggestedFix(null);
+                              }}
+                              className="text-[10px] text-indigo-600 font-bold underline mt-0.5 inline-block hover:text-indigo-800 cursor-pointer"
+                            >
+                              Auto-fix to {suggestedFix}
+                            </button>
+                          )}
+                        </div>
+                      )}
                       <span className="text-[10px] text-[#A3A3A3] mt-1 block">
-                        Specify the phone number where students will send their payment receipts via WhatsApp.
+                        Specify the verified Pakistani mobile number (+92 3XXXXXXXXX) where students will send payment receipts via WhatsApp.
                       </span>
                     </div>
 

@@ -126,7 +126,7 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
         {/* Optional Caption and Timestamp */}
         {hasCaption && (
           <div className="p-2.5 space-y-1">
-            <p className="text-xs whitespace-pre-wrap leading-relaxed break-words select-text">
+            <p className="text-xs whitespace-pre-wrap leading-relaxed break-words [word-break:normal] select-text">
               {content}
             </p>
             <div

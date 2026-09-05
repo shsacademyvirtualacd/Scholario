@@ -8,6 +8,7 @@ import { updateProfile, getDashboardCounts } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
 import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
+import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 
 export const ProfilePage: React.FC = () => {
   const isMobile = useMobile();
@@ -24,6 +25,46 @@ export const ProfilePage: React.FC = () => {
   // Validation / Feedback states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneTouched, setPhoneTouched] = useState<boolean>(false);
+  const [suggestedFix, setSuggestedFix] = useState<string | null>(null);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPhone(val);
+    setPhoneTouched(true);
+
+    if (val.trim()) {
+      const res = validatePakistaniPhoneNumber(val, false);
+      if (!res.isValid) {
+        setPhoneError(res.error);
+        setSuggestedFix(res.suggestedFix || null);
+      } else {
+        setPhoneError(null);
+        setSuggestedFix(null);
+      }
+    } else {
+      setPhoneError(null);
+      setSuggestedFix(null);
+    }
+  };
+
+  const handlePhoneBlur = () => {
+    setPhoneTouched(true);
+    if (phone.trim()) {
+      const res = validatePakistaniPhoneNumber(phone, false);
+      if (!res.isValid) {
+        setPhoneError(res.error);
+        setSuggestedFix(res.suggestedFix || null);
+      } else {
+        setPhoneError(null);
+        setSuggestedFix(null);
+      }
+    } else {
+      setPhoneError(null);
+      setSuggestedFix(null);
+    }
+  };
 
   React.useEffect(() => {
     if (profile) {
@@ -47,10 +88,18 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
-    const phoneRegex = /^\+?[0-9\s-]{10,15}$/;
-    if (phone && !phoneRegex.test(phone)) {
-      setError('Please enter a valid phone number.');
-      return;
+    let normalizedPhone: string | null = null;
+    if (phone && phone.trim()) {
+      const phoneValidation = validatePakistaniPhoneNumber(phone, false);
+      if (!phoneValidation.isValid) {
+        setPhoneTouched(true);
+        setPhoneError(phoneValidation.error);
+        setSuggestedFix(phoneValidation.suggestedFix || null);
+        setError(phoneValidation.error);
+        toast.error(phoneValidation.error);
+        return;
+      }
+      normalizedPhone = phoneValidation.normalized;
     }
 
     setSaving(true);
@@ -58,7 +107,7 @@ export const ProfilePage: React.FC = () => {
       if (profile?.id) {
         await updateProfile(profile.id, {
           full_name: fullName.trim(),
-          phone: phone.trim() || null
+          phone: normalizedPhone
         });
         await refreshProfile();
         setIsEditing(false);
@@ -165,13 +214,42 @@ export const ProfilePage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="label text-xs font-bold text-[#737373] uppercase tracking-wide mb-1 block">Phone Number</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="label text-xs font-bold text-[#737373] uppercase tracking-wide block">Phone Number</label>
+                      <span className="text-[10px] text-[#A3A3A3] font-medium">🇵🇰 +92 3XXXXXXXXX</span>
+                    </div>
                     <input
                       type="text"
-                      className="input text-sm"
+                      className={`input text-sm w-full transition-colors ${
+                        phoneError && phoneTouched
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20'
+                          : ''
+                      }`}
+                      placeholder="+92 3058969050"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={handlePhoneChange}
+                      onBlur={handlePhoneBlur}
                     />
+                    {phoneError && phoneTouched && (
+                      <div className="mt-1 text-left">
+                        <p className="text-[11px] text-red-600 font-semibold leading-tight">
+                          {phoneError}
+                        </p>
+                        {suggestedFix && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPhone(suggestedFix);
+                              setPhoneError(null);
+                              setSuggestedFix(null);
+                            }}
+                            className="text-[10px] text-indigo-600 font-bold underline mt-0.5 inline-block hover:text-indigo-800 cursor-pointer"
+                          >
+                            Auto-fix to {suggestedFix}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -182,7 +182,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
   return (
     <div
-      className={`min-w-[200px] sm:min-w-[260px] max-w-[88%] sm:max-w-[80%] md:max-w-[70%] rounded-2xl p-2.5 sm:p-3 shadow-2xs select-none transition-all ${
+      className={`min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-2xl p-2.5 sm:p-3 shadow-2xs select-none transition-all ${
         isMe
           ? 'bg-[#111111] text-white rounded-br-xs'
           : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'

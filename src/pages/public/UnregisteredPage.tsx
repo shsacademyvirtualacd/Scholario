@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers } from 'lucide-react';
+import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -9,6 +9,7 @@ import { BOARDS, getGradesForBoard, getBoardDef, getDefaultPrice } from '../../l
 import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { validatePakistaniPhoneNumber, PAKISTANI_PHONE_ERROR } from '../../lib/phoneValidation';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
@@ -23,7 +24,48 @@ export const UnregisteredPage: React.FC = () => {
 
   // Form Fields
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || user?.email?.split('@')[0] || '');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(user?.user_metadata?.phone || '+92 ');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [suggestedFix, setSuggestedFix] = useState<string | null>(null);
+
+  // Real-time phone input handler
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPhone(val);
+    setPhoneTouched(true);
+
+    if (val.trim() && val.trim() !== '+92') {
+      const res = validatePakistaniPhoneNumber(val, true);
+      if (!res.isValid) {
+        setPhoneError(res.error);
+        setSuggestedFix(res.suggestedFix || null);
+      } else {
+        setPhoneError(null);
+        setSuggestedFix(null);
+      }
+    } else if (!val.trim()) {
+      setPhoneError('Phone number is required.');
+      setSuggestedFix(null);
+    } else {
+      setPhoneError(PAKISTANI_PHONE_ERROR);
+      setSuggestedFix(null);
+    }
+  };
+
+  const handlePhoneBlur = () => {
+    setPhoneTouched(true);
+    const res = validatePakistaniPhoneNumber(phone, true);
+    if (!res.isValid) {
+      setPhoneError(res.error);
+      setSuggestedFix(res.suggestedFix || null);
+    } else {
+      setPhoneError(null);
+      setSuggestedFix(null);
+    }
+  };
+
+  const isPhoneValid = validatePakistaniPhoneNumber(phone, true).isValid;
   const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh' | 'ielts'>(
     queryBoard === 'sindh' ? 'sindh' : queryBoard === 'ielts' ? 'ielts' : 'fbise'
   );
@@ -180,6 +222,17 @@ export const UnregisteredPage: React.FC = () => {
       return;
     }
 
+    // Strict Pakistani Phone Validation (+92 followed by 10 digits starting with 3)
+    const phoneValidation = validatePakistaniPhoneNumber(phone, true);
+    if (!phoneValidation.isValid) {
+      setPhoneTouched(true);
+      setPhoneError(phoneValidation.error);
+      setSuggestedFix(phoneValidation.suggestedFix || null);
+      setError(phoneValidation.error);
+      toast.error(phoneValidation.error);
+      return;
+    }
+
     if (!selectedStreamId) {
       setError('Please select an academic stream.');
       return;
@@ -276,7 +329,7 @@ export const UnregisteredPage: React.FC = () => {
           role: 'student',
           full_name: fullName.trim(),
           avatar_url: user.user_metadata?.avatar_url ?? null,
-          phone: phone.trim() || null,
+          phone: phoneValidation.normalized,
           board_id: selectedBoardId,
           class_id: cleanClassId,
           stream_id: isUUID(cleanStreamId) ? cleanStreamId : null,
@@ -541,15 +594,64 @@ export const UnregisteredPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="label text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wide mb-1 block">WhatsApp / Phone</label>
-                      <input
-                        type="tel"
-                        required
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="e.g. 03001234567"
-                        className="input text-xs py-2.5 bg-white font-semibold"
-                      />
+                      <div className="flex items-center justify-between mb-1">
+                        <label htmlFor="registration-phone" className="label text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wide">
+                          WhatsApp / Phone <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-[#A3A3A3] font-medium flex items-center gap-1">
+                          <span className="text-xs">🇵🇰</span> +92 3XXXXXXXXX
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          id="registration-phone"
+                          type="tel"
+                          required
+                          value={phone}
+                          onChange={handlePhoneChange}
+                          onBlur={handlePhoneBlur}
+                          placeholder="+92 3058969050"
+                          className={`input text-xs py-2.5 bg-white font-semibold w-full pr-8 transition-colors ${
+                            phoneError && phoneTouched
+                              ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20'
+                              : isPhoneValid && phone.trim() !== '' && phone.trim() !== '+92'
+                              ? 'border-emerald-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20'
+                              : 'border-[#E5E5E5]'
+                          }`}
+                        />
+                        {isPhoneValid && phone.trim() !== '' && phone.trim() !== '+92' && (
+                          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none">
+                            <CheckCircle2 size={16} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Inline Error Message */}
+                      {phoneError && phoneTouched && (
+                        <div id="registration-phone-error" className="mt-1.5 p-2 rounded-lg bg-red-50 border border-red-200 text-left">
+                          <div className="flex items-start gap-1.5">
+                            <AlertCircle size={14} className="text-red-600 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-[11px] text-red-600 font-semibold leading-tight">
+                                {phoneError}
+                              </p>
+                              {suggestedFix && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPhone(suggestedFix);
+                                    setPhoneError(null);
+                                    setSuggestedFix(null);
+                                  }}
+                                  className="text-[10px] text-indigo-600 font-bold underline mt-1 block hover:text-indigo-800 cursor-pointer"
+                                >
+                                  Click to auto-format as: {suggestedFix}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

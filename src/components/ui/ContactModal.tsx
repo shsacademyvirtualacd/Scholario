@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 
 interface ContactModalProps {
   open: boolean;
@@ -53,6 +54,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
       newErrors.email = 'Email address is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email';
+    }
+    if (formData.phone && formData.phone.trim()) {
+      const phoneValidation = validatePakistaniPhoneNumber(formData.phone, false);
+      if (!phoneValidation.isValid) {
+        newErrors.phone = phoneValidation.error!;
+      }
     }
     if (!formData.message.trim()) newErrors.message = 'Please enter your message';
     setErrors(newErrors);
@@ -271,14 +278,23 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#111111] uppercase tracking-wide">Phone Number (Optional)</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#111111] uppercase tracking-wide">Phone Number (Optional)</label>
+                      <span className="text-[10px] text-[#A3A3A3] font-medium">🇵🇰 +92 3XXXXXXXXX</span>
+                    </div>
                     <input
                       type="text"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="e.g. +92 300 1234567"
-                      className="w-full text-sm border border-[#E5E5E5] px-3.5 py-2.5 rounded-xl outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] transition-all"
+                      onChange={(e) => {
+                        setFormData({ ...formData, phone: e.target.value });
+                        if (errors.phone) setErrors({ ...errors, phone: '' });
+                      }}
+                      placeholder="e.g. +92 3058969050"
+                      className={`w-full text-sm border px-3.5 py-2.5 rounded-xl outline-none transition-all ${
+                        errors.phone ? 'border-red-500 focus:border-red-500' : 'border-[#E5E5E5] focus:border-[#111111] focus:ring-1 focus:ring-[#111111]'
+                      }`}
                     />
+                    {errors.phone && <p className="text-[10px] text-red-500 font-semibold">{errors.phone}</p>}
                   </div>
 
                   <div className="space-y-1">

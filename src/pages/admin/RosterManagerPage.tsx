@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { RosterEntry, ClassOffering } from '../../types';
 import { useMobile } from '../../hooks/useMobile';
+import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 
 export const RosterManagerPage: React.FC = () => {
   const isMobile = useMobile();
@@ -212,6 +213,16 @@ export const RosterManagerPage: React.FC = () => {
 
 
 
+    let normalizedPhone: string | undefined = undefined;
+    if (phoneTrim) {
+      const phoneValidation = validatePakistaniPhoneNumber(phoneTrim, false);
+      if (!phoneValidation.isValid) {
+        setFormError(phoneValidation.error);
+        return;
+      }
+      normalizedPhone = phoneValidation.normalized;
+    }
+
     setFormSaving(true);
 
     try {
@@ -235,7 +246,7 @@ export const RosterManagerPage: React.FC = () => {
           return;
         }
 
-        const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave, phoneTrim || undefined);
+        const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave, normalizedPhone);
         setRoster(prev => {
           const exists = prev.some(r => r.id === newEntry.id || r.email.toLowerCase() === newEntry.email.toLowerCase());
           if (exists) return prev;
@@ -1364,6 +1375,25 @@ export const RosterManagerPage: React.FC = () => {
                       onChange={(e) => setFullName(e.target.value)}
                       className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
                     />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="label text-xs font-bold text-[#404040] block uppercase tracking-wider">
+                        Phone Number (Optional)
+                      </label>
+                      <span className="text-[10px] text-[#737373] font-medium">🇵🇰 +92 3XXXXXXXXX</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="+92 3058969050"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
+                    />
+                    <span className="text-[10px] text-[#737373] font-medium block mt-1">
+                      If provided, must be a valid Pakistani mobile number (+92 3XXXXXXXXX).
+                    </span>
                   </div>
                 </div>
               )}

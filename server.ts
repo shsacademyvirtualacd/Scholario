@@ -10,7 +10,7 @@ import pg from 'pg';
 const { Pool } = pg;
 
 const pgPool = new Pool({
-  connectionString: process.env.SUPABASE_DB_URL || 'postgresql://postgres:Marcelmmm23155@@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres',
+  connectionString: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || 'postgresql://postgres:Marcelmmm23155@@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres',
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 5000,
 });
