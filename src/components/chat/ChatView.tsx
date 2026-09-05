@@ -3,7 +3,6 @@ import {
   Search,
   Send,
   MessageSquare,
-  Check,
   CheckCheck,
   ArrowLeft,
   UserPlus,
@@ -19,7 +18,12 @@ import {
   Image as ImageIcon,
   FileText,
   Trash2,
-  X
+  X,
+  Video,
+  Phone,
+  MoreVertical,
+  Smile,
+  Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -30,6 +34,7 @@ import { VoiceRecorderBar } from './VoiceRecorderBar';
 import { ChatImageBubble } from './ChatImageBubble';
 import { ChatFileBubble } from './ChatFileBubble';
 import { ChatBubbleTail } from './ChatBubbleTail';
+import { ChatWallpaper } from './ChatWallpaper';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
@@ -103,6 +108,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [mobileViewActiveThread, setMobileViewActiveThread] = useState(false);
   const [fetchedContacts, setFetchedContacts] = useState<Profile[]>([]);
   const [loadingModalContacts, setLoadingModalContacts] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showChatMenu, setShowChatMenu] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  const QUICK_EMOJIS = ['😊', '😂', '👍', '❤️', '🙏', '🔥', '🎉', '👏', '📚', '✍️', '🎓', '💡', '📌', '💯'];
 
   // Message Deletion & Long-Press State (Zero Trace)
   const [actionMenuMessage, setActionMenuMessage] = useState<ChatMessage | null>(null);
@@ -1312,7 +1322,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   {thread.latest_message.read_at ? (
                                     <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
                                   ) : (
-                                    <Check size={14} className="text-[#8696A0] stroke-[2]" />
+                                    <CheckCheck size={14} className="text-[#8696A0] stroke-[1.8]" />
                                   )}
                                 </span>
                               )}
@@ -1428,19 +1438,87 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 </div>
 
-                {/* Security encryption indicator */}
-                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F5F5F5] border border-[#E5E5E5] text-[11px] text-[#525252] shrink-0 select-none">
-                  <Shield size={12} className="text-[#F4C430]" />
-                  <span className="font-medium">Encrypted</span>
+                {/* Right Header Actions: Video Call, Voice Call, 3-Dot Options */}
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => toast.info('Video calling with teachers & staff will be available in an upcoming update.')}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                    title="Video call"
+                    aria-label="Video call"
+                  >
+                    <Video size={19} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                    title="Voice call"
+                    aria-label="Voice call"
+                  >
+                    <Phone size={18} />
+                  </button>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowChatMenu(prev => !prev)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                      title="More options"
+                      aria-label="More options"
+                    >
+                      <MoreVertical size={19} />
+                    </button>
+
+                    {showChatMenu && (
+                      <div
+                        className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-[#E5E5E5] py-1.5 z-50 text-xs text-[#111111] animate-in fade-in zoom-in-95 duration-150"
+                        onMouseLeave={() => setShowChatMenu(false)}
+                      >
+                        <div className="px-3.5 py-2 border-b border-[#F0F0F0]">
+                          <p className="font-semibold truncate">{activeThread.other_participant?.full_name || 'Contact'}</p>
+                          <p className="text-[11px] text-[#737373] capitalize">{activeThread.other_participant?.role || 'Student'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowChatMenu(false);
+                            toast.info(`Academic contact: ${activeThread.other_participant?.full_name || 'User'}`);
+                          }}
+                          className="w-full text-left px-3.5 py-2 hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          View contact details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowChatMenu(false);
+                            toast.info('Direct chat notifications are active.');
+                          }}
+                          className="w-full text-left px-3.5 py-2 hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          Mute notifications
+                        </button>
+                        <div className="h-px bg-[#F0F0F0] my-1" />
+                        <div className="px-3.5 py-1.5 text-[11px] text-[#737373] flex items-center gap-1.5">
+                          <Shield size={12} className="text-[#F4C430]" />
+                          <span>Scholario E2E Verified</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Messages Scroll Area */}
-              <div
-                ref={messagesContainerRef}
-                onScroll={handleMessagesScroll}
-                className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto bg-[#F0F2F5]"
-              >
+              {/* Messages Area with WhatsApp Doodle Wallpaper */}
+              <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col bg-[#EFEAE2]">
+                <ChatWallpaper />
+                <div
+                  ref={messagesContainerRef}
+                  onScroll={handleMessagesScroll}
+                  className="relative z-1 flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto"
+                >
                 {/* Security & Permanent Notice */}
                 <div className="flex justify-center my-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFEECD] border border-[#F4C430]/30 text-[11px] text-[#54656F] shadow-2xs max-w-md text-center">
@@ -1619,9 +1697,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             ) : (
                               /* WhatsApp Text Bubble */
                               <div
-                                className={`relative w-fit max-w-full rounded-2xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xs overflow-visible transition-all ${
+                                className={`relative w-fit max-w-full rounded-[18px] px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xs overflow-visible transition-all ${
                                   isMe
-                                    ? `bg-[#111111] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
+                                    ? `bg-[#11161D] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
                                     : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
                                 }`}
                               >
@@ -1645,7 +1723,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                         {isRead ? (
                                           <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
                                         ) : (
-                                          <Check size={14} className="text-white/70 stroke-[2]" />
+                                          <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
                                         )}
                                       </span>
                                     )}
@@ -1653,7 +1731,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 </div>
 
                                 {/* Tail */}
-                                {hasTail && <ChatBubbleTail isMe={isMe} />}
+                                {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#11161D' : undefined} />}
                               </div>
                             )}
                           </div>
@@ -1664,40 +1742,69 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 )}
                 <div ref={messagesEndRef} />
               </div>
+            </div>
 
-              {/* Message Input Bar */}
-              <div className="p-3 md:p-4 bg-white border-t border-[#E5E5E5] space-y-2">
-                {sendError && (
-                  <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 animate-in fade-in duration-200">
-                    <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
-                    <div className="min-w-0 flex-1">
-                      <span className="font-semibold text-rose-900">Failed to send: </span>
-                      <span className="text-rose-700">{sendError}</span>
-                    </div>
-                    <button
-                      onClick={() => setSendError(null)}
-                      className="text-rose-500 hover:text-rose-800 text-xs font-bold"
-                    >
-                      ✕
-                    </button>
+            {/* Message Input Bar */}
+            <div className="p-2.5 sm:p-3 md:p-3.5 bg-[#F0F2F5] border-t border-[#E5E5E5] space-y-2">
+              {sendError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 animate-in fade-in duration-200">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
+                  <div className="min-w-0 flex-1">
+                    <span className="font-semibold text-rose-900">Failed to send: </span>
+                    <span className="text-rose-700">{sendError}</span>
                   </div>
-                )}
+                  <button
+                    onClick={() => setSendError(null)}
+                    className="text-rose-500 hover:text-rose-800 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
-                <div className="flex items-center gap-2 w-full">
-                  {isVoiceRecording ? (
-                    <VoiceRecorderBar
-                      threadId={activeThread.id}
-                      onSendVoice={handleSendVoice}
-                      onCancelRecording={() => setIsVoiceRecording(false)}
-                      onFinishRecording={() => setIsVoiceRecording(false)}
-                      disabled={sending || isUploadingAttachment}
-                    />
-                  ) : (
+              {/* Quick Emoji Bar when emoji button is active */}
+              {showEmojiPicker && (
+                <div className="flex items-center gap-1 overflow-x-auto py-1.5 px-2.5 bg-white rounded-2xl border border-[#E5E5E5] shadow-xs animate-in fade-in zoom-in-95 duration-150">
+                  <span className="text-[11px] text-[#737373] font-medium mr-1.5 select-none shrink-0">Emojis:</span>
+                  {QUICK_EMOJIS.map(emoji => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => {
+                        setInputContent(prev => prev + emoji);
+                        textareaRef.current?.focus();
+                      }}
+                      className="w-8 h-8 rounded-lg hover:bg-[#F0F2F5] flex items-center justify-center text-lg transition-transform active:scale-125 shrink-0"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(false)}
+                    className="ml-auto text-xs text-[#8696A0] hover:text-[#111111] px-2 py-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-end gap-2 w-full">
+                {isVoiceRecording ? (
+                  <VoiceRecorderBar
+                    threadId={activeThread.id}
+                    onSendVoice={handleSendVoice}
+                    onCancelRecording={() => setIsVoiceRecording(false)}
+                    onFinishRecording={() => setIsVoiceRecording(false)}
+                    disabled={sending || isUploadingAttachment}
+                  />
+                ) : (
+                  <>
                     <form
                       onSubmit={handleSendMessage}
-                      className="flex-1 flex items-end gap-2 bg-[#F7F7F7] p-2 rounded-2xl border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white transition-all shadow-2xs w-full"
+                      className="flex-1 flex items-end gap-1 sm:gap-1.5 bg-white px-2 py-1 sm:py-1.5 rounded-[24px] border border-[#E5E5E5] focus-within:border-[#B5B5B5] transition-all shadow-2xs min-w-0"
                     >
-                      {/* Hidden Native File Picker Input */}
+                      {/* Hidden Native File Picker Inputs */}
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -1707,6 +1814,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         className="hidden"
                         disabled={sending || isUploadingAttachment}
                       />
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        id="chat-camera-input"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileSelected}
+                        className="hidden"
+                        disabled={sending || isUploadingAttachment}
+                      />
+
+                      {/* Emoji Button on far left of input field */}
+                      <button
+                        type="button"
+                        id="btn-chat-emoji"
+                        onClick={() => setShowEmojiPicker(prev => !prev)}
+                        disabled={sending || isUploadingAttachment}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation mb-0.5 ${
+                          showEmojiPicker ? 'text-[#111111] bg-black/10' : 'text-[#54656F] hover:text-[#111111] hover:bg-black/5'
+                        }`}
+                        title="Insert emoji"
+                        aria-label="Insert emoji"
+                      >
+                        <Smile size={20} />
+                      </button>
 
                       {/* If uploading attachment: show progress bar inside input */}
                       {isUploadingAttachment ? (
@@ -1740,51 +1872,72 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             }
                           }}
                           placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
-                          className="flex-1 max-h-32 min-h-[38px] p-2 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#A3A3A3] resize-none outline-hidden"
+                          className="flex-1 max-h-32 min-h-[38px] py-2 px-1 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#8696A0] resize-none outline-hidden"
                         />
                       )}
 
-                      {/* Attachment Button (to the left of the mic / send button) */}
+                      {/* Attachment Button (Paperclip) */}
                       <button
                         type="button"
                         id="btn-chat-attach"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={sending || isUploadingAttachment}
-                        className="w-9 h-9 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#EAEAEA] flex items-center justify-center shrink-0 transition-all interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Attach image or document (≤ 15MB)"
+                        className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+                        title="Attach document or file (≤ 15MB)"
+                        aria-label="Attach file"
                       >
-                        <Paperclip size={18} />
+                        <Paperclip size={19} />
                       </button>
 
-                      {inputContent.trim() ? (
-                        <button
-                          type="submit"
-                          disabled={sending || isUploadingAttachment}
-                          className="w-9 h-9 rounded-xl bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-bold flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs interactive touch-manipulation"
-                          title="Send message"
-                        >
-                          {sending ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <Send size={16} />
-                          )}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setIsVoiceRecording(true)}
-                          disabled={sending || isUploadingAttachment}
-                          className="w-9 h-9 rounded-xl bg-[#111111] hover:bg-[#262626] text-[#F4C430] hover:text-white font-bold flex items-center justify-center shrink-0 transition-all shadow-2xs interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed"
-                          title="Record a voice message"
-                        >
-                          <Mic size={17} />
-                        </button>
-                      )}
+                      {/* Camera Button for Quick Photo Capture */}
+                      <button
+                        type="button"
+                        id="btn-chat-camera"
+                        onClick={() => cameraInputRef.current?.click()}
+                        disabled={sending || isUploadingAttachment}
+                        className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+                        title="Take or upload photo"
+                        aria-label="Camera"
+                      >
+                        <Camera size={19} />
+                      </button>
                     </form>
-                  )}
-                </div>
+
+                    {/* Distinct WhatsApp Green Circular Mic / Send Button */}
+                    {inputContent.trim() ? (
+                      <button
+                        type="button"
+                        id="btn-chat-send"
+                        onClick={() => handleSendMessage()}
+                        disabled={sending || isUploadingAttachment}
+                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 touch-manipulation"
+                        title="Send message"
+                        aria-label="Send message"
+                      >
+                        {sending ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <Send size={18} className="text-white ml-0.5" />
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        id="btn-chat-voice-mic"
+                        onClick={() => setIsVoiceRecording(true)}
+                        disabled={sending || isUploadingAttachment}
+                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition-all shadow-md active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Record voice message"
+                        aria-label="Record voice message"
+                      >
+                        <Mic size={20} className="text-white" />
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
-            </>
+            </div>
+          </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#737373]">
               <div className="w-14 h-14 rounded-3xl bg-[#F5F5F5] flex items-center justify-center text-[#A3A3A3] mb-3">

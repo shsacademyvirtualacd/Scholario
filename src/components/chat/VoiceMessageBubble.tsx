@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Play, Pause, Loader2, Volume2, Check, CheckCheck, AlertCircle } from 'lucide-react';
+import { Play, Pause, Loader2, Volume2, CheckCheck, AlertCircle } from 'lucide-react';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 
@@ -185,9 +185,9 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
   return (
     <div
-      className={`relative min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-2xl p-2.5 sm:p-3 shadow-2xs select-none transition-all overflow-visible ${
+      className={`relative min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-[18px] p-2.5 sm:p-3 shadow-2xs select-none transition-all overflow-visible ${
         isMe
-          ? `bg-[#111111] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
+          ? `bg-[#11161D] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
           : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
       }`}
     >
@@ -297,7 +297,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
             {isRead ? (
               <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <Check size={14} className="text-white/70 stroke-[2]" />
+              <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
             )}
           </span>
         )}

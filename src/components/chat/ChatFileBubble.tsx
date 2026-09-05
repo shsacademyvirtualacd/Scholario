@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, FileText, Check, CheckCheck, Loader2 } from 'lucide-react';
+import { Download, FileText, CheckCheck, Loader2 } from 'lucide-react';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { getAttachmentUrl } from '../../lib/chatService';
 import { supabase } from '../../lib/supabase';
@@ -80,9 +80,9 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
   return (
     <div
       id={`chat-file-${messageId}`}
-      className={`relative w-full max-w-[320px] rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-all overflow-visible ${
+      className={`relative w-full max-w-[320px] rounded-[18px] p-2.5 sm:p-3 shadow-2xs transition-all overflow-visible ${
         isMe
-          ? `bg-[#111111] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
+          ? `bg-[#11161D] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
           : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
       }`}
     >
@@ -164,7 +164,7 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
             {readAt ? (
               <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <Check size={14} className="text-white/70 stroke-[2]" />
+              <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
             )}
           </span>
         )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, CheckCheck, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { CheckCheck, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { ImageViewerModal } from './ImageViewerModal';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { getAttachmentUrl } from '../../lib/chatService';
@@ -62,16 +62,16 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
         id={`chat-image-${messageId}`}
         className={`group relative max-w-[260px] sm:max-w-[280px] shadow-2xs transition-all ${
           isMe
-            ? `bg-[#111111] text-white rounded-2xl ${hasTail ? 'rounded-br-[2px]' : ''}`
-            : `bg-white text-[#111111] border border-[#E5E5E5] rounded-2xl ${hasTail ? 'rounded-bl-[2px]' : ''}`
+            ? `bg-[#11161D] text-white rounded-[18px] ${hasTail ? 'rounded-br-[2px]' : ''}`
+            : `bg-white text-[#111111] border border-[#E5E5E5] rounded-[18px] ${hasTail ? 'rounded-bl-[2px]' : ''}`
         }`}
       >
         {/* Inner container to clip the image to the bubble's rounded corners */}
         <div
           className={`overflow-hidden ${
             isMe
-              ? `rounded-2xl ${hasTail ? 'rounded-br-[2px]' : ''}`
-              : `rounded-2xl ${hasTail ? 'rounded-bl-[2px]' : ''}`
+              ? `rounded-[18px] ${hasTail ? 'rounded-br-[2px]' : ''}`
+              : `rounded-[18px] ${hasTail ? 'rounded-bl-[2px]' : ''}`
           }`}
         >
           {/* Image Thumbnail Container */}
@@ -126,7 +126,7 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
                     {readAt ? (
                       <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
                     ) : (
-                      <Check size={14} className="text-white/80 stroke-[2]" />
+                      <CheckCheck size={14} className="text-white/80 stroke-[1.8]" />
                     )}
                   </span>
                 )}
@@ -149,9 +149,9 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
                 {isMe && (
                   <span title={readAt ? 'Read' : 'Delivered'}>
                     {readAt ? (
-                      <CheckCheck size={13} className="text-[#53BDEB] stroke-[2.2]" />
+                      <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
                     ) : (
-                      <Check size={13} className="text-white/60 stroke-[2]" />
+                      <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
                     )}
                   </span>
                 )}
