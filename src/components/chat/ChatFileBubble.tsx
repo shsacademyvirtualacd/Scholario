@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, FileText, Check, CheckCheck, Loader2 } from 'lucide-react';
+import { ChatBubbleTail } from './ChatBubbleTail';
 import { getAttachmentUrl } from '../../lib/chatService';
 import { supabase } from '../../lib/supabase';
 
@@ -13,6 +14,7 @@ interface ChatFileBubbleProps {
   createdAt: string;
   readAt?: string | null;
   isMe: boolean;
+  hasTail?: boolean;
 }
 
 export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
@@ -25,6 +27,7 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
   createdAt,
   readAt,
   isMe,
+  hasTail = true,
 }) => {
   const [token, setToken] = useState<string>('');
   const [downloading, setDownloading] = useState(false);
@@ -77,16 +80,16 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
   return (
     <div
       id={`chat-file-${messageId}`}
-      className={`w-full max-w-[320px] rounded-2xl p-3 shadow-2xs transition-all ${
+      className={`relative w-full max-w-[320px] rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-all overflow-visible ${
         isMe
-          ? 'bg-[#111111] text-white rounded-br-xs'
-          : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
+          ? `bg-[#111111] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
+          : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
       }`}
     >
       {/* File Card Header */}
       <div
         onClick={handleDownload}
-        className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
+        className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all ${
           isMe
             ? 'bg-white/10 hover:bg-white/15'
             : 'bg-[#F7F7F7] hover:bg-[#EFEFEF] border border-[#E5E5E5]'
@@ -112,7 +115,7 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
           </p>
           <p
             className={`text-[10px] mt-0.5 ${
-              isMe ? 'text-white/60' : 'text-[#737373]'
+              isMe ? 'text-white/70' : 'text-[#737373]'
             }`}
           >
             {formatSize(attachmentSize) || (isPdf ? 'PDF Document' : isDoc ? 'Word Document' : 'File')}
@@ -144,28 +147,31 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
 
       {/* Optional Caption */}
       {hasCaption && (
-        <p className="text-xs whitespace-pre-wrap leading-relaxed break-words [word-break:normal] mt-2 px-1 select-text">
+        <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] mt-2 px-1 select-text">
           {content}
         </p>
       )}
 
       {/* Timestamp & Read Status */}
       <div
-        className={`flex items-center justify-end gap-1 mt-1.5 text-[9px] ${
-          isMe ? 'text-white/60' : 'text-[#A3A3A3]'
+        className={`flex items-center justify-end gap-1 mt-1.5 text-[10px] ${
+          isMe ? 'text-white/70' : 'text-[#8E8E93]'
         }`}
       >
         <span>{formatTime(createdAt)}</span>
         {isMe && (
           <span title={readAt ? 'Read' : 'Delivered'}>
             {readAt ? (
-              <CheckCheck size={12} className="text-[#F4C430]" />
+              <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <Check size={12} />
+              <Check size={14} className="text-white/70 stroke-[2]" />
             )}
           </span>
         )}
       </div>
+
+      {/* Bubble Tail */}
+      {hasTail && <ChatBubbleTail isMe={isMe} />}
     </div>
   );
 };

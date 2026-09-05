@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Play, Pause, Loader2, Volume2, Check, CheckCheck, AlertCircle } from 'lucide-react';
+import { ChatBubbleTail } from './ChatBubbleTail';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 
 interface VoiceMessageBubbleProps {
@@ -9,6 +10,7 @@ interface VoiceMessageBubbleProps {
   createdAt: string;
   readAt?: string | null;
   isMe: boolean;
+  hasTail?: boolean;
 }
 
 // Generate pseudo-random, deterministic waveform bar heights based on messageId string
@@ -33,6 +35,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
   createdAt,
   readAt,
   isMe,
+  hasTail = true,
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
@@ -182,10 +185,10 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
   return (
     <div
-      className={`min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-2xl p-2.5 sm:p-3 shadow-2xs select-none transition-all ${
+      className={`relative min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-2xl p-2.5 sm:p-3 shadow-2xs select-none transition-all overflow-visible ${
         isMe
-          ? 'bg-[#111111] text-white rounded-br-xs'
-          : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
+          ? `bg-[#111111] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
+          : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
       }`}
     >
       {/* Voice Player Controls Header */}
@@ -279,12 +282,12 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
       {/* Message Metadata & Delivery Status */}
       <div
-        className={`flex items-center justify-end gap-1.5 mt-2 pt-1 border-t text-[9px] ${
-          isMe ? 'border-white/10 text-white/60' : 'border-[#F0F0F0] text-[#A3A3A3]'
+        className={`flex items-center justify-end gap-1.5 mt-2 pt-1 border-t text-[10px] ${
+          isMe ? 'border-white/10 text-white/70' : 'border-[#F0F0F0] text-[#8E8E93]'
         }`}
       >
         <span className="flex items-center gap-1 font-sans">
-          <Volume2 size={10} className={isMe ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <Volume2 size={11} className={isMe ? 'text-[#F4C430]' : 'text-[#737373]'} />
           Voice Message
         </span>
         <span>•</span>
@@ -292,13 +295,16 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
         {isMe && (
           <span title={isRead ? 'Read' : 'Delivered'}>
             {isRead ? (
-              <CheckCheck size={12} className="text-[#F4C430]" />
+              <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <Check size={12} />
+              <Check size={14} className="text-white/70 stroke-[2]" />
             )}
           </span>
         )}
       </div>
+
+      {/* Bubble Tail */}
+      {hasTail && <ChatBubbleTail isMe={isMe} />}
     </div>
   );
 };

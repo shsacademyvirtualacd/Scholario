@@ -29,6 +29,7 @@ import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { VoiceRecorderBar } from './VoiceRecorderBar';
 import { ChatImageBubble } from './ChatImageBubble';
 import { ChatFileBubble } from './ChatFileBubble';
+import { ChatBubbleTail } from './ChatBubbleTail';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
@@ -1095,12 +1096,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const getRoleBadge = (
     otherRole: Role | string,
     isSupportAdmin?: boolean,
-    extraInfo?: { subjects?: string[]; tag?: string; stream?: string }
+    extraInfo?: { subjects?: string[]; tag?: string; stream?: string },
+    subtle?: boolean
   ) => {
     if (isSupportAdmin || otherRole === 'admin') {
       const tagText = extraInfo?.tag || 'Support';
       // Format cleanly for badge
       const shortTag = tagText.replace('Scholario ', '').replace('Institutional ', '');
+      if (subtle) {
+        return (
+          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[#111111] text-[#F4C430] shrink-0 leading-none">
+            <Shield size={9} /> {shortTag.includes('Admin') ? shortTag : `Admin • ${shortTag}`}
+          </span>
+        );
+      }
       return (
         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#111111] text-[#F4C430] border border-[#F4C430]/30 shadow-2xs">
           <Shield size={10} /> {shortTag.includes('Admin') ? shortTag : `Admin • ${shortTag}`}
@@ -1111,9 +1120,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
       const subjectText = (extraInfo?.subjects && extraInfo.subjects.length > 0)
         ? extraInfo.subjects[0]
         : (extraInfo?.stream || 'Faculty');
+      if (subtle) {
+        return (
+          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[#FDF3C8] text-[#854D0E] shrink-0 leading-none">
+            <GraduationCap size={9} /> {subjectText}
+          </span>
+        );
+      }
       return (
         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FDF3C8] text-[#92700A] border border-[#F4C430]/30">
           <GraduationCap size={10} /> Teacher • {subjectText}
+        </span>
+      );
+    }
+    if (subtle) {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-[#F5F5F5] text-[#525252] shrink-0 leading-none">
+          Student
         </span>
       );
     }
@@ -1225,13 +1248,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       setActiveThreadId(thread.id);
                       setMobileViewActiveThread(true);
                     }}
-                    className={`w-full text-left p-3.5 flex items-start gap-3 transition-colors ${
+                    className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors border-b border-[#F0F2F5] ${
                       isSelected
-                        ? 'bg-white border-l-4 border-l-[#111111] shadow-2xs'
-                        : 'hover:bg-[#F5F5F5] bg-transparent'
+                        ? 'bg-[#F0F2F5] border-l-4 border-l-[#111111]'
+                        : 'hover:bg-[#F5F6F6] bg-transparent'
                     }`}
                   >
-                    <div className="relative shrink-0 mt-0.5">
+                    {/* WhatsApp Avatar with online dot */}
+                    <div className="relative shrink-0">
                       <ProfileAvatar
                         avatarUrl={other?.avatar_url}
                         name={other?.full_name || 'User'}
@@ -1239,61 +1263,84 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         size="md"
                         showOnlineBadge={isContactOnline(other?.id, other)}
                       />
-                      {hasUnread && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#F4C430] ring-2 ring-white" />
-                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
+                      {/* Row 1: Name + subtle role tag on left, timestamp on right */}
                       <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className={`text-xs truncate ${isSelected ? 'font-bold text-[#111111]' : hasUnread ? 'font-bold text-[#111111]' : 'font-medium text-[#262626]'}`}>
-                          {other?.full_name || (isAdmin ? 'Scholario Support' : 'User')}
-                        </span>
-                        <span className="text-[10px] text-[#A3A3A3] shrink-0 font-medium">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`text-[13.5px] sm:text-sm truncate ${
+                              isSelected || hasUnread
+                                ? 'font-bold text-[#111111]'
+                                : 'font-medium text-[#111111]'
+                            }`}
+                          >
+                            {other?.full_name || (isAdmin ? 'Scholario Support' : 'User')}
+                          </span>
+                          {getRoleBadge(
+                            other?.role || 'student',
+                            isAdmin,
+                            {
+                              subjects: (other as any)?.teacher_subjects,
+                              tag: (other as any)?.admin_tag,
+                              stream: other?.stream_obj?.name || other?.stream || undefined,
+                            },
+                            true
+                          )}
+                        </div>
+                        <span
+                          className={`text-[11px] shrink-0 font-normal ${
+                            hasUnread ? 'text-[#25D366] font-semibold' : 'text-[#8696A0]'
+                          }`}
+                        >
                           {formatThreadDate(thread.latest_message?.created_at || thread.created_at)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                        {getRoleBadge(other?.role || 'student', isAdmin, {
-                          subjects: (other as any)?.teacher_subjects,
-                          tag: (other as any)?.admin_tag,
-                          stream: other?.stream_obj?.name || other?.stream || undefined,
-                        })}
-                      </div>
-
+                      {/* Row 2: Message preview with checkmark on left, WhatsApp green unread badge on right */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className={`text-[11px] truncate ${hasUnread ? 'font-semibold text-[#111111]' : 'text-[#737373]'}`}>
+                        <div
+                          className={`text-[12px] truncate leading-tight flex items-center ${
+                            hasUnread ? 'font-medium text-[#111111]' : 'text-[#667781]'
+                          }`}
+                        >
                           {thread.latest_message ? (
                             <>
                               {thread.latest_message.sender_id === currentUserId && (
-                                <span className="text-[#A3A3A3] mr-1">You:</span>
+                                <span className="inline-flex items-center mr-1 shrink-0">
+                                  {thread.latest_message.read_at ? (
+                                    <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
+                                  ) : (
+                                    <Check size={14} className="text-[#8696A0] stroke-[2]" />
+                                  )}
+                                </span>
                               )}
                               {thread.latest_message.message_type === 'voice' || thread.latest_message.audio_url ? (
-                                <span className="inline-flex items-center gap-1 text-[#D97706] font-medium">
+                                <span className="inline-flex items-center gap-1 text-[#D97706] font-medium truncate">
                                   <Volume2 size={12} className="shrink-0" />
                                   <span>Voice message ({formatAudioDuration(thread.latest_message.audio_duration_seconds || 0)})</span>
                                 </span>
                               ) : thread.latest_message.message_type === 'image' ? (
-                                <span className="inline-flex items-center gap-1 text-[#2563EB] font-medium">
+                                <span className="inline-flex items-center gap-1 text-[#2563EB] font-medium truncate">
                                   <ImageIcon size={12} className="shrink-0" />
                                   <span>Photo {thread.latest_message.content && thread.latest_message.content !== 'Photo' ? `• ${thread.latest_message.content}` : ''}</span>
                                 </span>
                               ) : thread.latest_message.message_type === 'file' ? (
-                                <span className="inline-flex items-center gap-1 text-[#7C3AED] font-medium">
+                                <span className="inline-flex items-center gap-1 text-[#7C3AED] font-medium truncate">
                                   <FileText size={12} className="shrink-0" />
                                   <span>Document • {thread.latest_message.attachment_name || thread.latest_message.content || 'Attachment'}</span>
                                 </span>
                               ) : (
-                                thread.latest_message.content
+                                <span className="truncate">{thread.latest_message.content}</span>
                               )}
                             </>
                           ) : (
-                            <span className="italic text-[#A3A3A3]">No messages yet — send a greeting</span>
+                            <span className="italic text-[#8696A0]">No messages yet — send a greeting</span>
                           )}
                         </div>
                         {hasUnread && (
-                          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none">
+                          <span className="min-w-[19px] h-[19px] px-1.5 flex items-center justify-center rounded-full bg-[#25D366] text-white text-[10px] font-bold shrink-0 shadow-2xs leading-none">
                             {thread.unread_count}
                           </span>
                         )}
@@ -1315,14 +1362,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
           {activeThread ? (
             <>
               {/* Active Conversation Top Bar */}
-              <div className="px-5 py-3.5 border-b border-[#E5E5E5] flex items-center justify-between bg-white z-10">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="px-4 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] flex items-center justify-between bg-white z-10 shrink-0">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                   {/* Mobile Back Button */}
                   <button
                     onClick={() => setMobileViewActiveThread(false)}
-                    className="md:hidden p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#111111] shrink-0"
+                    className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-[#F5F5F5] text-[#111111] shrink-0 transition-colors"
+                    aria-label="Back to conversations"
                   >
-                    <ArrowLeft size={18} />
+                    <ArrowLeft size={20} />
                   </button>
 
                   <ProfileAvatar
@@ -1333,9 +1381,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     showOnlineBadge={isContactOnline(activeThread.other_participant?.id, activeThread.other_participant)}
                   />
 
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-bold text-[#111111] truncate">
+                      <h3 className="text-sm sm:text-base font-semibold text-[#111111] truncate leading-tight">
                         {activeThread.other_participant?.full_name || 'Direct Conversation'}
                       </h3>
                       {getRoleBadge(
@@ -1345,7 +1393,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           subjects: (activeThread.other_participant as any)?.teacher_subjects,
                           tag: (activeThread.other_participant as any)?.admin_tag,
                           stream: activeThread.other_participant?.stream_obj?.name || activeThread.other_participant?.stream || undefined,
-                        }
+                        },
+                        true
                       )}
                     </div>
                     {(() => {
@@ -1353,31 +1402,36 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       if (status.isVisible) {
                         if (status.isOnline) {
                           return (
-                            <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1.5 mt-0.5 animate-in fade-in duration-200">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ring-2 ring-emerald-500/20" />
-                              <span>Online</span>
+                            <p className="text-xs text-emerald-600 font-medium leading-tight mt-0.5 animate-in fade-in duration-200">
+                              online
                             </p>
                           );
                         } else if (status.statusText) {
                           return (
-                            <p className="text-[10px] text-[#737373] font-medium flex items-center gap-1 mt-0.5">
-                              <span>{status.statusText}</span>
+                            <p className="text-xs text-[#667781] leading-tight mt-0.5 truncate">
+                              {status.statusText}
                             </p>
                           );
                         }
                       }
 
                       return (
-                        <p className="text-[10px] text-[#737373] truncate font-medium flex items-center gap-1.5 mt-0.5">
+                        <p className="text-xs text-[#667781] truncate leading-tight mt-0.5">
                           {activeThread.other_participant?.role === 'teacher'
-                            ? ((activeThread.other_participant as any)?.teacher_display_title || 'Faculty Teacher • Direct Academic Channel')
+                            ? ((activeThread.other_participant as any)?.teacher_display_title || 'Faculty Teacher • Academic Channel')
                             : activeThread.other_participant?.role === 'admin'
-                            ? ((activeThread.other_participant as any)?.admin_tag || 'Institutional Administration • Official Support')
-                            : (activeThread.other_participant?.class?.display_name || 'Student • Direct 1-on-1')}
+                            ? ((activeThread.other_participant as any)?.admin_tag || 'Institutional Support')
+                            : (activeThread.other_participant?.class?.display_name || 'Student')}
                         </p>
                       );
                     })()}
                   </div>
+                </div>
+
+                {/* Security encryption indicator */}
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F5F5F5] border border-[#E5E5E5] text-[11px] text-[#525252] shrink-0 select-none">
+                  <Shield size={12} className="text-[#F4C430]" />
+                  <span className="font-medium">Encrypted</span>
                 </div>
               </div>
 
@@ -1385,13 +1439,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <div
                 ref={messagesContainerRef}
                 onScroll={handleMessagesScroll}
-                className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-[#FBFBFB]"
+                className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto bg-[#F0F2F5]"
               >
                 {/* Security & Permanent Notice */}
                 <div className="flex justify-center my-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E5E5E5] text-[11px] text-[#737373] shadow-2xs">
-                    <Shield size={12} className="text-[#F4C430]" />
-                    <span>End-to-end encrypted.</span>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFEECD] border border-[#F4C430]/30 text-[11px] text-[#54656F] shadow-2xs max-w-md text-center">
+                    <Shield size={12} className="text-[#92700A] shrink-0" />
+                    <span>Messages are end-to-end encrypted. No one outside of this chat can read them.</span>
                   </div>
                 </div>
 
@@ -1414,18 +1468,45 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     const isMe = msg.sender_id === currentUserId;
                     const isRead = !!msg.read_at;
 
-                    // Show date divider if day changed
                     const prevMsg = messages[index - 1];
+                    const nextMsg = messages[index + 1];
+
+                    // Show date divider if day changed
                     const showDateDivider =
                       !prevMsg ||
                       new Date(msg.created_at).toDateString() !==
                         new Date(prevMsg.created_at).toDateString();
 
+                    // WhatsApp consecutive message grouping logic (within 5 minutes, same sender, same day)
+                    const isPrevConsecutive =
+                      !showDateDivider &&
+                      !!prevMsg &&
+                      prevMsg.sender_id === msg.sender_id &&
+                      Math.abs(new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime()) < 5 * 60 * 1000;
+
+                    const isNextSameDay =
+                      !!nextMsg &&
+                      new Date(nextMsg.created_at).toDateString() === new Date(msg.created_at).toDateString();
+
+                    const isNextConsecutive =
+                      isNextSameDay &&
+                      !!nextMsg &&
+                      nextMsg.sender_id === msg.sender_id &&
+                      Math.abs(new Date(nextMsg.created_at).getTime() - new Date(msg.created_at).getTime()) < 5 * 60 * 1000;
+
+                    // Last in group gets the bubble tail pointing to sender!
+                    const isLastInGroup = !isNextConsecutive;
+                    const isFirstInGroup = !isPrevConsecutive;
+                    const hasTail = isLastInGroup;
+
+                    // Dynamic spacing: reduced spacing for consecutive messages
+                    const topMarginClass = showDateDivider ? 'mt-3' : isFirstInGroup ? 'mt-2.5' : 'mt-0.5';
+
                     return (
                       <React.Fragment key={msg.id}>
                         {showDateDivider && (
-                          <div className="flex items-center justify-center my-4">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#A3A3A3] bg-[#EFEFEF] px-3 py-1 rounded-full">
+                          <div className="flex items-center justify-center my-3">
+                            <span className="text-[11px] font-medium text-[#54656F] bg-white/95 px-3 py-1 rounded-lg shadow-2xs border border-[#E5E5E5]/70">
                               {new Date(msg.created_at).toLocaleDateString([], {
                                 weekday: 'short',
                                 month: 'short',
@@ -1436,18 +1517,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         )}
 
                         <div
-                          className={`group relative flex items-end gap-2 ${
+                          className={`group relative flex items-end gap-1.5 sm:gap-2 ${topMarginClass} ${
                             isMe ? 'justify-end' : 'justify-start'
                           }`}
                         >
+                          {/* Received sender avatar: only shown on the last bubble of a consecutive group */}
                           {!isMe && (
-                            <ProfileAvatar
-                              avatarUrl={activeThread.other_participant?.avatar_url}
-                              name={activeThread.other_participant?.full_name || 'User'}
-                              role={activeThread.other_participant?.role || 'student'}
-                              size="sm"
-                              className="shrink-0 mb-1"
-                            />
+                            <div className="w-7 sm:w-8 shrink-0 flex justify-center mb-0.5">
+                              {isLastInGroup ? (
+                                <ProfileAvatar
+                                  avatarUrl={activeThread.other_participant?.avatar_url}
+                                  name={activeThread.other_participant?.full_name || 'User'}
+                                  role={activeThread.other_participant?.role || 'student'}
+                                  size="sm"
+                                  className="shrink-0"
+                                />
+                              ) : (
+                                <div className="w-7 sm:w-8" aria-hidden="true" />
+                              )}
+                            </div>
                           )}
 
                           {/* Desktop quick-delete hover trigger for sender's messages */}
@@ -1501,6 +1589,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 createdAt={msg.created_at}
                                 readAt={msg.read_at}
                                 isMe={isMe}
+                                hasTail={hasTail}
                               />
                             ) : msg.message_type === 'image' && msg.attachment_key ? (
                               <ChatImageBubble
@@ -1512,6 +1601,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 createdAt={msg.created_at}
                                 readAt={msg.read_at}
                                 isMe={isMe}
+                                hasTail={hasTail}
                               />
                             ) : msg.message_type === 'file' && msg.attachment_key ? (
                               <ChatFileBubble
@@ -1524,35 +1614,46 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 createdAt={msg.created_at}
                                 readAt={msg.read_at}
                                 isMe={isMe}
+                                hasTail={hasTail}
                               />
                             ) : (
+                              /* WhatsApp Text Bubble */
                               <div
-                                className={`w-fit max-w-full rounded-2xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xs ${
+                                className={`relative w-fit max-w-full rounded-2xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xs overflow-visible transition-all ${
                                   isMe
-                                    ? 'bg-[#111111] text-white rounded-br-xs'
-                                    : 'bg-white text-[#111111] border border-[#E5E5E5] rounded-bl-xs'
+                                    ? `bg-[#111111] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
+                                    : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
                                 }`}
                               >
-                                <p className={`text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] ${isMe ? 'select-none md:select-text' : 'select-text'}`}>
-                                  {msg.content}
-                                </p>
+                                <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+                                  <p
+                                    className={`text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] ${
+                                      isMe ? 'select-none md:select-text' : 'select-text'
+                                    }`}
+                                  >
+                                    {msg.content}
+                                  </p>
 
-                                <div
-                                  className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
-                                    isMe ? 'text-white/60' : 'text-[#A3A3A3]'
-                                  }`}
-                                >
-                                  <span className="whitespace-nowrap">{formatMessageTime(msg.created_at)}</span>
-                                  {isMe && (
-                                    <span title={isRead ? 'Read' : 'Delivered'}>
-                                      {isRead ? (
-                                        <CheckCheck size={12} className="text-[#F4C430]" />
-                                      ) : (
-                                        <Check size={12} />
-                                      )}
-                                    </span>
-                                  )}
+                                  <div
+                                    className={`ml-auto shrink-0 flex items-center gap-1 text-[10px] leading-none mb-0.5 select-none ${
+                                      isMe ? 'text-white/70' : 'text-[#8E8E93]'
+                                    }`}
+                                  >
+                                    <span className="whitespace-nowrap">{formatMessageTime(msg.created_at)}</span>
+                                    {isMe && (
+                                      <span title={isRead ? 'Read' : 'Delivered'}>
+                                        {isRead ? (
+                                          <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
+                                        ) : (
+                                          <Check size={14} className="text-white/70 stroke-[2]" />
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
+
+                                {/* Tail */}
+                                {hasTail && <ChatBubbleTail isMe={isMe} />}
                               </div>
                             )}
                           </div>
