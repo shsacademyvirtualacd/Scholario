@@ -232,8 +232,45 @@ export function getAllSubjectNames(): string[] {
 
 /** Get streams available for a given grade and optional board */
 export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[] {
-  const gradeList = boardId ? getGradesForBoard(boardId) : GRADES;
-  return gradeList.find((g) => g.grade === grade)?.streams ?? [];
+  let rawGrade = String(grade || '').trim();
+  let rawBoard = String(boardId || '').trim();
+
+  // Defensive swap if caller passes (boardId, grade) instead of (grade, boardId)
+  const knownBoards = ['fbise', 'sindh', 'ielts'];
+  if (
+    rawGrade &&
+    knownBoards.some((b) => rawGrade.toLowerCase().includes(b)) &&
+    rawBoard &&
+    !knownBoards.some((b) => rawBoard.toLowerCase().includes(b))
+  ) {
+    const tmp = rawGrade;
+    rawGrade = rawBoard;
+    rawBoard = tmp;
+  }
+
+  const gradeList = rawBoard ? getGradesForBoard(rawBoard) : FBISE_GRADES;
+
+  // Clean grade string: e.g. "Grade 9" -> "9", "9th" -> "9", "Class 9" -> "9", "Grade 10" -> "10"
+  const cleanGrade = rawGrade.replace(/^(grade|class)\s*/i, '').replace(/th$/i, '').trim().toLowerCase();
+
+  const found = gradeList.find((g) => {
+    const gGradeStr = String(g.grade).toLowerCase();
+    const gNameStr = (g.displayName || '').toLowerCase();
+    return (
+      gGradeStr === cleanGrade ||
+      gGradeStr === rawGrade.toLowerCase() ||
+      gNameStr === rawGrade.toLowerCase() ||
+      (cleanGrade.includes('ielts') && gGradeStr === 'ielts') ||
+      (rawGrade.toLowerCase().includes('ielts') && gGradeStr === 'ielts')
+    );
+  });
+
+  if (found && found.streams && found.streams.length > 0) {
+    return found.streams;
+  }
+
+  // Fallback to first grade's streams if grade is not matched, ensuring availableStreams is NEVER empty for valid boards
+  return gradeList[0]?.streams ?? [];
 }
 
 /**
@@ -245,10 +282,12 @@ export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[]
  */
 export function getSubjectsForStream(grade: string, streamName: string, boardId?: string): string[] {
   const normBoard = (boardId || '').trim().toLowerCase();
+  const rawGrade = String(grade || '').trim();
+  const cleanGrade = rawGrade.replace(/^(grade|class)\s*/i, '').replace(/th$/i, '').trim().toLowerCase();
+
   const isIelts =
     normBoard === 'ielts' ||
-    grade === 'IELTS' ||
-    grade === 'ielts' ||
+    cleanGrade === 'ielts' ||
     streamName?.toLowerCase().includes('ielts') ||
     ((streamName?.toLowerCase() === 'academic' || streamName?.toLowerCase() === 'general training') && (!normBoard || normBoard === 'ielts'));
 
@@ -275,8 +314,12 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
   }
 
   const gradesList = normBoard === 'sindh' ? SINDH_GRADES : FBISE_GRADES;
-  const g = gradesList.find((gr) => gr.grade === grade) || GRADES.find((gr) => gr.grade === grade);
-  if (!g) return [];
+  const g =
+    gradesList.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) ||
+    GRADES.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) ||
+    gradesList[0];
+
+  if (!g) return ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
   if (!streamName) return g.commonSubjects || [];
 
   const norm = streamName.trim().toLowerCase();
@@ -286,10 +329,10 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
       norm.includes(st.name.toLowerCase()) ||
       st.name.toLowerCase().includes(norm)
   );
-  if (s) return s.subjects;
+  if (s && s.subjects && s.subjects.length > 0) return s.subjects;
 
   // Fallback to first stream or common subjects if stream not recognized
-  return g.streams[0]?.subjects ?? g.commonSubjects ?? [];
+  return g.streams[0]?.subjects ?? g.commonSubjects ?? ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
 }
 
 /** Derive exact enrolled taxonomy subjects for a student profile and enrollments */

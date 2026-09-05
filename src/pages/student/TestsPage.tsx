@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, BookOpen, FileCheck2, Target, ShieldAlert, Award, AlertTriangle, ArrowRight, Eye } from 'lucide-react';
+import {
+  Search,
+  BookOpen,
+  FileCheck2,
+  Target,
+  ShieldAlert,
+  Award,
+  AlertTriangle,
+  ArrowRight,
+  Eye,
+  Camera,
+  FileText,
+  Clock,
+  X,
+} from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StudentTestCard from '../../components/student/StudentTestCard';
@@ -10,13 +24,16 @@ import SelfTestingView from '../../components/tests/SelfTestingView';
 import ProctoredMCQAccessModal from '../../components/student/ProctoredMCQAccessModal';
 import { ProctoredMCQExamModal } from '../../components/student/ProctoredMCQExamModal';
 import ProctoredMCQResultModal from '../../components/student/ProctoredMCQResultModal';
+import { WrittenTestExamModal } from '../../components/student/WrittenTestExamModal';
 import { getTestsForStudent, getSubmissionsForStudent, getOfferingsForStudent } from '../../lib/db';
 import { getProctoredMCQTests, getProctoredMCQSubmissions } from '../../lib/proctoredMcqService';
+import { getWrittenTests, getWrittenSubmissions } from '../../lib/writtenTestService';
 import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { TestPaper, TestSubmission } from '../../types';
 import type { ProctoredMCQTest, ProctoredMCQSubmission } from '../../types/proctoredMcq';
+import type { WrittenTest, WrittenSubmission } from '../../types/writtenTest';
 
 export const TestsPage: React.FC = () => {
   const { profile } = useAuth();
@@ -50,7 +67,7 @@ export const TestsPage: React.FC = () => {
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [activeSubject, setActiveSubject] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'submitted' | 'graded'>('all');
-  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'proctored' | 'standard'>('all');
+  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'proctored' | 'short_question' | 'long_question' | 'standard'>('all');
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
@@ -64,16 +81,24 @@ export const TestsPage: React.FC = () => {
   const [examVerifiedStudentName, setExamVerifiedStudentName] = useState<string>('');
   const [viewingGradedMCQSub, setViewingGradedMCQSub] = useState<ProctoredMCQSubmission | null>(null);
 
+  // Written Tests state (Short Question & Long Question Tests)
+  const [writtenTests, setWrittenTests] = useState<WrittenTest[]>([]);
+  const [writtenSubmissions, setWrittenSubmissions] = useState<WrittenSubmission[]>([]);
+  const [activeWrittenExamTest, setActiveWrittenExamTest] = useState<WrittenTest | null>(null);
+  const [viewingWrittenSubmission, setViewingWrittenSubmission] = useState<WrittenSubmission | null>(null);
+
   const fetchData = async () => {
     if (!studentId) return;
     try {
       setLoading(true);
-      const [fetchedTests, fetchedSubs, fetchedOffs, fetchedMcqTests, fetchedMcqSubs] = await Promise.all([
+      const [fetchedTests, fetchedSubs, fetchedOffs, fetchedMcqTests, fetchedMcqSubs, fetchedWrittenTests, fetchedWrittenSubs] = await Promise.all([
         getTestsForStudent(studentGrade, studentStream, studentBoardId),
         getSubmissionsForStudent(studentId),
         getOfferingsForStudent(studentId).catch(() => []),
         getProctoredMCQTests('student').catch(() => []),
         getProctoredMCQSubmissions({ studentId }).catch(() => []),
+        getWrittenTests({ status: 'published' }).catch(() => []),
+        getWrittenSubmissions({ studentId }).catch(() => []),
       ]);
 
       setTests(fetchedTests);
@@ -81,6 +106,8 @@ export const TestsPage: React.FC = () => {
       setOfferings(fetchedOffs);
       setProctoredTests(fetchedMcqTests);
       setProctoredSubmissions(fetchedMcqSubs);
+      setWrittenTests(fetchedWrittenTests);
+      setWrittenSubmissions(fetchedWrittenSubs);
 
       // Default select the first test if none is currently selected
       if (!selectedTestId && fetchedTests.length > 0) {
@@ -122,6 +149,43 @@ export const TestsPage: React.FC = () => {
     proctoredSubmissions.forEach((s) => map.set(s.test_id, s));
     return map;
   }, [proctoredSubmissions]);
+
+  // Map written test submissions by test_id for fast lookup
+  const writtenSubByTestId = React.useMemo(() => {
+    const map = new Map<string, WrittenSubmission>();
+    writtenSubmissions.forEach((s) => map.set(s.test_id, s));
+    return map;
+  }, [writtenSubmissions]);
+
+  // Filter written tests (Short & Long Questions)
+  const filteredWrittenTests = writtenTests.filter((t) => {
+    if (t.status !== 'published') return false;
+
+    // Check grade match if studentGrade is set
+    if (studentGrade && t.grade && String(t.grade) !== String(studentGrade)) {
+      // allow if matching
+    }
+
+    const matchesSubject = activeSubject === 'All' || t.subject.toLowerCase() === activeSubject.toLowerCase();
+    const q = searchTerm.toLowerCase();
+    const matchesSearch =
+      !q ||
+      t.title.toLowerCase().includes(q) ||
+      t.subject.toLowerCase().includes(q) ||
+      (t.instructions || '').toLowerCase().includes(q);
+
+    if (!matchesSubject || !matchesSearch) return false;
+
+    const sub = writtenSubByTestId.get(t.id);
+    if (!sub) {
+      return statusFilter === 'all' || statusFilter === 'pending';
+    } else if (sub.status === 'submitted') {
+      return statusFilter === 'submitted';
+    } else if (sub.status === 'graded') {
+      return statusFilter === 'all' || statusFilter === 'graded';
+    }
+    return false;
+  });
 
   // Filter proctored tests:
   // Strictly respects the prompt:
@@ -224,7 +288,7 @@ export const TestsPage: React.FC = () => {
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
             activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
           }`}>
-            {tests.length + proctoredTests.length}
+            {tests.length + proctoredTests.length + writtenTests.length}
           </span>
         </button>
 
@@ -268,10 +332,12 @@ export const TestsPage: React.FC = () => {
               </div>
 
               {/* Test Type Filter */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0">
+              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0 flex-wrap">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'proctored', label: 'Proctored MCQs' },
+                  { id: 'short_question', label: 'Short Qs' },
+                  { id: 'long_question', label: 'Long Qs' },
                   { id: 'standard', label: 'PDF Papers' },
                 ].map((type) => (
                   <button
@@ -332,8 +398,14 @@ export const TestsPage: React.FC = () => {
                 <h3 className="text-sm font-extrabold text-[#111111] flex items-center gap-2">
                   <span>Available Class Tests</span>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
-                    {(testTypeFilter !== 'standard' ? filteredProctoredTests.length : 0) +
-                      (testTypeFilter !== 'proctored' ? filteredTests.length : 0)}
+                    {(testTypeFilter === 'all' || testTypeFilter === 'proctored' ? filteredProctoredTests.length : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'short_question'
+                        ? filteredWrittenTests.filter((w) => w.test_type === 'short_question').length
+                        : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'long_question'
+                        ? filteredWrittenTests.filter((w) => w.test_type === 'long_question').length
+                        : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'standard' ? filteredTests.length : 0)}
                   </span>
                 </h3>
                 <span className="text-xs text-[#737373] font-semibold">
@@ -445,8 +517,139 @@ export const TestsPage: React.FC = () => {
                       );
                     })}
 
+                  {/* Written Tests Section (Short & Long Questions) */}
+                  {(testTypeFilter === 'all' || testTypeFilter === 'short_question' || testTypeFilter === 'long_question') &&
+                    filteredWrittenTests
+                      .filter((w) => testTypeFilter === 'all' || w.test_type === testTypeFilter)
+                      .map((test) => {
+                        const sub = writtenSubByTestId.get(test.id);
+                        const isGraded = sub?.status === 'graded';
+                        const isShort = test.test_type === 'short_question';
+
+                        // Graded view
+                        if (isGraded && sub) {
+                          const finalScore = sub.final_score ?? 0;
+                          const pct = sub.percentage ?? Math.round((finalScore / Math.max(1, sub.total_marks)) * 100);
+                          return (
+                            <div
+                              key={test.id}
+                              className="bg-white rounded-2xl border-2 border-emerald-300/80 p-4 shadow-xs space-y-3 transition-all hover:border-emerald-500"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                  <Award size={11} />
+                                  Graded {isShort ? 'Short Question' : 'Long Question'} Test
+                                </span>
+                                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg">
+                                  Score: {finalScore} / {sub.total_marks} ({pct}%)
+                                </span>
+                              </div>
+
+                              <div>
+                                <h4 className="text-sm font-black text-[#111111]">{test.title}</h4>
+                                <p className="text-[11px] font-medium text-[#737373] mt-0.5">
+                                  {test.subject} • Grade {test.grade} • Graded on {sub.graded_at ? new Date(sub.graded_at).toLocaleDateString() : 'Recent'}
+                                </p>
+                              </div>
+
+                              {sub.general_feedback && (
+                                <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-[11px] text-amber-950 font-medium">
+                                  <strong className="font-bold">Teacher Feedback:</strong> "{sub.general_feedback}"
+                                </div>
+                              )}
+
+                              <div className="pt-2 border-t border-[#F0F0F0] flex justify-end">
+                                <button
+                                  onClick={() => setViewingWrittenSubmission(sub)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-amber-400 text-xs font-black shadow-xs cursor-pointer transition-all"
+                                >
+                                  <Eye size={13} />
+                                  <span>View Graded Feedback</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Submitted (Awaiting Grading)
+                        if (sub && sub.status === 'submitted') {
+                          return (
+                            <div
+                              key={test.id}
+                              className="bg-white rounded-2xl border border-amber-300/60 p-4 shadow-xs space-y-3"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1">
+                                  <Clock size={11} />
+                                  Awaiting Teacher Grading
+                                </span>
+                                <span className="text-[10px] text-[#737373] font-mono">
+                                  Submitted {new Date(sub.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+
+                              <div>
+                                <h4 className="text-sm font-black text-[#111111]">{test.title}</h4>
+                                <p className="text-[11px] font-medium text-[#737373] mt-0.5">
+                                  {test.subject} • Grade {test.grade} • {sub.answers?.length || test.questions.length} Answers Captured
+                                </p>
+                              </div>
+
+                              <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200/60">
+                                Your handwritten answer photos have been securely uploaded to Cloudflare R2 for teacher evaluation. Marks will be displayed here once released.
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        // Pending Written Test
+                        return (
+                          <div
+                            key={test.id}
+                            className="bg-white rounded-2xl border-2 border-amber-400/40 hover:border-amber-400 p-4 shadow-xs space-y-3 transition-all group"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black text-amber-400 flex items-center gap-1 shadow-2xs">
+                                {isShort ? <FileText size={11} /> : <BookOpen size={11} />}
+                                {isShort ? 'Short Question Test' : 'Long Question Test'}
+                              </span>
+                              <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                                <Camera size={11} /> Camera Proctored
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-sm font-black text-[#111111] group-hover:text-amber-950 transition-colors">
+                                {test.title}
+                              </h4>
+                              <p className="text-[11px] font-medium text-[#737373] mt-0.5">
+                                {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} Questions • {test.total_marks} Marks
+                              </p>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/50 flex items-center gap-2 text-[11px] text-amber-900 font-medium">
+                              <Camera size={13} className="text-amber-700 shrink-0" />
+                              <span>Take handwritten photo for each question. 24-hr Cloudflare R2 retention. Strict proctoring active.</span>
+                            </div>
+
+                            <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
+                              <span className="text-[10px] text-[#737373] font-mono">
+                                In-Browser Camera
+                              </span>
+                              <button
+                                onClick={() => setActiveWrittenExamTest(test)}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-amber-400 text-xs font-black shadow-sm cursor-pointer active:scale-95 transition-all"
+                              >
+                                <span>Start Written Exam</span>
+                                <ArrowRight size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
                   {/* Standard / PDF Tests Section */}
-                  {testTypeFilter !== 'proctored' &&
+                  {(testTypeFilter === 'all' || testTypeFilter === 'standard') &&
                     filteredTests.map((test) => (
                       <StudentTestCard
                         key={test.id}
@@ -460,10 +663,13 @@ export const TestsPage: React.FC = () => {
 
                   {/* Empty state */}
                   {((testTypeFilter === 'proctored' && filteredProctoredTests.length === 0) ||
+                    (testTypeFilter === 'short_question' && filteredWrittenTests.filter((w) => w.test_type === 'short_question').length === 0) ||
+                    (testTypeFilter === 'long_question' && filteredWrittenTests.filter((w) => w.test_type === 'long_question').length === 0) ||
                     (testTypeFilter === 'standard' && filteredTests.length === 0) ||
                     (testTypeFilter === 'all' &&
                       filteredTests.length === 0 &&
-                      filteredProctoredTests.length === 0)) && (
+                      filteredProctoredTests.length === 0 &&
+                      filteredWrittenTests.length === 0)) && (
                     <div className="bg-white rounded-2xl border border-[#E5E5E5] p-8 text-center shadow-xs">
                       <BookOpen size={36} className="mx-auto mb-2 text-[#A3A3A3]" />
                       <p className="text-sm font-bold text-[#111111]">No class tests found</p>
@@ -538,6 +744,102 @@ export const TestsPage: React.FC = () => {
         submission={viewingGradedMCQSub}
         onClose={() => setViewingGradedMCQSub(null)}
       />
+
+      {/* Written Test Exam Modal (Camera Proctored) */}
+      {activeWrittenExamTest && (
+        <WrittenTestExamModal
+          isOpen={true}
+          test={activeWrittenExamTest}
+          studentId={(profile as any)?.roll_no || profile?.id || 'STUDENT'}
+          studentName={profile?.full_name || 'Student'}
+          onClose={() => setActiveWrittenExamTest(null)}
+          onSubmitSuccess={async () => {
+            setActiveWrittenExamTest(null);
+            await fetchData();
+          }}
+        />
+      )}
+
+      {/* Graded Written Test Inspection Modal */}
+      {viewingWrittenSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">
+                  <Award size={11} /> Graded Written Assessment
+                </span>
+                <h3 className="text-lg font-black text-[#111111] mt-1">{viewingWrittenSubmission.test_title}</h3>
+                <p className="text-xs text-[#737373]">
+                  Score: <strong className="text-emerald-700 font-black text-sm">{viewingWrittenSubmission.final_score ?? 0} / {viewingWrittenSubmission.total_marks}</strong> ({viewingWrittenSubmission.total_marks ? Math.round(((viewingWrittenSubmission.final_score ?? 0) / viewingWrittenSubmission.total_marks) * 100) : 0}%)
+                </p>
+              </div>
+
+              <button
+                onClick={() => setViewingWrittenSubmission(null)}
+                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {(viewingWrittenSubmission.teacher_feedback || viewingWrittenSubmission.general_feedback) && (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-950">
+                  <strong className="font-black text-amber-900 block mb-1">Teacher's Overall Remarks:</strong>
+                  {viewingWrittenSubmission.teacher_feedback || viewingWrittenSubmission.general_feedback}
+                </div>
+              )}
+
+              <h4 className="text-xs font-black uppercase tracking-wider text-[#737373]">Per-Question Evaluation</h4>
+
+              {viewingWrittenSubmission.answers?.map((ans, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs font-black text-[#111111]">
+                      Question #{ans.question_order || idx + 1}
+                    </span>
+                    <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-white border border-[#E5E5E5] text-emerald-800">
+                      Awarded: {ans.marks_awarded ?? ans.awarded_marks ?? 0} / {ans.max_marks} Marks
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-medium text-[#525252] bg-white p-2.5 rounded-xl border border-[#E5E5E5]">
+                    {ans.question_text}
+                  </p>
+
+                  {(ans.remarks || ans.teacher_remarks) && (
+                    <div className="text-[11px] text-amber-900 bg-amber-50/80 p-2 rounded-lg border border-amber-200/60 font-medium">
+                      <strong>Remarks:</strong> {ans.remarks || ans.teacher_remarks}
+                    </div>
+                  )}
+
+                  {(ans.photo_url || ans.photo_data_url) && (
+                    <div className="mt-2">
+                      <p className="text-[10px] font-bold text-[#737373] mb-1">Submitted Handwritten Photo:</p>
+                      <img
+                        src={ans.photo_url || ans.photo_data_url}
+                        alt={`Q${idx + 1} Answer`}
+                        className="w-full max-h-56 object-contain rounded-xl border border-[#E5E5E5] bg-black/5"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex justify-end">
+              <button
+                onClick={() => setViewingWrittenSubmission(null)}
+                className="px-5 py-2 rounded-xl bg-[#111111] text-white font-black text-xs cursor-pointer hover:bg-black transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox Inline Viewer Modal */}
       <TestViewerModal

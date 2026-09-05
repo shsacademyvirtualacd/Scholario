@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Plus,
@@ -42,7 +42,7 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
   const [title, setTitle] = useState<string>('Term 1 Proctored Examination');
   const [board, setBoard] = useState<string>('fbise');
   const [grade, setGrade] = useState<string>('9');
-  const [stream, setStream] = useState<string>('Science');
+  const [stream, setStream] = useState<string>('Biology');
   const [subject, setSubject] = useState<string>('Physics');
   const [dueDate, setDueDate] = useState<string>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -88,12 +88,51 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
 
   const [saving, setSaving] = useState<boolean>(false);
 
-  if (!isOpen) return null;
+  // Grade & stream dynamic taxonomy (Strict Grade -> Stream/Group -> Subject chain)
+  const availableGrades = useMemo(() => getGradesForBoard(board), [board]);
+  const availableStreams = useMemo(() => getStreamsForGrade(grade, board), [grade, board]);
+  const availableSubjects = useMemo(() => {
+    const streamDef = availableStreams.find((s) => s.name.toLowerCase() === stream.toLowerCase());
+    if (streamDef && streamDef.subjects && streamDef.subjects.length > 0) {
+      return streamDef.subjects;
+    }
+    const gradeDef = availableGrades.find((g) => String(g.grade) === String(grade));
+    if (gradeDef && gradeDef.commonSubjects && gradeDef.commonSubjects.length > 0) {
+      return gradeDef.commonSubjects;
+    }
+    const dbSubs = getSubjectsForStream(grade, stream, board);
+    if (dbSubs && dbSubs.length > 0) return dbSubs;
+    return ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
+  }, [availableStreams, stream, grade, board, availableGrades]);
 
-  // Grade & stream dynamic taxonomy
-  const availableGrades = getGradesForBoard(board);
-  const availableStreams = getStreamsForGrade(board, grade);
-  const availableSubjects = getSubjectsForStream(grade, stream, board);
+  // Synchronize Grade if current grade is invalid for board
+  useEffect(() => {
+    if (availableGrades.length > 0 && !availableGrades.some((g) => String(g.grade) === String(grade))) {
+      setGrade(String(availableGrades[0].grade));
+    }
+  }, [availableGrades, grade]);
+
+  // Synchronize Stream if current stream is invalid for grade/board
+  useEffect(() => {
+    if (availableStreams.length > 0) {
+      const match = availableStreams.find((s) => s.name.toLowerCase() === stream.toLowerCase());
+      if (!match) {
+        setStream(availableStreams[0].name);
+      }
+    }
+  }, [availableStreams, stream]);
+
+  // Synchronize Subject: if current subject (e.g. Urdu, English) is still valid in the new stream/grade, preserve it!
+  useEffect(() => {
+    if (availableSubjects.length > 0) {
+      const subjectStillValid = availableSubjects.includes(subject);
+      if (!subjectStillValid) {
+        setSubject(availableSubjects[0]);
+      }
+    }
+  }, [availableSubjects, subject]);
+
+  if (!isOpen) return null;
 
   const totalCalculatedMarks = questions.reduce((acc, q) => acc + (q.marks || 1), 0);
 
@@ -319,8 +358,28 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
                     Board / System
                   </label>
                   <select
+                    id="admin-mcq-board-select"
                     value={board}
-                    onChange={(e) => setBoard(e.target.value)}
+                    onChange={(e) => {
+                      const newBoard = e.target.value;
+                      setBoard(newBoard);
+                      const newGrades = getGradesForBoard(newBoard);
+                      const validGrade = newGrades.some((g) => String(g.grade) === String(grade))
+                        ? grade
+                        : String(newGrades[0]?.grade || '9');
+                      if (validGrade !== grade) setGrade(validGrade);
+
+                      const newStreams = getStreamsForGrade(validGrade, newBoard);
+                      const validStream = newStreams.some((s) => s.name.toLowerCase() === stream.toLowerCase())
+                        ? stream
+                        : newStreams[0]?.name || '';
+                      if (validStream !== stream) setStream(validStream);
+
+                      const newSubs = getSubjectsForStream(validGrade, validStream, newBoard);
+                      if (!newSubs.includes(subject) && newSubs.length > 0) {
+                        setSubject(newSubs[0]);
+                      }
+                    }}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden bg-white"
                   >
                     {BOARDS.map((b) => (
@@ -336,8 +395,22 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
                     Grade / Class
                   </label>
                   <select
+                    id="admin-mcq-grade-select"
                     value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
+                    onChange={(e) => {
+                      const newGrade = e.target.value;
+                      setGrade(newGrade);
+                      const newStreams = getStreamsForGrade(newGrade, board);
+                      const validStream = newStreams.some((s) => s.name.toLowerCase() === stream.toLowerCase())
+                        ? stream
+                        : newStreams[0]?.name || '';
+                      if (validStream !== stream) setStream(validStream);
+
+                      const newSubs = getSubjectsForStream(newGrade, validStream, board);
+                      if (!newSubs.includes(subject) && newSubs.length > 0) {
+                        setSubject(newSubs[0]);
+                      }
+                    }}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden bg-white"
                   >
                     {availableGrades.map((g) => (
@@ -353,8 +426,17 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
                     Stream / Group
                   </label>
                   <select
+                    id="admin-mcq-stream-select"
                     value={stream}
-                    onChange={(e) => setStream(e.target.value)}
+                    onChange={(e) => {
+                      const newStream = e.target.value;
+                      setStream(newStream);
+                      const newSubs = getSubjectsForStream(grade, newStream, board);
+                      // If current subject (e.g. Urdu) exists in the newly chosen stream, preserve it!
+                      if (!newSubs.includes(subject) && newSubs.length > 0) {
+                        setSubject(newSubs[0]);
+                      }
+                    }}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden bg-white"
                   >
                     {availableStreams.map((st) => (
@@ -370,6 +452,7 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
                     Subject
                   </label>
                   <select
+                    id="admin-mcq-subject-select"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden bg-white"

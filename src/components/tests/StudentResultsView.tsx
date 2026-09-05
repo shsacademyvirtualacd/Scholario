@@ -13,9 +13,11 @@ import {
   FileCheck2,
   X,
   ShieldAlert,
-  Target
+  Target,
+  FileText,
 } from 'lucide-react';
 import { ProctoredMCQSubmissionsList } from '../teacher/ProctoredMCQSubmissionsList';
+import { WrittenTestSubmissionsList } from '../teacher/WrittenTestSubmissionsList';
 import type { StudentMCQAttempt, ClassOffering } from '../../types';
 import { getStudentMCQAttemptsForTeacher, getAllStudentMCQAttempts } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -40,7 +42,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
   const [results, setResults] = useState<StudentMCQAttempt[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedAttempt, setSelectedAttempt] = useState<StudentMCQAttempt | null>(null);
-  const [activeCategory, setActiveCategory] = useState<'proctored' | 'self-test'>('proctored');
+  const [activeCategory, setActiveCategory] = useState<'proctored' | 'written' | 'self-test'>('proctored');
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -302,9 +304,24 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
           }`}
         >
           <ShieldAlert size={15} className={activeCategory === 'proctored' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Proctored MCQ Assessments</span>
+          <span>Proctored MCQs</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430] text-[#111111]">
             Grading
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveCategory('written')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeCategory === 'written'
+              ? 'bg-[#111111] text-white shadow-xs'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+          }`}
+        >
+          <FileText size={15} className={activeCategory === 'written' ? 'text-amber-400' : 'text-[#737373]'} />
+          <span>Written Tests (Short & Long)</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200 text-amber-950">
+            Manual Grading
           </span>
         </button>
 
@@ -323,6 +340,8 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
 
       {activeCategory === 'proctored' ? (
         <ProctoredMCQSubmissionsList isTeacher={isTeacher} />
+      ) : activeCategory === 'written' ? (
+        <WrittenTestSubmissionsList isTeacher={isTeacher} />
       ) : (
         <>
           {/* Teacher Scoping Banner */}

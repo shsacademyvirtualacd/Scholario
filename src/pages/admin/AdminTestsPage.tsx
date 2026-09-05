@@ -16,6 +16,9 @@ import {
   Lock,
   Eye,
   Trash2,
+  FileText,
+  Camera,
+  Award,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminShell from '../../components/admin/AdminShell';
@@ -26,6 +29,8 @@ import TestViewerModal from '../../components/common/TestViewerModal';
 import StudentResultsView from '../../components/tests/StudentResultsView';
 import AdminCreateTestModal from '../../components/admin/tests/AdminCreateTestModal';
 import AdminCreateMCQTestModal from '../../components/admin/tests/AdminCreateMCQTestModal';
+import AdminCreateWrittenTestModal from '../../components/admin/tests/AdminCreateWrittenTestModal';
+import { WrittenTestSubmissionsList } from '../../components/teacher/WrittenTestSubmissionsList';
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -34,8 +39,14 @@ import {
   publishProctoredMCQTest,
   deleteProctoredMCQTest,
 } from '../../lib/proctoredMcqService';
+import {
+  getWrittenTests,
+  publishWrittenTest,
+  deleteWrittenTest,
+} from '../../lib/writtenTestService';
 import type { TestPaper, TestSubmission } from '../../types';
 import type { ProctoredMCQTest } from '../../types/proctoredMcq';
+import type { WrittenTest, WrittenTestType } from '../../types/writtenTest';
 
 export const AdminTestsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -59,11 +70,15 @@ export const AdminTestsPage: React.FC = () => {
 
   const [tests, setTests] = useState<TestPaper[]>([]);
   const [proctoredTests, setProctoredTests] = useState<ProctoredMCQTest[]>([]);
-  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'proctored' | 'standard'>('all');
+  const [writtenTests, setWrittenTests] = useState<WrittenTest[]>([]);
+  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'proctored' | 'short_question' | 'long_question' | 'standard'>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+  const [selectedWrittenTestId, setSelectedWrittenTestId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isCreateMCQModalOpen, setIsCreateMCQModalOpen] = useState<boolean>(false);
+  const [isCreateWrittenModalOpen, setIsCreateWrittenModalOpen] = useState<boolean>(false);
+  const [writtenModalType, setWrittenModalType] = useState<WrittenTestType>('short_question');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState<boolean>(false);
   const [showActionDropdown, setShowActionDropdown] = useState<boolean>(false);
@@ -71,6 +86,7 @@ export const AdminTestsPage: React.FC = () => {
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
   const [viewingMCQTest, setViewingMCQTest] = useState<ProctoredMCQTest | null>(null);
+  const [viewingWrittenTest, setViewingWrittenTest] = useState<WrittenTest | null>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -94,12 +110,14 @@ export const AdminTestsPage: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [allTests, allMCQTests] = await Promise.all([
+      const [allTests, allMCQTests, allWrittenTests] = await Promise.all([
         getAllTests(),
         getProctoredMCQTests('admin').catch(() => []),
+        getWrittenTests().catch(() => []),
       ]);
       setTests(allTests);
       setProctoredTests(allMCQTests);
+      setWrittenTests(allWrittenTests);
       if (!selectedTestId && allTests.length > 0) {
         setSelectedTestId(allTests[0].id);
       }
@@ -126,6 +144,27 @@ export const AdminTestsPage: React.FC = () => {
       await deleteProctoredMCQTest(testId, 'admin');
       toast.success('Proctored MCQ test deleted.');
       setProctoredTests((prev) => prev.filter((t) => t.id !== testId));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete test.');
+    }
+  };
+
+  const handlePublishWrittenTest = async (testId: string) => {
+    try {
+      const updated = await publishWrittenTest(testId);
+      toast.success('Written test published to assigned students!');
+      setWrittenTests((prev) => prev.map((t) => (t.id === testId ? updated : t)));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to publish test.');
+    }
+  };
+
+  const handleDeleteWrittenTest = async (testId: string) => {
+    if (!window.confirm('Are you sure you want to delete this written test?')) return;
+    try {
+      await deleteWrittenTest(testId);
+      toast.success('Written test deleted.');
+      setWrittenTests((prev) => prev.filter((t) => t.id !== testId));
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete test.');
     }
@@ -179,7 +218,22 @@ export const AdminTestsPage: React.FC = () => {
     return matchesBoard && matchesGrade && matchesSubject && matchesSearch;
   });
 
+  const filteredWrittenTests = writtenTests.filter((t) => {
+    const matchesBoard = !selectedBoard || selectedBoard === 'all' || (t.board || 'fbise') === selectedBoard;
+    const matchesGrade = gradeFilter === 'all' || String(t.grade) === gradeFilter;
+    const matchesSubject = subjectFilter === 'all' || t.subject.toLowerCase() === subjectFilter.toLowerCase();
+    const q = searchTerm.toLowerCase();
+    const matchesSearch =
+      !q ||
+      t.title.toLowerCase().includes(q) ||
+      t.subject.toLowerCase().includes(q) ||
+      (t.instructions || '').toLowerCase().includes(q);
+
+    return matchesBoard && matchesGrade && matchesSubject && matchesSearch;
+  });
+
   const selectedTest = tests.find((t) => t.id === selectedTestId) || filteredTests[0] || null;
+  const selectedWrittenTest = writtenTests.find((w) => w.id === selectedWrittenTestId) || null;
 
   const handleBoardChange = (bId: string) => {
     setSelectedBoard(bId);
@@ -262,8 +316,56 @@ export const AdminTestsPage: React.FC = () => {
                       </p>
                     </div>
                   </button>
+
+                  {/* Option 2: Short Question Test (Camera Proctored) */}
+                  <button
+                    id="admin-menu-create-short-question-btn"
+                    onClick={() => {
+                      setShowActionDropdown(false);
+                      setWrittenModalType('short_question');
+                      setIsCreateWrittenModalOpen(true);
+                    }}
+                    className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-amber-300 mt-1"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[#111111] border border-black flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                      <FileText size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-black text-[#111111]">Short Question Test</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">Camera Proctored</span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
+                        Sequential questions, in-browser handwritten photo capture, 24-hour R2 retention, and manual teacher grading.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Option 3: Long Question Test (Camera Proctored) */}
+                  <button
+                    id="admin-menu-create-long-question-btn"
+                    onClick={() => {
+                      setShowActionDropdown(false);
+                      setWrittenModalType('long_question');
+                      setIsCreateWrittenModalOpen(true);
+                    }}
+                    className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-amber-300 mt-1"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[#111111] border border-black flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                      <BookOpen size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-black text-[#111111]">Long Question Test</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">Camera Proctored</span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
+                        Comprehensive essay/problem questions with handwritten capture, strict proctoring, and rubric-based grading.
+                      </p>
+                    </div>
+                  </button>
                   
-                  {/* Option 2: Create from Question Bank / AI */}
+                  {/* Option 4: Create from Question Bank / AI */}
                   <button
                     id="admin-menu-create-bank-btn"
                     onClick={() => {
@@ -333,7 +435,7 @@ export const AdminTestsPage: React.FC = () => {
               activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
             }`}
           >
-            {tests.length + proctoredTests.length}
+            {tests.length + proctoredTests.length + writtenTests.length}
           </span>
         </button>
 
@@ -419,11 +521,13 @@ export const AdminTestsPage: React.FC = () => {
                 ))}
               </div>
 
-              {/* Test Type Filter: All vs Proctored MCQ vs PDF Papers */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
+              {/* Test Type Filter: All vs Proctored MCQ vs Short Qs vs Long Qs vs PDF Papers */}
+              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] flex-wrap">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'proctored', label: 'Proctored MCQs' },
+                  { id: 'short_question', label: 'Short Qs' },
+                  { id: 'long_question', label: 'Long Qs' },
                   { id: 'standard', label: 'PDF Papers' },
                 ].map((type) => (
                   <button
@@ -450,8 +554,14 @@ export const AdminTestsPage: React.FC = () => {
                 <h3 className="text-sm font-extrabold text-[#111111] flex items-center gap-2">
                   <span>Class Tests & Assessments</span>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
-                    {(testTypeFilter !== 'standard' ? filteredProctoredTests.length : 0) +
-                      (testTypeFilter !== 'proctored' ? filteredTests.length : 0)}
+                    {(testTypeFilter === 'all' || testTypeFilter === 'proctored' ? filteredProctoredTests.length : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'short_question'
+                        ? filteredWrittenTests.filter((w) => w.test_type === 'short_question').length
+                        : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'long_question'
+                        ? filteredWrittenTests.filter((w) => w.test_type === 'long_question').length
+                        : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'standard' ? filteredTests.length : 0)}
                   </span>
                 </h3>
               </div>
@@ -541,8 +651,108 @@ export const AdminTestsPage: React.FC = () => {
                       );
                     })}
 
+                  {/* Written Tests Section (Short & Long Questions) */}
+                  {(testTypeFilter === 'all' || testTypeFilter === 'short_question' || testTypeFilter === 'long_question') &&
+                    filteredWrittenTests
+                      .filter((w) => testTypeFilter === 'all' || w.test_type === testTypeFilter)
+                      .map((test) => {
+                        const isPublished = test.status === 'published';
+                        const isShort = test.test_type === 'short_question';
+                        const isSelected = selectedWrittenTestId === test.id;
+                        return (
+                          <div
+                            key={test.id}
+                            onClick={() => setSelectedWrittenTestId(test.id)}
+                            className={`bg-white rounded-2xl border-2 p-4 shadow-xs transition-all space-y-3 cursor-pointer ${
+                              isSelected
+                                ? 'border-amber-500 ring-2 ring-amber-400/30'
+                                : 'border-amber-300/40 hover:border-amber-400'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black text-amber-400 flex items-center gap-1 shadow-2xs">
+                                  {isShort ? <FileText size={11} /> : <BookOpen size={11} />}
+                                  {isShort ? 'Short Question Test' : 'Long Question Test'}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1">
+                                  <Camera size={10} /> Camera Capture
+                                </span>
+                                {isPublished ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                    <Lock size={10} /> Published
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                                    Draft
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => setViewingWrittenTest(test)}
+                                  className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] cursor-pointer"
+                                  title="Inspect Test Questions"
+                                >
+                                  <Eye size={15} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteWrittenTest(test.id)}
+                                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
+                                  title="Delete Test"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="text-sm font-black text-[#111111] leading-tight">{test.title}</h4>
+                              <p className="text-[11px] font-medium text-[#737373] mt-1">
+                                {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} Questions • {test.total_marks} Marks
+                              </p>
+                              <p className="text-[10px] text-amber-800 font-bold mt-0.5">
+                                Handwritten capture • 24-hr Cloudflare R2 retention • Manual teacher grading
+                              </p>
+                            </div>
+
+                            <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setSelectedWrittenTestId(test.id)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[#111111] text-[#F4C430] shadow-xs'
+                                    : 'bg-amber-50 border border-amber-300 text-amber-950 hover:bg-amber-100'
+                                }`}
+                              >
+                                <Award size={13} />
+                                <span>Submissions & Grading</span>
+                              </button>
+
+                              {!isPublished ? (
+                                <button
+                                  onClick={() => handlePublishWrittenTest(test.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
+                                >
+                                  <Send size={12} />
+                                  <span>Publish to Students</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setViewingWrittenTest(test)}
+                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#111111] cursor-pointer hover:bg-[#F0F0F0]"
+                                >
+                                  <span>Inspect Questions</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
                   {/* Standard / PDF Tests Section */}
-                  {testTypeFilter !== 'proctored' &&
+                  {(testTypeFilter === 'all' || testTypeFilter === 'standard') &&
                     filteredTests.map((test) => (
                       <TeacherTestCard
                         key={test.id}
@@ -557,10 +767,13 @@ export const AdminTestsPage: React.FC = () => {
 
                   {/* Empty state */}
                   {((testTypeFilter === 'proctored' && filteredProctoredTests.length === 0) ||
+                    (testTypeFilter === 'short_question' && filteredWrittenTests.filter((w) => w.test_type === 'short_question').length === 0) ||
+                    (testTypeFilter === 'long_question' && filteredWrittenTests.filter((w) => w.test_type === 'long_question').length === 0) ||
                     (testTypeFilter === 'standard' && filteredTests.length === 0) ||
                     (testTypeFilter === 'all' &&
                       filteredTests.length === 0 &&
-                      filteredProctoredTests.length === 0)) && (
+                      filteredProctoredTests.length === 0 &&
+                      filteredWrittenTests.length === 0)) && (
                     <div className="bg-white rounded-2xl border border-[#E5E5E5] p-8 text-center shadow-xs">
                       <BookOpen size={36} className="mx-auto mb-2 text-[#A3A3A3]" />
                       <p className="text-sm font-bold text-[#111111]">No assessments found</p>
@@ -575,11 +788,53 @@ export const AdminTestsPage: React.FC = () => {
 
             {/* Right Column: Submissions & Grading (7 Cols) */}
             <div className="lg:col-span-6 xl:col-span-7 sticky top-4">
-              <TeacherSubmissionsPanel
-                selectedTest={selectedTest}
-                onOpenTestViewer={(t) => setViewingTest(t)}
-                onOpenSubmissionViewer={(s) => setViewingSubmission(s)}
-              />
+              {selectedWrittenTest ? (
+                <div className="bg-white rounded-2xl border border-[#E5E5E5] p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E5]">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black text-amber-400 flex items-center gap-1">
+                          {selectedWrittenTest.test_type === 'short_question' ? <FileText size={11} /> : <BookOpen size={11} />}
+                          {selectedWrittenTest.test_type === 'short_question' ? 'Short Q Test' : 'Long Q Test'}
+                        </span>
+                        <span className="text-xs font-bold text-[#737373]">
+                          Grade {selectedWrittenTest.grade} • {selectedWrittenTest.subject}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-black text-[#111111] mt-1">{selectedWrittenTest.title}</h3>
+                      <p className="text-xs text-[#737373] mt-0.5">
+                        {selectedWrittenTest.questions.length} Questions • {selectedWrittenTest.duration_minutes} Mins • {selectedWrittenTest.total_marks} Marks
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setViewingWrittenTest(selectedWrittenTest)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F0F0F0] cursor-pointer"
+                      >
+                        <Eye size={13} />
+                        <span>Inspect</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedWrittenTestId(null)}
+                        className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] cursor-pointer"
+                        title="Back to PDF Submissions"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Written Test Submissions & Grading for this test */}
+                  <WrittenTestSubmissionsList filterTestId={selectedWrittenTest.id} isTeacher={false} />
+                </div>
+              ) : (
+                <TeacherSubmissionsPanel
+                  selectedTest={selectedTest}
+                  onOpenTestViewer={(t) => setViewingTest(t)}
+                  onOpenSubmissionViewer={(s) => setViewingSubmission(s)}
+                />
+              )}
             </div>
           </div>
         </>
@@ -689,6 +944,14 @@ export const AdminTestsPage: React.FC = () => {
       <AdminCreateMCQTestModal
         isOpen={isCreateMCQModalOpen}
         onClose={() => setIsCreateMCQModalOpen(false)}
+        onTestCreated={fetchData}
+      />
+
+      {/* Written Test Creation Modal (Short & Long Questions - Admin Only) */}
+      <AdminCreateWrittenTestModal
+        isOpen={isCreateWrittenModalOpen}
+        testType={writtenModalType}
+        onClose={() => setIsCreateWrittenModalOpen(false)}
         onTestCreated={fetchData}
       />
 
@@ -814,6 +1077,93 @@ export const AdminTestsPage: React.FC = () => {
               ) : (
                 <button
                   onClick={() => setViewingMCQTest(null)}
+                  className="px-4 py-2 rounded-xl bg-[#111111] text-white font-black text-xs cursor-pointer"
+                >
+                  Close Preview
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Written Test Inspection Modal */}
+      {viewingWrittenTest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-black text-amber-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                    {viewingWrittenTest.test_type === 'short_question' ? (
+                      <FileText size={11} />
+                    ) : (
+                      <BookOpen size={11} />
+                    )}
+                    {viewingWrittenTest.test_type === 'short_question'
+                      ? 'Short Question Test'
+                      : 'Long Question Test'}
+                  </span>
+                  <span className="text-xs font-bold text-[#737373]">
+                    Grade {viewingWrittenTest.grade} • {viewingWrittenTest.subject}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-[#111111] mt-1">{viewingWrittenTest.title}</h3>
+                <p className="text-xs text-[#737373] mt-0.5">
+                  {viewingWrittenTest.questions.length} Questions • {viewingWrittenTest.duration_minutes} Mins • {viewingWrittenTest.total_marks} Marks
+                </p>
+              </div>
+
+              <button
+                onClick={() => setViewingWrittenTest(null)}
+                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Questions list */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {viewingWrittenTest.questions.map((q, qIndex) => (
+                <div key={q.id} className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="px-2 py-0.5 rounded-lg bg-[#111111] text-white text-[10px] font-black">
+                      Question #{qIndex + 1}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-[#E5E5E5] text-amber-800 shrink-0">
+                      {q.marks} {q.marks === 1 ? 'Mark' : 'Marks'}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-[#111111] leading-relaxed">
+                    {q.question || q.question_text}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between">
+              <span className="text-xs text-[#737373]">
+                Status:{' '}
+                <strong className={viewingWrittenTest.status === 'published' ? 'text-emerald-700' : 'text-amber-700'}>
+                  {viewingWrittenTest.status === 'published' ? 'Published' : 'Draft'}
+                </strong>
+              </span>
+
+              {viewingWrittenTest.status !== 'published' ? (
+                <button
+                  onClick={async () => {
+                    await handlePublishWrittenTest(viewingWrittenTest.id);
+                    setViewingWrittenTest(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs cursor-pointer shadow-xs"
+                >
+                  Publish to Students
+                </button>
+              ) : (
+                <button
+                  onClick={() => setViewingWrittenTest(null)}
                   className="px-4 py-2 rounded-xl bg-[#111111] text-white font-black text-xs cursor-pointer"
                 >
                   Close Preview

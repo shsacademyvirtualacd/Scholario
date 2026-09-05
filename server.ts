@@ -5,7 +5,13 @@ import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
-import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  DeleteObjectCommand,
+  PutObjectCommand,
+  GetObjectCommand,
+  PutBucketLifecycleConfigurationCommand,
+} from '@aws-sdk/client-s3';
 import pg from 'pg';
 const { Pool } = pg;
 
@@ -67,6 +73,71 @@ const upload = multer({
 const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename: string }>();
 const proctoredMcqTests = new Map<string, any>();
 const proctoredMcqSubmissions = new Map<string, any>();
+
+// Short & Long Question Written Tests stores
+const writtenTests = new Map<string, any>();
+const writtenSubmissions = new Map<string, any>();
+
+// Photos for exam submissions: key => { buffer: Buffer; mimeType: string; uploadedAt: number; testId: string; studentId: string; questionId: string; r2Key: string }
+const examSubmissionPhotos = new Map<string, { buffer: Buffer; mimeType: string; uploadedAt: number; testId: string; studentId: string; questionId: string; r2Key: string }>();
+
+// 24 Hours in Milliseconds for auto-expiry
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+// Cloudflare R2 Bucket for exam submissions (separate from chat attachments)
+const R2_EXAM_BUCKET = process.env.R2_EXAM_SUBMISSIONS_BUCKET || 'scholario-exam-submissions';
+
+function getR2Client(): S3Client | null {
+  const r2AccountId = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
+  const r2AccessKey = process.env.R2_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+  const r2SecretKey = process.env.R2_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+  if (!r2AccountId || !r2AccessKey || !r2SecretKey) return null;
+  return new S3Client({
+    region: 'auto',
+    endpoint: process.env.R2_ENDPOINT || `https://${r2AccountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: r2AccessKey,
+      secretAccessKey: r2SecretKey,
+    },
+  });
+}
+
+// Ensure R2 lifecycle rule (24-hour auto-deletion)
+async function ensureR2ExamBucketLifecycle() {
+  const s3 = getR2Client();
+  if (!s3) return;
+  try {
+    await s3.send(
+      new PutBucketLifecycleConfigurationCommand({
+        Bucket: R2_EXAM_BUCKET,
+        LifecycleConfiguration: {
+          Rules: [
+            {
+              ID: 'AutoDeleteSubmissionsAfter24Hours',
+              Status: 'Enabled',
+              Filter: { Prefix: 'submissions/' },
+              Expiration: { Days: 1 },
+            },
+          ],
+        },
+      })
+    );
+    console.log(`[R2] Auto-delete lifecycle rule configured for bucket "${R2_EXAM_BUCKET}" (24-hour expiry)`);
+  } catch (err: any) {
+    // Non-fatal if bucket doesn't exist yet or permissions are limited
+    console.warn(`[R2] Bucket lifecycle configuration note for ${R2_EXAM_BUCKET}:`, err?.message || err);
+  }
+}
+
+// Background cleanup interval for in-memory exam photos older than 24 hours
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, item] of examSubmissionPhotos.entries()) {
+    if (now - item.uploadedAt > TWENTY_FOUR_HOURS_MS) {
+      examSubmissionPhotos.delete(key);
+    }
+  }
+}, 10 * 60 * 1000);
 
 import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDataTools';
 import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
@@ -1717,6 +1788,302 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.json({ success: true, submission: sub });
   });
 
+  // ── Short & Long Question Written Tests APIs ─────────
+  app.get('/api/written-tests', (req, res) => {
+    const list = Array.from(writtenTests.values());
+    return res.json({ tests: list });
+  });
+
+  app.post('/api/written-tests', express.json(), (req, res) => {
+    const test = req.body;
+    if (!test || !test.id) return res.status(400).json({ error: 'Invalid test payload' });
+    writtenTests.set(test.id, test);
+    return res.json({ success: true, test });
+  });
+
+  app.post('/api/written-tests/publish/:id', (req, res) => {
+    const { id } = req.params;
+    const test = writtenTests.get(id);
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    test.status = 'published';
+    test.published_at = new Date().toISOString();
+    writtenTests.set(id, test);
+    return res.json({ success: true, test });
+  });
+
+  app.delete('/api/written-tests/:id', (req, res) => {
+    const { id } = req.params;
+    writtenTests.delete(id);
+    return res.json({ success: true });
+  });
+
+  // ── Exam Submissions Camera Photo Upload (Cloudflare R2) ─
+  app.post('/api/exam-submissions/upload-photo', upload.single('photo'), async (req, res) => {
+    try {
+      const file = req.file;
+      const {
+        test_id,
+        student_id,
+        question_id,
+        submitted_at,
+        photo_base64,
+      } = req.body;
+
+      if (!test_id || !student_id || !question_id) {
+        return res.status(400).json({ error: 'test_id, student_id, and question_id are required' });
+      }
+
+      let buffer: Buffer | null = null;
+      let mimeType = 'image/jpeg';
+
+      if (file && file.buffer) {
+        buffer = file.buffer;
+        mimeType = file.mimetype || 'image/jpeg';
+      } else if (photo_base64) {
+        const matches = photo_base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          mimeType = matches[1];
+          buffer = Buffer.from(matches[2], 'base64');
+        } else {
+          buffer = Buffer.from(photo_base64, 'base64');
+        }
+      }
+
+      if (!buffer) {
+        return res.status(400).json({ error: 'No photo data provided' });
+      }
+
+      const cleanTestId = String(test_id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const cleanStudentId = String(student_id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const cleanQuestionId = String(question_id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const r2Key = `submissions/${cleanTestId}/${cleanStudentId}/${cleanQuestionId}.jpg`;
+      const uploadedAt = Date.now();
+
+      // Store in memory cache for fast serving and dev server preview
+      examSubmissionPhotos.set(r2Key, {
+        buffer,
+        mimeType,
+        uploadedAt,
+        testId: cleanTestId,
+        studentId: cleanStudentId,
+        questionId: cleanQuestionId,
+        r2Key,
+      });
+
+      // Upload to Cloudflare R2 bucket if credentials configured
+      const s3Client = getR2Client();
+      if (s3Client) {
+        try {
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: R2_EXAM_BUCKET,
+              Key: r2Key,
+              Body: buffer,
+              ContentType: mimeType,
+              Metadata: {
+                student_id: cleanStudentId,
+                test_id: cleanTestId,
+                question_id: cleanQuestionId,
+                submitted_at: submitted_at || new Date().toISOString(),
+                uploaded_at: String(uploadedAt),
+              },
+            })
+          );
+          console.log(`[R2] Uploaded photo answer "${r2Key}" to bucket "${R2_EXAM_BUCKET}"`);
+        } catch (r2Err: any) {
+          console.warn(`[R2] Upload object note for "${r2Key}":`, r2Err?.message || r2Err);
+        }
+      }
+
+      const photoUrl = `/api/exam-submissions/photo/${cleanTestId}/${cleanStudentId}/${cleanQuestionId}`;
+
+      return res.json({
+        success: true,
+        key: r2Key,
+        photo_url: photoUrl,
+        uploaded_at: uploadedAt,
+        expires_at: uploadedAt + TWENTY_FOUR_HOURS_MS,
+      });
+    } catch (err: any) {
+      console.error('[Upload Photo Error]:', err);
+      return res.status(500).json({ error: 'Failed to upload photo answer', details: err?.message });
+    }
+  });
+
+  // ── Exam Submissions Photo Retrieval (Strict 24-Hour Expiry) ─
+  app.get('/api/exam-submissions/photo/:testId/:studentId/:questionId', async (req, res) => {
+    try {
+      const { testId, studentId, questionId } = req.params;
+      const r2Key = `submissions/${testId}/${studentId}/${questionId}.jpg`;
+
+      // 1. Check in-memory item
+      const item = examSubmissionPhotos.get(r2Key);
+      const now = Date.now();
+
+      if (item) {
+        const elapsed = now - item.uploadedAt;
+        if (elapsed > TWENTY_FOUR_HOURS_MS) {
+          examSubmissionPhotos.delete(r2Key);
+          return res.status(410).json({
+            expired: true,
+            error: 'SUBMISSION_EXPIRED',
+            message: 'This submission has exceeded the 24-hour grading window and has expired.',
+          });
+        }
+        res.setHeader('Content-Type', item.mimeType || 'image/jpeg');
+        res.setHeader('Cache-Control', 'private, max-age=60');
+        res.setHeader(
+          'X-Submission-Expires-In',
+          String(Math.max(0, Math.floor((item.uploadedAt + TWENTY_FOUR_HOURS_MS - now) / 1000)))
+        );
+        return res.send(item.buffer);
+      }
+
+      // 2. Fallback to Cloudflare R2 bucket
+      const s3Client = getR2Client();
+      if (s3Client) {
+        try {
+          const getRes = await s3Client.send(
+            new GetObjectCommand({
+              Bucket: R2_EXAM_BUCKET,
+              Key: r2Key,
+            })
+          );
+
+          const uploadedAtMeta = Number(getRes.Metadata?.uploaded_at) || (getRes.LastModified ? getRes.LastModified.getTime() : 0);
+          if (uploadedAtMeta > 0 && now - uploadedAtMeta > TWENTY_FOUR_HOURS_MS) {
+            return res.status(410).json({
+              expired: true,
+              error: 'SUBMISSION_EXPIRED',
+              message: 'This submission has exceeded the 24-hour grading window and has expired.',
+            });
+          }
+
+          if (getRes.Body) {
+            const streamToBuffer = async (stream: any): Promise<Buffer> => {
+              return new Promise((resolve, reject) => {
+                const chunks: any[] = [];
+                stream.on('data', (chunk: any) => chunks.push(chunk));
+                stream.on('error', reject);
+                stream.on('end', () => resolve(Buffer.concat(chunks)));
+              });
+            };
+
+            const buf = await streamToBuffer(getRes.Body);
+            // Cache back into memory
+            examSubmissionPhotos.set(r2Key, {
+              buffer: buf,
+              mimeType: getRes.ContentType || 'image/jpeg',
+              uploadedAt: uploadedAtMeta || now,
+              testId,
+              studentId,
+              questionId,
+              r2Key,
+            });
+
+            res.setHeader('Content-Type', getRes.ContentType || 'image/jpeg');
+            return res.send(buf);
+          }
+        } catch (r2Err: any) {
+          if (r2Err?.name === 'NoSuchKey' || r2Err?.$metadata?.httpStatusCode === 404) {
+            return res.status(404).json({ error: 'Photo not found' });
+          }
+          console.warn(`[R2] Get object warning for "${r2Key}":`, r2Err?.message || r2Err);
+        }
+      }
+
+      return res.status(404).json({ error: 'Photo not found or expired' });
+    } catch (err: any) {
+      console.error('[Get Photo Error]:', err);
+      return res.status(500).json({ error: 'Failed to retrieve photo' });
+    }
+  });
+
+  // ── Written Submissions APIs with 24-Hour Expiry Enrichment ─
+  app.post('/api/written-submissions', express.json({ limit: '15mb' }), (req, res) => {
+    const sub = req.body;
+    if (!sub || !sub.id) return res.status(400).json({ error: 'Invalid submission payload' });
+    if (!sub.submitted_at) sub.submitted_at = new Date().toISOString();
+    writtenSubmissions.set(sub.id, sub);
+    return res.json({ success: true, submission: sub });
+  });
+
+  app.get('/api/written-submissions', (req, res) => {
+    const now = Date.now();
+    const list = Array.from(writtenSubmissions.values()).map((sub) => {
+      const submittedAtMs = new Date(sub.submitted_at || sub.created_at || now).getTime();
+      const elapsedMs = now - submittedAtMs;
+      const isExpired = elapsedMs > TWENTY_FOUR_HOURS_MS;
+      const remainingMs = Math.max(0, TWENTY_FOUR_HOURS_MS - elapsedMs);
+      const hours = Math.floor(remainingMs / (60 * 60 * 1000));
+      const mins = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+      const remainingFormatted = isExpired ? 'Expired' : `${hours}h ${mins}m`;
+
+      return {
+        ...sub,
+        is_expired: isExpired,
+        remaining_ms: remainingMs,
+        remaining_formatted: remainingFormatted,
+        expires_at: new Date(submittedAtMs + TWENTY_FOUR_HOURS_MS).toISOString(),
+      };
+    });
+    return res.json({ submissions: list });
+  });
+
+  app.post('/api/written-submissions/grade', express.json(), (req, res) => {
+    const {
+      submission_id,
+      per_question_grades,
+      teacher_feedback,
+      graded_by,
+      graded_by_name,
+    } = req.body;
+
+    const sub = writtenSubmissions.get(submission_id);
+    if (!sub) return res.status(404).json({ error: 'Submission not found' });
+
+    // Check 24-hour validity
+    const submittedAtMs = new Date(sub.submitted_at || sub.created_at || Date.now()).getTime();
+    const isExpired = Date.now() - submittedAtMs > TWENTY_FOUR_HOURS_MS;
+
+    if (isExpired && sub.status !== 'graded') {
+      return res.status(410).json({
+        expired: true,
+        error: 'SUBMISSION_EXPIRED',
+        message: 'This submission has exceeded the 24-hour grading window and can no longer be graded.',
+      });
+    }
+
+    if (Array.isArray(per_question_grades) && Array.isArray(sub.answers)) {
+      sub.answers = sub.answers.map((ans: any) => {
+        const gradeInfo = per_question_grades.find((g: any) => g.question_id === ans.question_id);
+        if (gradeInfo) {
+          return {
+            ...ans,
+            marks_awarded: Number(gradeInfo.marks_awarded) || 0,
+            remarks: gradeInfo.remarks || '',
+          };
+        }
+        return ans;
+      });
+    }
+
+    // Auto-calculate total score from per-question marks
+    const calculatedTotal = Array.isArray(sub.answers)
+      ? sub.answers.reduce((acc: number, ans: any) => acc + (Number(ans.marks_awarded) || 0), 0)
+      : (req.body.final_score || 0);
+
+    sub.status = 'graded';
+    sub.final_score = calculatedTotal;
+    sub.teacher_feedback = teacher_feedback || '';
+    sub.graded_at = new Date().toISOString();
+    sub.graded_by = graded_by;
+    sub.graded_by_name = graded_by_name;
+
+    writtenSubmissions.set(submission_id, sub);
+    return res.json({ success: true, submission: sub });
+  });
+
   // ── Submissions Upload ──────────────────────────────
   app.post('/api/submissions/upload', upload.single('file'), async (req, res) => {
     try {
@@ -2915,6 +3282,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Scholario Server] running on http://0.0.0.0:${PORT}`);
+    ensureR2ExamBucketLifecycle().catch((err) => {
+      console.warn('[R2 Lifecycle Init Note]:', err?.message || err);
+    });
   });
 }
 

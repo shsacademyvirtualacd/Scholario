@@ -3241,24 +3241,33 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
   }
 
   const targetBoard = boardId || 'fbise';
-  if (!cachedTaxonomy) {
+  const rawGrade = String(grade || '').trim();
+  const cleanGrade = rawGrade.replace(/^(grade|class)\s*/i, '').replace(/th$/i, '').trim().toLowerCase();
+
+  if (!cachedTaxonomy || !cachedTaxonomy.classes.length) {
     const grades = getGradesForBoard(targetBoard);
-    const g = grades.find((gr) => gr.grade === grade);
-    if (!g) return [];
+    const g = grades.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) || grades[0];
+    if (!g) return ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
     if (!streamName) return g.commonSubjects || [];
     const norm = streamName.trim().toLowerCase();
     const st = g.streams.find((s) => s.name.toLowerCase() === norm || norm.includes(s.name.toLowerCase()));
-    return st?.subjects || g.streams[0]?.subjects || g.commonSubjects || [];
+    return st?.subjects || g.streams[0]?.subjects || g.commonSubjects || ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
   }
 
-  const gradeClass = cachedTaxonomy.classes.find(
-    (c: any) => String(c.grade) === String(grade) && (!boardId || c.board_id === boardId)
-  ) || cachedTaxonomy.classes.find((c: any) => String(c.grade) === String(grade));
+  const gradeClass =
+    cachedTaxonomy.classes.find(
+      (c: any) =>
+        (String(c.grade).toLowerCase() === cleanGrade || String(c.grade).toLowerCase() === rawGrade.toLowerCase()) &&
+        (!boardId || c.board_id === boardId)
+    ) ||
+    cachedTaxonomy.classes.find(
+      (c: any) => String(c.grade).toLowerCase() === cleanGrade || String(c.grade).toLowerCase() === rawGrade.toLowerCase()
+    );
 
   if (!gradeClass) {
     const grades = getGradesForBoard(targetBoard);
-    const g = grades.find((gr) => gr.grade === grade);
-    return g ? (g.streams[0]?.subjects || g.commonSubjects || []) : [];
+    const g = grades.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) || grades[0];
+    return g ? (g.streams[0]?.subjects || g.commonSubjects || []) : ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
   }
 
   if (!streamName) {
@@ -3275,8 +3284,8 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
 
     if (subjects.length > 0) return Array.from(new Set(subjects)).sort();
     const grades = getGradesForBoard(gradeClass.board_id || targetBoard);
-    const g = grades.find((gr) => gr.grade === grade);
-    return g ? Array.from(new Set(g.streams.flatMap(s => s.subjects))).sort() : [];
+    const g = grades.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) || grades[0];
+    return g ? Array.from(new Set(g.streams.flatMap(s => s.subjects))).sort() : ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
   }
 
   const norm = streamName.trim().toLowerCase();
@@ -3299,10 +3308,10 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
   }
 
   const grades = getGradesForBoard(gradeClass.board_id || targetBoard);
-  const g = grades.find((gr) => gr.grade === grade);
-  if (!g) return [];
+  const g = grades.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) || grades[0];
+  if (!g) return ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
   const st = g.streams.find((s) => s.name.toLowerCase() === norm || norm.includes(s.name.toLowerCase()));
-  return st?.subjects || g.streams[0]?.subjects || g.commonSubjects || [];
+  return st?.subjects || g.streams[0]?.subjects || g.commonSubjects || ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
 }
 
 // =============================================================================
