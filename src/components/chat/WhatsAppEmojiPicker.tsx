@@ -159,7 +159,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-[#54656F] hover:text-[#111B21] p-0.5"
+              className="text-[#54656F] hover:text-[#111B21] active:opacity-60 p-0.5 outline-none select-none transition-opacity"
               title="Clear search"
             >
               <X size={14} />
@@ -171,7 +171,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#54656F] hover:text-[#111B21] hover:bg-black/5 rounded-lg transition-colors shrink-0"
+            className="p-1.5 text-[#54656F] hover:text-[#111B21] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 rounded-lg transition-all shrink-0 outline-none select-none"
             title="Close emoji keyboard"
           >
             <X size={18} />
@@ -199,7 +199,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
                     type="button"
                     onClick={() => handleSelect(item.emoji)}
                     title={item.name}
-                    className="w-10 h-10 flex items-center justify-center text-[25px] sm:text-[27px] leading-none cursor-pointer bg-transparent border-none p-0 outline-none select-none hover:scale-110 active:scale-100 transition-transform"
+                    className="w-10 h-10 flex items-center justify-center text-[25px] sm:text-[27px] leading-none cursor-pointer bg-transparent border-none p-0 outline-none select-none hover:scale-105 active:scale-95 active:opacity-60 transition-all"
                   >
                     {item.emoji}
                   </button>
@@ -226,7 +226,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
                       key={`recent-${emoji}-${idx}`}
                       type="button"
                       onClick={() => handleSelect(emoji)}
-                      className="w-10 h-10 flex items-center justify-center text-[25px] sm:text-[27px] leading-none cursor-pointer bg-transparent border-none p-0 outline-none select-none hover:scale-110 active:scale-100 transition-transform"
+                      className="w-10 h-10 flex items-center justify-center text-[25px] sm:text-[27px] leading-none cursor-pointer bg-transparent border-none p-0 outline-none select-none hover:scale-105 active:scale-95 active:opacity-60 transition-all"
                     >
                       {emoji}
                     </button>
@@ -258,7 +258,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
                       type="button"
                       onClick={() => handleSelect(item.emoji)}
                       title={item.name}
-                      className="w-10 h-10 flex items-center justify-center text-[25px] sm:text-[27px] leading-none cursor-pointer bg-transparent border-none p-0 outline-none select-none hover:scale-110 active:scale-100 transition-transform"
+                      className="w-10 h-10 flex items-center justify-center text-[25px] sm:text-[27px] leading-none cursor-pointer bg-transparent border-none p-0 outline-none select-none hover:scale-105 active:scale-95 active:opacity-60 transition-all"
                     >
                       {item.emoji}
                     </button>
@@ -283,7 +283,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
             <button
               type="button"
               onClick={() => scrollToCategory('recent')}
-              className={`p-1.5 rounded-none border-b-2 transition-all cursor-pointer ${
+              className={`p-1.5 rounded-none border-b-2 transition-all cursor-pointer active:opacity-60 active:scale-95 outline-none select-none ${
                 activeCategory === 'recent' ? 'border-[#00A884]' : 'border-transparent'
               }`}
               title="Recently used"
@@ -299,7 +299,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => scrollToCategory(cat.id)}
-                className={`p-1.5 rounded-none border-b-2 transition-all cursor-pointer ${
+                className={`p-1.5 rounded-none border-b-2 transition-all cursor-pointer active:opacity-60 active:scale-95 outline-none select-none ${
                   isActive ? 'border-[#00A884]' : 'border-transparent'
                 }`}
                 title={cat.name}
@@ -315,7 +315,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
           <button
             type="button"
             onClick={onBackspace}
-            className="p-1.5 text-[#54656F] hover:text-[#111B21] transition-colors ml-1 cursor-pointer shrink-0"
+            className="p-1.5 text-[#54656F] hover:text-[#111B21] active:opacity-60 active:scale-95 transition-all ml-1 cursor-pointer shrink-0 outline-none select-none"
             title="Backspace"
             aria-label="Delete last character"
           >

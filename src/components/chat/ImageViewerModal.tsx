@@ -179,7 +179,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                   id="btn-zoom-out"
                   onClick={handleZoomOut}
                   disabled={scale <= 1}
-                  className="p-1.5 hover:bg-white/20 rounded-lg text-white disabled:opacity-30 transition-all"
+                  className="p-1.5 hover:bg-white/20 active:opacity-60 active:scale-95 rounded-lg text-white disabled:opacity-30 transition-all outline-none select-none"
                   title="Zoom out"
                 >
                   <ZoomOut size={16} />
@@ -192,7 +192,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                   id="btn-zoom-in"
                   onClick={handleZoomIn}
                   disabled={scale >= 4}
-                  className="p-1.5 hover:bg-white/20 rounded-lg text-white disabled:opacity-30 transition-all"
+                  className="p-1.5 hover:bg-white/20 active:opacity-60 active:scale-95 rounded-lg text-white disabled:opacity-30 transition-all outline-none select-none"
                   title="Zoom in"
                 >
                   <ZoomIn size={16} />
@@ -202,7 +202,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                     type="button"
                     id="btn-zoom-reset"
                     onClick={handleResetZoom}
-                    className="p-1.5 hover:bg-white/20 rounded-lg text-white transition-all ml-0.5"
+                    className="p-1.5 hover:bg-white/20 active:opacity-60 active:scale-95 rounded-lg text-white transition-all ml-0.5 outline-none select-none"
                     title="Reset zoom"
                   >
                     <RotateCcw size={14} />
@@ -215,7 +215,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                 href={downloadUrl}
                 download={filename}
                 id="btn-image-download"
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium flex items-center gap-1.5 text-xs transition-all"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 active:opacity-60 active:scale-95 text-white font-medium flex items-center gap-1.5 text-xs transition-all outline-none select-none"
                 title="Download image"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -228,7 +228,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
                 type="button"
                 id="btn-image-close"
                 onClick={onClose}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all ml-1"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 active:opacity-60 active:scale-95 text-white transition-all ml-1 outline-none select-none"
                 title="Close (Esc)"
               >
                 <X size={18} />

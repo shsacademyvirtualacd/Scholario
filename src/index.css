@@ -30,10 +30,12 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html {
     scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -42,9 +44,10 @@
     color: #111111;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* Universal pointer cursor for clickable elements */
+  /* Universal pointer cursor for clickable elements & disable tap highlight ripple */
   button,
   a,
   select,
@@ -55,6 +58,21 @@
   input[type="file"],
   [role="button"] {
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* WhatsApp-style subtle icon button feedback: slight opacity dim + subtle scale down, no expanding circle or ripple */
+  .chat-icon-btn {
+    -webkit-tap-highlight-color: transparent !important;
+    outline: none !important;
+    user-select: none;
+    transition: opacity 120ms ease, transform 120ms ease, background-color 150ms ease;
+  }
+
+  .chat-icon-btn:active {
+    opacity: 0.6 !important;
+    transform: scale(0.95) !important;
   }
 
   ::selection {

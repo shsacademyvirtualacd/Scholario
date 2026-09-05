@@ -79,7 +79,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
               aria-label="Close"
             >
               <X size={19} />
@@ -125,7 +125,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 <button
                   type="button"
                   onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] text-[#54656F] hover:text-[#111111] transition-colors group"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] hover:text-[#111111] transition-all group outline-none select-none"
                 >
                   <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
                     <Phone size={18} />
@@ -136,7 +136,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 <button
                   type="button"
                   onClick={() => toast.info('Video calling will be available in an upcoming update.')}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] text-[#54656F] hover:text-[#111111] transition-colors group"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] hover:text-[#111111] transition-all group outline-none select-none"
                 >
                   <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
                     <Video size={18} />
@@ -150,7 +150,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                     onClose();
                     onOpenSearch?.();
                   }}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] text-[#54656F] hover:text-[#111111] transition-colors group"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] hover:text-[#111111] transition-all group outline-none select-none"
                 >
                   <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#111111]/10 group-hover:text-[#111111] flex items-center justify-center transition-colors">
                     <Search size={18} />

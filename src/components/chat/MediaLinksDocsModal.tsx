@@ -173,7 +173,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
               aria-label="Close"
             >
               <X size={19} />
@@ -191,7 +191,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('media')}
-              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'media'
                   ? 'border-[#25D366] text-[#111111]'
                   : 'border-transparent text-[#667781] hover:text-[#111111]'
@@ -207,7 +207,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('docs')}
-              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'docs'
                   ? 'border-[#25D366] text-[#111111]'
                   : 'border-transparent text-[#667781] hover:text-[#111111]'
@@ -223,7 +223,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('links')}
-              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'links'
                   ? 'border-[#25D366] text-[#111111]'
                   : 'border-transparent text-[#667781] hover:text-[#111111]'
@@ -239,7 +239,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('voice')}
-              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+              className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'voice'
                   ? 'border-[#25D366] text-[#111111]'
                   : 'border-transparent text-[#667781] hover:text-[#111111]'

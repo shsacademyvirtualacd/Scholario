@@ -1399,7 +1399,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     setContactRoleFilter('all');
                     setModalError(null);
                   }}
-                  className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#111111] text-white hover:bg-[#262626] transition-colors shadow-2xs interactive flex items-center gap-1.5"
+                  className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#111111] text-white hover:bg-[#262626] active:bg-[#1f1f1f] active:opacity-75 active:scale-95 transition-all shadow-2xs flex items-center gap-1.5 outline-none select-none"
                   title={onStartNewChatTitle}
                 >
                   <UserPlus size={16} />
@@ -1663,7 +1663,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     {/* Mobile Back Button */}
                     <button
                       onClick={() => setMobileViewActiveThread(false)}
-                      className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-black/5 text-[#111111] shrink-0 transition-colors"
+                      className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 text-[#111111] shrink-0 transition-all outline-none select-none"
                       aria-label="Back to conversations"
                     >
                       <ArrowLeft size={20} />
@@ -1671,7 +1671,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                   <div
                     onClick={() => setShowContactInfoModal(true)}
-                    className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 cursor-pointer hover:opacity-90 transition-opacity select-none"
+                    className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 cursor-pointer hover:opacity-90 active:opacity-75 transition-opacity select-none"
                     title="Click to view contact info"
                   >
                     <ProfileAvatar
@@ -1740,7 +1740,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <button
                       type="button"
                       onClick={() => toast.info('Video calling with teachers & staff will be available in an upcoming update.')}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
                       title="Video call"
                       aria-label="Video call"
                     >
@@ -1750,7 +1750,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <button
                       type="button"
                       onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
                       title="Voice call"
                       aria-label="Voice call"
                     >
@@ -1761,7 +1761,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowChatMenu((prev) => !prev)}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
                         title="More options"
                         aria-label="More options"
                       >
@@ -1790,7 +1790,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   setShowContactInfoModal(true);
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
                               >
                                 <Info size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">View contact</span>
@@ -1803,7 +1803,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   setShowInChatSearch(true);
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
                               >
                                 <Search size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Search</span>
@@ -1816,7 +1816,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   setShowMediaDocsModal(true);
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
                               >
                                 <ImageIcon size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Media, links, and docs</span>
@@ -1829,7 +1829,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   toggleMuteCurrentThread();
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
                               >
                                 {isCurrentThreadMuted ? (
                                   <Bell size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
@@ -1849,7 +1849,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   toast.info('Disappearing messages: Off (Academic compliance retained).');
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
                               >
                                 <Clock size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Disappearing messages</span>
@@ -1861,7 +1861,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   toast.info('Chat wallpaper: WhatsApp classic academic doodle pattern active.');
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
                               >
                                 <Sparkles size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Chat theme</span>
@@ -1873,7 +1873,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   exportChatTranscript();
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
                               >
                                 <Download size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Export chat</span>
@@ -1924,7 +1924,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             setInChatSearchQuery('');
                             setCurrentSearchMatchIndex(0);
                           }}
-                          className="text-[#8696A0] hover:text-[#111111] p-0.5"
+                          className="text-[#8696A0] hover:text-[#111111] active:opacity-60 p-0.5 outline-none select-none transition-opacity"
                         >
                           <X size={14} />
                         </button>
@@ -1944,7 +1944,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         type="button"
                         disabled={inChatSearchMatches.length <= 1}
                         onClick={handlePrevSearchMatch}
-                        className="w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        className="w-7 h-7 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-all outline-none select-none"
                         title="Previous match"
                       >
                         <ChevronUp size={16} />
@@ -1954,7 +1954,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         type="button"
                         disabled={inChatSearchMatches.length <= 1}
                         onClick={handleNextSearchMatch}
-                        className="w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        className="w-7 h-7 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-all outline-none select-none"
                         title="Next match"
                       >
                         <ChevronDown size={16} />
@@ -1967,7 +1967,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           setInChatSearchQuery('');
                           setCurrentSearchMatchIndex(0);
                         }}
-                        className="w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center text-[#54656F] hover:text-[#111111] transition-colors ml-0.5"
+                        className="w-7 h-7 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center text-[#54656F] hover:text-[#111111] transition-all ml-0.5 outline-none select-none"
                         title="Close search"
                       >
                         <X size={16} />
@@ -2337,7 +2337,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           id="btn-chat-emoji"
                           onClick={() => setShowEmojiPicker((prev) => !prev)}
                           disabled={sending || isUploadingAttachment}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation mb-0.5 cursor-pointer ${
+                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all active:opacity-60 active:scale-95 hover:bg-black/5 active:bg-black/10 mb-0.5 cursor-pointer outline-none select-none ${
                             showEmojiPicker ? 'text-[#00A884]' : 'text-[#54656F] hover:text-[#111111]'
                           }`}
                           title={showEmojiPicker ? 'Close emoji keyboard' : 'Insert emoji'}
@@ -2388,7 +2388,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           id="btn-chat-attach"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={sending || isUploadingAttachment}
-                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed mb-0.5 outline-none select-none"
                           title="Attach document or file (≤ 15MB)"
                           aria-label="Attach file"
                         >
@@ -2401,7 +2401,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           id="btn-chat-camera"
                           onClick={() => cameraInputRef.current?.click()}
                           disabled={sending || isUploadingAttachment}
-                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed mb-0.5 outline-none select-none"
                           title="Take or upload photo"
                           aria-label="Camera"
                         >
@@ -2416,7 +2416,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           id="btn-chat-send"
                           onClick={() => handleSendMessage()}
                           disabled={sending || isUploadingAttachment}
-                          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 touch-manipulation"
+                          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95 active:opacity-90 shadow-md outline-none select-none"
                           title="Send message"
                           aria-label="Send message"
                         >
@@ -2440,7 +2440,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             }
                           }}
                           disabled={sending || isUploadingAttachment}
-                          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition-all shadow-md active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
+                          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition-transform shadow-md active:scale-95 active:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none outline-none"
                           title="Record voice message (Hold & slide up to lock, slide left to cancel)"
                           aria-label="Record voice message"
                         >
