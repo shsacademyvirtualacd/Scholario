@@ -60,18 +60,21 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
     <>
       <div
         id={`chat-image-${messageId}`}
-        className={`group relative max-w-[260px] sm:max-w-[280px] shadow-2xs transition-all ${
+        className={`group relative max-w-[260px] sm:max-w-[280px] rounded-[8px] overflow-visible ${
           isMe
-            ? `bg-[#11161D] text-white rounded-[18px] ${hasTail ? 'rounded-br-[2px]' : ''}`
-            : `bg-white text-[#111111] border border-[#E5E5E5] rounded-[18px] ${hasTail ? 'rounded-bl-[2px]' : ''}`
+            ? `bg-[#D9FDD3] text-[#111B21] ${hasTail ? 'rounded-br-[0px]' : ''}`
+            : `bg-white text-[#111B21] ${hasTail ? 'rounded-bl-[0px]' : ''}`
         }`}
+        style={{
+          boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+        }}
       >
         {/* Inner container to clip the image to the bubble's rounded corners */}
         <div
-          className={`overflow-hidden ${
+          className={`overflow-hidden rounded-[8px] ${
             isMe
-              ? `rounded-[18px] ${hasTail ? 'rounded-br-[2px]' : ''}`
-              : `rounded-[18px] ${hasTail ? 'rounded-bl-[2px]' : ''}`
+              ? `${hasTail ? 'rounded-br-[0px]' : ''}`
+              : `${hasTail ? 'rounded-bl-[0px]' : ''}`
           }`}
         >
           {/* Image Thumbnail Container */}
@@ -141,9 +144,7 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
                 {content}
               </p>
               <div
-                className={`flex items-center justify-end gap-1 text-[10px] ${
-                  isMe ? 'text-white/70' : 'text-[#8E8E93]'
-                }`}
+                className={`flex items-center justify-end gap-1 text-[10px] text-[#667781]`}
               >
                 <span>{formatTime(createdAt)}</span>
                 {isMe && (
@@ -151,7 +152,7 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
                     {readAt ? (
                       <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
                     ) : (
-                      <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
+                      <CheckCheck size={14} className="text-[#8696A0] stroke-[1.8]" />
                     )}
                   </span>
                 )}
@@ -161,7 +162,7 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
         </div>
 
         {/* Bubble Tail */}
-        {hasTail && <ChatBubbleTail isMe={isMe} />}
+        {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#D9FDD3' : '#FFFFFF'} />}
       </div>
 
       {/* Fullscreen Pinch-to-zoom Viewer Modal */}

@@ -45,6 +45,7 @@ import { ChatWallpaper } from './ChatWallpaper';
 import { ContactInfoModal } from './ContactInfoModal';
 import { MediaLinksDocsModal } from './MediaLinksDocsModal';
 import { ImageViewerModal } from './ImageViewerModal';
+import { WhatsAppEmojiPicker } from './WhatsAppEmojiPicker';
 import { SageChatView } from '../sage/SageChatView';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
@@ -233,7 +234,47 @@ export const ChatView: React.FC<ChatViewProps> = ({
     toast.success('Chat transcript exported.');
   };
 
-  const QUICK_EMOJIS = ['😊', '😂', '👍', '❤️', '🙏', '🔥', '🎉', '👏', '📚', '✍️', '🎓', '💡', '📌', '💯'];
+  // Emoji insertion & backspace handlers for WhatsApp categorized emoji keyboard
+  const handleInsertEmoji = (emoji: string) => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart ?? inputContent.length;
+      const end = textarea.selectionEnd ?? inputContent.length;
+      const nextContent = inputContent.substring(0, start) + emoji + inputContent.substring(end);
+      setInputContent(nextContent);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+      }, 0);
+    } else {
+      setInputContent((prev) => prev + emoji);
+    }
+  };
+
+  const handleEmojiBackspace = () => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      if (start !== null && end !== null && start === end && start > 0) {
+        const prevChars = Array.from(inputContent.slice(0, start));
+        prevChars.pop();
+        const nextBefore = prevChars.join('');
+        const nextContent = nextBefore + inputContent.slice(end);
+        setInputContent(nextContent);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.selectionStart = textarea.selectionEnd = nextBefore.length;
+        }, 0);
+        return;
+      }
+    }
+    setInputContent((prev) => {
+      const chars = Array.from(prev);
+      chars.pop();
+      return chars.join('');
+    });
+  };
 
   // Message Deletion & Long-Press State (Zero Trace)
   const [actionMenuMessage, setActionMenuMessage] = useState<ChatMessage | null>(null);
@@ -2022,14 +2063,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             id={`chat-msg-${msg.id}`}
                             className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] min-w-0 flex flex-col transition-all ${
                               inChatSearchMatches[currentSearchMatchIndex] === msg.id
-                                ? 'ring-3 ring-[#25D366] ring-offset-2 rounded-[20px] scale-[1.01]'
+                                ? 'ring-3 ring-[#25D366] ring-offset-2 rounded-[12px] scale-[1.01]'
                                 : inChatSearchMatches.includes(msg.id)
-                                ? 'ring-2 ring-[#53BDEB] rounded-[20px]'
+                                ? 'ring-2 ring-[#53BDEB] rounded-[12px]'
                                 : ''
                             } ${
-                              isMe
-                                ? 'items-end cursor-pointer select-none active:scale-[0.99] transition-transform'
-                                : 'items-start'
+                              isMe ? 'items-end cursor-pointer' : 'items-start'
                             }`}
                             style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                             onTouchStart={(e) => handleTouchStart(e, msg)}
@@ -2086,17 +2125,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 hasTail={hasTail}
                               />
                             ) : (
-                              /* WhatsApp Text Bubble */
+                              /* WhatsApp Flat Text Bubble */
                               <div
-                                className={`relative w-fit max-w-full rounded-[18px] px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xs overflow-visible transition-all ${
+                                className={`relative w-fit max-w-full rounded-[8px] px-2.5 sm:px-3 py-1 sm:py-1.5 overflow-visible select-none md:select-text ${
                                   isMe
-                                    ? `bg-[#11161D] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
-                                    : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
+                                    ? `bg-[#D9FDD3] text-[#111B21] ${hasTail ? 'rounded-br-[0px]' : ''}`
+                                    : `bg-white text-[#111B21] ${hasTail ? 'rounded-bl-[0px]' : ''}`
                                 }`}
+                                style={{
+                                  boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+                                }}
                               >
-                                <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+                                <div className="flex flex-wrap items-end justify-between gap-x-2.5 gap-y-0.5">
                                   <p
-                                    className={`text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] ${
+                                    className={`text-[14px] sm:text-[14.5px] whitespace-pre-wrap leading-[19px] break-words [word-break:normal] ${
                                       isMe ? 'select-none md:select-text' : 'select-text'
                                     }`}
                                   >
@@ -2124,17 +2166,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   </p>
 
                                   <div
-                                    className={`ml-auto shrink-0 flex items-center gap-1 text-[10px] leading-none mb-0.5 select-none ${
-                                      isMe ? 'text-white/70' : 'text-[#8E8E93]'
-                                    }`}
+                                    className="ml-auto shrink-0 flex items-center gap-1 text-[11px] leading-none mb-0.5 select-none text-[#667781]"
                                   >
                                     <span className="whitespace-nowrap">{formatMessageTime(msg.created_at)}</span>
                                     {isMe && (
                                       <span title={isRead ? 'Read' : 'Delivered'}>
                                         {isRead ? (
-                                          <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
+                                          <CheckCheck size={15} className="text-[#53BDEB] stroke-[2.2]" />
                                         ) : (
-                                          <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
+                                          <CheckCheck size={15} className="text-[#8696A0] stroke-[1.8]" />
                                         )}
                                       </span>
                                     )}
@@ -2142,7 +2182,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 </div>
 
                                 {/* Tail */}
-                                {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#11161D' : undefined} />}
+                                {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#D9FDD3' : '#FFFFFF'} />}
                               </div>
                             )}
                           </div>
@@ -2180,30 +2220,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 )}
 
-                {/* Quick Emoji Bar when emoji button is active */}
+                {/* Full WhatsApp Categorized Emoji Keyboard */}
                 {showEmojiPicker && (
-                  <div className="flex items-center gap-1 overflow-x-auto py-1.5 px-2.5 bg-white/80 backdrop-blur-xl rounded-2xl border border-black/[0.08] shadow-xs animate-in fade-in zoom-in-95 duration-150">
-                    <span className="text-[11px] text-[#737373] font-medium mr-1.5 select-none shrink-0">Emojis:</span>
-                    {QUICK_EMOJIS.map(emoji => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => {
-                          setInputContent(prev => prev + emoji);
-                          textareaRef.current?.focus();
-                        }}
-                        className="w-8 h-8 rounded-lg hover:bg-black/5 flex items-center justify-center text-lg transition-transform active:scale-125 shrink-0"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setShowEmojiPicker(false)}
-                      className="ml-auto text-xs text-[#8696A0] hover:text-[#111111] px-2 py-1"
-                    >
-                      ✕
-                    </button>
+                  <div className="w-full mb-1 rounded-xl overflow-hidden border border-[#E9EDEF] shadow-md animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <WhatsAppEmojiPicker
+                      onSelectEmoji={handleInsertEmoji}
+                      onClose={() => setShowEmojiPicker(false)}
+                      onBackspace={handleEmojiBackspace}
+                    />
                   </div>
                 )}
 
@@ -2254,15 +2278,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         <button
                           type="button"
                           id="btn-chat-emoji"
-                          onClick={() => setShowEmojiPicker(prev => !prev)}
+                          onClick={() => setShowEmojiPicker((prev) => !prev)}
                           disabled={sending || isUploadingAttachment}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation mb-0.5 ${
-                            showEmojiPicker ? 'text-[#111111] bg-black/10' : 'text-[#54656F] hover:text-[#111111] hover:bg-black/5'
+                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation mb-0.5 cursor-pointer ${
+                            showEmojiPicker ? 'text-[#00A884]' : 'text-[#54656F] hover:text-[#111111]'
                           }`}
-                          title="Insert emoji"
+                          title={showEmojiPicker ? 'Close emoji keyboard' : 'Insert emoji'}
                           aria-label="Insert emoji"
                         >
-                          <Smile size={20} />
+                          <Smile size={21} />
                         </button>
 
                         {/* If uploading attachment: show progress bar inside input */}

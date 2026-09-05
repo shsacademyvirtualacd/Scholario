@@ -185,11 +185,14 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
   return (
     <div
-      className={`relative min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-[18px] p-2.5 sm:p-3 shadow-2xs select-none transition-all overflow-visible ${
+      className={`relative min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-[8px] p-2 sm:p-2.5 select-none overflow-visible ${
         isMe
-          ? `bg-[#11161D] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
-          : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
+          ? `bg-[#D9FDD3] text-[#111B21] ${hasTail ? 'rounded-br-[0px]' : ''}`
+          : `bg-white text-[#111B21] ${hasTail ? 'rounded-bl-[0px]' : ''}`
       }`}
+      style={{
+        boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+      }}
     >
       {/* Voice Player Controls Header */}
       <div className="flex items-center gap-2 sm:gap-3">
@@ -198,10 +201,10 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
           type="button"
           onClick={togglePlayPause}
           disabled={hasError}
-          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 shadow-xs touch-manipulation ${
+          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-colors touch-manipulation cursor-pointer ${
             isMe
-              ? 'bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111]'
-              : 'bg-[#111111] hover:bg-[#262626] text-white'
+              ? 'bg-[#00A884] text-white hover:bg-[#008f6f]'
+              : 'bg-[#54656F] text-white hover:bg-[#41525d]'
           }`}
           title={isPlaying ? 'Pause voice message' : 'Play voice message'}
         >
@@ -237,11 +240,9 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
                   className={`flex-1 min-w-[2px] max-w-[4px] rounded-full transition-all duration-100 shrink-0 ${
                     isFilled
                       ? isMe
-                        ? 'bg-[#F4C430]'
-                        : 'bg-[#111111]'
-                      : isMe
-                      ? 'bg-white/25 group-hover:bg-white/40'
-                      : 'bg-[#E5E5E5] group-hover:bg-[#D4D4D4]'
+                        ? 'bg-[#00A884]'
+                        : 'bg-[#54656F]'
+                      : 'bg-[#8696A0]/40'
                   }`}
                 />
               );
@@ -250,7 +251,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
           {/* Time and Speed Info */}
           <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-mono leading-none">
-            <span className={isMe ? 'text-white/80' : 'text-[#737373]'}>
+            <span className="text-[#667781]">
               {isPlaying || currentTime > 0
                 ? `${formatAudioDuration(currentTime)} / ${formatAudioDuration(totalDuration)}`
                 : formatAudioDuration(totalDuration)}
@@ -262,7 +263,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
               onClick={cycleSpeed}
               className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md transition-colors ${
                 isMe
-                  ? 'bg-white/15 hover:bg-white/25 text-white/90'
+                  ? 'bg-black/5 hover:bg-black/10 text-[#111B21]'
                   : 'bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#525252]'
               }`}
               title="Change playback speed"
@@ -274,7 +275,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
       </div>
 
       {hasError && (
-        <div className="mt-2 text-[10px] text-rose-400 flex items-center gap-1">
+        <div className="mt-2 text-[10px] text-rose-500 flex items-center gap-1">
           <AlertCircle size={12} />
           <span>Audio file could not be played.</span>
         </div>
@@ -282,12 +283,10 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
       {/* Message Metadata & Delivery Status */}
       <div
-        className={`flex items-center justify-end gap-1.5 mt-2 pt-1 border-t text-[10px] ${
-          isMe ? 'border-white/10 text-white/70' : 'border-[#F0F0F0] text-[#8E8E93]'
-        }`}
+        className={`flex items-center justify-end gap-1.5 mt-1.5 pt-1 text-[10px] text-[#667781]`}
       >
         <span className="flex items-center gap-1 font-sans">
-          <Volume2 size={11} className={isMe ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <Volume2 size={11} className={isMe ? 'text-[#00A884]' : 'text-[#737373]'} />
           Voice Message
         </span>
         <span>•</span>
@@ -297,14 +296,14 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
             {isRead ? (
               <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
+              <CheckCheck size={14} className="text-[#8696A0] stroke-[1.8]" />
             )}
           </span>
         )}
       </div>
 
       {/* Bubble Tail */}
-      {hasTail && <ChatBubbleTail isMe={isMe} />}
+      {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#D9FDD3' : '#FFFFFF'} />}
     </div>
   );
 };

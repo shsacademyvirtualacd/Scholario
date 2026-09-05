@@ -17,7 +17,7 @@ export const ChatBubbleTail: React.FC<ChatBubbleTailProps> = ({
   fillColor,
 }) => {
   if (isMe) {
-    const fill = fillColor || '#11161D';
+    const fill = fillColor || '#D9FDD3';
     return (
       <span
         className={`absolute -right-[11px] -bottom-[0.5px] w-[12px] h-[19px] pointer-events-none z-10 select-none overflow-visible ${className}`}
@@ -37,7 +37,7 @@ export const ChatBubbleTail: React.FC<ChatBubbleTailProps> = ({
     );
   }
 
-  // WhatsApp-style received message tail on bottom-left corner
+  // WhatsApp-style received message tail on bottom-left corner (no border stroke, seamless white)
   return (
     <span
       className={`absolute -left-[11px] -bottom-[0.5px] w-[12px] h-[19px] pointer-events-none z-10 select-none overflow-visible ${className}`}
@@ -53,11 +53,6 @@ export const ChatBubbleTail: React.FC<ChatBubbleTailProps> = ({
         <path
           d="M 12 0 C 11.5 4, 9 11, 0.5 17.5 C 4.5 18.2, 9.5 18.8, 12 19 Z"
           fill="#FFFFFF"
-        />
-        <path
-          d="M 12 0 C 11.5 4, 9 11, 0.5 17.5 C 4.5 18.2, 9.5 18.8, 12 19"
-          stroke="#E5E5E5"
-          strokeWidth="1"
         />
       </svg>
     </span>

@@ -80,29 +80,32 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
   return (
     <div
       id={`chat-file-${messageId}`}
-      className={`relative w-full max-w-[320px] rounded-[18px] p-2.5 sm:p-3 shadow-2xs transition-all overflow-visible ${
+      className={`relative w-full max-w-[320px] rounded-[8px] p-2 sm:p-2.5 overflow-visible ${
         isMe
-          ? `bg-[#11161D] text-white ${hasTail ? 'rounded-br-[2px]' : ''}`
-          : `bg-white text-[#111111] border border-[#E5E5E5] ${hasTail ? 'rounded-bl-[2px]' : ''}`
+          ? `bg-[#D9FDD3] text-[#111B21] ${hasTail ? 'rounded-br-[0px]' : ''}`
+          : `bg-white text-[#111B21] ${hasTail ? 'rounded-bl-[0px]' : ''}`
       }`}
+      style={{
+        boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+      }}
     >
       {/* File Card Header */}
       <div
         onClick={handleDownload}
-        className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all ${
+        className={`flex items-center gap-3 p-2 rounded-[6px] cursor-pointer transition-colors ${
           isMe
-            ? 'bg-white/10 hover:bg-white/15'
-            : 'bg-[#F7F7F7] hover:bg-[#EFEFEF] border border-[#E5E5E5]'
+            ? 'bg-black/5 hover:bg-black/10'
+            : 'bg-[#F0F2F5] hover:bg-[#E9EDEF]'
         }`}
       >
         {/* File Type Icon Badge */}
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs shadow-2xs ${
+          className={`w-10 h-10 rounded-[6px] flex items-center justify-center shrink-0 font-bold text-xs ${
             isPdf
-              ? 'bg-rose-500/15 text-rose-600 border border-rose-500/20'
+              ? 'bg-rose-500/15 text-rose-600'
               : isDoc
-              ? 'bg-blue-500/15 text-blue-600 border border-blue-500/20'
-              : 'bg-[#F4C430]/20 text-[#B8860B] border border-[#F4C430]/30'
+              ? 'bg-blue-500/15 text-blue-600'
+              : 'bg-[#00A884]/15 text-[#00A884]'
           }`}
         >
           <FileText size={20} />
@@ -110,13 +113,11 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
 
         {/* File Info */}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold truncate leading-tight" title={filename}>
+          <p className="text-xs font-semibold truncate leading-tight text-[#111B21]" title={filename}>
             {filename}
           </p>
           <p
-            className={`text-[10px] mt-0.5 ${
-              isMe ? 'text-white/70' : 'text-[#737373]'
-            }`}
+            className="text-[11px] mt-0.5 text-[#667781]"
           >
             {formatSize(attachmentSize) || (isPdf ? 'PDF Document' : isDoc ? 'Word Document' : 'File')}
           </p>
@@ -130,33 +131,31 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
             handleDownload();
           }}
           disabled={downloading}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
             isMe
-              ? 'bg-white/20 hover:bg-[#F4C430] hover:text-[#111111] text-white'
-              : 'bg-white hover:bg-[#F4C430] text-[#111111] border border-[#E5E5E5] shadow-2xs'
+              ? 'text-[#111B21] hover:bg-black/5'
+              : 'text-[#54656F] hover:bg-black/5'
           }`}
           title={`Download ${filename}`}
         >
           {downloading ? (
-            <Loader2 size={15} className="animate-spin" />
+            <Loader2 size={16} className="animate-spin text-[#00A884]" />
           ) : (
-            <Download size={15} />
+            <Download size={16} />
           )}
         </button>
       </div>
 
       {/* Optional Caption */}
       {hasCaption && (
-        <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] mt-2 px-1 select-text">
+        <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] mt-1.5 px-1 select-text text-[#111B21]">
           {content}
         </p>
       )}
 
       {/* Timestamp & Read Status */}
       <div
-        className={`flex items-center justify-end gap-1 mt-1.5 text-[10px] ${
-          isMe ? 'text-white/70' : 'text-[#8E8E93]'
-        }`}
+        className={`flex items-center justify-end gap-1 mt-1 text-[10px] text-[#667781]`}
       >
         <span>{formatTime(createdAt)}</span>
         {isMe && (
@@ -164,14 +163,14 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
             {readAt ? (
               <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <CheckCheck size={14} className="text-white/70 stroke-[1.8]" />
+              <CheckCheck size={14} className="text-[#8696A0] stroke-[1.8]" />
             )}
           </span>
         )}
       </div>
 
       {/* Bubble Tail */}
-      {hasTail && <ChatBubbleTail isMe={isMe} />}
+      {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#D9FDD3' : '#FFFFFF'} />}
     </div>
   );
 };
