@@ -1999,6 +1999,108 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     }
   });
 
+  // Audit logs store for purged photos
+  const examPurgeAuditLogs: any[] = [];
+
+  async function purgeSubmissionPhotos(
+    sub: any,
+    reason: 'final_grade_published' | 'lifecycle_archived',
+    loggedBy: string
+  ): Promise<{ purgedCount: number; auditLog: any }> {
+    let purgedCount = 0;
+    const s3Client = getR2Client();
+
+    if (Array.isArray(sub.answers)) {
+      for (const ans of sub.answers) {
+        const keysToDelete: string[] = [];
+        if (ans.r2_key) keysToDelete.push(ans.r2_key);
+        const defKey = `submissions/${sub.test_id}/${sub.student_id}/${ans.question_id}.jpg`;
+        if (!keysToDelete.includes(defKey)) keysToDelete.push(defKey);
+
+        for (const k of keysToDelete) {
+          if (examSubmissionPhotos.has(k)) {
+            examSubmissionPhotos.delete(k);
+            purgedCount++;
+          }
+          if (s3Client) {
+            try {
+              await s3Client.send(
+                new DeleteObjectCommand({
+                  Bucket: R2_EXAM_BUCKET,
+                  Key: k,
+                })
+              );
+              purgedCount++;
+            } catch (r2DelErr) {
+              // Non-fatal if key doesn't exist
+            }
+          }
+        }
+
+        // Strip image URLs, base64 blobs, and dangling references to retain only permanent record data
+        delete ans.photo_url;
+        delete ans.photo_data_url;
+        delete ans.r2_key;
+      }
+    }
+
+    sub.photos_purged = true;
+    sub.purged_at = new Date().toISOString();
+    sub.retention_status = 'archived';
+
+    const auditLog = {
+      id: `purge_log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      submission_id: sub.id,
+      student_id: sub.student_id,
+      student_name: sub.student_name || 'Student',
+      test_id: sub.test_id,
+      test_title: sub.test_title || 'Written Assessment',
+      purged_at: sub.purged_at,
+      photos_purged_count: purgedCount,
+      reason,
+      logged_by: loggedBy || 'system_auto_purge',
+    };
+
+    examPurgeAuditLogs.unshift(auditLog);
+    console.log(
+      `[Data Retention Purge] Sub ${sub.id}: Deleted ${purgedCount} handwritten photos. Permanent academic record preserved.`
+    );
+    return { purgedCount, auditLog };
+  }
+
+  // Background check for auto-extension & data retention auto-purge
+  setInterval(async () => {
+    const now = Date.now();
+    for (const sub of writtenSubmissions.values()) {
+      const submittedAtMs = new Date(sub.submitted_at || sub.created_at || now).getTime();
+      const elapsedMs = now - submittedAtMs;
+      const isExpired = elapsedMs > TWENTY_FOUR_HOURS_MS;
+
+      if (isExpired) {
+        if (sub.status === 'graded') {
+          // If already graded and not yet purged, purge now
+          if (!sub.photos_purged) {
+            await purgeSubmissionPhotos(sub, 'lifecycle_archived', 'system_scheduled_job');
+            writtenSubmissions.set(sub.id, sub);
+          }
+        } else {
+          // NEVER purge before grading is finalized!
+          // Auto-extend slightly (+24h) and flag for admin
+          if (!sub.auto_extended) {
+            sub.auto_extended = true;
+            sub.admin_flagged = true;
+            sub.auto_extended_reason =
+              'Auto-extended grading window: Submission pending teacher grading. Flagged for admin review to protect student work.';
+            writtenSubmissions.set(sub.id, sub);
+            console.log(
+              `[Data Retention Protection] Sub ${sub.id} un-graded at 24h: Auto-extended and flagged for admin.`
+            );
+          }
+        }
+      }
+    }
+  }, 5 * 60 * 1000);
+
   // ── Written Submissions APIs with 24-Hour Expiry Enrichment ─
   app.post('/api/written-submissions', express.json({ limit: '15mb' }), (req, res) => {
     const sub = req.body;
@@ -2014,23 +2116,45 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       const submittedAtMs = new Date(sub.submitted_at || sub.created_at || now).getTime();
       const elapsedMs = now - submittedAtMs;
       const isExpired = elapsedMs > TWENTY_FOUR_HOURS_MS;
-      const remainingMs = Math.max(0, TWENTY_FOUR_HOURS_MS - elapsedMs);
+      // If auto-extended, give another 24 hours
+      const effectiveDuration = sub.auto_extended ? TWENTY_FOUR_HOURS_MS * 2 : TWENTY_FOUR_HOURS_MS;
+      const remainingMs = Math.max(0, effectiveDuration - elapsedMs);
       const hours = Math.floor(remainingMs / (60 * 60 * 1000));
       const mins = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
-      const remainingFormatted = isExpired ? 'Expired' : `${hours}h ${mins}m`;
+      const remainingFormatted = isExpired && !sub.auto_extended ? 'Expired' : `${hours}h ${mins}m`;
 
       return {
         ...sub,
-        is_expired: isExpired,
+        is_expired: isExpired && !sub.auto_extended,
         remaining_ms: remainingMs,
         remaining_formatted: remainingFormatted,
-        expires_at: new Date(submittedAtMs + TWENTY_FOUR_HOURS_MS).toISOString(),
+        expires_at: new Date(submittedAtMs + effectiveDuration).toISOString(),
       };
     });
     return res.json({ submissions: list });
   });
 
-  app.post('/api/written-submissions/grade', express.json(), (req, res) => {
+  app.get('/api/written-submissions/audit-logs', (req, res) => {
+    return res.json({ audit_logs: examPurgeAuditLogs });
+  });
+
+  app.post('/api/written-submissions/purge', express.json(), async (req, res) => {
+    const { submission_id, logged_by } = req.body;
+    const sub = writtenSubmissions.get(submission_id);
+    if (!sub) return res.status(404).json({ error: 'Submission not found' });
+    if (sub.status !== 'graded') {
+      return res.status(400).json({
+        error: 'CANNOT_PURGE_UNGRADED',
+        message: 'Cannot purge answer sheets before grading is finalized.',
+      });
+    }
+
+    const result = await purgeSubmissionPhotos(sub, 'lifecycle_archived', logged_by || 'manual_admin_trigger');
+    writtenSubmissions.set(submission_id, sub);
+    return res.json({ success: true, ...result, submission: sub });
+  });
+
+  app.post('/api/written-submissions/grade', express.json(), async (req, res) => {
     const {
       submission_id,
       per_question_grades,
@@ -2042,15 +2166,16 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     const sub = writtenSubmissions.get(submission_id);
     if (!sub) return res.status(404).json({ error: 'Submission not found' });
 
-    // Check 24-hour validity
+    // Check 24-hour validity (unless auto-extended or already graded)
     const submittedAtMs = new Date(sub.submitted_at || sub.created_at || Date.now()).getTime();
-    const isExpired = Date.now() - submittedAtMs > TWENTY_FOUR_HOURS_MS;
+    const effectiveDuration = sub.auto_extended ? TWENTY_FOUR_HOURS_MS * 2 : TWENTY_FOUR_HOURS_MS;
+    const isExpired = Date.now() - submittedAtMs > effectiveDuration;
 
     if (isExpired && sub.status !== 'graded') {
       return res.status(410).json({
         expired: true,
         error: 'SUBMISSION_EXPIRED',
-        message: 'This submission has exceeded the 24-hour grading window and can no longer be graded.',
+        message: 'This submission has exceeded the grading window and can no longer be graded.',
       });
     }
 
@@ -2079,6 +2204,14 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     sub.graded_at = new Date().toISOString();
     sub.graded_by = graded_by;
     sub.graded_by_name = graded_by_name;
+
+    // Immediately purge all handwritten answer sheet photos now that final grade is published
+    // Retain only permanent record data, and log deletion for audit
+    await purgeSubmissionPhotos(
+      sub,
+      'final_grade_published',
+      graded_by_name || graded_by || 'teacher'
+    );
 
     writtenSubmissions.set(submission_id, sub);
     return res.json({ success: true, submission: sub });

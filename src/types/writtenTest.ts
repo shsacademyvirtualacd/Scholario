@@ -98,4 +98,24 @@ export interface WrittenSubmission {
   remaining_ms?: number;
   remaining_formatted?: string;
   expires_at?: string;
+  // Data Retention & Auto-Purge fields
+  photos_purged?: boolean;
+  purged_at?: string | null;
+  retention_status?: 'active' | 'archived';
+  admin_flagged?: boolean;
+  auto_extended?: boolean;
+  auto_extended_reason?: string | null;
+}
+
+export interface ExamPurgeAuditLog {
+  id: string;
+  submission_id: string;
+  student_id: string;
+  student_name: string;
+  test_id: string;
+  test_title?: string;
+  purged_at: string;
+  photos_purged_count: number;
+  reason: 'final_grade_published' | 'lifecycle_archived';
+  logged_by: string;
 }

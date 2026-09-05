@@ -3,10 +3,12 @@ import type {
   WrittenTest,
   WrittenSubmission,
   WrittenTestType,
+  ExamPurgeAuditLog,
 } from '../types/writtenTest';
 
 const WRITTEN_TESTS_KEY = 'scholario_written_tests_v1';
 const WRITTEN_SUBS_KEY = 'scholario_written_subs_v1';
+const WRITTEN_AUDIT_KEY = 'scholario_written_purge_audit_v1';
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 // -----------------------------------------------------------------------------
@@ -58,16 +60,27 @@ export function getRemainingGradingTime(submission: WrittenSubmission): {
   remainingMs: number;
   formatted: string;
 } {
+  if (submission.photos_purged || submission.retention_status === 'archived') {
+    return {
+      isExpired: true,
+      remainingMs: 0,
+      formatted: 'Archived (Purged)',
+    };
+  }
+
   const now = Date.now();
   const submittedAtMs = new Date(submission.submitted_at || Date.now()).getTime();
   const elapsed = now - submittedAtMs;
-  const isExpired = elapsed > TWENTY_FOUR_HOURS_MS;
-  const remainingMs = Math.max(0, TWENTY_FOUR_HOURS_MS - elapsed);
+  const effectiveWindow = submission.auto_extended ? TWENTY_FOUR_HOURS_MS * 2 : TWENTY_FOUR_HOURS_MS;
+  const isExpired = elapsed > effectiveWindow;
+  const remainingMs = Math.max(0, effectiveWindow - elapsed);
   const hours = Math.floor(remainingMs / (60 * 60 * 1000));
   const mins = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
 
   let formatted = 'Expired';
-  if (!isExpired) {
+  if (submission.auto_extended && !isExpired) {
+    formatted = `${hours}h ${mins}m (Extended)`;
+  } else if (!isExpired) {
     formatted = `${hours}h ${mins}m`;
   }
 
@@ -508,22 +521,56 @@ export async function gradeWrittenSubmission(payload: {
     };
   });
 
+  // Auto-purge handwritten photo sheets upon publishing final grade
+  // Retain only permanent record data: student ID, name, grade/subject, test title, scores & remarks
+  const purgedAnswers = updatedAnswers.map((ans) => {
+    const copy = { ...ans };
+    delete copy.photo_url;
+    delete copy.photo_data_url;
+    delete copy.r2_key;
+    return copy;
+  });
+
   const updatedSub: WrittenSubmission = {
     ...sub,
-    answers: updatedAnswers,
+    answers: purgedAnswers,
     final_score: totalAwarded,
     teacher_feedback: payload.teacher_feedback || '',
     status: 'graded',
     graded_at: new Date().toISOString(),
     graded_by: payload.graded_by,
     graded_by_name: payload.graded_by_name,
+    photos_purged: true,
+    purged_at: new Date().toISOString(),
+    retention_status: 'archived',
   };
+
+  // Record audit log for data retention deletion
+  try {
+    const auditRaw = localStorage.getItem(WRITTEN_AUDIT_KEY);
+    const auditLogs: ExamPurgeAuditLog[] = auditRaw ? JSON.parse(auditRaw) : [];
+    const newLog: ExamPurgeAuditLog = {
+      id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      submission_id: updatedSub.id,
+      student_id: updatedSub.student_id,
+      student_name: updatedSub.student_name,
+      test_id: updatedSub.test_id,
+      test_title: updatedSub.test_title,
+      purged_at: updatedSub.purged_at || new Date().toISOString(),
+      photos_purged_count: sub.answers.filter((a) => a.photo_url || a.r2_key).length,
+      reason: 'final_grade_published',
+      logged_by: payload.graded_by_name || payload.graded_by || 'teacher',
+    };
+    localStorage.setItem(WRITTEN_AUDIT_KEY, JSON.stringify([newLog, ...auditLogs]));
+  } catch (auditErr) {
+    console.warn('[writtenTestService] Local audit log error:', auditErr);
+  }
 
   // Update local storage
   const updatedList = existing.map((s) => (s.id === updatedSub.id ? updatedSub : s));
   saveStoredWrittenSubmissions(updatedList);
 
-  // Sync to Express backend
+  // Sync to Express backend (which also deletes R2 objects and records backend audit logs)
   try {
     await fetch('/api/written-submissions/grade', {
       method: 'POST',
@@ -550,13 +597,37 @@ export async function gradeWrittenSubmission(payload: {
         teacher_feedback: payload.teacher_feedback || '',
         graded_at: updatedSub.graded_at,
         feedback: JSON.stringify({
-          answers: updatedAnswers,
+          answers: purgedAnswers,
           test_type: sub.test_type,
           test_title: sub.test_title,
+          photos_purged: true,
+          purged_at: updatedSub.purged_at,
+          retention_status: 'archived',
         }),
       })
       .eq('id', sub.id);
   } catch {}
 
   return updatedSub;
+}
+
+export async function getExamPurgeAuditLogs(): Promise<ExamPurgeAuditLog[]> {
+  // Try backend first
+  try {
+    const res = await fetch('/api/written-submissions/audit-logs');
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      if (Array.isArray(data.audit_logs)) {
+        return data.audit_logs;
+      }
+    }
+  } catch {}
+
+  // Fallback to local storage
+  try {
+    const raw = localStorage.getItem(WRITTEN_AUDIT_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+
+  return [];
 }

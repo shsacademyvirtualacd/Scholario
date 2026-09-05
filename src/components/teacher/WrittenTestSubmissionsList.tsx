@@ -7,6 +7,8 @@ import {
   Clock,
   ChevronRight,
   Eye,
+  Archive,
+  Layers,
 } from 'lucide-react';
 import { getWrittenSubmissions } from '../../lib/writtenTestService';
 import type { WrittenSubmission } from '../../types/writtenTest';
@@ -26,8 +28,8 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
 
   // Filters
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'short_question' | 'long_question'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'graded' | 'expired'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'unified' | 'short_question' | 'long_question'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'graded' | 'archived'>('all');
 
   // Grading Modal
   const [gradingModalOpen, setGradingModalOpen] = useState<boolean>(false);
@@ -58,9 +60,10 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
       if (typeFilter !== 'all' && sub.test_type !== typeFilter) return false;
 
       // Status Filter
-      if (statusFilter === 'pending' && (sub.status === 'graded' || sub.is_expired)) return false;
+      const isArchived = Boolean(sub.photos_purged || sub.retention_status === 'archived');
+      if (statusFilter === 'pending' && (sub.status === 'graded' || isArchived)) return false;
       if (statusFilter === 'graded' && sub.status !== 'graded') return false;
-      if (statusFilter === 'expired' && !sub.is_expired) return false;
+      if (statusFilter === 'archived' && !isArchived) return false;
 
       // Search Term
       if (searchTerm.trim()) {
@@ -96,6 +99,7 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
           <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
             {[
               { id: 'all', label: 'All Formats' },
+              { id: 'unified', label: 'Class Test' },
               { id: 'short_question', label: 'Short Qs' },
               { id: 'long_question', label: 'Long Qs' },
             ].map((t) => (
@@ -119,7 +123,7 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
               { id: 'all', label: 'All' },
               { id: 'pending', label: 'Pending' },
               { id: 'graded', label: 'Graded' },
-              { id: 'expired', label: 'Expired' },
+              { id: 'archived', label: 'Archived' },
             ].map((s) => (
               <button
                 key={s.id}
@@ -154,14 +158,20 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
         <div className="space-y-3">
           {filteredSubmissions.map((sub) => {
             const isGraded = sub.status === 'graded';
-            const isExpired = sub.is_expired;
+            const isArchived = Boolean(sub.photos_purged || sub.retention_status === 'archived');
+            const isAutoExtended = Boolean(sub.auto_extended || sub.admin_flagged);
+            const isExpired = sub.is_expired && !isAutoExtended;
 
             return (
               <div
                 key={sub.id}
                 className={`p-4 rounded-2xl border transition-all bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs ${
-                  isGraded
+                  isArchived
+                    ? 'border-neutral-200 bg-neutral-50/50'
+                    : isGraded
                     ? 'border-emerald-200/80 hover:border-emerald-300'
+                    : isAutoExtended
+                    ? 'border-amber-300 bg-amber-50/30'
                     : isExpired
                     ? 'border-neutral-200 opacity-80'
                     : 'border-[#E5E5E5] hover:border-amber-400'
@@ -169,7 +179,9 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
               >
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800 shrink-0 mt-0.5">
-                    {sub.test_type === 'short_question' ? (
+                    {sub.test_type === 'unified' ? (
+                      <Layers className="w-5 h-5" />
+                    ) : sub.test_type === 'short_question' ? (
                       <FileText className="w-5 h-5" />
                     ) : (
                       <BookOpen className="w-5 h-5" />
@@ -182,35 +194,55 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
                         Grade {sub.grade} • {sub.subject}
                       </span>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-black text-amber-400">
-                        {sub.test_type === 'short_question' ? 'Short Qs' : 'Long Qs'}
+                        {sub.test_type === 'unified'
+                          ? 'Class Assessment'
+                          : sub.test_type === 'short_question'
+                          ? 'Short Qs'
+                          : 'Long Qs'}
                       </span>
+                      {isArchived && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-200 text-neutral-800 flex items-center gap-1">
+                          <Archive className="w-3 h-3" />
+                          Archived
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs font-extrabold text-[#111111] mt-1">
-                      {sub.test_title || 'Written Assessment'}
+                      {sub.test_title || 'Assessment'}
                     </p>
                     <p className="text-[11px] text-[#737373] mt-0.5">
-                      Submitted: {new Date(sub.submitted_at).toLocaleString()} • {sub.answers.length} handwritten sheets attached
+                      Submitted: {new Date(sub.submitted_at).toLocaleString()} • {sub.answers.length} questions attached
                     </p>
                   </div>
                 </div>
 
                 {/* Status & Expiry Window & Action */}
                 <div className="flex items-center gap-4 self-end md:self-auto shrink-0">
-                  {/* 24h Expiry Indicator */}
+                  {/* Retention Indicator */}
                   <div className="text-right">
                     <span className="text-[10px] uppercase font-bold text-[#737373] block">
-                      R2 Retention:
+                      Storage Status:
                     </span>
-                    <span
-                      className={`text-xs font-extrabold flex items-center gap-1 ${
-                        isExpired
-                          ? 'text-red-700'
-                          : 'text-amber-800'
-                      }`}
-                    >
-                      <Clock className="w-3 h-3" />
-                      {isExpired ? 'Expired' : `Expires in ${sub.remaining_formatted}`}
-                    </span>
+                    {isArchived ? (
+                      <span className="text-xs font-bold text-neutral-600 flex items-center gap-1 justify-end">
+                        <Archive className="w-3 h-3 text-neutral-500" />
+                        Photos Purged
+                      </span>
+                    ) : isAutoExtended ? (
+                      <span className="text-xs font-extrabold text-amber-800 flex items-center gap-1 justify-end">
+                        <Clock className="w-3 h-3" />
+                        Window Extended
+                      </span>
+                    ) : (
+                      <span
+                        className={`text-xs font-extrabold flex items-center gap-1 justify-end ${
+                          isExpired ? 'text-red-700' : 'text-amber-800'
+                        }`}
+                      >
+                        <Clock className="w-3 h-3" />
+                        {isExpired ? 'Expired' : `Expires in ${sub.remaining_formatted}`}
+                      </span>
+                    )}
                   </div>
 
                   {/* Score or Pending Status */}
@@ -222,8 +254,8 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
                         </span>
                         <span className="text-[10px] font-bold text-emerald-600 block">Graded</span>
                       </div>
-                    ) : isExpired ? (
-                      <span className="text-xs font-bold text-neutral-400">Past Window</span>
+                    ) : isArchived ? (
+                      <span className="text-xs font-bold text-neutral-500">Archived Record</span>
                     ) : (
                       <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
                         Pending
@@ -238,15 +270,20 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
                       setSelectedSubmission(sub);
                       setGradingModalOpen(true);
                     }}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs ${
-                      isGraded
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs cursor-pointer ${
+                      isArchived
+                        ? 'bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-300'
+                        : isGraded
                         ? 'bg-[#FAFAFA] hover:bg-[#F5F5F5] text-[#111111] border border-[#E5E5E5]'
-                        : isExpired
-                        ? 'bg-[#FAFAFA] text-[#737373] border border-[#E5E5E5]'
                         : 'bg-[#111111] hover:bg-[#262626] text-white'
                     }`}
                   >
-                    {isGraded ? (
+                    {isArchived ? (
+                      <>
+                        <Archive className="w-3.5 h-3.5" />
+                        <span>View Archive</span>
+                      </>
+                    ) : isGraded ? (
                       <>
                         <Eye className="w-3.5 h-3.5" />
                         <span>Review Grade</span>

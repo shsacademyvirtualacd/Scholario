@@ -80,6 +80,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
   // Camera In-Browser Capture State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [isCameraStarting, setIsCameraStarting] = useState<boolean>(false);
   const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
@@ -93,6 +94,9 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
   const hasAutoSubmittedRef = useRef<boolean>(false);
   const startTimeRef = useRef<number>(Date.now());
   const isCameraOperatingRef = useRef<boolean>(false);
+
+  // Compact sticky header on scroll
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
 
   // Reset modal state when test changes or opens
   useEffect(() => {
@@ -133,7 +137,11 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
+    setIsCameraStarting(false);
   }, []);
 
   useEffect(() => {
@@ -142,77 +150,181 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     };
   }, [stopCameraStream]);
 
-  // Start Camera Stream
+  // Dedicated callback ref to immediately attach stream when video mounts in DOM
+  const attachVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node && streamRef.current) {
+      if (node.srcObject !== streamRef.current) {
+        node.srcObject = streamRef.current;
+      }
+      node.play().catch((err) => {
+        console.warn('attachVideoRef play note:', err);
+      });
+    }
+  }, []);
+
+  // Sync stream to video element whenever stream or active state updates
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      videoRef.current.play().catch((err) => {
+        console.warn('Sync video play note:', err);
+      });
+    }
+  }, [isCameraActive, cameraFacingMode]);
+
+  // Start Camera Stream with comprehensive multi-stage fallbacks & clear errors
   const startCamera = async (facingMode = cameraFacingMode) => {
     isCameraOperatingRef.current = true;
     setCameraError(null);
+    setIsCameraStarting(true);
     stopCameraStream();
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera device access is not supported by your browser.');
+        throw new Error('Camera access is not supported by your current browser.');
       }
 
-      let stream: MediaStream;
+      let stream: MediaStream | null = null;
+
+      // Level 1: Try requested facing mode with HD resolution
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1920, min: 640 },
+            height: { ideal: 1080, min: 480 },
+          },
           audio: false,
         });
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (err1) {
+        console.warn('Camera level 1 (ideal facingMode HD) failed:', err1);
+      }
+
+      // Level 2: Try requested facing mode with basic resolution
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: facingMode },
+            audio: false,
+          });
+        } catch (err2) {
+          console.warn('Camera level 2 (standard facingMode) failed:', err2);
+        }
+      }
+
+      // Level 3: Fallback to any available video input device
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        } catch (err3) {
+          console.warn('Camera level 3 (any video) failed:', err3);
+          throw err3;
+        }
+      }
+
+      if (!stream) {
+        throw new Error('Could not establish video stream from camera.');
       }
 
       streamRef.current = stream;
+      setIsCameraActive(true);
+      setIsCameraStarting(false);
+
+      // Attach immediately to video element if it already exists
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn('Direct video play notice:', playErr);
+        }
       }
-      setIsCameraActive(true);
     } catch (err: any) {
-      console.warn('Camera access note:', err);
-      setCameraError(err.message || 'Unable to access camera.');
+      console.error('Camera access error:', err);
+      let userMsg = 'Unable to access camera.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        userMsg = 'Camera permission was denied. Please allow camera access in your browser site settings and click "Retry Camera", or use "Browse Photo" to upload your handwritten solution.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        userMsg = 'No camera device found on this system. You can upload your handwritten solution using "Browse Photo".';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        userMsg = 'Camera hardware is busy or reserved by another application. Please close other camera tabs/apps and click "Retry Camera".';
+      } else if (err.name === 'OverconstrainedError') {
+        userMsg = 'Requested camera resolution or direction is not supported by your device.';
+      } else if (err.message) {
+        userMsg = err.message;
+      }
+      setCameraError(userMsg);
+      setIsCameraActive(false);
+      setIsCameraStarting(false);
     } finally {
+      // Keep isCameraOperatingRef active to shield against blur events during camera acquisition
       setTimeout(() => {
         isCameraOperatingRef.current = false;
-      }, 1000);
+      }, 1500);
     }
   };
 
-  const switchCamera = () => {
+  const switchCamera = async () => {
+    isCameraOperatingRef.current = true;
     const nextMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
     setCameraFacingMode(nextMode);
-    startCamera(nextMode);
+    await startCamera(nextMode);
   };
 
   const takeSnapshot = () => {
-    if (!videoRef.current) return;
+    isCameraOperatingRef.current = true;
+    if (!videoRef.current) {
+      toast.error('Camera feed is not ready. Please try again.');
+      return;
+    }
     const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!video.videoWidth || !video.videoHeight) {
+      toast.error('Camera feed is still initializing. Please wait a moment.');
+      return;
+    }
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    try {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        toast.error('Could not initialize snapshot canvas.');
+        return;
+      }
 
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          setCapturedBlob(blob);
-        }
-      },
-      'image/jpeg',
-      0.85
-    );
+      ctx.drawImage(video, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
-    setCapturedPhotoUrl(dataUrl);
-    stopCameraStream();
-    toast.success('Photo captured! Review below or retake if needed.');
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            setCapturedBlob(blob);
+          }
+        },
+        'image/jpeg',
+        0.9
+      );
+
+      setCapturedPhotoUrl(dataUrl);
+      stopCameraStream();
+      toast.success('Photo captured! Please review your answer sheet before confirming.');
+    } catch (err: any) {
+      console.error('Failed to take snapshot:', err);
+      toast.error('Failed to capture snapshot. Please try again.');
+    }
   };
 
   const retakePhoto = () => {
+    isCameraOperatingRef.current = true;
     setCapturedPhotoUrl(null);
     setCapturedBlob(null);
     startCamera();
@@ -230,11 +342,12 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
       setCapturedPhotoUrl(reader.result as string);
       setCapturedBlob(file);
       stopCameraStream();
+      toast.success('Photo loaded! Review before confirming.');
     };
     reader.readAsDataURL(file);
     setTimeout(() => {
       isCameraOperatingRef.current = false;
-    }, 1000);
+    }, 1500);
   };
 
   // Core Submit Handler (bundles both MCQs & Written Questions together)
@@ -357,13 +470,21 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     if (phase !== 'in_exam') return;
 
     const handleVisibilityChange = () => {
-      if (document.hidden && !hasAutoSubmittedRef.current && !isCameraOperatingRef.current) {
+      // Shield camera operations, photo capture, photo review, and uploading from triggering proctoring
+      if (isCameraOperatingRef.current || isCameraActive || !!capturedPhotoUrl || uploadingPhoto) {
+        return;
+      }
+      if (document.hidden && !hasAutoSubmittedRef.current) {
         executeSubmission('Auto-submitted: Tab/window switch detected (focus lost)');
       }
     };
 
     const handleWindowBlur = () => {
-      if (!hasAutoSubmittedRef.current && !isCameraOperatingRef.current) {
+      // Shield camera operations, photo capture, photo review, and uploading from triggering proctoring
+      if (isCameraOperatingRef.current || isCameraActive || !!capturedPhotoUrl || uploadingPhoto) {
+        return;
+      }
+      if (!hasAutoSubmittedRef.current) {
         executeSubmission('Auto-submitted: Browser window focus lost (switched away from exam)');
       }
     };
@@ -594,57 +715,86 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-4xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden relative">
-        {/* Top Header */}
-        <div className="px-6 py-4 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-800">
-              <Layers className="w-5 h-5" />
+      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative">
+        {/* Top Header - Compact & Sticky, Shrinks to thin bar on scroll */}
+        {phase === 'in_exam' && isScrolled ? (
+          <div className="px-4 py-2 border-b border-[#F0F0F0] flex items-center justify-between bg-white/95 backdrop-blur-xs shrink-0 transition-all sticky top-0 z-30 shadow-xs">
+            <div className="flex items-center gap-2 truncate">
+              <span className="px-2 py-0.5 rounded-md bg-[#111111] text-amber-400 font-mono font-black text-xs shrink-0">
+                Q{currentQuestionIndex + 1}/{totalQuestions}
+              </span>
+              <span className="font-extrabold text-xs text-[#111111] truncate">{test.title}</span>
+              <span className="text-[11px] font-bold text-[#737373] hidden sm:inline">
+                • {currentQuestion?.marks || 1} Marks
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-[#111111] text-sm sm:text-base">{test.title}</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-black text-amber-400">
-                  {test.type === 'unified'
-                    ? 'Class Assessment'
-                    : test.type === 'short_question'
-                    ? 'Short Question'
-                    : 'Long Question'}
-                </span>
-              </div>
-              <p className="text-xs text-[#737373]">
-                {test.subject} • Grade {test.grade} • {test.total_marks} Marks Total
-              </p>
-            </div>
-          </div>
-
-          {phase === 'in_exam' && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
               <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-bold text-xs border ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold text-xs border ${
                   timeRemainingSeconds < 300
                     ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
                     : 'bg-[#FAFAFA] text-[#111111] border-[#E5E5E5]'
                 }`}
               >
-                <Clock className="w-4 h-4" />
+                <Clock className="w-3.5 h-3.5" />
                 <span>{formatTime(timeRemainingSeconds)}</span>
               </div>
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="px-4 sm:px-6 py-2.5 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0 sticky top-0 z-30">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-800 shrink-0">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-extrabold text-[#111111] text-xs sm:text-sm">{test.title}</h3>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase bg-black text-amber-400">
+                    {test.type === 'unified'
+                      ? 'Class Assessment'
+                      : test.type === 'short_question'
+                      ? 'Short Question'
+                      : 'Long Question'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#737373]">
+                  {test.subject} • Grade {test.grade} • {test.total_marks} Marks Total
+                </p>
+              </div>
+            </div>
 
-          {phase !== 'in_exam' && (
-            <button
-              onClick={onClose}
-              className="p-2 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+            {phase === 'in_exam' && (
+              <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-mono font-bold text-xs border ${
+                    timeRemainingSeconds < 300
+                      ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                      : 'bg-[#FAFAFA] text-[#111111] border-[#E5E5E5]'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>{formatTime(timeRemainingSeconds)}</span>
+                </div>
+              </div>
+            )}
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+            {phase !== 'in_exam' && (
+              <button
+                onClick={onClose}
+                className="p-1.5 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Modal Body with onScroll */}
+        <div
+          className="flex-1 overflow-y-auto p-3 sm:p-4"
+          onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 20)}
+        >
           {/* PHASE 1: Verify Student ID */}
           {phase === 'verify_id' && (
             <div className="max-w-md mx-auto py-8 space-y-6 text-center">
@@ -744,16 +894,16 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
           {/* PHASE 3: In-Exam Question Flow */}
           {phase === 'in_exam' && currentQuestion && (
-            <div className="space-y-5 max-w-3xl mx-auto">
+            <div className="space-y-3 w-full max-w-4xl mx-auto">
               {/* Question Navigation Palette */}
-              <div className="p-3 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
-                <div className="flex items-center justify-between text-xs">
+              <div className="p-2 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
                   <span className="font-bold text-[#737373]">Question Navigator:</span>
                   <span className="font-bold text-[#111111]">
                     {Object.keys(answersMap).length} of {totalQuestions} Answered
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                   {test.questions.map((q, qIdx) => {
                     const isAnswered = !!answersMap[q.id];
                     const isCurrent = qIdx === currentQuestionIndex;
@@ -764,7 +914,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                       <button
                         key={q.id}
                         onClick={() => handleGoToQuestion(qIdx)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1 border ${
                           isCurrent
                             ? 'bg-[#111111] text-[#F4C430] border-[#111111] shadow-xs'
                             : isAnswered
@@ -774,38 +924,34 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                       >
                         <span>Q{qIdx + 1}</span>
                         <span className="text-[10px] opacity-80 uppercase">({qTypeTag})</span>
-                        {isAnswered && <CheckCircle2 size={12} className="text-emerald-600" />}
+                        {isAnswered && <CheckCircle2 size={11} className="text-emerald-600" />}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Question Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-[#F0F0F0]">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg bg-[#111111] text-white text-xs font-black">
-                    Question {currentQuestionIndex + 1} of {totalQuestions}
-                  </span>
-                  <span className="text-xs font-bold text-[#737373]">
-                    {currentQuestion.type === 'mcq'
-                      ? 'Multiple Choice'
-                      : currentQuestion.type === 'short_question'
-                      ? 'Short Answer'
-                      : 'Long Answer'}
-                  </span>
+              {/* Combined Question Header & Prompt Card (No redundant stacked borders) */}
+              <div className="p-3 sm:p-3.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-1.5">
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#EAEAEA]">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md bg-[#111111] text-white text-[11px] font-black">
+                      Question {currentQuestionIndex + 1} of {totalQuestions}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#737373]">
+                      {currentQuestion.type === 'mcq'
+                        ? 'Multiple Choice'
+                        : currentQuestion.type === 'short_question'
+                        ? 'Short Answer'
+                        : 'Long Answer'}
+                    </span>
+                  </div>
+                  <div className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-black">
+                    {currentQuestion.marks} Marks
+                  </div>
                 </div>
-                <div className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black">
-                  {currentQuestion.marks} Marks
-                </div>
-              </div>
 
-              {/* Question Text with Math */}
-              <div className="p-5 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#737373] block">
-                  Question Prompt:
-                </span>
-                <div className="text-sm font-semibold text-[#111111] leading-relaxed">
+                <div className="text-xs sm:text-[13px] font-semibold text-[#111111] leading-relaxed pt-0.5">
                   <MathText text={currentQuestion.question} />
                 </div>
               </div>
@@ -893,81 +1039,152 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                 </div>
               ) : (
                 /* ───────────────────────────────────────────────────────────── */
-                /* SECTION B: WRITTEN CAMERA CAPTURE                             */
+                /* SECTION B: WRITTEN CAMERA CAPTURE (SHRUNK TO ~40% HEIGHT)    */
                 /* ───────────────────────────────────────────────────────────── */
-                <div className="p-5 rounded-2xl border border-amber-200 bg-amber-50/30 space-y-4">
+                <div className="p-3 sm:p-3.5 rounded-xl border border-amber-200 bg-amber-50/25 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Camera className="w-5 h-5 text-amber-700" />
-                      <h4 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-amber-700" />
+                      <h4 className="text-[11px] font-extrabold text-[#111111] uppercase tracking-wider">
                         Capture Handwritten Answer Sheet
                       </h4>
                     </div>
-                    <span className="text-[11px] font-bold text-[#737373]">
-                      {capturedPhotoUrl ? 'Photo Ready' : 'Live Camera View'}
+                    <span className="text-[10px] font-bold text-[#737373]">
+                      {capturedPhotoUrl ? 'Photo Ready for Review' : 'Live Camera View'}
                     </span>
                   </div>
 
-                  {/* Viewport: Live Video or Captured Photo */}
-                  <div className="relative w-full aspect-4/3 max-h-[360px] bg-black rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
+                  {/* Viewport: Live Video, Captured Photo, Connecting, or Error State - Shrunk to ~40% height */}
+                  <div className="relative w-full h-36 sm:h-40 max-h-[160px] bg-neutral-950 rounded-xl overflow-hidden flex items-center justify-center shadow-inner">
                     {capturedPhotoUrl ? (
-                      <img
-                        src={capturedPhotoUrl}
-                        alt="Captured handwritten answer"
-                        className="w-full h-full object-contain"
-                      />
-                    ) : isCameraActive ? (
-                      <video
-                        ref={videoRef}
-                        playsInline
-                        muted
-                        autoPlay
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="text-center p-6 space-y-3">
-                        <Camera className="w-10 h-10 text-white/40 mx-auto" />
-                        <p className="text-xs text-white/80 font-medium">
-                          {cameraError ? cameraError : 'Camera stream is paused'}
+                      <div className="relative w-full h-full flex items-center justify-center bg-neutral-950">
+                        <img
+                          src={capturedPhotoUrl}
+                          alt="Captured handwritten answer"
+                          className="w-full h-full object-contain"
+                        />
+                        <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-xs text-amber-300 text-[10px] font-bold flex items-center gap-1 border border-amber-400/30 shadow-sm">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>Photo Captured — Review Below</span>
+                        </div>
+                      </div>
+                    ) : cameraError && !isCameraActive ? (
+                      <div className="text-center p-3 space-y-1.5 max-w-sm mx-auto">
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center mx-auto shadow-sm">
+                          <AlertTriangle className="w-4 h-4" />
+                        </div>
+                        <h5 className="text-xs font-black text-white">Camera Notice</h5>
+                        <p className="text-[11px] text-neutral-300 leading-snug line-clamp-2">
+                          {cameraError}
                         </p>
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => startCamera()}
+                            className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-[#111111] text-[11px] font-black transition-all cursor-pointer shadow-sm active:scale-95"
+                          >
+                            Retry Camera
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/20 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                          >
+                            <Upload className="w-3 h-3" />
+                            Browse
+                          </button>
+                        </div>
+                      </div>
+                    ) : isCameraStarting ? (
+                      <div className="text-center p-3 space-y-2">
+                        <div className="w-7 h-7 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-[11px] text-neutral-300 font-bold">
+                          Connecting to {cameraFacingMode === 'user' ? 'front' : 'back'} camera...
+                        </p>
+                      </div>
+                    ) : isCameraActive ? (
+                      <>
+                        <video
+                          ref={attachVideoRef}
+                          playsInline
+                          muted
+                          autoPlay
+                          onLoadedMetadata={(e) => {
+                            e.currentTarget.play().catch(() => {});
+                          }}
+                          className={`w-full h-full object-cover transition-transform duration-200 ${
+                            cameraFacingMode === 'user' ? 'scale-x-[-1]' : ''
+                          }`}
+                        />
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-xs text-white text-[10px] font-bold flex items-center gap-1 border border-white/15">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Live ({cameraFacingMode === 'user' ? 'Front' : 'Back'})</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center p-3 space-y-1.5">
+                        <Camera className="w-7 h-7 text-white/40 mx-auto" />
+                        <p className="text-[11px] text-white/80 font-medium">Camera stream paused</p>
                         <button
                           type="button"
                           onClick={() => startCamera()}
-                          className="px-4 py-2 rounded-xl bg-white text-[#111111] text-xs font-extrabold hover:bg-neutral-100 transition-all shadow-sm cursor-pointer"
+                          className="px-3 py-1 rounded-lg bg-white text-[#111111] text-[11px] font-extrabold hover:bg-neutral-100 transition-all shadow-sm cursor-pointer"
                         >
                           Start Camera
                         </button>
                       </div>
                     )}
 
-                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      Proctored Session
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold flex items-center gap-1 border border-white/10">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      Proctored
                     </div>
                   </div>
 
-                  {/* Camera Controls */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <div className="flex items-center gap-2">
+                  {/* Review callout notice when photo is captured - compact */}
+                  {capturedPhotoUrl && (
+                    <div className="p-2 sm:p-2.5 rounded-lg bg-amber-50 border border-amber-300/80 flex items-center justify-between gap-2 shadow-xs">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <h5 className="text-[11px] font-black text-[#111111]">
+                            Review Captured Answer Sheet
+                          </h5>
+                          <p className="text-[10px] text-[#555555]">
+                            Check handwriting clarity. Tap <strong>Retake</strong> or <strong>Use This Photo</strong> below.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 shrink-0">
+                        Unconfirmed
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Camera & Confirmation Controls - visible without scrolling */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <div className="flex items-center gap-1.5">
                       {capturedPhotoUrl ? (
                         <button
                           type="button"
                           onClick={retakePhoto}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] bg-white border border-[#E5E5E5] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black text-[#111111] bg-white border border-neutral-300 hover:border-neutral-500 hover:bg-neutral-50 transition-all cursor-pointer shadow-xs active:scale-95"
                         >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Retake Photo
+                          <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Retake</span>
                         </button>
-                      ) : isCameraActive ? (
+                      ) : (
                         <button
                           type="button"
                           onClick={switchCamera}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] bg-white border border-[#E5E5E5] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                          disabled={isCameraStarting}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#111111] bg-white border border-[#E5E5E5] hover:bg-[#F5F5F5] transition-colors cursor-pointer disabled:opacity-50"
+                          title="Switch between front and back camera"
                         >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Flip Camera
+                          <RefreshCw className={`w-3.5 h-3.5 ${isCameraStarting ? 'animate-spin' : ''}`} />
+                          <span>Flip Camera</span>
                         </button>
-                      ) : null}
+                      )}
 
                       <input
                         ref={fileInputRef}
@@ -980,54 +1197,64 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#737373] hover:text-[#111111] hover:bg-white/60 transition-colors cursor-pointer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#737373] hover:text-[#111111] hover:bg-white/60 transition-colors cursor-pointer"
                       >
                         <Upload className="w-3.5 h-3.5" />
-                        Browse Photo
+                        {capturedPhotoUrl ? 'Browse File' : 'Browse'}
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {currentQuestionIndex > 0 && (
                         <button
                           onClick={() => handleGoToQuestion(currentQuestionIndex - 1)}
-                          className="px-3.5 py-2 rounded-xl border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] cursor-pointer hover:bg-neutral-50"
                         >
                           Previous
                         </button>
                       )}
 
-                      {!capturedPhotoUrl && isCameraActive ? (
+                      {!capturedPhotoUrl ? (
                         <button
                           type="button"
+                          disabled={!isCameraActive || isCameraStarting}
                           onClick={takeSnapshot}
-                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-extrabold hover:bg-amber-700 transition-all shadow-md cursor-pointer"
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
-                          <Camera className="w-4 h-4" />
-                          Snap Photo
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Snap Photo</span>
                         </button>
-                      ) : capturedPhotoUrl ? (
+                      ) : (
                         <button
                           type="button"
                           disabled={uploadingPhoto}
                           onClick={handleAttachAndProceed}
-                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-extrabold hover:bg-[#262626] transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm cursor-pointer active:scale-95 disabled:opacity-50 ${
+                            isLastQuestion
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              : 'bg-[#111111] hover:bg-black text-[#F4C430]'
+                          }`}
                         >
                           {uploadingPhoto ? (
-                            'Uploading to Storage...'
+                            <>
+                              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              <span>Uploading...</span>
+                            </>
                           ) : isLastQuestion ? (
                             <>
-                              <span>Submit Assessment</span>
-                              <Send className="w-4 h-4" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+                              <span>Confirm & Submit Assessment</span>
+                              <Send className="w-3.5 h-3.5" />
                             </>
                           ) : (
                             <>
-                              <span>Attach & Next Question</span>
-                              <ChevronRight className="w-4 h-4" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Confirm & Next Question</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
                             </>
                           )}
                         </button>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 </div>
