@@ -77,7 +77,30 @@ export async function getAllStudents(): Promise<Profile[]> {
     .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
     .eq('role', 'student')
     .order('full_name');
-  return throwOnError(data, error, 'getAllStudents');
+  const profiles = throwOnError(data, error, 'getAllStudents') as Profile[];
+
+  // Fallback: Enrich phone from roster if missing on profile
+  try {
+    const { data: rosterRows } = await supabase.from('roster').select('id, profile_id, phone');
+    if (rosterRows && rosterRows.length > 0) {
+      const phoneMap = new Map<string, string>();
+      rosterRows.forEach((r: any) => {
+        if (r.phone) {
+          if (r.profile_id) phoneMap.set(r.profile_id, r.phone);
+          if (r.id) phoneMap.set(r.id, r.phone);
+        }
+      });
+      profiles.forEach(p => {
+        if (!p.phone && phoneMap.has(p.id)) {
+          p.phone = phoneMap.get(p.id) || null;
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[db] phone enrichment fallback:', err);
+  }
+
+  return profiles;
 }
 
 /** Admin: insert a new student profile */
@@ -2463,17 +2486,20 @@ export async function toggleRosterAccess(
   rosterId: string,
   suspended: boolean
 ): Promise<void> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rosterId);
+  const filter = isUuid ? `id.eq.${rosterId},profile_id.eq.${rosterId}` : `id.eq.${rosterId}`;
+  
   // Try updating by id or profile_id on roster table
   const { data, error } = await (supabase as any)
     .from('roster')
     .update({ suspended })
-    .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
+    .or(filter)
     .select();
 
   if (error && error.code !== 'PGRST116') throw error;
 
   // If entry didn't exist in roster table (direct profile), insert/upsert a roster record for them
-  if (!data || data.length === 0) {
+  if ((!data || data.length === 0) && isUuid) {
     const { data: profile } = (await supabase.from('profiles').select('*').eq('id', rosterId).single()) as any;
     if (profile) {
       await (supabase as any).from('roster').upsert({
@@ -2493,6 +2519,8 @@ export async function toggleFeeSuspension(
   rosterId: string,
   feeSuspended: boolean
 ): Promise<void> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rosterId);
+  const filter = isUuid ? `id.eq.${rosterId},profile_id.eq.${rosterId}` : `id.eq.${rosterId}`;
   const updateData: any = { fee_suspended: feeSuspended };
   if (!feeSuspended) {
     updateData.awaiting_termination = false;
@@ -2500,17 +2528,19 @@ export async function toggleFeeSuspension(
   const { error } = await (supabase as any)
     .from('roster')
     .update(updateData)
-    .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
+    .or(filter)
     .select();
 
   if (error && error.code !== 'PGRST116') throw error;
 }
 
 export async function requestAccountTermination(rosterId: string): Promise<void> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rosterId);
+  const filter = isUuid ? `id.eq.${rosterId},profile_id.eq.${rosterId}` : `id.eq.${rosterId}`;
   const { error } = await (supabase as any)
     .from('roster')
     .update({ awaiting_termination: true })
-    .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`)
+    .or(filter)
     .select();
 
   if (error && error.code !== 'PGRST116') throw error;
@@ -2518,12 +2548,18 @@ export async function requestAccountTermination(rosterId: string): Promise<void>
 
 
 export async function deleteRosterEntry(rosterId: string): Promise<void> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rosterId);
+
   // Check if target is protected admin before anything else
-  const { data: checkRole } = (await supabase
-    .from('profiles')
-    .select('role, full_name')
-    .eq('id', rosterId)
-    .single()) as any;
+  let checkRole: any = null;
+  if (isUuid) {
+    const { data } = (await supabase
+      .from('profiles')
+      .select('role, full_name')
+      .eq('id', rosterId)
+      .maybeSingle()) as any;
+    checkRole = data;
+  }
   
   if (checkRole?.role === 'admin') {
     throw new Error('Access denied: Administrators cannot be removed.');
@@ -2533,7 +2569,7 @@ export async function deleteRosterEntry(rosterId: string): Promise<void> {
     .from('roster')
     .select('role, full_name, email, profile_id')
     .eq('id', rosterId)
-    .single();
+    .maybeSingle();
     
   if (rosterCheck?.role === 'admin') {
     throw new Error('Access denied: Administrators cannot be removed.');
@@ -2588,6 +2624,41 @@ export async function deleteRosterEntry(rosterId: string): Promise<void> {
     // If RPC threw a non-404 error but client fallback cleaned it up, we continue without throwing
     console.warn('RPC delete_from_roster returned info/error (handled by client fallback):', error.message);
   }
+}
+
+/**
+ * Returns the student ID for a given profile:
+ * - Checks roster table by profile_id, email, or id
+ * - If legacy UUID, returns the 8-character prefix
+ * - If new numeric ID (4-5 digits), returns as-is
+ * - Fallback returns the first 8 characters of the profile ID
+ */
+export async function getStudentIdForProfile(profileId: string, email?: string): Promise<string> {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId);
+    let filter = `profile_id.eq.${profileId}`;
+    if (email) {
+      filter += `,email.ilike.${email.trim().toLowerCase()}`;
+    }
+    if (!isUuid) {
+      filter += `,id.eq.${profileId}`;
+    }
+
+    const { data } = await (supabase as any)
+      .from('roster')
+      .select('id')
+      .or(filter)
+      .maybeSingle();
+
+    if (data?.id) {
+      const idStr = String(data.id);
+      return idStr.includes('-') ? idStr.slice(0, 8) : idStr;
+    }
+  } catch (err) {
+    console.warn('[db:getStudentIdForProfile] Error fetching roster id:', err);
+  }
+
+  return profileId.includes('-') ? profileId.slice(0, 8) : profileId;
 }
 
 // =============================================================================

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, Mail, Award, Book, Edit3, Check, X, Loader2 } from 'lucide-react';
+import { User, Phone, Mail, Award, Book, Edit3, Check, X, Loader2, Hash } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ProfileAvatar from '../../components/common/ProfileAvatar';
 import { useAuth } from '../../features/auth/AuthContext';
-import { updateProfile, getEnrollmentsForStudent, getFeeStatus } from '../../lib/db';
+import { updateProfile, getEnrollmentsForStudent, getFeeStatus, getStudentIdForProfile } from '../../lib/db';
 import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ export const ProfilePage: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [studentId, setStudentId] = useState('');
   
   // Dynamic data states
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -76,15 +77,18 @@ export const ProfilePage: React.FC = () => {
     if (profile) {
       setFullName(profile.full_name || '');
       setPhone(profile.phone || '');
-      setEmail((profile as any).user?.email || (profile as any).email || 'student@example.com');
+      const currentEmail = (profile as any).user?.email || (profile as any).email || 'student@example.com';
+      setEmail(currentEmail);
 
       setLoadingData(true);
       Promise.all([
         getEnrollmentsForStudent(profile.id),
-        getFeeStatus(profile.id)
-      ]).then(([enrolls, status]) => {
+        getFeeStatus(profile.id),
+        getStudentIdForProfile(profile.id, currentEmail)
+      ]).then(([enrolls, status, sId]) => {
         setEnrollments(enrolls || []);
         setFeeStatus(status || { status: 'unpaid' });
+        setStudentId(sId);
       }).catch(console.error).finally(() => setLoadingData(false));
     }
   }, [profile]);
@@ -178,11 +182,28 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <h2 className="text-lg font-extrabold text-[#111111]">{fullName}</h2>
-            <span className="inline-block bg-[#FAFAFA] border border-[#E5E5E5] text-[#737373] text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5 uppercase tracking-wide">
-              Student Account
-            </span>
+            <div className="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="inline-block bg-[#FAFAFA] border border-[#E5E5E5] text-[#737373] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                Student Account
+              </span>
+              {studentId && (
+                <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full">
+                  <Hash size={10} className="text-amber-600 shrink-0" />
+                  <span>Student ID: #{studentId}</span>
+                </span>
+              )}
+            </div>
 
             <div className="mt-6 pt-6 border-t border-[#F5F5F5] space-y-3.5 text-left text-xs font-semibold text-[#525252]">
+              {studentId && (
+                <div className="flex items-center gap-3">
+                  <Hash size={15} className="text-[#A3A3A3] shrink-0" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[#737373] font-sans font-medium">Student ID:</span>
+                    <span className="font-mono font-bold text-[#111111]">#{studentId}</span>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <Mail size={15} className="text-[#A3A3A3] shrink-0" />
                 <span className="truncate">{email}</span>
@@ -225,6 +246,14 @@ export const ProfilePage: React.FC = () => {
 
               {isEditing ? (
                 <form onSubmit={handleSave} className="space-y-4">
+                  <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#737373] uppercase tracking-wide block">Student ID</span>
+                      <span className="text-xs font-mono font-bold text-[#111111]">#{studentId || '—'}</span>
+                    </div>
+                    <span className="text-[10px] bg-white border border-[#E5E5E5] text-[#737373] px-2 py-0.5 rounded-full font-medium">Permanent Credential</span>
+                  </div>
+
                   <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-2 gap-4'}>
                     <div>
                       <label className="text-[10px] font-bold text-[#737373] uppercase tracking-wide">Full Name</label>
@@ -300,7 +329,14 @@ export const ProfilePage: React.FC = () => {
                   </div>
                 </form>
               ) : (
-                <div className={`py-2 ${isMobile ? 'flex flex-col gap-5' : 'grid grid-cols-2 gap-5'}`}>
+                <div className={`py-2 ${isMobile ? 'flex flex-col gap-5' : 'grid grid-cols-3 gap-5'}`}>
+                  <div>
+                    <span className="text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wide block">Student ID</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Hash size={13} className="text-amber-600 shrink-0" />
+                      <span className="text-sm font-mono font-bold text-[#111111]">#{studentId || '—'}</span>
+                    </div>
+                  </div>
                   <div>
                     <span className="text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wide block">Full Name</span>
                     <span className="text-sm font-bold text-[#111111] mt-1 block">{fullName}</span>

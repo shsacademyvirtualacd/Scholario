@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, Users, Sparkles, Eye, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Users, Sparkles, Eye, TrendingUp, AlertTriangle, Phone } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import StudentTable from '../../components/admin/students/StudentTable';
@@ -322,7 +322,10 @@ export const StudentsAdminPage: React.FC = () => {
                     </div>
                     <div className="min-w-0">
                       <span className="font-semibold text-[#111111] block leading-tight truncate">{student.full_name}</span>
-                      <span className="text-[10px] text-[#737373] mt-0.5 block">{student.phone || 'No Phone'}</span>
+                      <div className="flex items-center gap-1.5 text-xs text-[#525252] font-semibold mt-1">
+                        <Phone size={12} className="text-[#A3A3A3] shrink-0" />
+                        <span>{student.phone || 'No Phone'}</span>
+                      </div>
                     </div>
                   </div>
                   <button

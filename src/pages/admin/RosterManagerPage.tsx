@@ -18,6 +18,7 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { RosterEntry, ClassOffering } from '../../types';
 import { useMobile } from '../../hooks/useMobile';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
+import { formatStudentId } from '../../lib/studentId';
 
 export const RosterManagerPage: React.FC = () => {
   const isMobile = useMobile();
@@ -415,7 +416,33 @@ export const RosterManagerPage: React.FC = () => {
   // Helper getters for enrichment
   const getPhone = (entry: RosterEntry) => {
     if (entry.role === 'teacher') return '—';
-    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null) || (entry.email ? Object.values(profilesMap).find((prof: any) => (prof.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+    if ((entry as any)?.phone) return (entry as any).phone;
+
+    // 1. Direct match by roster.id or roster.profile_id
+    let p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null);
+
+    // 2. Search profiles by profile_id
+    if (!p && entry.profile_id) {
+      p = Object.values(profilesMap).find((prof: any) => prof.id === entry.profile_id);
+    }
+
+    // 3. Search profiles by email
+    if (!p && entry.email) {
+      const emailLower = entry.email.trim().toLowerCase();
+      p = Object.values(profilesMap).find((prof: any) => 
+        (prof.email && prof.email.trim().toLowerCase() === emailLower) ||
+        (prof.user?.email && prof.user.email.trim().toLowerCase() === emailLower)
+      );
+    }
+
+    // 4. Fallback match by exact full_name
+    if (!p && entry.full_name) {
+      const nameLower = entry.full_name.trim().toLowerCase();
+      p = Object.values(profilesMap).find((prof: any) => 
+        prof.full_name && prof.full_name.trim().toLowerCase() === nameLower
+      );
+    }
+
     return p?.phone || '—';
   };
 
@@ -698,20 +725,23 @@ export const RosterManagerPage: React.FC = () => {
   // Filter & Section breakdown
   const filteredRoster = useMemo(() => {
     return roster.filter(entry => {
-      const effectiveRole = (profilesMap[entry.id]?.role || entry.role || 'student').trim().toLowerCase();
-      if (effectiveRole !== activeSection.slice(0, -1)) return false;
-
-      const q = searchTerm.toLowerCase();
-      const matchesSearch = !q || 
-        (entry.full_name || '').toLowerCase().includes(q) ||
-        (entry.email || '').toLowerCase().includes(q) ||
-        (entry.id || '').toLowerCase().includes(q);
-
-      if (!matchesSearch) return false;
-
       const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) || 
         profilesMap[entry.id] || 
         (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+
+      const effectiveRole = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase();
+      if (effectiveRole !== activeSection.slice(0, -1)) return false;
+
+      const q = searchTerm.toLowerCase();
+      const phoneVal = getPhone(entry).toLowerCase();
+      const matchesSearch = !q || 
+        (entry.full_name || '').toLowerCase().includes(q) ||
+        (entry.email || '').toLowerCase().includes(q) ||
+        (entry.id || '').toLowerCase().includes(q) ||
+        (entry.profile_id || '').toLowerCase().includes(q) ||
+        (phoneVal !== '—' && phoneVal.includes(q));
+
+      if (!matchesSearch) return false;
 
       const hasProfile = Boolean(matchedProfile || entry.profile_id);
       const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
@@ -735,9 +765,9 @@ export const RosterManagerPage: React.FC = () => {
     });
   }, [roster, activeSection, searchTerm, statusFilter, profilesMap, feeMap]);
 
-  const adminCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'admin').length, [roster, profilesMap]);
-  const studentCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'student').length, [roster, profilesMap]);
-  const teacherCount = useMemo(() => roster.filter(r => (profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'teacher').length, [roster, profilesMap]);
+  const adminCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'admin').length, [roster, profilesMap]);
+  const studentCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'student').length, [roster, profilesMap]);
+  const teacherCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'teacher').length, [roster, profilesMap]);
 
   const fbiseOfferings = useMemo(() => {
     return offerings
@@ -968,7 +998,7 @@ export const RosterManagerPage: React.FC = () => {
               const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
               const isPendingPayment = isStudent ? (!isPendingAccount && feeStatusVal !== 'paid') : false;
               const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
-              const idShort = (entry.id || entry.profile_id || '').slice(0, 8);
+              const idShort = formatStudentId(entry.id || entry.profile_id || '');
 
               return (
                 <div key={entry.id} className="bg-white rounded-2xl border border-[#E5E5E5] p-3 shadow-sm flex flex-col gap-3">
@@ -983,6 +1013,12 @@ export const RosterManagerPage: React.FC = () => {
                         )}
                       </div>
                       <div className="text-[#737373] text-[11px] font-medium mt-0.5 truncate">{entry.email}</div>
+                      {activeSection === 'students' && getPhone(entry) !== '—' && (
+                        <div className="flex items-center gap-1.5 text-xs text-[#374151] font-bold mt-1">
+                          <Phone size={12} className="text-[#F4C430] shrink-0" />
+                          <span>{getPhone(entry)}</span>
+                        </div>
+                      )}
                     </div>
                     {/* Access Status Badge */}
                     <div className="shrink-0">
@@ -1014,13 +1050,16 @@ export const RosterManagerPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3 text-xs bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
                       <div>
                         <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Phone</div>
-                        <div className="font-semibold text-[#404040] whitespace-nowrap">{getPhone(entry)}</div>
+                        <div className="font-bold text-[#111111] flex items-center gap-1.5 whitespace-nowrap">
+                          <Phone size={12} className="text-[#A3A3A3] shrink-0" />
+                          <span>{getPhone(entry)}</span>
+                        </div>
                       </div>
                       <div>
                         <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Class</div>
                         <div className="font-semibold text-[#111111] whitespace-nowrap">{getClassGrade(entry)}</div>
                       </div>
-                      <div className="col-span-2 flex items-center justify-between mt-1">
+                      <div className="col-span-2 flex items-center justify-between mt-1 pt-2 border-t border-[#EAEAEA]">
                         <div>
                           <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Stream</div>
                           <div className="font-semibold text-[#404040] whitespace-nowrap">{getStream(entry)}</div>
@@ -1157,9 +1196,9 @@ export const RosterManagerPage: React.FC = () => {
                   <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap min-w-[180px]">Name & Email</th>
                   {activeSection === 'students' && (
                     <>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden lg:table-cell whitespace-nowrap w-36">Phone</th>
+                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap w-36">Phone</th>
                       <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap w-36">Class (Grade)</th>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden sm:table-cell whitespace-nowrap w-40">Stream</th>
+                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap w-40">Stream</th>
                     </>
                   )}
                   {activeSection === 'teachers' && (
@@ -1186,7 +1225,7 @@ export const RosterManagerPage: React.FC = () => {
                   const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
                   const isPendingPayment = isStudent ? (!isPendingAccount && feeStatusVal !== 'paid') : false;
                   const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
-                  const idShort = (entry.id || entry.profile_id || '').slice(0, 8);
+                  const idShort = formatStudentId(entry.id || entry.profile_id || '');
 
                   return (
                     <tr key={entry.id} className="hover:bg-[#FAFAFA]/70 transition-colors">
@@ -1215,11 +1254,17 @@ export const RosterManagerPage: React.FC = () => {
                           )}
                         </div>
                         <div className="text-[#737373] text-[11px] font-medium mt-0.5 whitespace-nowrap">{entry.email}</div>
+                        {activeSection === 'students' && getPhone(entry) !== '—' && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#525252] mt-1 whitespace-nowrap">
+                            <Phone size={11} className="text-[#A3A3A3] shrink-0" />
+                            <span>{getPhone(entry)}</span>
+                          </div>
+                        )}
                       </td>
 
                       {activeSection === 'students' && (
                         <>
-                          <td className="p-4 text-xs font-semibold text-[#404040] hidden lg:table-cell whitespace-nowrap">
+                          <td className="p-4 text-xs font-semibold text-[#404040] whitespace-nowrap">
                             <div className="flex items-center gap-1.5 whitespace-nowrap">
                               <Phone size={13} className="text-[#A3A3A3] shrink-0" />
                               <span>{getPhone(entry)}</span>
@@ -1230,7 +1275,7 @@ export const RosterManagerPage: React.FC = () => {
                               {getClassGrade(entry)}
                             </span>
                           </td>
-                          <td className="p-4 text-xs font-bold text-[#404040] hidden sm:table-cell whitespace-nowrap">
+                          <td className="p-4 text-xs font-bold text-[#404040] whitespace-nowrap">
                             <span className="inline-flex items-center whitespace-nowrap bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
                               {getStream(entry)}
                             </span>

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { validatePakistaniPhoneNumber, PAKISTANI_PHONE_ERROR } from '../../lib/phoneValidation';
+import { generateUniqueNumericStudentId } from '../../lib/studentId';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
@@ -296,9 +297,11 @@ export const UnregisteredPage: React.FC = () => {
         .maybeSingle();
 
       if (!existingRoster) {
+        const numericStudentId = await generateUniqueNumericStudentId();
         const { error: rosterErr } = await (supabase as any)
           .from('roster')
           .insert({
+            id: numericStudentId,
             email: emailLower,
             full_name: fullName.trim(),
             role: 'student',

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Mail, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Phone, Mail, Calendar, CheckCircle2, Clock, XCircle, Hash } from 'lucide-react';
 import type { Profile, Enrollment, ClassOffering, Teacher, RosterEntry, Attendance } from '../../../types';
 import { getEnrollmentsForStudent, getAllOfferings, getAllTeachers, getAllRoster, getAttendanceForStudent } from '../../../lib/db';
 import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel } from '../../../lib/taxonomy';
+import { formatStudentId } from '../../../lib/studentId';
 
 interface StudentDetailPanelProps {
   student: Profile;
@@ -56,8 +57,10 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
   const gradeLabel = getStudentGradeLabel(student, enrollments, offerings);
   const streamLabel = getStudentStreamLabel(student);
 
-  const rosterEntry = roster.find(r => r.profile_id === student.id);
+  const rosterEntry = roster.find(r => r.profile_id === student.id || r.id === student.id);
   const emailDisplay = rosterEntry ? rosterEntry.email : 'No email address registered';
+  const phoneDisplay = student.phone || (rosterEntry as any)?.phone || 'No phone number registered';
+  const studentIdDisplay = rosterEntry ? formatStudentId(rosterEntry.id) : formatStudentId(student.id);
 
   // Attendance metrics
   const totalSessions = attendanceRecords.length;
@@ -147,8 +150,12 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
         <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Contact & Profile</h4>
         <div className="space-y-2 bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3.5 text-xs text-[#525252] font-semibold">
           <div className="flex items-center gap-2">
+            <Hash size={13} className="text-[#A3A3A3] shrink-0" />
+            <span>Student ID: <span className="font-mono font-bold text-[#111111]">#{studentIdDisplay}</span></span>
+          </div>
+          <div className="flex items-center gap-2">
             <Phone size={13} className="text-[#A3A3A3] shrink-0" />
-            <span>{student.phone || 'No phone number registered'}</span>
+            <span>{phoneDisplay}</span>
           </div>
           <div className="flex items-center gap-2">
             <Mail size={13} className="text-[#A3A3A3] shrink-0" />
