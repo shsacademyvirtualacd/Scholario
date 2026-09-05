@@ -1663,7 +1663,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     {/* Mobile Back Button */}
                     <button
                       onClick={() => setMobileViewActiveThread(false)}
-                      className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 text-[#111111] shrink-0 transition-all outline-none select-none"
+                      className="chat-icon-btn md:hidden p-1.5 -ml-1 rounded-lg hover:bg-black/5 text-[#111111] shrink-0 outline-none select-none"
                       aria-label="Back to conversations"
                     >
                       <ArrowLeft size={20} />
@@ -1740,7 +1740,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <button
                       type="button"
                       onClick={() => toast.info('Video calling with teachers & staff will be available in an upcoming update.')}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
+                      className="chat-icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 outline-none select-none"
                       title="Video call"
                       aria-label="Video call"
                     >
@@ -1750,7 +1750,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <button
                       type="button"
                       onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
+                      className="chat-icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 outline-none select-none"
                       title="Voice call"
                       aria-label="Voice call"
                     >
@@ -1761,7 +1761,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowChatMenu((prev) => !prev)}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
+                        className="chat-icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 outline-none select-none"
                         title="More options"
                         aria-label="More options"
                       >
@@ -1944,7 +1944,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         type="button"
                         disabled={inChatSearchMatches.length <= 1}
                         onClick={handlePrevSearchMatch}
-                        className="w-7 h-7 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-all outline-none select-none"
+                        className="chat-icon-btn w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent outline-none select-none"
                         title="Previous match"
                       >
                         <ChevronUp size={16} />
@@ -1954,7 +1954,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         type="button"
                         disabled={inChatSearchMatches.length <= 1}
                         onClick={handleNextSearchMatch}
-                        className="w-7 h-7 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-all outline-none select-none"
+                        className="chat-icon-btn w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent outline-none select-none"
                         title="Next match"
                       >
                         <ChevronDown size={16} />
@@ -1967,7 +1967,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           setInChatSearchQuery('');
                           setCurrentSearchMatchIndex(0);
                         }}
-                        className="w-7 h-7 rounded-lg hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center text-[#54656F] hover:text-[#111111] transition-all ml-0.5 outline-none select-none"
+                        className="chat-icon-btn w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center text-[#54656F] hover:text-[#111111] ml-0.5 outline-none select-none"
                         title="Close search"
                       >
                         <X size={16} />
@@ -2337,7 +2337,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           id="btn-chat-emoji"
                           onClick={() => setShowEmojiPicker((prev) => !prev)}
                           disabled={sending || isUploadingAttachment}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all active:opacity-60 active:scale-95 hover:bg-black/5 active:bg-black/10 mb-0.5 cursor-pointer outline-none select-none ${
+                          className={`chat-icon-btn w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-black/5 active:bg-black/10 mb-0.5 cursor-pointer outline-none select-none ${
                             showEmojiPicker ? 'text-[#00A884]' : 'text-[#54656F] hover:text-[#111111]'
                           }`}
                           title={showEmojiPicker ? 'Close emoji keyboard' : 'Insert emoji'}
@@ -2388,7 +2388,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           id="btn-chat-attach"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={sending || isUploadingAttachment}
-                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed mb-0.5 outline-none select-none"
+                          className="chat-icon-btn w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed mb-0.5 outline-none select-none"
                           title="Attach document or file (≤ 15MB)"
                           aria-label="Attach file"
                         >
@@ -2401,7 +2401,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           id="btn-chat-camera"
                           onClick={() => cameraInputRef.current?.click()}
                           disabled={sending || isUploadingAttachment}
-                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 flex items-center justify-center shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed mb-0.5 outline-none select-none"
+                          className="chat-icon-btn w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed mb-0.5 outline-none select-none"
                           title="Take or upload photo"
                           aria-label="Camera"
                         >

@@ -18,7 +18,8 @@ import {
   Sparkles,
   Loader2,
   ClipboardCheck,
-  ShieldAlert
+  ShieldAlert,
+  Database
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -48,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: Users,           label: 'Students',   path: '/admin/students' },
   { icon: BookMarked,      label: 'Notes',      path: '/admin/notes' },
   { icon: FileCheck2,      label: 'Testing Center', path: '/admin/tests' },
+  { icon: Database,        label: 'Question Bank', path: '/admin/question-bank' },
   { icon: Bell,            label: 'Announcements', path: '/admin/announcements' },
   { icon: Sparkles,        label: 'Sage',       path: '/admin/sage' },
   { icon: DollarSign,      label: 'Prices',     path: '/admin/prices' },

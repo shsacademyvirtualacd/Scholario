@@ -1,35 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, BookOpen, RotateCcw, FileCheck2, Database, GraduationCap, Target, ChevronDown, Upload, Sparkles, X } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  BookOpen,
+  RotateCcw,
+  FileCheck2,
+  GraduationCap,
+  ChevronDown,
+  Upload,
+  Sparkles,
+  X,
+  ShieldAlert,
+  Send,
+  Lock,
+  Eye,
+  Trash2,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import AdminShell from '../../components/admin/AdminShell';
 import TeacherTestCard from '../../components/teacher/TeacherTestCard';
 import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissionsPanel';
 import TestUploadModal from '../../components/teacher/TestUploadModal';
 import TestViewerModal from '../../components/common/TestViewerModal';
-import SelfTestingView from '../../components/tests/SelfTestingView';
-import AdminMCQVerificationView from '../../components/admin/mcq/AdminMCQVerificationView';
 import StudentResultsView from '../../components/tests/StudentResultsView';
 import AdminCreateTestModal from '../../components/admin/tests/AdminCreateTestModal';
+import AdminCreateMCQTestModal from '../../components/admin/tests/AdminCreateMCQTestModal';
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import {
+  getProctoredMCQTests,
+  publishProctoredMCQTest,
+  deleteProctoredMCQTest,
+} from '../../lib/proctoredMcqService';
 import type { TestPaper, TestSubmission } from '../../types';
+import type { ProctoredMCQTest } from '../../types/proctoredMcq';
 
 export const AdminTestsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Tab navigation: 'class-test' vs 'self-test' vs 'question-bank' vs 'student-results'
+  // Tab navigation simplified: 'class-test' vs 'student-results'
   const rawTab = searchParams.get('tab');
-  const activeTab: 'class-test' | 'self-test' | 'question-bank' | 'student-results' =
-    rawTab === 'self-test'
-      ? 'self-test'
-      : rawTab === 'question-bank' || rawTab === 'mcq-verification' || rawTab === 'bank'
-      ? 'question-bank'
-      : rawTab === 'student-results' || rawTab === 'results'
+  const activeTab: 'class-test' | 'student-results' =
+    rawTab === 'student-results' || rawTab === 'results'
       ? 'student-results'
       : 'class-test';
 
-  const setActiveTab = (tab: 'class-test' | 'self-test' | 'question-bank' | 'student-results') => {
+  const setActiveTab = (tab: 'class-test' | 'student-results') => {
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'class-test') {
       newParams.delete('tab');
@@ -40,15 +58,19 @@ export const AdminTestsPage: React.FC = () => {
   };
 
   const [tests, setTests] = useState<TestPaper[]>([]);
+  const [proctoredTests, setProctoredTests] = useState<ProctoredMCQTest[]>([]);
+  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'proctored' | 'standard'>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isCreateMCQModalOpen, setIsCreateMCQModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState<boolean>(false);
   const [showActionDropdown, setShowActionDropdown] = useState<boolean>(false);
   const actionDropdownRef = useRef<HTMLDivElement>(null);
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
+  const [viewingMCQTest, setViewingMCQTest] = useState<ProctoredMCQTest | null>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -72,8 +94,12 @@ export const AdminTestsPage: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const allTests = await getAllTests();
+      const [allTests, allMCQTests] = await Promise.all([
+        getAllTests(),
+        getProctoredMCQTests('admin').catch(() => []),
+      ]);
       setTests(allTests);
+      setProctoredTests(allMCQTests);
       if (!selectedTestId && allTests.length > 0) {
         setSelectedTestId(allTests[0].id);
       }
@@ -81,6 +107,27 @@ export const AdminTestsPage: React.FC = () => {
       console.error('Error fetching tests for admin:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePublishMCQ = async (testId: string) => {
+    try {
+      const updated = await publishProctoredMCQTest(testId, 'admin');
+      toast.success('Test published! Students can now see and access this test using their Student ID.');
+      setProctoredTests((prev) => prev.map((t) => (t.id === testId ? updated : t)));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to publish test.');
+    }
+  };
+
+  const handleDeleteMCQ = async (testId: string) => {
+    if (!window.confirm('Are you sure you want to delete this proctored MCQ test?')) return;
+    try {
+      await deleteProctoredMCQTest(testId, 'admin');
+      toast.success('Proctored MCQ test deleted.');
+      setProctoredTests((prev) => prev.filter((t) => t.id !== testId));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete test.');
     }
   };
 
@@ -102,17 +149,6 @@ export const AdminTestsPage: React.FC = () => {
 
   const availableGrades = getGradesForBoard(selectedBoard);
 
-  const distinctSubjects = React.useMemo(() => {
-    const s = new Set<string>();
-    tests.forEach((t) => {
-      const testBoard = t.board || t.board_id || 'fbise';
-      if (!selectedBoard || selectedBoard === 'all' || testBoard === selectedBoard) {
-        if (t.subject) s.add(t.subject);
-      }
-    });
-    return Array.from(s).sort();
-  }, [tests, selectedBoard]);
-
   const filteredTests = tests.filter((t) => {
     const testBoard = t.board || t.board_id || 'fbise';
     const matchesBoard = !selectedBoard || selectedBoard === 'all' || testBoard === selectedBoard;
@@ -124,6 +160,20 @@ export const AdminTestsPage: React.FC = () => {
       t.title.toLowerCase().includes(q) ||
       t.subject.toLowerCase().includes(q) ||
       (t.teacher_name || '').toLowerCase().includes(q) ||
+      (t.instructions || '').toLowerCase().includes(q);
+
+    return matchesBoard && matchesGrade && matchesSubject && matchesSearch;
+  });
+
+  const filteredProctoredTests = proctoredTests.filter((t) => {
+    const matchesBoard = !selectedBoard || selectedBoard === 'all' || (t.board || 'fbise') === selectedBoard;
+    const matchesGrade = gradeFilter === 'all' || String(t.grade) === gradeFilter;
+    const matchesSubject = subjectFilter === 'all' || t.subject.toLowerCase() === subjectFilter.toLowerCase();
+    const q = searchTerm.toLowerCase();
+    const matchesSearch =
+      !q ||
+      t.title.toLowerCase().includes(q) ||
+      t.subject.toLowerCase().includes(q) ||
       (t.instructions || '').toLowerCase().includes(q);
 
     return matchesBoard && matchesGrade && matchesSubject && matchesSearch;
@@ -187,15 +237,38 @@ export const AdminTestsPage: React.FC = () => {
                   <div className="px-3 py-2 border-b border-[#F0F0F0] mb-1">
                     <p className="text-[11px] font-black uppercase tracking-wider text-[#737373]">Select Test Paper Method</p>
                   </div>
+
+                  {/* Option 1: Proctored MCQ Test (Admin Only) */}
+                  <button
+                    id="admin-menu-create-mcq-proctored-btn"
+                    onClick={() => {
+                      setShowActionDropdown(false);
+                      setIsCreateMCQModalOpen(true);
+                    }}
+                    className="w-full text-left p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-amber-300"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[#111111] border border-black flex items-center justify-center text-[#F4C430] shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                      <ShieldAlert size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-[#111111]">Admin MCQ Test (Proctored)</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">Admin Only</span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug">
+                        Manual MCQ authoring with anti-cheating auto-submit, tab & screenshot protection, and student ID access.
+                      </p>
+                    </div>
+                  </button>
                   
-                  {/* Option 1: Create from Question Bank */}
+                  {/* Option 2: Create from Question Bank / AI */}
                   <button
                     id="admin-menu-create-bank-btn"
                     onClick={() => {
                       setShowActionDropdown(false);
                       setIsCreateModalOpen(true);
                     }}
-                    className="w-full text-left p-3 rounded-xl hover:bg-[#FAF9F5] transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-amber-200/60"
+                    className="w-full text-left p-3 rounded-xl hover:bg-[#FAF9F5] transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-amber-200/60 mt-1"
                   >
                     <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0 group-hover:scale-105 transition-transform">
                       <FileCheck2 size={18} className="text-[#F4C430]" />
@@ -211,7 +284,7 @@ export const AdminTestsPage: React.FC = () => {
                     </div>
                   </button>
 
-                  {/* Option 2: Manual Upload */}
+                  {/* Option 3: Manual Upload */}
                   <button
                     id="admin-menu-upload-pdf-btn"
                     onClick={() => {
@@ -240,9 +313,10 @@ export const AdminTestsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Subsection Tab Switcher */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6 flex-wrap">
+      {/* Subsection Tab Switcher - Simplified to ONLY Class Test & Student Results */}
+      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6">
         <button
+          id="admin-tab-class-test"
           onClick={() => setActiveTab('class-test')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'class-test'
@@ -257,45 +331,12 @@ export const AdminTestsPage: React.FC = () => {
               activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
             }`}
           >
-            {tests.length}
+            {tests.length + proctoredTests.length}
           </span>
         </button>
 
         <button
-          onClick={() => setActiveTab('self-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'self-test'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <Target size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Self Testing</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430]/20 text-[#111111]">
-            MCQ
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('question-bank')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'question-bank'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <Database size={15} className={activeTab === 'question-bank' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Question Bank</span>
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-              activeTab === 'question-bank' ? 'bg-[#F4C430] text-[#111111]' : 'bg-black/5 text-[#737373]'
-            }`}
-          >
-            Live Bank
-          </span>
-        </button>
-
-        <button
+          id="admin-tab-student-results"
           onClick={() => setActiveTab('student-results')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'student-results'
@@ -306,24 +347,13 @@ export const AdminTestsPage: React.FC = () => {
           <GraduationCap size={15} className={activeTab === 'student-results' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Student Results</span>
           <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5">
-            MCQ
+            Grading
           </span>
         </button>
       </div>
 
       {activeTab === 'student-results' ? (
         <StudentResultsView isTeacher={false} />
-      ) : activeTab === 'question-bank' ? (
-        <AdminMCQVerificationView
-          initialBoard={selectedBoard}
-          initialGrade="9"
-          initialSubject="Physics"
-        />
-      ) : activeTab === 'self-test' ? (
-        <SelfTestingView
-          defaultBoard={selectedBoard}
-          userRole="admin"
-        />
       ) : (
         <>
           {/* Board Selector Tabs */}
@@ -387,19 +417,26 @@ export const AdminTestsPage: React.FC = () => {
                 ))}
               </div>
 
-              {/* Subject Dropdown */}
-              <select
-                value={subjectFilter}
-                onChange={(e) => setSubjectFilter(e.target.value)}
-                className="h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden cursor-pointer"
-              >
-                <option value="all">All Subjects ({distinctSubjects.length})</option>
-                {distinctSubjects.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
-                  </option>
+              {/* Test Type Filter: All vs Proctored MCQ vs PDF Papers */}
+              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'proctored', label: 'Proctored MCQs' },
+                  { id: 'standard', label: 'PDF Papers' },
+                ].map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => setTestTypeFilter(type.id as any)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      testTypeFilter === type.id
+                        ? 'bg-[#111111] text-white shadow-xs'
+                        : 'text-[#525252] hover:text-[#111111]'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
 
@@ -409,50 +446,127 @@ export const AdminTestsPage: React.FC = () => {
             <div className="lg:col-span-6 xl:col-span-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-[#111111] flex items-center gap-2">
-                  <span>All Class Tests</span>
+                  <span>Class Tests & Assessments</span>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
-                    {filteredTests.length}
+                    {(testTypeFilter !== 'standard' ? filteredProctoredTests.length : 0) +
+                      (testTypeFilter !== 'proctored' ? filteredTests.length : 0)}
                   </span>
                 </h3>
               </div>
 
-              {loading && tests.length === 0 ? (
+              {loading && tests.length === 0 && proctoredTests.length === 0 ? (
                 <div className="space-y-3 animate-pulse">
                   {[1, 2, 3].map((n) => (
                     <div key={n} className="bg-white rounded-2xl border border-[#E5E5E5] p-5 h-36" />
                   ))}
                 </div>
-              ) : filteredTests.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#E5E5E5] p-8 text-center shadow-xs">
-                  <BookOpen size={36} className="mx-auto mb-2 text-[#A3A3A3]" />
-                  <p className="text-sm font-bold text-[#111111]">No class tests found</p>
-                  <p className="text-xs text-[#737373] mt-1">
-                    {searchTerm || gradeFilter !== 'all' || subjectFilter !== 'all'
-                      ? 'Try clearing active filters to see more tests.'
-                      : 'Get started by uploading an assessment paper.'}
-                  </p>
-                  <button
-                    id="admin-empty-upload-test-btn"
-                    onClick={() => setIsChoiceModalOpen(true)}
-                    className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all shadow-sm cursor-pointer border border-[#111111]"
-                  >
-                    <Plus size={15} />
-                    <span>Upload / Create Test Paper</span>
-                  </button>
-                </div>
               ) : (
                 <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-                  {filteredTests.map((test) => (
-                    <TeacherTestCard
-                      key={test.id}
-                      test={test}
-                      isSelected={selectedTest?.id === test.id}
-                      canDelete={true}
-                      onSelect={(t) => setSelectedTestId(t.id)}
-                      onView={(t) => setViewingTest(t)}
-                      onDelete={handleTestDelete}
-                    />
-                  ))}
+                  {/* Proctored MCQ Tests Section */}
+                  {testTypeFilter !== 'standard' &&
+                    filteredProctoredTests.map((test) => {
+                      const isPublished = test.status === 'published';
+                      return (
+                        <div
+                          key={test.id}
+                          className="bg-white rounded-2xl border-2 border-[#111111]/10 hover:border-[#111111] p-4 shadow-xs transition-all space-y-3"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#111111] text-[#F4C430] flex items-center gap-1 shadow-2xs">
+                                <ShieldAlert size={11} />
+                                Proctored MCQ
+                              </span>
+                              {isPublished ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                  <Lock size={10} /> Published to Students
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                                  Draft (Hidden from Students)
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setViewingMCQTest(test)}
+                                className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] cursor-pointer"
+                                title="View Questions & Answer Keys"
+                              >
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMCQ(test.id)}
+                                className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
+                                title="Delete Test"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h4 className="text-sm font-black text-[#111111] leading-tight">{test.title}</h4>
+                            <p className="text-[11px] font-medium text-[#737373] mt-1">
+                              {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} MCQs • {test.total_marks} Marks
+                            </p>
+                          </div>
+
+                          <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-[#737373] font-mono">
+                              Student ID Access
+                            </span>
+
+                            {!isPublished ? (
+                              <button
+                                onClick={() => handlePublishMCQ(test.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
+                              >
+                                <Send size={12} />
+                                <span>Publish to Students</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setViewingMCQTest(test)}
+                                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#111111] cursor-pointer hover:bg-[#F0F0F0]"
+                              >
+                                <span>Inspect Questions</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {/* Standard / PDF Tests Section */}
+                  {testTypeFilter !== 'proctored' &&
+                    filteredTests.map((test) => (
+                      <TeacherTestCard
+                        key={test.id}
+                        test={test}
+                        isSelected={selectedTest?.id === test.id}
+                        canDelete={true}
+                        onSelect={(t) => setSelectedTestId(t.id)}
+                        onView={(t) => setViewingTest(t)}
+                        onDelete={handleTestDelete}
+                      />
+                    ))}
+
+                  {/* Empty state */}
+                  {((testTypeFilter === 'proctored' && filteredProctoredTests.length === 0) ||
+                    (testTypeFilter === 'standard' && filteredTests.length === 0) ||
+                    (testTypeFilter === 'all' &&
+                      filteredTests.length === 0 &&
+                      filteredProctoredTests.length === 0)) && (
+                    <div className="bg-white rounded-2xl border border-[#E5E5E5] p-8 text-center shadow-xs">
+                      <BookOpen size={36} className="mx-auto mb-2 text-[#A3A3A3]" />
+                      <p className="text-sm font-bold text-[#111111]">No assessments found</p>
+                      <p className="text-xs text-[#737373] mt-1">
+                        Try clearing active filters or create a new test paper.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -493,13 +607,37 @@ export const AdminTestsPage: React.FC = () => {
             </div>
 
             <div className="space-y-3.5">
-              {/* Option 1: AI / Bank Generator */}
+              {/* Option 1: Proctored MCQ Assessment (Admin-Only) */}
+              <button
+                onClick={() => {
+                  setIsChoiceModalOpen(false);
+                  setIsCreateMCQModalOpen(true);
+                }}
+                className="w-full text-left p-4 rounded-2xl border-2 border-[#111111] bg-[#FFFDF5] hover:bg-[#FFF9E6] hover:border-black transition-all flex items-start gap-4 group cursor-pointer shadow-xs hover:shadow-md"
+              >
+                <div className="w-11 h-11 rounded-2xl bg-[#111111] border border-black flex items-center justify-center text-[#F4C430] shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                  <ShieldAlert size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-black text-[#111111]">Admin MCQ Test (Proctored)</h3>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 font-mono">
+                      Admin Only
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#525252] mt-1 leading-relaxed">
+                    Write questions manually, assign correct options, enable active anti-cheating (auto-submits on tab switch or screenshot), and require Student ID for access.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: AI / Bank Generator */}
               <button
                 onClick={() => {
                   setIsChoiceModalOpen(false);
                   setIsCreateModalOpen(true);
                 }}
-                className="w-full text-left p-4 rounded-2xl border-2 border-amber-300/80 bg-[#FFFDF7] hover:bg-[#FFF9EB] hover:border-amber-400 transition-all flex items-start gap-4 group cursor-pointer shadow-xs hover:shadow-md"
+                className="w-full text-left p-4 rounded-2xl border-2 border-amber-300/80 bg-white hover:bg-[#FAF9F5] hover:border-amber-400 transition-all flex items-start gap-4 group cursor-pointer shadow-xs hover:shadow-md"
               >
                 <div className="w-11 h-11 rounded-2xl bg-amber-100/80 border border-amber-200 flex items-center justify-center text-amber-800 shrink-0 group-hover:scale-105 transition-transform">
                   <FileCheck2 size={22} className="text-[#F4C430]" />
@@ -508,7 +646,7 @@ export const AdminTestsPage: React.FC = () => {
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-sm font-black text-[#111111]">Create Class Test Paper</h3>
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950">
-                      Recommended
+                      Curriculum
                     </span>
                   </div>
                   <p className="text-xs text-[#525252] mt-1 leading-relaxed">
@@ -517,7 +655,7 @@ export const AdminTestsPage: React.FC = () => {
                 </div>
               </button>
 
-              {/* Option 2: Upload PDF */}
+              {/* Option 3: Upload PDF */}
               <button
                 onClick={() => {
                   setIsChoiceModalOpen(false);
@@ -545,6 +683,13 @@ export const AdminTestsPage: React.FC = () => {
         </div>
       )}
 
+      {/* Proctored MCQ Test Creation Modal (Admin Only) */}
+      <AdminCreateMCQTestModal
+        isOpen={isCreateMCQModalOpen}
+        onClose={() => setIsCreateMCQModalOpen(false)}
+        onTestCreated={fetchData}
+      />
+
       {/* Create Test from Question Bank Modal (Admin-Only) */}
       <AdminCreateTestModal
         isOpen={isCreateModalOpen}
@@ -569,6 +714,113 @@ export const AdminTestsPage: React.FC = () => {
           setViewingSubmission(null);
         }}
       />
+
+      {/* Proctored MCQ Test Inspection Modal */}
+      {viewingMCQTest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#111111] text-[#F4C430] text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                    <ShieldAlert size={11} /> Proctored Test
+                  </span>
+                  <span className="text-xs font-bold text-[#737373]">
+                    Grade {viewingMCQTest.grade} • {viewingMCQTest.subject}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-[#111111] mt-1">{viewingMCQTest.title}</h3>
+                <p className="text-xs text-[#737373] mt-0.5">
+                  {viewingMCQTest.questions.length} MCQs • {viewingMCQTest.duration_minutes} Mins • {viewingMCQTest.total_marks} Marks
+                </p>
+              </div>
+
+              <button
+                onClick={() => setViewingMCQTest(null)}
+                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Questions list */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {viewingMCQTest.questions.map((q, qIndex) => (
+                <div key={q.id} className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="text-xs font-black text-[#111111] leading-snug">
+                      Q{qIndex + 1}. {q.question || q.question_text}
+                    </h4>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-[#E5E5E5] text-[#737373] shrink-0">
+                      {q.marks} {q.marks === 1 ? 'Mark' : 'Marks'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {q.options.map((opt, oIndex) => {
+                      const isCorrect = oIndex === (q.correctAnswer ?? q.correct_option_index);
+                      return (
+                        <div
+                          key={oIndex}
+                          className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border ${
+                            isCorrect
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-bold'
+                              : 'bg-white border-[#E5E5E5] text-[#525252]'
+                          }`}
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                              isCorrect ? 'bg-emerald-600 text-white' : 'bg-[#F0F0F0] text-[#737373]'
+                            }`}
+                          >
+                            {String.fromCharCode(65 + oIndex)}
+                          </span>
+                          <span className="flex-1 text-[11px]">{opt}</span>
+                          {isCorrect && (
+                            <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                              Correct Key
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between">
+              <span className="text-xs text-[#737373]">
+                Status:{' '}
+                <strong className={viewingMCQTest.status === 'published' ? 'text-emerald-700' : 'text-amber-700'}>
+                  {viewingMCQTest.status === 'published' ? 'Published' : 'Draft'}
+                </strong>
+              </span>
+
+              {viewingMCQTest.status !== 'published' ? (
+                <button
+                  onClick={async () => {
+                    await handlePublishMCQ(viewingMCQTest.id);
+                    setViewingMCQTest(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs cursor-pointer shadow-xs"
+                >
+                  Publish to Students
+                </button>
+              ) : (
+                <button
+                  onClick={() => setViewingMCQTest(null)}
+                  className="px-4 py-2 rounded-xl bg-[#111111] text-white font-black text-xs cursor-pointer"
+                >
+                  Close Preview
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 };

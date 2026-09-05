@@ -11,8 +11,11 @@ import {
   RotateCcw,
   GraduationCap,
   FileCheck2,
-  X
+  X,
+  ShieldAlert,
+  Target
 } from 'lucide-react';
+import { ProctoredMCQSubmissionsList } from '../teacher/ProctoredMCQSubmissionsList';
 import type { StudentMCQAttempt, ClassOffering } from '../../types';
 import { getStudentMCQAttemptsForTeacher, getAllStudentMCQAttempts } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -37,6 +40,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
   const [results, setResults] = useState<StudentMCQAttempt[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedAttempt, setSelectedAttempt] = useState<StudentMCQAttempt | null>(null);
+  const [activeCategory, setActiveCategory] = useState<'proctored' | 'self-test'>('proctored');
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -287,35 +291,69 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Teacher Scoping Banner */}
-      {isTeacher && (
-        <div className="bg-linear-to-r from-[#FAFAFA] to-[#F5F5F5] border border-[#E5E5E5] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-bold text-sm shrink-0">
-              <GraduationCap size={18} />
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-[#111111]">
-                Class-Scoped Results View
-              </p>
-              <p className="text-[11px] font-medium text-[#737373]">
-                Strictly displaying MCQ practice & exam generator results for your assigned roster:{' '}
-                <span className="font-bold text-[#111111]">
-                  {teacherAssignedGrades.length > 0
-                    ? teacherAssignedGrades.map((g) => `Grade ${g}`).join(', ')
-                    : 'No classes'}{' '}
-                  • {teacherAssignedSubjects.join(', ') || 'No subjects'}
+      {/* Category Toggle: Proctored Assessments (with grading) vs Self-Test Practice */}
+      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit">
+        <button
+          onClick={() => setActiveCategory('proctored')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeCategory === 'proctored'
+              ? 'bg-[#111111] text-white shadow-xs'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+          }`}
+        >
+          <ShieldAlert size={15} className={activeCategory === 'proctored' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <span>Proctored MCQ Assessments</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430] text-[#111111]">
+            Grading
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveCategory('self-test')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeCategory === 'self-test'
+              ? 'bg-[#111111] text-white shadow-xs'
+              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+          }`}
+        >
+          <Target size={15} className={activeCategory === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <span>Self-Testing Practice</span>
+        </button>
+      </div>
+
+      {activeCategory === 'proctored' ? (
+        <ProctoredMCQSubmissionsList isTeacher={isTeacher} />
+      ) : (
+        <>
+          {/* Teacher Scoping Banner */}
+          {isTeacher && (
+            <div className="bg-linear-to-r from-[#FAFAFA] to-[#F5F5F5] border border-[#E5E5E5] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-bold text-sm shrink-0">
+                  <GraduationCap size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-extrabold text-[#111111]">
+                    Class-Scoped Results View
+                  </p>
+                  <p className="text-[11px] font-medium text-[#737373]">
+                    Strictly displaying MCQ practice & exam generator results for your assigned roster:{' '}
+                    <span className="font-bold text-[#111111]">
+                      {teacherAssignedGrades.length > 0
+                        ? teacherAssignedGrades.map((g) => `Grade ${g}`).join(', ')
+                        : 'No classes'}{' '}
+                      • {teacherAssignedSubjects.join(', ') || 'No subjects'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="px-2.5 py-1 bg-white border border-[#E5E5E5] rounded-lg text-[11px] font-extrabold text-[#111111] shadow-2xs">
+                  {teacherOfferings.length} Active {teacherOfferings.length === 1 ? 'Assignment' : 'Assignments'}
                 </span>
-              </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="px-2.5 py-1 bg-white border border-[#E5E5E5] rounded-lg text-[11px] font-extrabold text-[#111111] shadow-2xs">
-              {teacherOfferings.length} Active {teacherOfferings.length === 1 ? 'Assignment' : 'Assignments'}
-            </span>
-          </div>
-        </div>
-      )}
+          )}
 
       {/* Summary KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -765,6 +803,8 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

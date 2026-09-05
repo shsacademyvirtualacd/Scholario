@@ -12,7 +12,8 @@ import {
   CreditCard,
   Sparkles,
   Loader2,
-  ClipboardCheck
+  ClipboardCheck,
+  Target
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: ClipboardCheck,  label: 'Attendance', path: '/student/attendance' },
   { icon: BookMarked,      label: 'Notes',      path: '/student/notes' },
   { icon: FileCheck2,      label: 'Testing Center', path: '/student/tests' },
+  { icon: Target,          label: 'Self Testing', path: '/student/self-testing' },
   { icon: Calendar,        label: 'Schedule',   path: '/student/schedule' },
   { icon: Bell,            label: 'Announcements', path: '/student/announcements' },
   { icon: Sparkles,        label: 'Sage',       path: '/student/sage' },

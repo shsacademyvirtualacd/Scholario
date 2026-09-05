@@ -29,6 +29,7 @@ const AdminDashboardPage   = lazy(() => import('../pages/admin/AdminDashboardPag
 // ─── Student sub-pages (lazy) ────────────────
 const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
 const StudentTestsPage = lazy(() => import('../pages/student/TestsPage'));
+const StudentSelfTestingPage = lazy(() => import('../pages/student/SelfTestingPage'));
 const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
 const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
 const ProfilePage    = lazy(() => import('../pages/student/ProfilePage'));
@@ -60,6 +61,7 @@ const TeachersPage         = lazy(() => import('../pages/admin/TeachersPage'));
 const StudentsAdminPage    = lazy(() => import('../pages/admin/StudentsAdminPage'));
 const NotesManagerPage     = lazy(() => import('../pages/admin/NotesManagerPage'));
 const AdminTestsPage       = lazy(() => import('../pages/admin/AdminTestsPage'));
+const AdminQuestionBankPage = lazy(() => import('../pages/admin/AdminQuestionBankPage'));
 const AttendanceAdminPage  = lazy(() => import('../pages/admin/AttendanceAdminPage'));
 const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
 const AdminProfilePage     = lazy(() => import('../pages/admin/ProfilePage'));
@@ -143,6 +145,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="student"><StudentTestsPage /></ProtectedRoute>}
           />
           <Route
+            path="/student/self-testing"
+            element={<ProtectedRoute requiredRole="student"><StudentSelfTestingPage /></ProtectedRoute>}
+          />
+          <Route
             path="/student/schedule"
             element={<ProtectedRoute requiredRole="student"><SchedulePage /></ProtectedRoute>}
           />
@@ -203,6 +209,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/admin/tests"
             element={<ProtectedRoute requiredRole="admin"><AdminTestsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/question-bank"
+            element={<ProtectedRoute requiredRole="admin"><AdminQuestionBankPage /></ProtectedRoute>}
           />
           <Route
             path="/admin/attendance"

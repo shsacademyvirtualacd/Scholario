@@ -171,7 +171,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#54656F] hover:text-[#111B21] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 rounded-lg transition-all shrink-0 outline-none select-none"
+            className="chat-icon-btn p-1.5 text-[#54656F] hover:text-[#111B21] hover:bg-black/5 rounded-lg transition-all shrink-0 outline-none select-none"
             title="Close emoji keyboard"
           >
             <X size={18} />
@@ -283,7 +283,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
             <button
               type="button"
               onClick={() => scrollToCategory('recent')}
-              className={`p-1.5 rounded-none border-b-2 transition-all cursor-pointer active:opacity-60 active:scale-95 outline-none select-none ${
+              className={`chat-icon-btn p-1.5 rounded-none border-b-2 transition-all cursor-pointer outline-none select-none ${
                 activeCategory === 'recent' ? 'border-[#00A884]' : 'border-transparent'
               }`}
               title="Recently used"
@@ -299,7 +299,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => scrollToCategory(cat.id)}
-                className={`p-1.5 rounded-none border-b-2 transition-all cursor-pointer active:opacity-60 active:scale-95 outline-none select-none ${
+                className={`chat-icon-btn p-1.5 rounded-none border-b-2 transition-all cursor-pointer outline-none select-none ${
                   isActive ? 'border-[#00A884]' : 'border-transparent'
                 }`}
                 title={cat.name}
@@ -315,7 +315,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
           <button
             type="button"
             onClick={onBackspace}
-            className="p-1.5 text-[#54656F] hover:text-[#111B21] active:opacity-60 active:scale-95 transition-all ml-1 cursor-pointer shrink-0 outline-none select-none"
+            className="chat-icon-btn p-1.5 text-[#54656F] hover:text-[#111B21] transition-all ml-1 cursor-pointer shrink-0 outline-none select-none"
             title="Backspace"
             aria-label="Delete last character"
           >

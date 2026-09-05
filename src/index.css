@@ -58,15 +58,32 @@
   input[type="file"],
   [role="button"] {
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
   }
 
-  /* WhatsApp-style subtle icon button feedback: slight opacity dim + subtle scale down, no expanding circle or ripple */
-  .chat-icon-btn {
+  /* WhatsApp-style subtle icon button feedback: slight opacity dim + subtle scale down, strictly no expanding circular ripple or ink */
+  .chat-icon-btn,
+  button[aria-label],
+  button[title],
+  #whatsapp-emoji-picker button {
     -webkit-tap-highlight-color: transparent !important;
     outline: none !important;
     user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Suppress any pseudo-element ripple expansion animations */
+  .chat-icon-btn::after,
+  .chat-icon-btn::before,
+  #whatsapp-emoji-picker button::after,
+  #whatsapp-emoji-picker button::before {
+    display: none !important;
+    content: none !important;
+    animation: none !important;
+  }
+
+  .chat-icon-btn {
     transition: opacity 120ms ease, transform 120ms ease, background-color 150ms ease;
   }
 

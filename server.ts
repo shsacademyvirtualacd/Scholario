@@ -65,6 +65,8 @@ const upload = multer({
 
 // In-memory buffer store for dev server local previewing
 const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename: string }>();
+const proctoredMcqTests = new Map<string, any>();
+const proctoredMcqSubmissions = new Map<string, any>();
 
 import { adminToolDeclarations, executeAdminDataQuery } from './src/lib/adminDataTools';
 import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
@@ -1658,6 +1660,61 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       console.warn('[server.ts] Supabase test delete warning:', delErr);
     }
     return res.json({ success: true });
+  });
+
+  // ── Proctored MCQ Tests APIs ────────────────────────
+  app.get('/api/mcq-tests', (req, res) => {
+    const list = Array.from(proctoredMcqTests.values());
+    return res.json({ tests: list });
+  });
+
+  app.post('/api/mcq-tests', express.json(), (req, res) => {
+    const test = req.body;
+    if (!test || !test.id) return res.status(400).json({ error: 'Invalid test payload' });
+    proctoredMcqTests.set(test.id, test);
+    return res.json({ success: true, test });
+  });
+
+  app.post('/api/mcq-tests/publish/:id', (req, res) => {
+    const { id } = req.params;
+    const test = proctoredMcqTests.get(id);
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    test.status = 'published';
+    test.published_at = new Date().toISOString();
+    proctoredMcqTests.set(id, test);
+    return res.json({ success: true, test });
+  });
+
+  app.delete('/api/mcq-tests/:id', (req, res) => {
+    const { id } = req.params;
+    proctoredMcqTests.delete(id);
+    return res.json({ success: true });
+  });
+
+  app.post('/api/mcq-tests/submit', express.json(), (req, res) => {
+    const sub = req.body;
+    if (!sub || !sub.id) return res.status(400).json({ error: 'Invalid submission payload' });
+    proctoredMcqSubmissions.set(sub.id, sub);
+    return res.json({ success: true, submission: sub });
+  });
+
+  app.get('/api/mcq-tests/submissions', (req, res) => {
+    const list = Array.from(proctoredMcqSubmissions.values());
+    return res.json({ submissions: list });
+  });
+
+  app.post('/api/mcq-tests/grade', express.json(), (req, res) => {
+    const { submission_id, final_score, teacher_feedback, graded_by, graded_by_name } = req.body;
+    const sub = proctoredMcqSubmissions.get(submission_id);
+    if (!sub) return res.status(404).json({ error: 'Submission not found' });
+    sub.status = 'graded';
+    sub.final_score = final_score;
+    sub.teacher_feedback = teacher_feedback;
+    sub.graded_at = new Date().toISOString();
+    sub.graded_by = graded_by;
+    sub.graded_by_name = graded_by_name;
+    proctoredMcqSubmissions.set(submission_id, sub);
+    return res.json({ success: true, submission: sub });
   });
 
   // ── Submissions Upload ──────────────────────────────
