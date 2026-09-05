@@ -218,22 +218,24 @@ export const AdminTestsPage: React.FC = () => {
         </div>
 
         {activeTab === 'class-test' && (
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <div className="w-full sm:w-auto flex items-center gap-2.5 shrink-0">
             {/* Primary Unified Action Button with Dropdown */}
-            <div className="relative" ref={actionDropdownRef}>
+            <div className="relative w-full sm:w-auto" ref={actionDropdownRef}>
               <button
                 id="admin-upload-create-test-btn"
                 onClick={() => setShowActionDropdown((prev) => !prev)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all shadow-sm cursor-pointer border border-[#111111]"
+                className="w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-2 px-4 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all shadow-sm cursor-pointer border border-[#111111]"
               >
-                <Plus size={16} />
-                <span>Upload / Create Test Paper</span>
+                <div className="flex items-center gap-2">
+                  <Plus size={16} />
+                  <span>Upload / Create Test Paper</span>
+                </div>
                 <ChevronDown size={14} className={`text-[#A3A3A3] transition-transform duration-200 ${showActionDropdown ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Action Dropdown Menu */}
               {showActionDropdown && (
-                <div className="absolute right-0 mt-2 w-84 bg-white rounded-2xl border border-[#E5E5E5] shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute left-0 right-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-88 bg-white rounded-2xl border border-[#E5E5E5] shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-3 py-2 border-b border-[#F0F0F0] mb-1">
                     <p className="text-[11px] font-black uppercase tracking-wider text-[#737373]">Select Test Paper Method</p>
                   </div>
@@ -245,17 +247,17 @@ export const AdminTestsPage: React.FC = () => {
                       setShowActionDropdown(false);
                       setIsCreateMCQModalOpen(true);
                     }}
-                    className="w-full text-left p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-amber-300"
+                    className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-amber-300"
                   >
                     <div className="w-9 h-9 rounded-xl bg-[#111111] border border-black flex items-center justify-center text-[#F4C430] shrink-0 group-hover:scale-105 transition-transform shadow-xs">
                       <ShieldAlert size={18} />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-xs font-black text-[#111111]">Admin MCQ Test (Proctored)</p>
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">Admin Only</span>
                       </div>
-                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug">
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
                         Manual MCQ authoring with anti-cheating auto-submit, tab & screenshot protection, and student ID access.
                       </p>
                     </div>
@@ -268,17 +270,17 @@ export const AdminTestsPage: React.FC = () => {
                       setShowActionDropdown(false);
                       setIsCreateModalOpen(true);
                     }}
-                    className="w-full text-left p-3 rounded-xl hover:bg-[#FAF9F5] transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-amber-200/60 mt-1"
+                    className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-[#FAF9F5] transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-amber-200/60 mt-1"
                   >
                     <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0 group-hover:scale-105 transition-transform">
                       <FileCheck2 size={18} className="text-[#F4C430]" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-xs font-black text-[#111111]">Create Class Test Paper</p>
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">AI & Bank</span>
                       </div>
-                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug">
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
                         Auto-generate structured exam papers with MCQs, short & long questions, custom marks & live PDF layout.
                       </p>
                     </div>
@@ -291,17 +293,17 @@ export const AdminTestsPage: React.FC = () => {
                       setShowActionDropdown(false);
                       setIsUploadModalOpen(true);
                     }}
-                    className="w-full text-left p-3 rounded-xl hover:bg-[#F8FAFC] transition-colors flex items-start gap-3 group cursor-pointer border border-transparent hover:border-blue-200/60 mt-1"
+                    className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-[#F8FAFC] transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-blue-200/60 mt-1"
                   >
                     <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0 group-hover:scale-105 transition-transform">
                       <Upload size={18} className="text-blue-600" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-xs font-black text-[#111111]">Upload Test Paper (PDF)</p>
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#F0F0F0] text-[#737373]">Manual</span>
                       </div>
-                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug">
+                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
                         Upload your own prepared test PDF file, configure due date, and assign to students.
                       </p>
                     </div>
