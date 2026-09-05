@@ -496,6 +496,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inputBarRef = useRef<HTMLDivElement | null>(null);
+  const [inputBarHeight, setInputBarHeight] = useState<number>(76);
+
+  // Dynamically observe input bar height so messages scroll view has exact bottom clearance
+  useEffect(() => {
+    const el = inputBarRef.current;
+    if (!el) return;
+    const updateHeight = () => {
+      if (inputBarRef.current) {
+        setInputBarHeight(inputBarRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    const ro = new ResizeObserver(() => {
+      updateHeight();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activeThreadId, showEmojiPicker, isVoiceRecording]);
+
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      scrollToBottom('auto');
+    }
+  }, [inputBarHeight]);
 
   // Scroll state & message tracking refs
   const prevMessagesLengthRef = useRef<number>(0);
@@ -1813,6 +1838,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   ref={messagesContainerRef}
                   onScroll={handleMessagesScroll}
                   className="relative z-1 flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto"
+                  style={{ paddingBottom: `${inputBarHeight + 16}px` }}
                 >
                 {/* Security & Permanent Notice */}
                 <div className="flex justify-center my-2">
@@ -2064,214 +2090,222 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 )}
                 <div ref={messagesEndRef} />
               </div>
-            </div>
 
-            {/* Message Input Bar */}
-            <div className="p-2.5 sm:p-3 md:p-3.5 bg-[#F0F2F5] border-t border-[#E5E5E5] space-y-2">
-              {sendError && (
-                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 animate-in fade-in duration-200">
-                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
-                  <div className="min-w-0 flex-1">
-                    <span className="font-semibold text-rose-900">Failed to send: </span>
-                    <span className="text-rose-700">{sendError}</span>
-                  </div>
-                  <button
-                    onClick={() => setSendError(null)}
-                    className="text-rose-500 hover:text-rose-800 text-xs font-bold"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-
-              {/* Quick Emoji Bar when emoji button is active */}
-              {showEmojiPicker && (
-                <div className="flex items-center gap-1 overflow-x-auto py-1.5 px-2.5 bg-white rounded-2xl border border-[#E5E5E5] shadow-xs animate-in fade-in zoom-in-95 duration-150">
-                  <span className="text-[11px] text-[#737373] font-medium mr-1.5 select-none shrink-0">Emojis:</span>
-                  {QUICK_EMOJIS.map(emoji => (
+              {/* Apple-style Frosted Glass Translucent Message Input Bar */}
+              <div
+                ref={inputBarRef}
+                id="chat-input-bar-container"
+                className="absolute bottom-0 inset-x-0 z-20 p-2.5 sm:p-3 md:p-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white/60 backdrop-blur-[20px] border-t border-black/[0.08] shadow-[0_-4px_20px_rgba(0,0,0,0.03)] space-y-2"
+                style={{
+                  WebkitBackdropFilter: 'blur(20px)',
+                  backdropFilter: 'blur(20px)',
+                }}
+              >
+                {sendError && (
+                  <div className="p-2.5 bg-rose-50/90 backdrop-blur-md border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 animate-in fade-in duration-200">
+                    <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-rose-900">Failed to send: </span>
+                      <span className="text-rose-700">{sendError}</span>
+                    </div>
                     <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => {
-                        setInputContent(prev => prev + emoji);
-                        textareaRef.current?.focus();
-                      }}
-                      className="w-8 h-8 rounded-lg hover:bg-[#F0F2F5] flex items-center justify-center text-lg transition-transform active:scale-125 shrink-0"
+                      onClick={() => setSendError(null)}
+                      className="text-rose-500 hover:text-rose-800 text-xs font-bold"
                     >
-                      {emoji}
+                      ✕
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPicker(false)}
-                    className="ml-auto text-xs text-[#8696A0] hover:text-[#111111] px-2 py-1"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
+                  </div>
+                )}
 
-              <div className="flex items-end gap-2 w-full">
-                {isVoiceRecording ? (
-                  <VoiceRecorderBar
-                    threadId={activeThread.id}
-                    onSendVoice={handleSendVoice}
-                    onCancelRecording={() => {
-                      setIsVoiceRecording(false);
-                      setVoiceInitialPointer(null);
-                    }}
-                    onFinishRecording={() => {
-                      setIsVoiceRecording(false);
-                      setVoiceInitialPointer(null);
-                    }}
-                    disabled={sending || isUploadingAttachment}
-                    initialPointer={voiceInitialPointer}
-                  />
-                ) : (
-                  <>
-                    <form
-                      onSubmit={handleSendMessage}
-                      className="flex-1 flex items-end gap-1 sm:gap-1.5 bg-white px-2 py-1 sm:py-1.5 rounded-[24px] border border-[#E5E5E5] focus-within:border-[#B5B5B5] transition-all shadow-2xs min-w-0"
-                    >
-                      {/* Hidden Native File Picker Inputs */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        id="chat-attachment-input"
-                        accept="image/*,application/pdf,.doc,.docx"
-                        onChange={handleFileSelected}
-                        className="hidden"
-                        disabled={sending || isUploadingAttachment}
-                      />
-                      <input
-                        ref={cameraInputRef}
-                        type="file"
-                        id="chat-camera-input"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleFileSelected}
-                        className="hidden"
-                        disabled={sending || isUploadingAttachment}
-                      />
-
-                      {/* Emoji Button on far left of input field */}
+                {/* Quick Emoji Bar when emoji button is active */}
+                {showEmojiPicker && (
+                  <div className="flex items-center gap-1 overflow-x-auto py-1.5 px-2.5 bg-white/80 backdrop-blur-xl rounded-2xl border border-black/[0.08] shadow-xs animate-in fade-in zoom-in-95 duration-150">
+                    <span className="text-[11px] text-[#737373] font-medium mr-1.5 select-none shrink-0">Emojis:</span>
+                    {QUICK_EMOJIS.map(emoji => (
                       <button
+                        key={emoji}
                         type="button"
-                        id="btn-chat-emoji"
-                        onClick={() => setShowEmojiPicker(prev => !prev)}
-                        disabled={sending || isUploadingAttachment}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation mb-0.5 ${
-                          showEmojiPicker ? 'text-[#111111] bg-black/10' : 'text-[#54656F] hover:text-[#111111] hover:bg-black/5'
-                        }`}
-                        title="Insert emoji"
-                        aria-label="Insert emoji"
+                        onClick={() => {
+                          setInputContent(prev => prev + emoji);
+                          textareaRef.current?.focus();
+                        }}
+                        className="w-8 h-8 rounded-lg hover:bg-black/5 flex items-center justify-center text-lg transition-transform active:scale-125 shrink-0"
                       >
-                        <Smile size={20} />
+                        {emoji}
                       </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(false)}
+                      className="ml-auto text-xs text-[#8696A0] hover:text-[#111111] px-2 py-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
 
-                      {/* If uploading attachment: show progress bar inside input */}
-                      {isUploadingAttachment ? (
-                        <div className="flex-1 flex items-center gap-2 px-2 py-1.5 min-h-[38px]">
-                          <div className="w-7 h-7 rounded-xl bg-[#F4C430]/20 flex items-center justify-center text-[#B8860B] shrink-0">
-                            <Loader2 size={15} className="animate-spin" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between text-[11px] font-medium mb-1">
-                              <span className="truncate text-[#111111] font-semibold">{uploadingFilename}</span>
-                              <span className="text-[#737373] font-mono text-[10px] ml-2 shrink-0">{uploadProgress}%</span>
+                <div className="flex items-end gap-2 w-full">
+                  {isVoiceRecording ? (
+                    <VoiceRecorderBar
+                      threadId={activeThread.id}
+                      onSendVoice={handleSendVoice}
+                      onCancelRecording={() => {
+                        setIsVoiceRecording(false);
+                        setVoiceInitialPointer(null);
+                      }}
+                      onFinishRecording={() => {
+                        setIsVoiceRecording(false);
+                        setVoiceInitialPointer(null);
+                      }}
+                      disabled={sending || isUploadingAttachment}
+                      initialPointer={voiceInitialPointer}
+                    />
+                  ) : (
+                    <>
+                      <form
+                        onSubmit={handleSendMessage}
+                        className="flex-1 flex items-end gap-1 sm:gap-1.5 bg-white/90 backdrop-blur-md px-2 py-1 sm:py-1.5 rounded-[24px] border border-black/[0.08] focus-within:border-black/20 focus-within:bg-white transition-all shadow-2xs min-w-0"
+                      >
+                        {/* Hidden Native File Picker Inputs */}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          id="chat-attachment-input"
+                          accept="image/*,application/pdf,.doc,.docx"
+                          onChange={handleFileSelected}
+                          className="hidden"
+                          disabled={sending || isUploadingAttachment}
+                        />
+                        <input
+                          ref={cameraInputRef}
+                          type="file"
+                          id="chat-camera-input"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleFileSelected}
+                          className="hidden"
+                          disabled={sending || isUploadingAttachment}
+                        />
+
+                        {/* Emoji Button on far left of input field */}
+                        <button
+                          type="button"
+                          id="btn-chat-emoji"
+                          onClick={() => setShowEmojiPicker(prev => !prev)}
+                          disabled={sending || isUploadingAttachment}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation mb-0.5 ${
+                            showEmojiPicker ? 'text-[#111111] bg-black/10' : 'text-[#54656F] hover:text-[#111111] hover:bg-black/5'
+                          }`}
+                          title="Insert emoji"
+                          aria-label="Insert emoji"
+                        >
+                          <Smile size={20} />
+                        </button>
+
+                        {/* If uploading attachment: show progress bar inside input */}
+                        {isUploadingAttachment ? (
+                          <div className="flex-1 flex items-center gap-2 px-2 py-1.5 min-h-[38px]">
+                            <div className="w-7 h-7 rounded-xl bg-[#F4C430]/20 flex items-center justify-center text-[#B8860B] shrink-0">
+                              <Loader2 size={15} className="animate-spin" />
                             </div>
-                            <div className="w-full h-1.5 bg-[#E5E5E5] rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-[#F4C430] transition-all duration-150 rounded-full"
-                                style={{ width: `${uploadProgress}%` }}
-                              />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between text-[11px] font-medium mb-1">
+                                <span className="truncate text-[#111111] font-semibold">{uploadingFilename}</span>
+                                <span className="text-[#737373] font-mono text-[10px] ml-2 shrink-0">{uploadProgress}%</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-[#E5E5E5] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-[#F4C430] transition-all duration-150 rounded-full"
+                                  style={{ width: `${uploadProgress}%` }}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <textarea
+                            ref={textareaRef}
+                            rows={1}
+                            value={inputContent}
+                            onChange={(e) => setInputContent(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendMessage();
+                              }
+                            }}
+                            placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
+                            className="flex-1 max-h-32 min-h-[38px] py-2 px-1 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#8696A0] resize-none outline-hidden"
+                          />
+                        )}
+
+                        {/* Attachment Button (Paperclip) */}
+                        <button
+                          type="button"
+                          id="btn-chat-attach"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={sending || isUploadingAttachment}
+                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+                          title="Attach document or file (≤ 15MB)"
+                          aria-label="Attach file"
+                        >
+                          <Paperclip size={19} />
+                        </button>
+
+                        {/* Camera Button for Quick Photo Capture */}
+                        <button
+                          type="button"
+                          id="btn-chat-camera"
+                          onClick={() => cameraInputRef.current?.click()}
+                          disabled={sending || isUploadingAttachment}
+                          className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+                          title="Take or upload photo"
+                          aria-label="Camera"
+                        >
+                          <Camera size={19} />
+                        </button>
+                      </form>
+
+                      {/* Distinct WhatsApp Green Circular Mic / Send Button */}
+                      {inputContent.trim() ? (
+                        <button
+                          type="button"
+                          id="btn-chat-send"
+                          onClick={() => handleSendMessage()}
+                          disabled={sending || isUploadingAttachment}
+                          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 touch-manipulation"
+                          title="Send message"
+                          aria-label="Send message"
+                        >
+                          {sending ? (
+                            <Loader2 size={18} className="animate-spin" />
+                          ) : (
+                            <Send size={18} className="text-white ml-0.5" />
+                          )}
+                        </button>
                       ) : (
-                        <textarea
-                          ref={textareaRef}
-                          rows={1}
-                          value={inputContent}
-                          onChange={(e) => setInputContent(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleSendMessage();
+                        <button
+                          type="button"
+                          id="btn-chat-voice-mic"
+                          onPointerDown={(e) => {
+                            setVoiceInitialPointer({ x: e.clientX, y: e.clientY });
+                            setIsVoiceRecording(true);
+                          }}
+                          onClick={() => {
+                            if (!isVoiceRecording) {
+                              setIsVoiceRecording(true);
                             }
                           }}
-                          placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
-                          className="flex-1 max-h-32 min-h-[38px] py-2 px-1 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#8696A0] resize-none outline-hidden"
-                        />
+                          disabled={sending || isUploadingAttachment}
+                          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition-all shadow-md active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
+                          title="Record voice message (Hold & slide up to lock, slide left to cancel)"
+                          aria-label="Record voice message"
+                        >
+                          <Mic size={20} className="text-white" />
+                        </button>
                       )}
-
-                      {/* Attachment Button (Paperclip) */}
-                      <button
-                        type="button"
-                        id="btn-chat-attach"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={sending || isUploadingAttachment}
-                        className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
-                        title="Attach document or file (≤ 15MB)"
-                        aria-label="Attach file"
-                      >
-                        <Paperclip size={19} />
-                      </button>
-
-                      {/* Camera Button for Quick Photo Capture */}
-                      <button
-                        type="button"
-                        id="btn-chat-camera"
-                        onClick={() => cameraInputRef.current?.click()}
-                        disabled={sending || isUploadingAttachment}
-                        className="w-9 h-9 rounded-full text-[#54656F] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center shrink-0 transition-colors interactive touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
-                        title="Take or upload photo"
-                        aria-label="Camera"
-                      >
-                        <Camera size={19} />
-                      </button>
-                    </form>
-
-                    {/* Distinct WhatsApp Green Circular Mic / Send Button */}
-                    {inputContent.trim() ? (
-                      <button
-                        type="button"
-                        id="btn-chat-send"
-                        onClick={() => handleSendMessage()}
-                        disabled={sending || isUploadingAttachment}
-                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 touch-manipulation"
-                        title="Send message"
-                        aria-label="Send message"
-                      >
-                        {sending ? (
-                          <Loader2 size={18} className="animate-spin" />
-                        ) : (
-                          <Send size={18} className="text-white ml-0.5" />
-                        )}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        id="btn-chat-voice-mic"
-                        onPointerDown={(e) => {
-                          setVoiceInitialPointer({ x: e.clientX, y: e.clientY });
-                          setIsVoiceRecording(true);
-                        }}
-                        onClick={() => {
-                          if (!isVoiceRecording) {
-                            setIsVoiceRecording(true);
-                          }
-                        }}
-                        disabled={sending || isUploadingAttachment}
-                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition-all shadow-md active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
-                        title="Record voice message (Hold & slide up to lock, slide left to cancel)"
-                        aria-label="Record voice message"
-                      >
-                        <Mic size={20} className="text-white" />
-                      </button>
-                    )}
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </>
