@@ -13,6 +13,8 @@ import {
   ChevronLeft,
   Upload,
   Layers,
+  Eye,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -27,6 +29,9 @@ import type {
   WrittenSubmission,
   WrittenQuestionAnswer,
 } from '../../types/writtenTest';
+import { useExamIntegrity } from '../../hooks/useExamIntegrity';
+import { ExamWatermarkOverlay } from './ExamWatermarkOverlay';
+import { ExamIntegrityBanner } from './ExamIntegrityBanner';
 
 interface WrittenTestExamModalProps {
   isOpen: boolean;
@@ -465,78 +470,16 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     [submitting, test, verifiedStudent, profile, inputId, answersMap, onSubmitted, onSubmitSuccess, stopCameraStream]
   );
 
-  // Proctoring listeners
-  useEffect(() => {
-    if (phase !== 'in_exam') return;
-
-    const handleVisibilityChange = () => {
-      // Shield camera operations, photo capture, photo review, and uploading from triggering proctoring
-      if (isCameraOperatingRef.current || isCameraActive || !!capturedPhotoUrl || uploadingPhoto) {
-        return;
-      }
-      if (document.hidden && !hasAutoSubmittedRef.current) {
-        executeSubmission('Auto-submitted: Tab/window switch detected (focus lost)');
-      }
-    };
-
-    const handleWindowBlur = () => {
-      // Shield camera operations, photo capture, photo review, and uploading from triggering proctoring
-      if (isCameraOperatingRef.current || isCameraActive || !!capturedPhotoUrl || uploadingPhoto) {
-        return;
-      }
-      if (!hasAutoSubmittedRef.current) {
-        executeSubmission('Auto-submitted: Browser window focus lost (switched away from exam)');
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'PrintScreen') {
-        e.preventDefault();
-        if (!hasAutoSubmittedRef.current) {
-          executeSubmission('Auto-submitted: Screenshot key (PrintScreen) pressed');
-        }
-        return;
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
-        if (['3', '4', '5', 's', 'S'].includes(e.key)) {
-          e.preventDefault();
-          if (!hasAutoSubmittedRef.current) {
-            executeSubmission('Auto-submitted: Screen capture keyboard shortcut detected');
-          }
-          return;
-        }
-      }
-
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
-        e.preventDefault();
-        toast.warning('Copying is prohibited during proctored exams.');
-      }
-    };
-
-    const handleCopy = (e: ClipboardEvent) => {
-      e.preventDefault();
-      toast.warning('Copying is disabled during this proctored exam.');
-    };
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleWindowBlur);
-    window.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('contextmenu', handleContextMenu);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleWindowBlur);
-      window.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, [phase, executeSubmission]);
+  // Active Anti-Cheating & Exam Integrity Detection
+  useExamIntegrity({
+    active: phase === 'in_exam' && !hasAutoSubmittedRef.current,
+    onViolation: (reason) => {
+      executeSubmission(reason);
+    },
+    isShielded: () => Boolean(isCameraOperatingRef.current || isCameraActive || !!capturedPhotoUrl || uploadingPhoto),
+    studentName: verifiedStudent?.name || profile?.full_name || 'Student',
+    studentId: verifiedStudent?.displayId || inputId || 'STD',
+  });
 
   // Exam Countdown Timer
   useEffect(() => {
@@ -716,6 +659,15 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
       <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative">
+        {/* Dynamic Watermark Overlay during active exam */}
+        {phase === 'in_exam' && (
+          <ExamWatermarkOverlay
+            studentName={verifiedStudent?.name || profile?.full_name}
+            studentId={verifiedStudent?.displayId || inputId}
+            testTitle={test.title}
+          />
+        )}
+
         {/* Top Header - Compact & Sticky, Shrinks to thin bar on scroll */}
         {phase === 'in_exam' && isScrolled ? (
           <div className="px-4 py-2 border-b border-[#F0F0F0] flex items-center justify-between bg-white/95 backdrop-blur-xs shrink-0 transition-all sticky top-0 z-30 shadow-xs">
@@ -855,28 +807,53 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                 </div>
               </div>
 
+              {/* Prominent Mandatory Disclosure Banner */}
+              <div className="p-4 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 flex items-start gap-3 shadow-xs">
+                <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-950">
+                    Proctored Assessment Notice
+                  </h4>
+                  <p className="text-xs font-bold text-amber-950 mt-1 leading-snug">
+                    This is a proctored exam. Screenshots, screen recording, tab-switching, or leaving this window will auto-submit your test and may be flagged for review.
+                  </p>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-red-600" />
-                  Mandatory Examination Protocol
+                  <Lock className="w-4 h-4 text-amber-600" />
+                  Mandatory Anti-Cheating Protocol
                 </h4>
-                <div className="p-4 rounded-2xl border border-red-100 bg-red-50/40 text-xs text-[#111111] space-y-2.5">
+                <div className="p-4 rounded-2xl border border-neutral-200 bg-[#FAFAFA] text-xs text-[#111111] space-y-2.5">
                   <div className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1.5 shrink-0" />
+                    <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                     <p>
-                      <strong className="text-red-900">Continuous Assessment:</strong> Complete Multiple Choice Questions and submit handwritten photos for Short/Long questions in one unified session.
+                      <strong className="text-red-950">No Tab or Window Switching:</strong> Leaving this tab, minimizing your browser, or switching windows triggers immediate auto-submission.
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1.5 shrink-0" />
+                    <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                     <p>
-                      <strong className="text-red-900">No Tab Switching:</strong> Leaving this tab, minimizing the browser, or switching windows triggers immediate auto-submission.
+                      <strong className="text-red-950">Screenshot & Capture Interception:</strong> Pressing PrintScreen, screenshot shortcuts (Win+Shift+S, Cmd+Shift+3/4/5), print dialogs (Ctrl+P), or recording overlays triggers instant auto-submission.
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1.5 shrink-0" />
+                    <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                     <p>
-                      <strong className="text-red-900">Camera Submissions:</strong> For written questions, write solutions on blank paper, snap a photo with the in-app camera, and attach it before submitting.
+                      <strong className="text-red-950">Clipboard & DevTools Blocking:</strong> Text copying, right-click inspection, and opening Developer Tools (F12) are actively intercepted and will terminate the exam.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Eye className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
+                    <p>
+                      <strong className="text-amber-950">Dynamic Watermark Traceability:</strong> Candidate name, ID, and live timestamp are watermarked across all exam pages to make unauthorized leaks permanently traceable.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Camera className="w-4 h-4 text-neutral-600 mt-0.5 shrink-0" />
+                    <p>
+                      <strong className="text-neutral-900">Camera Submissions:</strong> For written questions, write solutions on blank paper, snap a photo with the in-app camera, and attach it before submitting (camera usage is securely shielded).
                     </p>
                   </div>
                 </div>
@@ -895,6 +872,12 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
           {/* PHASE 3: In-Exam Question Flow */}
           {phase === 'in_exam' && currentQuestion && (
             <div className="space-y-3 w-full max-w-4xl mx-auto">
+              {/* Exam Integrity Banner */}
+              <ExamIntegrityBanner
+                studentName={verifiedStudent?.name || profile?.full_name}
+                studentId={verifiedStudent?.displayId || inputId}
+              />
+
               {/* Question Navigation Palette */}
               <div className="p-2 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-1">
                 <div className="flex items-center justify-between text-[11px]">

@@ -11,6 +11,7 @@ import {
   Send,
   UserCheck,
   EyeOff,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -21,6 +22,9 @@ import {
   type VerifiedStudentInfo,
 } from '../../lib/proctoredMcqService';
 import type { ProctoredMCQTest, ProctoredMCQSubmission } from '../../types/proctoredMcq';
+import { useExamIntegrity } from '../../hooks/useExamIntegrity';
+import { ExamWatermarkOverlay } from './ExamWatermarkOverlay';
+import { ExamIntegrityBanner } from './ExamIntegrityBanner';
 
 interface ProctoredMCQExamModalProps {
   isOpen: boolean;
@@ -146,79 +150,15 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
     [submitting, test, verifiedStudent, profile, inputId, selectedAnswers, onSubmitted]
   );
 
-  // Active Anti-Cheating Proctoring Listeners
-  useEffect(() => {
-    if (phase !== 'in_exam') return;
-
-    // 1. Tab / Window Switch Detection (Page Visibility API)
-    const handleVisibilityChange = () => {
-      if (document.hidden && !hasAutoSubmittedRef.current) {
-        executeSubmission('Auto-submitted: Tab/window switch detected (focus lost)');
-      }
-    };
-
-    // 2. Window Blur Detection (minimize, focus switch, open another window)
-    const handleWindowBlur = () => {
-      if (!hasAutoSubmittedRef.current) {
-        executeSubmission('Auto-submitted: Browser window focus lost (switched away from exam)');
-      }
-    };
-
-    // 3. Screenshot Key Detection
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // PrintScreen key
-      if (e.key === 'PrintScreen') {
-        e.preventDefault();
-        if (!hasAutoSubmittedRef.current) {
-          executeSubmission('Auto-submitted: Screenshot key (PrintScreen) pressed');
-        }
-        return;
-      }
-
-      // Mac screenshot combos: Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5
-      // Windows snipping combos: Win+Shift+S, Ctrl+Shift+S
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
-        if (['3', '4', '5', 's', 'S'].includes(e.key)) {
-          e.preventDefault();
-          if (!hasAutoSubmittedRef.current) {
-            executeSubmission('Auto-submitted: Screen capture keyboard shortcut detected');
-          }
-          return;
-        }
-      }
-
-      // Prevent copy
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
-        e.preventDefault();
-        toast.warning('Copying is prohibited during proctored exams.');
-      }
-    };
-
-    // 4. Clipboard / Copy Event Listener
-    const handleCopy = (e: ClipboardEvent) => {
-      e.preventDefault();
-      toast.warning('Copying is disabled during this proctored exam.');
-    };
-
-    // 5. Context Menu (Right-Click) Prevention
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleWindowBlur);
-    window.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('contextmenu', handleContextMenu);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleWindowBlur);
-      window.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, [phase, executeSubmission]);
+  // Active Anti-Cheating & Exam Integrity Detection
+  useExamIntegrity({
+    active: phase === 'in_exam' && !hasAutoSubmittedRef.current,
+    onViolation: (reason) => {
+      executeSubmission(reason);
+    },
+    studentName: verifiedStudent?.name || profile?.full_name || 'Student',
+    studentId: verifiedStudent?.displayId || inputId || 'STD',
+  });
 
   // Exam Countdown Timer
   useEffect(() => {
@@ -288,8 +228,17 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
   const isUrgent = timeRemainingSeconds < 300; // less than 5 mins
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
       <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative">
+        {/* Dynamic Watermark Overlay during active exam */}
+        {phase === 'in_exam' && (
+          <ExamWatermarkOverlay
+            studentName={verifiedStudent?.name || profile?.full_name}
+            studentId={verifiedStudent?.displayId || inputId}
+            testTitle={test.title}
+          />
+        )}
+
         {/* Top Indicator Bar (During Exam) */}
         {phase === 'in_exam' && (
           <div className="bg-[#111111] text-white px-5 py-2.5 flex items-center justify-between shrink-0">
@@ -402,40 +351,64 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
           {/* PHASE 2: Mandatory Proctoring Warning */}
           {phase === 'warning' && (
             <div className="max-w-xl mx-auto py-4 space-y-5">
-              <div className="p-5 rounded-3xl bg-amber-50 border-2 border-amber-300 space-y-3">
-                <div className="flex items-center gap-2.5 text-amber-900">
-                  <ShieldAlert size={24} className="text-amber-600 shrink-0" />
-                  <h3 className="text-base font-black uppercase tracking-wide">
-                    Mandatory Proctoring Notice
+              {/* Prominent Mandatory Disclosure Banner */}
+              <div className="p-4 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 flex items-start gap-3 shadow-xs">
+                <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-950">
+                    Proctored Assessment Notice
+                  </h4>
+                  <p className="text-xs font-bold text-amber-950 mt-1 leading-snug">
+                    This is a proctored exam. Screenshots, screen recording, tab-switching, or leaving this window will auto-submit your test and may be flagged for review.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-[#FAFAFA] border-2 border-neutral-200 space-y-3">
+                <div className="flex items-center gap-2.5 text-[#111111]">
+                  <Lock size={20} className="text-amber-600 shrink-0" />
+                  <h3 className="text-sm font-black uppercase tracking-wide">
+                    Mandatory Anti-Cheating Regulations
                   </h3>
                 </div>
 
-                <p className="text-xs text-amber-950 font-semibold leading-relaxed">
-                  Welcome, <strong>{verifiedStudent?.name}</strong> (Student ID: <code className="font-mono bg-amber-100 px-1.5 py-0.5 rounded">#{verifiedStudent?.displayId}</code>).
-                  Please read the strict anti-cheating regulations below carefully before starting your test:
+                <p className="text-xs text-neutral-800 font-semibold leading-relaxed">
+                  Candidate: <strong>{verifiedStudent?.name}</strong> (Student ID: <code className="font-mono bg-neutral-200 px-1.5 py-0.5 rounded">#{verifiedStudent?.displayId}</code>).
+                  Review the following automated triggers enforced during this session:
                 </p>
 
-                <div className="space-y-2.5 pt-2 border-t border-amber-200 text-xs text-amber-900">
+                <div className="space-y-2.5 pt-2 border-t border-neutral-200 text-xs text-neutral-800">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                    <AlertTriangle size={15} className="text-red-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-red-950">Tab & Window Switch Trigger:</strong> If you switch to another browser tab, minimize the window, open another application, or click outside the test window, your test will be <strong>automatically and immediately submitted</strong>.
+                      <strong className="text-red-950">Tab & Focus Loss Detection:</strong> Switching tabs, minimizing the browser window, or navigating to another application will <strong>immediately auto-submit your test</strong>.
                     </div>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <AlertTriangle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                    <AlertTriangle size={15} className="text-red-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-red-950">Screenshot Trigger:</strong> Pressing PrintScreen, screenshot shortcuts (e.g. Cmd+Shift+3/4/5 or Win+Shift+S), or screen capture tools will <strong>immediately auto-submit your test</strong>.
+                      <strong className="text-red-950">Screenshot & Capture Interception:</strong> Pressing PrintScreen, screenshot shortcuts (e.g. Win+Shift+S, Cmd+Shift+3/4/5), print dialogs (Ctrl+P), or recording overlays triggers <strong>instant auto-submission</strong>.
                     </div>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <Lock size={16} className="text-amber-800 shrink-0 mt-0.5" />
+                    <AlertTriangle size={15} className="text-red-600 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-amber-950">Single Attempt & Result Lock:</strong> Once you submit this test, it will <strong>disappear from your active/pending view</strong> and cannot be re-attempted. It will reappear in your graded results only after your instructor has finalized grades.
+                      <strong className="text-red-950">Clipboard & DevTools Blocking:</strong> Text copying, right-click inspection, and opening Developer Tools (F12, Inspect element) are actively intercepted and will terminate the exam.
                     </div>
                   </div>
+
+                  <div className="flex items-start gap-2">
+                    <Eye size={15} className="text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-amber-950">Dynamic Watermark Traceability:</strong> A semi-transparent overlay featuring your name, Student ID, and timestamp is tiled across the test screen. Any physical or digital leak is permanently traceable.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-neutral-500 italic pt-1 border-t border-neutral-200">
+                  * Note: Browser protections detect focus loss, shortcuts, and inspector tools. For integrity, please remain focused on this window until submission.
                 </div>
               </div>
 
@@ -474,7 +447,13 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
 
           {/* PHASE 3: Active Exam Screen */}
           {phase === 'in_exam' && currentQ && (
-            <div className="space-y-6">
+            <div className="space-y-4">
+              {/* Exam Integrity Banner */}
+              <ExamIntegrityBanner
+                studentName={verifiedStudent?.name || profile?.full_name}
+                studentId={verifiedStudent?.displayId || inputId}
+              />
+
               {/* Question Navigation Navigator */}
               <div className="flex items-center gap-1.5 flex-wrap pb-3 border-b border-[#F0F0F0]">
                 {test.questions.map((q, idx) => {

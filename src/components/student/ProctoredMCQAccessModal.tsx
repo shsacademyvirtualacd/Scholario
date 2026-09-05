@@ -64,20 +64,23 @@ export const ProctoredMCQAccessModal: React.FC<ProctoredMCQAccessModalProps> = (
         </div>
 
         {/* Anti-Cheating Warning Box */}
-        <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 space-y-2 mb-5">
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-amber-950 space-y-2 mb-5">
           <div className="flex items-center gap-2 font-black text-xs">
             <AlertTriangle size={15} className="text-amber-700 shrink-0" />
-            <span>Strict Anti-Cheating Measures Active</span>
+            <span>Proctored Assessment Notice</span>
           </div>
-          <ul className="text-[11px] space-y-1.5 list-disc pl-4 text-amber-900 font-medium leading-relaxed">
+          <p className="text-xs font-bold text-amber-950 leading-snug">
+            This is a proctored exam. Screenshots, screen recording, tab-switching, or leaving this window will auto-submit your test and may be flagged for review.
+          </p>
+          <ul className="text-[11px] space-y-1.5 list-disc pl-4 text-amber-900 font-medium leading-relaxed pt-1 border-t border-amber-200/70">
             <li>
-              <strong>Tab Switching:</strong> Leaving or minimizing the test window will immediately auto-submit your test.
+              <strong>Tab & Focus Loss:</strong> Leaving or minimizing the test window triggers immediate auto-submission.
             </li>
             <li>
-              <strong>Screenshots:</strong> Capturing a screenshot (PrintScreen, shortcuts) triggers instantaneous auto-submission.
+              <strong>Screenshots & Shortcuts:</strong> PrintScreen, screen capture tools, and DevTools trigger instantaneous auto-submission.
             </li>
             <li>
-              <strong>Submission:</strong> Once submitted, the test disappears from your pending list and will reappear only after your teacher completes grading.
+              <strong>Dynamic Watermark:</strong> Content is watermarked with your candidate details and timestamp for leak traceability.
             </li>
           </ul>
         </div>
@@ -110,7 +113,7 @@ export const ProctoredMCQAccessModal: React.FC<ProctoredMCQAccessModalProps> = (
               className="mt-0.5 w-4 h-4 rounded border-[#D4D4D4] text-[#111111] focus:ring-0 cursor-pointer"
             />
             <span className="text-[11px] font-semibold text-[#111111] leading-snug">
-              I understand that switching tabs, taking screenshots, or navigating away will automatically submit my test with a proctoring violation.
+              I understand that taking screenshots, switching tabs, or leaving this window will auto-submit my test with a proctoring violation.
             </span>
           </label>
 
