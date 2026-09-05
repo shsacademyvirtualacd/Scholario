@@ -23,7 +23,14 @@ import {
   Phone,
   MoreVertical,
   Smile,
-  Camera
+  Camera,
+  Bell,
+  BellOff,
+  Info,
+  Clock,
+  Download,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -35,6 +42,9 @@ import { ChatImageBubble } from './ChatImageBubble';
 import { ChatFileBubble } from './ChatFileBubble';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { ChatWallpaper } from './ChatWallpaper';
+import { ContactInfoModal } from './ContactInfoModal';
+import { MediaLinksDocsModal } from './MediaLinksDocsModal';
+import { ImageViewerModal } from './ImageViewerModal';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
@@ -111,6 +121,115 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  // WhatsApp Features: Contact Info, Media/Docs, In-Chat Search, Muting, Image Viewer
+  const [showContactInfoModal, setShowContactInfoModal] = useState(false);
+  const [showMediaDocsModal, setShowMediaDocsModal] = useState(false);
+  const [showInChatSearch, setShowInChatSearch] = useState(false);
+  const [inChatSearchQuery, setInChatSearchQuery] = useState('');
+  const [currentSearchMatchIndex, setCurrentSearchMatchIndex] = useState(0);
+  const [activeViewerImage, setActiveViewerImage] = useState<{
+    imageUrl: string;
+    downloadUrl: string;
+    filename: string;
+  } | null>(null);
+  const [voiceInitialPointer, setVoiceInitialPointer] = useState<{ x: number; y: number } | null>(null);
+
+  // Muted Threads Persistence (localStorage)
+  const [mutedThreadIds, setMutedThreadIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('scholario_muted_chat_threads');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const isCurrentThreadMuted = activeThreadId ? mutedThreadIds.includes(activeThreadId) : false;
+
+  const toggleMuteCurrentThread = () => {
+    if (!activeThreadId) return;
+    setMutedThreadIds((prev) => {
+      const isMuted = prev.includes(activeThreadId);
+      let updated: string[];
+      if (isMuted) {
+        updated = prev.filter((id) => id !== activeThreadId);
+        toast.success('Notifications unmuted for this conversation.');
+      } else {
+        updated = [...prev, activeThreadId];
+        toast.info('Notifications muted for this conversation.');
+      }
+      try {
+        localStorage.setItem('scholario_muted_chat_threads', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // In-chat search matching logic
+  const inChatSearchMatches = useMemo(() => {
+    if (!inChatSearchQuery.trim()) return [];
+    const q = inChatSearchQuery.toLowerCase();
+    return messages
+      .filter((m) => m.content && m.content.toLowerCase().includes(q))
+      .map((m) => m.id);
+  }, [messages, inChatSearchQuery]);
+
+  const handleNextSearchMatch = () => {
+    if (inChatSearchMatches.length === 0) return;
+    setCurrentSearchMatchIndex((prev) => (prev + 1) % inChatSearchMatches.length);
+  };
+
+  const handlePrevSearchMatch = () => {
+    if (inChatSearchMatches.length === 0) return;
+    setCurrentSearchMatchIndex((prev) => (prev - 1 + inChatSearchMatches.length) % inChatSearchMatches.length);
+  };
+
+  // Auto scroll to target match in message thread
+  useEffect(() => {
+    if (inChatSearchMatches.length > 0 && showInChatSearch) {
+      const targetMsgId = inChatSearchMatches[currentSearchMatchIndex];
+      if (targetMsgId) {
+        const el = document.getElementById(`chat-msg-${targetMsgId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    }
+  }, [currentSearchMatchIndex, inChatSearchMatches, showInChatSearch]);
+
+  // Export chat transcript
+  const exportChatTranscript = () => {
+    if (!activeThread || messages.length === 0) {
+      toast.info('No messages to export.');
+      return;
+    }
+    const otherName = activeThread.other_participant?.full_name || 'Contact';
+    const transcriptLines = [
+      `Scholario Chat Transcript with ${otherName}`,
+      `Generated on: ${new Date().toLocaleString()}`,
+      '--------------------------------------------------',
+      ...messages.map((m) => {
+        const sender = m.sender_id === currentUserId ? 'You' : otherName;
+        const time = new Date(m.created_at).toLocaleString();
+        const content =
+          m.message_type === 'voice'
+            ? `[Voice Message - ${formatAudioDuration(m.audio_duration_seconds || 0)}]`
+            : m.attachment_name
+            ? `[Attachment: ${m.attachment_name}]`
+            : m.content;
+        return `[${time}] ${sender}: ${content}`;
+      }),
+    ];
+    const blob = new Blob([transcriptLines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-${otherName.toLowerCase().replace(/[^a-z0-9]/g, '_')}-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Chat transcript exported.');
+  };
 
   const QUICK_EMOJIS = ['😊', '😂', '👍', '❤️', '🙏', '🔥', '🎉', '👏', '📚', '✍️', '🎓', '💡', '📌', '💯'];
 
@@ -1299,13 +1418,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             true
                           )}
                         </div>
-                        <span
-                          className={`text-[11px] shrink-0 font-normal ${
-                            hasUnread ? 'text-[#25D366] font-semibold' : 'text-[#8696A0]'
-                          }`}
-                        >
-                          {formatThreadDate(thread.latest_message?.created_at || thread.created_at)}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {mutedThreadIds.includes(thread.id) && (
+                            <span title="Notifications muted">
+                              <BellOff size={13} className="text-[#8696A0]" />
+                            </span>
+                          )}
+                          <span
+                            className={`text-[11px] font-normal ${
+                              hasUnread ? 'text-[#25D366] font-semibold' : 'text-[#8696A0]'
+                            }`}
+                          >
+                            {formatThreadDate(thread.latest_message?.created_at || thread.created_at)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Row 2: Message preview with checkmark on left, WhatsApp green unread badge on right */}
@@ -1383,133 +1509,302 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <ArrowLeft size={20} />
                   </button>
 
-                  <ProfileAvatar
-                    avatarUrl={activeThread.other_participant?.avatar_url}
-                    name={activeThread.other_participant?.full_name || 'User'}
-                    role={activeThread.other_participant?.role || 'student'}
-                    size="md"
-                    showOnlineBadge={isContactOnline(activeThread.other_participant?.id, activeThread.other_participant)}
-                  />
+                  <div
+                    onClick={() => setShowContactInfoModal(true)}
+                    className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 cursor-pointer hover:opacity-90 transition-opacity select-none"
+                    title="Click to view contact info"
+                  >
+                    <ProfileAvatar
+                      avatarUrl={activeThread.other_participant?.avatar_url}
+                      name={activeThread.other_participant?.full_name || 'User'}
+                      role={activeThread.other_participant?.role || 'student'}
+                      size="md"
+                      showOnlineBadge={isContactOnline(activeThread.other_participant?.id, activeThread.other_participant)}
+                    />
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm sm:text-base font-semibold text-[#111111] truncate leading-tight">
-                        {activeThread.other_participant?.full_name || 'Direct Conversation'}
-                      </h3>
-                      {getRoleBadge(
-                        activeThread.other_participant?.role || 'student',
-                        activeThread.other_participant?.role === 'admin',
-                        {
-                          subjects: (activeThread.other_participant as any)?.teacher_subjects,
-                          tag: (activeThread.other_participant as any)?.admin_tag,
-                          stream: activeThread.other_participant?.stream_obj?.name || activeThread.other_participant?.stream || undefined,
-                        },
-                        true
-                      )}
-                    </div>
-                    {(() => {
-                      const status = getContactStatus(activeThread.other_participant);
-                      if (status.isVisible) {
-                        if (status.isOnline) {
-                          return (
-                            <p className="text-xs text-emerald-600 font-medium leading-tight mt-0.5 animate-in fade-in duration-200">
-                              online
-                            </p>
-                          );
-                        } else if (status.statusText) {
-                          return (
-                            <p className="text-xs text-[#667781] leading-tight mt-0.5 truncate">
-                              {status.statusText}
-                            </p>
-                          );
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm sm:text-base font-semibold text-[#111111] truncate leading-tight">
+                          {activeThread.other_participant?.full_name || 'Direct Conversation'}
+                        </h3>
+                        {isCurrentThreadMuted && (
+                          <span title="Notifications muted">
+                            <BellOff size={14} className="text-[#8696A0] shrink-0" />
+                          </span>
+                        )}
+                        {getRoleBadge(
+                          activeThread.other_participant?.role || 'student',
+                          activeThread.other_participant?.role === 'admin',
+                          {
+                            subjects: (activeThread.other_participant as any)?.teacher_subjects,
+                            tag: (activeThread.other_participant as any)?.admin_tag,
+                            stream: activeThread.other_participant?.stream_obj?.name || activeThread.other_participant?.stream || undefined,
+                          },
+                          true
+                        )}
+                      </div>
+                      {(() => {
+                        const status = getContactStatus(activeThread.other_participant);
+                        if (status.isVisible) {
+                          if (status.isOnline) {
+                            return (
+                              <p className="text-xs text-emerald-600 font-medium leading-tight mt-0.5 animate-in fade-in duration-200">
+                                online
+                              </p>
+                            );
+                          } else if (status.statusText) {
+                            return (
+                              <p className="text-xs text-[#667781] leading-tight mt-0.5 truncate">
+                                {status.statusText}
+                              </p>
+                            );
+                          }
                         }
-                      }
 
-                      return (
-                        <p className="text-xs text-[#667781] truncate leading-tight mt-0.5">
-                          {activeThread.other_participant?.role === 'teacher'
-                            ? ((activeThread.other_participant as any)?.teacher_display_title || 'Faculty Teacher • Academic Channel')
-                            : activeThread.other_participant?.role === 'admin'
-                            ? ((activeThread.other_participant as any)?.admin_tag || 'Institutional Support')
-                            : (activeThread.other_participant?.class?.display_name || 'Student')}
-                        </p>
-                      );
-                    })()}
+                        return (
+                          <p className="text-xs text-[#667781] truncate leading-tight mt-0.5">
+                            {activeThread.other_participant?.role === 'teacher'
+                              ? ((activeThread.other_participant as any)?.teacher_display_title || 'Faculty Teacher • Academic Channel')
+                              : activeThread.other_participant?.role === 'admin'
+                              ? ((activeThread.other_participant as any)?.admin_tag || 'Institutional Support')
+                              : (activeThread.other_participant?.class?.display_name || 'Student')}
+                          </p>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
 
                 {/* Right Header Actions: Video Call, Voice Call, 3-Dot Options */}
                 <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => toast.info('Video calling with teachers & staff will be available in an upcoming update.')}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
-                    title="Video call"
-                    aria-label="Video call"
-                  >
-                    <Video size={19} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
-                    title="Voice call"
-                    aria-label="Voice call"
-                  >
-                    <Phone size={18} />
-                  </button>
-
-                  <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setShowChatMenu(prev => !prev)}
+                      onClick={() => toast.info('Video calling with teachers & staff will be available in an upcoming update.')}
                       className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
-                      title="More options"
-                      aria-label="More options"
+                      title="Video call"
+                      aria-label="Video call"
                     >
-                      <MoreVertical size={19} />
+                      <Video size={19} />
                     </button>
 
-                    {showChatMenu && (
-                      <div
-                        className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-[#E5E5E5] py-1.5 z-50 text-xs text-[#111111] animate-in fade-in zoom-in-95 duration-150"
-                        onMouseLeave={() => setShowChatMenu(false)}
+                    <button
+                      type="button"
+                      onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                      title="Voice call"
+                      aria-label="Voice call"
+                    >
+                      <Phone size={18} />
+                    </button>
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowChatMenu((prev) => !prev)}
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive touch-manipulation"
+                        title="More options"
+                        aria-label="More options"
                       >
-                        <div className="px-3.5 py-2 border-b border-[#F0F0F0]">
-                          <p className="font-semibold truncate">{activeThread.other_participant?.full_name || 'Contact'}</p>
-                          <p className="text-[11px] text-[#737373] capitalize">{activeThread.other_participant?.role || 'Student'}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowChatMenu(false);
-                            toast.info(`Academic contact: ${activeThread.other_participant?.full_name || 'User'}`);
-                          }}
-                          className="w-full text-left px-3.5 py-2 hover:bg-[#F5F5F5] transition-colors"
-                        >
-                          View contact details
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowChatMenu(false);
-                            toast.info('Direct chat notifications are active.');
-                          }}
-                          className="w-full text-left px-3.5 py-2 hover:bg-[#F5F5F5] transition-colors"
-                        >
-                          Mute notifications
-                        </button>
-                        <div className="h-px bg-[#F0F0F0] my-1" />
-                        <div className="px-3.5 py-1.5 text-[11px] text-[#737373] flex items-center gap-1.5">
-                          <Shield size={12} className="text-[#F4C430]" />
-                          <span>Scholario E2E Verified</span>
-                        </div>
-                      </div>
-                    )}
+                        <MoreVertical size={19} />
+                      </button>
+
+                      {showChatMenu && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setShowChatMenu(false)}
+                          />
+
+                          <div
+                            className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-2xl shadow-2xl border border-[#E5E5E5] py-2 z-50 text-xs text-[#111111] animate-in fade-in zoom-in-95 duration-150 divide-y divide-[#F0F0F0]"
+                          >
+                            <div className="py-1">
+                              {/* 1. View Contact */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowChatMenu(false);
+                                  setShowContactInfoModal(true);
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                              >
+                                <Info size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                <span className="font-medium">View contact</span>
+                              </button>
+
+                              {/* 2. Search */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowChatMenu(false);
+                                  setShowInChatSearch(true);
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                              >
+                                <Search size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                <span className="font-medium">Search</span>
+                              </button>
+
+                              {/* 3. Media, links, and docs */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowChatMenu(false);
+                                  setShowMediaDocsModal(true);
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                              >
+                                <ImageIcon size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                <span className="font-medium">Media, links, and docs</span>
+                              </button>
+
+                              {/* 4. Mute notifications */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowChatMenu(false);
+                                  toggleMuteCurrentThread();
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                              >
+                                {isCurrentThreadMuted ? (
+                                  <Bell size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                ) : (
+                                  <BellOff size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                )}
+                                <span className="font-medium">
+                                  {isCurrentThreadMuted ? 'Unmute notifications' : 'Mute notifications'}
+                                </span>
+                              </button>
+                            </div>
+
+                            <div className="py-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowChatMenu(false);
+                                  toast.info('Disappearing messages: Off (Academic compliance retained).');
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                              >
+                                <Clock size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                <span className="font-medium">Disappearing messages</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowChatMenu(false);
+                                  toast.info('Chat wallpaper: WhatsApp classic academic doodle pattern active.');
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                              >
+                                <Sparkles size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                <span className="font-medium">Chat theme</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowChatMenu(false);
+                                  exportChatTranscript();
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                              >
+                                <Download size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                <span className="font-medium">Export chat</span>
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                {/* ── In-Chat Message Search Bar ── */}
+                {showInChatSearch && (
+                  <div className="px-3 sm:px-4 py-2 bg-[#F0F2F5] border-b border-[#E5E5E5] flex items-center justify-between gap-2.5 animate-in slide-in-from-top-2 duration-150 z-20 shrink-0">
+                    <div className="flex-1 flex items-center gap-2 bg-white rounded-xl px-3 py-1.5 border border-[#E5E5E5] focus-within:border-[#25D366] shadow-2xs">
+                      <Search size={16} className="text-[#8696A0] shrink-0" />
+                      <input
+                        type="text"
+                        autoFocus
+                        value={inChatSearchQuery}
+                        onChange={(e) => {
+                          setInChatSearchQuery(e.target.value);
+                          setCurrentSearchMatchIndex(0);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setShowInChatSearch(false);
+                            setInChatSearchQuery('');
+                          } else if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleNextSearchMatch();
+                          }
+                        }}
+                        placeholder="Search messages in this chat..."
+                        className="w-full text-xs sm:text-sm text-[#111111] placeholder:text-[#8696A0] bg-transparent outline-hidden"
+                      />
+                      {inChatSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInChatSearchQuery('');
+                            setCurrentSearchMatchIndex(0);
+                          }}
+                          className="text-[#8696A0] hover:text-[#111111] p-0.5"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0 text-xs text-[#54656F]">
+                      {inChatSearchQuery.trim() ? (
+                        <span className="text-[11px] font-medium mr-1 select-none whitespace-nowrap">
+                          {inChatSearchMatches.length > 0
+                            ? `${currentSearchMatchIndex + 1} of ${inChatSearchMatches.length}`
+                            : 'No matches'}
+                        </span>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        disabled={inChatSearchMatches.length <= 1}
+                        onClick={handlePrevSearchMatch}
+                        className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        title="Previous match"
+                      >
+                        <ChevronUp size={16} />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={inChatSearchMatches.length <= 1}
+                        onClick={handleNextSearchMatch}
+                        className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        title="Next match"
+                      >
+                        <ChevronDown size={16} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowInChatSearch(false);
+                          setInChatSearchQuery('');
+                          setCurrentSearchMatchIndex(0);
+                        }}
+                        className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-[#54656F] hover:text-[#111111] transition-colors ml-0.5"
+                        title="Close search"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
               {/* Messages Area with WhatsApp Doodle Wallpaper */}
               <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col bg-[#EFEAE2]">
@@ -1635,7 +1930,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           )}
 
                           <div
-                            className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] min-w-0 flex flex-col ${
+                            id={`chat-msg-${msg.id}`}
+                            className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] min-w-0 flex flex-col transition-all ${
+                              inChatSearchMatches[currentSearchMatchIndex] === msg.id
+                                ? 'ring-3 ring-[#25D366] ring-offset-2 rounded-[20px] scale-[1.01]'
+                                : inChatSearchMatches.includes(msg.id)
+                                ? 'ring-2 ring-[#53BDEB] rounded-[20px]'
+                                : ''
+                            } ${
                               isMe
                                 ? 'items-end cursor-pointer select-none active:scale-[0.99] transition-transform'
                                 : 'items-start'
@@ -1709,7 +2011,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                       isMe ? 'select-none md:select-text' : 'select-text'
                                     }`}
                                   >
-                                    {msg.content}
+                                    {inChatSearchQuery.trim() && msg.content ? (
+                                      (() => {
+                                        const q = inChatSearchQuery.trim();
+                                        const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                                        const parts = msg.content.split(regex);
+                                        return parts.map((part, i) =>
+                                          part.toLowerCase() === q.toLowerCase() ? (
+                                            <mark
+                                              key={i}
+                                              className="bg-[#FFEB3B] text-black font-semibold px-0.5 rounded-[2px]"
+                                            >
+                                              {part}
+                                            </mark>
+                                          ) : (
+                                            part
+                                          )
+                                        );
+                                      })()
+                                    ) : (
+                                      msg.content
+                                    )}
                                   </p>
 
                                   <div
@@ -1794,9 +2116,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <VoiceRecorderBar
                     threadId={activeThread.id}
                     onSendVoice={handleSendVoice}
-                    onCancelRecording={() => setIsVoiceRecording(false)}
-                    onFinishRecording={() => setIsVoiceRecording(false)}
+                    onCancelRecording={() => {
+                      setIsVoiceRecording(false);
+                      setVoiceInitialPointer(null);
+                    }}
+                    onFinishRecording={() => {
+                      setIsVoiceRecording(false);
+                      setVoiceInitialPointer(null);
+                    }}
                     disabled={sending || isUploadingAttachment}
+                    initialPointer={voiceInitialPointer}
                   />
                 ) : (
                   <>
@@ -1924,10 +2253,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <button
                         type="button"
                         id="btn-chat-voice-mic"
-                        onClick={() => setIsVoiceRecording(true)}
+                        onPointerDown={(e) => {
+                          setVoiceInitialPointer({ x: e.clientX, y: e.clientY });
+                          setIsVoiceRecording(true);
+                        }}
+                        onClick={() => {
+                          if (!isVoiceRecording) {
+                            setIsVoiceRecording(true);
+                          }
+                        }}
                         disabled={sending || isUploadingAttachment}
-                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition-all shadow-md active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Record voice message"
+                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition-all shadow-md active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
+                        title="Record voice message (Hold & slide up to lock, slide left to cancel)"
                         aria-label="Record voice message"
                       >
                         <Mic size={20} className="text-white" />
@@ -2323,6 +2660,52 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── WhatsApp Contact Info Modal ── */}
+      {activeThread && (
+        <ContactInfoModal
+          isOpen={showContactInfoModal}
+          onClose={() => setShowContactInfoModal(false)}
+          contact={activeThread.other_participant}
+          isOnline={getContactStatus(activeThread.other_participant).isOnline}
+          statusText={getContactStatus(activeThread.other_participant).statusText}
+          isMuted={isCurrentThreadMuted}
+          onToggleMute={toggleMuteCurrentThread}
+          onOpenSearch={() => {
+            setShowContactInfoModal(false);
+            setShowInChatSearch(true);
+          }}
+          onOpenMedia={() => {
+            setShowContactInfoModal(false);
+            setShowMediaDocsModal(true);
+          }}
+          mediaCount={messages.filter(m => m.attachment_key || m.audio_url || m.message_type === 'image' || m.message_type === 'file' || m.message_type === 'voice').length}
+        />
+      )}
+
+      {/* ── WhatsApp Media, Links & Docs Modal ── */}
+      {activeThread && (
+        <MediaLinksDocsModal
+          isOpen={showMediaDocsModal}
+          onClose={() => setShowMediaDocsModal(false)}
+          messages={messages}
+          contactName={activeThread.other_participant?.full_name || 'Contact'}
+          onSelectImage={(img) => {
+            setActiveViewerImage(img);
+          }}
+        />
+      )}
+
+      {/* ── Fullscreen Image Viewer Modal ── */}
+      {activeViewerImage && (
+        <ImageViewerModal
+          isOpen={!!activeViewerImage}
+          onClose={() => setActiveViewerImage(null)}
+          imageUrl={activeViewerImage.imageUrl}
+          downloadUrl={activeViewerImage.downloadUrl}
+          filename={activeViewerImage.filename}
+        />
       )}
     </div>
   );
