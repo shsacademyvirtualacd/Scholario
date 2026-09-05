@@ -45,6 +45,7 @@ import { ChatWallpaper } from './ChatWallpaper';
 import { ContactInfoModal } from './ContactInfoModal';
 import { MediaLinksDocsModal } from './MediaLinksDocsModal';
 import { ImageViewerModal } from './ImageViewerModal';
+import { SageChatView } from '../sage/SageChatView';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
 import type { Role, Profile, ChatMessage, ChatThreadWithDetails } from '../../types';
@@ -99,6 +100,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const [threads, setThreads] = useState<ChatThreadWithDetails[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [isSageActive, setIsSageActive] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputContent, setInputContent] = useState('');
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
@@ -675,7 +677,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       if (preserveActiveId) {
         setActiveThreadId(preserveActiveId);
-      } else if (userThreads.length > 0 && !activeThreadId) {
+      } else if (userThreads.length > 0 && !activeThreadId && !isSageActive) {
         setActiveThreadId(userThreads[0].id);
       }
     } catch (err) {
@@ -1159,6 +1161,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       // Synchronize full list and set active
       await loadThreads(thread.id);
+      setIsSageActive(false);
       setActiveThreadId(thread.id);
       setMobileViewActiveThread(true);
       setShowNewChatModal(false);
@@ -1359,7 +1362,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
 
           {/* Threads List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-[#F0F0F0]">
+          <div className="flex-1 overflow-y-auto divide-y divide-[#F0F0F0] pb-24">
             {loadingThreads ? (
               <div className="p-8 flex flex-col items-center justify-center gap-3 text-center">
                 <Loader2 size={24} className="animate-spin text-[#F4C430]" />
@@ -1390,7 +1393,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
             ) : (
               filteredThreads.map((thread) => {
-                const isSelected = thread.id === activeThreadId;
+                const isSelected = thread.id === activeThreadId && !isSageActive;
                 const other = thread.other_participant;
                 const isAdmin = other?.role === 'admin';
                 const hasUnread = (thread.unread_count || 0) > 0;
@@ -1399,6 +1402,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <button
                     key={thread.id}
                     onClick={() => {
+                      setIsSageActive(false);
                       setActiveThreadId(thread.id);
                       setMobileViewActiveThread(true);
                     }}
@@ -1512,6 +1516,56 @@ export const ChatView: React.FC<ChatViewProps> = ({
               })
             )}
           </div>
+
+          {/* ── Persistent Floating Sage AI Access Button (WhatsApp Meta AI Style) ── */}
+          <div className="absolute bottom-5 right-5 z-20 pointer-events-auto">
+            <button
+              type="button"
+              id="floating-sage-ai-button"
+              onClick={() => {
+                setIsSageActive(true);
+                setActiveThreadId(null);
+                setMobileViewActiveThread(true);
+              }}
+              title="Ask Sage AI"
+              aria-label="Open Sage AI tutor and study companion"
+              className={`group relative flex items-center justify-center rounded-full p-[2.5px] transition-all duration-200 shadow-[0_4px_16px_rgba(0,0,0,0.2),0_0_12px_rgba(244,196,48,0.35)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.28),0_0_20px_rgba(244,196,48,0.6)] hover:scale-105 active:scale-95 cursor-pointer ${
+                isSageActive
+                  ? 'ring-3 ring-[#F4C430] bg-gradient-to-tr from-[#F4C430] via-amber-400 to-[#111111]'
+                  : 'bg-gradient-to-tr from-[#F4C430] via-amber-400 to-purple-500'
+              }`}
+            >
+              {/* Inner Circle */}
+              <div className="w-13 h-13 rounded-full bg-[#111111] flex items-center justify-center relative overflow-hidden">
+                {/* Sage Avatar Video Stream with Poster fallback */}
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                  poster="/animations/sage-avatar-poster.jpg"
+                  className="w-full h-full object-cover select-none pointer-events-none transition-transform duration-300 group-hover:scale-110"
+                >
+                  <source src="/animations/sage-avatar-optimized.mp4" type="video/mp4" />
+                </video>
+
+                {/* Subtle gradient depth overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+
+                {/* Floating Corner Sparkles Badge */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#F4C430] text-[#111111] rounded-full flex items-center justify-center shadow-xs ring-2 ring-[#111111]">
+                  <Sparkles size={10} className="stroke-[2.5]" />
+                </div>
+              </div>
+
+              {/* Hover Tooltip on Desktop */}
+              <div className="pointer-events-none absolute right-full mr-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap bg-[#111111] text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-md border border-[#262626] hidden sm:flex items-center gap-1.5 z-30">
+                <Sparkles size={11} className="text-[#F4C430]" />
+                <span>Ask Sage AI</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* ── Right Column: Active Conversation Messages & Composer ── */}
@@ -1520,7 +1574,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
             !mobileViewActiveThread ? 'hidden md:flex' : 'flex'
           }`}
         >
-          {activeThread ? (
+          {isSageActive ? (
+            <SageChatView
+              role={role}
+              embedded={true}
+              onBack={() => {
+                setMobileViewActiveThread(false);
+                setIsSageActive(false);
+              }}
+            />
+          ) : activeThread ? (
             <>
               {/* Active Conversation Top Bar */}
               <div className="px-4 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] flex items-center justify-between bg-white z-10 shrink-0">

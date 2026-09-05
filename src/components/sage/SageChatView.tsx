@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Smile,
   Brain,
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -33,6 +34,8 @@ export interface ChatMessage {
 
 interface SageChatViewProps {
   role: 'student' | 'teacher' | 'admin';
+  embedded?: boolean;
+  onBack?: () => void;
 }
 
 const SageMarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
@@ -220,7 +223,7 @@ const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: st
   ],
 };
 
-export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
+export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = false, onBack }) => {
   const { profile, session } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = sessionStorage.getItem(`sage_chat_${role}`);
@@ -488,10 +491,27 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role }) => {
   const starters = STARTER_PROMPTS[role];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white rounded-3xl border border-[#E5E5E5] shadow-xs overflow-hidden">
+    <div
+      className={
+        embedded
+          ? 'flex flex-col h-full w-full bg-white overflow-hidden'
+          : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white rounded-3xl border border-[#E5E5E5] shadow-xs overflow-hidden'
+      }
+    >
       {/* ── Top Header ── */}
-      <div className="bg-gradient-to-r from-[#111111] via-[#1A1A1A] to-[#111111] px-5 sm:px-6 py-3.5 text-white flex items-center justify-between border-b border-[#262626] shrink-0">
-        <div className="flex items-center gap-3.5">
+      <div className="bg-gradient-to-r from-[#111111] via-[#1A1A1A] to-[#111111] px-4 sm:px-6 py-3 sm:py-3.5 text-white flex items-center justify-between border-b border-[#262626] shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="p-1.5 -ml-1 rounded-lg hover:bg-white/10 text-white shrink-0 transition-colors"
+              title="Back to conversations"
+              aria-label="Back to conversations"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <SageAvatar
             emotion={activeEmotion}
             size="md"
