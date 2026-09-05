@@ -10,9 +10,9 @@ import {
   Send,
   UserCheck,
   ChevronRight,
+  ChevronLeft,
   Upload,
-  FileText,
-  BookOpen,
+  Layers,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -160,7 +160,6 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
           audio: false,
         });
       } catch {
-        // Fallback to basic video constraint
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
 
@@ -174,21 +173,18 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
       console.warn('Camera access note:', err);
       setCameraError(err.message || 'Unable to access camera.');
     } finally {
-      // Keep small grace period for camera dialog
       setTimeout(() => {
         isCameraOperatingRef.current = false;
       }, 1000);
     }
   };
 
-  // Flip / Switch Camera
   const switchCamera = () => {
     const nextMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
     setCameraFacingMode(nextMode);
     startCamera(nextMode);
   };
 
-  // Take Snapshot from live video feed
   const takeSnapshot = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
@@ -216,14 +212,12 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     toast.success('Photo captured! Review below or retake if needed.');
   };
 
-  // Retake photo
   const retakePhoto = () => {
     setCapturedPhotoUrl(null);
     setCapturedBlob(null);
     startCamera();
   };
 
-  // File fallback upload
   const handleFileFallback = (e: React.ChangeEvent<HTMLInputElement>) => {
     isCameraOperatingRef.current = true;
     const file = e.target.files?.[0];
@@ -243,7 +237,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     }, 1000);
   };
 
-  // Core Submit Handler
+  // Core Submit Handler (bundles both MCQs & Written Questions together)
   const executeSubmission = useCallback(
     async (violationReason?: string) => {
       if (hasAutoSubmittedRef.current || submitting || !test) return;
@@ -256,7 +250,57 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
       const sName = verifiedStudent?.name || profile?.full_name || 'Student';
 
       try {
-        const answersList = Object.values(answersMap);
+        // Build answers list for all questions in test
+        let totalMCQEarned = 0;
+        let totalMCQMarks = 0;
+        let totalWrittenMarks = 0;
+
+        const answersList: WrittenQuestionAnswer[] = test.questions.map((q, idx) => {
+          const existing = answersMap[q.id];
+          const isMCQ = q.type === 'mcq';
+
+          if (isMCQ) {
+            totalMCQMarks += q.marks;
+            const selectedOpt = existing?.selected_option ?? null;
+            const correctOpt = q.correctAnswer ?? q.correct_option_index ?? 0;
+            const isCorrect = selectedOpt !== null && selectedOpt === correctOpt;
+            const awarded = isCorrect ? q.marks : 0;
+            totalMCQEarned += awarded;
+
+            return {
+              question_id: q.id,
+              question_type: 'mcq',
+              question_text: q.question,
+              question_order: idx + 1,
+              max_marks: q.marks,
+              selected_option: selectedOpt,
+              correct_option: correctOpt,
+              is_correct: isCorrect,
+              marks_awarded: awarded,
+              photo_url: '',
+              r2_key: '',
+              captured_at: existing?.captured_at || new Date().toISOString(),
+            };
+          } else {
+            totalWrittenMarks += q.marks;
+            return {
+              question_id: q.id,
+              question_type: q.type || 'short_question',
+              question_text: q.question,
+              question_order: idx + 1,
+              max_marks: q.marks,
+              photo_url: existing?.photo_url || '',
+              photo_data_url: existing?.photo_data_url,
+              r2_key: existing?.r2_key || '',
+              captured_at: existing?.captured_at || new Date().toISOString(),
+              marks_awarded: null, // to be manually graded by teacher
+            };
+          }
+        });
+
+        const hasWrittenQuestions = test.questions.some((q) => q.type !== 'mcq');
+        const submissionStatus = hasWrittenQuestions ? 'submitted' : 'graded';
+        const initialFinalScore = hasWrittenQuestions ? null : totalMCQEarned;
 
         const sub: WrittenSubmission = {
           id: `wsub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -272,9 +316,15 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
           submitted_at: new Date().toISOString(),
           time_spent_seconds: timeSpent,
           answers: answersList,
-          final_score: null,
+          mcq_score: totalMCQEarned,
+          mcq_total: totalMCQMarks,
+          written_total: totalWrittenMarks,
+          final_score: initialFinalScore,
           total_marks: test.total_marks,
-          status: 'submitted',
+          percentage: !hasWrittenQuestions && test.total_marks > 0
+            ? Math.round((totalMCQEarned / test.total_marks) * 100)
+            : undefined,
+          status: submissionStatus,
           violation_reason: violationReason || null,
         };
 
@@ -302,26 +352,22 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     [submitting, test, verifiedStudent, profile, inputId, answersMap, onSubmitted, onSubmitSuccess, stopCameraStream]
   );
 
-  // Active Anti-Cheating Proctoring Listeners
-  // Note: During camera interaction (isCameraOperatingRef.current), camera dialogs won't trigger auto-submit!
+  // Proctoring listeners
   useEffect(() => {
     if (phase !== 'in_exam') return;
 
-    // 1. Tab Switch Detection
     const handleVisibilityChange = () => {
       if (document.hidden && !hasAutoSubmittedRef.current && !isCameraOperatingRef.current) {
         executeSubmission('Auto-submitted: Tab/window switch detected (focus lost)');
       }
     };
 
-    // 2. Window Blur Detection
     const handleWindowBlur = () => {
       if (!hasAutoSubmittedRef.current && !isCameraOperatingRef.current) {
         executeSubmission('Auto-submitted: Browser window focus lost (switched away from exam)');
       }
     };
 
-    // 3. Screenshot Detection
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'PrintScreen') {
         e.preventDefault();
@@ -331,8 +377,6 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
         return;
       }
 
-      // Mac screenshot combos: Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5
-      // Windows snipping combos: Win+Shift+S, Ctrl+Shift+S
       if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
         if (['3', '4', '5', 's', 'S'].includes(e.key)) {
           e.preventDefault();
@@ -343,20 +387,17 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
         }
       }
 
-      // Prevent copy
       if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
         toast.warning('Copying is prohibited during proctored exams.');
       }
     };
 
-    // 4. Clipboard Prevention
     const handleCopy = (e: ClipboardEvent) => {
       e.preventDefault();
       toast.warning('Copying is disabled during this proctored exam.');
     };
 
-    // 5. Context Menu Prevention
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
@@ -380,63 +421,110 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
   useEffect(() => {
     if (phase !== 'in_exam') return;
 
-    const timer = setInterval(() => {
+    const interval = setInterval(() => {
       setTimeRemainingSeconds((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
-          executeSubmission('Auto-submitted: Time limit expired');
+          clearInterval(interval);
+          if (!hasAutoSubmittedRef.current) {
+            executeSubmission('Auto-submitted: Allocated time elapsed');
+          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => clearInterval(interval);
   }, [phase, executeSubmission]);
 
   // Verify Student ID
   const handleVerifyStudentId = async () => {
     if (!inputId.trim()) {
-      toast.error('Please enter your Student ID.');
+      toast.error('Please enter your Student ID or Roll Number.');
       return;
     }
+
     setVerifying(true);
     try {
-      const student = await verifyStudentId(inputId);
-      if (student) {
-        setVerifiedStudent(student);
-        toast.success(`Identity Verified: Welcome, ${student.name}!`);
-        setPhase('warning');
-      } else {
-        toast.error('Student ID not found. Please verify with your teacher or administration.');
+      const verified = await verifyStudentId(inputId.trim());
+      if (!verified) {
+        throw new Error('Student ID not found or could not be verified.');
       }
-    } catch {
-      toast.error('Verification failed. Please try again.');
+      setVerifiedStudent(verified);
+      setPhase('warning');
+      toast.success(`Identity verified: ${verified.name} (Grade ${verified.grade})`);
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid Student ID. Please verify with your teacher.');
     } finally {
       setVerifying(false);
     }
   };
 
-  // Start Exam
   const handleStartExam = () => {
-    hasAutoSubmittedRef.current = false;
-    startTimeRef.current = Date.now();
-    setTimeRemainingSeconds((test?.duration_minutes || 45) * 60);
     setPhase('in_exam');
+    startTimeRef.current = Date.now();
     setCurrentQuestionIndex(0);
+
+    // If first question is written, start camera
+    if (test && test.questions[0]?.type !== 'mcq') {
+      startCamera();
+    }
+  };
+
+  // MCQ Selection Handler
+  const handleSelectMCQOption = (optionIndex: number) => {
+    if (!test) return;
+    const currentQ = test.questions[currentQuestionIndex];
+    if (!currentQ) return;
+
+    const corrOpt = currentQ.correctAnswer ?? currentQ.correct_option_index ?? 0;
+    const isCorrect = optionIndex === corrOpt;
+
+    setAnswersMap((prev) => ({
+      ...prev,
+      [currentQ.id]: {
+        question_id: currentQ.id,
+        question_type: 'mcq',
+        question_text: currentQ.question,
+        question_order: currentQuestionIndex + 1,
+        max_marks: currentQ.marks,
+        selected_option: optionIndex,
+        correct_option: corrOpt,
+        is_correct: isCorrect,
+        marks_awarded: isCorrect ? currentQ.marks : 0,
+        photo_url: '',
+        r2_key: '',
+        captured_at: new Date().toISOString(),
+      },
+    }));
+  };
+
+  // Navigate to Question
+  const handleGoToQuestion = (targetIndex: number) => {
+    if (!test || targetIndex < 0 || targetIndex >= test.questions.length) return;
+
+    stopCameraStream();
     setCapturedPhotoUrl(null);
     setCapturedBlob(null);
 
-    // Try starting camera right away for Question 1
-    setTimeout(() => {
-      startCamera();
-    }, 300);
+    setCurrentQuestionIndex(targetIndex);
+
+    const targetQ = test.questions[targetIndex];
+    // If target question is a written question, check if already answered or start camera
+    if (targetQ.type !== 'mcq') {
+      const existing = answersMap[targetQ.id];
+      if (existing && (existing.photo_url || existing.photo_data_url)) {
+        setCapturedPhotoUrl(existing.photo_url || existing.photo_data_url || null);
+      } else {
+        setTimeout(() => startCamera(), 200);
+      }
+    }
   };
 
-  // Format Time Remaining
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+  // Format Timer
+  const formatTime = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -445,8 +533,10 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
   const currentQuestion = test.questions[currentQuestionIndex];
   const totalQuestions = test.questions.length;
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
+  const isCurrentMCQ = currentQuestion?.type === 'mcq';
+  const currentMCQAnswer = answersMap[currentQuestion?.id]?.selected_option;
 
-  // Handle Submit Answer & Advance to Next Question
+  // Handle Photo Attachment for Short/Long Written Questions
   const handleAttachAndProceed = async () => {
     if (!capturedPhotoUrl && !capturedBlob) {
       toast.error('Please take a clear photo of your handwritten answer sheet first.');
@@ -469,6 +559,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
       const newAnswer: WrittenQuestionAnswer = {
         question_id: currentQuestion.id,
+        question_type: currentQuestion.type || 'short_question',
         question_text: currentQuestion.question,
         max_marks: currentQuestion.marks,
         photo_url: uploadRes.photo_url,
@@ -476,7 +567,6 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
         captured_at: new Date().toISOString(),
       };
 
-      // Save to answers map
       setAnswersMap((prev) => ({
         ...prev,
         [currentQuestion.id]: newAnswer,
@@ -484,20 +574,13 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
       toast.success(`Answer for Question #${currentQuestionIndex + 1} attached!`);
 
-      // Reset photo state for next question
       setCapturedPhotoUrl(null);
       setCapturedBlob(null);
 
       if (isLastQuestion) {
-        // Final question answered: execute full submission
         executeSubmission();
       } else {
-        // Advance to next question in sequence
-        setCurrentQuestionIndex((prev) => prev + 1);
-        // Start camera for the next question
-        setTimeout(() => {
-          startCamera();
-        }, 300);
+        handleGoToQuestion(currentQuestionIndex + 1);
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to upload photo answer.');
@@ -516,17 +599,17 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
         <div className="px-6 py-4 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-800">
-              {test.type === 'short_question' ? (
-                <FileText className="w-5 h-5" />
-              ) : (
-                <BookOpen className="w-5 h-5" />
-              )}
+              <Layers className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-[#111111] text-sm sm:text-base">{test.title}</h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-black text-amber-400">
-                  {test.type === 'short_question' ? 'Short Question' : 'Long Question'}
+                  {test.type === 'unified'
+                    ? 'Class Assessment'
+                    : test.type === 'short_question'
+                    ? 'Short Question'
+                    : 'Long Question'}
                 </span>
               </div>
               <p className="text-xs text-[#737373]">
@@ -553,7 +636,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
           {phase !== 'in_exam' && (
             <button
               onClick={onClose}
-              className="p-2 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors"
+              className="p-2 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -595,14 +678,14 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
               <button
                 onClick={handleVerifyStudentId}
                 disabled={verifying}
-                className="w-full h-12 rounded-xl bg-[#111111] text-white text-xs font-extrabold tracking-wide uppercase hover:bg-[#262626] transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl bg-[#111111] text-white text-xs font-extrabold tracking-wide uppercase hover:bg-[#262626] transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {verifying ? 'Verifying Student Record...' : 'Verify Student ID'}
               </button>
             </div>
           )}
 
-          {/* PHASE 2: Anti-Cheating & Camera Instructions */}
+          {/* PHASE 2: Anti-Cheating & Exam Protocol */}
           {phase === 'warning' && (
             <div className="max-w-lg mx-auto py-4 space-y-5">
               <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex items-center gap-3">
@@ -631,7 +714,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                   <div className="flex items-start gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1.5 shrink-0" />
                     <p>
-                      <strong className="text-red-900">Sequential Questions:</strong> Questions appear one by one. You must solve each question on handwritten paper, capture it with the camera, and submit before moving forward.
+                      <strong className="text-red-900">Continuous Assessment:</strong> Complete Multiple Choice Questions and submit handwritten photos for Short/Long questions in one unified session.
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
@@ -643,7 +726,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                   <div className="flex items-start gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1.5 shrink-0" />
                     <p>
-                      <strong className="text-red-900">Live Camera Submissions:</strong> Camera capture operates inside the test page. Your photos are uploaded to secure storage and auto-expire after 24 hours.
+                      <strong className="text-red-900">Camera Submissions:</strong> For written questions, write solutions on blank paper, snap a photo with the in-app camera, and attach it before submitting.
                     </p>
                   </div>
                 </div>
@@ -651,7 +734,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
               <button
                 onClick={handleStartExam}
-                className="w-full h-12 rounded-xl bg-[#111111] text-white text-xs font-extrabold uppercase tracking-wider hover:bg-[#262626] transition-all shadow-md flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl bg-[#111111] text-white text-xs font-extrabold uppercase tracking-wider hover:bg-[#262626] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Enter Assessment & Start Question #1</span>
                 <ChevronRight className="w-4 h-4" />
@@ -659,17 +742,57 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
             </div>
           )}
 
-          {/* PHASE 3: In-Exam Sequential Question & Camera Flow */}
+          {/* PHASE 3: In-Exam Question Flow */}
           {phase === 'in_exam' && currentQuestion && (
-            <div className="space-y-6 max-w-3xl mx-auto">
-              {/* Question Sequence Tracker */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#F0F0F0]">
+            <div className="space-y-5 max-w-3xl mx-auto">
+              {/* Question Navigation Palette */}
+              <div className="p-3 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#737373]">Question Navigator:</span>
+                  <span className="font-bold text-[#111111]">
+                    {Object.keys(answersMap).length} of {totalQuestions} Answered
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                  {test.questions.map((q, qIdx) => {
+                    const isAnswered = !!answersMap[q.id];
+                    const isCurrent = qIdx === currentQuestionIndex;
+                    const qTypeTag =
+                      q.type === 'mcq' ? 'MCQ' : q.type === 'short_question' ? 'Short' : 'Long';
+
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={() => handleGoToQuestion(qIdx)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border ${
+                          isCurrent
+                            ? 'bg-[#111111] text-[#F4C430] border-[#111111] shadow-xs'
+                            : isAnswered
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                            : 'bg-white text-[#737373] border-[#E5E5E5] hover:bg-[#F5F5F5]'
+                        }`}
+                      >
+                        <span>Q{qIdx + 1}</span>
+                        <span className="text-[10px] opacity-80 uppercase">({qTypeTag})</span>
+                        {isAnswered && <CheckCircle2 size={12} className="text-emerald-600" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Question Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-[#F0F0F0]">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-1 rounded-lg bg-[#111111] text-white text-xs font-black">
                     Question {currentQuestionIndex + 1} of {totalQuestions}
                   </span>
-                  <span className="text-xs text-[#737373]">
-                    {test.type === 'short_question' ? 'Short Question' : 'Long Question'}
+                  <span className="text-xs font-bold text-[#737373]">
+                    {currentQuestion.type === 'mcq'
+                      ? 'Multiple Choice'
+                      : currentQuestion.type === 'short_question'
+                      ? 'Short Answer'
+                      : 'Long Answer'}
                   </span>
                 </div>
                 <div className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black">
@@ -677,7 +800,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                 </div>
               </div>
 
-              {/* Question Text with LaTeX */}
+              {/* Question Text with Math */}
               <div className="p-5 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#737373] block">
                   Question Prompt:
@@ -687,138 +810,228 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                 </div>
               </div>
 
-              {/* In-Browser Camera Capture Area */}
-              <div className="p-5 rounded-2xl border border-amber-200 bg-amber-50/30 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Camera className="w-5 h-5 text-amber-700" />
-                    <h4 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider">
-                      Capture Handwritten Answer Sheet
-                    </h4>
+              {/* ───────────────────────────────────────────────────────────── */}
+              {/* SECTION A: MCQ CHOICE OPTIONS                                */}
+              {/* ───────────────────────────────────────────────────────────── */}
+              {isCurrentMCQ ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#737373] uppercase tracking-wider">
+                      Select One Correct Answer:
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg">
+                      Auto-Graded
+                    </span>
                   </div>
-                  <span className="text-[11px] font-bold text-[#737373]">
-                    {capturedPhotoUrl ? 'Photo Ready' : 'Live Camera View'}
-                  </span>
-                </div>
 
-                {/* Viewport: Either Live Video or Captured Photo Preview */}
-                <div className="relative w-full aspect-4/3 max-h-[360px] bg-black rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
-                  {capturedPhotoUrl ? (
-                    <img
-                      src={capturedPhotoUrl}
-                      alt="Captured handwritten answer"
-                      className="w-full h-full object-contain"
-                    />
-                  ) : isCameraActive ? (
-                    <video
-                      ref={videoRef}
-                      playsInline
-                      muted
-                      autoPlay
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center p-6 space-y-3">
-                      <Camera className="w-10 h-10 text-white/40 mx-auto" />
-                      <p className="text-xs text-white/80 font-medium">
-                        {cameraError ? cameraError : 'Camera stream is paused'}
-                      </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {currentQuestion.options?.map((optText, optIdx) => {
+                      const isSelected = currentMCQAnswer === optIdx;
+                      const label = ['A', 'B', 'C', 'D'][optIdx];
+
+                      return (
+                        <div
+                          key={optIdx}
+                          onClick={() => handleSelectMCQOption(optIdx)}
+                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
+                            isSelected
+                              ? 'border-[#111111] bg-amber-50/70 shadow-xs scale-[1.01]'
+                              : 'border-[#E5E5E5] bg-white hover:border-[#CCCCCC]'
+                          }`}
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                              isSelected
+                                ? 'bg-[#111111] text-[#F4C430]'
+                                : 'bg-[#FAFAFA] border border-[#E5E5E5] text-[#737373]'
+                            }`}
+                          >
+                            {label}
+                          </div>
+                          <div className="flex-1 text-xs font-bold text-[#111111]">
+                            <MathText text={optText} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Navigation Bar for MCQ */}
+                  <div className="flex items-center justify-between pt-4 border-t border-[#F0F0F0]">
+                    {currentQuestionIndex > 0 ? (
+                      <button
+                        onClick={() => handleGoToQuestion(currentQuestionIndex - 1)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] cursor-pointer hover:bg-[#F5F5F5]"
+                      >
+                        <ChevronLeft size={14} />
+                        <span>Previous Question</span>
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      {!isLastQuestion ? (
+                        <button
+                          onClick={() => handleGoToQuestion(currentQuestionIndex + 1)}
+                          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black cursor-pointer shadow-xs active:scale-95 transition-all"
+                        >
+                          <span>Next Question</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => executeSubmission()}
+                          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer shadow-xs active:scale-95 transition-all"
+                        >
+                          <span>Review & Submit Assessment</span>
+                          <Send size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ───────────────────────────────────────────────────────────── */
+                /* SECTION B: WRITTEN CAMERA CAPTURE                             */
+                /* ───────────────────────────────────────────────────────────── */
+                <div className="p-5 rounded-2xl border border-amber-200 bg-amber-50/30 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-5 h-5 text-amber-700" />
+                      <h4 className="text-xs font-extrabold text-[#111111] uppercase tracking-wider">
+                        Capture Handwritten Answer Sheet
+                      </h4>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#737373]">
+                      {capturedPhotoUrl ? 'Photo Ready' : 'Live Camera View'}
+                    </span>
+                  </div>
+
+                  {/* Viewport: Live Video or Captured Photo */}
+                  <div className="relative w-full aspect-4/3 max-h-[360px] bg-black rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
+                    {capturedPhotoUrl ? (
+                      <img
+                        src={capturedPhotoUrl}
+                        alt="Captured handwritten answer"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : isCameraActive ? (
+                      <video
+                        ref={videoRef}
+                        playsInline
+                        muted
+                        autoPlay
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center p-6 space-y-3">
+                        <Camera className="w-10 h-10 text-white/40 mx-auto" />
+                        <p className="text-xs text-white/80 font-medium">
+                          {cameraError ? cameraError : 'Camera stream is paused'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => startCamera()}
+                          className="px-4 py-2 rounded-xl bg-white text-[#111111] text-xs font-extrabold hover:bg-neutral-100 transition-all shadow-sm cursor-pointer"
+                        >
+                          Start Camera
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      Proctored Session
+                    </div>
+                  </div>
+
+                  {/* Camera Controls */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <div className="flex items-center gap-2">
+                      {capturedPhotoUrl ? (
+                        <button
+                          type="button"
+                          onClick={retakePhoto}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] bg-white border border-[#E5E5E5] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Retake Photo
+                        </button>
+                      ) : isCameraActive ? (
+                        <button
+                          type="button"
+                          onClick={switchCamera}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] bg-white border border-[#E5E5E5] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Flip Camera
+                        </button>
+                      ) : null}
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileFallback}
+                        className="hidden"
+                      />
                       <button
                         type="button"
-                        onClick={() => startCamera()}
-                        className="px-4 py-2 rounded-xl bg-white text-[#111111] text-xs font-extrabold hover:bg-neutral-100 transition-all shadow-sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#737373] hover:text-[#111111] hover:bg-white/60 transition-colors cursor-pointer"
                       >
-                        Start Camera
+                        <Upload className="w-3.5 h-3.5" />
+                        Browse Photo
                       </button>
                     </div>
-                  )}
 
-                  {/* Corner proctoring badge */}
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    Proctored Session
+                    <div className="flex items-center gap-2">
+                      {currentQuestionIndex > 0 && (
+                        <button
+                          onClick={() => handleGoToQuestion(currentQuestionIndex - 1)}
+                          className="px-3.5 py-2 rounded-xl border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] cursor-pointer"
+                        >
+                          Previous
+                        </button>
+                      )}
+
+                      {!capturedPhotoUrl && isCameraActive ? (
+                        <button
+                          type="button"
+                          onClick={takeSnapshot}
+                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-extrabold hover:bg-amber-700 transition-all shadow-md cursor-pointer"
+                        >
+                          <Camera className="w-4 h-4" />
+                          Snap Photo
+                        </button>
+                      ) : capturedPhotoUrl ? (
+                        <button
+                          type="button"
+                          disabled={uploadingPhoto}
+                          onClick={handleAttachAndProceed}
+                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-extrabold hover:bg-[#262626] transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                        >
+                          {uploadingPhoto ? (
+                            'Uploading to Storage...'
+                          ) : isLastQuestion ? (
+                            <>
+                              <span>Submit Assessment</span>
+                              <Send className="w-4 h-4" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Attach & Next Question</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-
-                {/* Camera Action Buttons */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                  <div className="flex items-center gap-2">
-                    {!capturedPhotoUrl && isCameraActive && (
-                      <button
-                        type="button"
-                        onClick={switchCamera}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-colors"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        Flip Camera
-                      </button>
-                    )}
-
-                    {capturedPhotoUrl && (
-                      <button
-                        type="button"
-                        onClick={retakePhoto}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-colors"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        Retake Photo
-                      </button>
-                    )}
-
-                    {/* Secondary File Upload Fallback */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileFallback}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#737373] hover:text-[#111111] hover:bg-white/60 transition-colors"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      Browse Photo
-                    </button>
-                  </div>
-
-                  <div>
-                    {!capturedPhotoUrl && isCameraActive ? (
-                      <button
-                        type="button"
-                        onClick={takeSnapshot}
-                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-extrabold hover:bg-amber-700 transition-all shadow-md"
-                      >
-                        <Camera className="w-4 h-4" />
-                        Snap Photo
-                      </button>
-                    ) : capturedPhotoUrl ? (
-                      <button
-                        type="button"
-                        disabled={uploadingPhoto}
-                        onClick={handleAttachAndProceed}
-                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-extrabold hover:bg-[#262626] transition-all shadow-md disabled:opacity-50"
-                      >
-                        {uploadingPhoto ? (
-                          'Uploading to Storage...'
-                        ) : isLastQuestion ? (
-                          <>
-                            <span>Submit Assessment</span>
-                            <Send className="w-4 h-4" />
-                          </>
-                        ) : (
-                          <>
-                            <span>Attach & Next Question</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -844,38 +1057,51 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                 <p className="text-xs text-[#737373] mt-1">
                   {violationTriggered
                     ? violationTriggered
-                    : 'Your handwritten answers have been captured and securely stored for teacher grading.'}
+                    : 'All test sections were completed in one continuous session and submitted successfully.'}
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] text-left text-xs space-y-2">
+              <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] text-left text-xs space-y-2.5">
                 <div className="flex justify-between">
                   <span className="text-[#737373]">Student:</span>
                   <span className="font-bold text-[#111111]">{verifiedStudent?.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#737373]">Test Type:</span>
-                  <span className="font-bold text-[#111111]">
-                    {test.type === 'short_question' ? 'Short Question' : 'Long Question'}
-                  </span>
+                  <span className="text-[#737373]">Test Title:</span>
+                  <span className="font-bold text-[#111111]">{test.title}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#737373]">Submitted Questions:</span>
+
+                {submissionResult?.mcq_total !== undefined && submissionResult.mcq_total > 0 && (
+                  <div className="flex justify-between items-center pt-1 border-t border-[#F0F0F0]">
+                    <span className="text-[#737373]">MCQ Auto-Score:</span>
+                    <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                      {submissionResult.mcq_score} / {submissionResult.mcq_total} Marks
+                    </span>
+                  </div>
+                )}
+
+                {submissionResult?.written_total !== undefined && submissionResult.written_total > 0 && (
+                  <div className="flex justify-between items-center pt-1 border-t border-[#F0F0F0]">
+                    <span className="text-[#737373]">Written Answers:</span>
+                    <span className="font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                      Cloudflare R2 (Awaiting Teacher Grading)
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-1 border-t border-[#F0F0F0]">
+                  <span className="text-[#737373]">Total Questions:</span>
                   <span className="font-bold text-[#111111]">
                     {submissionResult?.answers.length || 0} / {test.questions.length}
                   </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#737373]">Storage Policy:</span>
-                  <span className="font-bold text-amber-700">Cloudflare R2 (24-Hour Expiry)</span>
                 </div>
               </div>
 
               <button
                 onClick={onClose}
-                className="w-full h-11 rounded-xl bg-[#111111] text-white text-xs font-extrabold uppercase tracking-wider hover:bg-[#262626] transition-all shadow-sm"
+                className="w-full h-11 rounded-xl bg-[#111111] text-white text-xs font-extrabold uppercase tracking-wider hover:bg-[#262626] transition-all shadow-sm cursor-pointer"
               >
-                Close & Return
+                Close & Return to Tests
               </button>
             </div>
           )}

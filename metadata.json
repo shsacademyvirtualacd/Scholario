@@ -2,7 +2,8 @@
   "name": "Scholario",
   "description": "Learning Management System featuring live class timetables, structured notes library, test assessments and grading portal, Sage AI study companion powered by Gemini, and portal for students and teachers.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "camera"
   ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

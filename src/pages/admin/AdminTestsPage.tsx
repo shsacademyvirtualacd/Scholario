@@ -19,6 +19,7 @@ import {
   FileText,
   Camera,
   Award,
+  Layers,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminShell from '../../components/admin/AdminShell';
@@ -28,8 +29,7 @@ import TestUploadModal from '../../components/teacher/TestUploadModal';
 import TestViewerModal from '../../components/common/TestViewerModal';
 import StudentResultsView from '../../components/tests/StudentResultsView';
 import AdminCreateTestModal from '../../components/admin/tests/AdminCreateTestModal';
-import AdminCreateMCQTestModal from '../../components/admin/tests/AdminCreateMCQTestModal';
-import AdminCreateWrittenTestModal from '../../components/admin/tests/AdminCreateWrittenTestModal';
+import AdminCreateUnifiedTestModal from '../../components/admin/tests/AdminCreateUnifiedTestModal';
 import { WrittenTestSubmissionsList } from '../../components/teacher/WrittenTestSubmissionsList';
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
@@ -46,7 +46,7 @@ import {
 } from '../../lib/writtenTestService';
 import type { TestPaper, TestSubmission } from '../../types';
 import type { ProctoredMCQTest } from '../../types/proctoredMcq';
-import type { WrittenTest, WrittenTestType } from '../../types/writtenTest';
+import type { WrittenTest } from '../../types/writtenTest';
 
 export const AdminTestsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -71,14 +71,12 @@ export const AdminTestsPage: React.FC = () => {
   const [tests, setTests] = useState<TestPaper[]>([]);
   const [proctoredTests, setProctoredTests] = useState<ProctoredMCQTest[]>([]);
   const [writtenTests, setWrittenTests] = useState<WrittenTest[]>([]);
-  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'proctored' | 'short_question' | 'long_question' | 'standard'>('all');
+  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'unified' | 'proctored' | 'short_question' | 'long_question' | 'standard'>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [selectedWrittenTestId, setSelectedWrittenTestId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [isCreateMCQModalOpen, setIsCreateMCQModalOpen] = useState<boolean>(false);
-  const [isCreateWrittenModalOpen, setIsCreateWrittenModalOpen] = useState<boolean>(false);
-  const [writtenModalType, setWrittenModalType] = useState<WrittenTestType>('short_question');
+  const [isCreateUnifiedModalOpen, setIsCreateUnifiedModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState<boolean>(false);
   const [showActionDropdown, setShowActionDropdown] = useState<boolean>(false);
@@ -294,73 +292,24 @@ export const AdminTestsPage: React.FC = () => {
                     <p className="text-[11px] font-black uppercase tracking-wider text-[#737373]">Select Test Paper Method</p>
                   </div>
 
-                  {/* Option 1: Proctored MCQ Test (Admin Only) */}
+                  {/* Unified Option: Create a Test */}
                   <button
-                    id="admin-menu-create-mcq-proctored-btn"
+                    id="admin-menu-create-unified-test-btn"
                     onClick={() => {
                       setShowActionDropdown(false);
-                      setIsCreateMCQModalOpen(true);
+                      setIsCreateUnifiedModalOpen(true);
                     }}
                     className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-amber-300"
                   >
                     <div className="w-9 h-9 rounded-xl bg-[#111111] border border-black flex items-center justify-center text-[#F4C430] shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                      <ShieldAlert size={18} />
+                      <Layers size={18} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs font-black text-[#111111]">Admin MCQ Test (Proctored)</p>
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">Admin Only</span>
+                        <p className="text-xs font-black text-[#111111]">Create a Test</p>
                       </div>
                       <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
-                        Manual MCQ authoring with anti-cheating auto-submit, tab & screenshot protection, and student ID access.
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Option 2: Short Question Test (Camera Proctored) */}
-                  <button
-                    id="admin-menu-create-short-question-btn"
-                    onClick={() => {
-                      setShowActionDropdown(false);
-                      setWrittenModalType('short_question');
-                      setIsCreateWrittenModalOpen(true);
-                    }}
-                    className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-amber-300 mt-1"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-[#111111] border border-black flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                      <FileText size={18} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs font-black text-[#111111]">Short Question Test</p>
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">Camera Proctored</span>
-                      </div>
-                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
-                        Sequential questions, in-browser handwritten photo capture, 24-hour R2 retention, and manual teacher grading.
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Option 3: Long Question Test (Camera Proctored) */}
-                  <button
-                    id="admin-menu-create-long-question-btn"
-                    onClick={() => {
-                      setShowActionDropdown(false);
-                      setWrittenModalType('long_question');
-                      setIsCreateWrittenModalOpen(true);
-                    }}
-                    className="w-full text-left p-2.5 sm:p-3 rounded-xl hover:bg-amber-50/80 transition-colors flex items-start gap-2.5 sm:gap-3 group cursor-pointer border border-transparent hover:border-amber-300 mt-1"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-[#111111] border border-black flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                      <BookOpen size={18} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs font-black text-[#111111]">Long Question Test</p>
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">Camera Proctored</span>
-                      </div>
-                      <p className="text-[11px] text-[#737373] mt-0.5 leading-snug break-words">
-                        Comprehensive essay/problem questions with handwritten capture, strict proctoring, and rubric-based grading.
+                        Write your own questions — multiple choice, short answers, or long answers — and students complete them on their phone with photo/camera answers where needed.
                       </p>
                     </div>
                   </button>
@@ -521,11 +470,11 @@ export const AdminTestsPage: React.FC = () => {
                 ))}
               </div>
 
-              {/* Test Type Filter: All vs Proctored MCQ vs Short Qs vs Long Qs vs PDF Papers */}
+              {/* Test Type Filter: All vs Online Tests vs Short Qs vs Long Qs vs PDF Papers */}
               <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] flex-wrap">
                 {[
                   { id: 'all', label: 'All' },
-                  { id: 'proctored', label: 'Proctored MCQs' },
+                  { id: 'unified', label: 'Online Tests' },
                   { id: 'short_question', label: 'Short Qs' },
                   { id: 'long_question', label: 'Long Qs' },
                   { id: 'standard', label: 'PDF Papers' },
@@ -555,6 +504,9 @@ export const AdminTestsPage: React.FC = () => {
                   <span>Class Tests & Assessments</span>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
                     {(testTypeFilter === 'all' || testTypeFilter === 'proctored' ? filteredProctoredTests.length : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'unified'
+                        ? filteredWrittenTests.filter((w) => w.test_type === 'unified').length
+                        : 0) +
                       (testTypeFilter === 'all' || testTypeFilter === 'short_question'
                         ? filteredWrittenTests.filter((w) => w.test_type === 'short_question').length
                         : 0) +
@@ -651,12 +603,13 @@ export const AdminTestsPage: React.FC = () => {
                       );
                     })}
 
-                  {/* Written Tests Section (Short & Long Questions) */}
-                  {(testTypeFilter === 'all' || testTypeFilter === 'short_question' || testTypeFilter === 'long_question') &&
+                  {/* Written & Unified Tests Section */}
+                  {(testTypeFilter === 'all' || testTypeFilter === 'unified' || testTypeFilter === 'short_question' || testTypeFilter === 'long_question') &&
                     filteredWrittenTests
-                      .filter((w) => testTypeFilter === 'all' || w.test_type === testTypeFilter)
+                      .filter((w) => testTypeFilter === 'all' || (testTypeFilter === 'unified' ? (w.test_type === 'unified' || w.test_type === 'short_question' || w.test_type === 'long_question') : w.test_type === testTypeFilter))
                       .map((test) => {
                         const isPublished = test.status === 'published';
+                        const isUnified = test.test_type === 'unified';
                         const isShort = test.test_type === 'short_question';
                         const isSelected = selectedWrittenTestId === test.id;
                         return (
@@ -672,8 +625,8 @@ export const AdminTestsPage: React.FC = () => {
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black text-amber-400 flex items-center gap-1 shadow-2xs">
-                                  {isShort ? <FileText size={11} /> : <BookOpen size={11} />}
-                                  {isShort ? 'Short Question Test' : 'Long Question Test'}
+                                  {isUnified ? <Layers size={11} /> : isShort ? <FileText size={11} /> : <BookOpen size={11} />}
+                                  {isUnified ? 'Online Test' : isShort ? 'Short Question Test' : 'Long Question Test'}
                                 </span>
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1">
                                   <Camera size={10} /> Camera Capture
@@ -712,9 +665,29 @@ export const AdminTestsPage: React.FC = () => {
                               <p className="text-[11px] font-medium text-[#737373] mt-1">
                                 {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} Questions • {test.total_marks} Marks
                               </p>
-                              <p className="text-[10px] text-amber-800 font-bold mt-0.5">
-                                Handwritten capture • 24-hr Cloudflare R2 retention • Manual teacher grading
-                              </p>
+                              {isUnified ? (
+                                <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                  {((test.mcq_count ?? 0) > 0 || test.questions.some(q => q.type === 'mcq')) && (
+                                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 text-[10px] font-bold">
+                                      {test.mcq_count ?? test.questions.filter(q => q.type === 'mcq').length} MCQs (Auto-graded)
+                                    </span>
+                                  )}
+                                  {((test.short_count ?? 0) > 0 || test.questions.some(q => q.type === 'short_question')) && (
+                                    <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-950 text-[10px] font-bold">
+                                      {test.short_count ?? test.questions.filter(q => q.type === 'short_question').length} Short Qs
+                                    </span>
+                                  )}
+                                  {((test.long_count ?? 0) > 0 || test.questions.some(q => q.type === 'long_question')) && (
+                                    <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-950 text-[10px] font-bold">
+                                      {test.long_count ?? test.questions.filter(q => q.type === 'long_question').length} Long Qs
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-[10px] text-amber-800 font-bold mt-0.5">
+                                  Handwritten capture • 24-hr Cloudflare R2 retention • Manual teacher grading
+                                </p>
+                              )}
                             </div>
 
                             <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
@@ -864,26 +837,26 @@ export const AdminTestsPage: React.FC = () => {
             </div>
 
             <div className="space-y-3.5">
-              {/* Option 1: Proctored MCQ Assessment (Admin-Only) */}
+              {/* Option 1: Unified Test (Create a Test) */}
               <button
                 onClick={() => {
                   setIsChoiceModalOpen(false);
-                  setIsCreateMCQModalOpen(true);
+                  setIsCreateUnifiedModalOpen(true);
                 }}
                 className="w-full text-left p-4 rounded-2xl border-2 border-[#111111] bg-[#FFFDF5] hover:bg-[#FFF9E6] hover:border-black transition-all flex items-start gap-4 group cursor-pointer shadow-xs hover:shadow-md"
               >
                 <div className="w-11 h-11 rounded-2xl bg-[#111111] border border-black flex items-center justify-center text-[#F4C430] shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                  <ShieldAlert size={22} />
+                  <Layers size={22} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-black text-[#111111]">Admin MCQ Test (Proctored)</h3>
+                    <h3 className="text-sm font-black text-[#111111]">Create a Test</h3>
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 font-mono">
-                      Admin Only
+                      All Question Types
                     </span>
                   </div>
                   <p className="text-xs text-[#525252] mt-1 leading-relaxed">
-                    Write questions manually, assign correct options, enable active anti-cheating (auto-submits on tab switch or screenshot), and require Student ID for access.
+                    Write your own questions — multiple choice, short answers, or long answers — and students complete them on their phone with photo/camera answers where needed.
                   </p>
                 </div>
               </button>
@@ -940,18 +913,10 @@ export const AdminTestsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Proctored MCQ Test Creation Modal (Admin Only) */}
-      <AdminCreateMCQTestModal
-        isOpen={isCreateMCQModalOpen}
-        onClose={() => setIsCreateMCQModalOpen(false)}
-        onTestCreated={fetchData}
-      />
-
-      {/* Written Test Creation Modal (Short & Long Questions - Admin Only) */}
-      <AdminCreateWrittenTestModal
-        isOpen={isCreateWrittenModalOpen}
-        testType={writtenModalType}
-        onClose={() => setIsCreateWrittenModalOpen(false)}
+      {/* Unified Test Creation Modal (Admin Only) */}
+      <AdminCreateUnifiedTestModal
+        isOpen={isCreateUnifiedModalOpen}
+        onClose={() => setIsCreateUnifiedModalOpen(false)}
         onTestCreated={fetchData}
       />
 
@@ -1096,12 +1061,16 @@ export const AdminTestsPage: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-black text-amber-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                    {viewingWrittenTest.test_type === 'short_question' ? (
+                    {viewingWrittenTest.test_type === 'unified' ? (
+                      <Layers size={11} />
+                    ) : viewingWrittenTest.test_type === 'short_question' ? (
                       <FileText size={11} />
                     ) : (
                       <BookOpen size={11} />
                     )}
-                    {viewingWrittenTest.test_type === 'short_question'
+                    {viewingWrittenTest.test_type === 'unified'
+                      ? 'Assessment Test'
+                      : viewingWrittenTest.test_type === 'short_question'
                       ? 'Short Question Test'
                       : 'Long Question Test'}
                   </span>
@@ -1125,21 +1094,71 @@ export const AdminTestsPage: React.FC = () => {
 
             {/* Questions list */}
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              {viewingWrittenTest.questions.map((q, qIndex) => (
-                <div key={q.id} className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="px-2 py-0.5 rounded-lg bg-[#111111] text-white text-[10px] font-black">
-                      Question #{qIndex + 1}
-                    </span>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-[#E5E5E5] text-amber-800 shrink-0">
-                      {q.marks} {q.marks === 1 ? 'Mark' : 'Marks'}
-                    </span>
+              {viewingWrittenTest.questions.map((q, qIndex) => {
+                const isMCQ = q.type === 'mcq' || (Array.isArray(q.options) && q.options.length > 0);
+                const qTypeLabel = isMCQ
+                  ? 'MCQ'
+                  : q.type === 'long_question'
+                  ? 'Long Question'
+                  : 'Short Question';
+                const correctIdx = q.correctAnswer ?? q.correct_option_index;
+
+                return (
+                  <div key={q.id} className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#111111] text-white text-[10px] font-black">
+                          {qTypeLabel} #{qIndex + 1}
+                        </span>
+                        {isMCQ && (
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono">
+                            Auto-graded
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-[#E5E5E5] text-amber-800 shrink-0">
+                        {q.marks} {q.marks === 1 ? 'Mark' : 'Marks'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs font-bold text-[#111111] leading-relaxed">
+                      {q.question || q.question_text}
+                    </p>
+
+                    {isMCQ && Array.isArray(q.options) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                        {q.options.map((opt, oIndex) => {
+                          const isCorrect = oIndex === correctIdx;
+                          return (
+                            <div
+                              key={oIndex}
+                              className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border ${
+                                isCorrect
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-bold'
+                                  : 'bg-white border-[#E5E5E5] text-[#525252]'
+                              }`}
+                            >
+                              <span
+                                className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                                  isCorrect ? 'bg-emerald-600 text-white' : 'bg-[#F0F0F0] text-[#737373]'
+                                }`}
+                              >
+                                {String.fromCharCode(65 + oIndex)}
+                              </span>
+                              <span className="flex-1 text-[11px]">{opt}</span>
+                              {isCorrect && (
+                                <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                                  Correct Key
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs font-bold text-[#111111] leading-relaxed">
-                    {q.question || q.question_text}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Footer */}

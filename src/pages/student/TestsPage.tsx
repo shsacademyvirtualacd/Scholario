@@ -14,6 +14,7 @@ import {
   FileText,
   Clock,
   X,
+  Layers,
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -67,7 +68,7 @@ export const TestsPage: React.FC = () => {
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [activeSubject, setActiveSubject] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'submitted' | 'graded'>('all');
-  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'proctored' | 'short_question' | 'long_question' | 'standard'>('all');
+  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'unified' | 'proctored' | 'short_question' | 'long_question' | 'standard'>('all');
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
@@ -399,6 +400,9 @@ export const TestsPage: React.FC = () => {
                   <span>Available Class Tests</span>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
                     {(testTypeFilter === 'all' || testTypeFilter === 'proctored' ? filteredProctoredTests.length : 0) +
+                      (testTypeFilter === 'all' || testTypeFilter === 'unified'
+                        ? filteredWrittenTests.filter((w) => w.test_type === 'unified').length
+                        : 0) +
                       (testTypeFilter === 'all' || testTypeFilter === 'short_question'
                         ? filteredWrittenTests.filter((w) => w.test_type === 'short_question').length
                         : 0) +
@@ -517,13 +521,14 @@ export const TestsPage: React.FC = () => {
                       );
                     })}
 
-                  {/* Written Tests Section (Short & Long Questions) */}
-                  {(testTypeFilter === 'all' || testTypeFilter === 'short_question' || testTypeFilter === 'long_question') &&
+                  {/* Written & Unified Tests Section */}
+                  {(testTypeFilter === 'all' || testTypeFilter === 'unified' || testTypeFilter === 'short_question' || testTypeFilter === 'long_question') &&
                     filteredWrittenTests
-                      .filter((w) => testTypeFilter === 'all' || w.test_type === testTypeFilter)
+                      .filter((w) => (testTypeFilter === 'all' ? true : w.test_type === testTypeFilter))
                       .map((test) => {
                         const sub = writtenSubByTestId.get(test.id);
                         const isGraded = sub?.status === 'graded';
+                        const isUnified = test.test_type === 'unified';
                         const isShort = test.test_type === 'short_question';
 
                         // Graded view
@@ -538,7 +543,7 @@ export const TestsPage: React.FC = () => {
                               <div className="flex items-start justify-between gap-2">
                                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                                   <Award size={11} />
-                                  Graded {isShort ? 'Short Question' : 'Long Question'} Test
+                                  Graded {isUnified ? 'Online' : isShort ? 'Short Question' : 'Long Question'} Test
                                 </span>
                                 <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg">
                                   Score: {finalScore} / {sub.total_marks} ({pct}%)
@@ -596,13 +601,15 @@ export const TestsPage: React.FC = () => {
                               </div>
 
                               <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200/60">
-                                Your handwritten answer photos have been securely uploaded to Cloudflare R2 for teacher evaluation. Marks will be displayed here once released.
+                                {isUnified
+                                  ? 'Your multiple choice answers have been auto-checked, and written responses uploaded for evaluation. Marks will be displayed once released.'
+                                  : 'Your handwritten answer photos have been securely uploaded to Cloudflare R2 for teacher evaluation. Marks will be displayed here once released.'}
                               </p>
                             </div>
                           );
                         }
 
-                        // Pending Written Test
+                        // Pending Written / Unified Test
                         return (
                           <div
                             key={test.id}
@@ -610,8 +617,8 @@ export const TestsPage: React.FC = () => {
                           >
                             <div className="flex items-start justify-between gap-2">
                               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black text-amber-400 flex items-center gap-1 shadow-2xs">
-                                {isShort ? <FileText size={11} /> : <BookOpen size={11} />}
-                                {isShort ? 'Short Question Test' : 'Long Question Test'}
+                                {isUnified ? <Layers size={11} /> : isShort ? <FileText size={11} /> : <BookOpen size={11} />}
+                                {isUnified ? 'Assessment Test' : isShort ? 'Short Question Test' : 'Long Question Test'}
                               </span>
                               <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
                                 <Camera size={11} /> Camera Proctored
@@ -622,14 +629,37 @@ export const TestsPage: React.FC = () => {
                               <h4 className="text-sm font-black text-[#111111] group-hover:text-amber-950 transition-colors">
                                 {test.title}
                               </h4>
-                              <p className="text-[11px] font-medium text-[#737373] mt-0.5">
-                                {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} Questions • {test.total_marks} Marks
-                              </p>
+                              <div className="flex items-center gap-2 flex-wrap text-[11px] font-medium text-[#737373] mt-0.5">
+                                <span>{test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.total_marks} Marks</span>
+                                {isUnified && (
+                                  <div className="flex items-center gap-1">
+                                    {(test.mcq_count ?? 0) > 0 && (
+                                      <span className="bg-amber-100/70 text-amber-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                                        {test.mcq_count} MCQs
+                                      </span>
+                                    )}
+                                    {(test.short_count ?? 0) > 0 && (
+                                      <span className="bg-blue-50 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                                        {test.short_count} Short
+                                      </span>
+                                    )}
+                                    {(test.long_count ?? 0) > 0 && (
+                                      <span className="bg-purple-50 text-purple-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                                        {test.long_count} Long
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/50 flex items-center gap-2 text-[11px] text-amber-900 font-medium">
                               <Camera size={13} className="text-amber-700 shrink-0" />
-                              <span>Take handwritten photo for each question. 24-hr Cloudflare R2 retention. Strict proctoring active.</span>
+                              <span>
+                                {isUnified
+                                  ? 'Includes multiple choice and written sections. Completed in one continuous session.'
+                                  : 'Take handwritten photo for each question. 24-hr Cloudflare R2 retention. Strict proctoring active.'}
+                              </span>
                             </div>
 
                             <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
@@ -640,7 +670,7 @@ export const TestsPage: React.FC = () => {
                                 onClick={() => setActiveWrittenExamTest(test)}
                                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-amber-400 text-xs font-black shadow-sm cursor-pointer active:scale-95 transition-all"
                               >
-                                <span>Start Written Exam</span>
+                                <span>{isUnified ? 'Start Assessment' : 'Start Written Exam'}</span>
                                 <ArrowRight size={13} />
                               </button>
                             </div>
