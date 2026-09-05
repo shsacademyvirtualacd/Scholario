@@ -3,7 +3,7 @@ import {
   Search, Users, Shield, Trash2, Edit, 
   Clock, X, UserCheck, Lock, Unlock, Phone, GraduationCap, 
   BookOpen, Copy, Check, UserPlus, Save, ShieldAlert, DollarSign,
-  CheckCircle2, AlertCircle
+  CheckCircle2, AlertCircle, XCircle
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -62,6 +62,7 @@ export const RosterManagerPage: React.FC = () => {
   const [editStudentBoard, setEditStudentBoard] = useState<'fbise' | 'sindh' | 'ielts'>('fbise');
   const [editStudentClass, setEditStudentClass] = useState('');
   const [editStudentStreamId, setEditStudentStreamId] = useState('');
+  const [editStudentFeeStatus, setEditStudentFeeStatus] = useState<'unpaid' | 'pending' | 'paid'>('unpaid');
   const [editStudentError, setEditStudentError] = useState<string | null>(null);
   const [editStudentSaving, setEditStudentSaving] = useState(false);
 
@@ -302,6 +303,59 @@ export const RosterManagerPage: React.FC = () => {
     }
   };
 
+  const handleSetStudentFeeStatus = async (
+    entry: RosterEntry,
+    newStatus: 'unpaid' | 'pending' | 'paid',
+    customNote?: string
+  ) => {
+    setProcessingIds(prev => ({ ...prev, [entry.id]: true }));
+    try {
+      const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
+        profilesMap[entry.id] ||
+        (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
+
+      const studentProfileId = matchedProfile?.id || entry.profile_id || entry.id;
+
+      // Ensure profile row exists in profiles table so foreign key constraint in fee_statuses is satisfied
+      if (!matchedProfile && !profilesMap[studentProfileId]) {
+        const { data: existingProf } = await (supabase as any)
+          .from('profiles')
+          .select('id')
+          .eq('id', studentProfileId)
+          .maybeSingle();
+
+        if (!existingProf) {
+          await (supabase as any)
+            .from('profiles')
+            .upsert({
+              id: studentProfileId,
+              full_name: entry.full_name || 'Student',
+              role: 'student',
+              onboarding_complete: true
+            }, { onConflict: 'id' });
+        }
+      }
+
+      const note = customNote || `Admin manual override: Status set to ${newStatus.toUpperCase()} from Roster Manager.`;
+      await updateFeeStatus(studentProfileId, newStatus, note);
+
+      // If granting paid status, also automatically clear fee_suspended and termination request if set
+      if (newStatus === 'paid' && (entry.fee_suspended || entry.awaiting_termination)) {
+        await toggleFeeSuspension(entry.id, false);
+        setRoster(prev => prev.map(r => r.id === entry.id ? { ...r, fee_suspended: false, awaiting_termination: false } : r));
+      }
+
+      await fetchEnrichmentData();
+      toast.success(`Access status for ${entry.full_name} updated to ${newStatus.toUpperCase()}.`);
+    } catch (err: any) {
+      console.error('handleSetStudentFeeStatus error:', err);
+      alert(err.message || 'Failed to update student access status.');
+      toast.error(err.message || 'Failed to update access status.');
+    } finally {
+      setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
+    }
+  };
+
   const handleApprovePayment = async (profileId: string, entryId: string) => {
     setProcessingIds(prev => ({ ...prev, [entryId]: true }));
     try {
@@ -459,6 +513,11 @@ export const RosterManagerPage: React.FC = () => {
     }
     setEditStudentStreamId(streamId);
 
+    // Initial fee status from feeMap
+    const profileIdForFee = p?.id || entry.profile_id || entry.id;
+    const currentFeeStatus = (profileIdForFee && feeMap[profileIdForFee]?.status) || 'unpaid';
+    setEditStudentFeeStatus(currentFeeStatus as 'unpaid' | 'pending' | 'paid');
+
     setEditStudentError(null);
     setEditStudentModalOpen(true);
   };
@@ -610,18 +669,18 @@ export const RosterManagerPage: React.FC = () => {
         console.warn('Enrollment re-sync error (non-fatal):', enrErr);
       }
 
-      // 4. Ensure fee_statuses row exists
+      // 4. Update/Upsert fee_statuses with the selected fee status
       try {
-        const { data: existingFee } = await (supabase as any)
-          .from('fee_statuses')
-          .select('id')
-          .eq('student_id', studentProfileId)
-          .maybeSingle();
-        if (!existingFee) {
-          await (supabase as any).from('fee_statuses').insert({ student_id: studentProfileId, status: 'unpaid' });
+        await updateFeeStatus(
+          studentProfileId,
+          editStudentFeeStatus,
+          `Admin updated status to ${editStudentFeeStatus.toUpperCase()} via Edit Student Profile modal.`
+        );
+        if (editStudentFeeStatus === 'paid' && (editStudentEntry.fee_suspended || editStudentEntry.awaiting_termination)) {
+          await toggleFeeSuspension(editStudentEntry.id, false);
         }
       } catch (feeErr) {
-        console.warn('Fee status initialization warning:', feeErr);
+        console.warn('Fee status update warning:', feeErr);
       }
 
       toast.success(`Profile for ${nameTrim} updated successfully.`);
@@ -928,23 +987,23 @@ export const RosterManagerPage: React.FC = () => {
                     {/* Access Status Badge */}
                     <div className="shrink-0">
                       {isSuspended ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
                           <Lock size={10} /> Suspended
                         </span>
                       ) : isActive ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
-                          <UserCheck size={10} /> Active
+                        <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
+                          <UserCheck size={10} /> Active · Paid
                         </span>
                       ) : feeStatusVal === 'pending' ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                        <span className="inline-flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
                           <Clock size={10} /> Verifying
                         </span>
                       ) : isPendingPayment ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
                           <DollarSign size={10} /> Unpaid
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">
+                        <span className="inline-flex items-center gap-1 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
                           <Clock size={10} /> Pending
                         </span>
                       )}
@@ -955,16 +1014,16 @@ export const RosterManagerPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3 text-xs bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
                       <div>
                         <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Phone</div>
-                        <div className="font-semibold text-[#404040]">{getPhone(entry)}</div>
+                        <div className="font-semibold text-[#404040] whitespace-nowrap">{getPhone(entry)}</div>
                       </div>
                       <div>
                         <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Class</div>
-                        <div className="font-semibold text-[#111111]">{getClassGrade(entry)}</div>
+                        <div className="font-semibold text-[#111111] whitespace-nowrap">{getClassGrade(entry)}</div>
                       </div>
                       <div className="col-span-2 flex items-center justify-between mt-1">
                         <div>
                           <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Stream</div>
-                          <div className="font-semibold text-[#404040]">{getStream(entry)}</div>
+                          <div className="font-semibold text-[#404040] whitespace-nowrap">{getStream(entry)}</div>
                         </div>
                         <div className="text-right">
                           <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">ID</div>
@@ -988,19 +1047,55 @@ export const RosterManagerPage: React.FC = () => {
                   {activeSection !== 'admins' && (
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-[#F0F0F0]">
                       {activeSection === 'students' && (
-                        <button
-                          onClick={() => openEditStudent(entry)}
-                          className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all"
-                          title="Edit student profile"
-                        >
-                          <Edit size={12} /> Edit
-                        </button>
+                        <>
+                          <button
+                            onClick={() => openEditStudent(entry)}
+                            className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap"
+                            title="Edit student profile & fee status"
+                          >
+                            <Edit size={12} /> Edit
+                          </button>
+
+                          {feeStatusVal === 'pending' && (
+                            <button
+                              onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
+                              disabled={processingIds[entry.id]}
+                              className="px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
+                              title="Approve pending payment proof"
+                            >
+                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <Check size={12} />}
+                              <span>Approve</span>
+                            </button>
+                          )}
+
+                          {feeStatusVal !== 'paid' ? (
+                            <button
+                              onClick={() => handleSetStudentFeeStatus(entry, 'paid')}
+                              disabled={processingIds[entry.id]}
+                              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 font-bold text-xs inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
+                              title="Direct Admin Override: Verify & Grant Paid Access"
+                            >
+                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                              <span>Grant Paid</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleSetStudentFeeStatus(entry, 'unpaid')}
+                              disabled={processingIds[entry.id]}
+                              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-700 font-bold text-xs inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
+                              title="Direct Admin Override: Revoke Paid Access"
+                            >
+                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <XCircle size={12} />}
+                              <span>Revoke Paid</span>
+                            </button>
+                          )}
+                        </>
                       )}
 
                       <button
                         disabled={processingIds[entry.id]}
                         onClick={() => handleToggleAccess(entry)}
-                        className={`flex-1 min-w-[90px] py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
+                        className={`flex-1 min-w-[90px] py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${
                           isSuspended 
                             ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
                             : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
@@ -1019,11 +1114,12 @@ export const RosterManagerPage: React.FC = () => {
                         <button
                           disabled={processingIds[entry.id]}
                           onClick={() => handleToggleFeeAccess(entry)}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1 transition-all ${
+                          className={`px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap ${
                             entry.fee_suspended
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                           } disabled:opacity-50`}
+                          title={entry.fee_suspended ? "Unlock Billing" : "Lock Billing"}
                         >
                           {entry.fee_suspended ? <Unlock size={12} /> : <DollarSign size={12} />}
                         </button>
@@ -1038,19 +1134,9 @@ export const RosterManagerPage: React.FC = () => {
                         </button>
                       )}
 
-                      {activeSection === 'students' && feeStatusVal === 'pending' && (
-                        <button
-                          onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
-                          disabled={processingIds[entry.id]}
-                          className="px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center disabled:opacity-50"
-                        >
-                          {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <Check size={12} />}
-                        </button>
-                      )}
-
                       <button
                         onClick={() => triggerDelete(entry)}
-                        className="px-3 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 font-bold text-xs inline-flex items-center justify-center"
+                        className="px-3 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 font-bold text-xs inline-flex items-center justify-center whitespace-nowrap"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -1062,28 +1148,28 @@ export const RosterManagerPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[960px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA]">
                   {activeSection === 'students' && (
-                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden md:table-cell">ID</th>
+                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden md:table-cell whitespace-nowrap w-24">ID</th>
                   )}
-                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Name & Email</th>
+                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap min-w-[180px]">Name & Email</th>
                   {activeSection === 'students' && (
                     <>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden lg:table-cell">Phone</th>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Class (Grade)</th>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden sm:table-cell">Stream</th>
+                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden lg:table-cell whitespace-nowrap w-36">Phone</th>
+                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap w-36">Class (Grade)</th>
+                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden sm:table-cell whitespace-nowrap w-40">Stream</th>
                     </>
                   )}
                   {activeSection === 'teachers' && (
-                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Assigned Classes / Schedule Offerings</th>
+                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap">Assigned Classes / Schedule Offerings</th>
                   )}
                   {activeSection === 'admins' && (
-                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Role & Privileges</th>
+                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap">Role & Privileges</th>
                   )}
-                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider">Access Status</th>
-                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider text-right">Actions</th>
+                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap min-w-[200px]">Access Status</th>
+                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider text-right whitespace-nowrap min-w-[260px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0F0F0]">
@@ -1094,7 +1180,7 @@ export const RosterManagerPage: React.FC = () => {
                   const hasProfile = Boolean(matchedProfile || entry.profile_id);
                   const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
                   const isSuspended = entry.suspended === true;
-                  const profileIdForFee = matchedProfile?.id || entry.profile_id;
+                  const profileIdForFee = matchedProfile?.id || entry.profile_id || entry.id;
                   const feeStatusVal = profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : 'unpaid';
                   const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student';
                   const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
@@ -1105,7 +1191,7 @@ export const RosterManagerPage: React.FC = () => {
                   return (
                     <tr key={entry.id} className="hover:bg-[#FAFAFA]/70 transition-colors">
                       {activeSection === 'students' && (
-                        <td className="p-4 text-xs font-mono font-bold text-[#525252] hidden md:table-cell">
+                        <td className="p-4 text-xs font-mono font-bold text-[#525252] hidden md:table-cell whitespace-nowrap">
                           <div className="flex items-center gap-1.5 group">
                             <span>#{idShort}</span>
                             <button
@@ -1119,34 +1205,33 @@ export const RosterManagerPage: React.FC = () => {
                         </td>
                       )}
 
-                      <td className="p-4 text-xs">
-                        <div className="font-bold text-[#111111] text-sm flex items-center gap-2">
+                      <td className="p-4 text-xs whitespace-nowrap">
+                        <div className="font-bold text-[#111111] text-sm flex items-center gap-2 whitespace-nowrap">
                           {entry.full_name}
                           {entry.role === 'admin' && (
-                            <span className="bg-red-100 text-red-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border border-red-200">
+                            <span className="bg-red-100 text-red-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border border-red-200 shrink-0">
                               Admin
                             </span>
                           )}
                         </div>
-                        <div className="text-[#737373] text-[11px] font-medium mt-0.5">{entry.email}</div>
-
+                        <div className="text-[#737373] text-[11px] font-medium mt-0.5 whitespace-nowrap">{entry.email}</div>
                       </td>
 
                       {activeSection === 'students' && (
                         <>
-                          <td className="p-4 text-xs font-semibold text-[#404040] hidden lg:table-cell">
-                            <div className="flex items-center gap-1.5">
+                          <td className="p-4 text-xs font-semibold text-[#404040] hidden lg:table-cell whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
                               <Phone size={13} className="text-[#A3A3A3] shrink-0" />
                               <span>{getPhone(entry)}</span>
                             </div>
                           </td>
-                          <td className="p-4 text-xs font-bold text-[#111111]">
-                            <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg text-[11px]">
+                          <td className="p-4 text-xs font-bold text-[#111111] whitespace-nowrap">
+                            <span className="inline-flex items-center whitespace-nowrap bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
                               {getClassGrade(entry)}
                             </span>
                           </td>
-                          <td className="p-4 text-xs font-bold text-[#404040] hidden sm:table-cell">
-                            <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px]">
+                          <td className="p-4 text-xs font-bold text-[#404040] hidden sm:table-cell whitespace-nowrap">
+                            <span className="inline-flex items-center whitespace-nowrap bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
                               {getStream(entry)}
                             </span>
                           </td>
@@ -1160,145 +1245,188 @@ export const RosterManagerPage: React.FC = () => {
                       )}
 
                       {activeSection === 'admins' && (
-                        <td className="p-4 text-xs">
-                          <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-xl text-xs font-bold">
+                        <td className="p-4 text-xs whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap">
                             <Shield size={13} /> System Administrator
                           </span>
                         </td>
                       )}
 
-                      <td className="p-4 text-xs">
-                        {entry.awaiting_termination && (
-                          <div className="mb-1.5">
-                            <span className="inline-flex items-center gap-1.5 font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
+                      <td className="p-4 text-xs whitespace-nowrap">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          {entry.awaiting_termination && (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
                               <ShieldAlert size={11} /> Termination Requested
                             </span>
-                          </div>
-                        )}
-                        {entry.fee_suspended && (
-                          <div className="mb-1.5">
-                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
+                          )}
+                          {entry.fee_suspended && (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
                               <DollarSign size={11} /> Billing Locked
                             </span>
-                          </div>
-                        )}
-                        {isSuspended ? (
-                          <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
-                            <Lock size={11} /> Suspended
-                          </span>
-                        ) : isActive ? (
-                          <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
-                            <UserCheck size={11} /> Active
-                          </span>
-                        ) : feeStatusVal === 'pending' ? (
-                          <span className="inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
-                            <Clock size={11} /> Awaiting Verification
-                          </span>
-                        ) : isPendingPayment ? (
-                          <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
-                            <DollarSign size={11} /> Pending Payment
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide">
-                            <Clock size={11} /> Pending Registration
-                          </span>
-                        )}
+                          )}
+                          {isSuspended ? (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
+                              <Lock size={11} /> Suspended
+                            </span>
+                          ) : isActive ? (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
+                              <UserCheck size={11} /> Active · Paid
+                            </span>
+                          ) : feeStatusVal === 'pending' ? (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
+                              <Clock size={11} /> Awaiting Verification
+                            </span>
+                          ) : isPendingPayment ? (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
+                              <DollarSign size={11} /> Pending Payment (Unpaid)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
+                              <Clock size={11} /> Pending Registration
+                            </span>
+                          )}
+
+                          {/* Instant Access Selector (Direct Admin Override) */}
+                          {activeSection === 'students' && (
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              <span className="text-[10px] text-[#737373] font-bold uppercase tracking-wider">Access:</span>
+                              <select
+                                value={feeStatusVal}
+                                disabled={processingIds[entry.id]}
+                                onChange={(e) => handleSetStudentFeeStatus(entry, e.target.value as 'unpaid' | 'pending' | 'paid')}
+                                className="text-[11px] font-bold bg-white border border-[#E5E5E5] rounded-lg px-2 py-0.5 text-[#111111] focus:ring-1 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
+                                title="Direct Admin Override: Change billing/access status immediately"
+                              >
+                                <option value="unpaid">Unpaid (Gated)</option>
+                                <option value="pending">Pending Verification</option>
+                                <option value="paid">Paid & Verified (Full Access)</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
                       </td>
 
-                      <td className="p-4 text-xs text-right space-x-2">
-                        {activeSection === 'admins' ? (
-                          <span className="text-[11px] font-bold text-[#A3A3A3] italic inline-flex items-center gap-1 bg-[#F5F5F5] px-2.5 py-1 rounded-lg border border-[#E5E5E5]">
-                            <Lock size={11} /> Protected Admin
-                          </span>
-                        ) : (
-                          <>
-                            {activeSection === 'teachers' && (
-                              <button
-                                onClick={() => openEdit(entry)}
-                                className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-500 hover:text-[#111111] inline-flex items-center justify-center transition-colors"
-                                title="Edit assigned schedule offerings"
-                              >
-                                <Edit size={14} />
-                              </button>
-                            )}
+                      <td className="p-4 text-xs text-right whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end gap-1.5 flex-nowrap">
+                          {activeSection === 'admins' ? (
+                            <span className="text-[11px] font-bold text-[#A3A3A3] italic inline-flex items-center gap-1 bg-[#F5F5F5] px-2.5 py-1 rounded-lg border border-[#E5E5E5] whitespace-nowrap">
+                              <Lock size={11} /> Protected Admin
+                            </span>
+                          ) : (
+                            <>
+                              {activeSection === 'teachers' && (
+                                <button
+                                  onClick={() => openEdit(entry)}
+                                  className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-500 hover:text-[#111111] inline-flex items-center justify-center transition-colors whitespace-nowrap"
+                                  title="Edit assigned schedule offerings"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                              )}
 
-                            <button
-                              onClick={() => handleToggleAccess(entry)}
-                              disabled={processingIds[entry.id]}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
-                                isSuspended 
-                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
-                              } disabled:opacity-50`}
-                              title={isSuspended ? "Restore access (Reversible)" : "Suspend access (Reversible — blocks access while preserving records)"}
-                            >
-                              {processingIds[entry.id] ? (
-                                <Clock size={13} className="animate-spin" />
-                              ) : isSuspended ? (
+                              {activeSection === 'students' && (
                                 <>
-                                  <Unlock size={13} /> Restore
-                                </>
-                              ) : (
-                                <>
-                                  <Lock size={13} /> Suspend
+                                  <button
+                                    onClick={() => openEditStudent(entry)}
+                                    className="px-2.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 hover:text-zinc-900 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap"
+                                    title="Edit student profile & fee status"
+                                  >
+                                    <Edit size={13} /> Edit
+                                  </button>
+
+                                  {feeStatusVal === 'pending' && (
+                                    <button
+                                      onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
+                                      disabled={processingIds[entry.id]}
+                                      className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
+                                      title="Approve pending payment proof"
+                                    >
+                                      {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <Check size={13} />}
+                                      <span>Approve</span>
+                                    </button>
+                                  )}
+
+                                  {/* Direct Admin Override Button: Grant Paid / Revoke Paid */}
+                                  {feeStatusVal !== 'paid' ? (
+                                    <button
+                                      onClick={() => handleSetStudentFeeStatus(entry, 'paid')}
+                                      disabled={processingIds[entry.id]}
+                                      className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 hover:text-emerald-800 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
+                                      title="Direct Admin Override: Verify student and grant immediate paid access (no proof submission required)"
+                                    >
+                                      {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                      <span>Grant Paid</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleSetStudentFeeStatus(entry, 'unpaid')}
+                                      disabled={processingIds[entry.id]}
+                                      className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-700 hover:text-amber-800 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
+                                      title="Direct Admin Override: Revoke paid access and mark as Unpaid"
+                                    >
+                                      {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <XCircle size={13} />}
+                                      <span>Revoke Paid</span>
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => handleToggleFeeAccess(entry)}
+                                    disabled={processingIds[entry.id]}
+                                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1 transition-all whitespace-nowrap ${
+                                      entry.fee_suspended 
+                                        ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                                        : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                    } disabled:opacity-50`}
+                                    title={entry.fee_suspended ? "Remove Billing Lock" : "Apply Billing Lock"}
+                                  >
+                                    {processingIds[entry.id] ? (
+                                      <Clock size={13} className="animate-spin" />
+                                    ) : entry.fee_suspended ? (
+                                      <>
+                                        <Unlock size={13} /> Unlock
+                                      </>
+                                    ) : (
+                                      <>
+                                        <DollarSign size={13} /> Lock
+                                      </>
+                                    )}
+                                  </button>
                                 </>
                               )}
-                            </button>
 
-                            {activeSection === 'students' && (
-                              <>
-                                <button
-                                  onClick={() => openEditStudent(entry)}
-                                  className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 hover:text-zinc-900 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
-                                  title="Edit student profile details"
-                                >
-                                  <Edit size={13} /> Edit
-                                </button>
-
-                                {feeStatusVal === 'pending' && (
-                                  <button
-                                    onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
-                                    disabled={processingIds[entry.id]}
-                                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center gap-1.5 transition-all disabled:opacity-50"
-                                    title="Student has submitted proof — approve and mark as paid"
-                                  >
-                                    {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <Check size={13} />} Approve Payment
-                                  </button>
+                              <button
+                                onClick={() => handleToggleAccess(entry)}
+                                disabled={processingIds[entry.id]}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1 transition-all whitespace-nowrap ${
+                                  isSuspended 
+                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
+                                } disabled:opacity-50`}
+                                title={isSuspended ? "Restore access (Reversible)" : "Suspend access (Reversible — blocks access while preserving records)"}
+                              >
+                                {processingIds[entry.id] ? (
+                                  <Clock size={13} className="animate-spin" />
+                                ) : isSuspended ? (
+                                  <>
+                                    <Unlock size={13} /> Restore
+                                  </>
+                                ) : (
+                                  <>
+                                    <Lock size={13} /> Suspend
+                                  </>
                                 )}
-                                <button
-                                  onClick={() => handleToggleFeeAccess(entry)}
-                                  disabled={processingIds[entry.id]}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
-                                    entry.fee_suspended 
-                                      ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                  } disabled:opacity-50`}
-                                  title={entry.fee_suspended ? "Remove Billing Lock" : "Apply Billing Lock"}
-                                >
-                                  {processingIds[entry.id] ? (
-                                    <Clock size={13} className="animate-spin" />
-                                  ) : entry.fee_suspended ? (
-                                    <>
-                                      <Unlock size={13} /> Unlock Billing
-                                    </>
-                                  ) : (
-                                    <>
-                                      <DollarSign size={13} /> Lock Billing
-                                    </>
-                                  )}
-                                </button>
-                              </>
-                            )}
+                              </button>
 
-                            <button
-                              onClick={() => triggerDelete(entry)}
-                              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 hover:text-red-700 font-bold text-xs inline-flex items-center gap-1.5 transition-all"
-                              title="Delete account completely without leaving orphaned records"
-                            >
-                              <Trash2 size={13} /> Delete
-                            </button>
-                          </>
-                        )}
+                              <button
+                                onClick={() => triggerDelete(entry)}
+                                className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 hover:text-red-700 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap"
+                                title="Delete account completely without leaving orphaned records"
+                              >
+                                <Trash2 size={13} /> Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2003,6 +2131,65 @@ export const RosterManagerPage: React.FC = () => {
                   </div>
                 </>
               )}
+
+              {/* Fee & Access Status (Direct Admin Override) */}
+              <div className="pt-2 border-t border-zinc-100">
+                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
+                  Institutional Fee & Access Status
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditStudentFeeStatus('unpaid')}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      editStudentFeeStatus === 'unpaid'
+                        ? 'border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-500/20 font-bold'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">Unpaid</span>
+                      {editStudentFeeStatus === 'unpaid' && <Check size={14} className="text-amber-600 shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Billing Gated</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditStudentFeeStatus('pending')}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      editStudentFeeStatus === 'pending'
+                        ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">Pending</span>
+                      {editStudentFeeStatus === 'pending' && <Check size={14} className="text-purple-600 shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Awaiting Review</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditStudentFeeStatus('paid')}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      editStudentFeeStatus === 'paid'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-600/20 font-bold'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">Paid & Verified</span>
+                      {editStudentFeeStatus === 'paid' && <Check size={14} className="text-emerald-600 shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Full LMS Access</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-1.5">
+                  Direct override: Changes access immediately without requiring student payment proof submission.
+                </p>
+              </div>
 
               {/* Modal Actions */}
               <div className="pt-4 border-t border-zinc-100 flex gap-3">

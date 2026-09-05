@@ -48,16 +48,16 @@ export const StudentTable: React.FC<StudentTableProps> = ({
   };
 
   return (
-    <div className="table-container">
-      <table className="table">
+    <div className="table-container overflow-x-auto">
+      <table className="table w-full min-w-[720px] text-left">
         <thead>
           <tr>
-            <th>Student</th>
-            <th>Stream</th>
-            <th>Board & Grade</th>
-            <th>Phone</th>
-            <th className="text-center">Attendance Rate</th>
-            <th className="text-right">Actions</th>
+            <th className="whitespace-nowrap">Student</th>
+            <th className="whitespace-nowrap">Stream</th>
+            <th className="whitespace-nowrap">Board & Grade</th>
+            <th className="whitespace-nowrap">Phone</th>
+            <th className="text-center whitespace-nowrap">Attendance Rate</th>
+            <th className="text-right whitespace-nowrap">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -70,7 +70,7 @@ export const StudentTable: React.FC<StudentTableProps> = ({
 
             return (
               <tr key={student.id}>
-                <td>
+                <td className="whitespace-nowrap">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-center text-xs font-bold text-[#111111] shrink-0">
                       {getInitials(student.full_name)}
@@ -78,20 +78,20 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                     <span className="font-semibold text-[#111111]">{student.full_name}</span>
                   </div>
                 </td>
-                <td>
-                  <span className={`badge border text-[10px] uppercase font-bold py-0.5 px-2 rounded-md ${getStreamColor(student.stream_obj?.name || student.stream)}`}>
+                <td className="whitespace-nowrap">
+                  <span className={`badge border text-[10px] uppercase font-bold py-0.5 px-2 rounded-md whitespace-nowrap inline-flex items-center ${getStreamColor(student.stream_obj?.name || student.stream)}`}>
                     {streamLabel}
                   </span>
                 </td>
-                <td>
-                  <div className="text-xs font-semibold text-[#525252]">
+                <td className="whitespace-nowrap">
+                  <div className="text-xs font-semibold text-[#525252] whitespace-nowrap">
                     {stats.boardAndGrade}
                   </div>
                 </td>
-                <td>
-                  <span className="text-xs font-medium text-[#737373]">{student.phone || 'N/A'}</span>
+                <td className="whitespace-nowrap">
+                  <span className="text-xs font-medium text-[#737373] whitespace-nowrap">{student.phone || 'N/A'}</span>
                 </td>
-                <td className="text-center">
+                <td className="text-center whitespace-nowrap">
                   {isQualified ? (
                     <div className="inline-flex flex-col items-center">
                       <span
