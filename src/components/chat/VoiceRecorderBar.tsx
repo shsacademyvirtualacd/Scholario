@@ -388,11 +388,13 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
           onClick={lockRecording}
           style={{
             transform: `translateY(${dragOffset.y * 0.4}px)`,
+            WebkitBackdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(20px)',
           }}
-          className={`absolute right-1 bottom-13 z-30 px-3 py-2.5 rounded-full bg-white border border-[#E5E5E5] shadow-lg flex flex-col items-center gap-1.5 cursor-pointer select-none transition-all duration-75 ${
+          className={`absolute right-1 bottom-13 z-30 px-3 py-2.5 rounded-full bg-white/80 backdrop-blur-[20px] border border-black/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex flex-col items-center gap-1.5 cursor-pointer select-none transition-all duration-75 ${
             isLockZone
-              ? 'bg-emerald-50 text-emerald-600 scale-110 border-emerald-300'
-              : 'text-[#54656F] hover:text-[#111111] hover:bg-[#F9F9F9]'
+              ? 'bg-emerald-50/90 text-emerald-600 scale-110 border-emerald-300'
+              : 'text-[#54656F] hover:text-[#111111] hover:bg-black/5'
           }`}
           title="Slide up or tap to lock hands-free recording"
         >
@@ -406,7 +408,13 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
       )}
 
       {/* ── Main Voice Recording Bar ── */}
-      <div className="flex-1 min-w-0 bg-[#111111] text-white px-3 sm:px-4 py-2 rounded-[24px] flex items-center justify-between gap-2 sm:gap-3 shadow-inner min-h-[46px] animate-in fade-in duration-150 overflow-hidden box-border">
+      <div
+        className="flex-1 min-w-0 bg-black/75 backdrop-blur-[20px] text-white px-3 sm:px-4 py-2 rounded-[24px] flex items-center justify-between gap-2 sm:gap-3 border border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.18)] min-h-[46px] animate-in fade-in duration-150 overflow-hidden box-border"
+        style={{
+          WebkitBackdropFilter: 'blur(20px)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
         {/* Left: Red Blinking Recording Indicator & Timer */}
         <div className="flex items-center gap-2 shrink-0 select-none">
           <div className="relative flex items-center justify-center w-3 h-3">

@@ -541,6 +541,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const inputBarRef = useRef<HTMLDivElement | null>(null);
   const [inputBarHeight, setInputBarHeight] = useState<number>(76);
+  const topBarRef = useRef<HTMLDivElement | null>(null);
+  const [topBarHeight, setTopBarHeight] = useState<number>(65);
 
   // Dynamically observe input bar height so messages scroll view has exact bottom clearance
   useEffect(() => {
@@ -558,6 +560,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
     ro.observe(el);
     return () => ro.disconnect();
   }, [activeThreadId, showEmojiPicker, isVoiceRecording]);
+
+  // Dynamically observe top bar height so messages scroll view has exact top clearance
+  useEffect(() => {
+    const el = topBarRef.current;
+    if (!el) return;
+    const updateHeight = () => {
+      if (topBarRef.current) {
+        setTopBarHeight(topBarRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    const ro = new ResizeObserver(() => {
+      updateHeight();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activeThreadId, showInChatSearch]);
 
   useEffect(() => {
     if (isNearBottomRef.current) {
@@ -1611,7 +1630,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
         {/* ── Right Column: Active Conversation Messages & Composer ── */}
         <div
-          className={`flex-1 flex flex-col bg-white overflow-hidden ${
+          className={`relative flex-1 flex flex-col bg-[#EFEAE2] overflow-hidden ${
             !mobileViewActiveThread ? 'hidden md:flex' : 'flex'
           }`}
         >
@@ -1626,17 +1645,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
             />
           ) : activeThread ? (
             <>
-              {/* Active Conversation Top Bar */}
-              <div className="px-4 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] flex items-center justify-between bg-white z-10 shrink-0">
-                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  {/* Mobile Back Button */}
-                  <button
-                    onClick={() => setMobileViewActiveThread(false)}
-                    className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-[#F5F5F5] text-[#111111] shrink-0 transition-colors"
-                    aria-label="Back to conversations"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
+              {/* Apple-style Frosted Glass Floating Top Bar */}
+              <div
+                ref={topBarRef}
+                id="chat-top-bar-container"
+                className="absolute top-0 inset-x-0 z-20 flex flex-col"
+              >
+                {/* Active Conversation Top Bar */}
+                <div
+                  className="px-4 sm:px-5 py-2.5 sm:py-3 border-b border-black/[0.08] flex items-center justify-between bg-white/70 backdrop-blur-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] shrink-0"
+                  style={{
+                    WebkitBackdropFilter: 'blur(20px)',
+                    backdropFilter: 'blur(20px)',
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    {/* Mobile Back Button */}
+                    <button
+                      onClick={() => setMobileViewActiveThread(false)}
+                      className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-black/5 text-[#111111] shrink-0 transition-colors"
+                      aria-label="Back to conversations"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
 
                   <div
                     onClick={() => setShowContactInfoModal(true)}
@@ -1745,7 +1776,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           />
 
                           <div
-                            className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-2xl shadow-2xl border border-[#E5E5E5] py-2 z-50 text-xs text-[#111111] animate-in fade-in zoom-in-95 duration-150 divide-y divide-[#F0F0F0]"
+                            className="absolute right-0 top-full mt-1.5 w-60 bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] border border-black/[0.08] py-2 z-50 text-xs text-[#111111] animate-in fade-in zoom-in-95 duration-150 divide-y divide-black/[0.06]"
+                            style={{
+                              WebkitBackdropFilter: 'blur(24px)',
+                              backdropFilter: 'blur(24px)',
+                            }}
                           >
                             <div className="py-1">
                               {/* 1. View Contact */}
@@ -1755,7 +1790,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   setShowContactInfoModal(true);
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
                               >
                                 <Info size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">View contact</span>
@@ -1768,7 +1803,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   setShowInChatSearch(true);
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
                               >
                                 <Search size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Search</span>
@@ -1781,7 +1816,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   setShowMediaDocsModal(true);
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
                               >
                                 <ImageIcon size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Media, links, and docs</span>
@@ -1794,7 +1829,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   toggleMuteCurrentThread();
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
                               >
                                 {isCurrentThreadMuted ? (
                                   <Bell size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
@@ -1814,7 +1849,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   toast.info('Disappearing messages: Off (Academic compliance retained).');
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
                               >
                                 <Clock size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Disappearing messages</span>
@@ -1826,7 +1861,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   toast.info('Chat wallpaper: WhatsApp classic academic doodle pattern active.');
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
                               >
                                 <Sparkles size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Chat theme</span>
@@ -1838,7 +1873,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   setShowChatMenu(false);
                                   exportChatTranscript();
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-[#F5F5F5] flex items-center gap-3 transition-colors group text-[13px]"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 flex items-center gap-3 transition-colors group text-[13px]"
                               >
                                 <Download size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
                                 <span className="font-medium">Export chat</span>
@@ -1853,8 +1888,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                 {/* ── In-Chat Message Search Bar ── */}
                 {showInChatSearch && (
-                  <div className="px-3 sm:px-4 py-2 bg-[#F0F2F5] border-b border-[#E5E5E5] flex items-center justify-between gap-2.5 animate-in slide-in-from-top-2 duration-150 z-20 shrink-0">
-                    <div className="flex-1 flex items-center gap-2 bg-white rounded-xl px-3 py-1.5 border border-[#E5E5E5] focus-within:border-[#25D366] shadow-2xs">
+                  <div
+                    className="px-3 sm:px-4 py-2 bg-white/70 backdrop-blur-[20px] border-b border-black/[0.08] flex items-center justify-between gap-2.5 animate-in slide-in-from-top-2 duration-150 shadow-[0_4px_16px_rgba(0,0,0,0.03)] shrink-0"
+                    style={{
+                      WebkitBackdropFilter: 'blur(20px)',
+                      backdropFilter: 'blur(20px)',
+                    }}
+                  >
+                    <div className="flex-1 flex items-center gap-2 bg-black/[0.04] rounded-xl px-3 py-1.5 border border-black/[0.08] focus-within:border-[#25D366] focus-within:bg-white/80 transition-all shadow-2xs backdrop-blur-md">
                       <Search size={16} className="text-[#8696A0] shrink-0" />
                       <input
                         type="text"
@@ -1903,7 +1944,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         type="button"
                         disabled={inChatSearchMatches.length <= 1}
                         onClick={handlePrevSearchMatch}
-                        className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        className="w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                         title="Previous match"
                       >
                         <ChevronUp size={16} />
@@ -1913,7 +1954,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         type="button"
                         disabled={inChatSearchMatches.length <= 1}
                         onClick={handleNextSearchMatch}
-                        className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        className="w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                         title="Next match"
                       >
                         <ChevronDown size={16} />
@@ -1926,7 +1967,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           setInChatSearchQuery('');
                           setCurrentSearchMatchIndex(0);
                         }}
-                        className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-[#54656F] hover:text-[#111111] transition-colors ml-0.5"
+                        className="w-7 h-7 rounded-lg hover:bg-black/5 flex items-center justify-center text-[#54656F] hover:text-[#111111] transition-colors ml-0.5"
                         title="Close search"
                       >
                         <X size={16} />
@@ -1934,19 +1975,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     </div>
                   </div>
                 )}
+              </div>
 
-              {/* Messages Area with WhatsApp Doodle Wallpaper */}
-              <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col bg-[#EFEAE2]">
+              {/* Messages Area with WhatsApp Doodle Wallpaper - spans behind top and bottom frosted bars */}
+              <div className="absolute inset-0 overflow-hidden flex flex-col bg-[#EFEAE2]">
                 <ChatWallpaper />
                 <div
                   ref={messagesContainerRef}
                   onScroll={handleMessagesScroll}
                   className="relative z-1 flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto"
-                  style={{ paddingBottom: `${inputBarHeight + 16}px` }}
+                  style={{
+                    paddingTop: `${topBarHeight + 12}px`,
+                    paddingBottom: `${inputBarHeight + 16}px`,
+                  }}
                 >
                 {/* Security & Permanent Notice */}
                 <div className="flex justify-center my-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFEECD] border border-[#F4C430]/30 text-[11px] text-[#54656F] shadow-2xs max-w-md text-center">
+                  <div
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#FFEECD]/80 backdrop-blur-[16px] border border-[#F4C430]/30 text-[11px] text-[#54656F] shadow-[0_2px_10px_rgba(0,0,0,0.04)] max-w-md text-center"
+                    style={{
+                      WebkitBackdropFilter: 'blur(16px)',
+                      backdropFilter: 'blur(16px)',
+                    }}
+                  >
                     <Shield size={12} className="text-[#92700A] shrink-0" />
                     <span>Messages are end-to-end encrypted. No one outside of this chat can read them.</span>
                   </div>
@@ -2009,7 +2060,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <React.Fragment key={msg.id}>
                         {showDateDivider && (
                           <div className="flex items-center justify-center my-3">
-                            <span className="text-[11px] font-medium text-[#54656F] bg-white/95 px-3 py-1 rounded-lg shadow-2xs border border-[#E5E5E5]/70">
+                            <span
+                              className="text-[11px] font-medium text-[#54656F] bg-white/75 backdrop-blur-[16px] px-3.5 py-1 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-black/[0.06]"
+                              style={{
+                                WebkitBackdropFilter: 'blur(16px)',
+                                backdropFilter: 'blur(16px)',
+                              }}
+                            >
                               {new Date(msg.created_at).toLocaleDateString([], {
                                 weekday: 'short',
                                 month: 'short',
@@ -2412,8 +2469,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* ── New Chat Modal (Multi-role contact picker) ── */}
       {showNewChatModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-[#E5E5E5] space-y-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div
+            className="bg-white/80 backdrop-blur-[24px] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-black/[0.08] space-y-4 animate-in fade-in zoom-in-95 duration-150"
+            style={{
+              WebkitBackdropFilter: 'blur(24px)',
+              backdropFilter: 'blur(24px)',
+            }}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-[#F4C430]/20 text-[#111111] flex items-center justify-center font-bold">
@@ -2682,7 +2745,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         >
           <div
             data-action-menu-popup="true"
-            className="fixed bg-white rounded-2xl shadow-xl border border-[#E5E5E5] p-1.5 z-50 min-w-[170px] animate-in fade-in zoom-in-95 duration-150 space-y-1"
+            className="fixed bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] border border-black/[0.08] p-1.5 z-50 min-w-[170px] animate-in fade-in zoom-in-95 duration-150 space-y-1"
             style={{
               top: Math.min(
                 Math.max(16, (actionMenuCoords?.y || 200) - 60),
@@ -2692,6 +2755,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 Math.max(16, (actionMenuCoords?.x || 200) - 85),
                 typeof window !== 'undefined' ? window.innerWidth - 190 : 200
               ),
+              WebkitBackdropFilter: 'blur(24px)',
+              backdropFilter: 'blur(24px)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2701,7 +2766,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 e.stopPropagation();
                 handleDeleteMenuClick(actionMenuMessage);
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50/80 rounded-xl transition-colors text-left cursor-pointer"
             >
               <Trash2 size={15} className="shrink-0 text-red-600" />
               <span>Delete message</span>
@@ -2714,7 +2779,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 setActionMenuMessage(null);
                 setActionMenuCoords(null);
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors text-left cursor-pointer border-t border-[#F5F5F5] pt-1.5"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#737373] hover:text-[#111111] hover:bg-black/5 rounded-xl transition-colors text-left cursor-pointer border-t border-black/[0.06] pt-1.5"
             >
               <X size={15} className="shrink-0 text-[#737373]" />
               <span>Cancel</span>
@@ -2726,13 +2791,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {/* Delete Message Confirmation Dialog (Zero Trace) */}
       {deleteConfirmMessage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
           onClick={() => {
             if (!isDeletingMessage) setDeleteConfirmMessage(null);
           }}
         >
           <div
-            className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-[#E5E5E5] space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-sm bg-white/80 backdrop-blur-[24px] rounded-3xl p-5 shadow-2xl border border-black/[0.08] space-y-4 animate-in zoom-in-95 duration-150"
+            style={{
+              WebkitBackdropFilter: 'blur(24px)',
+              backdropFilter: 'blur(24px)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">

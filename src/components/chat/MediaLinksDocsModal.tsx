@@ -146,16 +146,26 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh] max-h-[700px] border border-[#E5E5E5]"
+          className="w-full max-w-lg bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh] max-h-[700px] border border-black/[0.08]"
+          style={{
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
+          }}
         >
           {/* Header */}
-          <div className="bg-white px-4 py-3 border-b border-[#E5E5E5] flex items-center justify-between shrink-0">
+          <div
+            className="bg-white/70 backdrop-blur-[20px] px-4 py-3 border-b border-black/[0.08] flex items-center justify-between shrink-0"
+            style={{
+              WebkitBackdropFilter: 'blur(20px)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
             <div>
               <h3 className="text-base font-bold text-[#111111]">Media, links and docs</h3>
               <p className="text-xs text-[#667781] truncate max-w-[280px]">{contactName}</p>
@@ -163,7 +173,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 transition-colors"
               aria-label="Close"
             >
               <X size={19} />
@@ -171,7 +181,13 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center border-b border-[#E5E5E5] px-2 bg-[#FAFafa] shrink-0">
+          <div
+            className="flex items-center border-b border-black/[0.08] px-2 bg-white/50 backdrop-blur-md shrink-0"
+            style={{
+              WebkitBackdropFilter: 'blur(12px)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
             <button
               type="button"
               onClick={() => setActiveTab('media')}
@@ -238,7 +254,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-4 bg-[#F0F2F5]">
+          <div className="flex-1 overflow-y-auto p-4 bg-transparent">
             {/* 1. Media Photos Grid */}
             {activeTab === 'media' && (
               mediaItems.length === 0 ? (
@@ -309,7 +325,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className="bg-white rounded-xl p-3 border border-[#E5E5E5] flex items-center justify-between gap-3 shadow-2xs hover:border-[#D1D5DB] transition-all"
+                        className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] flex items-center justify-between gap-3 shadow-2xs hover:border-black/10 transition-all"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div
@@ -336,7 +352,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                           download={item.attachment_name || 'document'}
                           target="_blank"
                           rel="noreferrer"
-                          className="w-9 h-9 rounded-full bg-[#F0F2F5] hover:bg-[#25D366]/15 hover:text-[#25D366] text-[#54656F] flex items-center justify-center shrink-0 transition-colors"
+                          className="w-9 h-9 rounded-full bg-black/[0.04] hover:bg-[#25D366]/15 hover:text-[#25D366] text-[#54656F] flex items-center justify-center shrink-0 transition-colors"
                           title="Download document"
                         >
                           <Download size={16} />
@@ -368,7 +384,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block bg-white rounded-xl p-3 border border-[#E5E5E5] hover:border-[#D1D5DB] transition-all shadow-2xs group"
+                      className="block bg-white/80 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] hover:border-black/10 transition-all shadow-2xs group"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2.5 min-w-0 flex-1">
@@ -399,7 +415,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             {activeTab === 'voice' && (
               voiceItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0]">
-                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mb-2 shadow-2xs">
+                  <div className="w-12 h-12 rounded-2xl bg-white/80 backdrop-blur-md flex items-center justify-center mb-2 shadow-2xs border border-black/[0.06]">
                     <Volume2 size={24} className="text-[#A3A3A3]" />
                   </div>
                   <p className="text-sm font-semibold text-[#111111]">No voice messages</p>
@@ -416,7 +432,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className="bg-white rounded-xl p-3 border border-[#E5E5E5] flex items-center justify-between gap-3 shadow-2xs"
+                        className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] flex items-center justify-between gap-3 shadow-2xs"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <button
@@ -441,7 +457,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                           download="voice-message.webm"
                           target="_blank"
                           rel="noreferrer"
-                          className="w-9 h-9 rounded-full bg-[#F0F2F5] hover:bg-black/10 text-[#54656F] flex items-center justify-center shrink-0 transition-colors"
+                          className="w-9 h-9 rounded-full bg-black/[0.04] hover:bg-black/10 text-[#54656F] flex items-center justify-center shrink-0 transition-colors"
                           title="Download audio"
                         >
                           <Download size={15} />

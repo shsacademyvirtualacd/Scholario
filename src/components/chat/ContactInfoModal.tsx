@@ -55,21 +55,31 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="w-full max-w-md bg-[#F0F2F5] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#E5E5E5]"
+          className="w-full max-w-md bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-black/[0.08]"
+          style={{
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
+          }}
         >
           {/* Header */}
-          <div className="bg-white px-4 py-3.5 border-b border-[#E5E5E5] flex items-center justify-between shrink-0">
+          <div
+            className="bg-white/70 backdrop-blur-[20px] px-4 py-3.5 border-b border-black/[0.08] flex items-center justify-between shrink-0"
+            style={{
+              WebkitBackdropFilter: 'blur(20px)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
             <h3 className="text-base font-bold text-[#111111]">Contact info</h3>
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 transition-colors"
               aria-label="Close"
             >
               <X size={19} />
@@ -79,7 +89,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
             {/* Contact Hero Card */}
-            <div className="bg-white rounded-xl p-5 border border-[#E5E5E5] flex flex-col items-center text-center shadow-2xs">
+            <div className="bg-white/80 backdrop-blur-md rounded-xl p-5 border border-black/[0.06] flex flex-col items-center text-center shadow-2xs">
               <div className="relative mb-3">
                 <ProfileAvatar
                   avatarUrl={contact.avatar_url}
@@ -99,7 +109,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               </p>
 
               {/* Status Indicator */}
-              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F0F2F5] text-xs">
+              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/[0.04] text-xs">
                 <span
                   className={`w-2 h-2 rounded-full ${
                     isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
@@ -111,13 +121,13 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               </div>
 
               {/* Action Quick Buttons */}
-              <div className="grid grid-cols-3 gap-2 w-full mt-4 pt-4 border-t border-[#F0F0F0]">
+              <div className="grid grid-cols-3 gap-2 w-full mt-4 pt-4 border-t border-black/[0.06]">
                 <button
                   type="button"
                   onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-[#F0F2F5] text-[#54656F] hover:text-[#111111] transition-colors group"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] text-[#54656F] hover:text-[#111111] transition-colors group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#F0F2F5] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
                     <Phone size={18} />
                   </div>
                   <span className="text-[11px] font-medium">Audio</span>
@@ -126,9 +136,9 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 <button
                   type="button"
                   onClick={() => toast.info('Video calling will be available in an upcoming update.')}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-[#F0F2F5] text-[#54656F] hover:text-[#111111] transition-colors group"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] text-[#54656F] hover:text-[#111111] transition-colors group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#F0F2F5] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
                     <Video size={18} />
                   </div>
                   <span className="text-[11px] font-medium">Video</span>
@@ -140,9 +150,9 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                     onClose();
                     onOpenSearch?.();
                   }}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-[#F0F2F5] text-[#54656F] hover:text-[#111111] transition-colors group"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] text-[#54656F] hover:text-[#111111] transition-colors group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#F0F2F5] group-hover:bg-[#111111]/10 group-hover:text-[#111111] flex items-center justify-center transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#111111]/10 group-hover:text-[#111111] flex items-center justify-center transition-colors">
                     <Search size={18} />
                   </div>
                   <span className="text-[11px] font-medium">Search</span>
@@ -151,7 +161,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
             </div>
 
             {/* Academic Role & Bio Card */}
-            <div className="bg-white rounded-xl p-4 border border-[#E5E5E5] space-y-3 shadow-2xs">
+            <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 border border-black/[0.06] space-y-3 shadow-2xs">
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#F4C430]/15 flex items-center justify-center text-[#B8860B] shrink-0 mt-0.5">
                   <GraduationCap size={18} />
@@ -176,10 +186,10 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 </div>
               </div>
 
-              <div className="h-px bg-[#F0F0F0]" />
+              <div className="h-px bg-black/[0.06]" />
 
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F0F2F5] flex items-center justify-center text-[#54656F] shrink-0 mt-0.5">
+                <div className="w-9 h-9 rounded-xl bg-black/[0.04] flex items-center justify-center text-[#54656F] shrink-0 mt-0.5">
                   <Mail size={17} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -194,14 +204,14 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
             </div>
 
             {/* Media, Links and Docs shortcut */}
-            <div className="bg-white rounded-xl border border-[#E5E5E5] overflow-hidden shadow-2xs">
+            <div className="bg-white/80 backdrop-blur-md rounded-xl border border-black/[0.06] overflow-hidden shadow-2xs">
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onOpenMedia?.();
                 }}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#F9F9F9] transition-colors text-left"
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/[0.03] transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -224,18 +234,18 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
             </div>
 
             {/* Notifications & Settings */}
-            <div className="bg-white rounded-xl border border-[#E5E5E5] divide-y divide-[#F0F0F0] overflow-hidden shadow-2xs">
+            <div className="bg-white/80 backdrop-blur-md rounded-xl border border-black/[0.06] divide-y divide-black/[0.04] overflow-hidden shadow-2xs">
               <button
                 type="button"
                 onClick={onToggleMute}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#F9F9F9] transition-colors text-left"
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/[0.03] transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       isMuted
                         ? 'bg-rose-50 text-rose-600'
-                        : 'bg-[#F0F2F5] text-[#54656F]'
+                        : 'bg-black/[0.04] text-[#54656F]'
                     }`}
                   >
                     {isMuted ? <BellOff size={18} /> : <Bell size={18} />}

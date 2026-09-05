@@ -137,12 +137,16 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
   return (
     <div
       id="whatsapp-emoji-picker"
-      className={`w-full bg-[#FFFFFF] border-t border-[#E9EDEF] flex flex-col h-[320px] select-none ${className}`}
+      className={`w-full bg-white/70 backdrop-blur-[24px] border-t border-black/[0.08] flex flex-col h-[320px] select-none ${className}`}
+      style={{
+        WebkitBackdropFilter: 'blur(24px)',
+        backdropFilter: 'blur(24px)',
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Search Header Bar */}
-      <div className="px-3 pt-2.5 pb-2 flex items-center gap-2 border-b border-[#F0F2F5] bg-white shrink-0">
-        <div className="flex-1 flex items-center gap-2 bg-[#F0F2F5] rounded-lg px-3 py-1.5 focus-within:bg-[#E9EDEF] transition-colors">
+      <div className="px-3 pt-2.5 pb-2 flex items-center gap-2 border-b border-black/[0.06] bg-white/40 backdrop-blur-md shrink-0">
+        <div className="flex-1 flex items-center gap-2 bg-black/[0.04] rounded-xl px-3 py-1.5 focus-within:bg-white/80 focus-within:ring-1 focus-within:ring-black/10 transition-all border border-black/[0.04]">
           <Search size={16} className="text-[#54656F] shrink-0" />
           <input
             type="text"
@@ -167,7 +171,7 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#54656F] hover:text-[#111B21] rounded-lg transition-colors shrink-0"
+            className="p-1.5 text-[#54656F] hover:text-[#111B21] hover:bg-black/5 rounded-lg transition-colors shrink-0"
             title="Close emoji keyboard"
           >
             <X size={18} />
@@ -267,7 +271,13 @@ export const WhatsAppEmojiPicker: React.FC<WhatsAppEmojiPickerProps> = ({
       </div>
 
       {/* WhatsApp Bottom Category Navigation Bar */}
-      <div className="px-2 py-1.5 border-t border-[#F0F2F5] bg-[#FFFFFF] flex items-center justify-between shrink-0">
+      <div
+        className="px-2 py-1.5 border-t border-black/[0.06] bg-white/50 backdrop-blur-md flex items-center justify-between shrink-0"
+        style={{
+          WebkitBackdropFilter: 'blur(16px)',
+          backdropFilter: 'blur(16px)',
+        }}
+      >
         <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
           {recentEmojis.length > 0 && (
             <button
