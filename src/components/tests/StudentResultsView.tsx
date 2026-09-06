@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Calendar,
@@ -15,6 +15,8 @@ import {
   ShieldAlert,
   Target,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { ProctoredMCQSubmissionsList } from '../teacher/ProctoredMCQSubmissionsList';
 import { WrittenTestSubmissionsList } from '../teacher/WrittenTestSubmissionsList';
@@ -43,6 +45,105 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedAttempt, setSelectedAttempt] = useState<StudentMCQAttempt | null>(null);
   const [activeCategory, setActiveCategory] = useState<'proctored' | 'written' | 'self-test'>('proctored');
+
+  // Carousel and Horizontal Scroll State
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const categoryButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasMovedRef = useRef(false);
+
+  // Check scroll bounds for visual affordance
+  const updateScrollState = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 6);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 6);
+  };
+
+  useEffect(() => {
+    updateScrollState();
+    const handleResize = () => updateScrollState();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [results]);
+
+  const handleSelectCategory = (cat: 'proctored' | 'written' | 'self-test') => {
+    setActiveCategory(cat);
+    const btn = categoryButtonRefs.current[cat];
+    if (btn) {
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    startXRef.current = e.pageX - el.offsetLeft;
+    scrollLeftRef.current = el.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    if (Math.abs(walk) > 4) {
+      hasMovedRef.current = true;
+    }
+    el.scrollLeft = scrollLeftRef.current - walk;
+    updateScrollState();
+  };
+
+  const handleMouseUpOrLeave = () => {
+    isDraggingRef.current = false;
+  };
+
+  const categories: Array<{
+    id: 'proctored' | 'written' | 'self-test';
+    label: string;
+    badge: string;
+    badgeActiveCls: string;
+    badgeInactiveCls: string;
+    icon: any;
+    iconActiveCls: string;
+  }> = [
+    {
+      id: 'proctored',
+      label: 'Proctored MCQs',
+      badge: 'Grading',
+      badgeActiveCls: 'bg-[#F4C430] text-[#111111]',
+      badgeInactiveCls: 'bg-[#F4C430] text-[#111111]',
+      icon: ShieldAlert,
+      iconActiveCls: 'text-[#F4C430]',
+    },
+    {
+      id: 'written',
+      label: 'Written Tests (Short & Long)',
+      badge: 'Manual Grading',
+      badgeActiveCls: 'bg-amber-300 text-amber-950',
+      badgeInactiveCls: 'bg-amber-200 text-amber-950',
+      icon: FileText,
+      iconActiveCls: 'text-amber-400',
+    },
+    {
+      id: 'self-test',
+      label: 'Self-Testing Practice',
+      badge: results.length > 0 ? `${results.length}` : 'Practice',
+      badgeActiveCls: 'bg-white/20 text-white',
+      badgeInactiveCls: 'bg-black/5 text-[#737373]',
+      icon: Target,
+      iconActiveCls: 'text-[#F4C430]',
+    },
+  ];
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -293,49 +394,102 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Category Toggle: Proctored Assessments (with grading) vs Self-Test Practice */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit">
-        <button
-          onClick={() => setActiveCategory('proctored')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeCategory === 'proctored'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <ShieldAlert size={15} className={activeCategory === 'proctored' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Proctored MCQs</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430] text-[#111111]">
-            Grading
-          </span>
-        </button>
+      {/* Category Toggle Carousel: Compact Stat Chips with Horizontal Touch-Scroll & Visual Affordances */}
+      <div className="space-y-1.5 max-w-full">
+        <div className="relative max-w-full">
+          {/* Left scroll affordance gradient on mobile */}
+          {canScrollLeft && (
+            <div
+              className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none z-10 flex items-center justify-start pl-1 bg-gradient-to-r from-[#FAFAFA] via-[#FAFAFA]/70 to-transparent sm:hidden"
+              aria-hidden="true"
+            >
+              <div className="w-4 h-4 rounded-full bg-white/90 shadow-2xs border border-[#E5E5E5] flex items-center justify-center text-[#737373]">
+                <ChevronLeft size={11} />
+              </div>
+            </div>
+          )}
 
-        <button
-          onClick={() => setActiveCategory('written')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeCategory === 'written'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <FileText size={15} className={activeCategory === 'written' ? 'text-amber-400' : 'text-[#737373]'} />
-          <span>Written Tests (Short & Long)</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200 text-amber-950">
-            Manual Grading
-          </span>
-        </button>
+          {/* Swipeable / Scrollable Carousel Container */}
+          <div
+            ref={scrollContainerRef}
+            onScroll={updateScrollState}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+            className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-full sm:w-fit overflow-x-auto scroll-smooth overscroll-x-contain touch-pan-x no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {categories.map((cat) => {
+              const Icon = cat.icon;
+              const isActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  ref={(el) => {
+                    categoryButtonRefs.current[cat.id] = el;
+                  }}
+                  onClick={() => {
+                    if (!hasMovedRef.current) {
+                      handleSelectCategory(cat.id);
+                    }
+                  }}
+                  className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[#111111] text-white shadow-xs'
+                      : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+                  }`}
+                >
+                  <Icon
+                    size={15}
+                    className={isActive ? cat.iconActiveCls : 'text-[#737373]'}
+                  />
+                  <span>{cat.label}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap transition-colors ${
+                      isActive ? cat.badgeActiveCls : cat.badgeInactiveCls
+                    }`}
+                  >
+                    {cat.badge}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-        <button
-          onClick={() => setActiveCategory('self-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeCategory === 'self-test'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <Target size={15} className={activeCategory === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Self-Testing Practice</span>
-        </button>
+          {/* Right scroll affordance gradient on mobile */}
+          {canScrollRight && (
+            <div
+              className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none z-10 flex items-center justify-end pr-1 bg-gradient-to-l from-[#FAFAFA] via-[#FAFAFA]/70 to-transparent sm:hidden"
+              aria-hidden="true"
+            >
+              <div className="w-4 h-4 rounded-full bg-white/90 shadow-2xs border border-[#E5E5E5] flex items-center justify-center text-[#737373]">
+                <ChevronRight size={11} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Scroll Indicator Dots */}
+        <div className="flex sm:hidden items-center justify-center gap-1.5 pt-1">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => handleSelectCategory(cat.id)}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                activeCategory === cat.id
+                  ? 'w-5 bg-[#111111]'
+                  : 'w-1.5 bg-[#D4D4D4] hover:bg-[#A3A3A3]'
+              }`}
+              aria-label={`Switch to ${cat.label}`}
+            />
+          ))}
+        </div>
       </div>
 
       {activeCategory === 'proctored' ? (

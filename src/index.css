@@ -709,4 +709,15 @@
     background: #F4C430;
     border-radius: 2px;
   }
+
+  /* ========================
+     NO SCROLLBAR UTILITY
+  ======================== */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

@@ -367,11 +367,11 @@ export const AdminTestsPage: React.FC = () => {
       </div>
 
       {/* Subsection Tab Switcher - Simplified to ONLY Class Test & Student Results */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6">
+      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar mb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         <button
           id="admin-tab-class-test"
           onClick={() => setActiveTab('class-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'class-test'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
@@ -391,7 +391,7 @@ export const AdminTestsPage: React.FC = () => {
         <button
           id="admin-tab-student-results"
           onClick={() => setActiveTab('student-results')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'student-results'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
@@ -399,7 +399,7 @@ export const AdminTestsPage: React.FC = () => {
         >
           <GraduationCap size={15} className={activeTab === 'student-results' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Student Results</span>
-          <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5">
+          <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5 whitespace-nowrap">
             Grading
           </span>
         </button>
