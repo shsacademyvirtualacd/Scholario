@@ -17,6 +17,7 @@ import {
   calculateSubjectEnrollmentFee,
   SubjectPricingSettings,
 } from '../../lib/subjectEnrollmentService';
+import PlanComparisonPage from './PlanComparisonPage';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
@@ -82,6 +83,7 @@ export const UnregisteredPage: React.FC = () => {
   const [enrollmentMode, setEnrollmentMode] = useState<'all' | 'custom'>('all');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [pricingSettings, setPricingSettings] = useState<SubjectPricingSettings>(getCachedSubjectPricingSettings());
+  const [showPlanComparison, setShowPlanComparison] = useState<boolean>(false);
 
   const [saving, setSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -474,6 +476,33 @@ export const UnregisteredPage: React.FC = () => {
     }
   }
 
+  if (showPlanComparison) {
+    const targetGrade = selectedClassObj?.grade || queryGrade || '10';
+    const targetStream = streamsForClass.find(
+      (st: any) => st.id === selectedStreamId || st.name.toLowerCase() === selectedStreamId?.toLowerCase()
+    );
+    return (
+      <PlanComparisonPage
+        boardId={selectedBoardId}
+        classId={selectedClassId}
+        grade={String(targetGrade)}
+        streamId={selectedStreamId}
+        streamName={targetStream?.name || selectedStreamId || 'General'}
+        availableSubjects={getAvailableSubjects()}
+        initialSelectedSubjects={selectedSubjects}
+        initialEnrollmentMode={enrollmentMode}
+        baseClassFee={baseClassFee}
+        perSubjectFee={pricingSettings.per_subject_fee}
+        onSelectPlan={(mode, subs) => {
+          setEnrollmentMode(mode);
+          setSelectedSubjects(subs);
+          setShowPlanComparison(false);
+        }}
+        onBack={() => setShowPlanComparison(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col page-transition justify-center items-center px-4 py-12">
       <div className="w-full max-w-[620px]">
@@ -819,6 +848,15 @@ export const UnregisteredPage: React.FC = () => {
                           <BookOpen size={14} className="text-[#F4C430]" />
                           <span>Step 3: Select Academic Grade ({currentBoardDef.shortName})</span>
                         </div>
+                        <button
+                          id="btn-compare-plans-step3"
+                          type="button"
+                          onClick={() => setShowPlanComparison(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-[#111111] bg-[#FFFBF0] border border-[#FDE68A] hover:bg-[#FEF3C7] transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Sparkles size={12} className="text-[#F4C430]" />
+                          <span>Compare Plans</span>
+                        </button>
                       </div>
 
                       <div className={isMobile ? 'grid grid-cols-2 gap-2.5' : 'grid grid-cols-4 gap-2.5'}>
@@ -921,7 +959,15 @@ export const UnregisteredPage: React.FC = () => {
                               <BookMarked size={14} className="text-[#F4C430]" />
                               <span>Step 5: Enrollment Model & Subject Choice</span>
                             </div>
-                            <span className="text-[10px] text-[#A3A3A3] font-medium">Customize tuition</span>
+                            <button
+                              id="btn-compare-plans-step5"
+                              type="button"
+                              onClick={() => setShowPlanComparison(true)}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92700A] hover:underline cursor-pointer"
+                            >
+                              <Sparkles size={11} className="text-[#F4C430]" />
+                              <span>Compare Plans</span>
+                            </button>
                           </div>
 
                           <div className={isMobile ? 'grid grid-cols-1 gap-2.5' : 'grid grid-cols-2 gap-2.5'}>

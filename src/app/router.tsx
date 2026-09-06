@@ -17,6 +17,7 @@ import { AdminLiveNotificationListener } from '../components/admin/AdminLiveNoti
 import LoginPage from '../pages/public/LoginPage';
 import ForgotPasswordPage from '../pages/public/ForgotPasswordPage';
 import UnregisteredPage from '../pages/public/UnregisteredPage';
+import PlanComparisonPage from '../pages/public/PlanComparisonPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 
 // ─── Marketing page (eager — entry point) ───
@@ -126,6 +127,7 @@ const AppRouter: React.FC = () => (
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/unregistered" element={<UnregisteredPage />} />
+          <Route path="/enrollment/compare" element={<PlanComparisonPage />} />
 
           {/* Student Portal */}
           <Route
