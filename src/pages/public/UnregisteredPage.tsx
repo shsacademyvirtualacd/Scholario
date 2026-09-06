@@ -78,7 +78,6 @@ export const UnregisteredPage: React.FC = () => {
   );
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStreamId, setSelectedStreamId] = useState<string | null>(null);
-  const [livePrice, setLivePrice] = useState<number | null>(null);
   const [baseClassFee, setBaseClassFee] = useState<number>(3000);
   const [enrollmentMode, setEnrollmentMode] = useState<'all' | 'custom'>('all');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -200,11 +199,9 @@ export const UnregisteredPage: React.FC = () => {
         .then((cfg) => {
           const val = (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) ? cfg.amount : 5000;
           setBaseClassFee(val);
-          setLivePrice(val);
         })
         .catch(() => {
           setBaseClassFee(5000);
-          setLivePrice(5000);
         });
       return;
     }
@@ -218,12 +215,10 @@ export const UnregisteredPage: React.FC = () => {
               ? cfg.amount
               : (cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000);
             setBaseClassFee(val);
-            setLivePrice(val);
           })
           .catch(() => {
             const val = cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000;
             setBaseClassFee(val);
-            setLivePrice(val);
           });
       }
     }

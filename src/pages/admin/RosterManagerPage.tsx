@@ -20,11 +20,9 @@ import { useMobile } from '../../hooks/useMobile';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 import { formatStudentId } from '../../lib/studentId';
 import { 
-  getStudentSubjectPlan, 
+  getStudentSubjectPlanSync, 
   saveStudentSubjectPlan, 
   calculateSubjectEnrollmentFee,
-  getSubjectPricingSettings,
-  SubjectPricingSettings
 } from '../../lib/subjectEnrollmentService';
 import { getSubjectsForStream, getDefaultPrice } from '../../lib/taxonomy';
 
@@ -556,8 +554,8 @@ export const RosterManagerPage: React.FC = () => {
     setEditStudentFeeStatus(currentFeeStatus as 'unpaid' | 'pending' | 'paid');
 
     // Subject plan initialization
-    const plan = getStudentSubjectPlan(profileIdForFee);
-    if (plan.plan_type === 'custom' && plan.subjects.length > 0) {
+    const plan = getStudentSubjectPlanSync(profileIdForFee);
+    if (plan && plan.plan_type === 'custom' && plan.subjects.length > 0) {
       setEditStudentEnrollmentMode('custom');
       setEditStudentSubjects(plan.subjects);
     } else if (Array.isArray(p?.subjects) && p.subjects.length > 0 && p?.plan_type === 'custom') {

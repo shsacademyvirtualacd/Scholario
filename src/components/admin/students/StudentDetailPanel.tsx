@@ -181,7 +181,7 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
               ? 'bg-purple-50 text-purple-700 border-purple-200'
               : 'bg-zinc-100 text-zinc-700 border-zinc-200'
           }`}>
-            {isCustomPlan ? `Custom Plan (${subjectPlan.subjects.length} Subjects)` : 'All Subjects (Full Stream)'}
+            {isCustomPlan ? `Custom Plan (${subjectPlan?.subjects?.length || 0} Subjects)` : 'All Subjects (Full Stream)'}
           </span>
         </div>
         <div className="space-y-2">

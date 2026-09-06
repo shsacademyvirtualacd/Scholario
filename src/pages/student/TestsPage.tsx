@@ -7,7 +7,6 @@ import {
   Target,
   ShieldAlert,
   Award,
-  AlertTriangle,
   ArrowRight,
   Eye,
   Camera,

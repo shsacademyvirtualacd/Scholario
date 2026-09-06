@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, Clock, Search, Check,
-  AlertCircle, Sparkles, Save, Loader2, Coins, BookOpen, Layers
+  AlertCircle, Sparkles, Save, Loader2, Coins, BookOpen
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -18,7 +18,6 @@ import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 import {
   getSubjectPricingSettings,
   updateSubjectPricingSettings,
-  SubjectPricingSettings,
 } from '../../lib/subjectEnrollmentService';
 
 export const AdminFeesPage: React.FC = () => {
