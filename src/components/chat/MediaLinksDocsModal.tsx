@@ -21,7 +21,14 @@ interface MediaLinksDocsModalProps {
   onClose: () => void;
   messages: ChatMessage[];
   contactName?: string;
-  onSelectImage?: (img: { imageUrl: string; downloadUrl: string; filename: string }) => void;
+  onSelectImage?: (img: {
+    imageUrl: string;
+    downloadUrl: string;
+    filename: string;
+    senderName?: string;
+    timestamp?: string;
+    caption?: string;
+  }) => void;
 }
 
 type TabType = 'media' | 'docs' | 'links' | 'voice';
@@ -281,6 +288,9 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                             imageUrl: imgUrl,
                             downloadUrl,
                             filename: item.attachment_name || 'photo.jpg',
+                            senderName: contactName,
+                            timestamp: item.created_at,
+                            caption: item.content !== item.attachment_name ? item.content : undefined,
                           });
                         }}
                         className="group relative aspect-square rounded-xl overflow-hidden bg-white border border-[#E5E5E5] cursor-pointer shadow-2xs hover:shadow-md transition-all"

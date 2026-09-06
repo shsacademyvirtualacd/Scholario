@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, Clock, Search, Check,
-  AlertCircle, Sparkles, Save, Loader2, Coins
+  AlertCircle, Sparkles, Save, Loader2, Coins, BookOpen, Layers
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -15,6 +15,11 @@ import { BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
+import {
+  getSubjectPricingSettings,
+  updateSubjectPricingSettings,
+  SubjectPricingSettings,
+} from '../../lib/subjectEnrollmentService';
 
 export const AdminFeesPage: React.FC = () => {
   const isMobile = useMobile();
@@ -42,6 +47,11 @@ export const AdminFeesPage: React.FC = () => {
   const [whatsappTouched, setWhatsappTouched] = useState<boolean>(false);
   const [suggestedFix, setSuggestedFix] = useState<string | null>(null);
   const [approvingIds, setApprovingIds] = useState<Record<string, boolean>>({});
+
+  // Subject Enrollment Pricing Config States
+  const [perSubjectFee, setPerSubjectFee] = useState<number>(1000);
+  const [autoUpgradeThreshold, setAutoUpgradeThreshold] = useState<number>(3);
+  const [savingSubjectPricing, setSavingSubjectPricing] = useState<boolean>(false);
 
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -90,13 +100,19 @@ export const AdminFeesPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [pendingData, configData, classesData] = await Promise.all([
+      const [pendingData, configData, classesData, subjectPricingData] = await Promise.all([
         getPendingFeeStatuses(),
         getUniversalFeeConfig(),
-        getClassesWithFeeConfigs()
+        getClassesWithFeeConfigs(),
+        getSubjectPricingSettings().catch(() => ({ per_subject_fee: 1000, auto_upgrade_threshold: 3 })),
       ]);
       setPendingList(pendingData);
       setClassesList(classesData);
+
+      if (subjectPricingData) {
+        setPerSubjectFee(subjectPricingData.per_subject_fee);
+        setAutoUpgradeThreshold(subjectPricingData.auto_upgrade_threshold);
+      }
 
       const initialPrices: Record<string, number> = {};
       classesData.forEach((cls) => {
@@ -205,6 +221,24 @@ export const AdminFeesPage: React.FC = () => {
       setError(err.message || 'Failed to save configuration.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveSubjectPricing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSavingSubjectPricing(true);
+      setError(null);
+      await updateSubjectPricingSettings({
+        per_subject_fee: Math.max(100, Number(perSubjectFee) || 1000),
+        auto_upgrade_threshold: Math.max(1, Number(autoUpgradeThreshold) || 3)
+      });
+      showNotification('Per-subject tuition fee & auto-upgrade threshold successfully updated!');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to save subject pricing configuration.');
+    } finally {
+      setSavingSubjectPricing(false);
     }
   };
 
@@ -531,7 +565,115 @@ export const AdminFeesPage: React.FC = () => {
                   </form>
                 </div>
 
-                {/* Section 2: Universal Payment Setup */}
+                {/* Section 2: Per-Subject Pricing & Silent Auto-Upgrade Threshold */}
+                <form onSubmit={handleSaveSubjectPricing} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
+                  <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
+                    <BookOpen size={16} className="text-[#F4C430]" />
+                    <div>
+                      <h2 className="font-extrabold text-[#111111] text-base">
+                        Per-Subject Tuition & Auto-Upgrade Threshold
+                      </h2>
+                      <p className="text-xs text-[#737373] mt-0.5">
+                        Configure individual subject billing rates and the threshold for automatic standard class fee pricing.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {/* Per-Subject Fee */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-[#262626]">
+                          Per-Subject Tuition Fee (PKR)
+                        </label>
+                        <span className="text-[10px] text-[#737373] font-medium">Default: Rs. 1,000</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#737373]">PKR</span>
+                        <input
+                          type="number"
+                          min="100"
+                          step="100"
+                          required
+                          value={perSubjectFee}
+                          onChange={(e) => setPerSubjectFee(Number(e.target.value) || 0)}
+                          className="input py-2 text-xs font-bold w-full"
+                          placeholder="1000"
+                        />
+                      </div>
+                      <span className="text-[10px] text-[#A3A3A3] block">
+                        Charged per subject when a student selects 1, 2, or 3 individual subjects.
+                      </span>
+                    </div>
+
+                    {/* Auto-Upgrade Threshold */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-[#262626]">
+                          Silent Auto-Upgrade Subject Threshold
+                        </label>
+                        <span className="text-[10px] text-[#737373] font-medium">Default: 3 subjects</span>
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        required
+                        value={autoUpgradeThreshold}
+                        onChange={(e) => setAutoUpgradeThreshold(Number(e.target.value) || 3)}
+                        className="input py-2 text-xs font-bold w-full"
+                        placeholder="3"
+                      />
+                      <span className="text-[10px] text-[#A3A3A3] block">
+                        If a student selects more than this threshold (e.g. 4+ subjects), they are charged the standard all-subjects class rate.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pricing Matrix Preview */}
+                  <div className="p-4 bg-[#F9F9F9] rounded-xl border border-[#E5E5E5] space-y-2">
+                    <span className="text-xs font-bold text-[#111111] block">
+                      Active Billing Rules Preview:
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-2.5 bg-white rounded-lg border border-[#E5E5E5]">
+                        <span className="text-[10px] text-[#737373] block">1 Subject</span>
+                        <span className="font-extrabold text-[#111111]">PKR {perSubjectFee.toLocaleString()}</span>
+                      </div>
+                      <div className="p-2.5 bg-white rounded-lg border border-[#E5E5E5]">
+                        <span className="text-[10px] text-[#737373] block">2 Subjects</span>
+                        <span className="font-extrabold text-[#111111]">PKR {(perSubjectFee * 2).toLocaleString()}</span>
+                      </div>
+                      <div className="p-2.5 bg-white rounded-lg border border-[#E5E5E5]">
+                        <span className="text-[10px] text-[#737373] block">3 Subjects</span>
+                        <span className="font-extrabold text-[#111111]">PKR {(perSubjectFee * 3).toLocaleString()}</span>
+                      </div>
+                      <div className="p-2.5 bg-[#FFFBF0] rounded-lg border border-[#FDE68A]">
+                        <span className="text-[10px] text-amber-800 font-bold block">4+ Subjects</span>
+                        <span className="font-extrabold text-amber-900">Standard Class Rate</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-[#F5F5F5] flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={savingSubjectPricing}
+                      className="btn btn-gold flex items-center justify-center gap-1.5 px-6 py-2.5 text-xs font-bold interactive"
+                    >
+                      {savingSubjectPricing ? (
+                        <div className="w-4 h-4 rounded-full border border-current border-t-transparent animate-spin" />
+                      ) : (
+                        <>
+                          <Save size={14} />
+                          Save Subject Pricing Settings
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                {/* Section 3: Universal Payment Setup */}
                 <form onSubmit={handleSaveConfig} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
                   <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
                     <Sparkles size={16} className="text-[#F4C430]" />

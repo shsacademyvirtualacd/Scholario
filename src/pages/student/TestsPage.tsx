@@ -11,10 +11,9 @@ import {
   ArrowRight,
   Eye,
   Camera,
-  FileText,
   Clock,
+  PenTool,
   X,
-  Layers,
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -228,7 +227,10 @@ export const TestsPage: React.FC = () => {
 
   // Filter tests based on Subject, Status, and Search Term
   const filteredTests = tests.filter((t) => {
-    const matchesSubject = activeSubject === 'All' || t.subject === activeSubject;
+    const isCustomPlan = profile?.plan_type === 'custom';
+    const matchesSubject = activeSubject === 'All'
+      ? (isCustomPlan ? enrolledSubjects.some((es) => es.toLowerCase().trim() === t.subject.toLowerCase().trim()) : true)
+      : t.subject.toLowerCase().trim() === activeSubject.toLowerCase().trim();
     const sub = submissionByTestId.get(t.id);
     const matchesStatus =
       statusFilter === 'all' ||
@@ -336,7 +338,7 @@ export const TestsPage: React.FC = () => {
               <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0 flex-wrap">
                 {[
                   { id: 'all', label: 'All' },
-                  { id: 'proctored', label: 'Proctored MCQs' },
+                  { id: 'proctored', label: 'MCQs' },
                   { id: 'short_question', label: 'Short Qs' },
                   { id: 'long_question', label: 'Long Qs' },
                   { id: 'standard', label: 'PDF Papers' },
@@ -479,41 +481,55 @@ export const TestsPage: React.FC = () => {
                       return (
                         <div
                           key={test.id}
-                          className="bg-white rounded-2xl border-2 border-[#111111]/20 hover:border-[#111111] p-4 shadow-xs space-y-3 transition-all group"
+                          className="bg-white rounded-2xl border border-[#E5E5E5] hover:border-[#111111] p-3.5 sm:p-4 shadow-xs space-y-3 transition-all group text-left flex flex-col justify-between"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#111111] text-[#F4C430] flex items-center gap-1 shadow-2xs">
-                              <ShieldAlert size={11} />
-                              Proctored MCQ Assessment
-                            </span>
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                              Active Proctoring
-                            </span>
-                          </div>
+                          <div className="space-y-2">
+                            {/* 1. Title (bold, 1 line) */}
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-sm font-black text-[#111111] leading-snug line-clamp-1 flex-1 group-hover:text-amber-950 transition-colors">
+                                {test.title}
+                              </h4>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 shrink-0 whitespace-nowrap">
+                                <ShieldAlert size={11} className="text-amber-700" />
+                                Proctored
+                              </span>
+                            </div>
 
-                          <div>
-                            <h4 className="text-sm font-black text-[#111111] group-hover:text-amber-950 transition-colors">
-                              {test.title}
-                            </h4>
-                            <p className="text-[11px] font-medium text-[#737373] mt-0.5">
-                              {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} Questions • {test.total_marks} Marks
+                            {/* 2. Short subtitle: Subject • Grade • Marks */}
+                            <p className="text-xs font-semibold text-[#525252] leading-tight">
+                              {test.subject} • Grade {test.grade} • {test.total_marks} Marks
                             </p>
-                          </div>
 
-                          <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/50 flex items-center gap-2 text-[11px] text-amber-900 font-medium">
-                            <AlertTriangle size={13} className="text-amber-700 shrink-0" />
-                            <span>Auto-submits on tab switch, minimizing, or taking a screenshot.</span>
+                            {/* 3. Small icon row: 🕐 Duration | 📝 Question count breakdown */}
+                            <div className="flex items-center gap-3 text-xs text-[#737373]">
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                <Clock size={12} className="text-[#A3A3A3] shrink-0" />
+                                <span>{test.duration_minutes}m</span>
+                              </span>
+                              <span className="text-[#E5E5E5]">•</span>
+                              <span className="inline-flex items-center gap-1 text-[#737373] whitespace-nowrap">
+                                <PenTool size={12} className="text-[#A3A3A3] shrink-0" />
+                                <span>{test.questions.length} Questions</span>
+                              </span>
+                            </div>
+
+                            {/* 4. Single compact status / helper subtext */}
+                            <div className="pt-0.5">
+                              <span className="text-[11px] font-medium text-[#737373]">
+                                Online • Camera Proctored
+                              </span>
+                            </div>
                           </div>
 
                           <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
-                            <span className="text-[10px] text-[#737373] font-mono">
-                              Required: Student ID
+                            <span className="text-[11px] font-mono text-[#737373]">
+                              Student ID Access
                             </span>
                             <button
                               onClick={() => setAccessModalTest(test)}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black shadow-sm cursor-pointer active:scale-95 transition-all"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
                             >
-                              <span>Start Proctored Test</span>
+                              <span>Start Test</span>
                               <ArrowRight size={13} />
                             </button>
                           </div>
@@ -609,68 +625,79 @@ export const TestsPage: React.FC = () => {
                           );
                         }
 
+                        const mcqCount = test.mcq_count ?? test.questions.filter((q) => q.type === 'mcq').length;
+                        const shortCount = test.short_count ?? test.questions.filter((q) => q.type === 'short_question').length;
+                        const longCount = test.long_count ?? test.questions.filter((q) => q.type === 'long_question').length;
+
+                        let questionBreakdown = '';
+                        if (isUnified) {
+                          const parts: string[] = [];
+                          if (mcqCount > 0) parts.push(`${mcqCount} MCQ`);
+                          if (shortCount > 0) parts.push(`${shortCount} Short`);
+                          if (longCount > 0) parts.push(`${longCount} Long`);
+                          questionBreakdown = parts.length > 0 ? parts.join(' • ') : `${test.questions.length} Qs`;
+                        } else if (isShort) {
+                          questionBreakdown = `${test.questions.length} Short Qs`;
+                        } else {
+                          questionBreakdown = `${test.questions.length} Long Qs`;
+                        }
+
                         // Pending Written / Unified Test
                         return (
                           <div
                             key={test.id}
-                            className="bg-white rounded-2xl border-2 border-amber-400/40 hover:border-amber-400 p-4 shadow-xs space-y-3 transition-all group"
+                            className="bg-white rounded-2xl border border-[#E5E5E5] hover:border-[#111111] p-3.5 sm:p-4 shadow-xs space-y-3 transition-all group text-left flex flex-col justify-between"
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black text-amber-400 flex items-center gap-1 shadow-2xs">
-                                {isUnified ? <Layers size={11} /> : isShort ? <FileText size={11} /> : <BookOpen size={11} />}
-                                {isUnified ? 'Assessment Test' : isShort ? 'Short Question Test' : 'Long Question Test'}
-                              </span>
-                              <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
-                                <Camera size={11} /> Camera Proctored
-                              </span>
-                            </div>
+                            <div className="space-y-2">
+                              {/* 1. Title (bold, 1 line) */}
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="text-sm font-black text-[#111111] leading-snug line-clamp-1 flex-1 group-hover:text-amber-950 transition-colors">
+                                  {test.title}
+                                </h4>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 shrink-0 whitespace-nowrap">
+                                  <Camera size={11} className="text-amber-700" />
+                                  Proctored
+                                </span>
+                              </div>
 
-                            <div>
-                              <h4 className="text-sm font-black text-[#111111] group-hover:text-amber-950 transition-colors">
-                                {test.title}
-                              </h4>
-                              <div className="flex items-center gap-2 flex-wrap text-[11px] font-medium text-[#737373] mt-0.5">
-                                <span>{test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.total_marks} Marks</span>
-                                {isUnified && (
-                                  <div className="flex items-center gap-1">
-                                    {(test.mcq_count ?? 0) > 0 && (
-                                      <span className="bg-amber-100/70 text-amber-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                                        {test.mcq_count} MCQs
-                                      </span>
-                                    )}
-                                    {(test.short_count ?? 0) > 0 && (
-                                      <span className="bg-blue-50 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                                        {test.short_count} Short
-                                      </span>
-                                    )}
-                                    {(test.long_count ?? 0) > 0 && (
-                                      <span className="bg-purple-50 text-purple-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                                        {test.long_count} Long
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
+                              {/* 2. Short subtitle: Subject • Grade • Marks */}
+                              <p className="text-xs font-semibold text-[#525252] leading-tight">
+                                {test.subject} • Grade {test.grade} • {test.total_marks} Marks
+                              </p>
+
+                              {/* 3. Small icon row: 🕐 Duration | 📝 Question count breakdown */}
+                              <div className="flex items-center gap-3 text-xs text-[#737373]">
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                  <Clock size={12} className="text-[#A3A3A3] shrink-0" />
+                                  <span>{test.duration_minutes}m</span>
+                                </span>
+                                <span className="text-[#E5E5E5]">•</span>
+                                <span className="inline-flex items-center gap-1 text-[#737373] whitespace-nowrap">
+                                  <PenTool size={12} className="text-[#A3A3A3] shrink-0" />
+                                  <span>{questionBreakdown}</span>
+                                </span>
+                              </div>
+
+                              {/* 4. Single compact status / helper subtext */}
+                              <div className="pt-0.5">
+                                <span className="text-[11px] font-medium text-[#737373]">
+                                  {isUnified
+                                    ? 'Online • In-Browser Camera & Auto-submission'
+                                    : 'Handwritten Answer Photo Upload • Timed Session'}
+                                </span>
                               </div>
                             </div>
 
-                            <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/50 flex items-center gap-2 text-[11px] text-amber-900 font-medium">
-                              <Camera size={13} className="text-amber-700 shrink-0" />
-                              <span>
-                                {isUnified
-                                  ? 'Includes multiple choice and written sections. Completed in one continuous session.'
-                                  : 'Take handwritten photo for each question. 24-hr Cloudflare R2 retention. Strict proctoring active.'}
-                              </span>
-                            </div>
-
+                            {/* 5. Clean Action Button */}
                             <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
-                              <span className="text-[10px] text-[#737373] font-mono">
+                              <span className="text-[11px] font-mono text-[#737373]">
                                 In-Browser Camera
                               </span>
                               <button
                                 onClick={() => setActiveWrittenExamTest(test)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-amber-400 text-xs font-black shadow-sm cursor-pointer active:scale-95 transition-all"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-amber-400 text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
                               >
-                                <span>{isUnified ? 'Start Assessment' : 'Start Written Exam'}</span>
+                                <span>{isUnified ? 'Start Assessment' : 'Start Exam'}</span>
                                 <ArrowRight size={13} />
                               </button>
                             </div>

@@ -118,7 +118,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
   }> = [
     {
       id: 'proctored',
-      label: 'Proctored MCQs',
+      label: 'MCQs',
       badge: 'Grading',
       badgeActiveCls: 'bg-[#F4C430] text-[#111111]',
       badgeInactiveCls: 'bg-[#F4C430] text-[#111111]',
@@ -127,7 +127,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
     },
     {
       id: 'written',
-      label: 'Written Tests (Short & Long)',
+      label: 'Written (S&L)',
       badge: 'Grading',
       badgeActiveCls: 'bg-amber-300 text-amber-950',
       badgeInactiveCls: 'bg-amber-200 text-amber-950',
@@ -136,7 +136,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
     },
     {
       id: 'self-test',
-      label: 'Self-Testing Practice',
+      label: 'Practice',
       badge: results.length > 0 ? `${results.length}` : 'Practice',
       badgeActiveCls: 'bg-white/20 text-white',
       badgeInactiveCls: 'bg-black/5 text-[#737373]',

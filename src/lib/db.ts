@@ -21,6 +21,13 @@ import { triggerLiveSession, endLiveSession } from './liveSessionService';
 export * from './liveSessionService';
 export * from './avatarService';
 export * from './chatService';
+export * from './subjectEnrollmentService';
+import {
+  getStudentSubjectPlan,
+  saveStudentSubjectPlan,
+  getSubjectPricingSettings,
+  calculateSubjectEnrollmentFee
+} from './subjectEnrollmentService';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
 function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
@@ -170,9 +177,18 @@ export async function completeStudentOnboarding(
   classId: string,
   streamId: string | null,
   _selectedSubjectIds: string[],
-  fullName?: string
+  fullName?: string,
+  selectedSubjects?: string[],
+  planType?: 'custom' | 'all'
 ): Promise<void> {
   const isUUID = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+  // Save student subject plan to persistent store and local cache
+  if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0) {
+    await saveStudentSubjectPlan(studentId, selectedSubjects, planType || 'custom');
+  } else if (planType === 'all') {
+    await saveStudentSubjectPlan(studentId, [], 'all');
+  }
   
   if (isUUID(classId) && (isUUID(boardId) || boardId === 'fbise' || boardId === 'sindh' || boardId === 'ielts')) {
     const { error } = await (supabase as any).rpc('complete_student_onboarding', {
@@ -183,8 +199,9 @@ export async function completeStudentOnboarding(
       p_full_name: fullName || 'Student',
     });
 
-    if (!error) return;
-    console.warn('[db:completeStudentOnboarding] RPC returned error, attempting direct profile update:', error.message);
+    if (error) {
+      console.warn('[db:completeStudentOnboarding] RPC returned error, attempting direct profile update:', error.message);
+    }
   }
 
   // Fallback direct profile & fee_status upsert to ensure onboarding succeeds even if board/class ID is synthetic or RPC fails
@@ -196,6 +213,13 @@ export async function completeStudentOnboarding(
   if (isUUID(classId)) updatePayload.class_id = classId;
   if (isUUID(streamId)) updatePayload.stream_id = streamId;
 
+  if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0 && planType === 'custom') {
+    updatePayload.subjects = selectedSubjects;
+    updatePayload.plan_type = 'custom';
+  } else {
+    updatePayload.plan_type = 'all';
+  }
+
   const { error: profErr } = await (supabase as any)
     .from('profiles')
     .update(updatePayload)
@@ -203,6 +227,43 @@ export async function completeStudentOnboarding(
   
   if (profErr) {
     console.warn('[db:completeStudentOnboarding] direct profile update warning:', profErr);
+  }
+
+  // If custom subjects are specified, synchronize enrollments to only those matching subjects
+  if (isUUID(classId) && Array.isArray(selectedSubjects) && selectedSubjects.length > 0 && planType === 'custom') {
+    try {
+      const { data: offerings } = await (supabase as any)
+        .from('class_offerings')
+        .select('id, subject:subjects(name), subject_name')
+        .eq('class_id', classId);
+
+      if (offerings && offerings.length > 0) {
+        const allowedSubs = new Set(selectedSubjects.map((s) => s.toLowerCase().trim()));
+        const targetOfferingIds = offerings
+          .filter((off: any) => {
+            const name = (off.subject?.name || off.subject_name || '').toLowerCase().trim();
+            return allowedSubs.has(name);
+          })
+          .map((off: any) => off.id);
+
+        if (targetOfferingIds.length > 0) {
+          await (supabase as any)
+            .from('enrollments')
+            .delete()
+            .eq('student_id', studentId);
+
+          const inserts = targetOfferingIds.map((offId: string) => ({
+            student_id: studentId,
+            offering_id: offId,
+            total_classes: 0,
+            enrolled_at: new Date().toISOString(),
+          }));
+          await (supabase as any).from('enrollments').insert(inserts);
+        }
+      }
+    } catch (enrErr) {
+      console.warn('[db:completeStudentOnboarding] Custom offering enrollment sync warning:', enrErr);
+    }
   }
 
   // Also ensure fee status row exists
@@ -287,7 +348,24 @@ export async function getOfferingsForStudent(studentId: string): Promise<ClassOf
     .select('offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
     .eq('student_id', studentId);
   const rows = throwOnError(data, error, 'getOfferingsForStudent');
-  return rows.map((r: any) => mapOffering(r.offering)).filter(Boolean);
+  let offerings = rows.map((r: any) => mapOffering(r.offering)).filter(Boolean);
+
+  // Check if student is on a custom subject plan
+  try {
+    const cachedPlans = typeof window !== 'undefined' ? localStorage.getItem('scholario_student_subject_plans') : null;
+    const plan = cachedPlans ? JSON.parse(cachedPlans)[studentId] : null;
+    if (plan?.plan_type === 'custom' && Array.isArray(plan.subjects) && plan.subjects.length > 0) {
+      const allowed = new Set(plan.subjects.map((s: string) => s.toLowerCase().trim()));
+      offerings = offerings.filter((o: any) => {
+        const subName = (o.subject_name || o.subject?.name || '').toLowerCase().trim();
+        return allowed.has(subName);
+      });
+    }
+  } catch {
+    // ignore
+  }
+
+  return offerings;
 }
 
 /** Admin: assign/update teacher on a class offering */
@@ -430,6 +508,29 @@ export async function getSlotsForStudent(studentId: string): Promise<ClassSlot[]
 
     return !slotStreamId || slotStreamId === studentStreamId;
   });
+
+  // 4. Custom subject plan access control: strictly restrict schedule to enrolled subjects
+  try {
+    let customSubjects: string[] | null = null;
+    if (profData?.plan_type === 'custom' && Array.isArray(profData?.subjects) && profData.subjects.length > 0) {
+      customSubjects = profData.subjects;
+    } else if (typeof window !== 'undefined') {
+      const cachedPlans = localStorage.getItem('scholario_student_subject_plans');
+      const plan = cachedPlans ? JSON.parse(cachedPlans)[studentId] : null;
+      if (plan?.plan_type === 'custom' && Array.isArray(plan.subjects) && plan.subjects.length > 0) {
+        customSubjects = plan.subjects;
+      }
+    }
+    if (customSubjects && customSubjects.length > 0) {
+      const allowedSubs = new Set(customSubjects.map((s: string) => s.toLowerCase().trim()));
+      return filtered.filter((r: any) => {
+        const subName = (r.offering?.subject_name || r.offering?.subject?.name || r.subject || r.custom_title || '').toLowerCase().trim();
+        return Array.from(allowedSubs).some((allowed) => subName.includes(allowed) || allowed.includes(subName));
+      });
+    }
+  } catch {
+    // ignore
+  }
 
   return filtered;
 }
@@ -2767,11 +2868,15 @@ export async function resolveGradeFeeConfig(
   grade: string,
   classId?: string | null,
   boardId?: string,
-  streamName?: string
+  streamName?: string,
+  studentId?: string
 ): Promise<{
   amount: number;
   payment_instructions: string;
   whatsapp_number: string;
+  plan_type?: 'custom' | 'all';
+  subjects?: string[];
+  per_subject_fee?: number;
 }> {
   let targetClassId = classId;
   const targetBoard = boardId || 'fbise';
@@ -2826,10 +2931,39 @@ export async function resolveGradeFeeConfig(
     rawInstructions = rawInstructions.replace(/033353292094/g, '03335292094');
   }
 
+  let finalAmount = amount;
+  let planType: 'custom' | 'all' = 'all';
+  let studentSubjects: string[] | undefined = undefined;
+  let perSubFee: number | undefined = undefined;
+
+  if (studentId) {
+    try {
+      const plan = await getStudentSubjectPlan(studentId);
+      if (plan?.plan_type === 'custom' && Array.isArray(plan.subjects) && plan.subjects.length > 0) {
+        const settings = await getSubjectPricingSettings();
+        perSubFee = settings.per_subject_fee;
+        studentSubjects = plan.subjects;
+        const feeCalc = calculateSubjectEnrollmentFee({
+          baseClassFee: amount,
+          selectedSubjects: plan.subjects,
+          perSubjectFee: settings.per_subject_fee,
+          threshold: settings.auto_upgrade_threshold,
+        });
+        finalAmount = feeCalc.fee;
+        planType = feeCalc.plan_type;
+      }
+    } catch (err) {
+      console.warn('[db:resolveGradeFeeConfig] Custom subject plan resolution notice:', err);
+    }
+  }
+
   return {
-    amount,
+    amount: finalAmount,
     payment_instructions: rawInstructions,
-    whatsapp_number: classConfig?.whatsapp_number || config?.whatsapp_number || '03222314436'
+    whatsapp_number: classConfig?.whatsapp_number || config?.whatsapp_number || '03222314436',
+    plan_type: planType,
+    subjects: studentSubjects,
+    per_subject_fee: perSubFee,
   };
 }
 

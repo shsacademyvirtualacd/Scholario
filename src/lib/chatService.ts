@@ -66,8 +66,32 @@ export async function getAssignedTeacherIdsForStudent(studentId: string): Promis
         const studentStreamName = studentProf?.stream_obj?.name || studentProf?.stream || '';
         const studentStreamId = studentProf?.stream_id || studentProf?.stream_obj?.id;
 
+        let customEnrolledSubjects: string[] | null = null;
+        if (studentProf?.plan_type === 'custom' && Array.isArray(studentProf?.subjects) && studentProf.subjects.length > 0) {
+          customEnrolledSubjects = studentProf.subjects;
+        } else if (typeof window !== 'undefined') {
+          try {
+            const cachedPlans = localStorage.getItem('scholario_student_subject_plans');
+            const plan = cachedPlans ? JSON.parse(cachedPlans)[studentId] : null;
+            if (plan?.plan_type === 'custom' && Array.isArray(plan.subjects) && plan.subjects.length > 0) {
+              customEnrolledSubjects = plan.subjects;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
         classOfferings.forEach((off: any) => {
           if (!off.teacher_id) return;
+
+          // If student has custom enrolled subjects, teacher MUST teach one of those subjects
+          if (customEnrolledSubjects && customEnrolledSubjects.length > 0) {
+            const subName = (off.subject?.name || off.subject_name || '').toLowerCase().trim();
+            const matchesCustom = customEnrolledSubjects.some(
+              (cs) => subName.includes(cs.toLowerCase().trim()) || cs.toLowerCase().trim().includes(subName)
+            );
+            if (!matchesCustom) return;
+          }
 
           if (isIelts) {
             // For IELTS, any teacher assigned to an IELTS class offering is an assigned IELTS teacher

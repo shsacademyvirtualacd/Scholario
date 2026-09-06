@@ -13,13 +13,15 @@ import {
   X,
   ShieldAlert,
   Send,
-  Lock,
   Eye,
   Trash2,
   FileText,
-  Camera,
   Award,
   Layers,
+  CheckCircle2,
+  Clock,
+  PenTool,
+  FileEdit,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminShell from '../../components/admin/AdminShell';
@@ -533,71 +535,93 @@ export const AdminTestsPage: React.FC = () => {
                       return (
                         <div
                           key={test.id}
-                          className="bg-white rounded-2xl border-2 border-[#111111]/10 hover:border-[#111111] p-4 shadow-xs transition-all space-y-3"
+                          className="bg-white rounded-2xl border border-[#E5E5E5] hover:border-[#CCCCCC] p-3.5 sm:p-4 shadow-xs transition-all text-left flex flex-col justify-between space-y-3"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#111111] text-[#F4C430] flex items-center gap-1 shadow-2xs">
-                                <ShieldAlert size={11} />
-                                Proctored MCQ
+                          <div className="space-y-2">
+                            {/* 1. Title (bold, 1 line) */}
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-sm font-black text-[#111111] leading-snug line-clamp-1 flex-1">
+                                {test.title}
+                              </h4>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleDeleteMCQ(test.id)}
+                                  className="p-1 rounded-lg text-[#A3A3A3] hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                                  title="Delete Test"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 2. Short subtitle: Subject • Grade • Marks */}
+                            <p className="text-xs font-semibold text-[#525252] leading-tight">
+                              {test.subject} • Grade {test.grade} • {test.total_marks} Marks
+                            </p>
+
+                            {/* 3. Small icon row: 🕐 Duration | 📝 Question count breakdown */}
+                            <div className="flex items-center gap-3 text-xs text-[#737373]">
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                <Clock size={12} className="text-[#A3A3A3] shrink-0" />
+                                <span>{test.duration_minutes}m</span>
                               </span>
-                              {isPublished ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                  <Lock size={10} /> Published to Students
+                              <span className="text-[#E5E5E5]">•</span>
+                              <span className="inline-flex items-center gap-1 text-[#737373] whitespace-nowrap">
+                                <PenTool size={12} className="text-[#A3A3A3] shrink-0" />
+                                <span>{test.questions.length} MCQs</span>
+                              </span>
+                            </div>
+
+                            {/* 4. One status badge (Published/Draft) + small "Camera Proctored" tag if relevant */}
+                            <div className="flex items-center justify-between gap-2 pt-0.5 flex-wrap">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {isPublished ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                                    <CheckCircle2 size={11} className="text-emerald-600" />
+                                    Published
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+                                    <FileEdit size={11} className="text-amber-600" />
+                                    Draft
+                                  </span>
+                                )}
+
+                                <span className="text-[11px] font-medium text-[#737373] whitespace-nowrap">
+                                  Online • Camera Proctored
                                 </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
-                                  Draft (Hidden from Students)
-                                </span>
+                              </div>
+
+                              {!isPublished && (
+                                <button
+                                  onClick={() => handlePublishMCQ(test.id)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold shadow-2xs transition-colors cursor-pointer active:scale-95"
+                                  title="Publish to Students"
+                                >
+                                  <Send size={10} />
+                                  <span>Publish</span>
+                                </button>
                               )}
                             </div>
-
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => setViewingMCQTest(test)}
-                                className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] cursor-pointer"
-                                title="View Questions & Answer Keys"
-                              >
-                                <Eye size={15} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteMCQ(test.id)}
-                                className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
-                                title="Delete Test"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
                           </div>
 
-                          <div>
-                            <h4 className="text-sm font-black text-[#111111] leading-tight">{test.title}</h4>
-                            <p className="text-[11px] font-medium text-[#737373] mt-1">
-                              {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} MCQs • {test.total_marks} Marks
-                            </p>
-                          </div>
+                          {/* 5. Two short-labeled action buttons side by side */}
+                          <div className="pt-2 border-t border-[#F0F0F0] grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => setActiveTab('student-results')}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111] hover:bg-[#F0F0F0]"
+                            >
+                              <Award size={13} />
+                              <span>Grade</span>
+                            </button>
 
-                          <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
-                            <span className="text-[11px] text-[#737373] font-mono">
-                              Student ID Access
-                            </span>
-
-                            {!isPublished ? (
-                              <button
-                                onClick={() => handlePublishMCQ(test.id)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
-                              >
-                                <Send size={12} />
-                                <span>Publish to Students</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => setViewingMCQTest(test)}
-                                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#111111] cursor-pointer hover:bg-[#F0F0F0]"
-                              >
-                                <span>Inspect Questions</span>
-                              </button>
-                            )}
+                            <button
+                              onClick={() => setViewingMCQTest(test)}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#111111] cursor-pointer hover:bg-[#F0F0F0] transition-colors"
+                            >
+                              <Eye size={13} />
+                              <span>View</span>
+                            </button>
                           </div>
                         </div>
                       );
@@ -612,113 +636,130 @@ export const AdminTestsPage: React.FC = () => {
                         const isUnified = test.test_type === 'unified';
                         const isShort = test.test_type === 'short_question';
                         const isSelected = selectedWrittenTestId === test.id;
+
+                        // Question count breakdown
+                        const mcqCount = test.mcq_count ?? test.questions.filter((q) => q.type === 'mcq').length;
+                        const shortCount = test.short_count ?? test.questions.filter((q) => q.type === 'short_question').length;
+                        const longCount = test.long_count ?? test.questions.filter((q) => q.type === 'long_question').length;
+
+                        let questionBreakdown = '';
+                        if (isUnified) {
+                          const parts: string[] = [];
+                          if (mcqCount > 0) parts.push(`${mcqCount} MCQ`);
+                          if (shortCount > 0) parts.push(`${shortCount} Short`);
+                          if (longCount > 0) parts.push(`${longCount} Long`);
+                          questionBreakdown = parts.length > 0 ? parts.join(' • ') : `${test.questions.length} Qs`;
+                        } else if (isShort) {
+                          questionBreakdown = `${test.questions.length} Short Qs`;
+                        } else {
+                          questionBreakdown = `${test.questions.length} Long Qs`;
+                        }
+
                         return (
                           <div
                             key={test.id}
                             onClick={() => setSelectedWrittenTestId(test.id)}
-                            className={`bg-white rounded-2xl border-2 p-4 shadow-xs transition-all space-y-3 cursor-pointer ${
+                            className={`bg-white rounded-2xl border transition-all p-3.5 sm:p-4 cursor-pointer text-left flex flex-col justify-between space-y-3 ${
                               isSelected
-                                ? 'border-amber-500 ring-2 ring-amber-400/30'
-                                : 'border-amber-300/40 hover:border-amber-400'
+                                ? 'border-[#111111] ring-2 ring-[#111111]/10 shadow-sm'
+                                : 'border-[#E5E5E5] hover:border-[#CCCCCC] hover:shadow-2xs'
                             }`}
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black text-amber-400 flex items-center gap-1 shadow-2xs">
-                                  {isUnified ? <Layers size={11} /> : isShort ? <FileText size={11} /> : <BookOpen size={11} />}
-                                  {isUnified ? 'Online Test' : isShort ? 'Short Question Test' : 'Long Question Test'}
+                            <div className="space-y-2">
+                              {/* 1. Title (bold, 1 line) */}
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="text-sm font-black text-[#111111] leading-snug line-clamp-1 flex-1">
+                                  {test.title}
+                                </h4>
+                                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => handleDeleteWrittenTest(test.id)}
+                                    className="p-1 rounded-lg text-[#A3A3A3] hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                                    title="Delete Test"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* 2. Short subtitle: Subject • Grade • Marks */}
+                              <p className="text-xs font-semibold text-[#525252] leading-tight">
+                                {test.subject} • Grade {test.grade} • {test.total_marks} Marks
+                              </p>
+
+                              {/* 3. Small icon row: 🕐 Duration | 📝 Question count breakdown */}
+                              <div className="flex items-center gap-3 text-xs text-[#737373]">
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                  <Clock size={12} className="text-[#A3A3A3] shrink-0" />
+                                  <span>{test.duration_minutes}m</span>
                                 </span>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1">
-                                  <Camera size={10} /> Camera Capture
+                                <span className="text-[#E5E5E5]">•</span>
+                                <span className="inline-flex items-center gap-1 text-[#737373] whitespace-nowrap">
+                                  <PenTool size={12} className="text-[#A3A3A3] shrink-0" />
+                                  <span>{questionBreakdown}</span>
                                 </span>
-                                {isPublished ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                    <Lock size={10} /> Published
+                              </div>
+
+                              {/* 4. One status badge (Published/Draft) + small "Camera Proctored" tag if relevant */}
+                              <div className="flex items-center justify-between gap-2 pt-0.5 flex-wrap">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {isPublished ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                                      <CheckCircle2 size={11} className="text-emerald-600" />
+                                      Published
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+                                      <FileEdit size={11} className="text-amber-600" />
+                                      Draft
+                                    </span>
+                                  )}
+
+                                  <span className="text-[11px] font-medium text-[#737373] whitespace-nowrap">
+                                    {isUnified ? 'Online' : isShort ? 'Short Qs' : 'Long Qs'} • Camera Proctored
                                   </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
-                                    Draft
-                                  </span>
+                                </div>
+
+                                {!isPublished && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePublishWrittenTest(test.id);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold shadow-2xs transition-colors cursor-pointer active:scale-95"
+                                    title="Publish to Students"
+                                  >
+                                    <Send size={10} />
+                                    <span>Publish</span>
+                                  </button>
                                 )}
                               </div>
-
-                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={() => setViewingWrittenTest(test)}
-                                  className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] cursor-pointer"
-                                  title="Inspect Test Questions"
-                                >
-                                  <Eye size={15} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteWrittenTest(test.id)}
-                                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
-                                  title="Delete Test"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </div>
                             </div>
 
-                            <div>
-                              <h4 className="text-sm font-black text-[#111111] leading-tight">{test.title}</h4>
-                              <p className="text-[11px] font-medium text-[#737373] mt-1">
-                                {test.subject} • Grade {test.grade} • {test.duration_minutes} Mins • {test.questions.length} Questions • {test.total_marks} Marks
-                              </p>
-                              {isUnified ? (
-                                <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-                                  {((test.mcq_count ?? 0) > 0 || test.questions.some(q => q.type === 'mcq')) && (
-                                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 text-[10px] font-bold">
-                                      {test.mcq_count ?? test.questions.filter(q => q.type === 'mcq').length} MCQs (Auto-graded)
-                                    </span>
-                                  )}
-                                  {((test.short_count ?? 0) > 0 || test.questions.some(q => q.type === 'short_question')) && (
-                                    <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-950 text-[10px] font-bold">
-                                      {test.short_count ?? test.questions.filter(q => q.type === 'short_question').length} Short Qs
-                                    </span>
-                                  )}
-                                  {((test.long_count ?? 0) > 0 || test.questions.some(q => q.type === 'long_question')) && (
-                                    <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-950 text-[10px] font-bold">
-                                      {test.long_count ?? test.questions.filter(q => q.type === 'long_question').length} Long Qs
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-[10px] text-amber-800 font-bold mt-0.5">
-                                  Handwritten capture • 24-hr Cloudflare R2 retention • Manual teacher grading
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                            {/* 5. Two short-labeled action buttons side by side */}
+                            <div
+                              className="pt-2 border-t border-[#F0F0F0] grid grid-cols-2 gap-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <button
                                 onClick={() => setSelectedWrittenTestId(test.id)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                                   isSelected
                                     ? 'bg-[#111111] text-[#F4C430] shadow-xs'
-                                    : 'bg-amber-50 border border-amber-300 text-amber-950 hover:bg-amber-100'
+                                    : 'bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111] hover:bg-[#F0F0F0]'
                                 }`}
                               >
                                 <Award size={13} />
-                                <span>Submissions & Grading</span>
+                                <span>Grade</span>
                               </button>
 
-                              {!isPublished ? (
-                                <button
-                                  onClick={() => handlePublishWrittenTest(test.id)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
-                                >
-                                  <Send size={12} />
-                                  <span>Publish to Students</span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => setViewingWrittenTest(test)}
-                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#111111] cursor-pointer hover:bg-[#F0F0F0]"
-                                >
-                                  <span>Inspect Questions</span>
-                                </button>
-                              )}
+                              <button
+                                onClick={() => setViewingWrittenTest(test)}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] text-xs font-bold text-[#111111] cursor-pointer hover:bg-[#F0F0F0] transition-colors"
+                              >
+                                <Eye size={13} />
+                                <span>View</span>
+                              </button>
                             </div>
                           </div>
                         );

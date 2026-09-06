@@ -19,6 +19,14 @@ import type { RosterEntry, ClassOffering } from '../../types';
 import { useMobile } from '../../hooks/useMobile';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 import { formatStudentId } from '../../lib/studentId';
+import { 
+  getStudentSubjectPlan, 
+  saveStudentSubjectPlan, 
+  calculateSubjectEnrollmentFee,
+  getSubjectPricingSettings,
+  SubjectPricingSettings
+} from '../../lib/subjectEnrollmentService';
+import { getSubjectsForStream, getDefaultPrice } from '../../lib/taxonomy';
 
 export const RosterManagerPage: React.FC = () => {
   const isMobile = useMobile();
@@ -64,6 +72,8 @@ export const RosterManagerPage: React.FC = () => {
   const [editStudentClass, setEditStudentClass] = useState('');
   const [editStudentStreamId, setEditStudentStreamId] = useState('');
   const [editStudentFeeStatus, setEditStudentFeeStatus] = useState<'unpaid' | 'pending' | 'paid'>('unpaid');
+  const [editStudentEnrollmentMode, setEditStudentEnrollmentMode] = useState<'all' | 'custom'>('all');
+  const [editStudentSubjects, setEditStudentSubjects] = useState<string[]>([]);
   const [editStudentError, setEditStudentError] = useState<string | null>(null);
   const [editStudentSaving, setEditStudentSaving] = useState(false);
 
@@ -545,6 +555,19 @@ export const RosterManagerPage: React.FC = () => {
     const currentFeeStatus = (profileIdForFee && feeMap[profileIdForFee]?.status) || 'unpaid';
     setEditStudentFeeStatus(currentFeeStatus as 'unpaid' | 'pending' | 'paid');
 
+    // Subject plan initialization
+    const plan = getStudentSubjectPlan(profileIdForFee);
+    if (plan.plan_type === 'custom' && plan.subjects.length > 0) {
+      setEditStudentEnrollmentMode('custom');
+      setEditStudentSubjects(plan.subjects);
+    } else if (Array.isArray(p?.subjects) && p.subjects.length > 0 && p?.plan_type === 'custom') {
+      setEditStudentEnrollmentMode('custom');
+      setEditStudentSubjects(p.subjects);
+    } else {
+      setEditStudentEnrollmentMode('all');
+      setEditStudentSubjects([]);
+    }
+
     setEditStudentError(null);
     setEditStudentModalOpen(true);
   };
@@ -623,6 +646,16 @@ export const RosterManagerPage: React.FC = () => {
         streamName = selectedStreamObj?.name || (editStudentStreamId ? 'Selected Stream' : 'General');
       }
 
+      const isCustomPlan = editStudentEnrollmentMode === 'custom' && editStudentSubjects.length > 0;
+      const finalSubjects = isCustomPlan ? editStudentSubjects : null;
+      const finalPlanType = isCustomPlan ? 'custom' : 'all';
+
+      // Persist subject enrollment plan locally and in cache
+      saveStudentSubjectPlan(studentProfileId, {
+        subjects: finalSubjects || [],
+        plan_type: finalPlanType
+      });
+
       // 1. Update/Upsert Profile in profiles table
       const profilePayload: any = {
         full_name: nameTrim,
@@ -631,7 +664,9 @@ export const RosterManagerPage: React.FC = () => {
         stream_id: finalStreamId,
         stream: streamName,
         onboarding_complete: true,
-        role: 'student'
+        role: 'student',
+        subjects: finalSubjects,
+        plan_type: finalPlanType
       };
 
       if (matchedProfile) {
@@ -654,7 +689,9 @@ export const RosterManagerPage: React.FC = () => {
           full_name: nameTrim,
           email: emailTrim,
           class_ids: [editStudentClass],
-          profile_id: studentProfileId
+          profile_id: studentProfileId,
+          subjects: finalSubjects,
+          plan_type: finalPlanType
         })
         .or(`id.eq.${editStudentEntry.id},profile_id.eq.${studentProfileId},email.eq.${editStudentEntry.email.toLowerCase()}`);
 
@@ -675,13 +712,23 @@ export const RosterManagerPage: React.FC = () => {
         if (targetOfferings.length === 0) {
           const { data: offData } = await (supabase as any)
             .from('class_offerings')
-            .select('id, subject_id')
+            .select('id, subject_id, subject')
             .eq('class_id', editStudentClass);
           targetOfferings = offData || [];
         }
 
         if (subjectIds.length > 0) {
           targetOfferings = targetOfferings.filter((o: any) => subjectIds.includes(o.subject_id));
+        }
+
+        if (isCustomPlan) {
+          targetOfferings = targetOfferings.filter((o: any) => {
+            const offSubj = (o.subject || o.subject_name || '').toLowerCase();
+            return editStudentSubjects.some(s => {
+              const sLower = s.toLowerCase();
+              return offSubj.includes(sLower) || sLower.includes(offSubj);
+            });
+          });
         }
 
         if (targetOfferings.length > 0) {
@@ -832,6 +879,46 @@ export const RosterManagerPage: React.FC = () => {
     if (!editStudentClass) return [];
     return streamsList.filter(s => s.class_id === editStudentClass);
   }, [streamsList, editStudentClass]);
+
+  const availableSubjectsForEdit = useMemo(() => {
+    const cls = classesList.find(c => c.id === editStudentClass);
+    const grade = cls?.grade || '10';
+    let streamName = '';
+    if (editStudentBoard === 'ielts') {
+      const isGt =
+        editStudentStreamId === 'general-training' ||
+        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general');
+      streamName = isGt ? 'General Training' : 'Academic';
+    } else {
+      const st = streamsList.find(s => s.id === editStudentStreamId);
+      streamName = st?.name || '';
+    }
+    return getSubjectsForStream(grade, streamName, editStudentBoard);
+  }, [classesList, streamsList, editStudentClass, editStudentStreamId, editStudentBoard]);
+
+  const adminCalculatedSubjectFee = useMemo(() => {
+    const cls = classesList.find(c => c.id === editStudentClass);
+    const grade = cls?.grade || '10';
+    let streamName = '';
+    if (editStudentBoard === 'ielts') {
+      const isGt =
+        editStudentStreamId === 'general-training' ||
+        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general');
+      streamName = isGt ? 'General Training' : 'Academic';
+    } else {
+      const st = streamsList.find(s => s.id === editStudentStreamId);
+      streamName = st?.name || '';
+    }
+    const defaultStreamPrice = getDefaultPrice(grade, editStudentBoard, streamName);
+    return calculateSubjectEnrollmentFee({
+      grade,
+      boardId: editStudentBoard,
+      streamName,
+      selectedSubjects: editStudentSubjects,
+      enrollmentMode: editStudentEnrollmentMode,
+      baseTuitionFee: defaultStreamPrice,
+    });
+  }, [classesList, streamsList, editStudentClass, editStudentStreamId, editStudentBoard, editStudentSubjects, editStudentEnrollmentMode]);
 
   return (
     <AdminShell>
@@ -2176,6 +2263,131 @@ export const RosterManagerPage: React.FC = () => {
                   </div>
                 </>
               )}
+
+              {/* Subject Selection (All Subjects vs Specific Custom Subjects) */}
+              <div className="pt-2 border-t border-zinc-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider">
+                    Subject Enrollment Model <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-zinc-500 font-semibold">
+                    {editStudentEnrollmentMode === 'all' 
+                      ? 'Full Stream Package' 
+                      : `${editStudentSubjects.length} subject(s) selected`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditStudentEnrollmentMode('all');
+                      setEditStudentSubjects([]);
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      editStudentEnrollmentMode === 'all'
+                        ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">All Subjects</span>
+                      {editStudentEnrollmentMode === 'all' && <Check size={14} className="text-purple-600 shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Standard stream curriculum access</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditStudentEnrollmentMode('custom');
+                      if (editStudentSubjects.length === 0 && availableSubjectsForEdit.length > 0) {
+                        setEditStudentSubjects([availableSubjectsForEdit[0]]);
+                      }
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      editStudentEnrollmentMode === 'custom'
+                        ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
+                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">Specific Subjects</span>
+                      {editStudentEnrollmentMode === 'custom' && <Check size={14} className="text-purple-600 shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 block mt-0.5">Select 1, 2, 3, or more subjects</span>
+                  </button>
+                </div>
+
+                {editStudentEnrollmentMode === 'custom' && (
+                  <div className="p-3 bg-zinc-50 rounded-2xl border border-zinc-200 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-zinc-700">
+                        Choose Active Subjects for Student:
+                      </span>
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setEditStudentSubjects([...availableSubjectsForEdit])}
+                          className="text-purple-600 font-bold hover:underline cursor-pointer"
+                        >
+                          Select All
+                        </button>
+                        <span className="text-zinc-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditStudentSubjects([])}
+                          className="text-zinc-500 font-bold hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {availableSubjectsForEdit.map((subj) => {
+                        const isSelected = editStudentSubjects.includes(subj);
+                        return (
+                          <button
+                            type="button"
+                            key={subj}
+                            onClick={() => {
+                              if (isSelected) {
+                                setEditStudentSubjects(editStudentSubjects.filter(s => s !== subj));
+                              } else {
+                                setEditStudentSubjects([...editStudentSubjects, subj]);
+                              }
+                            }}
+                            className={`p-2 rounded-xl border text-left flex items-center justify-between transition-all ${
+                              isSelected
+                                ? 'bg-purple-600 border-purple-600 text-white font-bold shadow-sm'
+                                : 'bg-white border-zinc-200 hover:border-zinc-300 text-zinc-700 font-medium'
+                            }`}
+                          >
+                            <span className="text-xs truncate">{subj}</span>
+                            {isSelected && <Check size={12} className="text-white shrink-0 ml-1" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {editStudentSubjects.length === 0 ? (
+                      <p className="text-[11px] text-amber-600 font-semibold">
+                        ⚠️ Please select at least one subject.
+                      </p>
+                    ) : (
+                      <div className="flex items-center justify-between pt-2 border-t border-zinc-200 text-xs">
+                        <span className="text-zinc-600 font-medium">
+                          Calculated Tuition ({adminCalculatedSubjectFee.subjectCount} subjects):
+                        </span>
+                        <span className="font-mono font-bold text-purple-700">
+                          PKR {adminCalculatedSubjectFee.finalFee.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Fee & Access Status (Direct Admin Override) */}
               <div className="pt-2 border-t border-zinc-100">

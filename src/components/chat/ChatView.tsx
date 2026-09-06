@@ -136,6 +136,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
     imageUrl: string;
     downloadUrl: string;
     filename: string;
+    senderName?: string;
+    timestamp?: string;
+    caption?: string;
   } | null>(null);
   const [voiceInitialPointer, setVoiceInitialPointer] = useState<{ x: number; y: number } | null>(null);
 
@@ -1066,6 +1069,35 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setSendError(msg);
     } finally {
       setSending(false);
+    }
+  };
+
+  // Handle reply sent directly from Fullscreen Image Viewer
+  const handleReplyFromViewer = async (replyText: string) => {
+    if (!replyText.trim() || !activeThreadId || !currentUserId) return;
+    try {
+      const createdMsg = await sendChatMessage(
+        activeThreadId,
+        currentUserId,
+        role,
+        replyText.trim()
+      );
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === createdMsg.id)) return prev;
+        return [...prev, createdMsg];
+      });
+      setThreads((prev) => {
+        const threadIndex = prev.findIndex((t) => t.id === activeThreadId);
+        if (threadIndex !== -1) {
+          const updated = [...prev];
+          const thread = { ...updated[threadIndex], latest_message: createdMsg };
+          updated.splice(threadIndex, 1);
+          return [thread, ...updated];
+        }
+        return prev;
+      });
+    } catch (err: any) {
+      console.error('[Chat] Failed to send reply from image viewer:', err);
     }
   };
 
@@ -2257,6 +2289,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 readAt={msg.read_at}
                                 isMe={isMe}
                                 hasTail={hasTail}
+                                senderName={isMe ? 'You' : (activeThread?.other_participant?.full_name || 'Contact')}
+                                onReply={handleReplyFromViewer}
                               />
                             ) : msg.message_type === 'file' && msg.attachment_key ? (
                               <ChatFileBubble
@@ -3000,6 +3034,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
           imageUrl={activeViewerImage.imageUrl}
           downloadUrl={activeViewerImage.downloadUrl}
           filename={activeViewerImage.filename}
+          senderName={activeViewerImage.senderName || activeThread?.other_participant?.full_name || 'Contact'}
+          timestamp={activeViewerImage.timestamp}
+          caption={activeViewerImage.caption}
+          onReply={handleReplyFromViewer}
         />
       )}
 

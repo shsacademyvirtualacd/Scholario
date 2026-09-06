@@ -15,6 +15,8 @@ interface ChatImageBubbleProps {
   readAt?: string | null;
   isMe: boolean;
   hasTail?: boolean;
+  senderName?: string;
+  onReply?: (text: string) => void | Promise<void>;
 }
 
 export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
@@ -27,6 +29,8 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
   readAt,
   isMe,
   hasTail = true,
+  senderName,
+  onReply,
 }) => {
   const [token, setToken] = useState<string>('');
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -173,6 +177,10 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
         downloadUrl={downloadUrl}
         filename={filename}
         fileSize={attachmentSize}
+        senderName={senderName || (isMe ? 'You' : 'Photo')}
+        timestamp={createdAt}
+        caption={hasCaption ? content : undefined}
+        onReply={onReply}
       />
     </>
   );

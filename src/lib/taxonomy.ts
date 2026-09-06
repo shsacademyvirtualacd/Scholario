@@ -337,6 +337,37 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
 
 /** Derive exact enrolled taxonomy subjects for a student profile and enrollments */
 export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[]): string[] {
+  // 1. If profile explicitly has custom subjects enrolled (e.g. 1, 2, or 3 subjects), prioritize them
+  if (profile?.plan_type === 'custom' && Array.isArray(profile?.subjects) && profile.subjects.length > 0) {
+    return Array.from(new Set(profile.subjects as string[])).sort();
+  }
+
+  // Also check local student subject plans cache for instant reactivity
+  if (profile?.id && typeof window !== 'undefined') {
+    try {
+      const cachedPlans = localStorage.getItem('scholario_student_subject_plans');
+      if (cachedPlans) {
+        const parsed = JSON.parse(cachedPlans);
+        const stPlan = parsed[profile.id];
+        if (stPlan?.plan_type === 'custom' && Array.isArray(stPlan.subjects) && stPlan.subjects.length > 0) {
+          return Array.from(new Set(stPlan.subjects as string[])).sort();
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // If enrollments are provided and student is on a custom plan, derive from offerings
+  if (enrollments && enrollments.length > 0 && profile?.plan_type === 'custom') {
+    const enrolledNames = enrollments
+      .map((e) => e.offering?.subject_name || e.offering?.subject?.name || e.subject)
+      .filter(Boolean);
+    if (enrolledNames.length > 0) {
+      return Array.from(new Set(enrolledNames)).sort();
+    }
+  }
+
   let grade = '10';
   let streamName = '';
   let boardId = '';

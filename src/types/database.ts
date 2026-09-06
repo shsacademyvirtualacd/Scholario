@@ -54,6 +54,10 @@ export interface Profile {
   last_seen?: string | null;
   /** Privacy toggle: whether to show online status & last seen (default true) */
   show_online_status?: boolean;
+  /** Subject-level enrollment: specific subjects student is enrolled in */
+  subjects?: string[] | null;
+  /** Subject enrollment plan type: 'custom' for 1-3 specific subjects, 'all' for all subjects */
+  plan_type?: 'custom' | 'all' | null;
   // joined
   board?: BoardEntry;
   class?: ClassEntry;
@@ -363,6 +367,8 @@ export interface RosterEntry {
   suspended?: boolean;
   fee_suspended?: boolean;
   awaiting_termination?: boolean;
+  subjects?: string[] | null;
+  plan_type?: 'custom' | 'all' | null;
   created_at: string;
 }
 

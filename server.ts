@@ -191,6 +191,114 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // ─── Subject-Level Enrollment & Fee Settings Store ──────────────────────────
+  const DATA_DIR = path.join(process.cwd(), 'data');
+  const SETTINGS_FILE = path.join(DATA_DIR, 'subject_pricing_settings.json');
+  const PLANS_FILE = path.join(DATA_DIR, 'student_subject_plans.json');
+
+  function ensureDataDir() {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  }
+
+  function getFeeSettingsData() {
+    ensureDataDir();
+    if (fs.existsSync(SETTINGS_FILE)) {
+      try {
+        const raw = fs.readFileSync(SETTINGS_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        return {
+          per_subject_fee: typeof parsed.per_subject_fee === 'number' ? parsed.per_subject_fee : 1000,
+          auto_upgrade_threshold: typeof parsed.auto_upgrade_threshold === 'number' ? parsed.auto_upgrade_threshold : 3
+        };
+      } catch (e) {
+        console.warn('[server:getFeeSettings] Read error:', e);
+      }
+    }
+    return { per_subject_fee: 1000, auto_upgrade_threshold: 3 };
+  }
+
+  function saveFeeSettingsData(settings: { per_subject_fee: number; auto_upgrade_threshold: number }) {
+    ensureDataDir();
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+  }
+
+  function getStudentPlansData(): Record<string, { subjects: string[]; plan_type: 'custom' | 'all'; updated_at: string }> {
+    ensureDataDir();
+    if (fs.existsSync(PLANS_FILE)) {
+      try {
+        const raw = fs.readFileSync(PLANS_FILE, 'utf-8');
+        return JSON.parse(raw);
+      } catch (e) {
+        console.warn('[server:getStudentPlans] Read error:', e);
+      }
+    }
+    return {};
+  }
+
+  function saveStudentPlanData(studentId: string, subjects: string[], plan_type: 'custom' | 'all') {
+    ensureDataDir();
+    const plans = getStudentPlansData();
+    const cleanSubs = Array.isArray(subjects) ? subjects.filter(Boolean) : [];
+    plans[studentId] = {
+      subjects: cleanSubs,
+      plan_type: plan_type || 'all',
+      updated_at: new Date().toISOString()
+    };
+    fs.writeFileSync(PLANS_FILE, JSON.stringify(plans, null, 2), 'utf-8');
+    return plans[studentId];
+  }
+
+  // Get Admin-Configurable Fee Settings
+  app.get('/api/fee-settings', (_req, res) => {
+    res.json(getFeeSettingsData());
+  });
+
+  // Update Admin-Configurable Fee Settings
+  app.post('/api/fee-settings', (req, res) => {
+    try {
+      const { per_subject_fee, auto_upgrade_threshold } = req.body;
+      const current = getFeeSettingsData();
+      const updated = {
+        per_subject_fee: typeof per_subject_fee === 'number' && per_subject_fee >= 0 ? per_subject_fee : current.per_subject_fee,
+        auto_upgrade_threshold: typeof auto_upgrade_threshold === 'number' && auto_upgrade_threshold >= 1 ? auto_upgrade_threshold : current.auto_upgrade_threshold
+      };
+      saveFeeSettingsData(updated);
+      res.json({ success: true, settings: updated });
+    } catch (err: any) {
+      console.error('[server /api/fee-settings POST error]:', err);
+      res.status(500).json({ error: err?.message || 'Failed to update fee settings' });
+    }
+  });
+
+  // Get all student subject plans
+  app.get('/api/student-subject-plans', (_req, res) => {
+    res.json(getStudentPlansData());
+  });
+
+  // Get single student subject plan
+  app.get('/api/student-subject-plans/:studentId', (req, res) => {
+    const plans = getStudentPlansData();
+    const plan = plans[req.params.studentId] || null;
+    res.json({ success: true, plan });
+  });
+
+  // Update or set student subject plan
+  app.post('/api/student-subject-plans', (req, res) => {
+    try {
+      const { studentId, subjects, plan_type } = req.body;
+      if (!studentId) {
+        return res.status(400).json({ error: 'studentId is required' });
+      }
+      const saved = saveStudentPlanData(studentId, subjects, plan_type);
+      res.json({ success: true, plan: saved });
+    } catch (err: any) {
+      console.error('[server /api/student-subject-plans POST error]:', err);
+      res.status(500).json({ error: err?.message || 'Failed to save student subject plan' });
+    }
+  });
+
   // Sage AI Chat endpoint (with SSE streaming)
   app.post('/api/sage/chat', async (req, res) => {
     // Set headers for SSE streaming

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle } from 'lucide-react';
+import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle, Check, BookMarked } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -11,6 +11,12 @@ import { useMobile } from '../../hooks/useMobile';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { validatePakistaniPhoneNumber, PAKISTANI_PHONE_ERROR } from '../../lib/phoneValidation';
 import { generateUniqueNumericStudentId } from '../../lib/studentId';
+import {
+  getSubjectPricingSettings,
+  getCachedSubjectPricingSettings,
+  calculateSubjectEnrollmentFee,
+  SubjectPricingSettings,
+} from '../../lib/subjectEnrollmentService';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
@@ -73,11 +79,22 @@ export const UnregisteredPage: React.FC = () => {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStreamId, setSelectedStreamId] = useState<string | null>(null);
   const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [baseClassFee, setBaseClassFee] = useState<number>(3000);
+  const [enrollmentMode, setEnrollmentMode] = useState<'all' | 'custom'>('all');
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [pricingSettings, setPricingSettings] = useState<SubjectPricingSettings>(getCachedSubjectPricingSettings());
 
   const [saving, setSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [terminationStep, setTerminationStep] = useState<'idle' | 'confirm' | 'goodbye'>('idle');
+
+  // Load subject fee pricing settings
+  useEffect(() => {
+    getSubjectPricingSettings()
+      .then((s) => setPricingSettings(s))
+      .catch(console.warn);
+  }, []);
 
   // Fetch taxonomy and set initial classes
   useEffect(() => {
@@ -109,6 +126,51 @@ export const UnregisteredPage: React.FC = () => {
       });
   }, []);
 
+  // Helper to resolve available subjects for selected stream
+  const getAvailableSubjects = (): string[] => {
+    if (selectedBoardId === 'ielts') {
+      return ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'];
+    }
+    if (!selectedClassId || !selectedStreamId || !taxonomy) return [];
+
+    const selectedClassObj = taxonomy.classes.find((c: any) => c.id === selectedClassId);
+    let streamsForClass: any[] = taxonomy.streams.filter((s: any) => s.class_id === selectedClassId);
+    if (streamsForClass.length === 0 && selectedClassObj) {
+      const boardGrades = getGradesForBoard(selectedBoardId);
+      const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
+      if (gradeDef) {
+        streamsForClass = gradeDef.streams.map((st) => ({
+          id: st.name,
+          class_id: selectedClassObj.id,
+          name: st.name,
+          subjects: st.subjects,
+        }));
+      }
+    }
+
+    const s = streamsForClass.find(
+      (st: any) => st.id === selectedStreamId || st.name.toLowerCase() === selectedStreamId?.toLowerCase()
+    );
+    if (!s) return [];
+
+    let streamSubjects: string[] = [];
+    if (Array.isArray(s.subjects) && s.subjects.length > 0) {
+      streamSubjects = s.subjects;
+    } else if (taxonomy.streamSubjects) {
+      streamSubjects = taxonomy.streamSubjects
+        .filter((ss: any) => ss.stream_id === s.id)
+        .map((ss: any) => taxonomy.subjects.find((sub: any) => sub.id === ss.subject_id)?.name)
+        .filter(Boolean);
+    }
+    if (streamSubjects.length === 0 && selectedClassObj) {
+      const boardGrades = getGradesForBoard(selectedBoardId);
+      const gradeDef = boardGrades.find((g) => String(g.grade) === String(selectedClassObj.grade));
+      const stDef = gradeDef?.streams.find((st) => st.name.toLowerCase() === s.name?.toLowerCase());
+      if (stDef) streamSubjects = stDef.subjects;
+    }
+    return streamSubjects;
+  };
+
   // When board changes, ensure selectedClassId moves to the corresponding class in that board
   useEffect(() => {
     if (!taxonomy) return;
@@ -136,13 +198,14 @@ export const UnregisteredPage: React.FC = () => {
       const cls = taxonomy?.classes?.find((c: any) => c.board_id === 'ielts') || { id: 'ielts-IELTS', grade: 'IELTS' };
       resolveGradeFeeConfig('IELTS', cls.id, 'ielts')
         .then((cfg) => {
-          if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
-            setLivePrice(cfg.amount);
-          } else {
-            setLivePrice(5000);
-          }
+          const val = (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) ? cfg.amount : 5000;
+          setBaseClassFee(val);
+          setLivePrice(val);
         })
-        .catch(() => setLivePrice(5000));
+        .catch(() => {
+          setBaseClassFee(5000);
+          setLivePrice(5000);
+        });
       return;
     }
 
@@ -151,13 +214,17 @@ export const UnregisteredPage: React.FC = () => {
       if (cls) {
         resolveGradeFeeConfig(cls.grade || '10', cls.id, selectedBoardId)
           .then((cfg) => {
-            if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
-              setLivePrice(cfg.amount);
-            } else {
-              setLivePrice(cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000);
-            }
+            const val = (cfg && typeof cfg.amount === 'number' && cfg.amount > 0)
+              ? cfg.amount
+              : (cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000);
+            setBaseClassFee(val);
+            setLivePrice(val);
           })
-          .catch(() => setLivePrice(cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000));
+          .catch(() => {
+            const val = cls.grade ? getDefaultPrice(cls.grade, selectedBoardId) : 3000;
+            setBaseClassFee(val);
+            setLivePrice(val);
+          });
       }
     }
   };
@@ -236,6 +303,15 @@ export const UnregisteredPage: React.FC = () => {
 
     if (!selectedStreamId) {
       setError('Please select an academic stream.');
+      return;
+    }
+
+    const availableSubs = getAvailableSubjects();
+    const finalSubjects = enrollmentMode === 'all' ? availableSubs : selectedSubjects;
+
+    if (enrollmentMode === 'custom' && finalSubjects.length === 0) {
+      setError('Please select at least one subject to enroll, or choose All Subjects.');
+      toast.error('Please select at least one subject.');
       return;
     }
 
@@ -352,7 +428,9 @@ export const UnregisteredPage: React.FC = () => {
         cleanClassId || selectedClassId,
         isUUID(cleanStreamId) ? cleanStreamId : null,
         [],
-        fullName.trim()
+        fullName.trim(),
+        finalSubjects,
+        enrollmentMode
       );
 
       // 5. Reload profile context
@@ -799,7 +877,15 @@ export const UnregisteredPage: React.FC = () => {
                               <button
                                 key={s.id}
                                 type="button"
-                                onClick={() => setSelectedStreamId(s.id)}
+                                onClick={() => {
+                                  setSelectedStreamId(s.id);
+                                  // Update subjects for the new stream
+                                  if (enrollmentMode === 'all') {
+                                    setSelectedSubjects(streamSubjects);
+                                  } else if (selectedSubjects.length === 0) {
+                                    setSelectedSubjects(streamSubjects.slice(0, 2));
+                                  }
+                                }}
                                 className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between ${selectedStreamId === s.id
                                     ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
                                     : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
@@ -829,47 +915,203 @@ export const UnregisteredPage: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Section 5: Subject Selection / Enrollment Model */}
+                    {selectedClassId && selectedStreamId && (() => {
+                      const availSubs = getAvailableSubjects();
+                      return (
+                        <div className="space-y-3 pt-4 border-t border-[#F5F5F5] animate-in fade-in duration-300">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
+                              <BookMarked size={14} className="text-[#F4C430]" />
+                              <span>Step 5: Enrollment Model & Subject Choice</span>
+                            </div>
+                            <span className="text-[10px] text-[#A3A3A3] font-medium">Customize tuition</span>
+                          </div>
+
+                          <div className={isMobile ? 'grid grid-cols-1 gap-2.5' : 'grid grid-cols-2 gap-2.5'}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEnrollmentMode('all');
+                                setSelectedSubjects(availSubs);
+                              }}
+                              className={`p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
+                                enrollmentMode === 'all'
+                                  ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
+                                  : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-black text-[#111111]">All Subjects Package</span>
+                                {enrollmentMode === 'all' && <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />}
+                              </div>
+                              <p className="text-xs text-[#737373]">
+                                Full curriculum access to all {availSubs.length} stream subjects.
+                              </p>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEnrollmentMode('custom');
+                                if (selectedSubjects.length === 0 && availSubs.length > 0) {
+                                  setSelectedSubjects(availSubs.slice(0, 2));
+                                }
+                              }}
+                              className={`p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
+                                enrollmentMode === 'custom'
+                                  ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
+                                  : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-black text-[#111111]">Select Specific Subjects</span>
+                                {enrollmentMode === 'custom' && <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />}
+                              </div>
+                              <p className="text-xs text-[#737373]">
+                                Enroll in 1, 2, 3, or more specific subjects of your choice.
+                              </p>
+                            </button>
+                          </div>
+
+                          {enrollmentMode === 'custom' && (
+                            <div className="p-4 bg-[#F9F9F9] rounded-2xl border border-[#E5E5E5] space-y-3 animate-in fade-in duration-200">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="text-xs font-bold text-[#111111] block">
+                                    Choose Enrolled Subjects ({selectedSubjects.length} of {availSubs.length} selected):
+                                  </span>
+                                  <span className="text-[11px] text-[#737373]">
+                                    Rate: PKR {pricingSettings.per_subject_fee.toLocaleString()} / subject
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSubjects(availSubs)}
+                                    className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline"
+                                  >
+                                    Select All
+                                  </button>
+                                  <span className="text-gray-300">•</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSubjects([])}
+                                    className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline"
+                                  >
+                                    Clear
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {availSubs.map((sub) => {
+                                  const isSelected = selectedSubjects.includes(sub);
+                                  return (
+                                    <button
+                                      key={sub}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSubjects((prev) =>
+                                          prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
+                                        );
+                                      }}
+                                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border interactive ${
+                                        isSelected
+                                          ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
+                                          : 'bg-white text-[#525252] border-[#E5E5E5] hover:border-[#D4D4D4]'
+                                      }`}
+                                    >
+                                      <div
+                                        className={`w-4 h-4 rounded flex items-center justify-center text-[10px] border ${
+                                          isSelected
+                                            ? 'bg-[#F4C430] text-[#111111] border-[#F4C430]'
+                                            : 'border-[#D4D4D4] bg-white'
+                                        }`}
+                                      >
+                                        {isSelected && <Check size={11} strokeWidth={3} />}
+                                      </div>
+                                      <span>{sub}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {selectedSubjects.length === 0 && (
+                                <p className="text-xs text-amber-700 font-medium bg-amber-50 p-2 rounded-lg border border-amber-200">
+                                  Please select at least 1 subject to enroll, or switch to All Subjects Package.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
 
-                {/* Section 5: Live Tuition Fee Summary */}
-                {selectedClassId && selectedStreamId && (
-                  <div className={`bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-4 flex ${isMobile ? 'flex-col items-start' : 'flex-row items-center'} justify-between gap-3 animate-in fade-in duration-300`}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#F4C430]/20 flex items-center justify-center text-[#92700A] shrink-0">
-                        <DollarSign size={20} />
+                {/* Section 6: Live Tuition Fee Summary */}
+                {selectedClassId && selectedStreamId && (() => {
+                  const availSubs = getAvailableSubjects();
+                  const targetSubs = enrollmentMode === 'all' ? availSubs : selectedSubjects;
+                  const pricingCalc = calculateSubjectEnrollmentFee({
+                    baseClassFee: baseClassFee,
+                    selectedSubjects: targetSubs,
+                    perSubjectFee: pricingSettings.per_subject_fee,
+                    threshold: pricingSettings.auto_upgrade_threshold,
+                    isAllPlanDirectlySelected: enrollmentMode === 'all',
+                  });
+                  const effectiveFee = pricingCalc.fee;
+
+                  return (
+                    <div className={`bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-4 flex ${isMobile ? 'flex-col items-start' : 'flex-row items-center'} justify-between gap-3 animate-in fade-in duration-300`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#F4C430]/20 flex items-center justify-center text-[#92700A] shrink-0">
+                          <DollarSign size={20} />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">
+                            {selectedBoardId === 'ielts'
+                              ? 'Live Tuition Summary (IELTS Preparation)'
+                              : `Live Tuition Summary (${selectedClassObj?.display_name || ''} - ${currentBoardDef.shortName})`}
+                          </span>
+                          {effectiveFee !== null && effectiveFee > 0 ? (
+                            <span className="text-xl font-black text-[#111111]">
+                              PKR {effectiveFee.toLocaleString()} <span className="text-xs font-bold text-amber-800">/ term</span>
+                            </span>
+                          ) : (
+                            <span className="text-sm font-black text-amber-900 block mt-0.5">
+                              Price not yet set — contact admin
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">
-                          {selectedBoardId === 'ielts'
-                            ? 'Live Tuition Summary (IELTS Preparation)'
-                            : `Live Tuition Summary (${selectedClassObj?.display_name || ''} - ${currentBoardDef.shortName})`}
-                        </span>
-                        {livePrice !== null && livePrice > 0 ? (
-                          <span className="text-xl font-black text-[#111111]">
-                            PKR {livePrice.toLocaleString()} <span className="text-xs font-bold text-amber-800">/ term</span>
-                          </span>
+                      <div className="text-left sm:text-right text-[11px] text-amber-900 font-semibold leading-snug">
+                        {effectiveFee !== null && effectiveFee > 0 ? (
+                          <>
+                            {enrollmentMode === 'all' ? (
+                              <span>All Subjects Package ({availSubs.length} subjects included).</span>
+                            ) : targetSubs.length <= pricingSettings.auto_upgrade_threshold ? (
+                              <span>
+                                {targetSubs.length} Subject{targetSubs.length === 1 ? '' : 's'} Enrollment ({targetSubs.length} × PKR {pricingSettings.per_subject_fee.toLocaleString()}).
+                              </span>
+                            ) : (
+                              <span>
+                                Subject Enrollment Package ({targetSubs.length} subjects selected).
+                              </span>
+                            )}
+                          </>
                         ) : (
-                          <span className="text-sm font-black text-amber-900 block mt-0.5">
-                            Price not yet set — contact admin
-                          </span>
+                          <>
+                            Admin Price Manager has not set a fee for this grade yet.<br />
+                            Please check back or contact support.
+                          </>
                         )}
                       </div>
                     </div>
-                    <div className="text-left sm:text-right text-[10px] text-amber-900 font-semibold leading-snug">
-                      {livePrice !== null && livePrice > 0 ? (
-                        <>
-                          Includes full access upon payment authorization.
-                        </>
-                      ) : (
-                        <>
-                          Admin Price Manager has not set a fee for this grade yet.<br />
-                          Please check back or contact support.
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <div className="pt-4 border-t border-[#F5F5F5] flex flex-col gap-2.5">
                   <button

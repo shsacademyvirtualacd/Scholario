@@ -112,7 +112,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthError('Unable to load your profile data. Please try again later.');
       return null;
     }
-    return data ?? null;
+    const prof = (data as any) ?? null;
+    if (prof && (!prof.subjects || !prof.plan_type) && typeof window !== 'undefined') {
+      try {
+        const cachedPlans = localStorage.getItem('scholario_student_subject_plans');
+        if (cachedPlans) {
+          const parsed = JSON.parse(cachedPlans);
+          if (parsed[userId]) {
+            prof.subjects = prof.subjects || parsed[userId].subjects;
+            prof.plan_type = prof.plan_type || parsed[userId].plan_type;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return prof;
   };
 
   // ── Real Supabase: roster-gated profile provisioning ─────────────────────

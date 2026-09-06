@@ -107,7 +107,11 @@ export const NotesPage: React.FC = () => {
 
   // Filter notes based on active subject and search term
   const filteredNotes = groupNotes.filter(note => {
-    const matchesSubject = activeSubject === 'All' || note.offering?.subject === activeSubject;
+    const isCustomPlan = profile?.plan_type === 'custom';
+    const noteSubject = note.offering?.subject || '';
+    const matchesSubject = activeSubject === 'All'
+      ? (isCustomPlan ? enrolledSubjects.some(es => es.toLowerCase().trim() === noteSubject.toLowerCase().trim()) : true)
+      : noteSubject.toLowerCase().trim() === activeSubject.toLowerCase().trim();
     const q = searchTerm.toLowerCase();
     const matchesSearch = !q ||
       (note.chapter_name || '').toLowerCase().includes(q) ||

@@ -4,6 +4,7 @@ import type { Profile, Enrollment, ClassOffering, Teacher, RosterEntry, Attendan
 import { getEnrollmentsForStudent, getAllOfferings, getAllTeachers, getAllRoster, getAttendanceForStudent } from '../../../lib/db';
 import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel } from '../../../lib/taxonomy';
 import { formatStudentId } from '../../../lib/studentId';
+import { getStudentSubjectPlanSync } from '../../../lib/subjectEnrollmentService';
 
 interface StudentDetailPanelProps {
   student: Profile;
@@ -43,6 +44,9 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
       offering: offering ? { ...offering, teacher } : undefined
     };
   });
+
+  const subjectPlan = getStudentSubjectPlanSync(student.id) || (student.subjects ? { subjects: student.subjects, plan_type: student.plan_type || 'custom' } : null);
+  const isCustomPlan = Boolean(subjectPlan && subjectPlan.plan_type === 'custom' && subjectPlan.subjects && subjectPlan.subjects.length > 0);
 
   const getInitials = (name: string) => {
     return name
@@ -170,7 +174,16 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
 
       {/* Subject list */}
       <div className="space-y-3">
-        <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Enrolled Subjects</h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Enrolled Subjects</h4>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+            isCustomPlan
+              ? 'bg-purple-50 text-purple-700 border-purple-200'
+              : 'bg-zinc-100 text-zinc-700 border-zinc-200'
+          }`}>
+            {isCustomPlan ? `Custom Plan (${subjectPlan.subjects.length} Subjects)` : 'All Subjects (Full Stream)'}
+          </span>
+        </div>
         <div className="space-y-2">
           {studentEnrollments.length === 0 ? (
             <div className="text-xs text-[#A3A3A3] font-semibold text-center py-4 bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
