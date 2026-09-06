@@ -1186,7 +1186,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     <h3 className="text-xs font-black uppercase text-[#111111] tracking-wider">
                       Section Question Counts & Marks
                     </h3>
-                    <span className="text-xs font-black px-3 py-1 rounded-lg bg-[#111111] text-[#F4C430]">
+                    <span className="text-xs font-black px-3 py-1 rounded-lg bg-[#111111] text-[#F4C430] whitespace-nowrap shrink-0">
                       Total Marks: {totalCalculatedMarks}
                     </span>
                   </div>

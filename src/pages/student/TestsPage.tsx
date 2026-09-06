@@ -276,10 +276,10 @@ export const TestsPage: React.FC = () => {
       />
 
       {/* Subsection Tab Switcher */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6">
+      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6 overflow-x-auto no-scrollbar max-w-full">
         <button
           onClick={() => setActiveTab('class-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
             activeTab === 'class-test'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
@@ -287,7 +287,7 @@ export const TestsPage: React.FC = () => {
         >
           <FileCheck2 size={15} className={activeTab === 'class-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Class Test</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap ${
             activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
           }`}>
             {tests.length + proctoredTests.length + writtenTests.length}
@@ -296,7 +296,7 @@ export const TestsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('self-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
             activeTab === 'self-test'
               ? 'bg-[#111111] text-white shadow-xs'
               : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
@@ -304,7 +304,7 @@ export const TestsPage: React.FC = () => {
         >
           <Target size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>Self Testing</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430]/20 text-[#111111]">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430]/20 text-[#111111] whitespace-nowrap">
             MCQ
           </span>
         </button>
@@ -334,7 +334,7 @@ export const TestsPage: React.FC = () => {
               </div>
 
               {/* Test Type Filter */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0 flex-wrap">
+              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0 overflow-x-auto no-scrollbar">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'proctored', label: 'MCQs' },
@@ -345,7 +345,7 @@ export const TestsPage: React.FC = () => {
                   <button
                     key={type.id}
                     onClick={() => setTestTypeFilter(type.id as any)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                       testTypeFilter === type.id
                         ? 'bg-[#111111] text-white shadow-xs'
                         : 'text-[#737373] hover:text-[#111111]'
@@ -357,12 +357,12 @@ export const TestsPage: React.FC = () => {
               </div>
 
               {/* Status Filter */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0">
+              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0 overflow-x-auto no-scrollbar">
                 {(['all', 'pending', 'submitted', 'graded'] as const).map((st) => (
                   <button
                     key={st}
                     onClick={() => setStatusFilter(st)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold capitalize transition-all ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold capitalize whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                       statusFilter === st
                         ? 'bg-[#111111] text-white shadow-xs'
                         : 'text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5]'

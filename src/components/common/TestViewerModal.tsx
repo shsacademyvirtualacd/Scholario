@@ -162,25 +162,25 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 text-xs text-[#737373] mt-0.5">
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-[#737373] mt-0.5">
                 {isTest && test?.teacher_name && (
-                  <span className="flex items-center gap-1">
-                    <User size={12} /> {test.teacher_name}
+                  <span className="flex items-center gap-1 whitespace-nowrap">
+                    <User size={12} className="shrink-0" /> {test.teacher_name}
                   </span>
                 )}
                 {isTest && test?.due_date && (
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} /> Due: {new Date(test.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  <span className="flex items-center gap-1 whitespace-nowrap">
+                    <Calendar size={12} className="shrink-0" /> Due: {new Date(test.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                 )}
                 {isTest && test?.total_marks && (
-                  <span className="flex items-center gap-1 font-semibold text-[#111111]">
-                    <Award size={12} /> Total Marks: {test.total_marks}
+                  <span className="flex items-center gap-1 font-semibold text-[#111111] whitespace-nowrap">
+                    <Award size={12} className="shrink-0" /> Total Marks: {test.total_marks}
                   </span>
                 )}
                 {!isTest && submission?.submitted_at && (
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} /> Submitted: {new Date(submission.submitted_at).toLocaleString()}
+                  <span className="flex items-center gap-1 whitespace-nowrap">
+                    <Calendar size={12} className="shrink-0" /> Submitted: {new Date(submission.submitted_at).toLocaleString()}
                   </span>
                 )}
               </div>

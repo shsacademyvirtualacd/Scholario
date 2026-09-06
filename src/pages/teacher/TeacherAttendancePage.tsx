@@ -479,11 +479,11 @@ export const TeacherAttendancePage: React.FC = () => {
       </div>
 
       {/* ── View Navigation Tabs ── */}
-      <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-2 overflow-x-auto no-scrollbar max-w-full">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('records')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all inline-flex items-center gap-2 cursor-pointer ${
               activeTab === 'records'
                 ? 'bg-[#111111] text-white shadow-xs'
                 : 'bg-white text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] border border-[#E5E5E5]'
@@ -491,14 +491,14 @@ export const TeacherAttendancePage: React.FC = () => {
           >
             <ClipboardCheck size={14} />
             <span>Attendance Log Records</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeTab === 'records' ? 'bg-[#F4C430] text-[#111111]' : 'bg-[#F0F0F0] text-[#737373]'}`}>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] whitespace-nowrap ${activeTab === 'records' ? 'bg-[#F4C430] text-[#111111]' : 'bg-[#F0F0F0] text-[#737373]'}`}>
               {filteredRecords.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('class_rosters')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all inline-flex items-center gap-2 cursor-pointer ${
               activeTab === 'class_rosters'
                 ? 'bg-[#111111] text-white shadow-xs'
                 : 'bg-white text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] border border-[#E5E5E5]'
@@ -506,13 +506,13 @@ export const TeacherAttendancePage: React.FC = () => {
           >
             <BookOpen size={14} />
             <span>By Assigned Class</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeTab === 'class_rosters' ? 'bg-[#F4C430] text-[#111111]' : 'bg-[#F0F0F0] text-[#737373]'}`}>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] whitespace-nowrap ${activeTab === 'class_rosters' ? 'bg-[#F4C430] text-[#111111]' : 'bg-[#F0F0F0] text-[#737373]'}`}>
               {offerings.length}
             </span>
           </button>
         </div>
 
-        <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#737373]">
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#737373] whitespace-nowrap shrink-0">
           <GraduationCap size={14} className="text-[#F4C430]" />
           <span className="font-semibold text-[#111111]">{offerings.length}</span> classes assigned
         </div>

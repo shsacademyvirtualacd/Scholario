@@ -508,10 +508,10 @@ export const AttendanceAdminPage: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#E5E5E5] mb-6">
+      <div className="flex items-center gap-6 border-b border-[#E5E5E5] mb-6 overflow-x-auto no-scrollbar max-w-full">
         <button
           onClick={() => setActiveTab('by_teacher')}
-          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 ${
+          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'by_teacher' ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
           }`}
         >
@@ -524,7 +524,7 @@ export const AttendanceAdminPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('all_records')}
-          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 ml-4 ${
+          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'all_records' ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
           }`}
         >
@@ -537,7 +537,7 @@ export const AttendanceAdminPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('low_attendance')}
-          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 ml-4 ${
+          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'low_attendance' ? 'text-amber-700' : 'text-[#737373] hover:text-amber-700'
           }`}
         >
@@ -550,7 +550,7 @@ export const AttendanceAdminPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('teacher_ratings')}
-          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 ml-4 ${
+          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'teacher_ratings' ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
           }`}
         >

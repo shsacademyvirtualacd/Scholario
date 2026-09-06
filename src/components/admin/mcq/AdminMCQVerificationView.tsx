@@ -492,7 +492,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
             <GraduationCap size={13} />
             <span>1. Educational Board</span>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {BOARDS.map((b) => {
               const isSelected = selectedBoard === b.id;
               return (
@@ -506,7 +506,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                       setSelectedGrade('9');
                     }
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer border ${
+                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap shrink-0 cursor-pointer border ${
                     isSelected
                       ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
                       : 'bg-[#FAFAFA] text-[#737373] border-[#E5E5E5] hover:text-[#111111] hover:bg-[#F5F5F5]'

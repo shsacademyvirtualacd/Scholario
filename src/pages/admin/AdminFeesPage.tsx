@@ -451,11 +451,11 @@ export const AdminFeesPage: React.FC = () => {
                   </div>
 
                   {/* Board Filter Switcher */}
-                  <div className="flex items-center gap-2 bg-[#F5F5F5] p-1.5 rounded-xl max-w-md">
+                  <div className="flex items-center gap-1.5 bg-[#F5F5F5] p-1.5 rounded-xl overflow-x-auto no-scrollbar max-w-full">
                     <button
                       type="button"
                       onClick={() => setSelectedBoardFilter('all')}
-                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                      className={`py-1.5 px-3 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                         selectedBoardFilter === 'all'
                           ? 'bg-white text-[#111111] shadow-xs'
                           : 'text-[#737373] hover:text-[#111111]'
@@ -470,7 +470,7 @@ export const AdminFeesPage: React.FC = () => {
                           key={b.id}
                           type="button"
                           onClick={() => setSelectedBoardFilter(b.id)}
-                          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                          className={`py-1.5 px-3 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                             selectedBoardFilter === b.id
                               ? 'bg-white text-[#111111] shadow-xs'
                               : 'text-[#737373] hover:text-[#111111]'

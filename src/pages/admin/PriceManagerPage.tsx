@@ -123,11 +123,11 @@ export const PriceManagerPage: React.FC = () => {
         </div>
 
         {/* Board Switcher */}
-        <div className="flex items-center gap-2 bg-white p-2 rounded-2xl border border-[#E5E5E5] shadow-sm max-w-xl flex-wrap">
+        <div className="flex items-center gap-2 bg-white p-2 rounded-2xl border border-[#E5E5E5] shadow-sm overflow-x-auto no-scrollbar max-w-full">
           <button
             type="button"
             onClick={() => setSelectedBoardId('all')}
-            className={`py-2 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+            className={`py-2 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
               selectedBoardId === 'all'
                 ? 'bg-[#111111] text-white shadow-sm'
                 : 'text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5]'
@@ -143,7 +143,7 @@ export const PriceManagerPage: React.FC = () => {
                 key={b.id}
                 type="button"
                 onClick={() => setSelectedBoardId(b.id)}
-                className={`py-2 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+                className={`py-2 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   selectedBoardId === b.id
                     ? 'bg-[#111111] text-white shadow-sm'
                     : 'text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5]'

@@ -286,10 +286,10 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
         {/* Filter Bar & Search */}
         <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-[#F5F5F5] rounded-xl self-start md:self-auto overflow-x-auto max-w-full">
+          <div className="flex items-center gap-1.5 p-1 bg-[#F5F5F5] rounded-xl self-start md:self-auto overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setActiveTab('pending')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'pending'
                   ? 'bg-white text-[#111111] shadow-2xs'
                   : 'text-[#737373] hover:text-[#111111]'
@@ -297,7 +297,7 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
             >
               <span>Pending</span>
               {counts.pending > 0 && (
-                <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-black leading-tight">
+                <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-black leading-tight whitespace-nowrap">
                   {counts.pending}
                 </span>
               )}
@@ -305,7 +305,7 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('approved')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 activeTab === 'approved'
                   ? 'bg-white text-[#111111] shadow-2xs'
                   : 'text-[#737373] hover:text-[#111111]'
@@ -316,7 +316,7 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('rejected')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 activeTab === 'rejected'
                   ? 'bg-white text-[#111111] shadow-2xs'
                   : 'text-[#737373] hover:text-[#111111]'
@@ -327,7 +327,7 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 activeTab === 'all'
                   ? 'bg-white text-[#111111] shadow-2xs'
                   : 'text-[#737373] hover:text-[#111111]'

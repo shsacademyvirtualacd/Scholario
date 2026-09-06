@@ -637,11 +637,11 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             )}
 
             {/* Grade Selector */}
-            <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
-              <span className="text-[11px] font-bold text-[#737373] px-2">Grade:</span>
+            <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] overflow-x-auto no-scrollbar shrink-0">
+              <span className="text-[11px] font-bold text-[#737373] px-2 whitespace-nowrap shrink-0">Grade:</span>
               <button
                 onClick={() => setGradeFilter('all')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   gradeFilter === 'all'
                     ? 'bg-[#111111] text-white shadow-xs'
                     : 'text-[#525252] hover:text-[#111111]'
@@ -653,7 +653,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
                 <button
                   key={g}
                   onClick={() => setGradeFilter(g)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                     gradeFilter === g
                       ? 'bg-[#111111] text-white shadow-xs'
                       : 'text-[#525252] hover:text-[#111111]'
@@ -668,7 +668,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             <select
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
-              className="h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden cursor-pointer max-w-[170px]"
+              className="h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden cursor-pointer max-w-[170px] shrink-0"
             >
               <option value="all">All Subjects</option>
               {distinctSubjects.map((sub) => (
@@ -679,8 +679,8 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             </select>
 
             {/* Date Range Selector */}
-            <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
-              <Calendar size={13} className="text-[#737373] ml-1.5 mr-0.5" />
+            <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] overflow-x-auto no-scrollbar shrink-0">
+              <Calendar size={13} className="text-[#737373] ml-1.5 mr-0.5 shrink-0" />
               {[
                 { key: 'all', label: 'All Time' },
                 { key: 'today', label: 'Today' },
@@ -690,7 +690,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
                 <button
                   key={d.key}
                   onClick={() => setDateRange(d.key as any)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                     dateRange === d.key
                       ? 'bg-[#111111] text-white shadow-xs'
                       : 'text-[#525252] hover:text-[#111111]'

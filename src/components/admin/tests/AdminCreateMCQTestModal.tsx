@@ -327,10 +327,10 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
             </button>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-[#737373]">
-            <span>Total Marks: <strong className="text-[#111111] font-mono">{totalCalculatedMarks}</strong></span>
+          <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-[#737373] whitespace-nowrap shrink-0">
+            <span className="whitespace-nowrap">Total Marks: <strong className="text-[#111111] font-mono">{totalCalculatedMarks}</strong></span>
             <span>•</span>
-            <span>Duration: <strong className="text-[#111111] font-mono">{durationMinutes} min</strong></span>
+            <span className="whitespace-nowrap">Duration: <strong className="text-[#111111] font-mono">{durationMinutes} min</strong></span>
           </div>
         </div>
 

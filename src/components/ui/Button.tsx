@@ -15,7 +15,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       disabled={disabled || isLoading}
-      className={`relative inline-flex items-center justify-center gap-1.5 transition-all ${className}`}
+      className={`relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 select-none transition-all ${className}`}
       {...props}
     >
       {isLoading && (

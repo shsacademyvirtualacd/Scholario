@@ -363,9 +363,9 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3 py-1.5 rounded-xl border border-[#E5E5E5]">
-            <span>Total Marks:</span>
-            <span className="text-amber-700 font-extrabold">{totalCalculatedMarks}</span>
+          <div className="flex items-center gap-2 text-xs font-bold text-[#111111] bg-white px-3 py-1.5 rounded-xl border border-[#E5E5E5] whitespace-nowrap shrink-0">
+            <span className="whitespace-nowrap">Total Marks:</span>
+            <span className="text-amber-700 font-extrabold whitespace-nowrap">{totalCalculatedMarks}</span>
           </div>
         </div>
 

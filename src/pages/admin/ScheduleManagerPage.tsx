@@ -663,7 +663,7 @@ export const ScheduleManagerPage: React.FC = () => {
                 <button
                   key={b.id}
                   onClick={() => handleBoardChange(b.id)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedBoard === b.id
                       ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
                       : 'bg-[#FAFAFA] border-[#E5E5E5] text-[#737373]'
@@ -683,7 +683,7 @@ export const ScheduleManagerPage: React.FC = () => {
                 <button
                   key={g.id}
                   onClick={() => handleGradeChange(g.id)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedGrade === g.id
                       ? 'bg-[#111111] border-[#111111] text-white'
                       : 'bg-white border-[#E5E5E5] text-[#525252]'
@@ -754,12 +754,12 @@ export const ScheduleManagerPage: React.FC = () => {
         /* Desktop: original tab + filter bar layout */
         <>
           <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-            <div className="flex overflow-x-auto gap-6 border-transparent">
+            <div className="flex overflow-x-auto no-scrollbar gap-6 border-transparent max-w-full">
               {BOARDS.map((b) => (
                 <button
                   key={b.id}
                   onClick={() => handleBoardChange(b.id)}
-                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedBoard === b.id
                       ? 'border-[#F4C430] text-[#111111]'
                       : 'border-transparent text-[#737373] hover:text-[#111111]'

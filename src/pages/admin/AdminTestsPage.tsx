@@ -413,12 +413,12 @@ export const AdminTestsPage: React.FC = () => {
         <>
           {/* Board Selector Tabs */}
           <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <div className="flex overflow-x-auto gap-6 border-transparent">
+            <div className="flex overflow-x-auto no-scrollbar gap-6 border-transparent max-w-full">
               {BOARDS.map((b) => (
                 <button
                   key={b.id}
                   onClick={() => handleBoardChange(b.id)}
-                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 cursor-pointer ${
+                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedBoard === b.id
                       ? 'border-[#F4C430] text-[#111111]'
                       : 'border-transparent text-[#737373] hover:text-[#111111]'
@@ -432,7 +432,7 @@ export const AdminTestsPage: React.FC = () => {
             {(selectedBoard !== 'fbise' || gradeFilter !== 'all' || subjectFilter !== 'all' || searchTerm !== '') && (
               <button
                 onClick={resetFilters}
-                className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive pb-2 sm:pb-0"
+                className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 whitespace-nowrap shrink-0 interactive pb-2 sm:pb-0"
               >
                 <RotateCcw size={10} />
                 Reset Filters
@@ -455,13 +455,13 @@ export const AdminTestsPage: React.FC = () => {
 
             <div className="flex items-center gap-2 flex-wrap">
               {/* Grade Selector */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
-                <span className="text-[11px] font-bold text-[#737373] px-2">Grade:</span>
+              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] overflow-x-auto no-scrollbar shrink-0">
+                <span className="text-[11px] font-bold text-[#737373] px-2 whitespace-nowrap shrink-0">Grade:</span>
                 {['all', ...availableGrades.map((g) => g.grade)].map((g) => (
                   <button
                     key={g}
                     onClick={() => setGradeFilter(g)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                       gradeFilter === g
                         ? 'bg-[#111111] text-white shadow-xs'
                         : 'text-[#525252] hover:text-[#111111]'
@@ -473,7 +473,7 @@ export const AdminTestsPage: React.FC = () => {
               </div>
 
               {/* Test Type Filter: All vs Online Tests vs Short Qs vs Long Qs vs PDF Papers */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] flex-wrap">
+              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] overflow-x-auto no-scrollbar shrink-0">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'unified', label: 'Online Tests' },
@@ -484,7 +484,7 @@ export const AdminTestsPage: React.FC = () => {
                   <button
                     key={type.id}
                     onClick={() => setTestTypeFilter(type.id as any)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                       testTypeFilter === type.id
                         ? 'bg-[#111111] text-white shadow-xs'
                         : 'text-[#525252] hover:text-[#111111]'
