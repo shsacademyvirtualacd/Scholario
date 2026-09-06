@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Check, ArrowRight, Zap, GraduationCap, BookOpen, Layers } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Check, ArrowRight, Zap, GraduationCap, BookOpen, Layers, SlidersHorizontal } from 'lucide-react';
 import { BOARDS, getGradesForBoard, getDefaultPrice } from '../../lib/taxonomy';
 import { getAllLiveFeeConfigs } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -94,6 +95,18 @@ const PricingSection: React.FC = () => {
     planDescription = `Structured daily classes, syllabus schedules and interactive note vaults for Class ${gradeVal}th.`;
     activeBadgeLabel = `${currentBoardDef.name} · Class ${gradeVal}th`;
     registerUrl = `/register?board=${selectedBoardId}&grade=${gradeVal}`;
+  }
+
+  // Pre-configured URL to pre-load selected board, class and stream on Compare Plans page
+  let compareUrl = '';
+  if (isIelts) {
+    compareUrl = `/enrollment/compare?board=ielts&stream=${encodeURIComponent(selectedIeltsStream)}&grade=IELTS&class=IELTS`;
+  } else {
+    const gradesForSelectedBoard = getGradesForBoard(selectedBoardId);
+    const gradeDef = gradesForSelectedBoard.find((g) => g.grade === selectedGradeValue) || gradesForSelectedBoard[0];
+    const gradeVal = gradeDef?.grade || selectedGradeValue;
+    const defaultStream = gradeDef?.streams?.[0]?.name || '';
+    compareUrl = `/enrollment/compare?board=${selectedBoardId}&grade=${gradeVal}&class=${gradeVal}${defaultStream ? `&stream=${encodeURIComponent(defaultStream)}` : ''}`;
   }
 
   return (
@@ -212,9 +225,36 @@ const PricingSection: React.FC = () => {
                   </li>
                 ))}
               </ul>
+
+              {/* Compare Plans Link directly below the Active Subjects Included checklist */}
+              <div className="mt-4 pt-3.5 border-t border-[#EAEAEA]">
+                <Link
+                  id="pricing-checklist-compare-plans-link"
+                  to={compareUrl}
+                  className="group flex items-center justify-between p-3 rounded-xl bg-white border border-[#E5E5E5] hover:border-[#F4C430] hover:bg-[#FFFDF5] transition-all shadow-2xs cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#FFFBF0] flex items-center justify-center border border-[#FDF3C8] shrink-0 text-[#D4A017]">
+                      <SlidersHorizontal size={13} />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-xs font-extrabold text-[#111111] block group-hover:text-amber-800 transition-colors">
+                        Compare Plans
+                      </span>
+                      <span className="text-[11px] text-[#737373] block">
+                        Full Academic Package vs Per-Subject Enrollment
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs font-bold text-[#111111] shrink-0">
+                    <span className="text-[11px] text-[#D4A017] font-extrabold">Compare</span>
+                    <ArrowRight size={13} className="text-[#F4C430] group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </Link>
+              </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[#E5E5E5] text-[11px] text-[#737373] flex items-center gap-2">
+            <div className="mt-6 pt-5 border-t border-[#E5E5E5] text-[11px] text-[#737373] flex items-center gap-2">
               <BookOpen size={13} className="text-[#F4C430] shrink-0" />
               <span>
                 Full curriculum aligned with {isIelts ? 'IELTS syllabus guidelines' : `${currentBoardDef.name} syllabus guidelines`}.
@@ -279,13 +319,24 @@ const PricingSection: React.FC = () => {
                 </ul>
               </div>
 
-              <a
-                href={registerUrl}
-                className="btn btn-gold btn-md w-full flex items-center justify-center gap-1 interactive mt-4"
-              >
-                Get Started with {currentBoardDef.name}
-                <ArrowRight size={14} />
-              </a>
+              <div className="space-y-2 mt-4">
+                <a
+                  href={registerUrl}
+                  className="btn btn-gold btn-md w-full flex items-center justify-center gap-1.5 interactive"
+                >
+                  <span>Get Started with {currentBoardDef.name}</span>
+                  <ArrowRight size={14} />
+                </a>
+
+                <Link
+                  id="pricing-card-compare-plans-btn"
+                  to={compareUrl}
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-[#E5E5E5] hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 flex items-center justify-center gap-2 transition-all cursor-pointer text-center"
+                >
+                  <SlidersHorizontal size={13} className="text-[#F4C430]" />
+                  <span>Compare Plans</span>
+                </Link>
+              </div>
             </div>
 
           </div>

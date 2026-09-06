@@ -48,7 +48,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
 
   // If used standalone via route, resolve params from query string
   const queryBoard = searchParams.get('board') || 'fbise';
-  const queryGrade = searchParams.get('grade') || '10';
+  const queryGrade = searchParams.get('grade') || searchParams.get('class') || '10';
   const queryStream = searchParams.get('stream') || '';
 
   const activeBoardId = propBoardId || queryBoard;
@@ -58,7 +58,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
     per_subject_fee: propPerSubFee || 1000,
     auto_upgrade_threshold: 3,
   });
-  const [baseFee, setBaseFee] = useState<number>(propBaseFee || 3000);
+  const [baseFee, setBaseFee] = useState<number>(propBaseFee || getDefaultPrice(activeGrade, activeBoardId, propStreamName || queryStream) || 3000);
   const [availableSubjects, setAvailableSubjects] = useState<string[]>(propSubjects || []);
   const [resolvedStreamName, setResolvedStreamName] = useState<string>(propStreamName || queryStream || 'General');
   
@@ -98,13 +98,13 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
         if (cfg && typeof cfg.amount === 'number' && cfg.amount > 0) {
           setBaseFee(cfg.amount);
         } else {
-          setBaseFee(getDefaultPrice(activeGrade, activeBoardId));
+          setBaseFee(getDefaultPrice(activeGrade, activeBoardId, propStreamName || queryStream));
         }
       })
       .catch(() => {
-        setBaseFee(getDefaultPrice(activeGrade, activeBoardId));
+        setBaseFee(getDefaultPrice(activeGrade, activeBoardId, propStreamName || queryStream));
       });
-  }, [activeGrade, propClassId, activeBoardId, propBaseFee]);
+  }, [activeGrade, propClassId, activeBoardId, propBaseFee, propStreamName, queryStream]);
 
   // Load taxonomy if available subjects not provided
   useEffect(() => {
@@ -117,9 +117,24 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
     }
 
     if (activeBoardId === 'ielts') {
-      const ieltsSubs = ['IELTS Listening', 'IELTS Reading', 'IELTS Writing', 'IELTS Speaking'];
+      const isGt = (queryStream || propStreamName || propStreamId || '').toLowerCase().includes('general') || (queryStream || '').toLowerCase().includes('gt');
+      const ieltsSubs = isGt
+        ? [
+            'IELTS Listening',
+            'IELTS Reading (GT)',
+            'IELTS Writing (GT)',
+            'IELTS Speaking',
+            'IELTS Reading (Academic)',
+            'IELTS Writing (Academic)',
+          ]
+        : [
+            'IELTS Listening',
+            'IELTS Reading (Academic)',
+            'IELTS Writing (Academic)',
+            'IELTS Speaking',
+          ];
       setAvailableSubjects(ieltsSubs);
-      setResolvedStreamName('IELTS Complete Preparation');
+      setResolvedStreamName(queryStream || propStreamName || (isGt ? 'General Training' : 'Academic'));
       if (selectedSubjects.length === 0) {
         setSelectedSubjects(ieltsSubs.slice(0, 2));
       }
@@ -133,25 +148,41 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
           ? boardClasses.find((c: any) => c.id === propClassId)
           : (boardClasses.find((c: any) => String(c.grade) === String(activeGrade)) || boardClasses[0]);
 
-        if (targetCls) {
-          const boardGrades = getGradesForBoard(activeBoardId);
-          const gradeDef = boardGrades.find((g) => String(g.grade) === String(targetCls.grade));
-          const streams = gradeDef?.streams || [];
-          const selectedSt = propStreamId
-            ? streams.find((st) => st.name.toLowerCase() === propStreamId.toLowerCase())
-            : streams[0];
+        const boardGrades = getGradesForBoard(activeBoardId);
+        const gradeDef = boardGrades.find((g) => String(g.grade) === String(targetCls?.grade || activeGrade)) || boardGrades[0];
+        const streams = gradeDef?.streams || [];
+        const targetStreamQuery = propStreamId || propStreamName || queryStream;
+        const selectedSt = targetStreamQuery
+          ? streams.find((st) => st.name.toLowerCase() === targetStreamQuery.toLowerCase()) || streams[0]
+          : streams[0];
 
-          if (selectedSt) {
-            setResolvedStreamName(selectedSt.name);
-            setAvailableSubjects(selectedSt.subjects);
-            if (selectedSubjects.length === 0) {
-              setSelectedSubjects(selectedSt.subjects.slice(0, 2));
-            }
+        if (selectedSt) {
+          setResolvedStreamName(selectedSt.name);
+          setAvailableSubjects(selectedSt.subjects);
+          if (selectedSubjects.length === 0) {
+            setSelectedSubjects(selectedSt.subjects.slice(0, 2));
           }
         }
       })
-      .catch(console.warn);
-  }, [activeBoardId, activeGrade, propClassId, propStreamId, propSubjects]);
+      .catch((err) => {
+        console.warn('[PlanComparisonPage] Failed to fetch taxonomy, using static definitions:', err);
+        const boardGrades = getGradesForBoard(activeBoardId);
+        const gradeDef = boardGrades.find((g) => String(g.grade) === String(activeGrade)) || boardGrades[0];
+        const streams = gradeDef?.streams || [];
+        const targetStreamQuery = propStreamId || propStreamName || queryStream;
+        const selectedSt = targetStreamQuery
+          ? streams.find((st) => st.name.toLowerCase() === targetStreamQuery.toLowerCase()) || streams[0]
+          : streams[0];
+
+        if (selectedSt) {
+          setResolvedStreamName(selectedSt.name);
+          setAvailableSubjects(selectedSt.subjects);
+          if (selectedSubjects.length === 0) {
+            setSelectedSubjects(selectedSt.subjects.slice(0, 2));
+          }
+        }
+      });
+  }, [activeBoardId, activeGrade, propClassId, propStreamId, propStreamName, queryStream, propSubjects]);
 
   // Toggle individual subject in Option A
   const toggleSubject = (sub: string) => {
@@ -200,7 +231,11 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
     if (onBack) {
       onBack();
     } else {
-      navigate(-1);
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate('/');
+      }
     }
   };
 
@@ -218,7 +253,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#737373] hover:text-[#111111] transition-colors mb-2 cursor-pointer"
             >
               <ArrowLeft size={14} />
-              <span>Back to Class Selection</span>
+              <span>{onBack ? 'Back to Class Selection' : 'Back to Pricing Calculator'}</span>
             </button>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black tracking-tight text-[#111111]">
@@ -529,7 +564,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
             onClick={handleGoBack}
             className="text-xs font-bold text-[#111111] hover:underline shrink-0 cursor-pointer"
           >
-            Continue with Form
+            {onBack ? 'Continue with Form' : 'Return to Pricing'}
           </button>
         </div>
 
