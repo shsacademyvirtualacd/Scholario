@@ -528,35 +528,35 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             </div>
           )}
 
-      {/* Summary KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Summary KPI Cards Grid - Compact Stat Tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         {/* Total Attempts */}
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-[#737373] mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total Attempts</span>
-            <FileCheck2 size={16} className="text-[#111111]" />
+        <div className="bg-white border border-[#E5E5E5] rounded-xl px-3.5 py-2.5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#737373]">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate">Total Attempts</span>
+            <FileCheck2 size={14} className="text-[#111111] shrink-0" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#111111] tracking-tight">
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-lg sm:text-xl font-black text-[#111111] tracking-tight font-mono">
               {stats.totalAttempts}
             </span>
-            <span className="text-[11px] font-semibold text-[#737373]">
-              across {stats.uniqueStudents} {stats.uniqueStudents === 1 ? 'student' : 'students'}
+            <span className="text-[10px] font-semibold text-[#737373] truncate">
+              ({stats.uniqueStudents} {stats.uniqueStudents === 1 ? 'student' : 'students'})
             </span>
           </div>
         </div>
 
         {/* Class Average Score */}
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-[#737373] mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Class Average</span>
-            <TrendingUp size={16} className={stats.averageScore >= 75 ? 'text-emerald-600' : 'text-amber-600'} />
+        <div className="bg-white border border-[#E5E5E5] rounded-xl px-3.5 py-2.5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#737373]">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate">Class Average</span>
+            <TrendingUp size={14} className={stats.averageScore >= 75 ? 'text-emerald-600 shrink-0' : 'text-amber-600 shrink-0'} />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#111111] tracking-tight">
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-lg sm:text-xl font-black text-[#111111] tracking-tight font-mono">
               {stats.averageScore}%
             </span>
-            <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
               stats.averageScore >= 75 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
             }`}>
               {stats.averageScore >= 75 ? 'Strong' : 'Average'}
@@ -565,34 +565,32 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
         </div>
 
         {/* Pass Rate */}
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-[#737373] mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pass Rate (&ge;60%)</span>
-            <Award size={16} className="text-[#F4C430]" />
+        <div className="bg-white border border-[#E5E5E5] rounded-xl px-3.5 py-2.5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#737373]">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate">Pass Rate (&ge;60%)</span>
+            <Award size={14} className="text-[#F4C430] shrink-0" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#111111] tracking-tight">
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-lg sm:text-xl font-black text-[#111111] tracking-tight font-mono">
               {stats.passRate}%
             </span>
-            <span className="text-[11px] font-semibold text-[#737373]">
+            <span className="text-[10px] font-semibold text-[#737373]">
               High: {stats.highestScore}%
             </span>
           </div>
         </div>
 
         {/* Avg Completion Time */}
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-[#737373] mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Avg Time / Quiz</span>
-            <Clock size={16} className="text-[#111111]" />
+        <div className="bg-white border border-[#E5E5E5] rounded-xl px-3.5 py-2.5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#737373]">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate">Avg Time / Quiz</span>
+            <Clock size={14} className="text-[#111111] shrink-0" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#111111] tracking-tight">
-              {stats.avgTimeMinutes} <span className="text-sm font-semibold text-[#737373]">min</span>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-lg sm:text-xl font-black text-[#111111] tracking-tight font-mono">
+              {stats.avgTimeMinutes}
             </span>
-            <span className="text-[11px] font-semibold text-[#737373]">
-              per session
-            </span>
+            <span className="text-[10px] font-semibold text-[#737373]">min / session</span>
           </div>
         </div>
       </div>
@@ -747,133 +745,229 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] text-[11px] font-extrabold text-[#737373] uppercase tracking-wider">
-                  <th className="py-3 px-4">Student</th>
-                  <th className="py-3 px-4">Class & Board</th>
-                  <th className="py-3 px-4">Subject & Topic</th>
-                  <th className="py-3 px-4">Mode</th>
-                  <th className="py-3 px-4 text-center">Score</th>
-                  <th className="py-3 px-4">Time Taken</th>
-                  <th className="py-3 px-4">Date & Time</th>
-                  <th className="py-3 px-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F0F0F0] text-xs">
-                {filteredResults.map((attempt) => {
-                  const initials = (attempt.student_name || 'Student')
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .substring(0, 2)
-                    .toUpperCase();
+          <>
+            {/* Mobile View: Responsive Card-per-row layout (no horizontal scrolling) */}
+            <div className="block md:hidden divide-y divide-[#F0F0F0]">
+              {filteredResults.map((attempt) => {
+                const initials = (attempt.student_name || 'Student')
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .substring(0, 2)
+                  .toUpperCase();
 
-                  return (
-                    <tr
-                      key={attempt.id}
-                      onClick={() => setSelectedAttempt(attempt)}
-                      className="hover:bg-[#FAFAFA] transition-colors cursor-pointer group"
-                    >
-                      {/* Student Name */}
-                      <td className="py-3.5 px-4 font-bold text-[#111111]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#111111] text-white flex items-center justify-center text-[11px] font-black shrink-0">
-                            {initials}
+                return (
+                  <div
+                    key={`m-attempt-${attempt.id}`}
+                    onClick={() => setSelectedAttempt(attempt)}
+                    className="p-4 space-y-3 hover:bg-[#FCFCFC] transition-colors cursor-pointer"
+                  >
+                    {/* Header: Student Profile & Score Badge */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-full bg-[#111111] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                          {initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-extrabold text-[#111111] text-xs truncate">
+                            {attempt.student_name}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="px-1.5 py-0.2 bg-[#111111] text-white font-extrabold text-[9px] rounded">
+                              Grade {attempt.grade}
+                            </span>
+                            <span className="text-[10px] font-bold text-[#737373] uppercase">
+                              {attempt.board || 'FBISE'}
+                            </span>
                           </div>
-                          <div>
-                            <p className="font-extrabold text-[#111111] group-hover:text-[#111111]">
-                              {attempt.student_name}
-                            </p>
-                            {attempt.student_email && (
-                              <p className="text-[10px] font-medium text-[#737373]">
-                                {attempt.student_email}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        {getScoreBadge(attempt.score, attempt.total_questions, attempt.percentage)}
+                      </div>
+                    </div>
+
+                    {/* Subject & Topic Card */}
+                    <div className="bg-[#FAFAFA] rounded-xl p-2.5 border border-[#F0F0F0]">
+                      <div className="font-extrabold text-[#111111] text-xs">
+                        {attempt.subject}
+                      </div>
+                      <p className="text-[11px] font-medium text-[#737373] truncate mt-0.5" title={attempt.topic}>
+                        {attempt.topic || (attempt.chapters && attempt.chapters.join(', ')) || 'General Test'}
+                      </p>
+                    </div>
+
+                    {/* 2-Column Mini-Grid: Mode & Time/Date */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-[#FAFAFA] rounded-xl p-2 border border-[#F0F0F0]">
+                        <span className="text-[9px] font-bold uppercase text-[#737373] tracking-wider block">Mode</span>
+                        <span className="font-extrabold text-[10px] text-amber-900 mt-0.5 block truncate">
+                          {attempt.exam_mode === 'full_syllabus'
+                            ? 'Full Syllabus'
+                            : attempt.exam_mode === 'multi_chapter'
+                            ? 'Multi-Chapter'
+                            : attempt.exam_mode === 'weak_topics'
+                            ? 'Weak Topics'
+                            : 'Chapter Test'}
+                        </span>
+                      </div>
+
+                      <div className="bg-[#FAFAFA] rounded-xl p-2 border border-[#F0F0F0]">
+                        <span className="text-[9px] font-bold uppercase text-[#737373] tracking-wider block">Time & Date</span>
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-[#111111] mt-0.5">
+                          <Clock size={10} className="text-[#737373]" />
+                          <span>{formatSeconds(attempt.time_spent_seconds)}</span>
+                          <span className="text-[#A3A3A3]">•</span>
+                          <span className="text-[#737373]">{formatDate(attempt.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAttempt(attempt);
+                      }}
+                      className="w-full h-8 flex items-center justify-center gap-1 rounded-xl bg-[#FAFAFA] hover:bg-[#111111] hover:text-white text-[#525252] font-bold text-xs border border-[#E5E5E5] transition-all cursor-pointer"
+                    >
+                      <span>View Breakdown</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View: Sticky pinned Student column */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] text-[11px] font-extrabold text-[#737373] uppercase tracking-wider">
+                    <th className="py-3 px-4 sticky left-0 bg-[#FAFAFA] z-10 shadow-[1px_0_0_0_#E5E5E5]">Student</th>
+                    <th className="py-3 px-4">Class & Board</th>
+                    <th className="py-3 px-4">Subject & Topic</th>
+                    <th className="py-3 px-4">Mode</th>
+                    <th className="py-3 px-4 text-center">Score</th>
+                    <th className="py-3 px-4">Time Taken</th>
+                    <th className="py-3 px-4">Date & Time</th>
+                    <th className="py-3 px-4 text-right">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0F0F0] text-xs">
+                  {filteredResults.map((attempt) => {
+                    const initials = (attempt.student_name || 'Student')
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .substring(0, 2)
+                      .toUpperCase();
+
+                    return (
+                      <tr
+                        key={attempt.id}
+                        onClick={() => setSelectedAttempt(attempt)}
+                        className="hover:bg-[#FAFAFA] transition-colors cursor-pointer group"
+                      >
+                        {/* Student Name - Sticky Left Column */}
+                        <td className="py-3.5 px-4 font-bold text-[#111111] sticky left-0 bg-white group-hover:bg-[#FAFAFA] z-10 shadow-[1px_0_0_0_#F0F0F0] transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-[#111111] text-white flex items-center justify-center text-[11px] font-black shrink-0">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-extrabold text-[#111111] group-hover:text-[#111111]">
+                                {attempt.student_name}
                               </p>
+                              {attempt.student_email && (
+                                <p className="text-[10px] font-medium text-[#737373]">
+                                  {attempt.student_email}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Class & Board */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded-md bg-[#111111] text-white font-extrabold text-[10px]">
+                              Grade {attempt.grade}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-[#F5F5F5] border border-[#E5E5E5] text-[#525252] font-bold text-[10px] uppercase">
+                              {attempt.board || 'FBISE'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Subject & Topic */}
+                        <td className="py-3.5 px-4 max-w-[280px]">
+                          <div className="font-extrabold text-[#111111] flex items-center gap-1.5">
+                            <span>{attempt.subject}</span>
+                          </div>
+                          <p className="text-[11px] font-medium text-[#737373] truncate mt-0.5" title={attempt.topic}>
+                            {attempt.topic || (attempt.chapters && attempt.chapters.join(', ')) || 'General Test'}
+                          </p>
+                        </td>
+
+                        {/* Exam Mode / Difficulty */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200/60 font-extrabold text-[10px] w-fit uppercase">
+                              {attempt.exam_mode === 'full_syllabus'
+                                ? 'Full Syllabus'
+                                : attempt.exam_mode === 'multi_chapter'
+                                ? 'Multi-Chapter'
+                                : attempt.exam_mode === 'weak_topics'
+                                ? 'Weak Topics'
+                                : 'Chapter Test'}
+                            </span>
+                            {attempt.difficulty && (
+                              <span className="text-[10px] font-semibold text-[#737373] capitalize">
+                                {attempt.difficulty} level
+                              </span>
                             )}
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Class & Board */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded-md bg-[#111111] text-white font-extrabold text-[10px]">
-                            Grade {attempt.grade}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-md bg-[#F5F5F5] border border-[#E5E5E5] text-[#525252] font-bold text-[10px] uppercase">
-                            {attempt.board || 'FBISE'}
-                          </span>
-                        </div>
-                      </td>
+                        {/* Score Badge */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          {getScoreBadge(attempt.score, attempt.total_questions, attempt.percentage)}
+                        </td>
 
-                      {/* Subject & Topic */}
-                      <td className="py-3.5 px-4 max-w-[280px]">
-                        <div className="font-extrabold text-[#111111] flex items-center gap-1.5">
-                          <span>{attempt.subject}</span>
-                        </div>
-                        <p className="text-[11px] font-medium text-[#737373] truncate mt-0.5" title={attempt.topic}>
-                          {attempt.topic || (attempt.chapters && attempt.chapters.join(', ')) || 'General Test'}
-                        </p>
-                      </td>
+                        {/* Time Taken */}
+                        <td className="py-3.5 px-4 whitespace-nowrap font-bold text-[#525252]">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={13} className="text-[#A3A3A3]" />
+                            <span>{formatSeconds(attempt.time_spent_seconds)}</span>
+                          </div>
+                        </td>
 
-                      {/* Exam Mode / Difficulty */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1">
-                          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200/60 font-extrabold text-[10px] w-fit uppercase">
-                            {attempt.exam_mode === 'full_syllabus'
-                              ? 'Full Syllabus'
-                              : attempt.exam_mode === 'multi_chapter'
-                              ? 'Multi-Chapter'
-                              : attempt.exam_mode === 'weak_topics'
-                              ? 'Weak Topics'
-                              : 'Chapter Test'}
-                          </span>
-                          {attempt.difficulty && (
-                            <span className="text-[10px] font-semibold text-[#737373] capitalize">
-                              {attempt.difficulty} level
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                        {/* Date & Time */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <p className="font-bold text-[#111111]">{formatDate(attempt.created_at)}</p>
+                          <p className="text-[10px] font-medium text-[#737373]">{formatTimeStr(attempt.created_at)}</p>
+                        </td>
 
-                      {/* Score Badge */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        {getScoreBadge(attempt.score, attempt.total_questions, attempt.percentage)}
-                      </td>
-
-                      {/* Time Taken */}
-                      <td className="py-3.5 px-4 whitespace-nowrap font-bold text-[#525252]">
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={13} className="text-[#A3A3A3]" />
-                          <span>{formatSeconds(attempt.time_spent_seconds)}</span>
-                        </div>
-                      </td>
-
-                      {/* Date & Time */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <p className="font-bold text-[#111111]">{formatDate(attempt.created_at)}</p>
-                        <p className="text-[10px] font-medium text-[#737373]">{formatTimeStr(attempt.created_at)}</p>
-                      </td>
-
-                      {/* Action */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedAttempt(attempt);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-[#FAFAFA] hover:bg-[#111111] hover:text-white text-[#525252] font-bold text-xs border border-[#E5E5E5] transition-all"
-                        >
-                          View Breakdown
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        {/* Action */}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAttempt(attempt);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-[#FAFAFA] hover:bg-[#111111] hover:text-white text-[#525252] font-bold text-xs border border-[#E5E5E5] transition-all"
+                          >
+                            View Breakdown
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

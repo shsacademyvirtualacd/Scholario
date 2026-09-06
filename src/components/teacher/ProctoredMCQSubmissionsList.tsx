@@ -121,46 +121,55 @@ export const ProctoredMCQSubmissionsList: React.FC<ProctoredMCQSubmissionsListPr
 
   return (
     <div className="space-y-4">
-      {/* Top Statistics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-4 rounded-2xl bg-white border border-[#E5E5E5] shadow-xs">
-          <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider block">
+      {/* Top Statistics Cards - Compact Stat Tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider block truncate">
             Submissions Received
           </span>
-          <strong className="text-2xl font-black text-[#111111] font-mono mt-1 block">
-            {totalSubmissions}
-          </strong>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-lg sm:text-xl font-black text-[#111111] font-mono leading-none">
+              {totalSubmissions}
+            </span>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#E5E5E5] shadow-xs">
-          <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider block">
+        <div className="px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider block truncate">
             Pending Finalization
           </span>
-          <strong className={`text-2xl font-black font-mono mt-1 block ${
-            pendingGradingCount > 0 ? 'text-amber-600' : 'text-[#111111]'
-          }`}>
-            {pendingGradingCount}
-          </strong>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className={`text-lg sm:text-xl font-black font-mono leading-none ${
+              pendingGradingCount > 0 ? 'text-amber-600' : 'text-[#111111]'
+            }`}>
+              {pendingGradingCount}
+            </span>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#E5E5E5] shadow-xs">
-          <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider block">
+        <div className="px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider block truncate">
             Proctoring Violations
           </span>
-          <strong className={`text-2xl font-black font-mono mt-1 block ${
-            violationCount > 0 ? 'text-red-600' : 'text-emerald-600'
-          }`}>
-            {violationCount}
-          </strong>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className={`text-lg sm:text-xl font-black font-mono leading-none ${
+              violationCount > 0 ? 'text-red-600' : 'text-emerald-600'
+            }`}>
+              {violationCount}
+            </span>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#E5E5E5] shadow-xs">
-          <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider block">
+        <div className="px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E5E5] shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider block truncate">
             Avg Final Score
           </span>
-          <strong className="text-2xl font-black text-[#111111] font-mono mt-1 block">
-            {avgScore} Marks
-          </strong>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-lg sm:text-xl font-black text-[#111111] font-mono leading-none">
+              {avgScore}
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-bold text-[#737373]">Marks</span>
+          </div>
         </div>
       </div>
 
@@ -230,97 +239,199 @@ export const ProctoredMCQSubmissionsList: React.FC<ProctoredMCQSubmissionsListPr
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAFAFA] border-b border-[#E5E5E5] text-[11px] font-black uppercase text-[#737373] tracking-wider">
-                <tr>
-                  <th className="px-5 py-3.5">Candidate</th>
-                  <th className="px-5 py-3.5">Assessment & Subject</th>
-                  <th className="px-5 py-3.5">Score</th>
-                  <th className="px-5 py-3.5">Proctoring Status</th>
-                  <th className="px-5 py-3.5">Grading</th>
-                  <th className="px-5 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F0F0F0]">
-                {filteredSubmissions.map((sub) => {
-                  const test = testMap.get(sub.test_id);
-                  const isGraded = sub.status === 'graded';
-                  const hasViolation = !!sub.violation_reason;
+          <>
+            {/* Mobile View: Responsive Card-per-row layout (no horizontal scrolling) */}
+            <div className="block md:hidden divide-y divide-[#F0F0F0]">
+              {filteredSubmissions.map((sub) => {
+                const test = testMap.get(sub.test_id);
+                const isGraded = sub.status === 'graded';
+                const hasViolation = !!sub.violation_reason;
 
-                  return (
-                    <tr key={sub.id} className="hover:bg-[#FCFCFC] transition-colors">
-                      {/* Candidate */}
-                      <td className="px-5 py-4">
-                        <div className="font-extrabold text-[#111111]">{sub.student_name}</div>
-                        <div className="text-[11px] font-mono text-[#737373] mt-0.5">
+                return (
+                  <div key={`m-${sub.id}`} className="p-4 space-y-3 hover:bg-[#FCFCFC] transition-colors">
+                    {/* Header: Candidate Name & Status Pill */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-extrabold text-[#111111] text-sm truncate">
+                          {sub.student_name}
+                        </div>
+                        <div className="text-[11px] font-mono text-[#737373]">
                           #{sub.student_roll_no || sub.student_id.slice(0, 8)}
                         </div>
-                      </td>
+                      </div>
 
-                      {/* Assessment */}
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-[#111111]">{test?.title || 'MCQ Test'}</div>
-                        <div className="text-[11px] text-[#737373] mt-0.5">
-                          {test?.subject} • Grade {test?.grade} • {test?.questions.length || 0} MCQs
-                        </div>
-                      </td>
-
-                      {/* Score */}
-                      <td className="px-5 py-4 font-mono">
-                        <div className="font-black text-[#111111]">
-                          {isGraded ? sub.final_score : sub.auto_score} / {sub.total_marks}
-                        </div>
-                        <div className="text-[11px] text-[#737373]">
-                          {sub.percentage}% • {Math.round(sub.time_spent_seconds / 60)}m
-                        </div>
-                      </td>
-
-                      {/* Proctoring */}
-                      <td className="px-5 py-4">
-                        {hasViolation ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-800 border border-red-200 text-[10px] font-black uppercase" title={sub.violation_reason || ''}>
-                            <ShieldAlert size={12} className="text-red-600" />
-                            <span>Auto-Submitted: Focus/Screen</span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
-                            <CheckCircle2 size={12} className="text-emerald-600" />
-                            <span>Verified Clean</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-5 py-4">
+                      <div className="shrink-0">
                         {isGraded ? (
-                          <div className="flex items-center gap-1.5 text-emerald-700 font-extrabold">
-                            <Check size={14} />
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-extrabold border border-emerald-200">
+                            <Check size={12} />
                             <span>Graded</span>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
+                          <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
                             Needs Grading
                           </div>
                         )}
-                      </td>
+                      </div>
+                    </div>
 
-                      {/* Action */}
-                      <td className="px-5 py-4 text-right">
-                        <button
-                          onClick={() => handleOpenGrading(sub)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] font-black text-xs cursor-pointer shadow-2xs active:scale-[0.98]"
-                        >
-                          <Award size={13} />
-                          <span>{isGraded ? 'Review / Edit' : 'Grade Test'}</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    {/* Assessment & Subject Box */}
+                    <div className="bg-[#FAFAFA] rounded-xl p-2.5 border border-[#F0F0F0]">
+                      <div className="font-bold text-[#111111] text-xs">
+                        {test?.title || 'MCQ Test'}
+                      </div>
+                      <div className="text-[11px] text-[#737373] mt-0.5">
+                        {test?.subject} • Grade {test?.grade} • {test?.questions.length || 0} MCQs
+                      </div>
+                    </div>
+
+                    {/* 2-Column Mini-Grid: Score & Proctoring Status */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-[#FAFAFA] rounded-xl p-2.5 border border-[#F0F0F0]">
+                        <span className="text-[10px] font-bold uppercase text-[#737373] tracking-wider block">
+                          Score
+                        </span>
+                        <div className="font-black text-[#111111] font-mono text-xs mt-0.5">
+                          {isGraded ? sub.final_score : sub.auto_score} / {sub.total_marks}
+                        </div>
+                        <div className="text-[10px] text-[#737373]">
+                          {sub.percentage}% • {Math.round(sub.time_spent_seconds / 60)}m
+                        </div>
+                      </div>
+
+                      <div className="bg-[#FAFAFA] rounded-xl p-2.5 border border-[#F0F0F0] flex flex-col justify-between">
+                        <span className="text-[10px] font-bold uppercase text-[#737373] tracking-wider block">
+                          Proctoring
+                        </span>
+                        <div className="mt-1">
+                          {hasViolation ? (
+                            <div
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200 text-[9px] font-black uppercase max-w-full"
+                              title={sub.violation_reason || ''}
+                            >
+                              <ShieldAlert size={10} className="text-red-600 shrink-0" />
+                              <span className="truncate">Violations Flagged</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
+                              <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
+                              <span>Verified Clean</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <button
+                      onClick={() => handleOpenGrading(sub)}
+                      className="w-full h-9 flex items-center justify-center gap-1.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] font-black text-xs cursor-pointer shadow-2xs active:scale-[0.99] transition-transform"
+                    >
+                      <Award size={14} />
+                      <span>{isGraded ? 'Review / Edit Submission' : 'Grade Test'}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View: Sticky pinned Candidate column so student context is never lost */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#FAFAFA] border-b border-[#E5E5E5] text-[11px] font-black uppercase text-[#737373] tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3.5 sticky left-0 bg-[#FAFAFA] z-10 shadow-[1px_0_0_0_#E5E5E5]">
+                      Candidate
+                    </th>
+                    <th className="px-5 py-3.5">Assessment & Subject</th>
+                    <th className="px-5 py-3.5">Score</th>
+                    <th className="px-5 py-3.5">Proctoring Status</th>
+                    <th className="px-5 py-3.5">Grading</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0F0F0]">
+                  {filteredSubmissions.map((sub) => {
+                    const test = testMap.get(sub.test_id);
+                    const isGraded = sub.status === 'graded';
+                    const hasViolation = !!sub.violation_reason;
+
+                    return (
+                      <tr key={sub.id} className="hover:bg-[#FCFCFC] transition-colors group">
+                        {/* Candidate - Pinned Sticky Left Column */}
+                        <td className="px-5 py-4 sticky left-0 bg-white group-hover:bg-[#FCFCFC] z-10 shadow-[1px_0_0_0_#F0F0F0] transition-colors">
+                          <div className="font-extrabold text-[#111111]">{sub.student_name}</div>
+                          <div className="text-[11px] font-mono text-[#737373] mt-0.5">
+                            #{sub.student_roll_no || sub.student_id.slice(0, 8)}
+                          </div>
+                        </td>
+
+                        {/* Assessment */}
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-[#111111]">{test?.title || 'MCQ Test'}</div>
+                          <div className="text-[11px] text-[#737373] mt-0.5">
+                            {test?.subject} • Grade {test?.grade} • {test?.questions.length || 0} MCQs
+                          </div>
+                        </td>
+
+                        {/* Score */}
+                        <td className="px-5 py-4 font-mono">
+                          <div className="font-black text-[#111111]">
+                            {isGraded ? sub.final_score : sub.auto_score} / {sub.total_marks}
+                          </div>
+                          <div className="text-[11px] text-[#737373]">
+                            {sub.percentage}% • {Math.round(sub.time_spent_seconds / 60)}m
+                          </div>
+                        </td>
+
+                        {/* Proctoring */}
+                        <td className="px-5 py-4">
+                          {hasViolation ? (
+                            <div
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-800 border border-red-200 text-[10px] font-black uppercase"
+                              title={sub.violation_reason || ''}
+                            >
+                              <ShieldAlert size={12} className="text-red-600" />
+                              <span>Auto-Submitted: Focus/Screen</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                              <CheckCircle2 size={12} className="text-emerald-600" />
+                              <span>Verified Clean</span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-5 py-4">
+                          {isGraded ? (
+                            <div className="flex items-center gap-1.5 text-emerald-700 font-extrabold">
+                              <Check size={14} />
+                              <span>Graded</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
+                              Needs Grading
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Action */}
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            onClick={() => handleOpenGrading(sub)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] font-black text-xs cursor-pointer shadow-2xs active:scale-[0.98]"
+                          >
+                            <Award size={13} />
+                            <span>{isGraded ? 'Review / Edit' : 'Grade Test'}</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
