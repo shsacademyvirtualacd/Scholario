@@ -1575,26 +1575,26 @@ export const RosterManagerPage: React.FC = () => {
             onClick={() => setDrawerOpen(false)}
           />
 
-          <div className="relative w-full max-w-lg sm:max-w-xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
-            <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between bg-[#FAFAFA]">
-              <div>
-                <h3 className="text-base font-black text-[#111111]">
+          <div className="relative w-full max-w-full sm:max-w-lg md:max-w-xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-[#E5E5E5] flex items-center justify-between bg-[#FAFAFA] shrink-0">
+              <div className="min-w-0 pr-2">
+                <h3 className="text-base font-black text-[#111111] truncate">
                   {drawerMode === 'add_teacher' && 'Provision New Teacher'}
                   {drawerMode === 'edit' && `Edit Classes — ${selectedEntry?.full_name}`}
                 </h3>
-                <p className="text-xs text-[#737373] mt-0.5">
+                <p className="text-xs text-[#737373] mt-0.5 break-words">
                   {drawerMode !== 'edit' ? 'Create a pre-provisioned account by email and name.' : 'Update assigned schedule offerings across Federal and Sindh boards.'}
                 </p>
               </div>
               <button 
                 onClick={() => setDrawerOpen(false)}
-                className="p-2 text-zinc-400 hover:text-zinc-700 rounded-lg hover:bg-zinc-100"
+                className="p-2 text-zinc-400 hover:text-zinc-700 rounded-lg hover:bg-zinc-100 shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 flex-1 overflow-y-auto space-y-6">
+            <form onSubmit={handleSave} className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-6 overscroll-contain">
               {formError && (
                 <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
                   <span className="shrink-0 mt-0.5">⚠️</span>
@@ -1997,30 +1997,30 @@ export const RosterManagerPage: React.FC = () => {
 
       {/* ── EDIT STUDENT PROFILE MODAL ── */}
       {editStudentModalOpen && editStudentEntry && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col my-8">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-start sm:items-center justify-center p-2.5 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150 overscroll-contain">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col my-3 sm:my-8 max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
             {/* Header */}
-            <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/70">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
-                  <GraduationCap size={20} />
+            <div className="p-4 sm:p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/70 shrink-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-2">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
+                  <GraduationCap size={18} />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-zinc-900">Edit Student Profile</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Update profile information, board, class grade, and stream</p>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-zinc-900 truncate">Edit Student Profile</h3>
+                  <p className="text-[11px] sm:text-xs text-zinc-500 mt-0.5 line-clamp-1 sm:line-clamp-none">Update profile information, board, class grade, and stream</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setEditStudentModalOpen(false)}
-                className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-xl transition-colors"
+                className="p-1.5 sm:p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-xl transition-colors shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSaveStudentProfile} className="p-6 space-y-5">
+            <form onSubmit={handleSaveStudentProfile} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto overscroll-contain">
               {editStudentError && (
                 <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-center gap-2">
                   <AlertCircle size={15} className="shrink-0" />
@@ -2054,8 +2054,8 @@ export const RosterManagerPage: React.FC = () => {
                     <span>Locked (Login ID)</span>
                   </span>
                 </div>
-                <div className="w-full py-2.5 px-3.5 text-xs bg-zinc-100/90 border border-zinc-200 rounded-xl font-medium text-zinc-700 flex items-center justify-between cursor-not-allowed select-text">
-                  <span className="font-mono">{editStudentEmail || editStudentEntry.email || 'No email associated'}</span>
+                <div className="w-full py-2.5 px-3.5 text-xs bg-zinc-100/90 border border-zinc-200 rounded-xl font-medium text-zinc-700 flex items-center justify-between cursor-not-allowed select-text gap-2">
+                  <span className="font-mono truncate min-w-0">{editStudentEmail || editStudentEntry.email || 'No email associated'}</span>
                   <Lock size={13} className="text-zinc-400 shrink-0" />
                 </div>
                 <p className="text-[11px] text-zinc-500 mt-1.5 flex items-center gap-1">
@@ -2068,11 +2068,11 @@ export const RosterManagerPage: React.FC = () => {
                 <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
                   Academic Board <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => handleBoardChangeInModal('fbise')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentBoard === 'fbise'
                         ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
@@ -2090,7 +2090,7 @@ export const RosterManagerPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleBoardChangeInModal('sindh')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentBoard === 'sindh'
                         ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
@@ -2108,7 +2108,7 @@ export const RosterManagerPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleBoardChangeInModal('ielts')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentBoard === 'ielts'
                         ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
@@ -2131,7 +2131,7 @@ export const RosterManagerPage: React.FC = () => {
                   <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
                     IELTS Stream <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -2140,7 +2140,7 @@ export const RosterManagerPage: React.FC = () => {
                           streamsList.find(s => s.name.toLowerCase().includes('academic'));
                         setEditStudentStreamId(academicStream ? academicStream.id : 'academic');
                       }}
-                      className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                         !editStudentStreamId ||
                         editStudentStreamId === 'academic' ||
                         streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('academic') ||
@@ -2175,7 +2175,7 @@ export const RosterManagerPage: React.FC = () => {
                           streamsList.find(s => s.name.toLowerCase().includes('general') || s.name.toLowerCase().includes('gt'));
                         setEditStudentStreamId(gtStream ? gtStream.id : 'general-training');
                       }}
-                      className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                         editStudentStreamId === 'general-training' ||
                         streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') ||
                         streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt')
@@ -2218,7 +2218,7 @@ export const RosterManagerPage: React.FC = () => {
                                 : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 font-semibold'
                             }`}
                           >
-                            <div className="text-xs">{c.display_name}</div>
+                            <div className="text-xs truncate">{c.display_name}</div>
                           </button>
                         );
                       })}
@@ -2231,7 +2231,7 @@ export const RosterManagerPage: React.FC = () => {
                       Academic Stream <span className="text-red-500">*</span>
                     </label>
                     {availableStreamsForEdit.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {availableStreamsForEdit.map((s) => {
                           const isSelected = editStudentStreamId === s.id;
                           return (
@@ -2239,7 +2239,7 @@ export const RosterManagerPage: React.FC = () => {
                               type="button"
                               key={s.id}
                               onClick={() => setEditStudentStreamId(s.id)}
-                              className={`p-2.5 rounded-xl border text-left transition-all ${
+                              className={`p-2.5 rounded-xl border text-left transition-all w-full whitespace-normal break-words ${
                                 isSelected
                                   ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold ring-1 ring-purple-600/30'
                                   : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-medium'
@@ -2247,7 +2247,7 @@ export const RosterManagerPage: React.FC = () => {
                             >
                               <div className="flex items-center justify-between">
                                 <span className="text-xs">{s.name}</span>
-                                {isSelected && <Check size={12} className="text-purple-600" />}
+                                {isSelected && <Check size={12} className="text-purple-600 shrink-0" />}
                               </div>
                             </button>
                           );
@@ -2264,7 +2264,7 @@ export const RosterManagerPage: React.FC = () => {
 
               {/* Subject Selection (All Subjects vs Specific Custom Subjects) */}
               <div className="pt-2 border-t border-zinc-100 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider">
                     Subject Enrollment Model <span className="text-red-500">*</span>
                   </label>
@@ -2282,7 +2282,7 @@ export const RosterManagerPage: React.FC = () => {
                       setEditStudentEnrollmentMode('all');
                       setEditStudentSubjects([]);
                     }}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentEnrollmentMode === 'all'
                         ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
@@ -2303,7 +2303,7 @@ export const RosterManagerPage: React.FC = () => {
                         setEditStudentSubjects([availableSubjectsForEdit[0]]);
                       }
                     }}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentEnrollmentMode === 'custom'
                         ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
@@ -2342,7 +2342,7 @@ export const RosterManagerPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                       {availableSubjectsForEdit.map((subj) => {
                         const isSelected = editStudentSubjects.includes(subj);
                         return (
@@ -2356,13 +2356,13 @@ export const RosterManagerPage: React.FC = () => {
                                 setEditStudentSubjects([...editStudentSubjects, subj]);
                               }
                             }}
-                            className={`p-2 rounded-xl border text-left flex items-center justify-between transition-all ${
+                            className={`p-2 rounded-xl border text-left flex items-center justify-between transition-all w-full whitespace-normal break-words ${
                               isSelected
                                 ? 'bg-purple-600 border-purple-600 text-white font-bold shadow-sm'
                                 : 'bg-white border-zinc-200 hover:border-zinc-300 text-zinc-700 font-medium'
                             }`}
                           >
-                            <span className="text-xs truncate">{subj}</span>
+                            <span className="text-xs">{subj}</span>
                             {isSelected && <Check size={12} className="text-white shrink-0 ml-1" />}
                           </button>
                         );
@@ -2374,7 +2374,7 @@ export const RosterManagerPage: React.FC = () => {
                         ⚠️ Please select at least one subject.
                       </p>
                     ) : (
-                      <div className="flex items-center justify-between pt-2 border-t border-zinc-200 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-zinc-200 text-xs gap-1">
                         <span className="text-zinc-600 font-medium">
                           Calculated Tuition ({adminCalculatedSubjectFee.subjectCount} subjects):
                         </span>
@@ -2396,7 +2396,7 @@ export const RosterManagerPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEditStudentFeeStatus('unpaid')}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentFeeStatus === 'unpaid'
                         ? 'border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-500/20 font-bold'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
@@ -2412,7 +2412,7 @@ export const RosterManagerPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEditStudentFeeStatus('pending')}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentFeeStatus === 'pending'
                         ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
@@ -2428,7 +2428,7 @@ export const RosterManagerPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEditStudentFeeStatus('paid')}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
                       editStudentFeeStatus === 'paid'
                         ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-600/20 font-bold'
                         : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
@@ -2441,13 +2441,13 @@ export const RosterManagerPage: React.FC = () => {
                     <span className="text-[10px] text-zinc-500 block mt-0.5">Full LMS Access</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-1.5">
+                <p className="text-[11px] text-zinc-500 mt-1.5 break-words">
                   Direct override: Changes access immediately without requiring student payment proof submission.
                 </p>
               </div>
 
               {/* Modal Actions */}
-              <div className="pt-4 border-t border-zinc-100 flex gap-3">
+              <div className="pt-4 border-t border-zinc-100 flex gap-2.5 sm:gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditStudentModalOpen(false)}

@@ -49,9 +49,9 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-hidden">
       {/* Profiler block */}
-      <div className="flex flex-col items-center text-center pb-5 border-b border-[#F5F5F5]">
+      <div className="flex flex-col items-center text-center pb-5 border-b border-[#F5F5F5] w-full">
         <ProfileAvatar
           avatarUrl={teacher.avatar_url}
           name={teacher.full_name}
@@ -59,7 +59,7 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
           size="xl"
           className="mb-3 shadow-inner"
         />
-        <h3 className="text-lg font-black text-[#111111]">{teacher.full_name}</h3>
+        <h3 className="text-lg font-black text-[#111111] break-words max-w-full px-2">{teacher.full_name}</h3>
         <span className={`badge ${teacher.is_active ? 'badge-gold' : 'badge-gray'} mt-1.5`}>
           {teacher.is_active ? 'Active Status' : 'Inactive Status'}
         </span>
@@ -70,30 +70,30 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
       </div>
 
       {/* Contact Details */}
-      <div className="space-y-3">
+      <div className="space-y-3 w-full">
         <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Contact Details</h4>
-        <div className="space-y-2 bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3.5 text-xs text-[#525252] font-semibold">
-          <div className="flex items-center gap-2">
-            <Mail size={13} className="text-[#A3A3A3] shrink-0" />
-            <span className="truncate">{teacher.email || 'No email address registered'}</span>
+        <div className="space-y-2 bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 sm:p-3.5 text-xs text-[#525252] font-semibold w-full overflow-hidden">
+          <div className="flex items-start gap-2 min-w-0">
+            <Mail size={13} className="text-[#A3A3A3] shrink-0 mt-0.5" />
+            <span className="break-all min-w-0 flex-1">{teacher.email || 'No email address registered'}</span>
           </div>
         </div>
       </div>
 
       {/* Key stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
+        <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center min-w-0">
           <div className="text-xl font-black text-[#111111]">{sortedSlots.length}</div>
           <div className="text-[10px] text-[#737373] font-bold uppercase mt-0.5">Classes / Wk</div>
         </div>
-        <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center">
+        <div className="bg-[#FAFAFA] border border-[#F0F0F0] rounded-xl p-3 text-center min-w-0">
           <div className="text-xl font-black text-[#111111]">{studentCount}</div>
           <div className="text-[10px] text-[#737373] font-bold uppercase mt-1">Active Students</div>
         </div>
       </div>
 
       {/* Schedule Slots */}
-      <div className="space-y-3">
+      <div className="space-y-3 w-full">
         <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Assigned Classes</h4>
         {sortedSlots.length === 0 ? (
           <div className="text-xs text-[#A3A3A3] font-semibold text-center py-6 bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
@@ -106,11 +106,11 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
               return (
                 <div
                   key={slot.id}
-                  className={`border border-[#E5E5E5] rounded-xl p-3 bg-white flex justify-between gap-3 ${
+                  className={`border border-[#E5E5E5] rounded-xl p-3 bg-white flex items-center justify-between gap-2.5 min-w-0 ${
                     slot.is_cancelled ? 'opacity-50' : ''
                   }`}
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className="text-[9px] font-bold bg-[#F5F5F5] border border-[#E5E5E5] text-[#737373] px-1.5 py-0.5 rounded uppercase tracking-wider">
                       {DAYS_NAME[slot.day_of_week]}
                     </span>
@@ -118,14 +118,14 @@ export const TeacherDetailPanel: React.FC<TeacherDetailPanelProps> = ({ teacher 
                       {offering?.subject} (Grade {offering?.grade})
                     </h5>
                     <div className="flex items-center gap-1 text-[10px] text-[#A3A3A3] font-bold mt-1">
-                      <Clock size={10} />
-                      <span>{formatTime(slot.start_time)} – {formatTime(slot.end_time)}</span>
+                      <Clock size={10} className="shrink-0" />
+                      <span className="truncate">{formatTime(slot.start_time)} – {formatTime(slot.end_time)}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-[9px] font-extrabold px-2 py-0.5 rounded border self-center truncate max-w-[120px] bg-amber-50 border-amber-200 text-amber-800">
+                  <div className="flex items-center gap-1.5 text-[9px] font-extrabold px-2 py-0.5 rounded border shrink-0 bg-amber-50 border-amber-200 text-amber-800">
                     <Video size={9} className="text-amber-600" />
-                    <span className="truncate">Live Class</span>
+                    <span>Live Class</span>
                   </div>
                 </div>
               );

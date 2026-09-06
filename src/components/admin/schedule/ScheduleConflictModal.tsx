@@ -140,15 +140,15 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white border border-[#E5E5E5] rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto overscroll-contain">
+      <div className="bg-white border border-[#E5E5E5] rounded-2xl sm:rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-1.5rem)] flex flex-col">
         {/* Modal Header */}
-        <div className="p-5 border-b border-[#F0F0F0] bg-amber-50/60 flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-900 shrink-0 mt-0.5">
-              <AlertTriangle size={20} />
+        <div className="p-4 sm:p-5 border-b border-[#F0F0F0] bg-amber-50/60 flex items-start justify-between gap-3 shrink-0">
+          <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-900 shrink-0 mt-0.5">
+              <AlertTriangle size={18} />
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
                 {conflict.type === 'duplicate_class'
                   ? 'Duplicate Class Detected'
@@ -156,10 +156,10 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
                   ? 'Teacher Double-Booking Conflict'
                   : 'Time Slot Collision'}
               </span>
-              <h3 className="font-extrabold text-base text-[#111111] leading-snug">
+              <h3 className="font-extrabold text-sm sm:text-base text-[#111111] leading-snug break-words">
                 {conflict.title}
               </h3>
-              <p className="text-xs text-[#525252] font-medium mt-1">
+              <p className="text-xs text-[#525252] font-medium mt-1 break-words">
                 {conflict.message}
               </p>
             </div>
@@ -173,56 +173,58 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
           </button>
         </div>
 
-        {/* Existing vs Pending Visual Comparison Box */}
-        <div className="px-5 pt-4">
-          <div className="p-3.5 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-2 text-xs">
-            <div className="flex items-center justify-between font-bold text-gray-500 text-[10px] uppercase tracking-wider">
-              <span>Existing Slot in Schedule</span>
-              <span>Attempted Change</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 items-center">
-              {/* Existing slot card preview */}
-              <div className="p-2.5 bg-white border border-amber-200 rounded-xl shadow-xs">
-                <span className="font-extrabold text-gray-900 block truncate">
-                  {conflictingSubject}
-                </span>
-                <span className="text-[11px] text-gray-600 font-semibold flex items-center gap-1 mt-0.5 truncate">
-                  <User size={11} className="text-gray-400 shrink-0" />
-                  {conflictingTeacher}
-                </span>
-                <div className="flex items-center gap-1 text-[10px] text-amber-800 font-bold mt-1">
-                  <Calendar size={10} />
-                  <span>{DAYS_OF_WEEK_SHORT[conflict.conflictingSlot.day_of_week] || 'Day'}</span>
-                  <span>·</span>
-                  <Clock size={10} />
-                  <span>{formatTime12h(conflict.conflictingSlot.start_time)}</span>
-                </div>
+        {/* Scrollable Container */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Existing vs Pending Visual Comparison Box */}
+          <div className="px-4 sm:px-5 pt-4">
+            <div className="p-3 sm:p-3.5 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-2 text-xs">
+              <div className="flex items-center justify-between font-bold text-gray-500 text-[10px] uppercase tracking-wider">
+                <span>Existing Slot in Schedule</span>
+                <span>Attempted Change</span>
               </div>
 
-              {/* Pending slot card preview */}
-              <div className="p-2.5 bg-white border border-blue-200 rounded-xl shadow-xs">
-                <span className="font-extrabold text-gray-900 block truncate">
-                  {conflict.subjectName}
-                </span>
-                <span className="text-[11px] text-gray-600 font-semibold flex items-center gap-1 mt-0.5 truncate">
-                  <User size={11} className="text-gray-400 shrink-0" />
-                  {conflict.teacherName}
-                </span>
-                <div className="flex items-center gap-1 text-[10px] text-blue-700 font-bold mt-1">
-                  <Calendar size={10} />
-                  <span>{DAYS_OF_WEEK_SHORT[conflict.dayIndex] || 'Day'}</span>
-                  <span>·</span>
-                  <Clock size={10} />
-                  <span>{formatTime12h(conflict.startTime)}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 items-center">
+                {/* Existing slot card preview */}
+                <div className="p-2.5 bg-white border border-amber-200 rounded-xl shadow-xs min-w-0">
+                  <span className="font-extrabold text-gray-900 block truncate">
+                    {conflictingSubject}
+                  </span>
+                  <span className="text-[11px] text-gray-600 font-semibold flex items-center gap-1 mt-0.5 truncate">
+                    <User size={11} className="text-gray-400 shrink-0" />
+                    <span className="truncate">{conflictingTeacher}</span>
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-amber-800 font-bold mt-1">
+                    <Calendar size={10} className="shrink-0" />
+                    <span>{DAYS_OF_WEEK_SHORT[conflict.conflictingSlot.day_of_week] || 'Day'}</span>
+                    <span>·</span>
+                    <Clock size={10} className="shrink-0" />
+                    <span className="truncate">{formatTime12h(conflict.conflictingSlot.start_time)}</span>
+                  </div>
+                </div>
+
+                {/* Pending slot card preview */}
+                <div className="p-2.5 bg-white border border-blue-200 rounded-xl shadow-xs min-w-0">
+                  <span className="font-extrabold text-gray-900 block truncate">
+                    {conflict.subjectName}
+                  </span>
+                  <span className="text-[11px] text-gray-600 font-semibold flex items-center gap-1 mt-0.5 truncate">
+                    <User size={11} className="text-gray-400 shrink-0" />
+                    <span className="truncate">{conflict.teacherName}</span>
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-blue-700 font-bold mt-1">
+                    <Calendar size={10} className="shrink-0" />
+                    <span>{DAYS_OF_WEEK_SHORT[conflict.dayIndex] || 'Day'}</span>
+                    <span>·</span>
+                    <Clock size={10} className="shrink-0" />
+                    <span className="truncate">{formatTime12h(conflict.startTime)}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Resolution Options Tabs */}
-        <div className="p-5 space-y-4">
+          {/* Resolution Options Tabs */}
+          <div className="p-4 sm:p-5 space-y-4">
           <div>
             <label className="text-[11px] font-black uppercase tracking-wider text-gray-700 block mb-2">
               Choose Resolution Strategy:
@@ -307,7 +309,7 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
                 })}
               </div>
 
-              <div className="pt-2 flex items-center justify-between text-xs">
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs gap-2">
                 <span className="text-[11px] text-gray-600 font-medium">
                   Will {conflict.isEditMode ? 'move this class slot to' : 'schedule an additional session on'}{' '}
                   <strong className="text-gray-900">{DAYS_OF_WEEK_FULL[selectedNewDay]}</strong> at {formatTime12h(conflict.startTime)}.
@@ -315,7 +317,7 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
                 <button
                   type="button"
                   onClick={handleApplyAnotherDay}
-                  className="px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0"
+                  className="w-full sm:w-auto px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
                 >
                   <Check size={13} />
                   <span>
@@ -385,7 +387,7 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
                 })}
               </div>
 
-              <div className="pt-2 flex items-center justify-between text-xs">
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs gap-2">
                 <span className="text-[11px] text-gray-600 font-medium">
                   Will schedule on <strong className="text-gray-900">{DAYS_OF_WEEK_FULL[conflict.dayIndex]}</strong> at{' '}
                   <strong className="text-gray-900">{formatTime12h(selectedNewPeriod)}</strong>.
@@ -393,7 +395,7 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
                 <button
                   type="button"
                   onClick={handleApplyDifferentTime}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
                 >
                   <Check size={13} />
                   <span>Apply New Time</span>
@@ -402,28 +404,29 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
             </div>
           )}
         </div>
+      </div>
 
-        {/* Modal Footer */}
-        <div className="p-4 bg-gray-50 border-t border-[#F0F0F0] flex flex-wrap items-center justify-between gap-3 text-xs">
+      {/* Modal Footer */}
+      <div className="p-3.5 sm:p-4 bg-gray-50 border-t border-[#F0F0F0] flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 text-xs shrink-0">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition-colors text-center"
+        >
+          Cancel (Discard Change)
+        </button>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition-colors"
+            onClick={handleApplyOverride}
+            title="Explicitly confirm and save anyway if this parallel schedule is intended"
+            className="w-full sm:w-auto px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-100/70 hover:bg-amber-200 border border-amber-300/80 rounded-xl transition-colors text-center"
           >
-            Cancel (Discard Change)
+            Keep Here Anyway (Confirm)
           </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleApplyOverride}
-              title="Explicitly confirm and save anyway if this parallel schedule is intended"
-              className="px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-100/70 hover:bg-amber-200 border border-amber-300/80 rounded-xl transition-colors"
-            >
-              Keep Here Anyway (Confirm)
-            </button>
-          </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -21,50 +21,50 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
     Math.round((finalMarks / Math.max(1, submission.total_marks)) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/65 backdrop-blur-xs overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="relative w-full max-w-2xl my-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[10px] font-black uppercase tracking-wider mb-2">
+        <div className="p-4 sm:p-6 border-b border-[#E5E5E5] flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[10px] font-black uppercase tracking-wider mb-1.5">
               <Award size={12} className="text-emerald-600" />
               <span>Graded Assessment Result</span>
             </div>
-            <h2 className="text-xl font-black text-[#111111] tracking-tight">
+            <h2 className="text-lg sm:text-xl font-black text-[#111111] tracking-tight truncate">
               {submission.test_title || `${submission.subject} Proctored Assessment`}
             </h2>
-            <p className="text-xs text-[#737373] mt-0.5">
+            <p className="text-[11px] sm:text-xs text-[#737373] mt-0.5 truncate">
               Subject: {submission.subject} • Completed on {new Date(submission.submitted_at).toLocaleDateString()}
             </p>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Score & Feedback Summary Banner */}
-        <div className="p-6 bg-[#FAF9F5] border-b border-[#E5E5E5] space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-2xl bg-white border border-[#E5E5E5] shadow-2xs">
-              <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider">Final Score</span>
-              <div className="text-2xl font-black text-[#111111] mt-1">
+        <div className="p-4 sm:p-6 bg-[#FAF9F5] border-b border-[#E5E5E5] space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-[#E5E5E5] shadow-2xs">
+              <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider">Final Score</span>
+              <div className="text-xl sm:text-2xl font-black text-[#111111] mt-0.5">
                 {finalMarks}{' '}
                 <span className="text-xs font-normal text-[#737373]">/ {submission.total_marks}</span>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-[#E5E5E5] shadow-2xs">
-              <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider">Percentage</span>
-              <div className="text-2xl font-black text-emerald-700 mt-1">{percentage}%</div>
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-[#E5E5E5] shadow-2xs">
+              <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider">Percentage</span>
+              <div className="text-xl sm:text-2xl font-black text-emerald-700 mt-0.5">{percentage}%</div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-[#E5E5E5] shadow-2xs">
-              <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider">Proctoring Status</span>
-              <div className="mt-1 flex items-center gap-1.5">
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-[#E5E5E5] shadow-2xs">
+              <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider">Proctoring Status</span>
+              <div className="mt-0.5 flex items-center gap-1.5">
                 {submission.violation_reason ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
                     <AlertTriangle size={12} /> Violation Logged
@@ -80,8 +80,8 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
 
           {/* Teacher feedback */}
           {submission.teacher_feedback && (
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
-              <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider">
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-amber-50 border border-amber-200">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase text-amber-900 tracking-wider">
                 Teacher Feedback & Observations
               </span>
               <p className="text-xs text-amber-950 font-medium mt-1 leading-relaxed">
@@ -92,7 +92,7 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
         </div>
 
         {/* Answers breakdown */}
-        <div className="p-6 overflow-y-auto space-y-4 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-4 flex-1 overscroll-contain">
           <h3 className="text-xs font-black uppercase tracking-wider text-[#737373]">Question Breakdown</h3>
 
           {submission.questions?.map((q: ProctoredMCQItem, idx: number) => {

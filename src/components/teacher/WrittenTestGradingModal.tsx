@@ -184,8 +184,8 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[94vh] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Top Header - Compact & Sticky, shrinks on scroll */}
         {isScrolled ? (
           <div className="px-4 py-2 border-b border-[#F0F0F0] flex items-center justify-between bg-white/95 backdrop-blur-xs shrink-0 transition-all sticky top-0 z-30 shadow-xs">

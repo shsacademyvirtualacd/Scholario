@@ -657,8 +657,8 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Dynamic Watermark Overlay during active exam */}
         {phase === 'in_exam' && (
           <ExamWatermarkOverlay
@@ -670,13 +670,13 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
         {/* Top Header - Compact & Sticky, Shrinks to thin bar on scroll */}
         {phase === 'in_exam' && isScrolled ? (
-          <div className="px-4 py-2 border-b border-[#F0F0F0] flex items-center justify-between bg-white/95 backdrop-blur-xs shrink-0 transition-all sticky top-0 z-30 shadow-xs">
-            <div className="flex items-center gap-2 truncate">
+          <div className="px-3 sm:px-4 py-2 border-b border-[#F0F0F0] flex items-center justify-between bg-white/95 backdrop-blur-xs shrink-0 transition-all sticky top-0 z-30 shadow-xs">
+            <div className="flex items-center gap-2 min-w-0 pr-2">
               <span className="px-2 py-0.5 rounded-md bg-[#111111] text-amber-400 font-mono font-black text-xs shrink-0">
                 Q{currentQuestionIndex + 1}/{totalQuestions}
               </span>
               <span className="font-extrabold text-xs text-[#111111] truncate">{test.title}</span>
-              <span className="text-[11px] font-bold text-[#737373] hidden sm:inline">
+              <span className="text-[11px] font-bold text-[#737373] hidden sm:inline shrink-0">
                 • {currentQuestion?.marks || 1} Marks
               </span>
             </div>
@@ -694,15 +694,15 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="px-4 sm:px-6 py-2.5 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0 sticky top-0 z-30">
-            <div className="flex items-center gap-2.5">
+          <div className="px-3 sm:px-6 py-2.5 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0 sticky top-0 z-30 gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-800 shrink-0">
                 <Layers className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-extrabold text-[#111111] text-xs sm:text-sm">{test.title}</h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase bg-black text-amber-400">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                  <h3 className="font-extrabold text-[#111111] text-xs sm:text-sm truncate max-w-[140px] sm:max-w-none">{test.title}</h3>
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase bg-black text-amber-400 shrink-0">
                     {test.type === 'unified'
                       ? 'Class Assessment'
                       : test.type === 'short_question'
@@ -710,22 +710,22 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                       : 'Long Question'}
                   </span>
                 </div>
-                <p className="text-[11px] text-[#737373]">
+                <p className="text-[10px] sm:text-[11px] text-[#737373] truncate">
                   {test.subject} • Grade {test.grade} • {test.total_marks} Marks Total
                 </p>
               </div>
             </div>
 
             {phase === 'in_exam' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <div
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-mono font-bold text-xs border ${
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl font-mono font-bold text-xs border ${
                     timeRemainingSeconds < 300
                       ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
                       : 'bg-[#FAFAFA] text-[#111111] border-[#E5E5E5]'
                   }`}
                 >
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                   <span>{formatTime(timeRemainingSeconds)}</span>
                 </div>
               </div>

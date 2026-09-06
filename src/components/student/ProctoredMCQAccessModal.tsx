@@ -41,12 +41,12 @@ export const ProctoredMCQAccessModal: React.FC<ProctoredMCQAccessModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden p-6 sm:p-7">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto overscroll-contain animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg my-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-y-auto max-h-[calc(100dvh-1.5rem)] p-5 sm:p-7 overscroll-contain">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer z-10"
         >
           <X size={16} />
         </button>
@@ -117,17 +117,17 @@ export const ProctoredMCQAccessModal: React.FC<ProctoredMCQAccessModalProps> = (
             </span>
           </label>
 
-          <div className="pt-2 flex items-center gap-2">
+          <div className="pt-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#737373] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+              className="w-full sm:flex-1 py-3 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#737373] hover:bg-[#F5F5F5] transition-colors cursor-pointer text-center"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-2 py-3 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.99]"
+              className="w-full sm:flex-2 py-3 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.99] text-center"
             >
               <span>Verify & Begin Exam</span>
               <ArrowRight size={14} />

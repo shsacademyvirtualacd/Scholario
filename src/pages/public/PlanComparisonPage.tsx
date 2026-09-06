@@ -295,7 +295,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
           {/* OPTION A: Per-Subject Plan */}
           <div 
             id="plan-option-per-subject" 
-            className="bg-white rounded-2xl border-2 border-[#E5E5E5] p-6 flex flex-col justify-between shadow-xs transition-all hover:border-[#D4D4D4]"
+            className="bg-white rounded-2xl border-2 border-[#E5E5E5] p-4 sm:p-6 flex flex-col justify-between shadow-xs transition-all hover:border-[#D4D4D4]"
           >
             <div className="space-y-5">
               {/* Header */}
@@ -317,14 +317,14 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
               </div>
 
               {/* Rate Callout */}
-              <div className="p-3.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <span className="text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wider block">Standard Subject Rate</span>
                   <div className="text-lg font-black text-[#111111] font-mono">
                     PKR {effectivePerSubRate.toLocaleString()} <span className="text-xs font-semibold text-[#737373]">/ subject / term</span>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-white border border-[#E5E5E5] text-[#525252]">
+                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-white border border-[#E5E5E5] text-[#525252] self-start sm:self-center">
                   Admin Configured
                 </span>
               </div>
@@ -354,7 +354,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1 overscroll-contain">
                   {availableSubjects.map((sub) => {
                     const isSelected = selectedSubjects.includes(sub);
                     return (
@@ -368,7 +368,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
                             : 'bg-[#FAFAFA] text-[#262626] border-[#E5E5E5] hover:bg-white hover:border-[#D4D4D4]'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <div 
                             className={`w-4 h-4 rounded flex items-center justify-center text-[10px] shrink-0 border ${
                               isSelected
@@ -380,7 +380,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
                           </div>
                           <span className="text-xs font-bold truncate">{sub}</span>
                         </div>
-                        <span className={`text-[11px] font-mono shrink-0 ${isSelected ? 'text-[#F4C430] font-bold' : 'text-[#737373]'}`}>
+                        <span className={`text-[10px] sm:text-[11px] font-mono shrink-0 whitespace-nowrap ${isSelected ? 'text-[#F4C430] font-bold' : 'text-[#737373]'}`}>
                           PKR {effectivePerSubRate.toLocaleString()} / term
                         </span>
                       </button>
@@ -390,7 +390,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
               </div>
 
               {/* Running Total Indicator (Live Updating) */}
-              <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70 flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wider block">
                     Running Total (Live Updating)
@@ -399,7 +399,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
                     PKR {runningTotal.toLocaleString()} <span className="text-xs font-bold text-amber-900">/ term</span>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <span className="text-xs font-bold text-amber-900 block">
                     {selectedSubjects.length} of {totalAvailableCount} Subjects
                   </span>
@@ -431,7 +431,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
           {/* OPTION B: Full / All-Subjects Plan (Styled as highlighted Academic Plan Card) */}
           <div 
             id="plan-option-all-subjects" 
-            className="relative rounded-2xl bg-[#111111] border-2 border-[#111111] p-6 sm:p-7 shadow-xl flex flex-col justify-between text-white"
+            className="relative rounded-2xl bg-[#111111] border-2 border-[#111111] p-4 sm:p-7 shadow-xl flex flex-col justify-between text-white mt-4 sm:mt-0"
           >
             {/* "Recommended" / "Best Value" Badge */}
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">

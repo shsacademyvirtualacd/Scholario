@@ -36,6 +36,8 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   body {
@@ -45,6 +47,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   /* Universal pointer cursor for clickable elements & disable tap highlight ripple */
@@ -62,13 +66,22 @@
     -webkit-touch-callout: none !important;
   }
 
-  /* Universal single-line default for interactive buttons, tabs, and controls */
-  button:not(.whitespace-normal):not([data-multiline="true"]),
-  [role="button"]:not(.whitespace-normal):not([data-multiline="true"]),
+  /* Universal single-line default for action buttons and tab controls */
+  .btn:not(.whitespace-normal),
   [role="tab"] {
     white-space: nowrap;
     user-select: none;
     -webkit-user-select: none;
+  }
+
+  /* Card buttons, option tiles, and multiline controls MUST wrap their children */
+  button.whitespace-normal,
+  button[data-multiline="true"],
+  button.text-left,
+  button:has(p),
+  button:has(div),
+  button:has(span.block) {
+    white-space: normal;
   }
 
   /* WhatsApp-style subtle icon button feedback: slight opacity dim + subtle scale down, strictly no expanding circular ripple or ink */

@@ -138,7 +138,7 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     {matchedSlots.length > 0 ? (
                       <div className="space-y-2">
                         {matchedSlots.map((slot) => (

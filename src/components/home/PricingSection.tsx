@@ -200,7 +200,7 @@ const PricingSection: React.FC = () => {
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
 
           {/* Included Subjects Info (Left Side - 5 Columns) */}
-          <div className="md:col-span-5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-2xl p-6 flex flex-col justify-between">
+          <div className="md:col-span-5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-2xl p-4 sm:p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#FFFBF0] flex items-center justify-center border border-[#FDF3C8]">
@@ -221,7 +221,7 @@ const PricingSection: React.FC = () => {
                     <div className="w-5 h-5 rounded-full bg-green-50 flex items-center justify-center border border-green-100 shrink-0">
                       <Check size={12} className="text-[#22c55e]" />
                     </div>
-                    <span className="text-xs font-bold text-[#111111]">{sub}</span>
+                    <span className="text-xs font-bold text-[#111111] truncate">{sub}</span>
                   </li>
                 ))}
               </ul>
@@ -231,18 +231,18 @@ const PricingSection: React.FC = () => {
                 <Link
                   id="pricing-checklist-compare-plans-link"
                   to={compareUrl}
-                  className="group flex items-center justify-between p-3 rounded-xl bg-white border border-[#E5E5E5] hover:border-[#F4C430] hover:bg-[#FFFDF5] transition-all shadow-2xs cursor-pointer"
+                  className="group flex items-center justify-between p-3 rounded-xl bg-white border border-[#E5E5E5] hover:border-[#F4C430] hover:bg-[#FFFDF5] transition-all shadow-2xs cursor-pointer gap-2"
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-7 h-7 rounded-lg bg-[#FFFBF0] flex items-center justify-center border border-[#FDF3C8] shrink-0 text-[#D4A017]">
                       <SlidersHorizontal size={13} />
                     </div>
-                    <div className="text-left">
-                      <span className="text-xs font-extrabold text-[#111111] block group-hover:text-amber-800 transition-colors">
+                    <div className="text-left min-w-0">
+                      <span className="text-xs font-extrabold text-[#111111] block group-hover:text-amber-800 transition-colors truncate">
                         Compare Plans
                       </span>
-                      <span className="text-[11px] text-[#737373] block">
-                        Full Academic Package vs Per-Subject Enrollment
+                      <span className="text-[11px] text-[#737373] block truncate">
+                        Full Package vs Per-Subject
                       </span>
                     </div>
                   </div>
@@ -266,7 +266,7 @@ const PricingSection: React.FC = () => {
           <div className="md:col-span-7 flex justify-center items-stretch">
 
             {/* Dynamic Growth Plan Card */}
-            <div className="relative rounded-2xl bg-[#111111] border border-[#111111] p-7 shadow-2xl flex flex-col justify-between text-white w-full max-w-sm">
+            <div className="relative rounded-2xl bg-[#111111] border border-[#111111] p-5 sm:p-7 shadow-2xl flex flex-col justify-between text-white w-full max-w-sm">
               {/* Badge */}
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span

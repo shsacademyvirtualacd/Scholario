@@ -138,17 +138,17 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#F5F5F5] mt-6">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 pt-4 border-t border-[#F5F5F5] mt-6">
         <button
           type="button"
           onClick={onCancel}
-          className="btn btn-ghost text-sm font-semibold px-4 py-2 hover:bg-[#F5F5F5] rounded-xl interactive"
+          className="btn btn-ghost text-sm font-semibold px-4 py-2.5 hover:bg-[#F5F5F5] rounded-xl interactive w-full sm:w-auto"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="btn bg-[#111111] hover:bg-[#262626] text-white text-sm font-semibold px-5 py-2 rounded-xl interactive"
+          className="btn bg-[#111111] hover:bg-[#262626] text-white text-sm font-semibold px-5 py-2.5 rounded-xl interactive w-full sm:w-auto"
         >
           {teacher ? 'Update Details' : 'Add Teacher'}
         </button>

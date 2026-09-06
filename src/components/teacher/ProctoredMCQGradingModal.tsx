@@ -82,24 +82,24 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-3xl max-h-[calc(100dvh-1rem)] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#111111] text-[#F4C430] flex items-center justify-center">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0 gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#111111] text-[#F4C430] flex items-center justify-center shrink-0">
               <Award size={20} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-black text-[#111111]">Review & Grade Submission</h2>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-black text-[#111111] truncate">Review & Grade Submission</h2>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 ${
                   submission.status === 'graded' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                 }`}>
                   {submission.status}
                 </span>
               </div>
-              <p className="text-xs text-[#737373]">
+              <p className="text-[11px] sm:text-xs text-[#737373] truncate">
                 {test.title} • {test.subject} (Grade {test.grade})
               </p>
             </div>
@@ -107,14 +107,14 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
 
           <button
             onClick={onClose}
-            className="p-2 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Candidate Overview Card */}
           <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>
