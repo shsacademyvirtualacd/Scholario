@@ -46,6 +46,7 @@ import { ContactInfoModal } from './ContactInfoModal';
 import { MediaLinksDocsModal } from './MediaLinksDocsModal';
 import { ImageViewerModal } from './ImageViewerModal';
 import { WhatsAppEmojiPicker } from './WhatsAppEmojiPicker';
+import { ChatAttachmentPreviewModal, PendingAttachment } from './ChatAttachmentPreviewModal';
 import { SageChatView } from '../sage/SageChatView';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
@@ -137,6 +138,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
     filename: string;
   } | null>(null);
   const [voiceInitialPointer, setVoiceInitialPointer] = useState<{ x: number; y: number } | null>(null);
+
+  // Attachment Preview & Confirmation Step (Snapchat / WhatsApp style)
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Clean up object URL when pendingAttachment changes or unmounts
+  useEffect(() => {
+    return () => {
+      if (pendingAttachment?.previewUrl) {
+        URL.revokeObjectURL(pendingAttachment.previewUrl);
+      }
+    };
+  }, [pendingAttachment]);
 
   // Muted Threads Persistence (localStorage)
   const [mutedThreadIds, setMutedThreadIds] = useState<string[]>(() => {
@@ -1092,14 +1106,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  // Handle file or image attachment upload
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Reset input value so same file can be selected again if needed
-    e.target.value = '';
-
+  // Open attachment preview screen for image or document (prevents auto-send, matches WhatsApp/Snapchat)
+  const openAttachmentPreview = (file: File) => {
     if (!activeThreadId || !currentUserId) {
       toast.error('Please select a conversation first.');
       return;
@@ -1127,23 +1135,69 @@ export const ChatView: React.FC<ChatViewProps> = ({
       return;
     }
 
+    // Revoke previous object URL if any
+    if (pendingAttachment?.previewUrl) {
+      URL.revokeObjectURL(pendingAttachment.previewUrl);
+    }
+
+    // DO NOT SEND: Open preview screen for confirmation
+    const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
+    setPendingAttachment({
+      file,
+      previewUrl,
+      isImage,
+      isPdf,
+      isWord,
+      caption: inputContent.trim() || '',
+      rotation: 0,
+    });
+  };
+
+  // Handle file or camera picker change
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value so same file can be selected again if needed
+    e.target.value = '';
+
+    openAttachmentPreview(file);
+  };
+
+  // Discard preview and cancel sending
+  const handleDiscardAttachment = () => {
+    if (pendingAttachment?.previewUrl) {
+      URL.revokeObjectURL(pendingAttachment.previewUrl);
+    }
+    setPendingAttachment(null);
+  };
+
+  // Explicit confirmation send action from preview screen
+  const handleConfirmSendAttachment = async (fileToSend: File, captionText: string) => {
+    if (!activeThreadId || !currentUserId) {
+      toast.error('Please select a conversation first.');
+      return;
+    }
+
     setIsUploadingAttachment(true);
     setUploadProgress(0);
-    setUploadingFilename(file.name);
+    setUploadingFilename(fileToSend.name);
     setSendError(null);
 
+    const isImage = (fileToSend.type || '').toLowerCase().startsWith('image/');
+
     try {
-      const uploadRes = await uploadChatAttachment(file, activeThreadId, (progress) => {
+      const uploadRes = await uploadChatAttachment(fileToSend, activeThreadId, (progress) => {
         setUploadProgress(progress);
       });
 
-      const caption = inputContent.trim() ? inputContent.trim() : undefined;
+      const finalCaption = captionText.trim() ? captionText.trim() : undefined;
       const createdMsg = await sendAttachmentChatMessage(
         activeThreadId,
         currentUserId,
         role,
         uploadRes,
-        caption
+        finalCaption
       );
 
       // Optimistically update message list
@@ -1152,8 +1206,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
         return [...prev, createdMsg];
       });
 
-      // Clear input content if it was used as caption
-      if (caption) {
+      // Clear input content if it matched the sent caption
+      if (finalCaption && inputContent.trim() === finalCaption) {
         setInputContent('');
       }
 
@@ -1173,6 +1227,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
         }
         return prev;
       });
+
+      // Close preview and revoke preview URL
+      if (pendingAttachment?.previewUrl) {
+        URL.revokeObjectURL(pendingAttachment.previewUrl);
+      }
+      setPendingAttachment(null);
 
       toast.success(`${isImage ? 'Image' : 'File'} sent successfully`);
     } catch (err: any) {
@@ -1630,10 +1690,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
         {/* ── Right Column: Active Conversation Messages & Composer ── */}
         <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isDragOver) setIsDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setIsDragOver(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+            const droppedFile = e.dataTransfer.files?.[0];
+            if (droppedFile) {
+              openAttachmentPreview(droppedFile);
+            }
+          }}
           className={`relative flex-1 flex flex-col bg-[#EFEAE2] overflow-hidden ${
             !mobileViewActiveThread ? 'hidden md:flex' : 'flex'
           }`}
         >
+          {/* Drag & Drop Visual Overlay */}
+          {isDragOver && activeThread && (
+            <div className="absolute inset-0 z-40 bg-[#111111]/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white pointer-events-none animate-in fade-in duration-150">
+              <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center mb-3">
+                <Paperclip size={32} className="text-[#25D366]" />
+              </div>
+              <p className="text-base font-bold">Drop file to preview & send</p>
+              <p className="text-xs text-white/70 mt-1">Image, PDF, or Word document (≤ 15MB)</p>
+            </div>
+          )}
           {isSageActive ? (
             <SageChatView
               role={role}
@@ -2377,6 +2467,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 handleSendMessage();
                               }
                             }}
+                            onPaste={(e) => {
+                              const items = e.clipboardData?.items;
+                              if (items) {
+                                for (let i = 0; i < items.length; i++) {
+                                  if (items[i].type.startsWith('image/')) {
+                                    const file = items[i].getAsFile();
+                                    if (file) {
+                                      e.preventDefault();
+                                      openAttachmentPreview(file);
+                                      return;
+                                    }
+                                  }
+                                }
+                              }
+                            }}
                             placeholder={`Message ${activeThread.other_participant?.full_name || ''}...`}
                             className="flex-1 max-h-32 min-h-[38px] py-2 px-1 bg-transparent text-xs md:text-sm text-[#111111] placeholder:text-[#8696A0] resize-none outline-hidden"
                           />
@@ -2897,6 +3002,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
           filename={activeViewerImage.filename}
         />
       )}
+
+      {/* ── Attachment Preview & Confirmation Step (Snapchat / WhatsApp UX) ── */}
+      <ChatAttachmentPreviewModal
+        isOpen={!!pendingAttachment}
+        attachment={pendingAttachment}
+        recipientName={activeThread?.other_participant?.full_name}
+        isUploading={isUploadingAttachment}
+        uploadProgress={uploadProgress}
+        onClose={handleDiscardAttachment}
+        onSend={handleConfirmSendAttachment}
+      />
     </div>
   );
 };
