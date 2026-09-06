@@ -253,17 +253,17 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               {writtenAnswers.length > 0 && !isArchived && (
                 <div
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border whitespace-nowrap shrink-0 ${
                     expiryState.isExpired
                       ? 'bg-amber-50 text-amber-800 border-amber-300'
                       : 'bg-amber-50 text-amber-900 border-amber-200'
                   }`}
                 >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">
                     {expiryState.isExpired
                       ? 'Grading Window Extended'
                       : `Grading Window: ${expiryState.formatted}`}
@@ -273,7 +273,7 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
 
               <button
                 onClick={onClose}
-                className="p-1.5 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
+                className="p-1.5 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -647,11 +647,11 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-white transition-colors cursor-pointer"
+              className="px-3 py-1.5 h-8.5 rounded-lg border border-[#E5E5E5] text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-white transition-colors cursor-pointer whitespace-nowrap"
             >
               {isArchived ? 'Close Record' : 'Cancel'}
             </button>
@@ -660,10 +660,10 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
                 type="button"
                 disabled={saving}
                 onClick={handleSaveGrade}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#111111] text-white text-xs font-extrabold hover:bg-[#262626] transition-all shadow-sm disabled:opacity-50 cursor-pointer active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 h-8.5 rounded-lg bg-[#111111] text-white text-xs font-bold hover:bg-[#262626] transition-all shadow-sm disabled:opacity-50 cursor-pointer active:scale-95 whitespace-nowrap"
               >
-                <Save className="w-3.5 h-3.5" />
-                {saving ? 'Publishing...' : 'Publish Grade & Remarks'}
+                <Save className="w-3.5 h-3.5 shrink-0" />
+                <span>{saving ? 'Publishing...' : 'Publish Grade & Remarks'}</span>
               </button>
             )}
           </div>

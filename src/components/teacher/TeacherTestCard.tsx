@@ -77,66 +77,66 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
     <div
       id={`teacher-test-card-${test.id}`}
       onClick={() => onSelect(test)}
-      className={`p-4 rounded-2xl border transition-all cursor-pointer text-left relative flex flex-col justify-between ${
+      className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer text-left relative flex flex-col justify-between ${
         isSelected
-          ? 'bg-white border-[#111111] ring-2 ring-[#111111]/10 shadow-md'
-          : 'bg-white border-[#E5E5E5] hover:border-[#CCCCCC] hover:shadow-xs'
+          ? 'bg-white border-[#111111] ring-2 ring-[#111111]/10 shadow-sm'
+          : 'bg-white border-[#E5E5E5] hover:border-[#CCCCCC] hover:shadow-2xs'
       }`}
     >
       <div>
         {/* Top Row: Tags */}
-        <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-start justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-[#111111] text-white">
+            <span className="px-2 py-0.5 rounded-md text-xs font-extrabold bg-[#111111] text-white whitespace-nowrap">
               {test.subject}
             </span>
-            <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5]">
+            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5] whitespace-nowrap">
               Grade {test.grade} {test.board === 'sindh' || test.board_id === 'sindh' ? 'Sindh' : test.board === 'ielts' || test.board_id === 'ielts' ? 'IELTS' : 'FBISE'} {test.stream && test.stream !== 'all' ? `• ${test.stream}` : ''}
             </span>
           </div>
         </div>
 
         {/* Title */}
-        <h4 className="text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">
+        <h4 className="text-xs sm:text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">
           <MathText text={test.title} />
         </h4>
 
         {/* Info row */}
-        <div className="flex items-center gap-3 text-xs text-[#737373] mb-3 flex-wrap">
-          <span className="flex items-center gap-1">
-            <User size={13} className="text-[#A3A3A3]" />
-            {test.teacher_name || 'Faculty'}
+        <div className="flex items-center gap-2.5 text-xs text-[#737373] mb-2.5 flex-wrap">
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <User size={12} className="text-[#A3A3A3] shrink-0" />
+            <span className="truncate max-w-[120px]">{test.teacher_name || 'Faculty'}</span>
           </span>
-          <span className="flex items-center gap-1 font-semibold text-[#111111]">
-            <Award size={13} className="text-[#A3A3A3]" />
+          <span className="flex items-center gap-1 font-semibold text-[#111111] whitespace-nowrap">
+            <Award size={12} className="text-[#A3A3A3] shrink-0" />
             {test.total_marks} Marks
           </span>
-          <span className="flex items-center gap-1">
-            <Calendar size={13} className="text-[#A3A3A3]" />
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <Calendar size={12} className="text-[#A3A3A3] shrink-0" />
             Due: {new Date(test.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           </span>
         </div>
 
         {/* Instructions snippet */}
         {test.instructions && (
-          <div className="text-[11px] text-[#737373] line-clamp-2 mb-3 bg-[#FAFAFA] p-2 rounded-xl border border-[#F0F0F0]">
+          <div className="text-[11px] text-[#737373] line-clamp-2 mb-2.5 bg-[#FAFAFA] p-2 rounded-lg border border-[#F0F0F0]">
             <MathText text={test.instructions} />
           </div>
         )}
       </div>
 
       {/* Action Buttons Footer */}
-      <div className="pt-2.5 border-t border-[#F5F5F5] flex items-center justify-between gap-2 mt-auto flex-wrap">
-        <span className="text-[10px] text-[#A3A3A3]">
+      <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between gap-2 mt-auto flex-wrap">
+        <span className="text-[10px] text-[#A3A3A3] whitespace-nowrap">
           Uploaded {new Date(test.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
         </span>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             id={`view-test-btn-${test.id}`}
             onClick={handleView}
             title="Preview Question Paper"
-            className="p-1.5 rounded-lg bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] transition-colors border border-[#E5E5E5] cursor-pointer"
+            className="p-1.5 rounded-md bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] transition-colors border border-[#E5E5E5] cursor-pointer"
           >
             <Eye size={13} />
           </button>
@@ -145,7 +145,7 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
             onClick={handleDownload}
             disabled={downloading}
             title="Download Question Paper"
-            className="p-1.5 rounded-lg bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] transition-colors border border-[#E5E5E5] disabled:opacity-40 cursor-pointer"
+            className="p-1.5 rounded-md bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] transition-colors border border-[#E5E5E5] disabled:opacity-40 cursor-pointer"
           >
             {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
           </button>
@@ -155,7 +155,7 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
               onClick={handleDeleteClick}
               disabled={deleting}
               title="Delete Test Paper"
-              className="p-1.5 rounded-lg bg-[#FAFAFA] hover:bg-[#FEE2E2] text-[#DC2626] transition-colors border border-[#E5E5E5] disabled:opacity-50 cursor-pointer"
+              className="p-1.5 rounded-md bg-[#FAFAFA] hover:bg-[#FEE2E2] text-[#DC2626] transition-colors border border-[#E5E5E5] disabled:opacity-50 cursor-pointer"
             >
               {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
             </button>

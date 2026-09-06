@@ -871,14 +871,14 @@ export const PdfPreviewViewer: React.FC<PdfPreviewViewerProps> = ({
             {/* Student Metadata Table Box */}
             <div className="my-4 p-3 bg-neutral-50 rounded-lg border border-neutral-300 text-xs relative z-10 space-y-2">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-bold text-neutral-700">
-                <div>Student Name: <span className="font-normal border-b border-neutral-400 inline-block w-32"></span></div>
-                <div>Roll No: <span className="font-normal border-b border-neutral-400 inline-block w-24"></span></div>
-                <div className="sm:text-right">Date: <span className="font-normal">{testSpec.dueDate || new Date().toISOString().split('T')[0]}</span></div>
+                <div className="whitespace-nowrap">Student Name: <span className="font-normal border-b border-neutral-400 inline-block w-32"></span></div>
+                <div className="whitespace-nowrap">Roll No: <span className="font-normal border-b border-neutral-400 inline-block w-24"></span></div>
+                <div className="sm:text-right whitespace-nowrap">Date: <span className="font-normal">{testSpec.dueDate || new Date().toISOString().split('T')[0]}</span></div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-bold text-neutral-700 pt-1 border-t border-neutral-200">
-                <div>Subject: <span className="text-neutral-900">{testSpec.subject}</span></div>
-                <div>Time Allowed: <span className="text-neutral-900">{testSpec.timeAllowedMinutes} Mins</span></div>
-                <div className="sm:text-right">Total Marks: <span className="text-neutral-900">{testSpec.totalMarks}</span></div>
+                <div className="whitespace-nowrap">Subject: <span className="text-neutral-900">{testSpec.subject}</span></div>
+                <div className="whitespace-nowrap">Time Allowed: <span className="text-neutral-900">{testSpec.timeAllowedMinutes} Mins</span></div>
+                <div className="sm:text-right whitespace-nowrap">Total Marks: <span className="text-neutral-900">{testSpec.totalMarks}</span></div>
               </div>
               {testSpec.instructions && (
                 <div className="text-[11px] text-neutral-500 italic pt-1 border-t border-neutral-200">

@@ -128,7 +128,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
     {
       id: 'written',
       label: 'Written Tests (Short & Long)',
-      badge: 'Manual Grading',
+      badge: 'Grading',
       badgeActiveCls: 'bg-amber-300 text-amber-950',
       badgeInactiveCls: 'bg-amber-200 text-amber-950',
       icon: FileText,
@@ -417,7 +417,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
             onMouseLeave={handleMouseUpOrLeave}
-            className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-full sm:w-fit overflow-x-auto scroll-smooth overscroll-x-contain touch-pan-x no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            className="flex items-center gap-1.5 p-1 bg-[#EBEBEB] rounded-xl w-full sm:w-fit overflow-x-auto scroll-smooth overscroll-x-contain touch-pan-x no-scrollbar select-none cursor-grab active:cursor-grabbing"
             style={{
               WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
@@ -438,19 +438,19 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
                       handleSelectCategory(cat.id);
                     }
                   }}
-                  className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                     isActive
                       ? 'bg-[#111111] text-white shadow-xs'
                       : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
                   }`}
                 >
                   <Icon
-                    size={15}
+                    size={14}
                     className={isActive ? cat.iconActiveCls : 'text-[#737373]'}
                   />
-                  <span>{cat.label}</span>
+                  <span className="whitespace-nowrap">{cat.label}</span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap transition-colors ${
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap transition-colors ${
                       isActive ? cat.badgeActiveCls : cat.badgeInactiveCls
                     }`}
                   >
@@ -596,7 +596,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
       </div>
 
       {/* Control & Filter Bar */}
-      <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-xs space-y-3">
+      <div className="bg-white border border-[#E5E5E5] rounded-xl p-3 sm:p-3.5 shadow-xs space-y-2.5">
         <div className="flex flex-col lg:flex-row gap-3 items-stretch justify-between">
           {/* Search Box */}
           <div className="relative flex-1">
