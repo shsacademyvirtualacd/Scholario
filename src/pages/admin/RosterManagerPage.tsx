@@ -26,7 +26,7 @@ import {
   saveStudentSubjectPlan, 
   calculateSubjectEnrollmentFee,
 } from '../../lib/subjectEnrollmentService';
-import { getSubjectsForStream, getDefaultPrice } from '../../lib/taxonomy';
+import { getSubjectsForStream, getDefaultPrice, formatShortClassAndBoard } from '../../lib/taxonomy';
 
 export const RosterManagerPage: React.FC = () => {
   const isMobile = useMobile();
@@ -477,6 +477,17 @@ export const RosterManagerPage: React.FC = () => {
       if (firstOff) return `Grade ${firstOff.grade} (${firstOff.subject_name})`;
     }
     return 'Not Assigned';
+  };
+
+  const getShortClassGrade = (entry: RosterEntry) => {
+    const full = getClassGrade(entry);
+    if (!full || full === 'Not Assigned') return full;
+    const stream = getStream(entry);
+    return formatShortClassAndBoard({
+      gradeName: full,
+      boardName: full.toLowerCase().includes('sindh') ? 'Sindh' : full.toLowerCase().includes('fbise') || full.toLowerCase().includes('federal') ? 'FBISE' : full,
+      streamName: stream,
+    });
   };
 
   const getStream = (entry: RosterEntry) => {
@@ -1147,19 +1158,23 @@ export const RosterManagerPage: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Class</div>
-                        <div className="font-semibold text-[#111111] whitespace-nowrap">{getClassGrade(entry)}</div>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-between mt-1 pt-2 border-t border-[#EAEAEA]">
-                        <div>
-                          <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Stream</div>
-                          <div className="font-semibold text-[#404040] whitespace-nowrap">{getStream(entry)}</div>
+                        <div className="text-[10px] text-[#A3A3A3] dark:text-[#A1A1AA] font-bold uppercase tracking-wider mb-0.5">Class</div>
+                        <div className="font-semibold text-[#111111] dark:text-[#F4F4F5] truncate max-w-[150px]" title={getClassGrade(entry)}>
+                          {getShortClassGrade(entry)}
                         </div>
-                        <div className="text-right">
-                          <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">ID</div>
-                          <div className="font-mono font-bold text-[#525252] flex items-center gap-1">
+                      </div>
+                      <div className="col-span-2 flex items-center justify-between mt-1 pt-2 border-t border-[#EAEAEA] dark:border-[#27272A]">
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="text-[10px] text-[#A3A3A3] dark:text-[#A1A1AA] font-bold uppercase tracking-wider mb-0.5">Stream</div>
+                          <div className="font-semibold text-[#404040] dark:text-[#D4D4D8] truncate" title={getStream(entry)}>
+                            {getStream(entry)}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-[10px] text-[#A3A3A3] dark:text-[#A1A1AA] font-bold uppercase tracking-wider mb-0.5">ID</div>
+                          <div className="font-mono font-bold text-[#525252] dark:text-[#D4D4D8] flex items-center gap-1">
                             #{idShort}
-                            <button onClick={() => copyToClipboard(entry.id)} className="text-zinc-400 hover:text-zinc-700 transition-colors">
+                            <button onClick={() => copyToClipboard(entry.id)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
                               {copiedId === entry.id ? <Check size={10} className="text-emerald-600" /> : <Copy size={10} />}
                             </button>
                           </div>
@@ -1361,13 +1376,19 @@ export const RosterManagerPage: React.FC = () => {
                               <span>{getPhone(entry)}</span>
                             </div>
                           </td>
-                          <td className="p-4 text-xs font-bold text-[#111111] whitespace-nowrap">
-                            <span className="inline-flex items-center whitespace-nowrap bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
-                              {getClassGrade(entry)}
+                          <td className="p-4 text-xs font-bold text-[#111111] whitespace-nowrap max-w-[180px]">
+                            <span 
+                              className="inline-flex items-center whitespace-nowrap bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 border border-indigo-100 px-2.5 py-1 rounded-lg text-[11px] font-semibold truncate max-w-full"
+                              title={getClassGrade(entry)}
+                            >
+                              {getShortClassGrade(entry)}
                             </span>
                           </td>
-                          <td className="p-4 text-xs font-bold text-[#404040] whitespace-nowrap">
-                            <span className="inline-flex items-center whitespace-nowrap bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
+                          <td className="p-4 text-xs font-bold text-[#404040] whitespace-nowrap max-w-[180px]">
+                            <span 
+                              className="inline-flex items-center whitespace-nowrap bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold truncate max-w-full"
+                              title={getStream(entry)}
+                            >
                               {getStream(entry)}
                             </span>
                           </td>

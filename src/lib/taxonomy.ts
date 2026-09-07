@@ -616,3 +616,64 @@ export function getStudentStreamLabel(student: {
     .join(' ');
 }
 
+/**
+ * Produces concise, clean abbreviations for long board and grade labels
+ * to prevent text overflowing or truncating awkwardly in table rows and cards.
+ * E.g.:
+ * - "Grade 9", "Federal Board (FBISE)" -> "Gr. 9 · FBISE"
+ * - "IELTS Preparation", "General Training" -> "IELTS Prep · GT"
+ * - "IELTS Preparation", "Academic" -> "IELTS Prep · Academic"
+ * - "Grade 10", "Sindh Board" -> "Gr. 10 · Sindh"
+ */
+export function formatShortClassAndBoard(params: {
+  gradeName?: string | null;
+  boardName?: string | null;
+  streamName?: string | null;
+}): string {
+  const g = (params.gradeName || '').trim();
+  const b = (params.boardName || '').trim();
+  const s = (params.streamName || '').trim();
+
+  const isIelts =
+    g.toLowerCase().includes('ielts') ||
+    b.toLowerCase().includes('ielts') ||
+    s.toLowerCase().includes('ielts') ||
+    s.toLowerCase().includes('general training') ||
+    s.toLowerCase() === 'gt' ||
+    s.toLowerCase() === 'academic';
+
+  if (isIelts) {
+    if (s.toLowerCase().includes('general training') || s.toLowerCase() === 'gt') {
+      return 'IELTS Prep · GT';
+    }
+    if (s.toLowerCase().includes('academic')) {
+      return 'IELTS Prep · Academic';
+    }
+    return 'IELTS Prep';
+  }
+
+  // Shorten board
+  let shortBoard = '';
+  if (b.toLowerCase().includes('fbise') || b.toLowerCase().includes('federal')) {
+    shortBoard = 'FBISE';
+  } else if (b.toLowerCase().includes('sindh')) {
+    shortBoard = 'Sindh';
+  } else if (b) {
+    shortBoard = b.replace(/board/i, '').replace(/[()]/g, '').trim();
+  }
+
+  // Shorten grade
+  let shortGrade = g;
+  const grMatch = g.match(/grade\s*(\d+)/i);
+  if (grMatch) {
+    shortGrade = `Gr. ${grMatch[1]}`;
+  } else if (g.toLowerCase().startsWith('class ')) {
+    shortGrade = `Gr. ${g.slice(6).trim()}`;
+  }
+
+  if (shortGrade && shortBoard) {
+    return `${shortGrade} · ${shortBoard}`;
+  }
+  return shortGrade || shortBoard || 'General';
+}
+

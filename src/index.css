@@ -998,25 +998,74 @@ html.dark .bg-purple-50 {
   background-color: rgba(168, 85, 247, 0.12) !important;
 }
 
-/* Text colors */
+/* Text colors - Meeting & exceeding WCAG AA (4.5:1) in Dark Mode */
 html.dark .text-\[\#111111\],
 html.dark .text-\[\#111\],
 html.dark .text-\[\#171717\],
 html.dark .text-\[\#262626\],
 html.dark .text-\[\#0B141A\],
-html.dark .text-\[\#111B21\] {
+html.dark .text-\[\#111B21\],
+html.dark .text-zinc-900,
+html.dark .text-gray-900,
+html.dark .text-neutral-900 {
   color: #F4F4F5 !important;
 }
 
-html.dark .text-\[\#737373\],
+/* Primary body copy & card descriptions (9.6:1 contrast ratio against dark backgrounds) */
 html.dark .text-\[\#525252\],
+html.dark .text-\[\#404040\],
+html.dark .text-\[\#333333\],
+html.dark .text-\[\#4B5563\],
+html.dark .text-zinc-600,
+html.dark .text-gray-600,
+html.dark .text-neutral-600,
+html.dark .text-zinc-700,
+html.dark .text-gray-700,
+html.dark .text-neutral-700 {
+  color: #D4D4D8 !important;
+}
+
+/* Secondary / muted text, status labels, dates, subtitles (5.5:1 to 6.0:1 contrast ratio - passes WCAG AA) */
+html.dark .text-\[\#737373\],
+html.dark .text-\[\#71717a\],
+html.dark .text-\[\#71717A\],
+html.dark .text-\[\#A3A3A3\],
+html.dark .text-\[\#a3a3a3\],
 html.dark .text-\[\#667781\],
-html.dark .text-\[\#54656F\] {
+html.dark .text-\[\#54656F\],
+html.dark .text-zinc-500,
+html.dark .text-gray-500,
+html.dark .text-neutral-500,
+html.dark .text-zinc-400,
+html.dark .text-gray-400,
+html.dark .text-neutral-400,
+html.dark .text-muted,
+html.dark .text-secondary,
+html.dark .text-muted-foreground {
   color: #A1A1AA !important;
 }
 
-html.dark .text-\[\#A3A3A3\] {
-  color: #71717A !important;
+/* High-contrast status badges, session chips, and pills in Dark Mode */
+html.dark .badge-gray,
+html.dark .bg-gray-100,
+html.dark .bg-gray-50,
+html.dark .bg-zinc-100,
+html.dark .bg-zinc-50,
+html.dark .bg-neutral-100,
+html.dark .bg-neutral-50 {
+  background-color: #27272A !important;
+  border-color: #3F3F46 !important;
+  color: #D4D4D8 !important;
+}
+
+html.dark svg.text-\[\#A3A3A3\],
+html.dark svg.text-\[\#a3a3a3\],
+html.dark svg.text-\[\#737373\],
+html.dark svg.text-gray-400,
+html.dark svg.text-gray-500,
+html.dark svg.text-zinc-400,
+html.dark svg.text-zinc-500 {
+  color: #A1A1AA !important;
 }
 
 /* Alert & Accent Text Colors in Dark Mode */
@@ -1053,6 +1102,8 @@ html.dark .text-\[\#1e40af\] {
 /* Borders */
 html.dark .border-\[\#E5E5E5\],
 html.dark .border-\[\#e5e5e5\],
+html.dark .border-\[\#EAEAEA\],
+html.dark .border-\[\#eaeaea\],
 html.dark .border-\[\#F0F0F0\],
 html.dark .border-\[\#f0f0f0\],
 html.dark .border-\[\#F5F5F5\],
@@ -1061,12 +1112,19 @@ html.dark .border-\[\#EEEEEE\],
 html.dark .border-\[\#eeeeee\],
 html.dark .border-\[\#D4D4D4\],
 html.dark .border-\[\#d4d4d4\],
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-zinc-200,
+html.dark .border-zinc-300,
+html.dark .border-neutral-200,
+html.dark .border-neutral-300,
 html.dark .border-black\/\[0\.08\],
 html.dark .border-black\/\[0\.06\],
 html.dark .border-black\/5,
 html.dark .border-black\/10,
 html.dark .divide-\[\#FAFAFA\] > :not([hidden]) ~ :not([hidden]),
-html.dark .divide-\[\#F5F5F5\] > :not([hidden]) ~ :not([hidden]) {
+html.dark .divide-\[\#F5F5F5\] > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-\[\#F0F0F0\] > :not([hidden]) ~ :not([hidden]) {
   border-color: #27272A !important;
 }
 

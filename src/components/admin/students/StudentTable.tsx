@@ -1,7 +1,7 @@
 import React from 'react';
 import { Eye, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import type { Profile, Enrollment, ClassOffering } from '../../../types';
-import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel } from '../../../lib/taxonomy';
+import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel, formatShortClassAndBoard } from '../../../lib/taxonomy';
 
 interface StudentTableProps {
   students: Profile[];
@@ -25,9 +25,11 @@ export const StudentTable: React.FC<StudentTableProps> = ({
     
     const boardName = getStudentBoardLabel(student, enrollments, offerings);
     const gradeName = getStudentGradeLabel(student, enrollments, offerings);
+    const streamName = student.stream_obj?.name || student.stream;
     const boardAndGrade = `${gradeName} · ${boardName}`;
+    const shortBoardAndGrade = formatShortClassAndBoard({ gradeName, boardName, streamName });
     
-    return { classesCount, boardAndGrade };
+    return { classesCount, boardAndGrade, shortBoardAndGrade };
   };
 
   const getInitials = (name: string) => {
@@ -83,13 +85,16 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                     {streamLabel}
                   </span>
                 </td>
-                <td className="whitespace-nowrap">
-                  <div className="text-xs font-semibold text-[#525252] whitespace-nowrap">
-                    {stats.boardAndGrade}
+                <td className="whitespace-nowrap max-w-[170px]">
+                  <div
+                    className="text-xs font-semibold text-[#525252] dark:text-[#D4D4D8] truncate"
+                    title={stats.boardAndGrade}
+                  >
+                    {stats.shortBoardAndGrade}
                   </div>
                 </td>
                 <td className="whitespace-nowrap">
-                  <span className="text-xs font-medium text-[#737373] whitespace-nowrap">{student.phone || 'N/A'}</span>
+                  <span className="text-xs font-medium text-[#737373] dark:text-[#A1A1AA] whitespace-nowrap">{student.phone || 'N/A'}</span>
                 </td>
                 <td className="text-center whitespace-nowrap">
                   {isQualified ? (
@@ -97,35 +102,35 @@ export const StudentTable: React.FC<StudentTableProps> = ({
                       <span
                         className={`inline-flex items-center gap-1 text-xs font-extrabold px-2.5 py-0.5 rounded-full border ${
                           attData.rate >= 75
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 border-emerald-200'
                             : attData.rate >= 70
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 border-amber-200'
+                            : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 border-rose-200'
                         }`}
                         title={`${attData.attended} attended out of ${attData.total} recorded sessions`}
                       >
                         {attData.rate >= 75 ? (
-                          <CheckCircle2 size={11} className="text-emerald-600" />
+                          <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" />
                         ) : attData.rate >= 70 ? (
-                          <Clock size={11} className="text-amber-600" />
+                          <Clock size={11} className="text-amber-600 dark:text-amber-400" />
                         ) : (
-                          <XCircle size={11} className="text-rose-600" />
+                          <XCircle size={11} className="text-rose-600 dark:text-rose-400" />
                         )}
                         {attData.rate}%
                       </span>
-                      <span className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">
+                      <span className="text-[9px] text-[#A3A3A3] dark:text-[#A1A1AA] font-medium mt-0.5">
                         {attData.attended}/{attData.total} sessions
                       </span>
                     </div>
                   ) : (
                     <div className="inline-flex flex-col items-center">
                       <span
-                        className="text-[11px] text-[#737373] font-semibold px-2.5 py-0.5 rounded-full bg-[#FAFAFA] border border-[#E5E5E5]"
+                        className="text-[11px] text-[#737373] dark:text-[#D4D4D8] font-semibold px-2.5 py-0.5 rounded-full bg-[#FAFAFA] dark:bg-[#27272A] border border-[#E5E5E5] dark:border-[#3F3F46]"
                         title={attData && attData.total > 0 ? `${attData.total}/10 sessions recorded` : '0/10 sessions recorded'}
                       >
                         Collecting data
                       </span>
-                      <span className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">
+                      <span className="text-[9px] text-[#A3A3A3] dark:text-[#A1A1AA] font-medium mt-0.5">
                         {attData?.total || 0}/10 sessions
                       </span>
                     </div>

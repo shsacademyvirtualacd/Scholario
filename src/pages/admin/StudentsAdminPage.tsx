@@ -6,7 +6,7 @@ import StudentTable from '../../components/admin/students/StudentTable';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import StudentDetailPanel from '../../components/admin/students/StudentDetailPanel';
 import { getAllStudents, getAllEnrollments, getAllOfferings, getAllAttendance } from '../../lib/db';
-import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel } from '../../lib/taxonomy';
+import { getStudentBoardLabel, getStudentGradeLabel, getStudentStreamLabel, formatShortClassAndBoard } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 import type { Profile, Enrollment, ClassOffering, Attendance } from '../../types';
@@ -178,9 +178,11 @@ export const StudentsAdminPage: React.FC = () => {
     
     const boardName = getStudentBoardLabel(student, enrollments, offerings);
     const gradeName = getStudentGradeLabel(student, enrollments, offerings);
+    const streamName = student.stream_obj?.name || student.stream;
     const boardAndGrade = `${gradeName} · ${boardName}`;
+    const shortBoardAndGrade = formatShortClassAndBoard({ gradeName, boardName, streamName });
 
-    return { classesCount, boardAndGrade };
+    return { classesCount, boardAndGrade, shortBoardAndGrade };
   };
 
   const getInitials = (name: string) => {
@@ -335,33 +337,37 @@ export const StudentsAdminPage: React.FC = () => {
                     <Eye size={14} />
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-2 border-t border-[#F5F5F5] pt-3 text-xs">
-                  <div>
-                    <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Stream</span>
-                    <span className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${getStreamColor(student.stream_obj?.name || student.stream)}`}>
+                <div className="flex items-center justify-between gap-2 border-t border-[#F5F5F5] dark:border-[#27272A] pt-3 text-xs flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md shrink-0 ${getStreamColor(student.stream_obj?.name || student.stream)}`}>
                       {streamLabel}
                     </span>
+                    <span 
+                      className="font-semibold text-[#525252] dark:text-[#D4D4D8] text-xs truncate"
+                      title={stats.boardAndGrade}
+                    >
+                      {stats.shortBoardAndGrade}
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Class</span>
-                    <span className="font-semibold text-[#525252] mt-1 block truncate">{stats.boardAndGrade}</span>
-                  </div>
-                  <div>
-                    <span className="text-[#A3A3A3] text-[9px] font-bold block uppercase tracking-wider">Attendance</span>
+
+                  <div className="shrink-0">
                     {attData && attData.total >= 10 ? (
                       <span
-                        className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md mt-1 ${
+                        className={`inline-block border text-[10px] font-bold py-0.5 px-2 rounded-md ${
                           attData.rate >= 75
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 border-emerald-200'
                             : attData.rate >= 70
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 border-amber-200'
+                            : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 border-rose-200'
                         }`}
                       >
                         {attData.rate}%
                       </span>
                     ) : (
-                      <span className="inline-block text-[10px] text-[#737373] font-semibold bg-[#FAFAFA] border border-[#E5E5E5] py-0.5 px-1.5 rounded-md mt-1 whitespace-nowrap">
+                      <span 
+                        className="inline-block text-[10px] text-[#737373] dark:text-[#D4D4D8] font-semibold bg-[#FAFAFA] dark:bg-[#27272A] border border-[#E5E5E5] dark:border-[#3F3F46] py-0.5 px-2 rounded-md whitespace-nowrap"
+                        title={attData && attData.total > 0 ? `${attData.total}/10 sessions recorded` : '0/10 sessions recorded'}
+                      >
                         Collecting data
                       </span>
                     )}
