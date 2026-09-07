@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 interface ContactModalProps {
   open: boolean;
@@ -22,16 +23,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [open]);
+  // Lock background scroll and preserve position
+  useModalScrollLock(open);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -136,10 +129,10 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
       />
 
       {/* Modal Container */}
-      <div className="relative z-10 bg-white text-[#111111] w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative z-10 bg-white text-[#111111] w-full max-w-4xl max-h-[90dvh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">
+        <div className="px-6 py-5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FDF3C8] text-[#D4A017] flex items-center justify-center shrink-0 border border-[#FDF3C8]">
               <Mail size={20} />
@@ -156,17 +149,17 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-[#E5E5E5] text-[#737373] hover:text-[#111111] transition-all duration-200 interactive"
+            className="p-2 rounded-xl hover:bg-[#E5E5E5] text-[#737373] hover:text-[#111111] transition-all duration-200 interactive cursor-pointer"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto min-h-0 md:overflow-hidden overscroll-contain">
           
           {/* Left Column: Direct Info */}
-          <div className="w-full md:w-80 bg-[#FAFAFA] border-b md:border-b-0 md:border-r border-[#F5F5F5] p-6 md:p-8 flex flex-col justify-between space-y-6 md:overflow-y-auto shrink-0">
+          <div className="w-full md:w-80 bg-[#FAFAFA] border-b md:border-b-0 md:border-r border-[#F5F5F5] p-6 md:p-8 flex flex-col justify-between space-y-6 md:overflow-y-auto min-h-0 shrink-0 overscroll-contain">
             <div className="space-y-6">
               <div>
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#A3A3A3] mb-4">
@@ -221,7 +214,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
           </div>
 
           {/* Right Column: Interactive Form */}
-          <div className="flex-1 p-6 md:p-8 flex flex-col justify-center md:overflow-y-auto">
+          <div className="flex-1 p-6 md:p-8 flex flex-col justify-center md:overflow-y-auto min-h-0 overscroll-contain">
             {isSuccess ? (
               <div className="text-center py-10 max-w-sm mx-auto space-y-4 animate-in fade-in zoom-in-95">
                 <div className="w-16 h-16 bg-[#FFFBF0] text-[#D4A017] rounded-full flex items-center justify-center mx-auto border border-[#FDF3C8]">

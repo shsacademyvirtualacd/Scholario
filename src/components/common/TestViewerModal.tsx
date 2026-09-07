@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Download, FileText, Calendar, Award, User, BookOpen, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
 import { downloadTestBlob, downloadSubmissionBlob } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import PdfViewer from '../ui/PdfViewer';
 import { MathText } from './MathText';
 
@@ -27,6 +29,8 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
 
   const item = test || submission;
   const isTest = !!test;
+
+  useModalScrollLock(Boolean(item));
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -116,17 +120,19 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       id="test-viewer-modal-backdrop"
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         id="test-viewer-modal-content"
-        className="bg-white w-full max-w-5xl h-[92vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-[#E5E5E5]"
+        className="bg-white w-full max-w-5xl h-[92dvh] max-h-[92dvh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-[#E5E5E5]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -263,7 +269,7 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
         )}
 
         {/* Preview Frame */}
-        <div className="flex-1 bg-[#F5F5F5] relative overflow-hidden flex items-center justify-center p-3">
+        <div className="flex-1 min-h-0 bg-[#F5F5F5] relative overflow-hidden flex items-center justify-center p-3">
           {loadingUrl ? (
             <div className="flex flex-col items-center justify-center text-center p-6">
               <Loader2 className="w-8 h-8 text-[#111111] animate-spin mb-3" />
@@ -295,7 +301,8 @@ export const TestViewerModal: React.FC<TestViewerModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

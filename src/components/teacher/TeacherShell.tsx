@@ -19,6 +19,8 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { NotificationBell } from '../common/NotificationBell';
 import ProfileAvatar from '../common/ProfileAvatar';
+import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
+import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 
 interface TeacherShellProps {
   children: React.ReactNode;
@@ -138,6 +140,11 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
               </p>
             </div>
           </div>
+
+          <div className="pt-1">
+            <ThemeToggleSwitch variant="switch" className="border border-[#2A2A2A] bg-[#141416]/90 py-2 px-2.5" />
+          </div>
+
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
@@ -168,19 +175,15 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggleSwitch variant="compact" />
             <NotificationBell />
-            <button
-              onClick={() => handleNav('/teacher/profile')}
-              title={profile?.full_name || 'Profile'}
-              className="rounded-lg overflow-hidden hover:scale-105 transition-transform interactive"
-            >
-              <ProfileAvatar
-                avatarUrl={profile?.avatar_url}
-                name={profile?.full_name ?? 'Teacher'}
-                role="teacher"
-                size="md"
-              />
-            </button>
+            <ProfileDropdownMenu
+              profile={profile}
+              role="teacher"
+              onSignOut={handleSignOut}
+              isSigningOut={isSigningOut}
+              avatarSize="md"
+            />
           </div>
         </header>
 

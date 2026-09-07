@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Play, Pause, Loader2, Volume2, CheckCheck, AlertCircle } from 'lucide-react';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
+import { ChatTheme } from '../../types/chatTheme';
 
 interface VoiceMessageBubbleProps {
   messageId: string;
@@ -11,6 +12,7 @@ interface VoiceMessageBubbleProps {
   readAt?: string | null;
   isMe: boolean;
   hasTail?: boolean;
+  theme?: ChatTheme;
 }
 
 // Generate pseudo-random, deterministic waveform bar heights based on messageId string
@@ -36,6 +38,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
   readAt,
   isMe,
   hasTail = true,
+  theme,
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
@@ -183,14 +186,17 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
   const progressPercent = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
   const isRead = !!readAt;
 
+  const bubbleBg = theme ? (isMe ? theme.sentBubbleBg : theme.receivedBubbleBg) : (isMe ? '#D9FDD3' : '#FFFFFF');
+  const bubbleTextColor = theme ? (isMe ? theme.sentBubbleText : theme.receivedBubbleText) : '#111B21';
+
   return (
     <div
       className={`relative min-w-[200px] sm:min-w-[260px] w-full max-w-full rounded-[8px] p-2 sm:p-2.5 select-none overflow-visible ${
-        isMe
-          ? `bg-[#D9FDD3] text-[#111B21] ${hasTail ? 'rounded-br-[0px]' : ''}`
-          : `bg-white text-[#111B21] ${hasTail ? 'rounded-bl-[0px]' : ''}`
+        hasTail ? (isMe ? 'rounded-br-[0px]' : 'rounded-bl-[0px]') : ''
       }`}
       style={{
+        backgroundColor: bubbleBg,
+        color: bubbleTextColor,
         boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
       }}
     >
@@ -303,7 +309,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
       </div>
 
       {/* Bubble Tail */}
-      {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#D9FDD3' : '#FFFFFF'} />}
+      {hasTail && <ChatBubbleTail isMe={isMe} fillColor={bubbleBg} />}
     </div>
   );
 };

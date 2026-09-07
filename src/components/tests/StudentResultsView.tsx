@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search,
   Calendar,
@@ -23,6 +24,7 @@ import { WrittenTestSubmissionsList } from '../teacher/WrittenTestSubmissionsLis
 import type { StudentMCQAttempt, ClassOffering } from '../../types';
 import { getStudentMCQAttemptsForTeacher, getAllStudentMCQAttempts } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { BOARDS } from '../../lib/taxonomy';
 
 interface StudentResultsViewProps {
@@ -45,6 +47,8 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedAttempt, setSelectedAttempt] = useState<StudentMCQAttempt | null>(null);
   const [activeCategory, setActiveCategory] = useState<'proctored' | 'written' | 'self-test'>('proctored');
+
+  useModalScrollLock(Boolean(selectedAttempt));
 
   // Carousel and Horizontal Scroll State
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -972,104 +976,114 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
       </div>
 
       {/* Detail Modal for Selected Attempt */}
-      {selectedAttempt && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-[#E5E5E5] max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E5]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-black text-sm">
+      {selectedAttempt && createPortal(
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] max-w-lg w-full max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[#E5E5E5] shrink-0 bg-white">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-black text-sm shrink-0">
                   <Award size={20} />
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-[#111111]">Student MCQ Attempt Details</h3>
-                  <p className="text-xs text-[#737373]">
+                <div className="min-w-0">
+                  <h3 className="text-base font-black text-[#111111] truncate">Student MCQ Attempt Details</h3>
+                  <p className="text-xs text-[#737373] truncate">
                     {selectedAttempt.student_name} • Grade {selectedAttempt.grade} {selectedAttempt.subject}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedAttempt(null)}
-                className="w-8 h-8 rounded-full hover:bg-[#F5F5F5] flex items-center justify-center text-[#737373] hover:text-[#111111] transition-colors"
+                className="w-8 h-8 rounded-full hover:bg-[#F5F5F5] flex items-center justify-center text-[#737373] hover:text-[#111111] transition-colors cursor-pointer shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Score & KPI Snapshot */}
-            <div className="grid grid-cols-3 gap-3 p-4 bg-[#FAFAFA] rounded-2xl border border-[#E5E5E5]">
-              <div className="text-center">
-                <p className="text-[10px] font-bold text-[#737373] uppercase tracking-wider">Score</p>
-                <p className="text-xl font-black text-[#111111] mt-0.5">
-                  {selectedAttempt.score} / {selectedAttempt.total_questions}
-                </p>
-                <p className="text-[11px] font-bold text-emerald-600">
-                  {selectedAttempt.percentage}%
-                </p>
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5">
+              {/* Score & KPI Snapshot */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4 bg-[#FAFAFA] rounded-2xl border border-[#E5E5E5]">
+                <div className="text-center">
+                  <p className="text-[10px] font-bold text-[#737373] uppercase tracking-wider">Score</p>
+                  <p className="text-lg sm:text-xl font-black text-[#111111] mt-0.5">
+                    {selectedAttempt.score} / {selectedAttempt.total_questions}
+                  </p>
+                  <p className="text-[11px] font-bold text-emerald-600">
+                    {selectedAttempt.percentage}%
+                  </p>
+                </div>
+                <div className="text-center border-x border-[#E5E5E5]">
+                  <p className="text-[10px] font-bold text-[#737373] uppercase tracking-wider">Time Taken</p>
+                  <p className="text-lg sm:text-xl font-black text-[#111111] mt-0.5">
+                    {formatSeconds(selectedAttempt.time_spent_seconds)}
+                  </p>
+                  <p className="text-[10px] font-medium text-[#737373]">
+                    {selectedAttempt.total_questions > 0
+                      ? `${Math.round(selectedAttempt.time_spent_seconds / selectedAttempt.total_questions)}s/question`
+                      : ''}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-bold text-[#737373] uppercase tracking-wider">Pace & Rating</p>
+                  <p className="text-lg sm:text-xl font-black text-[#111111] mt-0.5">
+                    {selectedAttempt.percentage >= 80 ? 'Mastery' : selectedAttempt.percentage >= 60 ? 'Passing' : 'Needs Prep'}
+                  </p>
+                  <p className="text-[10px] font-semibold text-[#737373] capitalize">
+                    {selectedAttempt.difficulty || 'standard'}
+                  </p>
+                </div>
               </div>
-              <div className="text-center border-x border-[#E5E5E5]">
-                <p className="text-[10px] font-bold text-[#737373] uppercase tracking-wider">Time Taken</p>
-                <p className="text-xl font-black text-[#111111] mt-0.5">
-                  {formatSeconds(selectedAttempt.time_spent_seconds)}
-                </p>
-                <p className="text-[10px] font-medium text-[#737373]">
-                  {selectedAttempt.total_questions > 0
-                    ? `${Math.round(selectedAttempt.time_spent_seconds / selectedAttempt.total_questions)}s/question`
-                    : ''}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] font-bold text-[#737373] uppercase tracking-wider">Pace & Rating</p>
-                <p className="text-xl font-black text-[#111111] mt-0.5">
-                  {selectedAttempt.percentage >= 80 ? 'Mastery' : selectedAttempt.percentage >= 60 ? 'Passing' : 'Needs Prep'}
-                </p>
-                <p className="text-[10px] font-semibold text-[#737373] capitalize">
-                  {selectedAttempt.difficulty || 'standard'}
-                </p>
+
+              {/* Metadata list */}
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
+                  <span className="font-bold text-[#737373]">Subject</span>
+                  <span className="font-extrabold text-[#111111]">{selectedAttempt.subject}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
+                  <span className="font-bold text-[#737373]">Topic / Chapters</span>
+                  <span className="font-extrabold text-[#111111] text-right max-w-[240px] sm:max-w-[280px] truncate">
+                    {selectedAttempt.topic || (selectedAttempt.chapters && selectedAttempt.chapters.join(', '))}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
+                  <span className="font-bold text-[#737373]">Mode</span>
+                  <span className="font-extrabold text-[#111111] uppercase">
+                    {selectedAttempt.exam_mode || 'Chapter Practice'}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
+                  <span className="font-bold text-[#737373]">Date Submitted</span>
+                  <span className="font-extrabold text-[#111111]">
+                    {formatDate(selectedAttempt.created_at)} at {formatTimeStr(selectedAttempt.created_at)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="font-bold text-[#737373]">Board Curriculum</span>
+                  <span className="font-extrabold text-[#111111] uppercase">
+                    {selectedAttempt.board || 'FBISE'} Board
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Metadata list */}
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
-                <span className="font-bold text-[#737373]">Subject</span>
-                <span className="font-extrabold text-[#111111]">{selectedAttempt.subject}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
-                <span className="font-bold text-[#737373]">Topic / Chapters</span>
-                <span className="font-extrabold text-[#111111] text-right max-w-[280px]">
-                  {selectedAttempt.topic || (selectedAttempt.chapters && selectedAttempt.chapters.join(', '))}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
-                <span className="font-bold text-[#737373]">Mode</span>
-                <span className="font-extrabold text-[#111111] uppercase">
-                  {selectedAttempt.exam_mode || 'Chapter Practice'}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#F0F0F0]">
-                <span className="font-bold text-[#737373]">Date Submitted</span>
-                <span className="font-extrabold text-[#111111]">
-                  {formatDate(selectedAttempt.created_at)} at {formatTimeStr(selectedAttempt.created_at)}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="font-bold text-[#737373]">Board Curriculum</span>
-                <span className="font-extrabold text-[#111111] uppercase">
-                  {selectedAttempt.board || 'FBISE'} Board
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2">
+            {/* Modal Footer */}
+            <div className="p-3 sm:p-4 border-t border-[#E5E5E5] bg-white shrink-0">
               <button
                 onClick={() => setSelectedAttempt(null)}
-                className="w-full py-2.5 rounded-xl bg-[#111111] text-white text-xs font-black hover:bg-[#262626] transition-colors shadow-xs"
+                className="w-full py-2.5 rounded-xl bg-[#111111] text-white text-xs font-black hover:bg-[#262626] transition-colors shadow-xs cursor-pointer"
               >
                 Close Details
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
         </>
       )}

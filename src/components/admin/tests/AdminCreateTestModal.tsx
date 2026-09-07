@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useModalScrollLock } from '../../../hooks/useModalScrollLock';
 import { supabase } from '../../../lib/supabase';
 import { pullTestQuestionsFromBanks } from '../../../lib/questionBankService';
 import {
@@ -724,13 +726,19 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
     }
   };
 
+  useModalScrollLock(isOpen);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-[#E5E5E5] flex flex-col max-h-[92vh] overflow-hidden my-auto">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-[#E5E5E5] flex flex-col h-[92dvh] max-h-[92dvh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[#E5E5E5] bg-[#FAFAFA] shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[#E5E5E5] bg-[#FAFAFA] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center shadow-xs">
               <FileCheck size={20} />
@@ -796,7 +804,7 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
         </div>
 
         {/* Body Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-5">
           {/* STEP 1: SCOPE & CURRICULUM */}
           {step === 1 && (
             <div className="space-y-4">
@@ -1964,7 +1972,8 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

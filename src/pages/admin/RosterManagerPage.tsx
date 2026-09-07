@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search, Users, Shield, Trash2, Edit, 
   Clock, X, UserCheck, Lock, Unlock, Phone, GraduationCap, 
@@ -8,6 +9,7 @@ import {
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ConfirmModal from '../../components/admin/ConfirmModal';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { 
   getAllRoster, addRosterEntry, updateRosterEntry, 
   deleteRosterEntry, getAllOfferings, toggleRosterAccess, toggleFeeSuspension, updateFeeStatus
@@ -78,6 +80,10 @@ export const RosterManagerPage: React.FC = () => {
   // Delete Modal States
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<RosterEntry | null>(null);
+
+  // Scroll locking hooks for modals and drawers to prevent background page jumping
+  useModalScrollLock(editStudentModalOpen);
+  useModalScrollLock(drawerOpen);
 
   const fetchEnrichmentData = async () => {
     try {
@@ -1568,10 +1574,10 @@ export const RosterManagerPage: React.FC = () => {
       </div>
 
       {/* ── DRAWER FORM (Add/Edit Student or Teacher) ── */}
-      {drawerOpen && (
+      {drawerOpen && createPortal(
         <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
           <div 
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" 
+            className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity" 
             onClick={() => setDrawerOpen(false)}
           />
 
@@ -1594,7 +1600,8 @@ export const RosterManagerPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-6 overscroll-contain">
+            <form onSubmit={handleSave} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0 space-y-6 overscroll-contain">
               {formError && (
                 <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
                   <span className="shrink-0 mt-0.5">⚠️</span>
@@ -1973,11 +1980,13 @@ export const RosterManagerPage: React.FC = () => {
                 </div>
               ) : null}
 
-              <div className="pt-6 border-t border-[#E5E5E5] flex gap-3">
+              </div>
+
+              <div className="p-4 sm:px-6 border-t border-[#E5E5E5] flex gap-3 bg-[#FAFAFA] shrink-0">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="btn flex-1 py-3 sm:py-2.5 border border-[#E5E5E5] text-[#404040] font-bold text-xs rounded-xl hover:bg-[#FAFAFA] interactive"
+                  className="btn flex-1 py-3 sm:py-2.5 border border-[#E5E5E5] text-[#404040] font-bold text-xs rounded-xl hover:bg-white interactive"
                 >
                   Cancel
                 </button>
@@ -1992,15 +2001,28 @@ export const RosterManagerPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── EDIT STUDENT PROFILE MODAL ── */}
-      {editStudentModalOpen && editStudentEntry && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-start sm:items-center justify-center p-2.5 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150 overscroll-contain">
-          <div className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col my-3 sm:my-8 max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
+      {editStudentModalOpen && editStudentEntry && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !editStudentSaving) {
+              setEditStudentModalOpen(false);
+            }
+          }}
+        >
+          <div 
+            className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[85vh] animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className="p-4 sm:p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/70 shrink-0">
+            <div className="p-4 sm:px-6 sm:py-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/80 shrink-0">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-2">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
                   <GraduationCap size={18} />
@@ -2020,13 +2042,14 @@ export const RosterManagerPage: React.FC = () => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSaveStudentProfile} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto overscroll-contain">
-              {editStudentError && (
-                <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-center gap-2">
-                  <AlertCircle size={15} className="shrink-0" />
-                  <span>{editStudentError}</span>
-                </div>
-              )}
+            <form onSubmit={handleSaveStudentProfile} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto min-h-0 overscroll-contain">
+                {editStudentError && (
+                  <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle size={15} className="shrink-0" />
+                    <span>{editStudentError}</span>
+                  </div>
+                )}
 
               {/* Full Name */}
               <div>
@@ -2446,12 +2469,14 @@ export const RosterManagerPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* Modal Actions */}
-              <div className="pt-4 border-t border-zinc-100 flex gap-2.5 sm:gap-3 shrink-0">
+              </div>
+
+              {/* Modal Actions Footer (Pinned at bottom, never clipped or hidden) */}
+              <div className="p-3.5 sm:px-6 sm:py-4 border-t border-zinc-100 flex gap-2.5 sm:gap-3 bg-zinc-50/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditStudentModalOpen(false)}
-                  className="btn flex-1 py-2.5 border border-zinc-200 text-zinc-700 font-bold text-xs rounded-xl hover:bg-zinc-50 transition-colors"
+                  className="btn flex-1 py-2.5 border border-zinc-200 text-zinc-700 font-bold text-xs rounded-xl hover:bg-white transition-colors"
                 >
                   Cancel
                 </button>
@@ -2466,7 +2491,8 @@ export const RosterManagerPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmModal

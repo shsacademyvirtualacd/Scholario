@@ -1,6 +1,8 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Award, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, X } from 'lucide-react';
 import type { ProctoredMCQSubmission, ProctoredMCQItem } from '../../types/proctoredMcq';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 interface ProctoredMCQResultModalProps {
   isOpen: boolean;
@@ -13,6 +15,8 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
   submission,
   onClose,
 }) => {
+  useModalScrollLock(isOpen && Boolean(submission));
+
   if (!isOpen || !submission) return null;
 
   const finalMarks = submission.final_score ?? submission.auto_score ?? 0;
@@ -20,11 +24,15 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
     submission.percentage ??
     Math.round((finalMarks / Math.max(1, submission.total_marks)) * 100);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/65 backdrop-blur-xs overflow-y-auto overscroll-contain animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl my-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] flex flex-col">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/65 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90dvh] flex flex-col">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-[#E5E5E5] flex items-center justify-between gap-3">
+        <div className="p-4 sm:p-6 border-b border-[#E5E5E5] flex items-center justify-between gap-3 shrink-0">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[10px] font-black uppercase tracking-wider mb-1.5">
               <Award size={12} className="text-emerald-600" />
@@ -47,7 +55,7 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
         </div>
 
         {/* Score & Feedback Summary Banner */}
-        <div className="p-4 sm:p-6 bg-[#FAF9F5] border-b border-[#E5E5E5] space-y-3">
+        <div className="p-4 sm:p-6 bg-[#FAF9F5] border-b border-[#E5E5E5] space-y-3 shrink-0">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-[#E5E5E5] shadow-2xs">
               <span className="text-[10px] sm:text-[11px] font-bold text-[#737373] uppercase tracking-wider">Final Score</span>
@@ -92,7 +100,7 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
         </div>
 
         {/* Answers breakdown */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-4 flex-1 overscroll-contain">
+        <div className="p-4 sm:p-6 overflow-y-auto min-h-0 space-y-3 sm:space-y-4 flex-1 overscroll-contain">
           <h3 className="text-xs font-black uppercase tracking-wider text-[#737373]">Question Breakdown</h3>
 
           {submission.questions?.map((q: ProctoredMCQItem, idx: number) => {
@@ -167,7 +175,7 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex justify-end">
+        <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex justify-end shrink-0">
           <button
             onClick={onClose}
             className="px-5 py-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] font-black text-xs cursor-pointer shadow-xs transition-colors"
@@ -176,7 +184,8 @@ export const ProctoredMCQResultModal: React.FC<ProctoredMCQResultModalProps> = (
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

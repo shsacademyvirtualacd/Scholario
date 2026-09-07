@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Calendar,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DAYS_OF_WEEK_FULL, DAYS_OF_WEEK_SHORT, formatTime12h } from '../../../lib/scheduleUtils';
 import type { ClassSlot } from '../../../types';
+import { useModalScrollLock } from '../../../hooks/useModalScrollLock';
 
 export type ConflictType = 'duplicate_class' | 'teacher_double_booking' | 'cohort_clash';
 
@@ -139,9 +141,24 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto overscroll-contain">
-      <div className="bg-white border border-[#E5E5E5] rounded-2xl sm:rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto max-h-[calc(100dvh-1.5rem)] flex flex-col">
+  // Lock body scroll and preserve scroll offset
+  useModalScrollLock(true);
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onCancel();
+        }
+      }}
+    >
+      <div 
+        className="bg-white border border-[#E5E5E5] rounded-2xl sm:rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-[#F0F0F0] bg-amber-50/60 flex items-start justify-between gap-3 shrink-0">
           <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
@@ -167,14 +184,14 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
 
           <button
             onClick={onCancel}
-            className="w-8 h-8 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center transition-colors shrink-0"
+            className="w-8 h-8 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-black/5 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Scrollable Container */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
           {/* Existing vs Pending Visual Comparison Box */}
           <div className="px-4 sm:px-5 pt-4">
             <div className="p-3 sm:p-3.5 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-2 text-xs">
@@ -428,7 +445,8 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
         </div>
       </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

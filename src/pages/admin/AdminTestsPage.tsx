@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
@@ -36,6 +37,7 @@ import { WrittenTestSubmissionsList } from '../../components/teacher/WrittenTest
 import { getAllTests } from '../../lib/db';
 import { getGradesForBoard, BOARDS } from '../../lib/taxonomy';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import {
   getProctoredMCQTests,
   publishProctoredMCQTest,
@@ -87,6 +89,10 @@ export const AdminTestsPage: React.FC = () => {
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
   const [viewingMCQTest, setViewingMCQTest] = useState<ProctoredMCQTest | null>(null);
   const [viewingWrittenTest, setViewingWrittenTest] = useState<WrittenTest | null>(null);
+
+  // Lock background scroll and preserve position when inspecting or choosing test
+  const isAnyInspectionModalOpen = isChoiceModalOpen || Boolean(viewingMCQTest) || Boolean(viewingWrittenTest);
+  useModalScrollLock(isAnyInspectionModalOpen);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -855,9 +861,13 @@ export const AdminTestsPage: React.FC = () => {
       )}
 
       {/* Choice Modal: Create (Bank/AI) vs Manual Upload (PDF) */}
-      {isChoiceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden p-6 sm:p-7">
+      {isChoiceModalOpen && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-y-auto max-h-[90dvh] p-6 sm:p-7 overscroll-contain">
             {/* Close Button */}
             <button
               onClick={() => setIsChoiceModalOpen(false)}
@@ -951,7 +961,8 @@ export const AdminTestsPage: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Unified Test Creation Modal (Admin Only) */}
@@ -987,11 +998,15 @@ export const AdminTestsPage: React.FC = () => {
       />
 
       {/* Proctored MCQ Test Inspection Modal */}
-      {viewingMCQTest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90vh] flex flex-col">
+      {viewingMCQTest && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90dvh] flex flex-col">
             {/* Header */}
-            <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
+            <div className="p-4 sm:p-6 border-b border-[#E5E5E5] flex items-center justify-between shrink-0">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-[#111111] text-[#F4C430] text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
@@ -1001,7 +1016,7 @@ export const AdminTestsPage: React.FC = () => {
                     Grade {viewingMCQTest.grade} • {viewingMCQTest.subject}
                   </span>
                 </div>
-                <h3 className="text-lg font-black text-[#111111] mt-1">{viewingMCQTest.title}</h3>
+                <h3 className="text-base sm:text-lg font-black text-[#111111] mt-1">{viewingMCQTest.title}</h3>
                 <p className="text-xs text-[#737373] mt-0.5">
                   {viewingMCQTest.questions.length} MCQs • {viewingMCQTest.duration_minutes} Mins • {viewingMCQTest.total_marks} Marks
                 </p>
@@ -1009,14 +1024,14 @@ export const AdminTestsPage: React.FC = () => {
 
               <button
                 onClick={() => setViewingMCQTest(null)}
-                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer shrink-0"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Questions list */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 min-h-0 overscroll-contain">
               {viewingMCQTest.questions.map((q, qIndex) => (
                 <div key={q.id} className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-3">
                   <div className="flex items-start justify-between gap-3">
@@ -1062,7 +1077,7 @@ export const AdminTestsPage: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between">
+            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between shrink-0">
               <span className="text-xs text-[#737373]">
                 Status:{' '}
                 <strong className={viewingMCQTest.status === 'published' ? 'text-emerald-700' : 'text-amber-700'}>
@@ -1090,15 +1105,20 @@ export const AdminTestsPage: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Written Test Inspection Modal */}
-      {viewingWrittenTest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90vh] flex flex-col">
+      {viewingWrittenTest && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90dvh] flex flex-col">
             {/* Header */}
-            <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
+            <div className="p-4 sm:p-6 border-b border-[#E5E5E5] flex items-center justify-between shrink-0">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-black text-amber-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
@@ -1119,7 +1139,7 @@ export const AdminTestsPage: React.FC = () => {
                     Grade {viewingWrittenTest.grade} • {viewingWrittenTest.subject}
                   </span>
                 </div>
-                <h3 className="text-lg font-black text-[#111111] mt-1">{viewingWrittenTest.title}</h3>
+                <h3 className="text-base sm:text-lg font-black text-[#111111] mt-1">{viewingWrittenTest.title}</h3>
                 <p className="text-xs text-[#737373] mt-0.5">
                   {viewingWrittenTest.questions.length} Questions • {viewingWrittenTest.duration_minutes} Mins • {viewingWrittenTest.total_marks} Marks
                 </p>
@@ -1127,14 +1147,14 @@ export const AdminTestsPage: React.FC = () => {
 
               <button
                 onClick={() => setViewingWrittenTest(null)}
-                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer shrink-0"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Questions list */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 min-h-0 overscroll-contain">
               {viewingWrittenTest.questions.map((q, qIndex) => {
                 const isMCQ = q.type === 'mcq' || (Array.isArray(q.options) && q.options.length > 0);
                 const qTypeLabel = isMCQ
@@ -1203,7 +1223,7 @@ export const AdminTestsPage: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between">
+            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between shrink-0">
               <span className="text-xs text-[#737373]">
                 Status:{' '}
                 <strong className={viewingWrittenTest.status === 'published' ? 'text-emerald-700' : 'text-amber-700'}>
@@ -1231,7 +1251,8 @@ export const AdminTestsPage: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminShell>
   );

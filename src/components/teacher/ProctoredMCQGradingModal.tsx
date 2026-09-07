@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ShieldAlert,
@@ -7,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { MathText } from '../common/MathText';
 import { gradeProctoredMCQSubmission } from '../../lib/proctoredMcqService';
 import type { ProctoredMCQTest, ProctoredMCQSubmission } from '../../types/proctoredMcq';
@@ -49,6 +51,8 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
     }
   }, [submission]);
 
+  useModalScrollLock(isOpen && Boolean(submission && test));
+
   if (!isOpen || !submission || !test) return null;
 
   const handleFinalizeGrade = async (e: React.FormEvent) => {
@@ -81,9 +85,13 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-3xl max-h-[calc(100dvh-1rem)] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-3xl h-[92dvh] max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0 gap-2">
           <div className="flex items-center gap-3 min-w-0">
@@ -114,7 +122,7 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Candidate Overview Card */}
           <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>
@@ -309,7 +317,8 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sparkles,
   Play,
@@ -31,6 +32,7 @@ import {
   BookOpenCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import type { MCQQuestion, MCQDifficulty, SelfTestConfig, SelfTestResult, ExamMode } from '../../types/selfTest';
 import {
   generateMCQTest,
@@ -218,6 +220,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   // History state
   const [historyItems, setHistoryItems] = useState<SelfTestResult[]>([]);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState<boolean>(false);
+
+  useModalScrollLock(showConfirmSubmit);
 
   // Load history on mount
   useEffect(() => {
@@ -2043,10 +2047,14 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         </div>
 
         {/* Confirmation Modal for Unanswered Questions */}
-        {showConfirmSubmit && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-[#E5E5E5] shadow-2xl space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center mx-auto">
+        {showConfirmSubmit && createPortal(
+          <div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-[#E5E5E5] shadow-2xl space-y-4 max-h-[90dvh] overflow-y-auto overscroll-contain">
+              <div className="w-12 h-12 rounded-2xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center mx-auto shrink-0">
                 <AlertTriangle size={24} />
               </div>
               <div className="text-center space-y-1">
@@ -2059,19 +2067,20 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowConfirmSubmit(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5]"
+                  className="flex-1 py-2.5 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] cursor-pointer"
                 >
                   Continue Test
                 </button>
                 <button
                   onClick={handleSubmitQuiz}
-                  className="flex-1 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-bold hover:bg-[#222222]"
+                  className="flex-1 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-bold hover:bg-[#222222] cursor-pointer"
                 >
                   Submit Anyway
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );

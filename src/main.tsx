@@ -6,12 +6,15 @@ import "./index.css";
 import AppRouter from "./app/router";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import NetworkStatus from "./components/common/NetworkStatus";
+import { ThemeProvider } from "./context/ThemeContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <AppRouter />
-      <NetworkStatus />
+      <ThemeProvider>
+        <AppRouter />
+        <NetworkStatus />
+      </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>
 );

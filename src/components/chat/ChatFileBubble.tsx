@@ -3,6 +3,7 @@ import { Download, FileText, CheckCheck, Loader2 } from 'lucide-react';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { getAttachmentUrl } from '../../lib/chatService';
 import { supabase } from '../../lib/supabase';
+import { ChatTheme } from '../../types/chatTheme';
 
 interface ChatFileBubbleProps {
   messageId: string;
@@ -15,6 +16,7 @@ interface ChatFileBubbleProps {
   readAt?: string | null;
   isMe: boolean;
   hasTail?: boolean;
+  theme?: ChatTheme;
 }
 
 export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
@@ -28,6 +30,7 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
   readAt,
   isMe,
   hasTail = true,
+  theme,
 }) => {
   const [token, setToken] = useState<string>('');
   const [downloading, setDownloading] = useState(false);
@@ -77,15 +80,19 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
 
   const hasCaption = content && content !== filename && content.trim().length > 0;
 
+  const bubbleBg = theme ? (isMe ? theme.sentBubbleBg : theme.receivedBubbleBg) : (isMe ? '#D9FDD3' : '#FFFFFF');
+  const bubbleTextColor = theme ? (isMe ? theme.sentBubbleText : theme.receivedBubbleText) : '#111B21';
+  const metaTextColor = theme ? (isMe ? theme.sentMetaText : theme.receivedMetaText) : '#667781';
+
   return (
     <div
       id={`chat-file-${messageId}`}
       className={`relative w-full max-w-[320px] rounded-[8px] p-2 sm:p-2.5 overflow-visible ${
-        isMe
-          ? `bg-[#D9FDD3] text-[#111B21] ${hasTail ? 'rounded-br-[0px]' : ''}`
-          : `bg-white text-[#111B21] ${hasTail ? 'rounded-bl-[0px]' : ''}`
+        hasTail ? (isMe ? 'rounded-br-[0px]' : 'rounded-bl-[0px]') : ''
       }`}
       style={{
+        backgroundColor: bubbleBg,
+        color: bubbleTextColor,
         boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
       }}
     >
@@ -155,7 +162,8 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
 
       {/* Timestamp & Read Status */}
       <div
-        className={`flex items-center justify-end gap-1 mt-1 text-[10px] text-[#667781]`}
+        className="flex items-center justify-end gap-1 mt-1 text-[10px]"
+        style={{ color: metaTextColor }}
       >
         <span>{formatTime(createdAt)}</span>
         {isMe && (
@@ -163,14 +171,14 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
             {readAt ? (
               <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <CheckCheck size={14} className="text-[#8696A0] stroke-[1.8]" />
+              <CheckCheck size={14} className="stroke-[1.8]" style={{ color: metaTextColor }} />
             )}
           </span>
         )}
       </div>
 
       {/* Bubble Tail */}
-      {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#D9FDD3' : '#FFFFFF'} />}
+      {hasTail && <ChatBubbleTail isMe={isMe} fillColor={bubbleBg} />}
     </div>
   );
 };

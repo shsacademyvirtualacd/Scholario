@@ -852,3 +852,202 @@
     display: none;
   }
 }
+
+/* ==========================================================================
+   SCHOLARIO COMPREHENSIVE CENTRALIZED DARK THEME
+   Applies across every single page, shell, header, modal, card, table,
+   dropdown, input, badge, and text element immediately and globally.
+   ========================================================================== */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0E0E10 !important;
+  color: #F4F4F5 !important;
+}
+
+/* Base scrollbars */
+html.dark ::-webkit-scrollbar-track {
+  background: #18181B;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #3F3F46;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525B;
+}
+
+/* Standard surfaces */
+html.dark .bg-white {
+  background-color: #18181B !important;
+}
+
+/* Opacified surfaces */
+html.dark .bg-white\/95,
+html.dark .bg-white\/90,
+html.dark .bg-white\/80 {
+  background-color: rgba(24, 24, 27, 0.94) !important;
+}
+
+html.dark .bg-white\/75,
+html.dark .bg-white\/70,
+html.dark .bg-white\/60,
+html.dark .bg-white\/50 {
+  background-color: rgba(24, 24, 27, 0.78) !important;
+}
+
+html.dark .bg-white\/10,
+html.dark .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Gray surfaces mapped to rich dark layers */
+html.dark .bg-\[\#FAFAFA\],
+html.dark .bg-\[\#fafafa\] {
+  background-color: #121214 !important;
+}
+
+html.dark .bg-\[\#F5F5F5\],
+html.dark .bg-\[\#f5f5f5\] {
+  background-color: #202024 !important;
+}
+
+html.dark .bg-\[\#F0F0F0\],
+html.dark .bg-\[\#f0f0f0\] {
+  background-color: #27272A !important;
+}
+
+html.dark .bg-\[\#E5E5E5\],
+html.dark .bg-\[\#e5e5e5\] {
+  background-color: #2E2E33 !important;
+}
+
+/* Text colors */
+html.dark .text-\[\#111111\],
+html.dark .text-\[\#111\],
+html.dark .text-\[\#171717\],
+html.dark .text-\[\#262626\],
+html.dark .text-\[\#0B141A\],
+html.dark .text-\[\#111B21\] {
+  color: #F4F4F5 !important;
+}
+
+html.dark .text-\[\#737373\],
+html.dark .text-\[\#525252\],
+html.dark .text-\[\#667781\],
+html.dark .text-\[\#54656F\] {
+  color: #A1A1AA !important;
+}
+
+html.dark .text-\[\#A3A3A3\] {
+  color: #71717A !important;
+}
+
+/* Borders */
+html.dark .border-\[\#E5E5E5\],
+html.dark .border-\[\#e5e5e5\],
+html.dark .border-\[\#F0F0F0\],
+html.dark .border-\[\#f0f0f0\],
+html.dark .border-\[\#D4D4D4\],
+html.dark .border-\[\#d4d4d4\],
+html.dark .border-black\/\[0\.08\],
+html.dark .border-black\/\[0\.06\],
+html.dark .border-black\/5,
+html.dark .border-black\/10 {
+  border-color: #27272A !important;
+}
+
+/* Header bar */
+html.dark header.sticky {
+  background-color: #141416 !important;
+  border-bottom-color: #27272A !important;
+}
+
+/* Interactive elements: Inputs, Textareas, and Selects */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]):not([type="range"]),
+html.dark textarea,
+html.dark select {
+  background-color: #18181B !important;
+  color: #F4F4F5 !important;
+  border-color: #27272A !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #71717A !important;
+}
+
+/* Tables */
+html.dark table {
+  color: #F4F4F5;
+}
+html.dark thead,
+html.dark thead tr,
+html.dark thead th {
+  background-color: #18181B !important;
+  color: #A1A1AA !important;
+  border-color: #27272A !important;
+}
+html.dark tbody tr {
+  border-color: #27272A !important;
+}
+html.dark tbody tr:hover {
+  background-color: #202024 !important;
+}
+html.dark td {
+  border-color: #27272A !important;
+}
+
+/* Modals & Dialog overlays (including createPortal components) */
+html.dark [role="dialog"],
+html.dark .modal-content {
+  background-color: #18181B !important;
+  border-color: #27272A !important;
+  color: #F4F4F5 !important;
+}
+
+/* Dropdown menus & popovers */
+html.dark [role="menu"],
+html.dark [role="listbox"] {
+  background-color: #18181B !important;
+  border-color: #27272A !important;
+  color: #F4F4F5 !important;
+}
+
+/* Button & Pill styles in dark mode */
+html.dark .btn-secondary {
+  background-color: #27272A !important;
+  border-color: #3F3F46 !important;
+  color: #F4F4F5 !important;
+}
+html.dark .btn-secondary:hover {
+  background-color: #3F3F46 !important;
+}
+
+html.dark .btn-ghost {
+  color: #F4F4F5 !important;
+}
+html.dark .btn-ghost:hover {
+  background-color: #27272A !important;
+}
+
+html.dark .btn-outline {
+  border-color: #3F3F46 !important;
+  color: #F4F4F5 !important;
+}
+html.dark .btn-outline:hover {
+  background-color: #27272A !important;
+}
+
+/* Hover highlights */
+html.dark .hover\:bg-\[\#F5F5F5\]:hover,
+html.dark .hover\:bg-black\/5:hover {
+  background-color: #27272A !important;
+}
+
+html.dark .hover\:border-\[\#D4D4D4\]:hover {
+  border-color: #3F3F46 !important;
+}
+

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Sparkles, Heart, Eye, Target } from 'lucide-react';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 interface AboutModalProps {
   open: boolean;
@@ -8,16 +9,8 @@ interface AboutModalProps {
 }
 
 export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [open]);
+  // Lock background scroll and preserve position
+  useModalScrollLock(open);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,7 +28,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10" 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-10" 
       role="dialog" 
       aria-modal="true"
     >
@@ -46,10 +39,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
       />
 
       {/* Modal Container */}
-      <div className="relative z-10 bg-white text-[#111111] w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative z-10 bg-white text-[#111111] w-full max-w-4xl max-h-[90dvh] rounded-3xl shadow-2xl flex flex-col border border-[#E5E5E5] overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">
+        <div className="px-6 py-5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FDF3C8] text-[#D4A017] flex items-center justify-center shrink-0 border border-[#FDF3C8]">
               <Sparkles size={20} />
@@ -66,14 +59,14 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-[#E5E5E5] text-[#737373] hover:text-[#111111] transition-all duration-200 interactive"
+            className="p-2 rounded-xl hover:bg-[#E5E5E5] text-[#737373] hover:text-[#111111] transition-all duration-200 interactive cursor-pointer"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 md:p-10 space-y-10 overscroll-contain">
           
           {/* Top Hero Believer block */}
           <div className="relative p-6 md:p-8 rounded-3xl bg-gradient-to-br from-[#111111] to-[#262626] text-white overflow-hidden shadow-md">

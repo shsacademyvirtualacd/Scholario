@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ShieldAlert, KeyRound, AlertTriangle, ArrowRight, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ProctoredMCQTest } from '../../types/proctoredMcq';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 interface ProctoredMCQAccessModalProps {
   isOpen: boolean;
@@ -24,6 +26,8 @@ export const ProctoredMCQAccessModal: React.FC<ProctoredMCQAccessModalProps> = (
   const [studentNameInput] = useState<string>(defaultStudentName);
   const [acknowledged, setAcknowledged] = useState<boolean>(false);
 
+  useModalScrollLock(isOpen && Boolean(test));
+
   if (!isOpen || !test) return null;
 
   const handleStart = (e: React.FormEvent) => {
@@ -40,9 +44,13 @@ export const ProctoredMCQAccessModal: React.FC<ProctoredMCQAccessModalProps> = (
     onVerified(id, studentNameInput.trim() || 'Student');
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto overscroll-contain animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg my-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-y-auto max-h-[calc(100dvh-1.5rem)] p-5 sm:p-7 overscroll-contain">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-y-auto max-h-[90dvh] p-5 sm:p-7 overscroll-contain">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -135,7 +143,8 @@ export const ProctoredMCQAccessModal: React.FC<ProctoredMCQAccessModalProps> = (
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

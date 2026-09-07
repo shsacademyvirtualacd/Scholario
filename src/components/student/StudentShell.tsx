@@ -20,6 +20,8 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { NotificationBell } from '../common/NotificationBell';
 import ProfileAvatar from '../common/ProfileAvatar';
+import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
+import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 
 interface StudentShellProps {
   children: React.ReactNode;
@@ -142,10 +144,14 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
             </div>
           </div>
 
+          <div className="pt-1">
+            <ThemeToggleSwitch variant="switch" className="border border-[#2A2A2A] bg-[#141416]/90 py-2 px-2.5" />
+          </div>
+
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400 disabled:opacity-50 inline-flex items-center gap-1.5 interactive"
+            className="sidebar-link w-full text-[#737373] hover:text-red-400 disabled:opacity-50 inline-flex items-center gap-1.5 interactive mt-2"
           >
             {isSigningOut ? (
               <Loader2 size={17} className="animate-spin shrink-0" />
@@ -172,22 +178,15 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggleSwitch variant="compact" />
             <NotificationBell />
-            <button
-              onClick={() => feeStatus === 'paid' && navigate('/student/profile')}
-              disabled={feeStatus !== 'paid'}
-              title={feeStatus !== 'paid' ? "Unlocks after payment verification" : (profile?.full_name || 'Profile')}
-              className={`rounded-lg overflow-hidden ${
-                feeStatus !== 'paid' ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 transition-transform interactive'
-              }`}
-            >
-              <ProfileAvatar
-                avatarUrl={profile?.avatar_url}
-                name={profile?.full_name ?? 'Student'}
-                role="student"
-                size="md"
-              />
-            </button>
+            <ProfileDropdownMenu
+              profile={profile}
+              role="student"
+              onSignOut={handleSignOut}
+              isSigningOut={isSigningOut}
+              avatarSize="md"
+            />
           </div>
         </header>
 

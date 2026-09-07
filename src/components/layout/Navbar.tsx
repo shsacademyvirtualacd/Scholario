@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Logo from '../ui/Logo';
+import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 
 interface NavbarProps {
   onNavigate: (page: string) => void;
@@ -43,8 +44,9 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
             </Link>
           </div>
 
-          {/* Right Column — Sign In + Sign Up */}
+          {/* Right Column — Theme Toggle + Sign In + Sign Up */}
           <div className="hidden md:flex justify-end items-center gap-3">
+            <ThemeToggleSwitch variant="compact" />
             <Link
               to="/login"
               className="btn btn-ghost btn-sm interactive"
@@ -60,7 +62,8 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
           </div>
 
           {/* Mobile Toggle */}
-          <div className="flex md:hidden justify-end">
+          <div className="flex md:hidden justify-end items-center gap-2">
+            <ThemeToggleSwitch variant="compact" />
             <button
               className="p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors interactive"
               onClick={() => setMobileOpen(!mobileOpen)}
@@ -76,7 +79,10 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-[#E5E5E5] animate-fade-in">
-          <div className="px-4 py-4 space-y-2">
+          <div className="px-4 py-4 space-y-3">
+            <div className="pb-2 border-b border-[#E5E5E5]">
+              <ThemeToggleSwitch variant="switch" />
+            </div>
             <Link
               to="/login"
               onClick={() => setMobileOpen(false)}

@@ -1,22 +1,41 @@
 import React, { memo } from 'react';
+import { ChatTheme } from '../../types/chatTheme';
+
+interface ChatWallpaperProps {
+  className?: string;
+  theme?: ChatTheme;
+}
 
 /**
- * WhatsApp-style subtle doodle wallpaper background.
+ * WhatsApp-style subtle doodle wallpaper background with dynamic theme styling.
  * Renders an optimized SVG doodle pattern (academic + chat icons)
- * at a low opacity over WhatsApp's classic warm neutral backdrop (#EFEAE2).
+ * over the theme's background or falls back to WhatsApp's classic warm neutral backdrop (#EFEAE2).
  */
-export const ChatWallpaper: React.FC<{ className?: string }> = memo(({ className = '' }) => {
+export const ChatWallpaper: React.FC<ChatWallpaperProps> = memo(({ className = '', theme }) => {
+  const bgStyle = theme?.background || '#EFEAE2';
+  const showPattern = theme ? theme.hasDoodlePattern : true;
+  const patternOpacity = theme?.doodleOpacity ?? 0.065;
+  const patternColor = theme?.doodleColor ?? '#111111';
+
   return (
     <div
-      className={`absolute inset-0 pointer-events-none select-none z-0 overflow-hidden bg-[#EFEAE2] ${className}`}
+      className={`absolute inset-0 pointer-events-none select-none z-0 overflow-hidden transition-all duration-300 ${className}`}
+      style={{
+        background: bgStyle,
+      }}
       aria-hidden="true"
     >
-      <svg
-        className="w-full h-full opacity-[0.065] text-[#111111]"
-        xmlns="http://www.w3.org/2000/svg"
-        width="100%"
-        height="100%"
-      >
+      {showPattern && (
+        <svg
+          className="w-full h-full"
+          style={{
+            opacity: patternOpacity,
+            color: patternColor,
+          }}
+          xmlns="http://www.w3.org/2000/svg"
+          width="100%"
+          height="100%"
+        >
         <defs>
           <pattern
             id="wa-doodle-pattern"
@@ -176,6 +195,7 @@ export const ChatWallpaper: React.FC<{ className?: string }> = memo(({ className
         </defs>
         <rect width="100%" height="100%" fill="url(#wa-doodle-pattern)" />
       </svg>
+      )}
     </div>
   );
 });

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ExternalLink, Download, Loader2 } from 'lucide-react';
 import type { Note } from '../../types';
 import { downloadNoteBlob } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
 import { useMobile } from '../../hooks/useMobile';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import PdfViewer from '../ui/PdfViewer';
 import { MathText } from '../common/MathText';
 
@@ -19,6 +21,8 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
   const [loadingUrl, setLoadingUrl] = useState<boolean>(false);
   const [downloading, setDownloading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
+
+  useModalScrollLock(Boolean(note));
 
   useEffect(() => {
     let mounted = true;
@@ -68,11 +72,15 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+    >
       {/* Modal Container */}
       <div className={`bg-white w-full flex flex-col shadow-2xl border border-[#E5E5E5] overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${
-        isMobile ? 'h-full rounded-none' : 'max-w-4xl h-[85vh] rounded-2xl'
+        isMobile ? 'h-[100dvh] rounded-none' : 'max-w-4xl h-[85dvh] max-h-[90dvh] rounded-2xl'
       }`}>
         
         {/* Header */}
@@ -131,7 +139,7 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 bg-[#F5F5F5] flex items-center justify-center">
+        <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-4 bg-[#F5F5F5] flex items-center justify-center">
           {loadingUrl ? (
             <div className="flex flex-col items-center justify-center text-center p-6">
               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
@@ -183,7 +191,8 @@ export const NoteViewerModal: React.FC<NoteViewerModalProps> = ({ note, onClose 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

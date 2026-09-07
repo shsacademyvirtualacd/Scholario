@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Plus,
@@ -19,6 +20,7 @@ import { MathText } from '../../common/MathText';
 import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
 import { getSubjectsForStream } from '../../../lib/db';
 import type { WrittenQuestionItem, WrittenTest, WrittenTestType } from '../../../types/writtenTest';
+import { useModalScrollLock } from '../../../hooks/useModalScrollLock';
 
 interface AdminCreateWrittenTestModalProps {
   isOpen: boolean;
@@ -276,9 +278,18 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+  // Lock background scrolling and preserve position
+  useModalScrollLock(isOpen);
+
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-4xl max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#F0F0F0] flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3">
@@ -305,18 +316,18 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors"
+            className="p-2 text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Wizard Steps Navigation */}
-        <div className="px-6 py-3 bg-[#FAFAFA] border-b border-[#F0F0F0] flex items-center justify-between shrink-0">
+        <div className="px-6 py-3 bg-[#FAFAFA] border-b border-[#F0F0F0] flex items-center justify-between shrink-0 overflow-x-auto">
           <div className="flex items-center gap-2 sm:gap-6">
             <button
               onClick={() => setStep(1)}
-              className={`flex items-center gap-2 text-xs font-bold transition-colors ${
+              className={`flex items-center gap-2 text-xs font-bold transition-colors cursor-pointer ${
                 step === 1 ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
               }`}
             >
@@ -332,7 +343,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
             <div className="w-6 h-px bg-[#E5E5E5]" />
             <button
               onClick={() => setStep(2)}
-              className={`flex items-center gap-2 text-xs font-bold transition-colors ${
+              className={`flex items-center gap-2 text-xs font-bold transition-colors cursor-pointer ${
                 step === 2 ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
               }`}
             >
@@ -348,7 +359,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
             <div className="w-6 h-px bg-[#E5E5E5]" />
             <button
               onClick={() => setStep(3)}
-              className={`flex items-center gap-2 text-xs font-bold transition-colors ${
+              className={`flex items-center gap-2 text-xs font-bold transition-colors cursor-pointer ${
                 step === 3 ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
               }`}
             >
@@ -370,7 +381,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-6 overscroll-contain">
           {/* STEP 1: Basic Info & Taxonomy */}
           {step === 1 && (
             <div className="space-y-5 max-w-2xl mx-auto">
@@ -899,7 +910,8 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

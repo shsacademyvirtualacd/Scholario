@@ -1,5 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X, Loader2 } from 'lucide-react';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 export interface ConfirmModalProps {
   open: boolean;
@@ -28,25 +30,18 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Lock body scroll when open
+  // Robust scroll lock that guarantees zero jumps and preserves scroll offset
+  useModalScrollLock(open);
+
   useEffect(() => {
     if (open) {
-      document.body.style.overflow = 'hidden';
       setError(null);
-      // Focus on confirm or cancel button when opened
+      // Focus on confirm button without triggering browser scroll jumps
       const timer = setTimeout(() => {
-        confirmBtnRef.current?.focus();
+        confirmBtnRef.current?.focus({ preventScroll: true });
       }, 50);
-      return () => {
-        clearTimeout(timer);
-        document.body.style.overflow = 'unset';
-      };
-    } else {
-      document.body.style.overflow = 'unset';
+      return () => clearTimeout(timer);
     }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
   }, [open]);
 
   // Escape key handler
@@ -78,10 +73,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       id="confirm-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto overscroll-contain"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
@@ -93,7 +88,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     >
       <div
         id="confirm-modal-container"
-        className="relative bg-white w-full max-w-full sm:max-w-md rounded-2xl shadow-2xl p-4 sm:p-6 border border-[#E5E5E5] animate-in zoom-in-95 duration-200 my-auto max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain"
+        className="relative bg-white w-full max-w-full sm:max-w-md rounded-2xl shadow-2xl p-4 sm:p-6 border border-[#E5E5E5] animate-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -101,44 +96,46 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           id="confirm-modal-close-btn"
           onClick={onClose}
           disabled={isPending}
-          className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors disabled:opacity-40 cursor-pointer"
+          className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors disabled:opacity-40 cursor-pointer z-10"
           aria-label="Close dialog"
         >
           <X size={16} />
         </button>
 
-        <div className="flex gap-3 sm:gap-4">
-          {/* Destructive / Warning Icon */}
-          {danger ? (
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]/60 flex items-center justify-center shrink-0">
-              <AlertTriangle size={18} />
-            </div>
-          ) : (
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F5F5F5] text-[#111111] border border-[#E5E5E5] flex items-center justify-center shrink-0">
-              <AlertTriangle size={18} />
-            </div>
-          )}
-
-          <div className="flex-1 pr-6 sm:pr-4 min-w-0">
-            <h3 id="confirm-modal-title" className="text-sm sm:text-base font-extrabold text-[#111111] break-words">
-              {title}
-            </h3>
-            <p className="text-xs sm:text-sm text-[#737373] mt-1.5 font-normal leading-relaxed break-words">
-              {description}
-            </p>
-
-            {error && (
-              <div className="mt-3 p-2.5 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-xs text-[#991B1B] break-words">
-                {error}
+        <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 overscroll-contain">
+          <div className="flex gap-3 sm:gap-4">
+            {/* Destructive / Warning Icon */}
+            {danger ? (
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]/60 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} />
+              </div>
+            ) : (
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F5F5F5] text-[#111111] border border-[#E5E5E5] flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} />
               </div>
             )}
 
-            {children && <div className="mt-4">{children}</div>}
+            <div className="flex-1 pr-6 sm:pr-4 min-w-0">
+              <h3 id="confirm-modal-title" className="text-sm sm:text-base font-extrabold text-[#111111] break-words">
+                {title}
+              </h3>
+              <p className="text-xs sm:text-sm text-[#737373] mt-1.5 font-normal leading-relaxed break-words">
+                {description}
+              </p>
+
+              {error && (
+                <div className="mt-3 p-2.5 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-xs text-[#991B1B] break-words">
+                  {error}
+                </div>
+              )}
+
+              {children && <div className="mt-4">{children}</div>}
+            </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 mt-5 sm:mt-6 pt-4 border-t border-[#F5F5F5]">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 mt-4 pt-4 border-t border-[#F5F5F5] shrink-0">
           <button
             type="button"
             id="confirm-modal-cancel-btn"
@@ -165,7 +162,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

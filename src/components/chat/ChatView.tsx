@@ -42,6 +42,8 @@ import { ChatImageBubble } from './ChatImageBubble';
 import { ChatFileBubble } from './ChatFileBubble';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { ChatWallpaper } from './ChatWallpaper';
+import { ChatThemeModal } from './ChatThemeModal';
+import { getChatTheme, getSavedChatTheme, saveChatTheme } from '../../lib/chatThemes';
 import { ContactInfoModal } from './ContactInfoModal';
 import { MediaLinksDocsModal } from './MediaLinksDocsModal';
 import { ImageViewerModal } from './ImageViewerModal';
@@ -129,6 +131,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // WhatsApp Features: Contact Info, Media/Docs, In-Chat Search, Muting, Image Viewer
   const [showContactInfoModal, setShowContactInfoModal] = useState(false);
   const [showMediaDocsModal, setShowMediaDocsModal] = useState(false);
+  const [showChatThemeModal, setShowChatThemeModal] = useState(false);
+  const [chatThemeId, setChatThemeId] = useState<string>(() => getSavedChatTheme(activeThreadId || undefined));
+
+  // Sync chat theme whenever active thread changes
+  useEffect(() => {
+    setChatThemeId(getSavedChatTheme(activeThreadId || undefined));
+  }, [activeThreadId]);
+
+  const activeChatTheme = useMemo(() => getChatTheme(chatThemeId), [chatThemeId]);
+
+  const handleSelectChatTheme = (newThemeId: string) => {
+    setChatThemeId(newThemeId);
+    saveChatTheme(newThemeId, activeThreadId || undefined);
+    const themeName = getChatTheme(newThemeId).name;
+    toast.success(`Chat theme set to "${themeName}"`);
+  };
   const [showInChatSearch, setShowInChatSearch] = useState(false);
   const [inChatSearchQuery, setInChatSearchQuery] = useState('');
   const [currentSearchMatchIndex, setCurrentSearchMatchIndex] = useState(0);
@@ -1981,12 +1999,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 type="button"
                                 onClick={() => {
                                   setShowChatMenu(false);
-                                  toast.info('Chat wallpaper: WhatsApp classic academic doodle pattern active.');
+                                  setShowChatThemeModal(true);
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center gap-3 transition-all group text-[13px] outline-none select-none"
+                                className="w-full text-left px-4 py-2.5 hover:bg-black/5 active:bg-black/10 active:opacity-75 flex items-center justify-between gap-3 transition-all group text-[13px] outline-none select-none cursor-pointer"
                               >
-                                <Sparkles size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
-                                <span className="font-medium">Chat theme</span>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <Sparkles size={16} className="text-[#54656F] group-hover:text-[#111111] shrink-0" />
+                                  <span className="font-medium">Chat theme</span>
+                                </div>
+                                <span className="text-[11px] text-[#737373] font-medium truncate max-w-[100px]">
+                                  {activeChatTheme.name}
+                                </span>
                               </button>
 
                               <button
@@ -2100,8 +2123,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
 
               {/* Messages Area with WhatsApp Doodle Wallpaper - spans behind top and bottom frosted bars */}
-              <div className="absolute inset-0 overflow-hidden flex flex-col bg-[#EFEAE2]">
-                <ChatWallpaper />
+              <div
+                className="absolute inset-0 overflow-hidden flex flex-col transition-colors duration-300"
+                style={{ background: activeChatTheme.background }}
+              >
+                <ChatWallpaper theme={activeChatTheme} />
                 <div
                   ref={messagesContainerRef}
                   onScroll={handleMessagesScroll}
@@ -2277,6 +2303,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 readAt={msg.read_at}
                                 isMe={isMe}
                                 hasTail={hasTail}
+                                theme={activeChatTheme}
                               />
                             ) : msg.message_type === 'image' && msg.attachment_key ? (
                               <ChatImageBubble
@@ -2291,6 +2318,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 hasTail={hasTail}
                                 senderName={isMe ? 'You' : (activeThread?.other_participant?.full_name || 'Contact')}
                                 onReply={handleReplyFromViewer}
+                                theme={activeChatTheme}
                               />
                             ) : msg.message_type === 'file' && msg.attachment_key ? (
                               <ChatFileBubble
@@ -2304,16 +2332,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 readAt={msg.read_at}
                                 isMe={isMe}
                                 hasTail={hasTail}
+                                theme={activeChatTheme}
                               />
                             ) : (
                               /* WhatsApp Flat Text Bubble */
                               <div
                                 className={`relative w-fit max-w-full rounded-[8px] px-2.5 sm:px-3 py-1 sm:py-1.5 overflow-visible select-none md:select-text ${
-                                  isMe
-                                    ? `bg-[#D9FDD3] text-[#111B21] ${hasTail ? 'rounded-br-[0px]' : ''}`
-                                    : `bg-white text-[#111B21] ${hasTail ? 'rounded-bl-[0px]' : ''}`
+                                  hasTail ? (isMe ? 'rounded-br-[0px]' : 'rounded-bl-[0px]') : ''
                                 }`}
                                 style={{
+                                  backgroundColor: isMe ? activeChatTheme.sentBubbleBg : activeChatTheme.receivedBubbleBg,
+                                  color: isMe ? activeChatTheme.sentBubbleText : activeChatTheme.receivedBubbleText,
                                   boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
                                 }}
                               >
@@ -2347,7 +2376,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   </p>
 
                                   <div
-                                    className="ml-auto shrink-0 flex items-center gap-1 text-[11px] leading-none mb-0.5 select-none text-[#667781]"
+                                    className="ml-auto shrink-0 flex items-center gap-1 text-[11px] leading-none mb-0.5 select-none"
+                                    style={{
+                                      color: isMe ? activeChatTheme.sentMetaText : activeChatTheme.receivedMetaText,
+                                    }}
                                   >
                                     <span className="whitespace-nowrap">{formatMessageTime(msg.created_at)}</span>
                                     {isMe && (
@@ -2355,7 +2387,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                         {isRead ? (
                                           <CheckCheck size={15} className="text-[#53BDEB] stroke-[2.2]" />
                                         ) : (
-                                          <CheckCheck size={15} className="text-[#8696A0] stroke-[1.8]" />
+                                          <CheckCheck
+                                            size={15}
+                                            className="stroke-[1.8]"
+                                            style={{ color: activeChatTheme.sentMetaText }}
+                                          />
                                         )}
                                       </span>
                                     )}
@@ -2363,7 +2399,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 </div>
 
                                 {/* Tail */}
-                                {hasTail && <ChatBubbleTail isMe={isMe} fillColor={isMe ? '#D9FDD3' : '#FFFFFF'} />}
+                                {hasTail && (
+                                  <ChatBubbleTail
+                                    isMe={isMe}
+                                    fillColor={isMe ? activeChatTheme.sentBubbleBg : activeChatTheme.receivedBubbleBg}
+                                  />
+                                )}
                               </div>
                             )}
                           </div>
@@ -3050,6 +3091,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
         uploadProgress={uploadProgress}
         onClose={handleDiscardAttachment}
         onSend={handleConfirmSendAttachment}
+      />
+
+      {/* ── WhatsApp Chat Theme Picker Modal ── */}
+      <ChatThemeModal
+        isOpen={showChatThemeModal}
+        onClose={() => setShowChatThemeModal(false)}
+        currentThemeId={chatThemeId}
+        onSelectTheme={handleSelectChatTheme}
       />
     </div>
   );

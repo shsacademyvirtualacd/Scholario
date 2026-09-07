@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ShieldAlert,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { MathText } from '../common/MathText';
 import { verifyStudentId, type VerifiedStudentInfo } from '../../lib/proctoredMcqService';
 import {
@@ -592,6 +594,8 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  useModalScrollLock(isOpen && Boolean(test));
+
   if (!isOpen || !test) return null;
 
   const currentQuestion = test.questions[currentQuestionIndex];
@@ -656,9 +660,13 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-5xl h-[95dvh] max-h-[95dvh] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Dynamic Watermark Overlay during active exam */}
         {phase === 'in_exam' && (
           <ExamWatermarkOverlay
@@ -744,7 +752,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
 
         {/* Modal Body with onScroll */}
         <div
-          className="flex-1 overflow-y-auto p-3 sm:p-4"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4"
           onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 20)}
         >
           {/* PHASE 1: Verify Student ID */}
@@ -1317,6 +1325,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

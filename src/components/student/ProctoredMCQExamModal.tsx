@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ShieldAlert,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { MathText } from '../common/MathText';
 import {
   verifyStudentId,
@@ -221,15 +223,21 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
     }));
   };
 
+  useModalScrollLock(isOpen && Boolean(test));
+
   if (!isOpen || !test) return null;
 
   const currentQ = test.questions[currentQuestionIndex];
   const answeredCount = Object.keys(selectedAnswers).length;
   const isUrgent = timeRemainingSeconds < 300; // less than 5 mins
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="bg-white rounded-3xl border border-[#E5E5E5] w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden relative">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 select-none"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-4xl h-[95dvh] max-h-[95dvh] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Dynamic Watermark Overlay during active exam */}
         {phase === 'in_exam' && (
           <ExamWatermarkOverlay
@@ -301,7 +309,7 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
         )}
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">
           {/* PHASE 1: Verify Student ID (No Password Required) */}
           {phase === 'verify_id' && (
             <div className="max-w-md mx-auto py-6 space-y-5 text-center">
@@ -621,7 +629,8 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

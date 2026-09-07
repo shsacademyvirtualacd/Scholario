@@ -26,6 +26,8 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { supabase } from '../../lib/supabase';
 import ProfileAvatar from '../common/ProfileAvatar';
+import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
+import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -178,7 +180,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         </nav>
 
         {/* Profile + Sign Out */}
-        <div className="p-3 border-t border-[#1F1F1F] space-y-0.5">
+        <div className="p-3 border-t border-[#1F1F1F] space-y-2">
           <div
             className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A] text-white text-left transition-colors"
           >
@@ -198,6 +200,11 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
               </p>
             </div>
           </div>
+
+          <div className="pt-1">
+            <ThemeToggleSwitch variant="switch" className="border border-[#2A2A2A] bg-[#141416]/90 py-2 px-2.5" />
+          </div>
+
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
@@ -228,18 +235,14 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => navigate('/admin/profile')}
-              title={profile?.full_name || 'Admin Profile'}
-              className="rounded-lg overflow-hidden hover:scale-105 transition-transform interactive"
-            >
-              <ProfileAvatar
-                avatarUrl={profile?.avatar_url}
-                name={profile?.full_name ?? 'Administrator'}
-                role="admin"
-                size="md"
-              />
-            </button>
+            <ThemeToggleSwitch variant="compact" />
+            <ProfileDropdownMenu
+              profile={profile}
+              role="admin"
+              onSignOut={handleSignOut}
+              isSigningOut={isSigningOut}
+              avatarSize="md"
+            />
           </div>
         </header>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Upload,
@@ -13,6 +14,7 @@ import {
 import { getGradesForBoard, getStreamsForGrade } from '../../lib/taxonomy';
 import { uploadTestPaperToR2, getAllTeachers, getSubjectsForStream } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import type { TestPaper, Teacher } from '../../types';
 
 interface TestUploadModalProps {
@@ -272,23 +274,29 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
     }
   };
 
-  return (
+  useModalScrollLock(isOpen);
+
+  if (!isOpen) return null;
+
+  return createPortal(
     <div
       id="test-upload-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget && !uploading) onClose();
       }}
     >
       <div
         id="test-upload-modal-container"
-        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-[#E5E5E5] my-auto"
+        className="bg-white w-full max-w-2xl h-[92dvh] max-h-[92dvh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-[#E5E5E5] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E5E5] bg-[#FAFAFA]">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[#E5E5E5] bg-[#FAFAFA] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#111111] text-white flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-[#111111] text-white flex items-center justify-center shadow-xs shrink-0">
               <Upload size={18} />
             </div>
             <div>
@@ -300,14 +308,16 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
             id="close-test-upload-btn"
             onClick={onClose}
             disabled={uploading}
-            className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5] transition-colors disabled:opacity-40 cursor-pointer"
+            className="p-1.5 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5] transition-colors disabled:opacity-40 cursor-pointer shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {/* Form Body - Scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
           {error && (
             <div className="p-3.5 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl text-xs text-[#991B1B] flex items-start gap-2.5">
               <AlertCircle size={16} className="shrink-0 text-[#DC2626] mt-0.5" />
@@ -616,9 +626,10 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
               </div>
             </div>
           )}
+          </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E5E5E5]">
+          {/* Actions - Pinned Bottom Footer */}
+          <div className="flex items-center justify-end gap-3 px-5 sm:px-6 py-3 border-t border-[#E5E5E5] bg-white shrink-0">
             <button
               type="button"
               id="cancel-test-upload-btn"
@@ -649,7 +660,8 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

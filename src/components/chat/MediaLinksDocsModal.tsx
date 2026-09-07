@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -11,6 +12,7 @@ import {
   Play,
   Pause
 } from 'lucide-react';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { getAttachmentUrl } from '../../lib/chatService';
 import { supabase } from '../../lib/supabase';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
@@ -151,15 +153,25 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  return (
+  useModalScrollLock(isOpen);
+
+  if (!isOpen) return null;
+
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+        onClick={onClose}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="w-full max-w-lg bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh] max-h-[700px] border border-black/[0.08]"
+          className="w-full max-w-lg bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[90dvh] max-h-[700px] border border-black/[0.08]"
+          onClick={(e) => e.stopPropagation()}
           style={{
             WebkitBackdropFilter: 'blur(24px)',
             backdropFilter: 'blur(24px)',
@@ -481,6 +493,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Clock,
@@ -15,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { MathText } from '../common/MathText';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import {
   gradeWrittenSubmission,
   getRemainingGradingTime,
@@ -88,6 +90,8 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
 
     return () => clearInterval(timer);
   }, [submission]);
+
+  useModalScrollLock(isOpen && Boolean(submission));
 
   if (!isOpen || !submission) return null;
 
@@ -183,9 +187,13 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-5xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[94vh] flex flex-col shadow-2xl overflow-hidden relative">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5E5E5] w-full max-w-5xl h-[94dvh] max-h-[94dvh] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Top Header - Compact & Sticky, shrinks on scroll */}
         {isScrolled ? (
           <div className="px-4 py-2 border-b border-[#F0F0F0] flex items-center justify-between bg-white/95 backdrop-blur-xs shrink-0 transition-all sticky top-0 z-30 shadow-xs">
@@ -305,7 +313,7 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
 
         {/* Main Body */}
         <div
-          className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-5"
           onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 20)}
         >
           {submission.answers.length === 0 ? (
@@ -693,6 +701,7 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

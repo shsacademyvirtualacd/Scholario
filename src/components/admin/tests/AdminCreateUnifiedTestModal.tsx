@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Plus,
@@ -26,6 +27,7 @@ import type {
   WrittenQuestionItem,
   UnifiedQuestionType,
 } from '../../../types/writtenTest';
+import { useModalScrollLock } from '../../../hooks/useModalScrollLock';
 
 interface AdminCreateUnifiedTestModalProps {
   isOpen: boolean;
@@ -564,14 +566,21 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
     }
   };
 
+  // Lock background scroll and preserve position
+  useModalScrollLock(isOpen);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-[#E5E5E5] flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-[#E5E5E5] flex flex-col max-h-[90dvh] overflow-hidden animate-in zoom-in-95 duration-150">
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-black shadow-xs">
               <Layers size={20} />
@@ -601,7 +610,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
         </div>
 
         {/* Stepper Progress Indicator */}
-        <div className="grid grid-cols-4 border-b border-[#E5E5E5] bg-white text-xs font-bold text-center">
+        <div className="grid grid-cols-4 border-b border-[#E5E5E5] bg-white text-xs font-bold text-center shrink-0 overflow-x-auto">
           <div className={`py-2.5 border-b-2 ${step === 1 ? 'border-[#111111] text-[#111111] bg-amber-50/50' : 'border-transparent text-[#A3A3A3]'}`}>
             1. Question Mix
           </div>
@@ -617,7 +626,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto min-h-0 flex-1 space-y-6 overscroll-contain">
 
           {/* ─────────────────────────────────────────────────────────────────── */}
           {/* STEP 1: UPFRONT QUESTION MIX & COUNTS                               */}
@@ -1636,7 +1645,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
         </div>
 
         {/* Modal Footer Navigation */}
-        <div className="p-4 sm:p-5 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-t border-[#E5E5E5] bg-[#FAFAFA] flex items-center justify-between shrink-0">
           <div>
             {step > 1 ? (
               <button
@@ -1716,7 +1725,8 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Shield, Scale, Calendar, Mail, Phone } from 'lucide-react';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 interface LegalModalProps {
   type: 'privacy' | 'terms' | null;
@@ -10,16 +11,8 @@ interface LegalModalProps {
 export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
   const [activeSection, setActiveSection] = useState<string>('');
 
-  useEffect(() => {
-    if (type) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [type]);
+  // Lock background scrolling without resetting scroll position
+  useModalScrollLock(!!type);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -122,7 +115,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
         </div>
 
         {/* Content Area with Sidebar */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-h-0">
           
           {/* Sidebar Navigation */}
           <aside className="w-64 border-r border-[#F5F5F5] bg-[#FAFAFA] hidden md:block overflow-y-auto p-4 space-y-1 shrink-0">
@@ -145,7 +138,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
           </aside>
 
           {/* Main Document Text */}
-          <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 scroll-smooth">
+          <div className="flex-1 overflow-y-auto min-h-0 p-6 md:p-10 space-y-8 scroll-smooth overscroll-contain">
             
             {type === 'privacy' ? (
               // Privacy Policy Content

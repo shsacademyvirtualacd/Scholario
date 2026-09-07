@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ShieldAlert, Info, X, Lock, Eye, AlertTriangle } from 'lucide-react';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 interface ExamIntegrityBannerProps {
   studentName?: string;
@@ -11,6 +13,8 @@ export const ExamIntegrityBanner: React.FC<ExamIntegrityBannerProps> = ({
   studentId = 'STD',
 }) => {
   const [showDisclosureModal, setShowDisclosureModal] = useState<boolean>(false);
+
+  useModalScrollLock(showDisclosureModal);
 
   return (
     <>
@@ -44,18 +48,21 @@ export const ExamIntegrityBanner: React.FC<ExamIntegrityBannerProps> = ({
       </div>
 
       {/* Proctoring Protocol & Technical Disclosure Modal */}
-      {showDisclosureModal && (
+      {showDisclosureModal && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
           onClick={() => setShowDisclosureModal(false)}
         >
           <div
-            className="bg-white rounded-2xl border border-[#E5E5E5] w-full max-w-md p-5 shadow-2xl space-y-4 text-[#111111]"
+            className="bg-white rounded-2xl border border-[#E5E5E5] w-full max-w-md max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden text-[#111111]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#F0F0F0]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[#F0F0F0] shrink-0 bg-white">
               <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-amber-600" />
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
                 <h4 className="text-sm font-black uppercase tracking-wide">
                   Proctored Exam Security Protocol
                 </h4>
@@ -63,13 +70,14 @@ export const ExamIntegrityBanner: React.FC<ExamIntegrityBannerProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDisclosureModal(false)}
-                className="p-1 rounded-lg hover:bg-neutral-100 text-[#737373] cursor-pointer"
+                className="p-1 rounded-lg hover:bg-neutral-100 text-[#737373] cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs leading-relaxed">
+            {/* Scrollable Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3 text-xs leading-relaxed">
               <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200">
                 <span className="font-bold text-[#737373] text-[10px] uppercase block">
                   Authenticated Candidate:
@@ -81,7 +89,7 @@ export const ExamIntegrityBanner: React.FC<ExamIntegrityBannerProps> = ({
 
               <div className="space-y-2">
                 <h5 className="font-black text-xs text-[#111111] flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
                   Immediate Auto-Submit Triggers:
                 </h5>
                 <ul className="list-disc pl-4 space-y-1 text-[#555555]">
@@ -102,7 +110,7 @@ export const ExamIntegrityBanner: React.FC<ExamIntegrityBannerProps> = ({
 
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1">
                 <span className="font-black text-[11px] flex items-center gap-1">
-                  <Eye className="w-3.5 h-3.5 text-amber-700" />
+                  <Eye className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                   Dynamic Watermark Traceability:
                 </span>
                 <p className="text-[11px] text-amber-900">
@@ -115,15 +123,19 @@ export const ExamIntegrityBanner: React.FC<ExamIntegrityBannerProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowDisclosureModal(false)}
-              className="w-full py-2.5 rounded-xl bg-[#111111] text-white font-extrabold text-xs hover:bg-[#262626] transition-all cursor-pointer"
-            >
-              I Understand & Agree
-            </button>
+            {/* Footer */}
+            <div className="p-3 sm:p-4 border-t border-[#F0F0F0] bg-white shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowDisclosureModal(false)}
+                className="w-full py-2.5 rounded-xl bg-[#111111] text-white font-extrabold text-xs hover:bg-[#262626] transition-all cursor-pointer"
+              >
+                I Understand & Agree
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

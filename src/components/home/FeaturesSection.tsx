@@ -9,7 +9,6 @@ const features = [
     title: 'Interactive Dashboards',
     description: 'Track active courses, student grades, attendance records, and platform health at a glance with clean, dedicated views.',
     tag: 'Analytics',
-    highlight: true,
     fullWidth: false,
   },
   {
@@ -17,7 +16,6 @@ const features = [
     title: 'Course Management',
     description: 'Organize study streams (ICS, Pre-Med, Pre-Eng), upload notes, share documents, and track individual course progress.',
     tag: 'Core',
-    highlight: false,
     fullWidth: false,
   },
   {
@@ -25,7 +23,6 @@ const features = [
     title: 'Live Class Scheduling',
     description: 'Check daily calendars for scheduled live lectures, interactive sessions, and recorded class links directly from the portal.',
     tag: 'Live',
-    highlight: false,
     fullWidth: false,
   },
   {
@@ -33,7 +30,6 @@ const features = [
     title: 'Attendance Tracking',
     description: 'Seamlessly record and review student attendance. Access attendance rate charts and trace remaining class slots dynamically.',
     tag: 'Management',
-    highlight: false,
     fullWidth: false,
   },
   {
@@ -41,7 +37,6 @@ const features = [
     title: 'Resource Library',
     description: 'Access or share course-specific study resources, worksheets, past papers, syllabus files, and lecture notes instantly.',
     tag: 'Core',
-    highlight: false,
     fullWidth: false,
   },
   {
@@ -49,7 +44,6 @@ const features = [
     title: 'Announcements Broadcast',
     description: 'Broadcast and read institution-wide updates filtered by categories, complete with unread notification badges.',
     tag: 'Communication',
-    highlight: true,
     fullWidth: false,
   },
   {
@@ -57,7 +51,6 @@ const features = [
     title: 'Sage',
     description: 'Meet Sage, your AI study companion — get instant answers to subject questions, summarized notes, and personalized study help, anytime.',
     tag: 'AI',
-    highlight: false,
     fullWidth: true,
   },
 ];
@@ -109,60 +102,34 @@ const FeaturesSection: React.FC = () => {
               <div
                 key={feature.title}
                 id={`feature-card-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}
-                className={`group relative p-6 rounded-2xl border transition-all duration-250 cursor-pointer ${
+                className={`group relative p-6 rounded-2xl border transition-all duration-250 cursor-pointer bg-white border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-lg hover:-translate-y-1 ${
                   feature.fullWidth ? 'md:col-span-2' : ''
-                } ${
-                  feature.highlight
-                    ? 'bg-[#111111] border-[#111111] text-white'
-                    : 'bg-white border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-lg hover:-translate-y-1'
                 }`}
                 style={{ animationDelay: `${i * 50}ms` }}
               >
                 {/* Tag */}
                 <div className="flex items-start justify-between mb-5">
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
-                    style={{
-                      background: feature.highlight ? '#1F1F1F' : '#F5F5F5',
-                    }}
-                  >
-                    <Icon
-                      size={20}
-                      style={{ color: feature.highlight ? '#F4C430' : '#111111' }}
-                    />
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110 bg-[#F5F5F5] text-[#111111]">
+                    <Icon size={20} />
                   </div>
-                  <span
-                    className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full"
-                    style={{
-                      background: feature.highlight ? 'rgba(244,196,48,0.15)' : '#F5F5F5',
-                      color: feature.highlight ? '#F4C430' : '#737373',
-                    }}
-                  >
+                  <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full bg-[#F5F5F5] text-[#737373]">
                     {feature.tag}
                   </span>
                 </div>
 
-                <h3
-                  className="text-base font-bold mb-2.5 leading-snug"
-                  style={{ color: feature.highlight ? '#ffffff' : '#111111' }}
-                >
+                <h3 className="text-base font-bold mb-2.5 leading-snug text-[#111111]">
                   {feature.title}
                 </h3>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: feature.highlight ? '#A3A3A3' : '#737373' }}
-                >
+                <p className="text-sm leading-relaxed text-[#737373]">
                   {feature.description}
                 </p>
 
                 {/* Hover indicator */}
-                {!feature.highlight && (
-                  <div className="absolute bottom-5 right-5 w-7 h-7 rounded-full bg-[#F5F5F5] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 10L10 2M10 2H4M10 2V8" stroke="#111111" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                )}
+                <div className="absolute bottom-5 right-5 w-7 h-7 rounded-full bg-[#F5F5F5] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 10L10 2M10 2H4M10 2V8" stroke="#111111" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </div>
               </div>
             );
           })}
