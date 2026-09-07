@@ -111,7 +111,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 />
               </div>
 
-              <h2 className="text-lg font-bold text-[#111111] leading-snug">
+              <h2 className="chat-contact-name text-lg font-bold text-[#0F172A] leading-snug">
                 {contact.full_name || 'Contact'}
               </h2>
 

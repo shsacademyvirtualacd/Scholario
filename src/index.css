@@ -1307,3 +1307,16 @@ html.dark .hover\:border-\[\#D4D4D4\]:hover {
   border-color: #3F3F46 !important;
 }
 
+/* ==========================================================================
+   Scholario Chat Contact Names High-Contrast Overrides
+   Ensures WCAG AAA contrast ratio (>15:1) against white/light chat rows
+   in both light mode and dark mode
+   ========================================================================== */
+.chat-contact-name,
+html.dark .chat-contact-name,
+html.dark [data-chat-view] .chat-contact-name,
+html.dark [data-chat-view] .text-\[\#0F172A\],
+html.dark [data-chat-view] .text-\[\#0f172a\] {
+  color: #0F172A !important;
+}
+

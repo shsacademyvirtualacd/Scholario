@@ -1475,12 +1475,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] max-h-[850px] min-h-[550px] bg-white rounded-3xl border border-[#E5E5E5] shadow-xs overflow-hidden">
+    <div data-chat-view="true" className="flex flex-col h-[calc(100vh-8.5rem)] max-h-[850px] min-h-[550px] bg-white rounded-3xl border border-[#E5E5E5] shadow-xs overflow-hidden">
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         
         {/* ── Left Column: Threads / Conversation List ── */}
         <div
-          className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-[#E5E5E5] bg-[#FCFCFC] shrink-0 transition-all duration-200 ${
+          className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-[#E5E5E5] bg-[#FCFCFC] shrink-0 transition-all duration-200 relative ${
             mobileViewActiveThread ? 'hidden md:flex' : 'flex'
           }`}
         >
@@ -1532,7 +1532,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
 
           {/* Threads List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-[#F0F0F0] pb-24">
+          <div className="flex-1 overflow-y-auto divide-y divide-[#F0F0F0] pb-28">
             {loadingThreads ? (
               <div className="p-8 flex flex-col items-center justify-center gap-3 text-center">
                 <Loader2 size={24} className="animate-spin text-[#F4C430]" />
@@ -1598,10 +1598,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
-                            className={`text-[13.5px] sm:text-sm truncate ${
+                            className={`chat-contact-name text-[13.5px] sm:text-sm truncate ${
                               isSelected || hasUnread
-                                ? 'font-bold text-[#111111]'
-                                : 'font-medium text-[#111111]'
+                                ? 'font-bold text-[#0F172A]'
+                                : 'font-semibold text-[#0F172A]'
                             }`}
                           >
                             {other?.full_name || (isAdmin ? 'Scholario Support' : 'User')}
@@ -1685,10 +1685,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 );
               })
             )}
+            {/* Generous bottom clearance spacer to guarantee the last conversation row is 100% visible and unobstructed above any floating buttons or widgets */}
+            <div className="h-28 w-full shrink-0 pointer-events-none" aria-hidden="true" />
           </div>
 
           {/* ── Persistent Floating Sage AI Access Button (WhatsApp Meta AI Style) ── */}
-          <div className="absolute bottom-5 right-5 z-20 pointer-events-auto">
+          <div className="absolute bottom-4 right-4 z-20 pointer-events-auto">
             <button
               type="button"
               id="floating-sage-ai-button"
@@ -1824,7 +1826,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm sm:text-base font-semibold text-[#111111] truncate leading-tight">
+                        <h3 className="chat-contact-name text-sm sm:text-base font-semibold text-[#0F172A] truncate leading-tight">
                           {activeThread.other_participant?.full_name || 'Direct Conversation'}
                         </h3>
                         {isCurrentThreadMuted && (
@@ -2851,7 +2853,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-xs font-bold text-[#111111] truncate">{contact.full_name}</p>
+                            <p className="chat-contact-name text-xs font-bold text-[#0F172A] truncate">{contact.full_name}</p>
                             {getRoleBadge(contact.role, contact.role === 'admin', {
                               subjects: (contact as any).teacher_subjects,
                               tag: (contact as any).admin_tag,
