@@ -427,11 +427,11 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
                 accept=".pdf,image/png,image/jpeg,image/webp,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
                 onChange={handleFileChange}
                 disabled={loading}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                 required
               />
               {selectedFile ? (
-                <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                     {selectedFile.type.startsWith('image/') ? (
                       <ImageIcon size={20} />
@@ -447,7 +447,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
                   <div className="w-10 h-10 rounded-xl bg-[#F5F5F5] group-hover:bg-[#111111] text-[#737373] group-hover:text-white flex items-center justify-center transition-colors">
                     <Upload size={18} />
                   </div>

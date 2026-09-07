@@ -333,12 +333,12 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
               }}
               onDragLeave={() => setDragActive(false)}
               onDrop={handleFileDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+              className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
                 dragActive
-                  ? 'border-[#111111] bg-[#F5F5F5]'
+                  ? 'border-[#111111] dark:border-[#F4C430] bg-[#F5F5F5] dark:bg-[#202024]'
                   : file
-                  ? 'border-[#22C55E] bg-[#F0FDF4]'
-                  : 'border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#F5F5F5]'
+                  ? 'border-[#22C55E] dark:border-emerald-500 bg-[#F0FDF4] dark:bg-emerald-950/20'
+                  : 'border-[#E5E5E5] dark:border-[#27272A] bg-[#FAFAFA] dark:bg-[#141416] hover:bg-[#F5F5F5] dark:hover:bg-[#1C1C20]'
               }`}
             >
               <input
@@ -347,30 +347,30 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
                 accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                 onChange={handleFileChange}
                 disabled={uploading}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
               />
 
               {file ? (
-                <div className="flex items-center justify-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#22C55E]/10 text-[#16A34A] flex items-center justify-center shrink-0">
+                <div className="flex items-center justify-center gap-3 pointer-events-none">
+                  <div className="w-10 h-10 rounded-xl bg-[#22C55E]/10 dark:bg-emerald-500/20 text-[#16A34A] dark:text-emerald-400 flex items-center justify-center shrink-0">
                     <FileCheck2 size={20} />
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-extrabold text-[#111111] truncate max-w-xs">{file.name}</p>
-                    <p className="text-[11px] text-[#737373]">
+                    <p className="text-xs font-extrabold text-[#111111] dark:text-[#F4F4F5] truncate max-w-xs">{file.name}</p>
+                    <p className="text-[11px] text-[#737373] dark:text-[#A1A1AA]">
                       {(file.size / (1024 * 1024)).toFixed(2)} MB • Ready to submit
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-[#E5E5E5] text-[#525252] flex items-center justify-center mx-auto">
+                <div className="space-y-2 pointer-events-none">
+                  <div className="w-12 h-12 rounded-2xl bg-[#E5E5E5] dark:bg-[#27272A] text-[#525252] dark:text-[#A1A1AA] flex items-center justify-center mx-auto">
                     <Upload size={20} />
                   </div>
-                  <p className="text-xs font-extrabold text-[#111111]">
-                    Drag & drop your solved answer sheet here, or <span className="underline">browse file</span>
+                  <p className="text-xs font-extrabold text-[#111111] dark:text-[#F4F4F5]">
+                    Drag & drop your solved answer sheet here, or <span className="underline text-[#111111] dark:text-[#F4C430]">browse file</span>
                   </p>
-                  <p className="text-[11px] text-[#737373]">
+                  <p className="text-[11px] text-[#737373] dark:text-[#A1A1AA]">
                     Accepted: PDF, Scanned Images (JPG/PNG) up to 25MB
                   </p>
                 </div>

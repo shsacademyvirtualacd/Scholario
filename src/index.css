@@ -1191,11 +1191,19 @@ html.dark .progress-bar {
 }
 
 /* Modals & Dialog overlays (including createPortal components) */
-html.dark [role="dialog"],
-html.dark .modal-content {
+html.dark .modal-content,
+html.dark .modal-container,
+html.dark [role="dialog"]:not(.fixed):not([class*="fixed"]):not([id*="backdrop"]) {
   background-color: #18181B !important;
   border-color: #27272A !important;
   color: #F4F4F5 !important;
+}
+
+/* Modal fixed backdrop overlays MUST retain their translucent dark veil */
+html.dark [role="dialog"].fixed,
+html.dark [role="dialog"][class*="fixed"],
+html.dark [id*="backdrop"] {
+  background-color: rgba(0, 0, 0, 0.72) !important;
 }
 
 /* Dropdown menus & popovers */
