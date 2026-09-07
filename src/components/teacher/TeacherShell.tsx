@@ -8,17 +8,14 @@ import {
   BookMarked,
   FileCheck2,
   Bell,
-  LogOut,
   Menu,
   X,
-  Sparkles,
-  Loader2
+  Sparkles
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { NotificationBell } from '../common/NotificationBell';
-import ProfileAvatar from '../common/ProfileAvatar';
 import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
 import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 
@@ -118,42 +115,6 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
             );
           })}
         </nav>
-
-        {/* Profile + Sign Out */}
-        <div className="p-3 border-t border-[#1F1F1F] space-y-0.5">
-          <div
-            className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A] text-white text-left shrink-0"
-          >
-            <ProfileAvatar
-              avatarUrl={profile?.avatar_url}
-              name={profile?.full_name ?? 'Teacher'}
-              role="teacher"
-              size="sm"
-              className="shrink-0 ring-1 ring-white/10"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate leading-tight text-white">
-                {profile?.full_name ?? 'Teacher'}
-              </p>
-              <p className="text-[10px] leading-tight mt-0.5 truncate text-[#737373]">
-                SHS Faculty
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2 disabled:opacity-50 inline-flex items-center gap-1.5 interactive"
-          >
-            {isSigningOut ? (
-              <Loader2 size={17} className="animate-spin shrink-0" />
-            ) : (
-              <LogOut size={17} className="shrink-0" />
-            )}
-            <span>{isSigningOut ? 'Signing Out...' : 'Sign Out'}</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main container */}

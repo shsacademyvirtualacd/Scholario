@@ -8,7 +8,6 @@ import {
   Users,
   BookMarked,
   FileCheck2,
-  LogOut,
   Bell,
   Menu,
   X,
@@ -16,7 +15,6 @@ import {
   UserCheck,
   Coins,
   Sparkles,
-  Loader2,
   ClipboardCheck,
   ShieldAlert,
   Database
@@ -25,7 +23,6 @@ import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { supabase } from '../../lib/supabase';
-import ProfileAvatar from '../common/ProfileAvatar';
 import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
 import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 
@@ -178,42 +175,6 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
             );
           })}
         </nav>
-
-        {/* Profile + Sign Out */}
-        <div className="p-3 border-t border-[#1F1F1F] space-y-2">
-          <div
-            className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2A2A2A] text-white text-left transition-colors"
-          >
-            <ProfileAvatar
-              avatarUrl={profile?.avatar_url}
-              name={profile?.full_name ?? 'Administrator'}
-              role="admin"
-              size="sm"
-              className="shrink-0 ring-1 ring-white/10"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate leading-tight text-white">
-                {profile?.full_name ?? 'Administrator'}
-              </p>
-              <p className="text-[10px] leading-tight mt-0.5 truncate text-[#737373]">
-                Admin Staff
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className="sidebar-link w-full text-[#737373] hover:text-red-400 mt-2 disabled:opacity-50 inline-flex items-center gap-1.5 interactive"
-          >
-            {isSigningOut ? (
-              <Loader2 size={17} className="animate-spin shrink-0" />
-            ) : (
-              <LogOut size={17} className="shrink-0" />
-            )}
-            <span>{isSigningOut ? 'Signing Out...' : 'Sign Out'}</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main container */}
