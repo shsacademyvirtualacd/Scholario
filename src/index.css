@@ -884,6 +884,35 @@ html.dark .bg-white {
   background-color: #18181B !important;
 }
 
+/* Card & elevated surfaces */
+html.dark .card,
+html.dark .card-elevated {
+  background-color: #18181B !important;
+  border-color: #27272A !important;
+  color: #F4F4F5 !important;
+}
+
+html.dark .card:hover,
+html.dark .card-elevated:hover {
+  border-color: #3F3F46 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark .stat-card {
+  background-color: #18181B !important;
+  border-color: #27272A !important;
+  color: #F4F4F5 !important;
+}
+
+html.dark .stat-card:hover {
+  border-color: #3F3F46 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark .stat-value {
+  color: #F4F4F5 !important;
+}
+
 /* Opacified surfaces */
 html.dark .bg-white\/95,
 html.dark .bg-white\/90,
@@ -905,8 +934,10 @@ html.dark .bg-white\/5 {
 
 /* Gray surfaces mapped to rich dark layers */
 html.dark .bg-\[\#FAFAFA\],
-html.dark .bg-\[\#fafafa\] {
-  background-color: #121214 !important;
+html.dark .bg-\[\#fafafa\],
+html.dark .bg-\[\#F9F9F9\],
+html.dark .bg-\[\#f9f9f9\] {
+  background-color: #141416 !important;
 }
 
 html.dark .bg-\[\#F5F5F5\],
@@ -922,6 +953,47 @@ html.dark .bg-\[\#f0f0f0\] {
 html.dark .bg-\[\#E5E5E5\],
 html.dark .bg-\[\#e5e5e5\] {
   background-color: #2E2E33 !important;
+}
+
+/* Tinted notice surfaces in dark mode */
+html.dark .bg-\[\#FEF2F2\],
+html.dark .bg-\[\#fef2f2\],
+html.dark .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.12) !important;
+}
+
+html.dark .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.22) !important;
+}
+
+html.dark .hover\:bg-\[\#FEE2E2\]:hover,
+html.dark .hover\:bg-rose-50\/30:hover {
+  background-color: rgba(244, 63, 94, 0.2) !important;
+}
+
+html.dark .bg-\[\#F0FDF4\],
+html.dark .bg-\[\#f0fdf4\],
+html.dark .bg-emerald-50,
+html.dark .bg-green-50 {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+}
+
+html.dark .bg-\[\#EFF6FF\],
+html.dark .bg-\[\#eff6ff\],
+html.dark .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+html.dark .bg-\[\#FFFBF0\],
+html.dark .bg-\[\#FFF9E6\],
+html.dark .bg-amber-50,
+html.dark .bg-yellow-50 {
+  background-color: rgba(244, 196, 48, 0.12) !important;
+}
+
+html.dark .bg-\[\#FAF5FF\],
+html.dark .bg-purple-50 {
+  background-color: rgba(168, 85, 247, 0.12) !important;
 }
 
 /* Text colors */
@@ -945,18 +1017,95 @@ html.dark .text-\[\#A3A3A3\] {
   color: #71717A !important;
 }
 
+/* Alert & Accent Text Colors in Dark Mode */
+html.dark .text-rose-700,
+html.dark .text-rose-600,
+html.dark .text-\[\#dc2626\],
+html.dark .text-\[\#DC2626\],
+html.dark .text-\[\#991b1b\],
+html.dark .text-\[\#991B1B\],
+html.dark .text-\[\#B91C1C\],
+html.dark .text-\[\#ef4444\] {
+  color: #FB7185 !important;
+}
+
+html.dark .text-amber-800,
+html.dark .text-amber-700,
+html.dark .text-amber-600 {
+  color: #FBBF24 !important;
+}
+
+html.dark .text-emerald-700,
+html.dark .text-emerald-600,
+html.dark .text-\[\#16a34a\],
+html.dark .text-\[\#166534\] {
+  color: #4ADE80 !important;
+}
+
+html.dark .text-blue-700,
+html.dark .text-blue-600,
+html.dark .text-\[\#1e40af\] {
+  color: #60A5FA !important;
+}
+
 /* Borders */
 html.dark .border-\[\#E5E5E5\],
 html.dark .border-\[\#e5e5e5\],
 html.dark .border-\[\#F0F0F0\],
 html.dark .border-\[\#f0f0f0\],
+html.dark .border-\[\#F5F5F5\],
+html.dark .border-\[\#f5f5f5\],
+html.dark .border-\[\#EEEEEE\],
+html.dark .border-\[\#eeeeee\],
 html.dark .border-\[\#D4D4D4\],
 html.dark .border-\[\#d4d4d4\],
 html.dark .border-black\/\[0\.08\],
 html.dark .border-black\/\[0\.06\],
 html.dark .border-black\/5,
-html.dark .border-black\/10 {
+html.dark .border-black\/10,
+html.dark .divide-\[\#FAFAFA\] > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-\[\#F5F5F5\] > :not([hidden]) ~ :not([hidden]) {
   border-color: #27272A !important;
+}
+
+html.dark .border-rose-200,
+html.dark .border-\[\#FECACA\],
+html.dark .border-\[\#fecaca\],
+html.dark .border-\[\#FCA5A5\],
+html.dark .border-\[\#ef444420\],
+html.dark .border-\[\#ef444433\] {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+/* Badges in Dark Mode */
+html.dark .badge-gray {
+  background-color: #27272A !important;
+  color: #E4E4E7 !important;
+  border-color: #3F3F46 !important;
+}
+
+html.dark .badge-gold {
+  background-color: rgba(244, 196, 48, 0.15) !important;
+  color: #FCD34D !important;
+  border-color: rgba(244, 196, 48, 0.3) !important;
+}
+
+html.dark .badge-green {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #86EFAC !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+html.dark .badge-blue {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  color: #93C5FD !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+html.dark .badge-red {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #FCA5A5 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
 }
 
 /* Header bar */
@@ -968,10 +1117,20 @@ html.dark header.sticky {
 /* Interactive elements: Inputs, Textareas, and Selects */
 html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]):not([type="range"]),
 html.dark textarea,
-html.dark select {
+html.dark select,
+html.dark .input {
   background-color: #18181B !important;
   color: #F4F4F5 !important;
   border-color: #27272A !important;
+}
+
+html.dark .input:hover {
+  border-color: #3F3F46 !important;
+}
+
+html.dark .input:focus {
+  border-color: #F4C430 !important;
+  box-shadow: 0 0 0 3px rgba(244, 196, 48, 0.2) !important;
 }
 
 html.dark input::placeholder,
@@ -980,24 +1139,43 @@ html.dark textarea::placeholder {
 }
 
 /* Tables */
-html.dark table {
-  color: #F4F4F5;
+html.dark .table-container {
+  border-color: #27272A !important;
+  background-color: #18181B !important;
 }
+
+html.dark table,
+html.dark .table {
+  color: #F4F4F5 !important;
+}
+
 html.dark thead,
 html.dark thead tr,
-html.dark thead th {
-  background-color: #18181B !important;
+html.dark thead th,
+html.dark .table th {
+  background-color: #202024 !important;
   color: #A1A1AA !important;
   border-color: #27272A !important;
 }
-html.dark tbody tr {
+
+html.dark tbody tr,
+html.dark .table td {
   border-color: #27272A !important;
+  color: #F4F4F5 !important;
 }
-html.dark tbody tr:hover {
+
+html.dark tbody tr:hover,
+html.dark .table tr:hover td {
   background-color: #202024 !important;
 }
+
 html.dark td {
   border-color: #27272A !important;
+}
+
+/* Progress bar in Dark Mode */
+html.dark .progress-bar {
+  background-color: #27272A !important;
 }
 
 /* Modals & Dialog overlays (including createPortal components) */

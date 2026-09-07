@@ -250,12 +250,12 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* ── Teachers overview ── */}
-      <div className="card card-elevated interactive">
+      <div className="card card-elevated interactive bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A]">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-bold text-[#111111]">Teacher Workload</h2>
+          <h2 className="text-sm font-bold text-[#111111] dark:text-[#F4F4F5]">Teacher Workload</h2>
           <button
             onClick={() => navigate('/admin/teachers')}
-            className="btn btn-ghost btn-sm interactive"
+            className="btn btn-ghost btn-sm interactive text-[#111111] dark:text-[#F4F4F5] hover:bg-[#F5F5F5] dark:hover:bg-[#27272A]"
           >
             Manage teachers <ChevronRight size={14} />
           </button>
@@ -263,30 +263,30 @@ const AdminDashboardPage: React.FC = () => {
         {isMobile ? (
           <div className="space-y-4">
             {teacherWorkload.length === 0 ? (
-              <div className="text-xs text-[#A3A3A3] font-bold text-center py-6 border border-[#E5E5E5] rounded-xl bg-[#FAFAFA]">
+              <div className="text-xs text-[#A3A3A3] dark:text-[#71717A] font-bold text-center py-6 border border-[#E5E5E5] dark:border-[#27272A] rounded-xl bg-[#FAFAFA] dark:bg-[#141416]">
                 No teachers registered.
               </div>
             ) : (
               teacherWorkload.map((t, i) => (
-                <div key={i} className="bg-white border border-[#E5E5E5] rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                <div key={i} className="bg-white dark:bg-[#202024] border border-[#E5E5E5] dark:border-[#27272A] rounded-xl p-4 flex flex-col gap-3 shadow-xs">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[#F4C430] flex items-center justify-center text-sm font-bold text-[#111111] shrink-0">
                       {t.avatar}
                     </div>
                     <div>
-                      <div className="font-bold text-[#111111] leading-tight">{t.name}</div>
-                      <div className="text-[11px] text-[#737373] mt-0.5">{t.subject} · Gr. {t.grade}</div>
+                      <div className="font-bold text-[#111111] dark:text-[#F4F4F5] leading-tight">{t.name}</div>
+                      <div className="text-[11px] text-[#737373] dark:text-[#A1A1AA] mt-0.5">{t.subject} · Gr. {t.grade}</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 border-t border-[#F5F5F5] pt-3">
+                  <div className="grid grid-cols-2 gap-4 border-t border-[#F5F5F5] dark:border-[#27272A] pt-3">
                     <div>
-                      <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Students</div>
-                      <div className="text-sm font-black text-[#111111]">{t.students}</div>
+                      <div className="text-[10px] text-[#A3A3A3] dark:text-[#71717A] font-bold uppercase tracking-wider mb-0.5">Students</div>
+                      <div className="text-sm font-black text-[#111111] dark:text-[#F4F4F5]">{t.students}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Classes/wk</div>
+                      <div className="text-[10px] text-[#A3A3A3] dark:text-[#71717A] font-bold uppercase tracking-wider mb-0.5">Classes/wk</div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-[#111111]">{t.classesPerWeek}</span>
+                        <span className="text-sm font-black text-[#111111] dark:text-[#F4F4F5]">{t.classesPerWeek}</span>
                         <div className="progress-bar w-12 shrink-0">
                           <div className="progress-fill" style={{ width: `${Math.min((t.classesPerWeek / 10) * 100, 100)}%` }} />
                         </div>
@@ -298,7 +298,7 @@ const AdminDashboardPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="table-container">
+          <div className="table-container border border-[#E5E5E5] dark:border-[#27272A] rounded-xl overflow-hidden">
             <table className="table">
               <thead>
                 <tr>
@@ -313,7 +313,7 @@ const AdminDashboardPage: React.FC = () => {
               <tbody>
                 {teacherWorkload.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-xs text-[#A3A3A3] font-bold text-center py-6">
+                    <td colSpan={6} className="text-xs text-[#A3A3A3] dark:text-[#71717A] font-bold text-center py-6">
                       No teachers registered in the database.
                     </td>
                   </tr>
@@ -325,21 +325,21 @@ const AdminDashboardPage: React.FC = () => {
                           <div className="w-8 h-8 rounded-full bg-[#F4C430] flex items-center justify-center text-xs font-bold text-[#111111] shrink-0">
                             {t.avatar}
                           </div>
-                          <span className="font-medium text-[#111111]">{t.name}</span>
+                          <span className="font-medium text-[#111111] dark:text-[#F4F4F5]">{t.name}</span>
                         </div>
                       </td>
-                      <td>{t.subject}</td>
+                      <td className="text-[#262626] dark:text-[#F4F4F5]">{t.subject}</td>
                       <td><span className="badge badge-gray">{t.board}</span></td>
-                      <td className="text-[#525252]">{t.grade}</td>
+                      <td className="text-[#525252] dark:text-[#A1A1AA]">{t.grade}</td>
                       <td>
-                        <span className="font-semibold text-[#111111]">{t.students}</span>
+                        <span className="font-semibold text-[#111111] dark:text-[#F4F4F5]">{t.students}</span>
                       </td>
                       <td>
                         <div className="flex items-center gap-2">
                           <div className="progress-bar w-16">
                             <div className="progress-fill" style={{ width: `${Math.min((t.classesPerWeek / 10) * 100, 100)}%` }} />
                           </div>
-                          <span className="text-xs text-[#737373]">{t.classesPerWeek}</span>
+                          <span className="text-xs text-[#737373] dark:text-[#A1A1AA] font-semibold">{t.classesPerWeek}</span>
                         </div>
                       </td>
                     </tr>
@@ -352,28 +352,28 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* ── Low attendance Watchlist ── */}
-      <div className="card card-elevated relative overflow-hidden interactive">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5]">
+      <div className="card card-elevated relative overflow-hidden interactive bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A]">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5] dark:border-[#27272A]">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-[#111111]">⚠️ Low Attendance Watchlist (&lt;75%)</h2>
+            <h2 className="text-sm font-bold text-[#111111] dark:text-[#F4F4F5]">⚠️ Low Attendance Watchlist (&lt;75%)</h2>
             {attendanceStats.lowAttendanceStudents.length > 0 && (
-              <span className="text-[9px] bg-rose-100 text-rose-700 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[9px] bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
                 {attendanceStats.lowAttendanceStudents.length} At Risk
               </span>
             )}
           </div>
           <button
             onClick={() => navigate('/admin/attendance')}
-            className="text-xs font-bold text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors"
+            className="text-xs font-bold text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-[#F4F4F5] flex items-center gap-1 transition-colors"
           >
             Manage attendance <ChevronRight size={13} />
           </button>
         </div>
 
         {attendanceStats.lowAttendanceStudents.length === 0 ? (
-          <div className="py-6 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl flex items-center justify-center gap-2">
-            <ShieldCheck size={18} className="text-emerald-600" />
-            <span className="font-semibold text-[#111111]">All eligible students (10+ recorded sessions) meet or exceed the 75% attendance threshold.</span>
+          <div className="py-6 text-center text-xs text-[#737373] dark:text-[#A1A1AA] bg-[#FAFAFA] dark:bg-[#141416] border border-transparent dark:border-[#27272A] rounded-xl flex items-center justify-center gap-2">
+            <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400" />
+            <span className="font-semibold text-[#111111] dark:text-[#F4F4F5]">All eligible students (10+ recorded sessions) meet or exceed the 75% attendance threshold.</span>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -381,16 +381,16 @@ const AdminDashboardPage: React.FC = () => {
               <div
                 key={idx}
                 onClick={() => navigate('/admin/attendance')}
-                className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] border border-[#ef444420] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/30 border border-[#ef444420] dark:border-rose-900/40 cursor-pointer hover:bg-[#FEE2E2] dark:hover:bg-rose-900/30 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-xs">
                   {item.student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-[#111111]">{item.student.full_name}</div>
-                  <div className="text-[10px] text-[#737373]">{item.subject} · {item.attended}/{item.total} classes attended</div>
+                  <div className="text-xs font-bold text-[#111111] dark:text-[#F4F4F5]">{item.student.full_name}</div>
+                  <div className="text-[10px] text-[#737373] dark:text-[#A1A1AA]">{item.subject} · {item.attended}/{item.total} classes attended</div>
                 </div>
-                <span className="text-xs font-black text-[#ef4444] bg-white px-2 py-1 rounded-md border border-rose-200">
+                <span className="text-xs font-black text-[#ef4444] dark:text-rose-400 bg-white dark:bg-[#202024] px-2 py-1 rounded-md border border-rose-200 dark:border-rose-800/60 shadow-2xs">
                   {item.rate}%
                 </span>
               </div>

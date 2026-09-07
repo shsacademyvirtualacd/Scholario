@@ -1262,12 +1262,12 @@ export const AttendanceAdminPage: React.FC = () => {
 
       {/* ── TAB 2: ALL ATTENDANCE LOGS (Flat Table) ── */}
       {activeTab === 'all_records' && (
-        <div className="card bg-white border border-[#E5E5E5] rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5]">
-            <h3 className="text-sm font-bold text-[#111111]">
+        <div className="card bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5] dark:border-[#27272A]">
+            <h3 className="text-sm font-bold text-[#111111] dark:text-[#F4F4F5]">
               Institution Log Records ({attendanceRecords.length})
             </h3>
-            <span className="text-xs text-[#737373] font-medium">Sorted by recent check-in</span>
+            <span className="text-xs text-[#737373] dark:text-[#A1A1AA] font-medium">Sorted by recent check-in</span>
           </div>
 
           {attendanceRecords.length === 0 ? (
@@ -1387,74 +1387,74 @@ export const AttendanceAdminPage: React.FC = () => {
 
       {/* ── TAB 3: LOW ATTENDANCE WATCHLIST (<75%) ── */}
       {activeTab === 'low_attendance' && (
-        <div className="card bg-white border border-[#E5E5E5] rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5]">
+        <div className="card bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F5F5F5] dark:border-[#27272A]">
             <div>
-              <h3 className="text-sm font-bold text-[#111111] flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#111111] dark:text-[#F4F4F5] flex items-center gap-2">
                 <span>Low Attendance Intervention Watchlist</span>
-                <span className="text-[10px] bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-full border border-rose-200">
+                <span className="text-[10px] bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/40">
                   {stats.lowAttendanceStudents.length} Students At Risk
                 </span>
               </h3>
-              <p className="text-xs text-[#737373] mt-0.5">
+              <p className="text-xs text-[#737373] dark:text-[#A1A1AA] mt-0.5">
                 Students with at least 10 recorded class sessions who fall below the 75% institutional attendance requirement.
               </p>
             </div>
           </div>
 
           {stats.lowAttendanceStudents.length === 0 ? (
-            <div className="py-16 text-center text-xs text-[#737373] bg-[#FAFAFA] rounded-xl flex flex-col items-center">
+            <div className="py-16 text-center text-xs text-[#737373] dark:text-[#A1A1AA] bg-[#FAFAFA] dark:bg-[#141416] border border-transparent dark:border-[#27272A] rounded-xl flex flex-col items-center">
               <ShieldCheck size={36} className="text-emerald-500 mb-2" />
-              <span className="font-bold text-sm text-[#111111]">All Eligible Students Compliant</span>
-              <span className="text-[10px] text-[#737373] mt-0.5">No students with 10+ recorded sessions currently fall below the 75% attendance threshold.</span>
+              <span className="font-bold text-sm text-[#111111] dark:text-[#F4F4F5]">All Eligible Students Compliant</span>
+              <span className="text-[10px] text-[#737373] dark:text-[#A1A1AA] mt-0.5">No students with 10+ recorded sessions currently fall below the 75% attendance threshold.</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#F0F0F0]">
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student Name</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Attendance Rate</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Sessions Ratio</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Subject Focus</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Contact Phone</th>
+                  <tr className="border-b border-[#F0F0F0] dark:border-[#27272A]">
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-[#71717A] uppercase tracking-wider">Student Name</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-[#71717A] uppercase tracking-wider">Attendance Rate</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-[#71717A] uppercase tracking-wider">Sessions Ratio</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-[#71717A] uppercase tracking-wider">Subject Focus</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-[#71717A] uppercase tracking-wider">Contact Phone</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#FAFAFA]">
+                <tbody className="divide-y divide-[#FAFAFA] dark:divide-[#27272A]">
                   {stats.lowAttendanceStudents.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-rose-50/30 transition-colors">
+                    <tr key={idx} className="hover:bg-rose-50/30 dark:hover:bg-rose-950/20 transition-colors">
                       <td className="py-3 pr-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                             {item.student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <span className="text-xs font-bold text-[#111111] block leading-tight">{item.student.full_name}</span>
-                            <span className="text-[9px] text-[#737373] font-medium">{(item.student as any).email || `ID: ${item.student.id.slice(0, 8)}`}</span>
+                            <span className="text-xs font-bold text-[#111111] dark:text-[#F4F4F5] block leading-tight">{item.student.full_name}</span>
+                            <span className="text-[9px] text-[#737373] dark:text-[#A1A1AA] font-medium">{(item.student as any).email || `ID: ${item.student.id.slice(0, 8)}`}</span>
                           </div>
                         </div>
                       </td>
 
                       <td className="py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                          <span className="text-xs font-black text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-[#202024] border border-rose-200 dark:border-rose-800/60 px-2 py-0.5 rounded-md">
                             {item.rate}%
                           </span>
-                          <span className="text-[9px] text-rose-600 font-bold">
+                          <span className="text-[9px] text-rose-600 dark:text-rose-400 font-bold">
                             &lt; 75% Minimum
                           </span>
                         </div>
                       </td>
 
-                      <td className="py-3 text-xs font-semibold text-[#525252]">
+                      <td className="py-3 text-xs font-semibold text-[#525252] dark:text-[#A1A1AA]">
                         {item.attended} / {item.total} lectures
                       </td>
 
-                      <td className="py-3 text-xs font-medium text-[#737373]">
+                      <td className="py-3 text-xs font-medium text-[#737373] dark:text-[#A1A1AA]">
                         {item.subject}
                       </td>
 
-                      <td className="py-3 text-xs font-semibold text-[#111111]">
+                      <td className="py-3 text-xs font-semibold text-[#111111] dark:text-[#F4F4F5]">
                         {item.student.phone || 'No phone record'}
                       </td>
                     </tr>
