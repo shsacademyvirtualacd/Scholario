@@ -144,10 +144,6 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
             </div>
           </div>
 
-          <div className="pt-1">
-            <ThemeToggleSwitch variant="switch" className="border border-[#2A2A2A] bg-[#141416]/90 py-2 px-2.5" />
-          </div>
-
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}

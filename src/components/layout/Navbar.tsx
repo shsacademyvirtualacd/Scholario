@@ -80,9 +80,6 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-[#E5E5E5] animate-fade-in">
           <div className="px-4 py-4 space-y-3">
-            <div className="pb-2 border-b border-[#E5E5E5]">
-              <ThemeToggleSwitch variant="switch" />
-            </div>
             <Link
               to="/login"
               onClick={() => setMobileOpen(false)}

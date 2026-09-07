@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, LogOut, ChevronRight, Loader2, ShieldCheck, GraduationCap, Briefcase } from 'lucide-react';
 import ProfileAvatar from './ProfileAvatar';
-import ThemeToggleSwitch from './ThemeToggleSwitch';
 import { useTheme } from '../../context/ThemeContext';
 import type { Profile } from '../../types';
 
@@ -162,17 +161,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             </button>
           </div>
 
-          {/* Section 3: Appearance & Theme Toggle */}
-          <div className="p-2">
-            <div className="px-2 pt-1 pb-1.5">
-              <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#71717A]">
-                Appearance
-              </span>
-            </div>
-            <ThemeToggleSwitch variant="switch" />
-          </div>
-
-          {/* Section 4: Sign Out */}
+          {/* Section 3: Sign Out */}
           {onSignOut && (
             <div className="p-1.5">
               <button

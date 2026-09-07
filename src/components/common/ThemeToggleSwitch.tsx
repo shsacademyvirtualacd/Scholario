@@ -9,7 +9,7 @@ interface ThemeToggleSwitchProps {
 }
 
 export const ThemeToggleSwitch: React.FC<ThemeToggleSwitchProps> = ({
-  variant = 'switch',
+  variant = 'compact',
   className = '',
   showLabel = true,
 }) => {
