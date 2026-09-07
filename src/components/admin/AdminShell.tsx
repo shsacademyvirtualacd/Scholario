@@ -122,7 +122,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E10] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -223,10 +223,10 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       {/* Main container */}
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden">
         {/* Top bar */}
-        <header className="sticky top-0 z-50 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
+        <header className="sticky top-0 z-50 h-16 bg-white dark:bg-[#141416] border-b border-[#E5E5E5] dark:border-[#27272A] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111] shrink-0 interactive"
+              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#27272A] transition-colors text-[#111111] dark:text-[#F4F4F5] shrink-0 interactive"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -247,7 +247,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         </header>
 
         {/* Content area */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden bg-[#FAFAFA] max-w-full page-transition">
+        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden bg-[#FAFAFA] dark:bg-[#0E0E10] max-w-full page-transition">
           {children}
         </main>
       </div>

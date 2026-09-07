@@ -135,24 +135,24 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
   return (
     <div
       id="live-class-notification-banner"
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300/60 bg-amber-50/40 p-4 sm:p-4.5 transition-all shadow-xs"
+      className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/20 p-4 sm:p-4.5 transition-all shadow-xs"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Left: Icon + Text */}
         <div className="flex items-start gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-amber-100/90 text-amber-900 flex items-center justify-center shrink-0 border border-amber-200">
-            <Bell size={18} className="text-amber-900" />
+          <div className="w-10 h-10 rounded-xl bg-amber-100/90 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/60">
+            <Bell size={18} className="text-amber-900 dark:text-amber-300" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-extrabold text-[#111111] tracking-tight">
+              <h3 className="text-sm font-extrabold text-[#111111] dark:text-[#F4F4F5] tracking-tight">
                 {displayTitle}
               </h3>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200">
                 <Sparkles size={10} /> Instant
               </span>
             </div>
-            <p className="text-xs text-[#525252] mt-0.5 leading-relaxed font-medium">
+            <p className="text-xs text-[#525252] dark:text-[#A1A1AA] mt-0.5 leading-relaxed font-medium">
               {displayDesc}
             </p>
           </div>
@@ -163,7 +163,7 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
           <button
             type="button"
             onClick={handleDismiss}
-            className="text-xs font-semibold text-[#737373] hover:text-[#111111] px-3 py-1.5 rounded-lg transition-colors interactive"
+            className="text-xs font-semibold text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-[#F4F4F5] px-3 py-1.5 rounded-lg transition-colors interactive"
           >
             Not now
           </button>
@@ -171,7 +171,7 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
             type="button"
             onClick={handleRequestPermission}
             disabled={isRequesting}
-            className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-[#111111] hover:bg-[#262626] text-white transition-all shadow-xs interactive disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-[#111111] dark:bg-[#27272A] hover:bg-[#262626] dark:hover:bg-[#3F3F46] text-white transition-all shadow-xs interactive disabled:opacity-50"
           >
             <Bell size={13} className="text-[#F4C430]" />
             <span>{isRequesting ? 'Enabling…' : 'Enable Notifications'}</span>
@@ -180,7 +180,7 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
             type="button"
             onClick={handleDismiss}
             title="Dismiss"
-            className="p-1 rounded-lg text-[#737373] hover:text-[#111111] hover:bg-black/5 transition-colors interactive ml-1"
+            className="p-1 rounded-lg text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-[#F4F4F5] hover:bg-black/5 dark:hover:bg-white/5 transition-colors interactive ml-1"
           >
             <X size={16} />
           </button>

@@ -2,6 +2,8 @@
 
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-urdu: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Arabic Typesetting', serif;
@@ -1088,6 +1090,16 @@ html.dark .badge-gold {
   background-color: rgba(244, 196, 48, 0.15) !important;
   color: #FCD34D !important;
   border-color: rgba(244, 196, 48, 0.3) !important;
+}
+
+/* Preserve dark text on solid gold backgrounds (avatars, primary buttons) */
+html.dark .bg-\[\#F4C430\],
+html.dark .bg-\[\#F4C430\] *,
+html.dark .bg-\[\#f4c430\],
+html.dark .bg-\[\#f4c430\] *,
+html.dark .btn-gold,
+html.dark .btn-gold * {
+  color: #111111 !important;
 }
 
 html.dark .badge-green {

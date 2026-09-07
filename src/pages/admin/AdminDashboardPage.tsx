@@ -71,8 +71,8 @@ const AdminDashboardPage: React.FC = () => {
       changeLabel: 'this month',
       positive: true,
       icon: Users,
-      color: '#3b82f6',
-      bg: '#EFF6FF',
+      colorClass: 'text-blue-600 dark:text-blue-400',
+      bgClass: 'bg-blue-50 dark:bg-blue-950/50',
       onClick: () => navigate('/admin/students'),
     },
     {
@@ -82,8 +82,8 @@ const AdminDashboardPage: React.FC = () => {
       changeLabel: `${attendanceStats.totalRecords} total sessions`,
       positive: true,
       icon: Percent,
-      color: '#22c55e',
-      bg: '#F0FDF4',
+      colorClass: 'text-emerald-600 dark:text-emerald-400',
+      bgClass: 'bg-emerald-50 dark:bg-emerald-950/50',
       onClick: () => navigate('/admin/attendance'),
     },
     {
@@ -93,8 +93,8 @@ const AdminDashboardPage: React.FC = () => {
       changeLabel: 'this month',
       positive: true,
       icon: GraduationCap,
-      color: '#F4C430',
-      bg: '#FFFBF0',
+      colorClass: 'text-amber-600 dark:text-amber-400',
+      bgClass: 'bg-amber-50 dark:bg-amber-950/50',
       onClick: () => navigate('/admin/teachers'),
     },
     {
@@ -104,8 +104,8 @@ const AdminDashboardPage: React.FC = () => {
       changeLabel: 'total published',
       positive: true,
       icon: Megaphone,
-      color: '#a855f7',
-      bg: '#FAF5FF',
+      colorClass: 'text-purple-600 dark:text-purple-400',
+      bgClass: 'bg-purple-50 dark:bg-purple-950/50',
       onClick: () => navigate('/admin/announcements'),
     },
   ];
@@ -212,12 +212,12 @@ const AdminDashboardPage: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
           [1, 2, 3, 4].map((n) => (
-            <div key={n} className="bg-white border border-[#E5E5E5] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between h-[132px] animate-pulse">
-              <div className="w-8 h-8 rounded-lg bg-gray-100 mb-3 shrink-0" />
+            <div key={n} className="bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between h-[132px] animate-pulse">
+              <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#27272A] mb-3 shrink-0" />
               <div className="space-y-2">
-                <div className="h-6 bg-gray-100 rounded w-16" />
-                <div className="h-3 bg-gray-100 rounded w-24" />
-                <div className="h-2 bg-gray-100 rounded w-20" />
+                <div className="h-6 bg-gray-100 dark:bg-[#27272A] rounded w-16" />
+                <div className="h-3 bg-gray-100 dark:bg-[#27272A] rounded w-24" />
+                <div className="h-2 bg-gray-100 dark:bg-[#27272A] rounded w-20" />
               </div>
             </div>
           ))
@@ -227,21 +227,20 @@ const AdminDashboardPage: React.FC = () => {
               <div
                 key={stat.label}
                 onClick={stat.onClick}
-                className="bg-white border border-[#E5E5E5] hover:border-[#D4D4D4] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between cursor-pointer transition-all hover:shadow-md group"
+                className="bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] hover:border-[#D4D4D4] dark:hover:border-[#3F3F46] rounded-2xl p-4 relative shadow-sm flex flex-col justify-between cursor-pointer transition-all hover:shadow-md group"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform"
-                    style={{ background: stat.bg }}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${stat.bgClass}`}
                   >
-                    <stat.icon size={15} style={{ color: stat.color }} />
+                    <stat.icon size={15} className={stat.colorClass} />
                   </div>
-                  <ChevronRight size={13} className="text-[#A3A3A3] group-hover:text-[#111111] transition-colors" />
+                  <ChevronRight size={13} className="text-[#A3A3A3] dark:text-[#71717A] group-hover:text-[#111111] dark:group-hover:text-[#F4F4F5] transition-colors" />
                 </div>
                 <div>
-                  <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] leading-none">{stat.value}</div>
-                  <div className="text-[10px] font-bold text-[#737373] mt-2 uppercase tracking-wider">{stat.label}</div>
-                  <div className="text-[9px] text-[#A3A3A3] font-medium mt-0.5">{stat.changeLabel}</div>
+                  <div className="text-xl lg:text-2xl font-black tracking-tight text-[#111111] dark:text-[#F4F4F5] leading-none">{stat.value}</div>
+                  <div className="text-[10px] font-bold text-[#737373] dark:text-[#A1A1AA] mt-2 uppercase tracking-wider">{stat.label}</div>
+                  <div className="text-[9px] text-[#A3A3A3] dark:text-[#71717A] font-medium mt-0.5">{stat.changeLabel}</div>
                 </div>
               </div>
             );
