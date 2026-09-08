@@ -12,22 +12,31 @@ import {
   getProctoredMCQSubmissions,
   getProctoredMCQTests,
 } from '../../lib/proctoredMcqService';
+import {
+  getTeacherAssignedScope,
+  isSubjectAuthorizedForTeacher,
+  type TeacherAssignedScope,
+} from '../../lib/db';
 import type { ProctoredMCQTest, ProctoredMCQSubmission } from '../../types/proctoredMcq';
 import { ProctoredMCQGradingModal } from './ProctoredMCQGradingModal';
 import { useAuth } from '../../features/auth/AuthContext';
 
 interface ProctoredMCQSubmissionsListProps {
   isTeacher?: boolean;
+  teacherScope?: TeacherAssignedScope | null;
 }
 
 export const ProctoredMCQSubmissionsList: React.FC<ProctoredMCQSubmissionsListProps> = ({
   isTeacher = false,
+  teacherScope,
 }) => {
   const { profile } = useAuth();
   const userRole = (profile?.role || (isTeacher ? 'teacher' : 'admin')).toLowerCase();
+  const effIsTeacher = isTeacher || userRole === 'teacher';
 
   const [submissions, setSubmissions] = useState<ProctoredMCQSubmission[]>([]);
   const [tests, setTests] = useState<ProctoredMCQTest[]>([]);
+  const [resolvedScope, setResolvedScope] = useState<TeacherAssignedScope | null>(teacherScope || null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Filters
@@ -43,9 +52,19 @@ export const ProctoredMCQSubmissionsList: React.FC<ProctoredMCQSubmissionsListPr
   const fetchData = async () => {
     setLoading(true);
     try {
+      let activeScope = teacherScope || resolvedScope;
+      if (effIsTeacher && !activeScope) {
+        activeScope = await getTeacherAssignedScope(profile?.id, (profile as any)?.email, profile?.full_name);
+        setResolvedScope(activeScope);
+      }
+
       const [fetchedSubs, fetchedTests] = await Promise.all([
-        getProctoredMCQSubmissions(),
-        getProctoredMCQTests(userRole),
+        getProctoredMCQSubmissions({
+          callerRole: userRole,
+          teacherScope: activeScope || undefined,
+          teacherId: profile?.id,
+        }),
+        getProctoredMCQTests(userRole, undefined, undefined, undefined, activeScope || undefined),
       ]);
       setSubmissions(fetchedSubs);
       setTests(fetchedTests);
@@ -58,7 +77,7 @@ export const ProctoredMCQSubmissionsList: React.FC<ProctoredMCQSubmissionsListPr
 
   useEffect(() => {
     fetchData();
-  }, [userRole]);
+  }, [userRole, teacherScope]);
 
   const testMap = useMemo(() => {
     const map = new Map<string, ProctoredMCQTest>();
@@ -67,8 +86,19 @@ export const ProctoredMCQSubmissionsList: React.FC<ProctoredMCQSubmissionsListPr
   }, [tests]);
 
   const filteredSubmissions = useMemo(() => {
+    const activeScope = teacherScope || resolvedScope;
+
     return submissions.filter((sub) => {
       const test = testMap.get(sub.test_id);
+
+      // Teacher strict subject authorization check
+      if (effIsTeacher && activeScope && activeScope.isAssigned) {
+        const subSubject = sub.subject && sub.subject !== 'Assessment' ? sub.subject : test?.subject;
+        if (!isSubjectAuthorizedForTeacher(subSubject, activeScope, test?.board, sub.grade || test?.grade)) {
+          return false;
+        }
+      }
+
       const q = searchTerm.toLowerCase();
 
       // Search match
@@ -441,6 +471,7 @@ export const ProctoredMCQSubmissionsList: React.FC<ProctoredMCQSubmissionsListPr
           isOpen={gradingModalOpen}
           test={selectedTest}
           submission={selectedSubmission}
+          teacherScope={teacherScope || resolvedScope}
           onClose={() => {
             setGradingModalOpen(false);
             setSelectedSubmission(null);

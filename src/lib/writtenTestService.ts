@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isSubjectAuthorizedForTeacher, type TeacherAssignedScope } from './db';
 import type {
   WrittenTest,
   WrittenSubmission,
@@ -167,6 +168,8 @@ export async function getWrittenTests(filter?: {
   type?: WrittenTestType;
   grade?: string;
   subject?: string;
+  role?: string;
+  teacherScope?: TeacherAssignedScope;
 }): Promise<WrittenTest[]> {
   // Try fetching from server first
   let tests = getStoredWrittenTests();
@@ -240,6 +243,14 @@ export async function getWrittenTests(filter?: {
     if (filter?.type && t.type !== filter.type) return false;
     if (filter?.grade && String(t.grade) !== String(filter.grade)) return false;
     if (filter?.subject && t.subject.toLowerCase() !== filter.subject.toLowerCase()) return false;
+
+    // Teacher subject-level filtering
+    if (filter?.role?.toLowerCase() === 'teacher' && filter.teacherScope && filter.teacherScope.isAssigned) {
+      if (!isSubjectAuthorizedForTeacher(t.subject, filter.teacherScope, t.board, t.grade)) {
+        return false;
+      }
+    }
+
     return true;
   });
 }
@@ -399,12 +410,21 @@ export async function submitWrittenTest(
 export async function getWrittenSubmissions(filter?: {
   testId?: string;
   studentId?: string;
+  role?: string;
+  teacherId?: string;
+  teacherScope?: TeacherAssignedScope;
 }): Promise<WrittenSubmission[]> {
   let list = getStoredWrittenSubmissions();
 
   // Try fetching from backend first
   try {
-    const res = await fetch('/api/written-submissions');
+    const q = new URLSearchParams();
+    if (filter?.testId) q.set('test_id', filter.testId);
+    if (filter?.studentId) q.set('student_id', filter.studentId);
+    if (filter?.teacherId) q.set('teacher_id', filter.teacherId);
+    if (filter?.role) q.set('role', filter.role);
+
+    const res = await fetch(`/api/written-submissions?${q.toString()}`);
     if (res.ok) {
       const data = (await res.json()) as any;
       if (Array.isArray(data.submissions) && data.submissions.length > 0) {
@@ -476,26 +496,49 @@ export async function getWrittenSubmissions(filter?: {
   return enriched.filter((s) => {
     if (filter?.testId && s.test_id !== filter.testId) return false;
     if (filter?.studentId && s.student_id !== filter.studentId) return false;
+
+    // Teacher subject-level filtering
+    if (filter?.role?.toLowerCase() === 'teacher' && filter.teacherScope && filter.teacherScope.isAssigned) {
+      if (!isSubjectAuthorizedForTeacher(s.subject, filter.teacherScope, undefined, s.grade)) {
+        return false;
+      }
+    }
+
     return true;
   });
 }
 
-export async function gradeWrittenSubmission(payload: {
-  submission_id: string;
-  per_question_grades: {
-    question_id: string;
-    marks_awarded: number;
-    remarks?: string;
-  }[];
-  teacher_feedback?: string;
-  graded_by: string;
-  graded_by_name: string;
-}): Promise<WrittenSubmission> {
+export async function gradeWrittenSubmission(
+  payload: {
+    submission_id: string;
+    per_question_grades: {
+      question_id: string;
+      marks_awarded: number;
+      remarks?: string;
+    }[];
+    teacher_feedback?: string;
+    graded_by: string;
+    graded_by_name: string;
+  },
+  options?: {
+    role?: string;
+    teacherScope?: TeacherAssignedScope;
+    teacherId?: string;
+  }
+): Promise<WrittenSubmission> {
   const existing = getStoredWrittenSubmissions();
   const sub = existing.find((s) => s.id === payload.submission_id);
 
   if (!sub) {
     throw new Error('Submission not found.');
+  }
+
+  // Teacher subject-level authorization check
+  const normRole = (options?.role || '').toLowerCase();
+  if (normRole === 'teacher' && options?.teacherScope && options.teacherScope.isAssigned) {
+    if (!isSubjectAuthorizedForTeacher(sub.subject, options.teacherScope, undefined, sub.grade)) {
+      throw new Error(`Unauthorized: You are not assigned to grade submissions for subject "${sub.subject}".`);
+    }
   }
 
   // Check 24-hour expiry: if expired and not already graded, cannot be graded
@@ -566,13 +609,9 @@ export async function gradeWrittenSubmission(payload: {
     console.warn('[writtenTestService] Local audit log error:', auditErr);
   }
 
-  // Update local storage
-  const updatedList = existing.map((s) => (s.id === updatedSub.id ? updatedSub : s));
-  saveStoredWrittenSubmissions(updatedList);
-
-  // Sync to Express backend (which also deletes R2 objects and records backend audit logs)
+  // Sync to Express backend (which also validates teacher authorization, deletes R2 objects and records backend audit logs)
   try {
-    await fetch('/api/written-submissions/grade', {
+    const res = await fetch('/api/written-submissions/grade', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -581,11 +620,25 @@ export async function gradeWrittenSubmission(payload: {
         teacher_feedback: payload.teacher_feedback,
         graded_by: payload.graded_by,
         graded_by_name: payload.graded_by_name,
+        role: normRole,
+        teacher_id: options?.teacherId || payload.graded_by,
       }),
     });
-  } catch (err) {
+
+    if (!res.ok) {
+      const errData: any = await res.json().catch(() => ({}));
+      throw new Error(errData.error || errData.message || `Server rejected grading (status ${res.status})`);
+    }
+  } catch (err: any) {
     console.warn('[writtenTestService] gradeWrittenSubmission backend error:', err);
+    if (err.message && (err.message.includes('Unauthorized') || err.message.includes('Server rejected'))) {
+      throw err;
+    }
   }
+
+  // Update local storage
+  const updatedList = existing.map((s) => (s.id === updatedSub.id ? updatedSub : s));
+  saveStoredWrittenSubmissions(updatedList);
 
   // Sync to Supabase
   try {

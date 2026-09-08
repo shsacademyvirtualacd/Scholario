@@ -7,7 +7,13 @@ import TeacherSubmissionsPanel from '../../components/teacher/TeacherSubmissions
 import TestViewerModal from '../../components/common/TestViewerModal';
 import StudentResultsView from '../../components/tests/StudentResultsView';
 import { TeacherIELTSWritingGrading } from '../../components/ielts/TeacherIELTSWritingGrading';
-import { getTestsForTeacher, getOfferingsForTeacher } from '../../lib/db';
+import {
+  getTestsForTeacher,
+  getOfferingsForTeacher,
+  getTeacherAssignedScope,
+  isSubjectAuthorizedForTeacher,
+  type TeacherAssignedScope,
+} from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { TestPaper, TestSubmission, ClassOffering } from '../../types';
@@ -37,6 +43,7 @@ export const TeacherTestsPage: React.FC = () => {
 
   const [tests, setTests] = useState<TestPaper[]>([]);
   const [offerings, setOfferings] = useState<ClassOffering[]>([]);
+  const [teacherScope, setTeacherScope] = useState<TeacherAssignedScope | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
@@ -54,13 +61,15 @@ export const TeacherTestsPage: React.FC = () => {
       const teacherEmail = user?.email || (profile as any)?.email;
       const teacherName = profile?.full_name;
 
-      const [teacherTests, teacherOfferings] = await Promise.all([
+      const [teacherTests, teacherOfferings, scope] = await Promise.all([
         getTestsForTeacher(teacherId, teacherEmail, teacherName),
         getOfferingsForTeacher(teacherId).catch(() => []),
+        getTeacherAssignedScope(teacherId, teacherEmail, teacherName).catch(() => null),
       ]);
 
       setTests(teacherTests);
       setOfferings(teacherOfferings);
+      setTeacherScope(scope);
       if (!selectedTestId && teacherTests.length > 0) {
         setSelectedTestId(teacherTests[0].id);
       }
@@ -171,14 +180,20 @@ export const TeacherTestsPage: React.FC = () => {
         >
           <PenTool size={15} className={activeTab === 'ielts-writing' ? 'text-[#F4C430]' : 'text-[#737373]'} />
           <span>IELTS Writing Reviews</span>
-          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold whitespace-nowrap">
-            Grading
-          </span>
+          {teacherScope && teacherScope.isAssigned && !isSubjectAuthorizedForTeacher('IELTS Preparation', teacherScope) ? (
+            <span className="px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-600 text-[10px] font-extrabold whitespace-nowrap">
+              Restricted
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold whitespace-nowrap">
+              Grading
+            </span>
+          )}
         </button>
       </div>
 
       {activeTab === 'ielts-writing' ? (
-        <TeacherIELTSWritingGrading />
+        <TeacherIELTSWritingGrading isTeacher={true} teacherScope={teacherScope} />
       ) : activeTab === 'student-results' ? (
         <StudentResultsView
           isTeacher={true}

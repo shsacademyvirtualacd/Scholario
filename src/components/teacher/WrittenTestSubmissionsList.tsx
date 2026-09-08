@@ -11,19 +11,32 @@ import {
   Layers,
 } from 'lucide-react';
 import { getWrittenSubmissions } from '../../lib/writtenTestService';
+import {
+  getTeacherAssignedScope,
+  isSubjectAuthorizedForTeacher,
+  type TeacherAssignedScope,
+} from '../../lib/db';
 import type { WrittenSubmission } from '../../types/writtenTest';
 import { WrittenTestGradingModal } from './WrittenTestGradingModal';
+import { useAuth } from '../../features/auth/AuthContext';
 
 interface WrittenTestSubmissionsListProps {
   isTeacher?: boolean;
   filterTestId?: string;
+  teacherScope?: TeacherAssignedScope | null;
 }
 
 export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProps> = ({
-  isTeacher: _isTeacher = false,
+  isTeacher = false,
   filterTestId,
+  teacherScope,
 }) => {
+  const { profile } = useAuth();
+  const userRole = (profile?.role || (isTeacher ? 'teacher' : 'admin')).toLowerCase();
+  const effIsTeacher = isTeacher || userRole === 'teacher';
+
   const [submissions, setSubmissions] = useState<WrittenSubmission[]>([]);
+  const [resolvedScope, setResolvedScope] = useState<TeacherAssignedScope | null>(teacherScope || null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Filters
@@ -38,7 +51,18 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
   const fetchData = async () => {
     setLoading(true);
     try {
-      const fetchedSubs = await getWrittenSubmissions();
+      let activeScope = teacherScope || resolvedScope;
+      if (effIsTeacher && !activeScope) {
+        activeScope = await getTeacherAssignedScope(profile?.id, (profile as any)?.email, profile?.full_name);
+        setResolvedScope(activeScope);
+      }
+
+      const fetchedSubs = await getWrittenSubmissions({
+        testId: filterTestId,
+        role: userRole,
+        teacherScope: activeScope || undefined,
+        teacherId: profile?.id,
+      });
       setSubmissions(fetchedSubs);
     } catch (err) {
       console.error('Failed to load written test data:', err);
@@ -49,12 +73,21 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [userRole, filterTestId, teacherScope]);
 
   const filteredSubmissions = useMemo(() => {
+    const activeScope = teacherScope || resolvedScope;
+
     return submissions.filter((sub) => {
       // Direct Test ID scoping if provided
       if (filterTestId && sub.test_id !== filterTestId) return false;
+
+      // Teacher subject-level check
+      if (effIsTeacher && activeScope && activeScope.isAssigned) {
+        if (!isSubjectAuthorizedForTeacher(sub.subject, activeScope, undefined, sub.grade)) {
+          return false;
+        }
+      }
 
       // Type Filter
       if (typeFilter !== 'all' && sub.test_type !== typeFilter) return false;
@@ -308,6 +341,7 @@ export const WrittenTestSubmissionsList: React.FC<WrittenTestSubmissionsListProp
         <WrittenTestGradingModal
           isOpen={gradingModalOpen}
           submission={selectedSubmission}
+          teacherScope={teacherScope || resolvedScope}
           onClose={() => {
             setGradingModalOpen(false);
             setSelectedSubmission(null);

@@ -11,12 +11,14 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { MathText } from '../common/MathText';
 import { gradeProctoredMCQSubmission } from '../../lib/proctoredMcqService';
+import { isSubjectAuthorizedForTeacher, type TeacherAssignedScope } from '../../lib/db';
 import type { ProctoredMCQTest, ProctoredMCQSubmission } from '../../types/proctoredMcq';
 
 interface ProctoredMCQGradingModalProps {
   isOpen: boolean;
   test: ProctoredMCQTest | null;
   submission: ProctoredMCQSubmission | null;
+  teacherScope?: TeacherAssignedScope | null;
   onClose: () => void;
   onGraded: (updatedSubmission: ProctoredMCQSubmission) => void;
 }
@@ -25,11 +27,18 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
   isOpen,
   test,
   submission,
+  teacherScope,
   onClose,
   onGraded,
 }) => {
   const { profile } = useAuth();
   const userRole = (profile?.role || '').toLowerCase();
+
+  const isAuthorized = React.useMemo(() => {
+    if (userRole !== 'teacher' || !teacherScope || !teacherScope.isAssigned) return true;
+    const subSubject = submission?.subject && submission.subject !== 'Assessment' ? submission.subject : test?.subject;
+    return isSubjectAuthorizedForTeacher(subSubject, teacherScope, test?.board, submission?.grade || test?.grade);
+  }, [userRole, teacherScope, submission, test]);
 
   const [finalScore, setFinalScore] = useState<number>(
     submission?.final_score !== null && submission?.final_score !== undefined
@@ -62,6 +71,11 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
       return;
     }
 
+    if (!isAuthorized) {
+      toast.error(`Unauthorized: Subject "${test.subject}" is not assigned to your teacher profile.`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const updated = await gradeProctoredMCQSubmission(
@@ -72,7 +86,8 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
           graded_by: profile?.id,
           graded_by_name: profile?.full_name || (userRole === 'admin' ? 'Administrator' : 'Instructor'),
         },
-        userRole
+        userRole,
+        teacherScope || undefined
       );
 
       toast.success('Grade finalized and published! The test will now reappear in the student\'s graded view.');
@@ -249,6 +264,20 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
             })}
           </div>
 
+          {/* Unauthorized Subject Warning Banner */}
+          {!isAuthorized && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-800">
+              <ShieldAlert size={18} className="text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-rose-900">Grading Restricted for This Subject</p>
+                <p className="text-[11px] font-medium text-rose-700 mt-0.5">
+                  Subject <span className="font-bold">"{test.subject}"</span> is not assigned to your teacher profile.
+                  Only instructors assigned to this subject or administrators may evaluate and publish final grades.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Grade Adjustment & Feedback Form */}
           <form id="grade-submission-form" onSubmit={handleFinalizeGrade} className="p-5 rounded-2xl bg-amber-50/40 border border-amber-200 space-y-4">
             <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-2">
@@ -265,9 +294,10 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
                   type="number"
                   min="0"
                   max={submission.total_marks}
+                  disabled={!isAuthorized}
                   value={finalScore}
                   onChange={(e) => setFinalScore(Math.max(0, Math.min(submission.total_marks, parseInt(e.target.value) || 0)))}
-                  className="w-full h-10 px-3.5 rounded-xl border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
+                  className="w-full h-10 px-3.5 rounded-xl border border-[#E5E5E5] bg-white text-xs font-bold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden disabled:bg-neutral-100 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -287,10 +317,11 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
               </label>
               <textarea
                 rows={2}
+                disabled={!isAuthorized}
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Add comments or performance guidance for the student..."
-                className="w-full p-3 rounded-xl border border-[#E5E5E5] bg-white text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden resize-none"
+                placeholder={isAuthorized ? "Add comments or performance guidance for the student..." : "Grading disabled - subject not assigned"}
+                className="w-full p-3 rounded-xl border border-[#E5E5E5] bg-white text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden resize-none disabled:bg-neutral-100 disabled:cursor-not-allowed"
               />
             </div>
           </form>
@@ -309,11 +340,15 @@ export const ProctoredMCQGradingModal: React.FC<ProctoredMCQGradingModalProps> =
           <button
             type="submit"
             form="grade-submission-form"
-            disabled={submitting}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#111111] text-[#F4C430] hover:bg-black font-black text-xs cursor-pointer shadow-md active:scale-[0.98]"
+            disabled={submitting || !isAuthorized}
+            className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs shadow-md transition-all ${
+              !isAuthorized
+                ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed border border-neutral-300'
+                : 'bg-[#111111] text-[#F4C430] hover:bg-black cursor-pointer active:scale-[0.98]'
+            }`}
           >
             <Check size={16} />
-            <span>{submitting ? 'Finalizing...' : 'Finalize & Publish Grade'}</span>
+            <span>{!isAuthorized ? 'Grading Restricted' : submitting ? 'Finalizing...' : 'Finalize & Publish Grade'}</span>
           </button>
         </div>
       </div>

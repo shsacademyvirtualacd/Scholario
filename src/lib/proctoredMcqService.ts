@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isSubjectAuthorizedForTeacher, type TeacherAssignedScope } from './db';
 import type {
   ProctoredMCQTest,
   ProctoredMCQSubmission,
@@ -281,7 +282,8 @@ export async function getProctoredMCQTests(
   role: string,
   grade?: string,
   stream?: string,
-  boardId?: string
+  boardId?: string,
+  teacherScope?: TeacherAssignedScope
 ): Promise<ProctoredMCQTest[]> {
   const normRole = (role || '').toLowerCase();
 
@@ -366,9 +368,13 @@ export async function getProctoredMCQTests(
       }
     }
 
-    // Teacher visibility
+    // Teacher visibility: STRICTLY scoped to teacher's assigned subjects and grades
     if (normRole === 'teacher') {
-      // Teachers cannot create or edit; they only see published tests for their subjects/grades
+      if (teacherScope && teacherScope.isAssigned) {
+        if (!isSubjectAuthorizedForTeacher(t.subject, teacherScope, t.board, t.grade)) {
+          return false;
+        }
+      }
       if (grade && grade !== 'all' && String(t.grade) !== String(grade)) {
         return false;
       }
@@ -513,14 +519,39 @@ export async function submitProctoredMCQTest(payload: {
   return submission;
 }
 
-/** Get submissions with optional test/student filters */
+/** Get submissions with optional test/student filters and teacher subject scoping */
 export async function getProctoredMCQSubmissions(filter?: {
   testId?: string;
   studentId?: string;
+  teacherScope?: TeacherAssignedScope;
+  callerRole?: string;
+  teacherId?: string;
 }): Promise<ProctoredMCQSubmission[]> {
   let subs = getStoredSubmissions();
 
-  // Merge with Supabase if accessible
+  // 1. Fetch from server API with teacher scoping if available
+  try {
+    const q = new URLSearchParams();
+    if (filter?.testId) q.set('test_id', filter.testId);
+    if (filter?.studentId) q.set('student_id', filter.studentId);
+    if (filter?.teacherId) q.set('teacher_id', filter.teacherId);
+    if (filter?.callerRole) q.set('role', filter.callerRole);
+
+    const apiRes = await fetch(`/api/mcq-tests/submissions?${q.toString()}`);
+    if (apiRes.ok) {
+      const data: any = await apiRes.json();
+      if (Array.isArray(data.submissions) && data.submissions.length > 0) {
+        const map = new Map<string, ProctoredMCQSubmission>();
+        subs.forEach((s) => map.set(s.id, s));
+        data.submissions.forEach((s: ProctoredMCQSubmission) => map.set(s.id, s));
+        subs = Array.from(map.values());
+      }
+    }
+  } catch (err) {
+    console.warn('[proctoredMcqService] Server submissions fetch note:', err);
+  }
+
+  // 2. Merge with Supabase if accessible
   try {
     let query = (supabase as any)
       .from('test_submissions')
@@ -581,6 +612,18 @@ export async function getProctoredMCQSubmissions(filter?: {
     subs = subs.filter((s) => s.student_id === filter.studentId || (s.student_roll_no && s.student_roll_no === filter.studentId));
   }
 
+  // 3. Strict Subject Scoping for Teachers: only return submissions for teacher's assigned subjects
+  if (filter?.callerRole?.toLowerCase() === 'teacher' && filter.teacherScope && filter.teacherScope.isAssigned) {
+    const allTests = getStoredTests();
+    const testMap = new Map<string, ProctoredMCQTest>(allTests.map((t) => [t.id, t]));
+
+    subs = subs.filter((s) => {
+      const test = testMap.get(s.test_id);
+      const subSubject = s.subject && s.subject !== 'Assessment' ? s.subject : test?.subject;
+      return isSubjectAuthorizedForTeacher(subSubject, filter.teacherScope, test?.board, s.grade || test?.grade);
+    });
+  }
+
   return subs;
 }
 
@@ -591,13 +634,15 @@ export async function getProctoredMCQSubmissions(filter?: {
 /**
  * Grade a student's Proctored MCQ Submission
  * - Accessible to Teachers and Admins
+ * - Enforces subject-level authorization: Teachers can only grade submissions for their assigned subjects!
  * - Sets status: 'graded'
  * - Once graded, this submission reappears to the student in their graded results view!
  */
 export async function gradeProctoredMCQSubmission(
   submissionId: string,
   payload: ProctoredMCQGradePayload,
-  callerRole: string
+  callerRole: string,
+  teacherScope?: TeacherAssignedScope
 ): Promise<ProctoredMCQSubmission> {
   const normRole = (callerRole || '').toLowerCase();
   if (normRole !== 'admin' && normRole !== 'teacher') {
@@ -608,6 +653,17 @@ export async function gradeProctoredMCQSubmission(
   const sub = subs.find((s) => s.id === submissionId);
   if (!sub) {
     throw new Error('Submission not found.');
+  }
+
+  // Teacher subject-level authorization check
+  if (normRole === 'teacher' && teacherScope && teacherScope.isAssigned) {
+    const allTests = getStoredTests();
+    const test = allTests.find((t) => t.id === sub.test_id);
+    const subSubject = sub.subject && sub.subject !== 'Assessment' ? sub.subject : test?.subject;
+
+    if (!isSubjectAuthorizedForTeacher(subSubject, teacherScope, test?.board, sub.grade || test?.grade)) {
+      throw new Error(`Unauthorized: You are not assigned to grade submissions for subject "${subSubject}".`);
+    }
   }
 
   sub.status = 'graded';
@@ -624,6 +680,25 @@ export async function gradeProctoredMCQSubmission(
 
   // Sync to backend / Supabase
   try {
+    const backendRes = await fetch('/api/mcq-tests/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submission_id: submissionId,
+        final_score: sub.final_score,
+        teacher_feedback: sub.teacher_feedback,
+        graded_by: sub.graded_by,
+        graded_by_name: sub.graded_by_name,
+        role: normRole,
+        teacher_id: payload.graded_by,
+      }),
+    });
+
+    if (!backendRes.ok) {
+      const errData: any = await backendRes.json().catch(() => ({}));
+      throw new Error(errData.error || errData.message || `Server rejected grading (status ${backendRes.status})`);
+    }
+
     await (supabase as any)
       .from('test_submissions')
       .update({
@@ -634,20 +709,11 @@ export async function gradeProctoredMCQSubmission(
         graded_by: sub.graded_by,
       })
       .eq('id', submissionId);
-
-    fetch('/api/mcq-tests/grade', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        submission_id: submissionId,
-        final_score: sub.final_score,
-        teacher_feedback: sub.teacher_feedback,
-        graded_by: sub.graded_by,
-        graded_by_name: sub.graded_by_name,
-      }),
-    }).catch(() => {});
-  } catch (err) {
-    console.warn('[proctoredMcqService] Supabase grade update note:', err);
+  } catch (err: any) {
+    console.warn('[proctoredMcqService] Supabase/backend grade update note:', err);
+    if (err.message && (err.message.includes('Unauthorized') || err.message.includes('Server rejected'))) {
+      throw err;
+    }
   }
 
   return sub;

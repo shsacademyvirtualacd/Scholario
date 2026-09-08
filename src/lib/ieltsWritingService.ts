@@ -4,6 +4,7 @@
  */
 
 import { supabase } from './supabase';
+import { isSubjectAuthorizedForTeacher, type TeacherAssignedScope } from './db';
 
 export interface IELTSWritingSubmission {
   id: string;
@@ -138,7 +139,18 @@ export async function getStudentIELTSWritingSubmissions(studentId: string): Prom
 /**
  * Teacher/Admin: Fetches all IELTS writing submissions for review
  */
-export async function getAllIELTSWritingSubmissions(): Promise<IELTSWritingSubmission[]> {
+export async function getAllIELTSWritingSubmissions(options?: {
+  role?: string;
+  teacherScope?: TeacherAssignedScope | null;
+}): Promise<IELTSWritingSubmission[]> {
+  const normRole = (options?.role || '').toLowerCase();
+  if (normRole === 'teacher' && options?.teacherScope && options.teacherScope.isAssigned) {
+    const isAuth = isSubjectAuthorizedForTeacher('IELTS Preparation', options.teacherScope);
+    if (!isAuth) {
+      return [];
+    }
+  }
+
   try {
     const { data, error } = await (supabase as any)
       .from('ielts_writing_submissions')
@@ -172,6 +184,8 @@ export async function gradeIELTSWritingSubmission(
   grading: {
     teacher_id?: string;
     teacher_name?: string;
+    role?: string;
+    teacherScope?: TeacherAssignedScope | null;
     overall_band: number;
     task_achievement_band: number;
     coherence_cohesion_band: number;
@@ -180,6 +194,14 @@ export async function gradeIELTSWritingSubmission(
     teacher_feedback: string;
   }
 ): Promise<IELTSWritingSubmission> {
+  const normRole = (grading.role || '').toLowerCase();
+  if (normRole === 'teacher' && grading.teacherScope && grading.teacherScope.isAssigned) {
+    const isAuth = isSubjectAuthorizedForTeacher('IELTS Preparation', grading.teacherScope);
+    if (!isAuth) {
+      throw new Error('Unauthorized: Subject "IELTS Preparation" is not assigned to your teacher profile.');
+    }
+  }
+
   const patch = {
     status: 'graded' as const,
     graded_at: new Date().toISOString(),

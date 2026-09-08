@@ -1775,7 +1775,189 @@ export async function getAllTests(): Promise<TestPaper[]> {
   }
 }
 
-/** Teacher: get tests assigned to teacher strictly matching their id and assigned subject/class combinations */
+export interface TeacherAssignedScope {
+  subjects: string[];
+  normalizedSubjects: string[];
+  grades: string[];
+  hasIelts: boolean;
+  pairs: Array<{ grade: string; subject: string; board: string }>;
+  isAssigned: boolean;
+}
+
+/** Check whether a given test subject, board, or grade is authorized for a teacher based on their assigned scope */
+export function isSubjectAuthorizedForTeacher(
+  testSubject?: string,
+  teacherScope?: TeacherAssignedScope | null,
+  testBoard?: string,
+  testGrade?: string
+): boolean {
+  if (!teacherScope || !teacherScope.isAssigned) return false;
+  if (!testSubject && !testBoard) return false;
+
+  const normSubject = (testSubject || '').trim().toLowerCase();
+  const normBoard = (testBoard || '').trim().toLowerCase();
+  const normGrade = (testGrade || '').trim().toLowerCase();
+
+  const isIelts =
+    normSubject.includes('ielts') ||
+    normBoard === 'ielts' ||
+    normGrade === 'ielts';
+
+  if (isIelts) {
+    return !!teacherScope.hasIelts;
+  }
+
+  // Non-IELTS subject matching against teacher's assigned subjects
+  return teacherScope.normalizedSubjects.some((assigned) => {
+    if (assigned.includes('ielts')) return false;
+    return (
+      assigned === normSubject ||
+      assigned.includes(normSubject) ||
+      normSubject.includes(assigned)
+    );
+  });
+}
+
+/** Authoritative resolver for teacher's assigned subjects and classes from class_offerings, roster, and teachers tables */
+export async function getTeacherAssignedScope(
+  teacherId?: string,
+  teacherEmail?: string,
+  teacherName?: string
+): Promise<TeacherAssignedScope> {
+  const result: TeacherAssignedScope = {
+    subjects: [],
+    normalizedSubjects: [],
+    grades: [],
+    hasIelts: false,
+    pairs: [],
+    isAssigned: false,
+  };
+
+  if (!teacherId && !teacherEmail && !teacherName) {
+    return result;
+  }
+
+  try {
+    const [teachersRes, rosterRes, offeringsRes] = await Promise.all([
+      supabase.from('teachers').select('*'),
+      (supabase as any).from('roster').select('*'),
+      supabase.from('class_offerings').select('*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)'),
+    ]);
+
+    const teacherList: any[] = teachersRes.data || [];
+    const rosterList: any[] = rosterRes.data || [];
+    const allOfferings: any[] = offeringsRes.data || [];
+
+    const matchingTeacherIds = new Set<string>();
+    const matchingEmails = new Set<string>();
+    const matchingNames = new Set<string>();
+    const rosterClassIds = new Set<string>();
+    const teacherDirectSubjects: string[] = [];
+
+    if (teacherId) matchingTeacherIds.add(teacherId);
+    if (teacherEmail) matchingEmails.add(teacherEmail.trim().toLowerCase());
+    if (teacherName) matchingNames.add(teacherName.trim().toLowerCase());
+
+    // Match in teachers table
+    teacherList.forEach((t: any) => {
+      const idMatch = teacherId && (t.id === teacherId || t.user_id === teacherId);
+      const emailMatch = teacherEmail && t.email && t.email.trim().toLowerCase() === teacherEmail.trim().toLowerCase();
+      const nameMatch = teacherName && t.full_name && t.full_name.trim().toLowerCase() === teacherName.trim().toLowerCase();
+
+      if (idMatch || emailMatch || nameMatch) {
+        if (t.id) matchingTeacherIds.add(t.id);
+        if (t.user_id) matchingTeacherIds.add(t.user_id);
+        if (t.email) matchingEmails.add(t.email.trim().toLowerCase());
+        if (t.full_name) matchingNames.add(t.full_name.trim().toLowerCase());
+        if (t.subject) {
+          t.subject.split(/[,;/]+/).forEach((s: string) => {
+            const clean = s.trim();
+            if (clean) teacherDirectSubjects.push(clean);
+          });
+        }
+      }
+    });
+
+    // Match in roster table
+    rosterList.forEach((r: any) => {
+      const idMatch = teacherId && (r.id === teacherId || r.profile_id === teacherId);
+      const emailMatch =
+        (teacherEmail && r.email && r.email.trim().toLowerCase() === teacherEmail.trim().toLowerCase()) ||
+        (r.email && matchingEmails.has(r.email.trim().toLowerCase()));
+      const nameMatch = teacherName && r.full_name && r.full_name.trim().toLowerCase() === teacherName.trim().toLowerCase();
+
+      if ((idMatch || emailMatch || nameMatch) && r.role === 'teacher') {
+        if (r.id) matchingTeacherIds.add(r.id);
+        if (r.profile_id) matchingTeacherIds.add(r.profile_id);
+        if (r.email) matchingEmails.add(r.email.trim().toLowerCase());
+        if (Array.isArray(r.class_ids)) {
+          r.class_ids.forEach((cid: string) => rosterClassIds.add(cid));
+        }
+      }
+    });
+
+    // Match in class_offerings
+    const matchedOfferings = allOfferings.filter((o: any) => {
+      const offeringTeacherId = o.teacher_id || o.teacher?.id;
+      const isIdMatch = offeringTeacherId && matchingTeacherIds.has(offeringTeacherId);
+      const isRosterAssigned = rosterClassIds.has(o.id);
+      return isIdMatch || isRosterAssigned;
+    });
+
+    const subjectSet = new Set<string>();
+    const gradeSet = new Set<string>();
+    let hasIelts = false;
+
+    // Process matched offerings
+    matchedOfferings.forEach((o: any) => {
+      const board = String(o.board_id || o.board || o.class?.board_id || '').trim().toLowerCase();
+      const rawSub = String(o.subject_name || o.subject?.name || o.subject || '').trim();
+      const subLower = rawSub.toLowerCase();
+      const grade = String(o.class?.grade || o.grade || '').trim();
+
+      if (board === 'ielts' || subLower.includes('ielts')) {
+        hasIelts = true;
+        subjectSet.add('IELTS Preparation');
+      } else if (rawSub) {
+        subjectSet.add(rawSub);
+      }
+
+      if (grade) {
+        gradeSet.add(grade);
+      }
+
+      result.pairs.push({
+        grade,
+        subject: rawSub || (board === 'ielts' ? 'IELTS Preparation' : ''),
+        board,
+      });
+    });
+
+    // Also include subjects directly assigned on teacher record
+    teacherDirectSubjects.forEach((s) => {
+      const sLower = s.toLowerCase();
+      if (sLower.includes('ielts')) {
+        hasIelts = true;
+        subjectSet.add('IELTS Preparation');
+      } else {
+        subjectSet.add(s);
+      }
+    });
+
+    result.subjects = Array.from(subjectSet);
+    result.normalizedSubjects = Array.from(subjectSet).map((s) => s.trim().toLowerCase());
+    result.grades = Array.from(gradeSet).sort((a, b) => Number(a) - Number(b));
+    result.hasIelts = hasIelts;
+    result.isAssigned = result.subjects.length > 0;
+
+    return result;
+  } catch (err) {
+    console.warn('[getTeacherAssignedScope] error:', err);
+    return result;
+  }
+}
+
+/** Teacher: get tests assigned to teacher strictly matching their assigned subjects and classes */
 export async function getTestsForTeacher(
   teacherId?: string,
   teacherEmail?: string,
@@ -1783,86 +1965,17 @@ export async function getTestsForTeacher(
 ): Promise<TestPaper[]> {
   if (!teacherId && !teacherEmail && !teacherName) return [];
   try {
-    const allTests = await getAllTests();
-    if (allTests.length === 0) return [];
+    const [scope, allTests] = await Promise.all([
+      getTeacherAssignedScope(teacherId, teacherEmail, teacherName),
+      getAllTests(),
+    ]);
 
-    // Look up teachers table to resolve teacher record IDs and names
-    const { data: teachersData } = await supabase.from('teachers').select('*');
-    const teacherList = teachersData || [];
+    if (!scope.isAssigned || allTests.length === 0) return [];
 
-    const matchingTeacherIds = new Set<string>();
-    const matchingTeacherNames = new Set<string>();
-
-    if (teacherId) matchingTeacherIds.add(teacherId);
-    if (teacherName && teacherName.trim()) matchingTeacherNames.add(teacherName.trim().toLowerCase());
-
-    // Find matching records in teachers table
-    teacherList.forEach((t: any) => {
-      const idMatches = teacherId && (t.id === teacherId || t.user_id === teacherId);
-      const emailMatches = teacherEmail && t.email && t.email.toLowerCase() === teacherEmail.toLowerCase();
-      const nameMatches = teacherName && t.full_name && t.full_name.toLowerCase() === teacherName.toLowerCase();
-
-      if (idMatches || emailMatches || nameMatches) {
-        matchingTeacherIds.add(t.id);
-        if (t.user_id) matchingTeacherIds.add(t.user_id);
-        if (t.full_name) matchingTeacherNames.add(t.full_name.trim().toLowerCase());
-      }
+    // Filter strictly: test MUST match one of the teacher's assigned subjects
+    return allTests.filter((t) => {
+      return isSubjectAuthorizedForTeacher(t.subject, scope, t.board || undefined, t.grade || undefined);
     });
-
-    // Get offerings assigned to this teacher to get their active subject + class (grade) combinations
-    let assignedOfferings: any[] = [];
-    try {
-      assignedOfferings = await getOfferingsForTeacher(teacherId);
-    } catch {
-      assignedOfferings = [];
-    }
-
-    const validPairs = assignedOfferings
-      .map((o) => ({
-        grade: String(o.class?.grade || o.grade || '').trim(),
-        subject: (o.subject?.name || o.subject_name || '').trim().toLowerCase(),
-        board: String(o.board_id || o.board || o.class?.board_id || '').trim().toLowerCase(),
-      }))
-      .filter((p) => (p.grade && p.subject) || p.board === 'ielts' || p.subject.includes('ielts'));
-
-    const isTeacherIeltsAssigned = assignedOfferings.some(o => {
-      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
-      const s = (o.subject_name || o.subject || '').toLowerCase();
-      return b === 'ielts' || s.includes('ielts');
-    });
-
-    // Strict filter:
-    // 1) Test MUST be assigned to this teacher (by matching teacher_id or teacher_name)
-    // 2) If teacher has offerings registered, test MUST match one of the teacher's subject + class combinations
-    const filtered = allTests.filter((t) => {
-      const isTeacherAssigned =
-        (t.teacher_id && matchingTeacherIds.has(t.teacher_id)) ||
-        (t.teacher_name && matchingTeacherNames.has(t.teacher_name.trim().toLowerCase()));
-
-      if (!isTeacherAssigned) return false;
-
-      if (validPairs.length > 0) {
-        const tBoard = String(t.board || '').trim().toLowerCase();
-        const tGrade = String(t.grade || '').trim();
-        const tSub = (t.subject || '').trim().toLowerCase();
-        const isIeltsTest = tBoard === 'ielts' || tGrade.toLowerCase() === 'ielts' || tSub.includes('ielts');
-
-        if (isTeacherIeltsAssigned && isIeltsTest) {
-          return true;
-        }
-
-        const matchesOffering = validPairs.some(
-          (p) =>
-            p.grade === tGrade &&
-            (p.subject === tSub || p.subject.includes(tSub) || tSub.includes(p.subject))
-        );
-        if (!matchesOffering) return false;
-      }
-
-      return true;
-    });
-
-    return filtered;
   } catch (err) {
     console.warn('[getTestsForTeacher] error:', err);
     return [];
@@ -2027,8 +2140,24 @@ export async function uploadTestSubmissionToR2(
 }
 
 /** Get all submissions for a specific test paper */
-export async function getSubmissionsForTest(testId: string): Promise<TestSubmission[]> {
+export async function getSubmissionsForTest(
+  testId: string,
+  teacherScope?: TeacherAssignedScope | null
+): Promise<TestSubmission[]> {
   try {
+    if (teacherScope && teacherScope.isAssigned) {
+      const { data: testData } = await (supabase as any)
+        .from('tests')
+        .select('id, subject, board, grade')
+        .eq('id', testId)
+        .maybeSingle();
+
+      if (testData && !isSubjectAuthorizedForTeacher(testData.subject, teacherScope, testData.board || undefined, testData.grade || undefined)) {
+        console.warn(`[getSubmissionsForTest] Unauthorized subject "${testData.subject}" for teacher`);
+        return [];
+      }
+    }
+
     const [subsRes, profilesRes] = await Promise.all([
       (supabase as any).from('test_submissions').select('*').eq('test_id', testId).order('submitted_at', { ascending: false }),
       supabase.from('profiles').select('id, full_name, email:phone, phone, avatar_url')
@@ -2083,8 +2212,33 @@ export async function gradeTestSubmission(
     marks_obtained: number;
     max_marks?: number;
     teacher_feedback?: string;
+  },
+  options?: {
+    teacherScope?: TeacherAssignedScope | null;
+    teacherId?: string;
+    role?: string;
   }
 ): Promise<TestSubmission> {
+  // If teacher, perform pre-flight subject authorization check
+  if (options?.role === 'teacher' && options?.teacherScope) {
+    try {
+      const { data: subData } = await (supabase as any)
+        .from('test_submissions')
+        .select('*, test:tests(*)')
+        .eq('id', submissionId)
+        .maybeSingle();
+
+      const subSubject = subData?.subject || subData?.test?.subject;
+      if (subSubject && !isSubjectAuthorizedForTeacher(subSubject, options.teacherScope, subData?.test?.board, subData?.grade || subData?.test?.grade)) {
+        throw new Error(`Unauthorized: You are not assigned to grade submissions for subject "${subSubject}".`);
+      }
+    } catch (checkErr: any) {
+      if (checkErr.message?.includes('Unauthorized')) {
+        throw checkErr;
+      }
+    }
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || '';
 
@@ -2099,6 +2253,8 @@ export async function gradeTestSubmission(
       marks_obtained: payload.marks_obtained,
       max_marks: payload.max_marks,
       teacher_feedback: payload.teacher_feedback,
+      teacher_id: options?.teacherId,
+      role: options?.role,
     }),
   });
 
@@ -2326,69 +2482,19 @@ export async function getStudentMCQAttemptsForTeacher(
 ): Promise<StudentMCQAttempt[]> {
   if (!teacherId && !teacherEmail && !teacherName) return [];
   try {
-    // 1. Fetch teacher's assigned offerings to get exact grade & subject pairs
-    let assignedOfferings: ClassOffering[] = [];
-    try {
-      assignedOfferings = await getOfferingsForTeacher(teacherId);
-    } catch {
-      assignedOfferings = [];
-    }
-
-    if (assignedOfferings.length === 0) {
-      try {
-        const { data: teachersData } = await supabase.from('teachers').select('*');
-        const list: any[] = Array.isArray(teachersData) ? teachersData : [];
-        const matchingRecord = list.find((t: any) =>
-          (teacherId && (t.id === teacherId || t.user_id === teacherId)) ||
-          (teacherEmail && t.email?.toLowerCase() === teacherEmail.toLowerCase()) ||
-          (teacherName && t.full_name?.toLowerCase() === teacherName.toLowerCase())
-        );
-        if (matchingRecord && matchingRecord.id) {
-          assignedOfferings = await getOfferingsForTeacher(matchingRecord.id);
-        }
-      } catch {}
-    }
-
-    const validPairs = assignedOfferings
-      .map((o) => ({
-        grade: String(o.class?.grade || o.grade || '').trim(),
-        subject: (o.subject?.name || o.subject_name || o.subject || '').trim().toLowerCase(),
-        board: String(o.board_id || o.board || o.class?.board_id || '').trim().toLowerCase(),
-      }))
-      .filter((p) => (p.grade && p.subject) || p.board === 'ielts' || p.subject.includes('ielts'));
-
-    const isTeacherIeltsAssigned = assignedOfferings.some(o => {
-      const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
-      const s = (o.subject_name || o.subject || '').toLowerCase();
-      return b === 'ielts' || s.includes('ielts');
-    });
+    const [scope, allAttempts] = await Promise.all([
+      getTeacherAssignedScope(teacherId, teacherEmail, teacherName),
+      getAllStudentMCQAttempts(),
+    ]);
 
     // If teacher has NO assigned offerings, they must see NO results (strict zero-trust scoping)
-    if (validPairs.length === 0) {
+    if (!scope.isAssigned || allAttempts.length === 0) {
       return [];
     }
 
-    // 2. Fetch all attempts
-    const allAttempts = await getAllStudentMCQAttempts();
-
-    // 3. Strict filtering: attempt MUST match one of the teacher's assigned (grade, subject) pairs
+    // Strict filtering: attempt MUST match one of the teacher's assigned subjects
     const filtered = allAttempts.filter((att) => {
-      const attGrade = String(att.grade || '').trim();
-      const attSub = (att.subject || '').trim().toLowerCase();
-      const isIeltsAttempt = attGrade.toLowerCase() === 'ielts' || attSub.includes('ielts');
-
-      if (isTeacherIeltsAssigned && isIeltsAttempt) {
-        return true;
-      }
-
-      return validPairs.some((p) => {
-        const gradeMatches = p.grade === attGrade;
-        const subjectMatches =
-          p.subject === attSub ||
-          p.subject.includes(attSub) ||
-          attSub.includes(p.subject);
-        return gradeMatches && subjectMatches;
-      });
+      return isSubjectAuthorizedForTeacher(att.subject, scope, att.board, att.grade);
     });
 
     return filtered;

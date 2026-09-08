@@ -22,7 +22,13 @@ import {
 import { ProctoredMCQSubmissionsList } from '../teacher/ProctoredMCQSubmissionsList';
 import { WrittenTestSubmissionsList } from '../teacher/WrittenTestSubmissionsList';
 import type { StudentMCQAttempt, ClassOffering } from '../../types';
-import { getStudentMCQAttemptsForTeacher, getAllStudentMCQAttempts } from '../../lib/db';
+import {
+  getStudentMCQAttemptsForTeacher,
+  getAllStudentMCQAttempts,
+  getTeacherAssignedScope,
+  isSubjectAuthorizedForTeacher,
+  type TeacherAssignedScope,
+} from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { BOARDS } from '../../lib/taxonomy';
@@ -157,6 +163,8 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
   const [dateRange, setDateRange] = useState<'all' | 'today' | '7days' | '30days'>('all');
   const [performanceFilter, setPerformanceFilter] = useState<'all' | 'high' | 'pass' | 'low'>('all');
 
+  const [teacherScope, setTeacherScope] = useState<TeacherAssignedScope | null>(null);
+
   // Teacher scope derivation
   const teacherAssignedGrades = useMemo(() => {
     if (!isTeacher) return ['9', '10', '11', '12'];
@@ -170,13 +178,16 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
 
   const teacherAssignedSubjects = useMemo(() => {
     if (!isTeacher) return [];
+    if (teacherScope && teacherScope.subjects && teacherScope.subjects.length > 0) {
+      return [...teacherScope.subjects].sort();
+    }
     const sSet = new Set<string>();
     teacherOfferings.forEach((o) => {
       const s = o.subject?.name || o.subject_name || o.subject;
       if (s) sSet.add(String(s));
     });
     return Array.from(sSet).sort();
-  }, [isTeacher, teacherOfferings]);
+  }, [isTeacher, teacherScope, teacherOfferings]);
 
   // Load results
   const fetchResults = async () => {
@@ -186,7 +197,12 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
         const effTeacherId = teacherId || profile?.id;
         const effEmail = teacherEmail || user?.email || (profile as any)?.email;
         const effName = teacherName || profile?.full_name;
-        const data = await getStudentMCQAttemptsForTeacher(effTeacherId, effEmail, effName);
+
+        const [scope, data] = await Promise.all([
+          getTeacherAssignedScope(effTeacherId, effEmail, effName),
+          getStudentMCQAttemptsForTeacher(effTeacherId, effEmail, effName),
+        ]);
+        setTeacherScope(scope);
         setResults(data);
       } else {
         // Admin or unscoped
@@ -225,13 +241,19 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
     return results.filter((r) => {
       // 1. Teacher strict scope check (extra safety layer)
       if (isTeacher) {
-        const gradeMatches = teacherAssignedGrades.length === 0 || teacherAssignedGrades.includes(String(r.grade));
-        const subLower = (r.subject || '').trim().toLowerCase();
-        const subjectMatches = teacherAssignedSubjects.some(
-          (ts) => ts.trim().toLowerCase() === subLower || ts.toLowerCase().includes(subLower) || subLower.includes(ts.toLowerCase())
-        );
-        if (!gradeMatches || !subjectMatches) {
-          return false;
+        if (teacherScope && teacherScope.isAssigned) {
+          if (!isSubjectAuthorizedForTeacher(r.subject, teacherScope, r.board, r.grade)) {
+            return false;
+          }
+        } else {
+          const gradeMatches = teacherAssignedGrades.length === 0 || teacherAssignedGrades.includes(String(r.grade));
+          const subLower = (r.subject || '').trim().toLowerCase();
+          const subjectMatches = teacherAssignedSubjects.some(
+            (ts) => ts.trim().toLowerCase() === subLower || ts.toLowerCase().includes(subLower) || subLower.includes(ts.toLowerCase())
+          );
+          if (!gradeMatches || !subjectMatches) {
+            return false;
+          }
         }
       }
 
@@ -497,9 +519,9 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
       </div>
 
       {activeCategory === 'proctored' ? (
-        <ProctoredMCQSubmissionsList isTeacher={isTeacher} />
+        <ProctoredMCQSubmissionsList isTeacher={isTeacher} teacherScope={teacherScope} />
       ) : activeCategory === 'written' ? (
-        <WrittenTestSubmissionsList isTeacher={isTeacher} />
+        <WrittenTestSubmissionsList isTeacher={isTeacher} teacherScope={teacherScope} />
       ) : (
         <>
           {/* Teacher Scoping Banner */}

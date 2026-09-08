@@ -9,21 +9,63 @@ import {
   RefreshCw,
   Check,
   MessageSquare,
+  ShieldAlert,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   getAllIELTSWritingSubmissions,
   gradeIELTSWritingSubmission,
   type IELTSWritingSubmission,
 } from '../../lib/ieltsWritingService';
+import {
+  getTeacherAssignedScope,
+  isSubjectAuthorizedForTeacher,
+  type TeacherAssignedScope,
+} from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 
-export const TeacherIELTSWritingGrading: React.FC = () => {
+interface TeacherIELTSWritingGradingProps {
+  isTeacher?: boolean;
+  teacherScope?: TeacherAssignedScope | null;
+}
+
+export const TeacherIELTSWritingGrading: React.FC<TeacherIELTSWritingGradingProps> = ({
+  isTeacher: _isTeacher = true,
+  teacherScope: initialTeacherScope,
+}) => {
   const { profile, user } = useAuth();
   const [submissions, setSubmissions] = useState<IELTSWritingSubmission[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedSubmission, setSelectedSubmission] = useState<IELTSWritingSubmission | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'graded'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [resolvedScope, setResolvedScope] = useState<TeacherAssignedScope | null>(initialTeacherScope || null);
+
+  const normRole = (profile?.role || '').toLowerCase();
+
+  // Load teacher assigned scope if not provided as prop
+  useEffect(() => {
+    if (initialTeacherScope) {
+      setResolvedScope(initialTeacherScope);
+      return;
+    }
+    if (normRole === 'teacher' && (profile?.id || user?.email)) {
+      getTeacherAssignedScope(
+        profile?.id,
+        user?.email || (profile as any)?.email,
+        profile?.full_name
+      ).then((sc) => setResolvedScope(sc)).catch(() => {});
+    }
+  }, [initialTeacherScope, normRole, profile?.id, user?.email, profile?.full_name]);
+
+  const activeScope = initialTeacherScope || resolvedScope;
+
+  // Check subject authorization
+  const isAuthorized = React.useMemo(() => {
+    if (normRole !== 'teacher') return true; // Admins unrestricted
+    if (!activeScope || !activeScope.isAssigned) return true; // If teacher has no assignments yet, fall back
+    return isSubjectAuthorizedForTeacher('IELTS Preparation', activeScope);
+  }, [normRole, activeScope]);
 
   // Grading Form State
   const [taskAchievement, setTaskAchievement] = useState<number>(7.0);
@@ -37,7 +79,16 @@ export const TeacherIELTSWritingGrading: React.FC = () => {
   const loadSubmissions = async () => {
     setIsLoading(true);
     try {
-      const data = await getAllIELTSWritingSubmissions();
+      if (normRole === 'teacher' && activeScope && activeScope.isAssigned && !isAuthorized) {
+        setSubmissions([]);
+        setSelectedSubmission(null);
+        return;
+      }
+
+      const data = await getAllIELTSWritingSubmissions({
+        role: normRole,
+        teacherScope: activeScope,
+      });
       setSubmissions(data);
       if (data.length > 0 && !selectedSubmission) {
         setSelectedSubmission(data[0]);
@@ -52,7 +103,7 @@ export const TeacherIELTSWritingGrading: React.FC = () => {
 
   useEffect(() => {
     loadSubmissions();
-  }, []);
+  }, [activeScope, isAuthorized]);
 
   const initGradingForm = (sub: IELTSWritingSubmission) => {
     setTaskAchievement(sub.task_achievement_band || 7.0);
@@ -73,6 +124,10 @@ export const TeacherIELTSWritingGrading: React.FC = () => {
 
   const handleSaveGrade = async () => {
     if (!selectedSubmission) return;
+    if (!isAuthorized) {
+      toast.error('Unauthorized: IELTS Preparation is not assigned to your teacher profile.');
+      return;
+    }
     setIsSavingGrade(true);
     setSaveSuccess(false);
 
@@ -83,6 +138,8 @@ export const TeacherIELTSWritingGrading: React.FC = () => {
       const updated = await gradeIELTSWritingSubmission(selectedSubmission.id, {
         teacher_id: teacherId,
         teacher_name: teacherName,
+        role: normRole,
+        teacherScope: activeScope,
         overall_band: computedOverallBand,
         task_achievement_band: taskAchievement,
         coherence_cohesion_band: coherenceCohesion,
@@ -93,10 +150,11 @@ export const TeacherIELTSWritingGrading: React.FC = () => {
 
       setSelectedSubmission(updated);
       setSaveSuccess(true);
+      toast.success('IELTS evaluation saved and published!');
       await loadSubmissions();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving grade:', err);
-      alert('Failed to save manual grade. Please retry.');
+      toast.error(err.message || 'Failed to save manual grade. Please retry.');
     } finally {
       setIsSavingGrade(false);
     }
@@ -146,7 +204,26 @@ export const TeacherIELTSWritingGrading: React.FC = () => {
       </div>
 
       {/* Main Layout: Submissions Queue + Grading Workbench */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {!isAuthorized ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 sm:p-12 border border-rose-200 dark:border-rose-900/40 shadow-xs space-y-4 text-center max-w-xl mx-auto my-6">
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+              Subject Access Restricted: IELTS Preparation
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+              Your instructor profile is assigned to:{' '}
+              <span className="font-bold text-slate-900 dark:text-white">
+                {activeScope?.subjects.join(', ') || 'Non-IELTS subjects'}
+              </span>
+              . IELTS Writing reviews, student submissions, and manual band grading are restricted to authorized IELTS / English instructors and administrators.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Submissions Queue (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
@@ -458,6 +535,7 @@ export const TeacherIELTSWritingGrading: React.FC = () => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };

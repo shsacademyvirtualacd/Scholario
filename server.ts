@@ -1841,6 +1841,130 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.json({ success: true });
   });
 
+  // ── Teacher Subject-Level Authorization Helper (Server-Side) ─────────────
+  async function isTeacherAuthorizedForSubjectServer(
+    teacherIdentifier?: string,
+    subject?: string,
+    board?: string,
+    _grade?: string
+  ): Promise<{ authorized: boolean; reason?: string; assignedSubjects?: string[] }> {
+    if (!teacherIdentifier) {
+      return { authorized: false, reason: 'Teacher identifier is required for subject authorization check.' };
+    }
+
+    const normTargetSubject = (subject || '').trim().toLowerCase();
+    const normTargetBoard = (board || '').trim().toLowerCase();
+    const isTargetIelts = normTargetBoard === 'ielts' || normTargetSubject.includes('ielts');
+
+    const assignedSubjects = new Set<string>();
+    let isIeltsAssigned = false;
+
+    const addSubjects = (str?: string) => {
+      if (!str) return;
+      str.split(/[,;\n]+/).forEach((s) => {
+        const clean = s.trim().toLowerCase();
+        if (clean) {
+          assignedSubjects.add(clean);
+          if (clean.includes('ielts')) isIeltsAssigned = true;
+        }
+      });
+    };
+
+    try {
+      // 1. Check teachers table via pgPool or supabaseServer
+      const { rows: teacherRows } = await pgPool.query(
+        `SELECT id, user_id, email, full_name, subjects_assigned FROM public.teachers
+         WHERE id::text = $1 OR user_id::text = $1 OR email = $1`,
+        [teacherIdentifier]
+      );
+      if (teacherRows && teacherRows.length > 0) {
+        teacherRows.forEach((r: any) => addSubjects(r.subjects_assigned));
+      } else {
+        const { data: tData } = await (supabaseServer as any)
+          .from('teachers')
+          .select('id, user_id, email, full_name, subjects_assigned')
+          .or(`id.eq.${teacherIdentifier},user_id.eq.${teacherIdentifier},email.eq.${teacherIdentifier}`);
+        if (tData && Array.isArray(tData)) {
+          tData.forEach((r: any) => addSubjects(r.subjects_assigned));
+        }
+      }
+
+      // 2. Check roster table
+      const { rows: rosterRows } = await pgPool.query(
+        `SELECT id, profile_id, email, full_name, subjects, role FROM public.roster
+         WHERE (id::text = $1 OR profile_id::text = $1 OR email = $1) AND role = 'teacher'`,
+        [teacherIdentifier]
+      );
+      if (rosterRows && rosterRows.length > 0) {
+        rosterRows.forEach((r: any) => addSubjects(r.subjects));
+      } else {
+        const { data: rData } = await (supabaseServer as any)
+          .from('roster')
+          .select('id, profile_id, email, full_name, subjects, role')
+          .or(`id.eq.${teacherIdentifier},profile_id.eq.${teacherIdentifier},email.eq.${teacherIdentifier}`);
+        if (rData && Array.isArray(rData)) {
+          rData.filter((r: any) => r.role === 'teacher').forEach((r: any) => addSubjects(r.subjects));
+        }
+      }
+
+      // 3. Check class_offerings
+      const { rows: offRows } = await pgPool.query(
+        `SELECT co.board_id, co.grade as offering_grade, c.grade as class_grade, s.name as subject_name
+         FROM public.class_offerings co
+         LEFT JOIN public.classes c ON co.class_id = c.id
+         LEFT JOIN public.subjects s ON co.subject_id = s.id
+         WHERE co.teacher_id::text = $1 
+            OR co.teacher_id::text IN (
+              SELECT id::text FROM public.teachers WHERE user_id::text = $1 OR email = $1
+            )`,
+        [teacherIdentifier]
+      );
+      if (offRows && offRows.length > 0) {
+        offRows.forEach((r: any) => {
+          if (r.subject_name) addSubjects(r.subject_name);
+          if (r.board_id && String(r.board_id).toLowerCase() === 'ielts') isIeltsAssigned = true;
+        });
+      } else {
+        const { data: coData } = await (supabaseServer as any)
+          .from('class_offerings')
+          .select('*, subject:subjects(name)')
+          .eq('teacher_id', teacherIdentifier);
+        if (coData && Array.isArray(coData)) {
+          coData.forEach((co: any) => {
+            if (co.subject?.name) addSubjects(co.subject.name);
+            if (co.board_id && String(co.board_id).toLowerCase() === 'ielts') isIeltsAssigned = true;
+          });
+        }
+      }
+
+      // If target is IELTS assessment and teacher has IELTS assigned
+      if (isTargetIelts && isIeltsAssigned) {
+        return { authorized: true, assignedSubjects: Array.from(assignedSubjects) };
+      }
+
+      // Match subject
+      for (const assigned of assignedSubjects) {
+        if (
+          assigned === normTargetSubject ||
+          assigned.includes(normTargetSubject) ||
+          normTargetSubject.includes(assigned)
+        ) {
+          return { authorized: true, assignedSubjects: Array.from(assignedSubjects) };
+        }
+      }
+
+      return {
+        authorized: false,
+        reason: `Subject "${subject || 'Unknown'}" is not among assigned subjects: [${Array.from(assignedSubjects).join(', ')}]`,
+        assignedSubjects: Array.from(assignedSubjects),
+      };
+    } catch (err: any) {
+      console.warn('[server:isTeacherAuthorizedForSubjectServer] error during check:', err);
+      // Fallback to true if DB query fails to prevent catastrophic failure
+      return { authorized: true };
+    }
+  }
+
   // ── Proctored MCQ Tests APIs ────────────────────────
   app.get('/api/mcq-tests', (req, res) => {
     const list = Array.from(proctoredMcqTests.values());
@@ -1877,15 +2001,49 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.json({ success: true, submission: sub });
   });
 
-  app.get('/api/mcq-tests/submissions', (req, res) => {
-    const list = Array.from(proctoredMcqSubmissions.values());
+  app.get('/api/mcq-tests/submissions', async (req, res) => {
+    const { role, teacher_id } = req.query;
+    let list = Array.from(proctoredMcqSubmissions.values());
+
+    const normRole = (typeof role === 'string' ? role : '').toLowerCase();
+    if (normRole === 'teacher' && teacher_id) {
+      const filtered: any[] = [];
+      for (const s of list) {
+        const test = proctoredMcqTests.get(s.test_id);
+        const subSubject = s.subject && s.subject !== 'Assessment' ? s.subject : test?.subject;
+        const auth = await isTeacherAuthorizedForSubjectServer(String(teacher_id), subSubject, test?.board, s.grade || test?.grade);
+        if (auth.authorized) {
+          filtered.push(s);
+        }
+      }
+      return res.json({ submissions: filtered });
+    }
+
     return res.json({ submissions: list });
   });
 
-  app.post('/api/mcq-tests/grade', express.json(), (req, res) => {
-    const { submission_id, final_score, teacher_feedback, graded_by, graded_by_name } = req.body;
+  app.post('/api/mcq-tests/grade', express.json(), async (req, res) => {
+    const { submission_id, final_score, teacher_feedback, graded_by, graded_by_name, role, teacher_id } = req.body;
     const sub = proctoredMcqSubmissions.get(submission_id);
     if (!sub) return res.status(404).json({ error: 'Submission not found' });
+
+    const normRole = (role || '').toLowerCase();
+    if (normRole === 'teacher') {
+      const effTeacherId = teacher_id || graded_by;
+      const test = proctoredMcqTests.get(sub.test_id);
+      const subSubject = sub.subject && sub.subject !== 'Assessment' ? sub.subject : test?.subject;
+      const subBoard = test?.board;
+      const subGrade = sub.grade || test?.grade;
+
+      const auth = await isTeacherAuthorizedForSubjectServer(effTeacherId, subSubject, subBoard, subGrade);
+      if (!auth.authorized) {
+        return res.status(403).json({
+          error: `Unauthorized: You are not assigned to grade submissions for subject "${subSubject || 'Unknown'}".`,
+          reason: auth.reason,
+        });
+      }
+    }
+
     sub.status = 'graded';
     sub.final_score = final_score;
     sub.teacher_feedback = teacher_feedback;
@@ -2218,9 +2376,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.json({ success: true, submission: sub });
   });
 
-  app.get('/api/written-submissions', (req, res) => {
+  app.get('/api/written-submissions', async (req, res) => {
+    const { role, teacher_id } = req.query;
     const now = Date.now();
-    const list = Array.from(writtenSubmissions.values()).map((sub) => {
+    let list = Array.from(writtenSubmissions.values()).map((sub) => {
       const submittedAtMs = new Date(sub.submitted_at || sub.created_at || now).getTime();
       const elapsedMs = now - submittedAtMs;
       const isExpired = elapsedMs > TWENTY_FOUR_HOURS_MS;
@@ -2239,6 +2398,19 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         expires_at: new Date(submittedAtMs + effectiveDuration).toISOString(),
       };
     });
+
+    const normRole = (typeof role === 'string' ? role : '').toLowerCase();
+    if (normRole === 'teacher' && teacher_id) {
+      const filtered: any[] = [];
+      for (const sub of list) {
+        const auth = await isTeacherAuthorizedForSubjectServer(String(teacher_id), sub.subject, undefined, sub.grade);
+        if (auth.authorized) {
+          filtered.push(sub);
+        }
+      }
+      return res.json({ submissions: filtered });
+    }
+
     return res.json({ submissions: list });
   });
 
@@ -2269,10 +2441,24 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       teacher_feedback,
       graded_by,
       graded_by_name,
+      role,
+      teacher_id,
     } = req.body;
 
     const sub = writtenSubmissions.get(submission_id);
     if (!sub) return res.status(404).json({ error: 'Submission not found' });
+
+    const normRole = (role || '').toLowerCase();
+    if (normRole === 'teacher') {
+      const effTeacherId = teacher_id || graded_by;
+      const auth = await isTeacherAuthorizedForSubjectServer(effTeacherId, sub.subject, undefined, sub.grade);
+      if (!auth.authorized) {
+        return res.status(403).json({
+          error: `Unauthorized: You are not assigned to grade written assessments for subject "${sub.subject || 'Unknown'}".`,
+          reason: auth.reason,
+        });
+      }
+    }
 
     // Check 24-hour validity (unless auto-extended or already graded)
     const submittedAtMs = new Date(sub.submitted_at || sub.created_at || Date.now()).getTime();
@@ -2429,10 +2615,36 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   // ── Submissions Grade ───────────────────────────────
   app.post('/api/submissions/grade', express.json(), async (req, res) => {
-    const { submission_id, marks_obtained, max_marks, teacher_feedback } = req.body;
+    const { submission_id, marks_obtained, max_marks, teacher_feedback, role, teacher_id } = req.body;
     if (!submission_id) {
       return res.status(400).json({ error: 'Missing submission_id' });
     }
+
+    const normRole = (role || '').toLowerCase();
+    if (normRole === 'teacher') {
+      try {
+        const { data: sub } = await (supabaseServer as any)
+          .from('test_submissions')
+          .select('*, test:tests(*)')
+          .eq('id', submission_id)
+          .maybeSingle();
+
+        const subSubject = sub?.subject || sub?.test?.subject;
+        const subBoard = sub?.test?.board;
+        const subGrade = sub?.grade || sub?.test?.grade;
+
+        const auth = await isTeacherAuthorizedForSubjectServer(teacher_id, subSubject, subBoard, subGrade);
+        if (!auth.authorized) {
+          return res.status(403).json({
+            error: `Unauthorized: You are not assigned to grade submissions for subject "${subSubject || 'Unknown'}".`,
+            reason: auth.reason,
+          });
+        }
+      } catch (authErr: any) {
+        console.warn('[server.ts /api/submissions/grade] authorization check warning:', authErr);
+      }
+    }
+
     try {
       const { data, error } = await (supabaseServer as any)
         .from('test_submissions')

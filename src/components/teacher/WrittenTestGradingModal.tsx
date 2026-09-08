@@ -21,6 +21,7 @@ import {
   gradeWrittenSubmission,
   getRemainingGradingTime,
 } from '../../lib/writtenTestService';
+import { isSubjectAuthorizedForTeacher, type TeacherAssignedScope } from '../../lib/db';
 import type {
   WrittenSubmission,
 } from '../../types/writtenTest';
@@ -28,6 +29,7 @@ import type {
 interface WrittenTestGradingModalProps {
   isOpen: boolean;
   submission: WrittenSubmission | null;
+  teacherScope?: TeacherAssignedScope | null;
   onClose: () => void;
   onGraded: (updatedSubmission: WrittenSubmission) => void;
 }
@@ -35,10 +37,17 @@ interface WrittenTestGradingModalProps {
 export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = ({
   isOpen,
   submission,
+  teacherScope,
   onClose,
   onGraded,
 }) => {
   const { profile } = useAuth();
+  const normRole = (profile?.role || '').toLowerCase();
+
+  const isAuthorized = React.useMemo(() => {
+    if (normRole !== 'teacher' || !teacherScope || !teacherScope.isAssigned) return true;
+    return isSubjectAuthorizedForTeacher(submission?.subject, teacherScope, undefined, submission?.grade);
+  }, [normRole, teacherScope, submission]);
 
   // Question grades state: question_id -> { marks, remarks }
   const [gradesMap, setGradesMap] = useState<
@@ -155,9 +164,13 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
   };
 
   const handleSaveGrade = async () => {
-    const normRole = (profile?.role || '').toLowerCase();
     if (normRole !== 'teacher' && normRole !== 'admin') {
       toast.error('Only teachers and administrators are authorized to grade written submissions.');
+      return;
+    }
+
+    if (!isAuthorized) {
+      toast.error(`Unauthorized: Subject "${submission.subject}" is not assigned to your teacher profile.`);
       return;
     }
 
@@ -169,13 +182,20 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
         remarks: val.remarks,
       }));
 
-      const updated = await gradeWrittenSubmission({
-        submission_id: submission.id,
-        per_question_grades: perQuestionPayload,
-        teacher_feedback: overallFeedback.trim(),
-        graded_by: profile?.id || 'teacher',
-        graded_by_name: profile?.full_name || 'Instructor',
-      });
+      const updated = await gradeWrittenSubmission(
+        {
+          submission_id: submission.id,
+          per_question_grades: perQuestionPayload,
+          teacher_feedback: overallFeedback.trim(),
+          graded_by: profile?.id || 'teacher',
+          graded_by_name: profile?.full_name || 'Instructor',
+        },
+        {
+          role: normRole,
+          teacherScope: teacherScope || undefined,
+          teacherId: profile?.id,
+        }
+      );
 
       toast.success('Assessment graded and final score published successfully!');
       onGraded(updated);
@@ -310,6 +330,15 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
             </span>
           </div>
         ) : null}
+
+        {!isAuthorized && (
+          <div className="px-4 sm:px-6 py-2.5 bg-rose-50 border-b border-rose-200 text-rose-900 text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>
+              <strong>Grading Restricted:</strong> Subject <span className="font-bold">"{submission.subject}"</span> is not assigned to your teacher profile. Only assigned instructors or administrators may evaluate and publish grades.
+            </span>
+          </div>
+        )}
 
         {/* Main Body */}
         <div
@@ -666,12 +695,16 @@ export const WrittenTestGradingModal: React.FC<WrittenTestGradingModalProps> = (
             {!isArchived && (
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || !isAuthorized}
                 onClick={handleSaveGrade}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 h-8.5 rounded-lg bg-[#111111] text-white text-xs font-bold hover:bg-[#262626] transition-all shadow-sm disabled:opacity-50 cursor-pointer active:scale-95 whitespace-nowrap"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 h-8.5 rounded-lg text-xs font-bold transition-all shadow-sm whitespace-nowrap ${
+                  !isAuthorized
+                    ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed border border-neutral-300'
+                    : 'bg-[#111111] text-white hover:bg-[#262626] cursor-pointer active:scale-95 disabled:opacity-50'
+                }`}
               >
                 <Save className="w-3.5 h-3.5 shrink-0" />
-                <span>{saving ? 'Publishing...' : 'Publish Grade & Remarks'}</span>
+                <span>{!isAuthorized ? 'Grading Restricted' : saving ? 'Publishing...' : 'Publish Grade & Remarks'}</span>
               </button>
             )}
           </div>
