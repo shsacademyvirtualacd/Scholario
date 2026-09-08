@@ -1532,16 +1532,29 @@ html.dark .hover\:border-\[\#D4D4D4\]:hover {
 
 /* ==========================================================================
    Scholario Chat Contact Names High-Contrast Overrides
-   Ensures WCAG AAA contrast ratio (>15:1) in both light and dark modes
+   Contact names in the chat sidebar list and chat headers sit on light backgrounds
+   (#FCFCFC / #FFFFFF / frosted white) in both light and dark themes.
+   Therefore, they MUST ALWAYS be high-contrast near-black #111827 with !important.
    ========================================================================== */
-.chat-contact-name {
-  color: #0F172A;
-}
-
+.chat-contact-name,
+[data-chat-view] .chat-contact-name,
+[data-chat-view] span.chat-contact-name,
+[data-chat-view] h2.chat-contact-name,
+[data-chat-view] h3.chat-contact-name,
+[data-chat-view] p.chat-contact-name,
 html.dark .chat-contact-name,
 html.dark [data-chat-view] .chat-contact-name,
-html.dark [data-chat-view] .text-\[\#0F172A\],
-html.dark [data-chat-view] .text-\[\#0f172a\] {
-  color: #F4F4F5 !important;
+html.dark [data-chat-view] span.chat-contact-name,
+html.dark [data-chat-view] h2.chat-contact-name,
+html.dark [data-chat-view] h3.chat-contact-name,
+html.dark [data-chat-view] p.chat-contact-name {
+  color: #111827 !important;
+}
+
+/* Hide any stray or accidental element containing 'JOIN NOW' or badge */
+[data-badge="join-now"],
+.badge-join-now,
+[aria-label*="JOIN NOW" i] {
+  display: none !important;
 }
 

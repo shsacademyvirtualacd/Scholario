@@ -1428,6 +1428,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   ) => {
     if (isSupportAdmin || otherRole === 'admin') {
       const tagText = extraInfo?.tag || 'Support';
+      if (tagText?.toUpperCase().includes('JOIN NOW')) {
+        return null;
+      }
       // Format cleanly for badge
       const shortTag = tagText.replace('Scholario ', '').replace('Institutional ', '');
       if (subtle) {
@@ -1502,6 +1505,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  id="header-sage-ai-button"
+                  onClick={() => {
+                    setIsSageActive(true);
+                    setActiveThreadId(null);
+                    setMobileViewActiveThread(true);
+                  }}
+                  className={`p-2 sm:px-3 sm:py-2 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 outline-none select-none ${
+                    isSageActive
+                      ? 'bg-[#F4C430] text-[#111111] font-bold ring-2 ring-[#111111]'
+                      : 'bg-[#111111] text-white hover:bg-[#262626]'
+                  }`}
+                  title="Ask Sage AI tutor"
+                >
+                  <Sparkles size={15} className={isSageActive ? 'text-[#111111]' : 'text-[#F4C430]'} />
+                  <span className="hidden sm:inline text-xs font-bold">Sage AI</span>
+                </button>
+
                 <button
                   onClick={() => {
                     setShowNewChatModal(true);
@@ -1598,11 +1620,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
-                            className={`chat-contact-name text-[13.5px] sm:text-sm truncate ${
-                              isSelected || hasUnread
-                                ? 'font-bold text-[#0F172A]'
-                                : 'font-semibold text-[#0F172A]'
-                            }`}
+                            className="chat-contact-name text-[13.5px] sm:text-sm truncate font-bold !text-[#111827]"
+                            style={{ color: '#111827', fontWeight: 700 }}
                           >
                             {other?.full_name || (isAdmin ? 'Scholario Support' : 'User')}
                           </span>
@@ -1685,58 +1704,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 );
               })
             )}
-            {/* Generous bottom clearance spacer to guarantee the last conversation row is 100% visible and unobstructed above any floating buttons or widgets */}
-            <div className="h-28 w-full shrink-0 pointer-events-none" aria-hidden="true" />
-          </div>
-
-          {/* ── Persistent Floating Sage AI Access Button (WhatsApp Meta AI Style) ── */}
-          <div className="absolute bottom-4 right-4 z-20 pointer-events-auto">
-            <button
-              type="button"
-              id="floating-sage-ai-button"
-              onClick={() => {
-                setIsSageActive(true);
-                setActiveThreadId(null);
-                setMobileViewActiveThread(true);
-              }}
-              title="Ask Sage AI"
-              aria-label="Open Sage AI tutor and study companion"
-              className={`group relative flex items-center justify-center rounded-full p-[2.5px] transition-all duration-200 shadow-[0_4px_16px_rgba(0,0,0,0.2),0_0_12px_rgba(244,196,48,0.35)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.28),0_0_20px_rgba(244,196,48,0.6)] hover:scale-105 active:scale-95 cursor-pointer ${
-                isSageActive
-                  ? 'ring-3 ring-[#F4C430] bg-gradient-to-tr from-[#F4C430] via-amber-400 to-[#111111]'
-                  : 'bg-gradient-to-tr from-[#F4C430] via-amber-400 to-purple-500'
-              }`}
-            >
-              {/* Inner Circle */}
-              <div className="w-13 h-13 rounded-full bg-[#111111] flex items-center justify-center relative overflow-hidden">
-                {/* Sage Avatar Video Stream with Poster fallback */}
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  poster="/animations/sage-avatar-poster.jpg"
-                  className="w-full h-full object-cover select-none pointer-events-none transition-transform duration-300 group-hover:scale-110"
-                >
-                  <source src="/animations/sage-avatar-optimized.mp4" type="video/mp4" />
-                </video>
-
-                {/* Subtle gradient depth overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-
-                {/* Floating Corner Sparkles Badge */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#F4C430] text-[#111111] rounded-full flex items-center justify-center shadow-xs ring-2 ring-[#111111]">
-                  <Sparkles size={10} className="stroke-[2.5]" />
-                </div>
-              </div>
-
-              {/* Hover Tooltip on Desktop */}
-              <div className="pointer-events-none absolute right-full mr-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap bg-[#111111] text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-md border border-[#262626] hidden sm:flex items-center gap-1.5 z-30">
-                <Sparkles size={11} className="text-[#F4C430]" />
-                <span>Ask Sage AI</span>
-              </div>
-            </button>
+            {/* Bottom spacer */}
+            <div className="h-6 w-full shrink-0 pointer-events-none" aria-hidden="true" />
           </div>
         </div>
 
@@ -1826,7 +1795,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="chat-contact-name text-sm sm:text-base font-semibold text-[#0F172A] truncate leading-tight">
+                        <h3
+                          className="chat-contact-name text-sm sm:text-base font-bold !text-[#111827] truncate leading-tight"
+                          style={{ color: '#111827', fontWeight: 700 }}
+                        >
                           {activeThread.other_participant?.full_name || 'Direct Conversation'}
                         </h3>
                         {isCurrentThreadMuted && (
@@ -2853,7 +2825,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="chat-contact-name text-xs font-bold text-[#0F172A] truncate">{contact.full_name}</p>
+                            <p
+                              className="chat-contact-name text-xs font-bold !text-[#111827] truncate"
+                              style={{ color: '#111827', fontWeight: 700 }}
+                            >
+                              {contact.full_name}
+                            </p>
                             {getRoleBadge(contact.role, contact.role === 'admin', {
                               subjects: (contact as any).teacher_subjects,
                               tag: (contact as any).admin_tag,
