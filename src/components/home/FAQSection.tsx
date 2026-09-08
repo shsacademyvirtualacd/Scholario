@@ -70,41 +70,25 @@ const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
                 key={i}
                 id={`faq-accordion-item-${i}`}
                 className={`accordion-item rounded-xl border transition-all duration-200 ${
-                  isOpen
-                    ? 'accordion-item-active bg-white border-[#D4D4D4] shadow-sm'
-                    : 'bg-[#18181B] border-[#27272A] hover:border-[#3F3F46]'
+                  isOpen ? 'accordion-item-active shadow-sm' : ''
                 }`}
-                style={{
-                  backgroundColor: isOpen ? '#FFFFFF' : '#18181B',
-                  borderColor: isOpen ? '#D4D4D4' : '#27272A',
-                }}
               >
                 <button
                   type="button"
                   id={`faq-accordion-trigger-${i}`}
                   className="accordion-trigger interactive"
                   onClick={() => setOpenIndex(isOpen ? null : i)}
-                  style={{
-                    color: isOpen ? '#111111' : '#FFFFFF',
-                  }}
                   aria-expanded={isOpen}
                 >
-                  <span
-                    className={`pr-4 font-semibold text-[0.9375rem] transition-colors duration-200 ${
-                      isOpen ? 'text-[#111111]' : 'text-white'
-                    }`}
-                    style={{
-                      color: isOpen ? '#111111' : '#FFFFFF',
-                    }}
-                  >
+                  <span className="pr-4 font-semibold text-[0.9375rem] transition-colors duration-200 text-[#111111]">
                     {faq.q}
                   </span>
                   <div
-                    className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-xs"
-                    style={{
-                      background: isOpen ? '#111111' : '#F5F5F5',
-                      color: isOpen ? '#F4C430' : '#111111',
-                    }}
+                    className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-xs ${
+                      isOpen 
+                        ? 'bg-[#111111] text-[#F4C430]' 
+                        : 'bg-[#F5F5F5] text-[#111111]'
+                    }`}
                   >
                     {isOpen ? <Minus size={14} /> : <Plus size={14} />}
                   </div>
@@ -113,7 +97,6 @@ const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
                   <div
                     id={`faq-accordion-content-${i}`}
                     className="accordion-content animate-fade-up"
-                    style={{ color: '#525252' }}
                   >
                     <p className="text-[#525252] text-[0.9375rem] leading-relaxed">
                       {faq.a}
