@@ -62,34 +62,67 @@ const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
         </div>
 
         {/* FAQ List */}
-        <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <div
-              key={i}
-              className={`accordion-item ${openIndex === i ? 'border-[#D4D4D4] shadow-sm' : ''}`}
-            >
-              <button
-                className="accordion-trigger interactive"
-                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+        <div className="space-y-3" id="faq-accordion-container">
+          {faqs.map((faq, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <div
+                key={i}
+                id={`faq-accordion-item-${i}`}
+                className={`accordion-item rounded-xl border transition-all duration-200 ${
+                  isOpen
+                    ? 'accordion-item-active bg-white border-[#D4D4D4] shadow-sm'
+                    : 'bg-[#18181B] border-[#27272A] hover:border-[#3F3F46]'
+                }`}
+                style={{
+                  backgroundColor: isOpen ? '#FFFFFF' : '#18181B',
+                  borderColor: isOpen ? '#D4D4D4' : '#27272A',
+                }}
               >
-                <span className="pr-4">{faq.q}</span>
-                <div
-                  className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
+                <button
+                  type="button"
+                  id={`faq-accordion-trigger-${i}`}
+                  className="accordion-trigger interactive"
+                  onClick={() => setOpenIndex(isOpen ? null : i)}
                   style={{
-                    background: openIndex === i ? '#111111' : '#F5F5F5',
-                    color: openIndex === i ? '#F4C430' : '#525252',
+                    color: isOpen ? '#111111' : '#FFFFFF',
                   }}
+                  aria-expanded={isOpen}
                 >
-                  {openIndex === i ? <Minus size={14} /> : <Plus size={14} />}
-                </div>
-              </button>
-              {openIndex === i && (
-                <div className="accordion-content animate-fade-up">
-                  {faq.a}
-                </div>
-              )}
-            </div>
-          ))}
+                  <span
+                    className={`pr-4 font-semibold text-[0.9375rem] transition-colors duration-200 ${
+                      isOpen ? 'text-[#111111]' : 'text-white'
+                    }`}
+                    style={{
+                      color: isOpen ? '#111111' : '#FFFFFF',
+                    }}
+                  >
+                    {faq.q}
+                  </span>
+                  <div
+                    className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-xs"
+                    style={{
+                      background: isOpen ? '#111111' : '#F5F5F5',
+                      color: isOpen ? '#F4C430' : '#111111',
+                    }}
+                  >
+                    {isOpen ? <Minus size={14} /> : <Plus size={14} />}
+                  </div>
+                </button>
+                {isOpen && (
+                  <div
+                    id={`faq-accordion-content-${i}`}
+                    className="accordion-content animate-fade-up"
+                    style={{ color: '#525252' }}
+                  >
+                    <p className="text-[#525252] text-[0.9375rem] leading-relaxed">
+                      {faq.a}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Bottom contact */}
