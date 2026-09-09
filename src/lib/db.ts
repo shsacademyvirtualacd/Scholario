@@ -39,9 +39,15 @@ function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
 function mapOffering(off: any): any {
   if (!off) return off;
   const rawSubjName = off.subject?.name || (typeof off.subject === 'string' ? off.subject : null) || off.subject_name || 'Subject';
-  const rawBoard = off.class?.board_id || off.class?.board?.id || off.board_id || off.board || 'fbise';
+  const classNameLower = String(off.class?.name || off.class_name || '').toLowerCase();
+  let inferredBoard = '';
+  if (classNameLower.includes('sindh')) inferredBoard = 'sindh';
+  else if (classNameLower.includes('ielts')) inferredBoard = 'ielts';
+  else if (classNameLower.includes('fbise') || classNameLower.includes('federal')) inferredBoard = 'fbise';
+
+  const rawBoard = off.class?.board_id || off.class?.board?.id || off.class?.board?.code || off.board_id || off.board || inferredBoard || '';
   const boardId = String(rawBoard).toLowerCase();
-  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : boardId === 'ielts' ? 'IELTS Preparation' : 'Federal Board (FBISE)');
+  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : boardId === 'ielts' ? 'IELTS Preparation' : boardId === 'fbise' ? 'Federal Board (FBISE)' : (rawBoard ? String(rawBoard).toUpperCase() : ''));
   
   // Unify subject name for IELTS teacher assignment offerings
   const isIelts = boardId === 'ielts' || String(off.class?.grade || off.grade || '').toLowerCase() === 'ielts' || rawSubjName.toLowerCase().includes('ielts');

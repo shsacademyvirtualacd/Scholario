@@ -731,118 +731,101 @@ export const TeacherAttendancePage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#F0F0F0]">
-                    <th className="py-3 px-3 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Date</th>
-                    <th className="py-3 px-3 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student Name</th>
-                    <th className="py-3 px-3 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Class / Subject</th>
-                    <th className="py-3 px-3 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Status</th>
-                    <th className="py-3 px-3 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Timestamp</th>
-                    <th className="py-3 px-3 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider text-right">Quick Edit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#FAFAFA]">
-                  {filteredRecords.map(rec => {
-                    const student = studentsMap[rec.student_id] || rec.student;
-                    const slot = slotsMap[rec.slot_id] || rec.slot;
-                    const offering = offeringsMap[slot?.offering_id || ''] || (slot?.offering as any);
-                    const subjectTitle = offering?.subject_name || offering?.subject?.name || offering?.subject || rec.subject || 'Class';
-                    const gradeName = offering?.class?.name || (offering?.class?.grade ? `Grade ${offering?.class?.grade}` : '');
-                    const boardName = offering?.class?.board?.name || '';
-                    const timeMarked = rec.marked_at ? new Date(rec.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-                    const isUpdating = updatingId === rec.student_id;
+            <>
+              {/* Mobile / Narrow Screen Card List (Stacked View) */}
+              <div className="block lg:hidden space-y-3">
+                {filteredRecords.map(rec => {
+                  const student = studentsMap[rec.student_id] || rec.student;
+                  const slot = slotsMap[rec.slot_id] || rec.slot;
+                  const offering = offeringsMap[slot?.offering_id || ''] || (slot?.offering as any);
+                  const subjectTitle = offering?.subject_name || offering?.subject?.name || offering?.subject || rec.subject || 'Class';
+                  const gradeName = offering?.class?.name || (offering?.class?.grade ? `Grade ${offering?.class?.grade}` : '');
+                  const boardName = offering?.class?.board?.name || '';
+                  const timeMarked = rec.marked_at ? new Date(rec.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                  const isUpdating = updatingId === rec.student_id;
 
-                    const studentInitials = (student?.full_name || 'Student')
-                      .split(' ')
-                      .map((n: string) => n[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase();
+                  const studentInitials = (student?.full_name || 'Student')
+                    .split(' ')
+                    .map((n: string) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase();
 
-                    return (
-                      <tr key={rec.id} className="hover:bg-[#FAFAFA]/70 transition-colors">
-                        {/* Session Date */}
-                        <td className="py-3.5 px-3 text-xs font-bold text-[#111111] whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar size={13} className="text-[#737373]" />
-                            <span>{rec.session_date}</span>
-                          </div>
-                        </td>
-
-                        {/* Student Name */}
-                        <td className="py-3.5 px-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-[#111111] text-[#F4C430] flex items-center justify-center font-bold text-xs shrink-0">
-                              {studentInitials}
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-xs font-bold text-[#111111] block truncate">
-                                {student?.full_name || rec.student_id}
-                              </span>
-                              <span className="text-[10px] text-[#737373] block truncate">
-                                {(student as any)?.email || 'Enrolled student'}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Class / Subject */}
-                        <td className="py-3.5 px-3">
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-[#111111] block truncate">
-                              {subjectTitle}
-                            </span>
-                            <div className="flex items-center gap-1 text-[10px] text-[#737373] mt-0.5">
-                              {gradeName && <span>{gradeName}</span>}
-                              {gradeName && boardName && <span>·</span>}
-                              {boardName && (
-                                <span className="bg-[#F0F0F0] text-[#525252] px-1 py-0.2 rounded font-semibold text-[9px]">
-                                  {boardName}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-3.5 px-3">
+                  return (
+                    <div
+                      key={rec.id}
+                      className="p-3.5 bg-[#FAFAFA] dark:bg-zinc-800/60 border border-[#E5E5E5] dark:border-zinc-700/80 rounded-xl space-y-3"
+                    >
+                      {/* Top row: Date & Status */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#111111] dark:text-zinc-200">
+                          <Calendar size={13} className="text-[#737373] dark:text-zinc-400" />
+                          <span>{rec.session_date}</span>
+                        </div>
+                        <div>
                           {rec.status === 'present' ? (
                             <span
-                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200"
-                              title="Locked: Status is recorded. Click another status in Quick Edit to request a change."
+                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800"
+                              title="Locked: Status is recorded. Tap another status in Quick Edit to request a change."
                             >
-                              <Check size={12} strokeWidth={3} /> Present <Lock size={10} className="text-emerald-600/70 ml-0.5" />
+                              <Check size={12} strokeWidth={3} /> Present <Lock size={10} className="opacity-70 ml-0.5" />
                             </span>
                           ) : rec.status === 'late' ? (
                             <span
-                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200"
-                              title="Locked: Status is recorded. Click another status in Quick Edit to request a change."
+                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800"
+                              title="Locked: Status is recorded. Tap another status in Quick Edit to request a change."
                             >
-                              <Clock size={12} /> Late <Lock size={10} className="text-amber-600/70 ml-0.5" />
+                              <Clock size={12} /> Late <Lock size={10} className="opacity-70 ml-0.5" />
                             </span>
                           ) : (
                             <span
-                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200"
-                              title="Locked: Status is recorded. Click another status in Quick Edit to request a change."
+                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-full border border-rose-200 dark:border-rose-800"
+                              title="Locked: Status is recorded. Tap another status in Quick Edit to request a change."
                             >
-                              <X size={12} strokeWidth={3} /> Absent <Lock size={10} className="text-rose-600/70 ml-0.5" />
+                              <X size={12} strokeWidth={3} /> Absent <Lock size={10} className="opacity-70 ml-0.5" />
                             </span>
                           )}
-                        </td>
+                        </div>
+                      </div>
 
-                        {/* Timestamp & Mode */}
-                        <td className="py-3.5 px-3 text-xs font-medium text-[#737373] whitespace-nowrap">
-                          <span className="font-semibold text-[#111111]">{timeMarked}</span>
-                          <span className="text-[10px] text-[#A3A3A3] block capitalize">
-                            via {rec.marked_by || 'teacher'}
-                          </span>
-                        </td>
+                      {/* Student info */}
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#111111] dark:bg-[#F4C430] text-[#F4C430] dark:text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
+                          {studentInitials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-[#111111] dark:text-zinc-100 break-words">
+                            {student?.full_name || rec.student_id}
+                          </div>
+                          <div className="text-[10px] text-[#737373] dark:text-zinc-400 break-all">
+                            {(student as any)?.email || 'Enrolled student'}
+                          </div>
+                        </div>
+                      </div>
 
-                        {/* Quick Edit (P / L / A) */}
-                        <td className="py-3.5 px-3 text-right whitespace-nowrap">
-                          <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
+                      {/* Class & Subject */}
+                      <div className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-[#EBEBEB] dark:border-zinc-700 text-xs">
+                        <div className="font-bold text-[#111111] dark:text-zinc-100">{subjectTitle}</div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-[#737373] dark:text-zinc-400 mt-1 flex-wrap">
+                          {gradeName && <span>{gradeName}</span>}
+                          {gradeName && boardName && <span>·</span>}
+                          {boardName && (
+                            <span className="bg-[#F0F0F0] dark:bg-zinc-700 text-[#525252] dark:text-zinc-200 px-1.5 py-0.5 rounded font-semibold text-[9px]">
+                              {boardName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom row: Timestamp and Quick Edit */}
+                      <div className="flex items-center justify-between gap-3 pt-1 border-t border-[#EBEBEB] dark:border-zinc-700/60">
+                        <div className="text-[11px] text-[#737373] dark:text-zinc-400">
+                          <span>{timeMarked}</span>
+                          <span className="text-[10px] opacity-75 ml-1 capitalize">({rec.marked_by || 'teacher'})</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-[#737373] dark:text-zinc-400 mr-1">Edit:</span>
+                          <div className="inline-flex items-center bg-white dark:bg-zinc-700 p-0.5 rounded-lg border border-[#E5E5E5] dark:border-zinc-600">
                             <button
                               type="button"
                               disabled={isUpdating}
@@ -855,10 +838,10 @@ export const TeacherAttendancePage: React.FC = () => {
                                 'present',
                                 subjectTitle
                               )}
-                              className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                              className={`w-7 h-7 flex items-center justify-center text-[10px] font-bold rounded transition-all cursor-pointer ${
                                 rec.status === 'present'
                                   ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
+                                  : 'text-[#737373] dark:text-zinc-300 hover:text-emerald-700'
                               }`}
                               title={rec.status === 'present' ? 'Status is recorded as Present (Locked)' : 'Change status to Present'}
                             >
@@ -876,10 +859,10 @@ export const TeacherAttendancePage: React.FC = () => {
                                 'late',
                                 subjectTitle
                               )}
-                              className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                              className={`w-7 h-7 flex items-center justify-center text-[10px] font-bold rounded transition-all cursor-pointer ${
                                 rec.status === 'late'
                                   ? 'bg-amber-500 text-white shadow-xs'
-                                  : 'text-[#737373] hover:text-amber-700 hover:bg-white'
+                                  : 'text-[#737373] dark:text-zinc-300 hover:text-amber-700'
                               }`}
                               title={rec.status === 'late' ? 'Status is recorded as Late (Locked)' : 'Change status to Late'}
                             >
@@ -897,23 +880,208 @@ export const TeacherAttendancePage: React.FC = () => {
                                 'absent',
                                 subjectTitle
                               )}
-                              className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                              className={`w-7 h-7 flex items-center justify-center text-[10px] font-bold rounded transition-all cursor-pointer ${
                                 rec.status === 'absent'
                                   ? 'bg-rose-600 text-white shadow-xs'
-                                  : 'text-[#737373] hover:text-rose-700 hover:bg-white'
+                                  : 'text-[#737373] dark:text-zinc-300 hover:text-rose-700'
                               }`}
                               title={rec.status === 'absent' ? 'Status is recorded as Absent (Locked)' : 'Change status to Absent'}
                             >
                               A
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop / Tablet Horizontally Scrollable Table */}
+              <div className="hidden lg:block overflow-x-auto w-full pb-2">
+                <table className="w-full min-w-[780px] text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#F0F0F0] dark:border-zinc-800">
+                      <th className="py-3 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap w-[130px]">Date</th>
+                      <th className="py-3 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap min-w-[200px]">Student Name</th>
+                      <th className="py-3 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap min-w-[180px]">Class / Subject</th>
+                      <th className="py-3 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap w-[140px]">Status</th>
+                      <th className="py-3 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap w-[130px]">Timestamp</th>
+                      <th className="py-3 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap w-[120px] text-right">Quick Edit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#FAFAFA] dark:divide-zinc-800/60">
+                    {filteredRecords.map(rec => {
+                      const student = studentsMap[rec.student_id] || rec.student;
+                      const slot = slotsMap[rec.slot_id] || rec.slot;
+                      const offering = offeringsMap[slot?.offering_id || ''] || (slot?.offering as any);
+                      const subjectTitle = offering?.subject_name || offering?.subject?.name || offering?.subject || rec.subject || 'Class';
+                      const gradeName = offering?.class?.name || (offering?.class?.grade ? `Grade ${offering?.class?.grade}` : '');
+                      const boardName = offering?.class?.board?.name || '';
+                      const timeMarked = rec.marked_at ? new Date(rec.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                      const isUpdating = updatingId === rec.student_id;
+
+                      const studentInitials = (student?.full_name || 'Student')
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase();
+
+                      return (
+                        <tr key={rec.id} className="hover:bg-[#FAFAFA]/70 dark:hover:bg-zinc-800/40 transition-colors">
+                          {/* Session Date */}
+                          <td className="py-3.5 px-4 text-xs font-bold text-[#111111] dark:text-zinc-200 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar size={13} className="text-[#737373] dark:text-zinc-400" />
+                              <span>{rec.session_date}</span>
+                            </div>
+                          </td>
+
+                          {/* Student Name */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-lg bg-[#111111] dark:bg-[#F4C430] text-[#F4C430] dark:text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
+                                {studentInitials}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-[#111111] dark:text-zinc-100 block whitespace-nowrap">
+                                  {student?.full_name || rec.student_id}
+                                </span>
+                                <span className="text-[10px] text-[#737373] dark:text-zinc-400 block whitespace-nowrap">
+                                  {(student as any)?.email || 'Enrolled student'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Class / Subject */}
+                          <td className="py-3.5 px-4">
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-[#111111] dark:text-zinc-100 block whitespace-nowrap">
+                                {subjectTitle}
+                              </span>
+                              <div className="flex items-center gap-1 text-[10px] text-[#737373] dark:text-zinc-400 mt-0.5">
+                                {gradeName && <span>{gradeName}</span>}
+                                {gradeName && boardName && <span>·</span>}
+                                {boardName && (
+                                  <span className="bg-[#F0F0F0] dark:bg-zinc-800 text-[#525252] dark:text-zinc-300 px-1 py-0.2 rounded font-semibold text-[9px]">
+                                    {boardName}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {rec.status === 'present' ? (
+                              <span
+                                className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800"
+                                title="Locked: Status is recorded. Click another status in Quick Edit to request a change."
+                              >
+                                <Check size={12} strokeWidth={3} /> Present <Lock size={10} className="text-emerald-600/70 dark:text-emerald-400/70 ml-0.5" />
+                              </span>
+                            ) : rec.status === 'late' ? (
+                              <span
+                                className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800"
+                                title="Locked: Status is recorded. Click another status in Quick Edit to request a change."
+                              >
+                                <Clock size={12} /> Late <Lock size={10} className="text-amber-600/70 dark:text-amber-400/70 ml-0.5" />
+                              </span>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 text-[11px] font-extrabold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-full border border-rose-200 dark:border-rose-800"
+                                title="Locked: Status is recorded. Click another status in Quick Edit to request a change."
+                              >
+                                <X size={12} strokeWidth={3} /> Absent <Lock size={10} className="text-rose-600/70 dark:text-rose-400/70 ml-0.5" />
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Timestamp & Mode */}
+                          <td className="py-3.5 px-4 text-xs font-medium text-[#737373] dark:text-zinc-400 whitespace-nowrap">
+                            <span className="font-semibold text-[#111111] dark:text-zinc-200">{timeMarked}</span>
+                            <span className="text-[10px] text-[#A3A3A3] dark:text-zinc-500 block capitalize">
+                              via {rec.marked_by || 'teacher'}
+                            </span>
+                          </td>
+
+                          {/* Quick Edit (P / L / A) */}
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center bg-[#F5F5F5] dark:bg-zinc-800 p-0.5 rounded-lg border border-[#E5E5E5] dark:border-zinc-700">
+                              <button
+                                type="button"
+                                disabled={isUpdating}
+                                onClick={() => handleTeacherClickAttendance(
+                                  rec.student_id,
+                                  student?.full_name || 'Student',
+                                  rec.slot_id,
+                                  rec.session_date,
+                                  rec.status,
+                                  'present',
+                                  subjectTitle
+                                )}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                  rec.status === 'present'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'text-[#737373] dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-white dark:hover:bg-zinc-700'
+                                }`}
+                                title={rec.status === 'present' ? 'Status is recorded as Present (Locked)' : 'Change status to Present'}
+                              >
+                                P
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isUpdating}
+                                onClick={() => handleTeacherClickAttendance(
+                                  rec.student_id,
+                                  student?.full_name || 'Student',
+                                  rec.slot_id,
+                                  rec.session_date,
+                                  rec.status,
+                                  'late',
+                                  subjectTitle
+                                )}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                  rec.status === 'late'
+                                    ? 'bg-amber-500 text-white shadow-xs'
+                                    : 'text-[#737373] dark:text-zinc-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-white dark:hover:bg-zinc-700'
+                                }`}
+                                title={rec.status === 'late' ? 'Status is recorded as Late (Locked)' : 'Change status to Late'}
+                              >
+                                L
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isUpdating}
+                                onClick={() => handleTeacherClickAttendance(
+                                  rec.student_id,
+                                  student?.full_name || 'Student',
+                                  rec.slot_id,
+                                  rec.session_date,
+                                  rec.status,
+                                  'absent',
+                                  subjectTitle
+                                )}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                                  rec.status === 'absent'
+                                    ? 'bg-rose-600 text-white shadow-xs'
+                                    : 'text-[#737373] dark:text-zinc-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-white dark:hover:bg-zinc-700'
+                                }`}
+                                title={rec.status === 'absent' ? 'Status is recorded as Absent (Locked)' : 'Change status to Absent'}
+                              >
+                                A
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1113,72 +1281,132 @@ export const TeacherAttendancePage: React.FC = () => {
                           </p>
                         </div>
                       ) : (
-                        <div className="bg-white rounded-xl border border-[#E5E5E5] overflow-hidden">
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className="border-b border-[#F0F0F0] bg-[#FAFAFA]">
-                                <th className="py-2.5 px-3 text-[10px] font-black text-[#A3A3A3] uppercase">Student</th>
-                                <th className="py-2.5 px-3 text-[10px] font-black text-[#A3A3A3] uppercase">Attended</th>
-                                <th className="py-2.5 px-3 text-[10px] font-black text-[#A3A3A3] uppercase">Missed</th>
-                                <th className="py-2.5 px-3 text-[10px] font-black text-[#A3A3A3] uppercase">Attendance Rate</th>
-                                <th className="py-2.5 px-3 text-[10px] font-black text-[#A3A3A3] uppercase text-right">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#F5F5F5]">
-                              {enrolledStudentList.map(item => (
-                                <tr key={item.id} className="hover:bg-[#FAFAFA]/50 transition-colors">
-                                  <td className="py-2.5 px-3">
-                                    <span className="text-xs font-bold text-[#111111] block">
+                        <div>
+                          {/* Mobile stacked cards */}
+                          <div className="block md:hidden space-y-2.5">
+                            {enrolledStudentList.map(item => (
+                              <div
+                                key={item.id}
+                                className="p-3 bg-white dark:bg-zinc-800/80 rounded-xl border border-[#E5E5E5] dark:border-zinc-700 space-y-2"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <span className="text-xs font-bold text-[#111111] dark:text-zinc-100 block break-words">
                                       {item.student?.full_name || item.id}
                                     </span>
-                                    <span className="text-[10px] text-[#737373] block">
+                                    <span className="text-[10px] text-[#737373] dark:text-zinc-400 block break-all">
                                       {(item.student as any)?.email || (item.student?.class?.grade ? `Grade ${item.student.class.grade} Student` : (item.student as any)?.grade ? `Grade ${(item.student as any).grade} Student` : 'Enrolled Student')}
                                     </span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-xs font-semibold text-emerald-700">
-                                    {item.total > 0 ? `${item.present + item.late} / ${item.total} classes` : '0 / 0 classes'}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-xs font-semibold text-rose-700">
-                                    {item.absent} {item.absent === 1 ? 'class' : 'classes'}
-                                  </td>
-                                  <td className="py-2.5 px-3">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-20 bg-[#F0F0F0] rounded-full h-2 overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full ${
-                                            !item.hasLogs
-                                              ? 'bg-neutral-300'
-                                              : item.rate >= 75
-                                              ? 'bg-emerald-500'
-                                              : 'bg-rose-500'
-                                          }`}
-                                          style={{ width: item.hasLogs ? `${item.rate}%` : '0%' }}
-                                        />
-                                      </div>
-                                      <span className="text-xs font-bold text-[#111111]">
-                                        {item.hasLogs ? `${item.rate}%` : '—'}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right">
+                                  </div>
+                                  <div>
                                     {!item.hasLogs ? (
-                                      <span className="text-[10px] font-bold bg-[#F5F5F5] text-[#737373] px-2 py-0.5 rounded-full border border-[#E5E5E5]">
-                                        Enrolled (No Logs)
+                                      <span className="text-[10px] font-bold bg-[#F5F5F5] dark:bg-zinc-700 text-[#737373] dark:text-zinc-300 px-2 py-0.5 rounded-full border border-[#E5E5E5] dark:border-zinc-600 whitespace-nowrap">
+                                        No Logs
                                       </span>
                                     ) : item.rate < 75 && item.total >= 3 ? (
-                                      <span className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
+                                      <span className="text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800 whitespace-nowrap">
                                         Low Attendance
                                       </span>
                                     ) : (
-                                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
                                         Good Standing
                                       </span>
                                     )}
-                                  </td>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#F0F0F0] dark:border-zinc-700/60 text-[11px]">
+                                  <div>
+                                    <span className="text-[10px] text-[#A3A3A3] block uppercase font-bold">Attended</span>
+                                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                      {item.total > 0 ? `${item.present + item.late} / ${item.total}` : '0 / 0'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-[#A3A3A3] block uppercase font-bold">Missed</span>
+                                    <span className="font-bold text-rose-700 dark:text-rose-400">
+                                      {item.absent}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-[#A3A3A3] block uppercase font-bold">Rate</span>
+                                    <span className="font-black text-[#111111] dark:text-zinc-100">
+                                      {item.hasLogs ? `${item.rate}%` : '—'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Desktop Table with overflow scroll */}
+                          <div className="hidden md:block bg-white dark:bg-zinc-800/80 rounded-xl border border-[#E5E5E5] dark:border-zinc-700 overflow-x-auto">
+                            <table className="w-full min-w-[650px] text-left border-collapse">
+                              <thead>
+                                <tr className="border-b border-[#F0F0F0] dark:border-zinc-700/60 bg-[#FAFAFA] dark:bg-zinc-800">
+                                  <th className="py-2.5 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase whitespace-nowrap">Student</th>
+                                  <th className="py-2.5 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase whitespace-nowrap">Attended</th>
+                                  <th className="py-2.5 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase whitespace-nowrap">Missed</th>
+                                  <th className="py-2.5 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase whitespace-nowrap">Attendance Rate</th>
+                                  <th className="py-2.5 px-4 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase text-right whitespace-nowrap">Status</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody className="divide-y divide-[#F5F5F5] dark:divide-zinc-700/40">
+                                {enrolledStudentList.map(item => (
+                                  <tr key={item.id} className="hover:bg-[#FAFAFA]/50 dark:hover:bg-zinc-700/30 transition-colors">
+                                    <td className="py-2.5 px-4">
+                                      <span className="text-xs font-bold text-[#111111] dark:text-zinc-100 block whitespace-nowrap">
+                                        {item.student?.full_name || item.id}
+                                      </span>
+                                      <span className="text-[10px] text-[#737373] dark:text-zinc-400 block whitespace-nowrap">
+                                        {(item.student as any)?.email || (item.student?.class?.grade ? `Grade ${item.student.class.grade} Student` : (item.student as any)?.grade ? `Grade ${(item.student as any).grade} Student` : 'Enrolled Student')}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-4 text-xs font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                                      {item.total > 0 ? `${item.present + item.late} / ${item.total} classes` : '0 / 0 classes'}
+                                    </td>
+                                    <td className="py-2.5 px-4 text-xs font-semibold text-rose-700 dark:text-rose-400 whitespace-nowrap">
+                                      {item.absent} {item.absent === 1 ? 'class' : 'classes'}
+                                    </td>
+                                    <td className="py-2.5 px-4 whitespace-nowrap">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-20 bg-[#F0F0F0] dark:bg-zinc-700 rounded-full h-2 overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full ${
+                                              !item.hasLogs
+                                                ? 'bg-neutral-300 dark:bg-neutral-600'
+                                                : item.rate >= 75
+                                                ? 'bg-emerald-500'
+                                                : 'bg-rose-500'
+                                            }`}
+                                            style={{ width: item.hasLogs ? `${item.rate}%` : '0%' }}
+                                          />
+                                        </div>
+                                        <span className="text-xs font-bold text-[#111111] dark:text-zinc-200">
+                                          {item.hasLogs ? `${item.rate}%` : '—'}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                                      {!item.hasLogs ? (
+                                        <span className="text-[10px] font-bold bg-[#F5F5F5] dark:bg-zinc-700 text-[#737373] dark:text-zinc-300 px-2 py-0.5 rounded-full border border-[#E5E5E5] dark:border-zinc-600">
+                                          Enrolled (No Logs)
+                                        </span>
+                                      ) : item.rate < 75 && item.total >= 3 ? (
+                                        <span className="text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800">
+                                          Low Attendance
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                          Good Standing
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )}
                     </div>

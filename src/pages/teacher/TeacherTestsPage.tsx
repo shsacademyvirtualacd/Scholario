@@ -122,33 +122,59 @@ export const TeacherTestsPage: React.FC = () => {
 
   const selectedTest = tests.find((t) => t.id === selectedTestId) || filteredTests[0] || null;
 
+  // Strict subject authorization check: IELTS tools must only be shown to authorized IELTS instructors
+  const isIeltsAuthorized = React.useMemo(() => {
+    if (teacherScope && teacherScope.isAssigned) {
+      if (teacherScope.hasIelts) return true;
+      if (isSubjectAuthorizedForTeacher('IELTS Preparation', teacherScope)) return true;
+      if (isSubjectAuthorizedForTeacher('IELTS Writing', teacherScope)) return true;
+      if (isSubjectAuthorizedForTeacher('IELTS', teacherScope)) return true;
+      return false;
+    }
+    if (offerings.length > 0) {
+      return offerings.some((o) => {
+        const bId = String(o.board || o.board_id || (o as any).class?.board_id || '').toLowerCase();
+        const sName = String(o.subject_name || o.subject?.name || (typeof o.subject === 'string' ? o.subject : '')).toLowerCase();
+        return bId.includes('ielts') || sName.includes('ielts');
+      });
+    }
+    return false;
+  }, [teacherScope, offerings]);
+
+  // If current active tab is ielts-writing but teacher is not authorized, automatically reset to class-test
+  useEffect(() => {
+    if (!loading && activeTab === 'ielts-writing' && !isIeltsAuthorized) {
+      setActiveTab('class-test');
+    }
+  }, [loading, activeTab, isIeltsAuthorized]);
+
   return (
     <TeacherShell>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-black text-[#111111] tracking-tight">Testing Center</h1>
-          <p className="text-xs text-[#737373] mt-1">
+          <h1 className="text-2xl font-black text-[#111111] dark:text-zinc-100 tracking-tight">Testing Center</h1>
+          <p className="text-xs text-[#737373] dark:text-zinc-400 mt-1">
             Evaluate assigned class tests and review student MCQ practice & exam performance across your assigned classes.
           </p>
         </div>
       </div>
 
-      {/* Subsection Tab Switcher */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar mb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Subsection Tab Switcher - High Contrast Light & Dark Mode */}
+      <div className="flex items-center gap-2 p-1.5 bg-[#E4E4E7] dark:bg-zinc-800 border border-neutral-300 dark:border-zinc-700 rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar mb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         <button
           onClick={() => setActiveTab('class-test')}
           className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'class-test'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+              ? 'bg-[#111111] dark:bg-[#F4C430] text-white dark:text-[#111111] shadow-xs'
+              : 'text-[#1E293B] dark:text-zinc-100 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 font-bold'
           }`}
         >
-          <FileCheck2 size={15} className={activeTab === 'class-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <FileCheck2 size={15} className={activeTab === 'class-test' ? 'text-[#F4C430] dark:text-[#111111]' : 'text-[#475569] dark:text-zinc-300'} />
           <span>Class Test</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-              activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
+              activeTab === 'class-test' ? 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111111]' : 'bg-black/10 dark:bg-zinc-700 text-[#1E293B] dark:text-zinc-100'
             }`}
           >
             {tests.length}
@@ -159,40 +185,36 @@ export const TeacherTestsPage: React.FC = () => {
           onClick={() => setActiveTab('student-results')}
           className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'student-results'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+              ? 'bg-[#111111] dark:bg-[#F4C430] text-white dark:text-[#111111] shadow-xs'
+              : 'text-[#1E293B] dark:text-zinc-100 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 font-bold'
           }`}
         >
-          <GraduationCap size={15} className={activeTab === 'student-results' ? 'text-[#F4C430]' : 'text-[#737373]'} />
+          <GraduationCap size={15} className={activeTab === 'student-results' ? 'text-[#F4C430] dark:text-[#111111]' : 'text-[#475569] dark:text-zinc-300'} />
           <span>Student Results</span>
           <span className="badge badge-gold text-[10px] font-extrabold px-1.5 py-0.5 whitespace-nowrap">
             MCQ
           </span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('ielts-writing')}
-          className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'ielts-writing'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <PenTool size={15} className={activeTab === 'ielts-writing' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>IELTS Writing Reviews</span>
-          {teacherScope && teacherScope.isAssigned && !isSubjectAuthorizedForTeacher('IELTS Preparation', teacherScope) ? (
-            <span className="px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-600 text-[10px] font-extrabold whitespace-nowrap">
-              Restricted
-            </span>
-          ) : (
-            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold whitespace-nowrap">
+        {isIeltsAuthorized && (
+          <button
+            onClick={() => setActiveTab('ielts-writing')}
+            className={`shrink-0 flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'ielts-writing'
+                ? 'bg-[#111111] dark:bg-[#F4C430] text-white dark:text-[#111111] shadow-xs'
+                : 'text-[#1E293B] dark:text-zinc-100 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 font-bold'
+            }`}
+          >
+            <PenTool size={15} className={activeTab === 'ielts-writing' ? 'text-[#F4C430] dark:text-[#111111]' : 'text-[#475569] dark:text-zinc-300'} />
+            <span>IELTS Writing Reviews</span>
+            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 text-[10px] font-extrabold whitespace-nowrap">
               Grading
             </span>
-          )}
-        </button>
+          </button>
+        )}
       </div>
 
-      {activeTab === 'ielts-writing' ? (
+      {activeTab === 'ielts-writing' && isIeltsAuthorized ? (
         <TeacherIELTSWritingGrading isTeacher={true} teacherScope={teacherScope} />
       ) : activeTab === 'student-results' ? (
         <StudentResultsView

@@ -1038,6 +1038,13 @@ html.dark .bg-\[\#e5e5e5\] {
   background-color: #2E2E33 !important;
 }
 
+html.dark .bg-\[\#EBEBEB\],
+html.dark .bg-\[\#ebebeb\],
+html.dark .bg-\[\#E4E4E7\],
+html.dark .bg-\[\#e4e4e7\] {
+  background-color: #27272A !important;
+}
+
 /* Slate surfaces in Dark Mode */
 html.dark .bg-slate-50,
 html.dark .bg-slate-100 {

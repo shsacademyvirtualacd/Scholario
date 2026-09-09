@@ -1470,9 +1470,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </span>
       );
     }
+    const studentLabel = extraInfo?.stream ? `Student • ${extraInfo.stream}` : 'Student';
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F5F5F5] dark:bg-zinc-800 text-[#525252] dark:text-zinc-300 border border-[#E5E5E5] dark:border-zinc-700">
-        <Users size={10} /> Student
+        <Users size={10} /> {studentLabel}
       </span>
     );
   };
@@ -2749,6 +2750,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   >
                     Teachers ({contactCounts.teacher})
                   </button>
+                  {contactCounts.student > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setContactRoleFilter('student')}
+                      className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                        contactRoleFilter === 'student'
+                          ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                          : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
+                      }`}
+                    >
+                      Classmates ({contactCounts.student})
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setContactRoleFilter('admin')}

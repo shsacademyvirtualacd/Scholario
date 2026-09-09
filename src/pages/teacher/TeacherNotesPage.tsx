@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, BookOpen, RotateCcw, Filter } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -12,6 +12,12 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 import { pageCache } from '../../lib/pageCache';
+
+interface TeacherBoardItem {
+  id: string;
+  name: string;
+  shortName: string;
+}
 
 export const TeacherNotesPage: React.FC = () => {
   const { profile } = useAuth();
@@ -87,11 +93,47 @@ export const TeacherNotesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'pdf' | 'image'>('all');
 
+  // Derive assigned boards from the teacher's actual class offerings
+  const teacherBoards = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; shortName: string }>();
+    teacherOfferings.forEach((off) => {
+      const rawB = off.board || off.board_id || (off as any).class?.board_id || (off as any).class?.board?.id || '';
+      const bId = String(rawB).trim().toLowerCase();
+      if (!bId) return;
+      const bName = (off as any).board_name || (off as any).class?.board?.name || (bId === 'sindh' ? 'Sindh Board' : bId === 'ielts' ? 'IELTS Preparation' : bId === 'fbise' ? 'Federal Board (FBISE)' : String(rawB).toUpperCase());
+      const shortName = bId === 'fbise' ? 'FBISE' : bId === 'sindh' ? 'SINDH' : bId === 'ielts' ? 'IELTS' : bId.toUpperCase();
+      if (!map.has(bId)) {
+        map.set(bId, { id: bId, name: bName, shortName });
+      }
+    });
+
+    if (map.size === 0 && taxonomy?.boards?.length) {
+      taxonomy.boards.forEach((b: any) => {
+        const bId = String(b.id || '').toLowerCase();
+        map.set(bId, {
+          id: bId,
+          name: b.name,
+          shortName: b.code || b.name,
+        });
+      });
+    }
+    return Array.from(map.values());
+  }, [teacherOfferings, taxonomy]);
+
   // 4-Layer Taxonomy Filters (Board → Grade → Stream → Subject)
-  const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
+  const [selectedBoard, setSelectedBoard] = useState<string>('');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
+
+  // Sync selectedBoard to the teacher's first assigned board once offerings load
+  useEffect(() => {
+    if (teacherBoards.length > 0) {
+      if (!selectedBoard || !teacherBoards.some((b: TeacherBoardItem) => b.id === selectedBoard)) {
+        setSelectedBoard(teacherBoards[0].id);
+      }
+    }
+  }, [teacherBoards, selectedBoard]);
 
   // Modal / Drawer States
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -110,17 +152,23 @@ export const TeacherNotesPage: React.FC = () => {
     };
   });
 
-  // Compute active grades from the teacher's actual assigned offerings
-  const rawGrades = teacherOfferings.map((offering) => {
-    const offGrade = String(
-      offering.grade || (offering as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.grade || ''
-    );
-    const classObj = taxonomy?.classes?.find((c: any) => String(c.grade) === offGrade);
-    return {
-      id: offGrade,
-      label: classObj?.display_name || (offGrade ? `${offGrade}th` : '')
-    };
-  }).filter(g => g.id !== '');
+  // Compute active grades from the teacher's actual assigned offerings for the selected board
+  const rawGrades = teacherOfferings
+    .filter((off) => {
+      if (!selectedBoard) return true;
+      const offBoard = String(off.board || off.board_id || (off as any).class?.board_id || '').trim().toLowerCase();
+      return !offBoard || offBoard === selectedBoard;
+    })
+    .map((offering) => {
+      const offGrade = String(
+        offering.grade || (offering as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.grade || ''
+      );
+      const classObj = taxonomy?.classes?.find((c: any) => String(c.grade) === offGrade && (!c.board_id || c.board_id.toLowerCase() === selectedBoard));
+      return {
+        id: offGrade,
+        label: classObj?.display_name || (offGrade ? `Class ${offGrade}` : '')
+      };
+    }).filter(g => g.id !== '');
 
   const seenGrades = new Set<string>();
   const activeGrades: { id: string; label: string }[] = rawGrades.filter((g: any) => {
@@ -165,8 +213,8 @@ export const TeacherNotesPage: React.FC = () => {
       return false;
     }
 
-    const offBoard = offering.board || (offering as any).class?.board_id || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.board_id || 'fbise';
-    if (selectedBoard && selectedBoard !== 'all' && offBoard !== selectedBoard) {
+    const offBoard = String(offering.board || (offering as any).class?.board_id || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.board_id || '').trim().toLowerCase();
+    if (selectedBoard && selectedBoard !== 'all' && offBoard && offBoard !== selectedBoard) {
       return false;
     }
 
@@ -234,12 +282,19 @@ export const TeacherNotesPage: React.FC = () => {
   });
 
   const resetFilters = () => {
-    setSelectedBoard('fbise');
+    setSelectedBoard(teacherBoards[0]?.id || '');
     setSelectedGrade(activeGrades[0]?.id || 'all');
     setSelectedStream('all');
     setSelectedSubject('all');
     setTypeFilter('all');
     setSearchTerm('');
+  };
+
+  const handleBoardChange = (bId: string) => {
+    setSelectedBoard(bId);
+    setSelectedGrade('all');
+    setSelectedStream('all');
+    setSelectedSubject('all');
   };
 
   const handleGradeChange = (gId: string) => {
@@ -280,26 +335,32 @@ export const TeacherNotesPage: React.FC = () => {
         </div>
       )}
       {/* Class Profiles Filter Bar (Tabs Layout) - Board Selection */}
-      <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+      <div className="border-b border-[#E5E5E5] dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div className="flex overflow-x-auto gap-6 border-transparent">
-          <button
-            onClick={() => setSelectedBoard('fbise')}
-            className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 ${
-              selectedBoard === 'fbise'
-                ? 'border-[#F4C430] text-[#111111]'
-                : 'border-transparent text-[#737373] hover:text-[#111111]'
-            }`}
-          >
-            FBISE
-          </button>
+          {teacherBoards.map((b: TeacherBoardItem) => {
+            const isSel = selectedBoard === b.id;
+            return (
+              <button
+                key={b.id}
+                onClick={() => handleBoardChange(b.id)}
+                className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0 cursor-pointer ${
+                  isSel
+                    ? 'border-[#F4C430] text-[#111111] dark:text-white'
+                    : 'border-transparent text-[#737373] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-zinc-200'
+                }`}
+              >
+                {b.name}
+              </button>
+            );
+          })}
         </div>
 
         {/* Secondary controls (Reset) */}
         <div className="flex items-center gap-3 pb-2 sm:pb-0">
-          {(selectedBoard !== 'fbise' || selectedGrade !== (activeGrades[0]?.id || 'all') || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
+          {(selectedBoard !== (teacherBoards[0]?.id || '') || selectedGrade !== (activeGrades[0]?.id || 'all') || selectedStream !== 'all' || selectedSubject !== 'all' || typeFilter !== 'all' || searchTerm !== '') && (
             <button
               onClick={resetFilters}
-              className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
+              className="text-[10px] font-black text-amber-600 hover:text-[#111111] dark:hover:text-amber-400 flex items-center gap-0.5 interactive cursor-pointer"
             >
               <RotateCcw size={10} />
               Reset Filters
@@ -309,16 +370,16 @@ export const TeacherNotesPage: React.FC = () => {
       </div>
 
       {/* Grade Sub-row filter - Class-wise Cohort */}
-      <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-[#FAFAFA] px-4 border-b border-[#E5E5E5]">
-        <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Cohort Grade:</span>
+      <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-[#FAFAFA] dark:bg-zinc-900/60 px-4 border-b border-[#E5E5E5] dark:border-zinc-800">
+        <span className="text-[9px] font-black text-[#A3A3A3] dark:text-zinc-400 uppercase tracking-wide mr-2">Cohort Grade:</span>
         {activeGrades.map((g: any) => (
           <button
             key={g.id}
             onClick={() => handleGradeChange(g.id)}
-            className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+            className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
               selectedGrade === g.id
-                ? 'bg-[#111111] border-[#111111] text-white shadow-sm'
-                : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                ? 'bg-[#111111] dark:bg-[#F4C430] border-[#111111] dark:border-[#F4C430] text-white dark:text-[#111111] shadow-sm'
+                : 'bg-white dark:bg-zinc-800 border-[#E5E5E5] dark:border-zinc-700 text-[#1E293B] dark:text-zinc-200 hover:bg-[#F5F5F5] dark:hover:bg-zinc-700'
             }`}
           >
             {g.label}

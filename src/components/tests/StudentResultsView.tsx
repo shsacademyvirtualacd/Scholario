@@ -131,9 +131,9 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
       label: 'MCQs',
       badge: 'Grading',
       badgeActiveCls: 'bg-[#F4C430] text-[#111111]',
-      badgeInactiveCls: 'bg-[#F4C430] text-[#111111]',
+      badgeInactiveCls: 'bg-[#F4C430]/90 text-[#111111]',
       icon: ShieldAlert,
-      iconActiveCls: 'text-[#F4C430]',
+      iconActiveCls: 'text-[#F4C430] dark:text-[#111111]',
     },
     {
       id: 'written',
@@ -142,16 +142,16 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
       badgeActiveCls: 'bg-amber-300 text-amber-950',
       badgeInactiveCls: 'bg-amber-200 text-amber-950',
       icon: FileText,
-      iconActiveCls: 'text-amber-400',
+      iconActiveCls: 'text-amber-400 dark:text-[#111111]',
     },
     {
       id: 'self-test',
       label: 'Practice',
       badge: results.length > 0 ? `${results.length}` : 'Practice',
-      badgeActiveCls: 'bg-white/20 text-white',
-      badgeInactiveCls: 'bg-black/5 text-[#737373]',
+      badgeActiveCls: 'bg-white/20 dark:bg-black/20 text-white dark:text-[#111111]',
+      badgeInactiveCls: 'bg-black/10 dark:bg-zinc-700 text-[#1E293B] dark:text-zinc-100',
       icon: Target,
-      iconActiveCls: 'text-[#F4C430]',
+      iconActiveCls: 'text-[#F4C430] dark:text-[#111111]',
     },
   ];
 
@@ -443,7 +443,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
             onMouseLeave={handleMouseUpOrLeave}
-            className="flex items-center gap-1.5 p-1 bg-[#EBEBEB] rounded-xl w-full sm:w-fit overflow-x-auto scroll-smooth overscroll-x-contain touch-pan-x no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            className="flex items-center gap-1.5 p-1 bg-[#E4E4E7] dark:bg-zinc-800 border border-neutral-300 dark:border-zinc-700 rounded-xl w-full sm:w-fit overflow-x-auto scroll-smooth overscroll-x-contain touch-pan-x no-scrollbar select-none cursor-grab active:cursor-grabbing"
             style={{
               WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
@@ -466,13 +466,13 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
                   }}
                   className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-[#111111] text-white shadow-xs'
-                      : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
+                      ? 'bg-[#111111] dark:bg-[#F4C430] text-white dark:text-[#111111] shadow-xs'
+                      : 'text-[#1E293B] dark:text-zinc-100 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10'
                   }`}
                 >
                   <Icon
                     size={14}
-                    className={isActive ? cat.iconActiveCls : 'text-[#737373]'}
+                    className={isActive ? (cat.iconActiveCls || 'text-[#F4C430] dark:text-[#111111]') : 'text-[#475569] dark:text-zinc-300'}
                   />
                   <span className="whitespace-nowrap">{cat.label}</span>
                   <span
