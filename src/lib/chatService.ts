@@ -424,6 +424,20 @@ export function enrichProfilesList(
           ? `Admin Support (${adminIndex === 1 ? 'Primary / Academics' : 'Helpdesk / Support'})`
           : 'Scholario Administration';
       }
+    } else if (p.role === 'student') {
+      const rawName = (enriched.full_name || '').trim();
+      if (!rawName || rawName.toLowerCase() === 'student') {
+        enriched.full_name = (p as any).name || (p as any).email?.split('@')[0] || (p.class?.display_name ? `${p.class.display_name} Student` : 'Enrolled Student');
+      }
+    }
+
+    // Safety fallback: Ensure NO profile ever has an empty or missing full_name
+    if (!enriched.full_name || !enriched.full_name.trim()) {
+      enriched.full_name = p.role === 'admin'
+        ? 'Scholario Administration'
+        : p.role === 'teacher'
+        ? 'Faculty Instructor'
+        : 'Student';
     }
 
     return enriched as Profile;
@@ -1056,7 +1070,10 @@ export async function getTeacherChatContacts(teacherId: string): Promise<{
     admins = enrichProfilesList(admins);
   }
 
-  return { students, admins };
+  // Ensure students are also enriched with fallback names and details
+  const enrichedStudents = enrichProfilesList(students);
+
+  return { students: enrichedStudents, admins };
 }
 
 /**

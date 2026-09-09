@@ -1620,8 +1620,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
-                            className="chat-contact-name text-[13.5px] sm:text-sm truncate font-bold !text-[#111827]"
-                            style={{ color: '#111827', fontWeight: 700 }}
+                            className="chat-contact-name text-[13.5px] sm:text-sm truncate font-bold text-[#111827] dark:text-[#F4F4F5]"
+                            style={{ fontWeight: 700 }}
                           >
                             {other?.full_name || (isAdmin ? 'Scholario Support' : 'User')}
                           </span>
@@ -1796,8 +1796,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3
-                          className="chat-contact-name text-sm sm:text-base font-bold !text-[#111827] truncate leading-tight"
-                          style={{ color: '#111827', fontWeight: 700 }}
+                          className="chat-header-name text-sm sm:text-base font-bold text-[#111827] dark:text-[#F4F4F5] truncate leading-tight"
+                          style={{ fontWeight: 700 }}
                         >
                           {activeThread.other_participant?.full_name || 'Direct Conversation'}
                         </h3>
@@ -2625,7 +2625,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {showNewChatModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div
-            className="bg-white/80 backdrop-blur-[24px] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-black/[0.08] space-y-4 animate-in fade-in zoom-in-95 duration-150"
+            className="bg-white/95 dark:bg-[#18181B] backdrop-blur-[24px] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-black/[0.08] dark:border-zinc-800 space-y-4 animate-in fade-in zoom-in-95 duration-150"
             style={{
               WebkitBackdropFilter: 'blur(24px)',
               backdropFilter: 'blur(24px)',
@@ -2633,12 +2633,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#F4C430]/20 text-[#111111] flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-xl bg-[#F4C430]/20 text-[#111111] dark:text-[#F4C430] flex items-center justify-center font-bold">
                   <UserPlus size={17} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#111111]">{onStartNewChatTitle}</h3>
-                  <p className="text-xs text-[#737373]">
+                  <h3 className="text-base font-bold text-[#111111] dark:text-[#F4F4F5]">{onStartNewChatTitle}</h3>
+                  <p className="text-xs text-[#737373] dark:text-[#A1A1AA]">
                     {role === 'student'
                       ? 'Choose a teacher or admin to open a 1-on-1 direct thread'
                       : role === 'teacher'
@@ -2652,7 +2652,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   setShowNewChatModal(false);
                   setModalError(null);
                 }}
-                className="text-[#737373] hover:text-[#111111] text-sm font-bold p-1.5 rounded-lg hover:bg-[#F5F5F5] transition-colors"
+                className="text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white text-sm font-bold p-1.5 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-zinc-800 transition-colors"
               >
                 ✕
               </button>
@@ -2669,14 +2669,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
             )}
 
             {/* Category Filter Tabs */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#F5F5F5] rounded-xl text-xs">
+            <div className="flex items-center gap-1.5 p-1 bg-[#F5F5F5] dark:bg-zinc-800/80 rounded-xl text-xs">
               <button
                 type="button"
                 onClick={() => setContactRoleFilter('all')}
                 className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
                   contactRoleFilter === 'all'
-                    ? 'bg-white text-[#111111] shadow-2xs'
-                    : 'text-[#737373] hover:text-[#111111]'
+                    ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                    : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                 }`}
               >
                 All ({contactCounts.all})
@@ -2689,8 +2689,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     onClick={() => setContactRoleFilter('teacher')}
                     className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
                       contactRoleFilter === 'teacher'
-                        ? 'bg-white text-[#111111] shadow-2xs'
-                        : 'text-[#737373] hover:text-[#111111]'
+                        ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                        : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                     }`}
                   >
                     Teachers ({contactCounts.teacher})
@@ -2700,8 +2700,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     onClick={() => setContactRoleFilter('student')}
                     className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
                       contactRoleFilter === 'student'
-                        ? 'bg-white text-[#111111] shadow-2xs'
-                        : 'text-[#737373] hover:text-[#111111]'
+                        ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                        : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                     }`}
                   >
                     Students ({contactCounts.student})
@@ -2716,8 +2716,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     onClick={() => setContactRoleFilter('student')}
                     className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
                       contactRoleFilter === 'student'
-                        ? 'bg-white text-[#111111] shadow-2xs'
-                        : 'text-[#737373] hover:text-[#111111]'
+                        ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                        : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                     }`}
                   >
                     Students ({contactCounts.student})
@@ -2727,8 +2727,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     onClick={() => setContactRoleFilter('admin')}
                     className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
                       contactRoleFilter === 'admin'
-                        ? 'bg-white text-[#111111] shadow-2xs'
-                        : 'text-[#737373] hover:text-[#111111]'
+                        ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                        : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                     }`}
                   >
                     Admin ({contactCounts.admin})
@@ -2743,8 +2743,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     onClick={() => setContactRoleFilter('teacher')}
                     className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
                       contactRoleFilter === 'teacher'
-                        ? 'bg-white text-[#111111] shadow-2xs'
-                        : 'text-[#737373] hover:text-[#111111]'
+                        ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                        : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                     }`}
                   >
                     Teachers ({contactCounts.teacher})
@@ -2754,8 +2754,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     onClick={() => setContactRoleFilter('admin')}
                     className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
                       contactRoleFilter === 'admin'
-                        ? 'bg-white text-[#111111] shadow-2xs'
-                        : 'text-[#737373] hover:text-[#111111]'
+                        ? 'bg-white dark:bg-zinc-700 text-[#111111] dark:text-white shadow-2xs'
+                        : 'text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                     }`}
                   >
                     Admin ({contactCounts.admin})
@@ -2766,28 +2766,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
             {/* Search Box */}
             <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3] dark:text-zinc-400" />
               <input
                 type="text"
                 value={newChatSearch}
                 onChange={(e) => setNewChatSearch(e.target.value)}
                 placeholder="Search by name, subject, or grade..."
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[#F5F5F5] border border-transparent focus:border-[#111111] focus:bg-white transition-all outline-hidden text-[#111111]"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[#F5F5F5] dark:bg-zinc-800 border border-transparent focus:border-[#111111] dark:focus:border-zinc-500 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-hidden text-[#111111] dark:text-[#F4F4F5] placeholder:text-[#A3A3A3] dark:placeholder:text-zinc-500"
               />
             </div>
 
             {/* Contacts List */}
-            <div className="max-h-64 overflow-y-auto divide-y divide-[#F0F0F0] -mx-2 px-2">
+            <div className="max-h-64 overflow-y-auto divide-y divide-[#F0F0F0] dark:divide-zinc-800 -mx-2 px-2">
               {loadingModalContacts ? (
-                <div className="p-6 flex flex-col items-center justify-center gap-2 text-center text-xs text-[#737373]">
+                <div className="p-6 flex flex-col items-center justify-center gap-2 text-center text-xs text-[#737373] dark:text-[#A1A1AA]">
                   <Loader2 size={20} className="animate-spin text-[#F4C430]" />
                   <span>Loading contacts...</span>
                 </div>
               ) : filteredModalContacts.length === 0 ? (
-                <div className="p-6 text-center text-xs text-[#737373]">
+                <div className="p-6 text-center text-xs text-[#737373] dark:text-[#A1A1AA]">
                   {role === 'student' && contactRoleFilter === 'teacher' ? (
                     <div className="space-y-1.5 max-w-xs mx-auto">
-                      <p className="font-semibold text-[#111111]">No teacher assigned yet</p>
+                      <p className="font-semibold text-[#111111] dark:text-white">No teacher assigned yet</p>
                       <p className="text-[11px] leading-relaxed">
                         An instructor has not yet been assigned to your enrolled courses. You can reach out to Administration Support anytime for assistance.
                       </p>
@@ -2801,6 +2801,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   const isStarting = startingChatWithId === contact.id;
                   const isAnyStarting = Boolean(startingChatWithId);
 
+                  const contactDisplayName =
+                    (contact.full_name && contact.full_name.trim()) ||
+                    (contact as any).name ||
+                    (contact as any).display_name ||
+                    (contact.role === 'admin'
+                      ? ((contact as any).admin_tag || 'Scholario Administration')
+                      : contact.role === 'teacher'
+                      ? ((contact as any).teacher_display_title || 'Faculty Instructor')
+                      : 'Student');
+
                   const contactSubtitle =
                     contact.role === 'admin'
                       ? ((contact as any).admin_tag || 'Administration Support')
@@ -2813,24 +2823,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       key={contact.id}
                       disabled={isAnyStarting}
                       onClick={() => handleSelectContactToChat(contact)}
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-[#F5F5F5] flex items-center justify-between gap-3 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-zinc-800/80 flex items-center justify-between gap-3 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <ProfileAvatar
                           avatarUrl={contact.avatar_url}
-                          name={contact.full_name}
+                          name={contactDisplayName}
                           role={contact.role}
                           size="sm"
                           showOnlineBadge={isContactOnline(contact.id, contact)}
                         />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p
-                              className="chat-contact-name text-xs font-bold !text-[#111827] truncate"
-                              style={{ color: '#111827', fontWeight: 700 }}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="modal-contact-name text-xs sm:text-sm font-bold text-[#111827] dark:text-[#F4F4F5] truncate max-w-[210px] leading-snug"
+                              style={{ fontWeight: 700 }}
                             >
-                              {contact.full_name}
-                            </p>
+                              {contactDisplayName}
+                            </span>
                             {getRoleBadge(contact.role, contact.role === 'admin', {
                               subjects: (contact as any).teacher_subjects,
                               tag: (contact as any).admin_tag,
@@ -2839,12 +2849,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {isContactOnline(contact.id, contact) && (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-bold shrink-0">
+                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                 Online
                               </span>
                             )}
-                            <p className="text-[10px] text-[#737373] truncate font-medium">
+                            <p className="text-[10px] text-[#737373] dark:text-[#A1A1AA] truncate font-medium">
                               {contactSubtitle}
                             </p>
                           </div>
@@ -2866,14 +2876,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
               )}
             </div>
 
-            <div className="pt-2 border-t border-[#E5E5E5] flex justify-end">
+            <div className="pt-2 border-t border-[#E5E5E5] dark:border-zinc-800 flex justify-end">
               <button
                 disabled={Boolean(startingChatWithId)}
                 onClick={() => {
                   setShowNewChatModal(false);
                   setModalError(null);
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] disabled:opacity-50"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white hover:bg-[#F5F5F5] dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>

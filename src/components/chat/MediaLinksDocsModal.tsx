@@ -170,7 +170,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="w-full max-w-lg bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[90dvh] max-h-[700px] border border-black/[0.08]"
+          className="w-full max-w-lg bg-white/95 dark:bg-[#18181B] backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[90dvh] max-h-[700px] border border-black/[0.08] dark:border-zinc-800"
           onClick={(e) => e.stopPropagation()}
           style={{
             WebkitBackdropFilter: 'blur(24px)',
@@ -179,20 +179,20 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
         >
           {/* Header */}
           <div
-            className="bg-white/70 backdrop-blur-[20px] px-4 py-3 border-b border-black/[0.08] flex items-center justify-between shrink-0"
+            className="bg-white/70 dark:bg-zinc-900/80 backdrop-blur-[20px] px-4 py-3 border-b border-black/[0.08] dark:border-zinc-800 flex items-center justify-between shrink-0"
             style={{
               WebkitBackdropFilter: 'blur(20px)',
               backdropFilter: 'blur(20px)',
             }}
           >
             <div>
-              <h3 className="text-base font-bold text-[#111111]">Media, links and docs</h3>
-              <p className="text-xs text-[#667781] truncate max-w-[280px]">{contactName}</p>
+              <h3 className="text-base font-bold text-[#111111] dark:text-[#F4F4F5]">Media, links and docs</h3>
+              <p className="text-xs text-[#667781] dark:text-[#A1A1AA] truncate max-w-[280px]">{contactName}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white hover:bg-black/5 dark:hover:bg-zinc-800 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
               aria-label="Close"
             >
               <X size={19} />
@@ -201,7 +201,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
 
           {/* Navigation Tabs */}
           <div
-            className="flex items-center border-b border-black/[0.08] px-2 bg-white/50 backdrop-blur-md shrink-0"
+            className="flex items-center border-b border-black/[0.08] dark:border-zinc-800 px-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md shrink-0"
             style={{
               WebkitBackdropFilter: 'blur(12px)',
               backdropFilter: 'blur(12px)',
@@ -212,13 +212,13 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
               onClick={() => setActiveTab('media')}
               className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'media'
-                  ? 'border-[#25D366] text-[#111111]'
-                  : 'border-transparent text-[#667781] hover:text-[#111111]'
+                  ? 'border-[#25D366] text-[#111111] dark:text-[#F4F4F5]'
+                  : 'border-transparent text-[#667781] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
               }`}
             >
               <ImageIcon size={15} />
               <span>Media</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 font-mono">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-zinc-800 font-mono">
                 {mediaItems.length}
               </span>
             </button>
@@ -228,13 +228,13 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
               onClick={() => setActiveTab('docs')}
               className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'docs'
-                  ? 'border-[#25D366] text-[#111111]'
-                  : 'border-transparent text-[#667781] hover:text-[#111111]'
+                  ? 'border-[#25D366] text-[#111111] dark:text-[#F4F4F5]'
+                  : 'border-transparent text-[#667781] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
               }`}
             >
               <FileText size={15} />
               <span>Docs</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 font-mono">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-zinc-800 font-mono">
                 {docItems.length}
               </span>
             </button>
@@ -244,13 +244,13 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
               onClick={() => setActiveTab('links')}
               className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'links'
-                  ? 'border-[#25D366] text-[#111111]'
-                  : 'border-transparent text-[#667781] hover:text-[#111111]'
+                  ? 'border-[#25D366] text-[#111111] dark:text-[#F4F4F5]'
+                  : 'border-transparent text-[#667781] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
               }`}
             >
               <Link2 size={15} />
               <span>Links</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 font-mono">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-zinc-800 font-mono">
                 {linkItems.length}
               </span>
             </button>
@@ -260,13 +260,13 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
               onClick={() => setActiveTab('voice')}
               className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all outline-none select-none active:opacity-60 active:scale-98 ${
                 activeTab === 'voice'
-                  ? 'border-[#25D366] text-[#111111]'
-                  : 'border-transparent text-[#667781] hover:text-[#111111]'
+                  ? 'border-[#25D366] text-[#111111] dark:text-[#F4F4F5]'
+                  : 'border-transparent text-[#667781] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
               }`}
             >
               <Volume2 size={15} />
               <span>Voice</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 font-mono">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-zinc-800 font-mono">
                 {voiceItems.length}
               </span>
             </button>
@@ -277,12 +277,12 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             {/* 1. Media Photos Grid */}
             {activeTab === 'media' && (
               mediaItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0]">
-                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mb-2 shadow-2xs">
-                    <ImageIcon size={24} className="text-[#A3A3A3]" />
+                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0] dark:text-zinc-400">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center mb-2 shadow-2xs">
+                    <ImageIcon size={24} className="text-[#A3A3A3] dark:text-zinc-400" />
                   </div>
-                  <p className="text-sm font-semibold text-[#111111]">No media shared yet</p>
-                  <p className="text-xs text-[#8696A0] max-w-xs mt-0.5">
+                  <p className="text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">No media shared yet</p>
+                  <p className="text-xs text-[#8696A0] dark:text-zinc-400 max-w-xs mt-0.5">
                     Photos and pictures shared in this chat will appear here.
                   </p>
                 </div>
@@ -305,7 +305,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                             caption: item.content !== item.attachment_name ? item.content : undefined,
                           });
                         }}
-                        className="group relative aspect-square rounded-xl overflow-hidden bg-white border border-[#E5E5E5] cursor-pointer shadow-2xs hover:shadow-md transition-all"
+                        className="group relative aspect-square rounded-xl overflow-hidden bg-white dark:bg-zinc-800 border border-[#E5E5E5] dark:border-zinc-700 cursor-pointer shadow-2xs hover:shadow-md transition-all"
                       >
                         <img
                           src={imgUrl}
@@ -329,12 +329,12 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             {/* 2. Documents List */}
             {activeTab === 'docs' && (
               docItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0]">
-                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mb-2 shadow-2xs">
-                    <FileText size={24} className="text-[#A3A3A3]" />
+                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0] dark:text-zinc-400">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center mb-2 shadow-2xs">
+                    <FileText size={24} className="text-[#A3A3A3] dark:text-zinc-400" />
                   </div>
-                  <p className="text-sm font-semibold text-[#111111]">No documents shared</p>
-                  <p className="text-xs text-[#8696A0] max-w-xs mt-0.5">
+                  <p className="text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">No documents shared</p>
+                  <p className="text-xs text-[#8696A0] dark:text-zinc-400 max-w-xs mt-0.5">
                     PDFs, spreadsheets, and assignments shared in this chat will appear here.
                   </p>
                 </div>
@@ -347,23 +347,23 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] flex items-center justify-between gap-3 shadow-2xs hover:border-black/10 transition-all"
+                        className="bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] dark:border-zinc-800 flex items-center justify-between gap-3 shadow-2xs hover:border-black/10 dark:hover:border-zinc-700 transition-all"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div
                             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                               isPdf
-                                ? 'bg-rose-50 text-rose-600'
-                                : 'bg-blue-50 text-blue-600'
+                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
                             }`}
                           >
                             <FileText size={20} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm font-semibold text-[#111111] truncate">
+                            <p className="text-xs sm:text-sm font-semibold text-[#111111] dark:text-[#F4F4F5] truncate">
                               {item.attachment_name || 'Document'}
                             </p>
-                            <p className="text-[11px] text-[#8696A0] mt-0.5">
+                            <p className="text-[11px] text-[#8696A0] dark:text-zinc-400 mt-0.5">
                               {formatBytes(item.attachment_size)} • {formatDate(item.created_at)}
                             </p>
                           </div>
@@ -374,7 +374,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                           download={item.attachment_name || 'document'}
                           target="_blank"
                           rel="noreferrer"
-                          className="w-9 h-9 rounded-full bg-black/[0.04] hover:bg-[#25D366]/15 hover:text-[#25D366] text-[#54656F] flex items-center justify-center shrink-0 transition-colors"
+                          className="w-9 h-9 rounded-full bg-black/[0.04] dark:bg-zinc-800 hover:bg-[#25D366]/15 hover:text-[#25D366] text-[#54656F] dark:text-zinc-400 flex items-center justify-center shrink-0 transition-colors"
                           title="Download document"
                         >
                           <Download size={16} />
@@ -389,12 +389,12 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             {/* 3. Links List */}
             {activeTab === 'links' && (
               linkItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0]">
-                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mb-2 shadow-2xs">
-                    <Link2 size={24} className="text-[#A3A3A3]" />
+                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0] dark:text-zinc-400">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center mb-2 shadow-2xs">
+                    <Link2 size={24} className="text-[#A3A3A3] dark:text-zinc-400" />
                   </div>
-                  <p className="text-sm font-semibold text-[#111111]">No links shared</p>
-                  <p className="text-xs text-[#8696A0] max-w-xs mt-0.5">
+                  <p className="text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">No links shared</p>
+                  <p className="text-xs text-[#8696A0] dark:text-zinc-400 max-w-xs mt-0.5">
                     Web addresses and study links shared in this conversation will be cataloged here.
                   </p>
                 </div>
@@ -406,26 +406,26 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block bg-white/80 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] hover:border-black/10 transition-all shadow-2xs group"
+                      className="block bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] dark:border-zinc-800 hover:border-black/10 dark:hover:border-zinc-700 transition-all shadow-2xs group"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                             <Link2 size={16} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm font-semibold text-blue-600 group-hover:underline truncate">
+                            <p className="text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:underline truncate">
                               {item.url}
                             </p>
-                            <p className="text-[11px] text-[#8696A0] mt-0.5 line-clamp-2">
+                            <p className="text-[11px] text-[#8696A0] dark:text-zinc-400 mt-0.5 line-clamp-2">
                               {item.text}
                             </p>
-                            <p className="text-[10px] text-[#A3A3A3] mt-1">
+                            <p className="text-[10px] text-[#A3A3A3] dark:text-zinc-500 mt-1">
                               {formatDate(item.date)}
                             </p>
                           </div>
                         </div>
-                        <ExternalLink size={14} className="text-[#A3A3A3] group-hover:text-blue-600 shrink-0 mt-1" />
+                        <ExternalLink size={14} className="text-[#A3A3A3] dark:text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0 mt-1" />
                       </div>
                     </a>
                   ))}
@@ -436,12 +436,12 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
             {/* 4. Voice Recordings */}
             {activeTab === 'voice' && (
               voiceItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0]">
-                  <div className="w-12 h-12 rounded-2xl bg-white/80 backdrop-blur-md flex items-center justify-center mb-2 shadow-2xs border border-black/[0.06]">
-                    <Volume2 size={24} className="text-[#A3A3A3]" />
+                <div className="flex flex-col items-center justify-center h-full text-center py-12 text-[#8696A0] dark:text-zinc-400">
+                  <div className="w-12 h-12 rounded-2xl bg-white/80 dark:bg-zinc-800 backdrop-blur-md flex items-center justify-center mb-2 shadow-2xs border border-black/[0.06] dark:border-zinc-700">
+                    <Volume2 size={24} className="text-[#A3A3A3] dark:text-zinc-400" />
                   </div>
-                  <p className="text-sm font-semibold text-[#111111]">No voice messages</p>
-                  <p className="text-xs text-[#8696A0] max-w-xs mt-0.5">
+                  <p className="text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">No voice messages</p>
+                  <p className="text-xs text-[#8696A0] dark:text-zinc-400 max-w-xs mt-0.5">
                     Audio clips and voice notes recorded in this chat will appear here.
                   </p>
                 </div>
@@ -454,7 +454,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className="bg-white/80 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] flex items-center justify-between gap-3 shadow-2xs"
+                        className="bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md rounded-xl p-3 border border-black/[0.06] dark:border-zinc-800 flex items-center justify-between gap-3 shadow-2xs"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <button
@@ -465,10 +465,10 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                             {isPlaying ? <Pause size={17} /> : <Play size={17} className="ml-0.5" />}
                           </button>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm font-semibold text-[#111111]">
+                            <p className="text-xs sm:text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">
                               Voice message ({durationStr})
                             </p>
-                            <p className="text-[11px] text-[#8696A0] mt-0.5">
+                            <p className="text-[11px] text-[#8696A0] dark:text-zinc-400 mt-0.5">
                               {formatDate(item.created_at)}
                             </p>
                           </div>
@@ -479,7 +479,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                           download="voice-message.webm"
                           target="_blank"
                           rel="noreferrer"
-                          className="w-9 h-9 rounded-full bg-black/[0.04] hover:bg-black/10 text-[#54656F] flex items-center justify-center shrink-0 transition-colors"
+                          className="w-9 h-9 rounded-full bg-black/[0.04] dark:bg-zinc-800 hover:bg-black/10 dark:hover:bg-zinc-700 text-[#54656F] dark:text-zinc-400 flex items-center justify-center shrink-0 transition-colors"
                           title="Download audio"
                         >
                           <Download size={15} />

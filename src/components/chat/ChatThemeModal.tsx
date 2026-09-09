@@ -54,18 +54,18 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-2xl max-h-[90dvh] flex flex-col rounded-3xl bg-white border border-[#E5E5E5] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-2xl max-h-[90dvh] flex flex-col rounded-3xl bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E5E5] shrink-0 bg-white">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E5E5] dark:border-zinc-800 shrink-0 bg-white dark:bg-[#18181B]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#F4C430]/15 text-[#D4A017] flex items-center justify-center">
               <Paintbrush size={20} />
             </div>
             <div>
-              <h2 id="chat-theme-modal-title" className="text-base sm:text-lg font-bold text-[#111111] leading-tight">
+              <h2 id="chat-theme-modal-title" className="text-base sm:text-lg font-bold text-[#111111] dark:text-[#F4F4F5] leading-tight">
                 Chat Theme & Wallpaper
               </h2>
-              <p className="text-xs text-[#737373] mt-0.5">
+              <p className="text-xs text-[#737373] dark:text-[#A1A1AA] mt-0.5">
                 Select a theme to instantly customize your conversation backdrop and bubble colors.
               </p>
             </div>
@@ -73,7 +73,7 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-xl text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white hover:bg-[#F5F5F5] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
             aria-label="Close"
           >
             <X size={20} />
@@ -81,14 +81,14 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
         </div>
 
         {/* Category Filters */}
-        <div className="px-5 py-3 border-b border-[#F0F0F0] bg-[#FAFAFA] shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <div className="px-5 py-3 border-b border-[#F0F0F0] dark:border-zinc-800 bg-[#FAFAFA] dark:bg-zinc-900/50 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveCategory('all')}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'all'
-                ? 'bg-[#111111] text-white shadow-xs'
-                : 'bg-white text-[#737373] hover:text-[#111111] border border-[#E5E5E5]'
+                ? 'bg-[#111111] dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                : 'bg-white dark:bg-zinc-800 text-[#737373] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-zinc-700'
             }`}
           >
             All Themes ({CHAT_THEMES.length})
@@ -98,8 +98,8 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
             onClick={() => setActiveCategory('light')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'light'
-                ? 'bg-[#111111] text-white shadow-xs'
-                : 'bg-white text-[#737373] hover:text-[#111111] border border-[#E5E5E5]'
+                ? 'bg-[#111111] dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                : 'bg-white dark:bg-zinc-800 text-[#737373] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-zinc-700'
             }`}
           >
             <Sun size={13} />
@@ -110,8 +110,8 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
             onClick={() => setActiveCategory('dark')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'dark'
-                ? 'bg-[#111111] text-white shadow-xs'
-                : 'bg-white text-[#737373] hover:text-[#111111] border border-[#E5E5E5]'
+                ? 'bg-[#111111] dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                : 'bg-white dark:bg-zinc-800 text-[#737373] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-zinc-700'
             }`}
           >
             <Moon size={13} />
@@ -122,8 +122,8 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
             onClick={() => setActiveCategory('gradient')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'gradient'
-                ? 'bg-[#111111] text-white shadow-xs'
-                : 'bg-white text-[#737373] hover:text-[#111111] border border-[#E5E5E5]'
+                ? 'bg-[#111111] dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                : 'bg-white dark:bg-zinc-800 text-[#737373] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-zinc-700'
             }`}
           >
             <Palette size={13} />
@@ -134,8 +134,8 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
             onClick={() => setActiveCategory('doodle')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'doodle'
-                ? 'bg-[#111111] text-white shadow-xs'
-                : 'bg-white text-[#737373] hover:text-[#111111] border border-[#E5E5E5]'
+                ? 'bg-[#111111] dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                : 'bg-white dark:bg-zinc-800 text-[#737373] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-zinc-700'
             }`}
           >
             <Sparkles size={13} />
@@ -144,7 +144,7 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
         </div>
 
         {/* Themes Grid */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 bg-transparent">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
             {filteredThemes.map((theme: ChatTheme) => {
               const isSelected = currentThemeId === theme.id;
@@ -154,8 +154,8 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
                   onClick={() => onSelectTheme(theme.id)}
                   className={`group relative flex flex-col rounded-2xl border-2 transition-all p-3 cursor-pointer select-none text-left ${
                     isSelected
-                      ? 'border-[#F4C430] bg-[#FDFBF2] shadow-md ring-2 ring-[#F4C430]/30'
-                      : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4] hover:shadow-md'
+                      ? 'border-[#F4C430] bg-[#FDFBF2] dark:bg-amber-950/20 shadow-md ring-2 ring-[#F4C430]/30'
+                      : 'border-[#E5E5E5] dark:border-zinc-800 bg-white dark:bg-zinc-900/80 hover:border-[#D4D4D4] dark:hover:border-zinc-700 hover:shadow-md'
                   }`}
                 >
                   {/* Miniature Chat Preview Canvas */}
@@ -207,21 +207,21 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
                   <div className="flex items-start justify-between gap-2 mt-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="text-xs font-bold text-[#111111] truncate">
+                        <h3 className="text-xs font-bold text-[#111111] dark:text-[#F4F4F5] truncate">
                           {theme.name}
                         </h3>
                         {theme.type === 'doodle' && (
-                          <span className="px-1.5 py-0.5 rounded-sm bg-[#F4C430]/20 text-[#A07800] text-[9px] font-extrabold uppercase">
+                          <span className="px-1.5 py-0.5 rounded-sm bg-[#F4C430]/20 text-[#A07800] dark:text-amber-400 text-[9px] font-extrabold uppercase">
                             Pattern
                           </span>
                         )}
                         {theme.type === 'gradient' && (
-                          <span className="px-1.5 py-0.5 rounded-sm bg-purple-100 text-purple-700 text-[9px] font-extrabold uppercase">
+                          <span className="px-1.5 py-0.5 rounded-sm bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 text-[9px] font-extrabold uppercase">
                             Gradient
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-[#737373] mt-0.5 line-clamp-1 leading-snug">
+                      <p className="text-[11px] text-[#737373] dark:text-[#A1A1AA] mt-0.5 line-clamp-1 leading-snug">
                         {theme.description}
                       </p>
                     </div>
@@ -231,7 +231,7 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
                       className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all ${
                         isSelected
                           ? 'bg-[#F4C430] text-[#111111] shadow-xs'
-                          : 'border border-[#D4D4D4] bg-white group-hover:border-[#A3A3A3]'
+                          : 'border border-[#D4D4D4] dark:border-zinc-700 bg-white dark:bg-zinc-800 group-hover:border-[#A3A3A3] dark:group-hover:border-zinc-500'
                       }`}
                     >
                       {isSelected ? <Check size={14} className="stroke-[3]" /> : null}
@@ -244,14 +244,14 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-[#E5E5E5] bg-white shrink-0">
-          <p className="text-xs text-[#737373]">
-            Selected: <span className="font-bold text-[#111111]">{CHAT_THEMES.find((t) => t.id === currentThemeId)?.name || 'Default'}</span>
+        <div className="flex items-center justify-between px-5 py-3.5 border-t border-[#E5E5E5] dark:border-zinc-800 bg-white dark:bg-[#18181B] shrink-0">
+          <p className="text-xs text-[#737373] dark:text-[#A1A1AA]">
+            Selected: <span className="font-bold text-[#111111] dark:text-[#F4F4F5]">{CHAT_THEMES.find((t) => t.id === currentThemeId)?.name || 'Default'}</span>
           </p>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[#111111] text-white font-bold text-xs hover:bg-[#262626] transition-colors cursor-pointer"
+            className="px-5 py-2 rounded-xl bg-[#111111] dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-xs hover:bg-[#262626] dark:hover:bg-white transition-colors cursor-pointer"
           >
             Done
           </button>

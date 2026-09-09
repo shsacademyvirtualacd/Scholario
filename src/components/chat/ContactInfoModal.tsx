@@ -71,7 +71,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="w-full max-w-md bg-white/75 backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] border border-black/[0.08]"
+          className="w-full max-w-md bg-white/95 dark:bg-[#18181B] backdrop-blur-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] border border-black/[0.08] dark:border-zinc-800"
           onClick={(e) => e.stopPropagation()}
           style={{
             WebkitBackdropFilter: 'blur(24px)',
@@ -80,17 +80,17 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
         >
           {/* Header */}
           <div
-            className="bg-white/70 backdrop-blur-[20px] px-4 py-3.5 border-b border-black/[0.08] flex items-center justify-between shrink-0"
+            className="bg-white/70 dark:bg-zinc-900/80 backdrop-blur-[20px] px-4 py-3.5 border-b border-black/[0.08] dark:border-zinc-800 flex items-center justify-between shrink-0"
             style={{
               WebkitBackdropFilter: 'blur(20px)',
               backdropFilter: 'blur(20px)',
             }}
           >
-            <h3 className="text-base font-bold text-[#111111]">Contact info</h3>
+            <h3 className="text-base font-bold text-[#111111] dark:text-[#F4F4F5]">Contact info</h3>
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] hover:text-[#111111] hover:bg-black/5 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#54656F] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white hover:bg-black/5 dark:hover:bg-zinc-800 active:bg-black/10 active:opacity-60 active:scale-95 transition-all outline-none select-none"
               aria-label="Close"
             >
               <X size={19} />
@@ -100,7 +100,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
             {/* Contact Hero Card */}
-            <div className="bg-white/80 backdrop-blur-md rounded-xl p-5 border border-black/[0.06] flex flex-col items-center text-center shadow-2xs">
+            <div className="bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md rounded-xl p-5 border border-black/[0.06] dark:border-zinc-800 flex flex-col items-center text-center shadow-2xs">
               <div className="relative mb-3">
                 <ProfileAvatar
                   avatarUrl={contact.avatar_url}
@@ -112,36 +112,36 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               </div>
 
               <h2
-                className="chat-contact-name text-lg font-bold !text-[#111827] leading-snug"
-                style={{ color: '#111827', fontWeight: 700 }}
+                className="chat-header-name text-lg font-bold text-[#111827] dark:text-[#F4F4F5] leading-snug"
+                style={{ fontWeight: 700 }}
               >
                 {contact.full_name || 'Contact'}
               </h2>
 
-              <p className="text-xs text-[#667781] mt-0.5 font-medium">
+              <p className="text-xs text-[#667781] dark:text-[#A1A1AA] mt-0.5 font-medium">
                 {(contact as any).email || contact.phone || roleTitle}
               </p>
 
               {/* Status Indicator */}
-              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/[0.04] text-xs">
+              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/[0.04] dark:bg-zinc-800 text-xs">
                 <span
                   className={`w-2 h-2 rounded-full ${
                     isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
                   }`}
                 />
-                <span className={isOnline ? 'text-emerald-700 font-semibold' : 'text-[#667781]'}>
+                <span className={isOnline ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-[#667781] dark:text-[#A1A1AA]'}>
                   {isOnline ? 'Online now' : statusText || 'Offline'}
                 </span>
               </div>
 
               {/* Action Quick Buttons */}
-              <div className="grid grid-cols-3 gap-2 w-full mt-4 pt-4 border-t border-black/[0.06]">
+              <div className="grid grid-cols-3 gap-2 w-full mt-4 pt-4 border-t border-black/[0.06] dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => toast.info('Voice calling will be available in an upcoming update.')}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] hover:text-[#111111] transition-all group outline-none select-none"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-zinc-800 active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white transition-all group outline-none select-none"
                 >
-                  <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-black/[0.04] dark:bg-zinc-800 group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
                     <Phone size={18} />
                   </div>
                   <span className="text-[11px] font-medium">Audio</span>
@@ -150,9 +150,9 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 <button
                   type="button"
                   onClick={() => toast.info('Video calling will be available in an upcoming update.')}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] hover:text-[#111111] transition-all group outline-none select-none"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-zinc-800 active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white transition-all group outline-none select-none"
                 >
-                  <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-black/[0.04] dark:bg-zinc-800 group-hover:bg-[#25D366]/15 group-hover:text-[#25D366] flex items-center justify-center transition-colors">
                     <Video size={18} />
                   </div>
                   <span className="text-[11px] font-medium">Video</span>
@@ -164,9 +164,9 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                     onClose();
                     onOpenSearch?.();
                   }}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] hover:text-[#111111] transition-all group outline-none select-none"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-zinc-800 active:bg-black/[0.08] active:opacity-60 active:scale-95 text-[#54656F] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white transition-all group outline-none select-none"
                 >
-                  <div className="w-10 h-10 rounded-full bg-black/[0.04] group-hover:bg-[#111111]/10 group-hover:text-[#111111] flex items-center justify-center transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-black/[0.04] dark:bg-zinc-800 group-hover:bg-[#111111]/10 dark:group-hover:bg-zinc-700 group-hover:text-[#111111] dark:group-hover:text-white flex items-center justify-center transition-colors">
                     <Search size={18} />
                   </div>
                   <span className="text-[11px] font-medium">Search</span>
@@ -175,22 +175,22 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
             </div>
 
             {/* Academic Role & Bio Card */}
-            <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 border border-black/[0.06] space-y-3 shadow-2xs">
+            <div className="bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md rounded-xl p-4 border border-black/[0.06] dark:border-zinc-800 space-y-3 shadow-2xs">
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F4C430]/15 flex items-center justify-center text-[#B8860B] shrink-0 mt-0.5">
+                <div className="w-9 h-9 rounded-xl bg-[#F4C430]/15 flex items-center justify-center text-[#B8860B] dark:text-[#F4C430] shrink-0 mt-0.5">
                   <GraduationCap size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold text-[#8696A0] uppercase tracking-wider">
+                  <p className="text-[11px] font-semibold text-[#8696A0] dark:text-zinc-400 uppercase tracking-wider">
                     Role & Affiliation
                   </p>
-                  <p className="text-sm font-bold text-[#111111] mt-0.5">{roleTitle}</p>
+                  <p className="text-sm font-bold text-[#111111] dark:text-[#F4F4F5] mt-0.5">{roleTitle}</p>
                   {teacherSubjects && teacherSubjects.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {teacherSubjects.map((subj) => (
                         <span
                           key={subj}
-                          className="px-2 py-0.5 rounded-md bg-[#F4C430]/20 text-[#855D00] text-[11px] font-medium"
+                          className="px-2 py-0.5 rounded-md bg-[#F4C430]/20 text-[#855D00] dark:text-[#F4C430] text-[11px] font-medium"
                         >
                           {subj}
                         </span>
@@ -200,17 +200,17 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                 </div>
               </div>
 
-              <div className="h-px bg-black/[0.06]" />
+              <div className="h-px bg-black/[0.06] dark:bg-zinc-800" />
 
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-black/[0.04] flex items-center justify-center text-[#54656F] shrink-0 mt-0.5">
+                <div className="w-9 h-9 rounded-xl bg-black/[0.04] dark:bg-zinc-800 flex items-center justify-center text-[#54656F] dark:text-zinc-400 shrink-0 mt-0.5">
                   <Mail size={17} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold text-[#8696A0] uppercase tracking-wider">
+                  <p className="text-[11px] font-semibold text-[#8696A0] dark:text-zinc-400 uppercase tracking-wider">
                     Official Contact
                   </p>
-                  <p className="text-xs sm:text-sm text-[#111111] font-mono mt-0.5 select-all">
+                  <p className="text-xs sm:text-sm text-[#111111] dark:text-[#F4F4F5] font-mono mt-0.5 select-all">
                     {(contact as any).email || contact.phone || 'scholario.portal/academic'}
                   </p>
                 </div>
@@ -218,64 +218,64 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
             </div>
 
             {/* Media, Links and Docs shortcut */}
-            <div className="bg-white/80 backdrop-blur-md rounded-xl border border-black/[0.06] overflow-hidden shadow-2xs">
+            <div className="bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md rounded-xl border border-black/[0.06] dark:border-zinc-800 overflow-hidden shadow-2xs">
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onOpenMedia?.();
                 }}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/[0.03] transition-colors text-left"
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/[0.03] dark:hover:bg-zinc-800/80 transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                     <ImageIcon size={18} />
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm font-semibold text-[#111111]">
+                    <p className="text-xs sm:text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">
                       Media, links and docs
                     </p>
-                    <p className="text-[11px] text-[#8696A0]">
+                    <p className="text-[11px] text-[#8696A0] dark:text-zinc-400">
                       {mediaCount > 0 ? `${mediaCount} shared items` : 'Photos, documents & files'}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 text-[#8696A0]">
-                  <span className="text-xs font-semibold text-[#111111]">{mediaCount}</span>
+                  <span className="text-xs font-semibold text-[#111111] dark:text-[#F4F4F5]">{mediaCount}</span>
                   <ChevronRight size={16} />
                 </div>
               </button>
             </div>
 
             {/* Notifications & Settings */}
-            <div className="bg-white/80 backdrop-blur-md rounded-xl border border-black/[0.06] divide-y divide-black/[0.04] overflow-hidden shadow-2xs">
+            <div className="bg-white/80 dark:bg-zinc-900/70 backdrop-blur-md rounded-xl border border-black/[0.06] dark:border-zinc-800 divide-y divide-black/[0.04] dark:divide-zinc-800 overflow-hidden shadow-2xs">
               <button
                 type="button"
                 onClick={onToggleMute}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/[0.03] transition-colors text-left"
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/[0.03] dark:hover:bg-zinc-800/80 transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       isMuted
-                        ? 'bg-rose-50 text-rose-600'
-                        : 'bg-black/[0.04] text-[#54656F]'
+                        ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                        : 'bg-black/[0.04] dark:bg-zinc-800 text-[#54656F] dark:text-zinc-400'
                     }`}
                   >
                     {isMuted ? <BellOff size={18} /> : <Bell size={18} />}
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm font-semibold text-[#111111]">
+                    <p className="text-xs sm:text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">
                       Mute notifications
                     </p>
-                    <p className="text-[11px] text-[#8696A0]">
+                    <p className="text-[11px] text-[#8696A0] dark:text-zinc-400">
                       {isMuted ? 'Muted for this chat' : 'Show sound and popup alerts'}
                     </p>
                   </div>
                 </div>
                 <div
                   className={`w-10 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
-                    isMuted ? 'bg-[#25D366]' : 'bg-[#D1D5DB]'
+                    isMuted ? 'bg-[#25D366]' : 'bg-[#D1D5DB] dark:bg-zinc-700'
                   }`}
                 >
                   <div
@@ -287,14 +287,14 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
               </button>
 
               <div className="px-4 py-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                   <Lock size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-semibold text-[#111111]">
+                  <p className="text-xs sm:text-sm font-semibold text-[#111111] dark:text-[#F4F4F5]">
                     End-to-end encryption
                   </p>
-                  <p className="text-[11px] text-[#8696A0]">
+                  <p className="text-[11px] text-[#8696A0] dark:text-zinc-400">
                     Messages and calls are secured with end-to-end encryption.
                   </p>
                 </div>
