@@ -94,17 +94,17 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
             className="relative w-full aspect-auto max-h-[300px] overflow-hidden bg-neutral-100 cursor-pointer select-none"
           >
             {isLoading && !loadError && (
-              <div className="w-full h-40 flex flex-col items-center justify-center bg-neutral-100 text-neutral-400">
+              <div className="w-full h-40 flex flex-col items-center justify-center bg-neutral-100 dark:bg-zinc-800 text-neutral-400 dark:text-zinc-400">
                 <Loader2 size={24} className="animate-spin text-[#F4C430]" />
-                <span className="text-[11px] font-medium mt-2">Loading image...</span>
+                <span className="text-[11px] font-medium mt-2 text-neutral-600 dark:text-zinc-300">Loading image...</span>
               </div>
             )}
 
             {loadError ? (
-              <div className="w-full h-36 flex flex-col items-center justify-center p-3 text-center bg-neutral-50 text-neutral-400">
+              <div className="w-full h-36 flex flex-col items-center justify-center p-3 text-center bg-neutral-50 dark:bg-zinc-900/90 text-neutral-400 dark:text-zinc-400">
                 <AlertCircle size={22} className="text-rose-500 mb-1" />
-                <span className="text-xs font-semibold text-neutral-700">Unable to load image</span>
-                <span className="text-[10px] text-neutral-400 mt-0.5 line-clamp-1">{filename}</span>
+                <span className="text-xs font-semibold text-neutral-800 dark:text-zinc-100">Unable to load image</span>
+                <span className="text-[10px] text-neutral-500 dark:text-zinc-400 mt-0.5 line-clamp-1">{filename}</span>
               </div>
             ) : (
               <img
@@ -126,7 +126,7 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
             {/* Top-left Image Type Badge */}
-            <div className="absolute top-2 left-2 pointer-events-none bg-black/40 backdrop-blur-xs text-white px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px] font-medium">
+            <div className="absolute top-2 left-2 pointer-events-none bg-black/60 backdrop-blur-xs text-white px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px] font-semibold shadow-2xs">
               <ImageIcon size={10} />
               <span>Photo</span>
             </div>

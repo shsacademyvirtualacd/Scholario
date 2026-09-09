@@ -240,7 +240,7 @@ export const ContactInfoModal: React.FC<ContactInfoModalProps> = ({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-[#8696A0]">
+                <div className="flex items-center gap-1 text-[#8696A0] dark:text-zinc-400">
                   <span className="text-xs font-semibold text-[#111111] dark:text-[#F4F4F5]">{mediaCount}</span>
                   <ChevronRight size={16} />
                 </div>

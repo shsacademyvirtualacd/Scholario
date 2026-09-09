@@ -102,17 +102,17 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
         className={`flex items-center gap-3 p-2 rounded-[6px] cursor-pointer transition-colors ${
           isMe
             ? 'bg-black/5 hover:bg-black/10'
-            : 'bg-[#F0F2F5] hover:bg-[#E9EDEF]'
+            : 'bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.07] dark:hover:bg-white/[0.12]'
         }`}
       >
         {/* File Type Icon Badge */}
         <div
           className={`w-10 h-10 rounded-[6px] flex items-center justify-center shrink-0 font-bold text-xs ${
             isPdf
-              ? 'bg-rose-500/15 text-rose-600'
+              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
               : isDoc
-              ? 'bg-blue-500/15 text-blue-600'
-              : 'bg-[#00A884]/15 text-[#00A884]'
+              ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+              : 'bg-[#00A884]/15 text-[#00A884] dark:text-[#25D366]'
           }`}
         >
           <FileText size={20} />
@@ -120,11 +120,16 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
 
         {/* File Info */}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold truncate leading-tight text-[#111B21]" title={filename}>
+          <p
+            className="text-xs font-semibold truncate leading-tight"
+            style={{ color: bubbleTextColor }}
+            title={filename}
+          >
             {filename}
           </p>
           <p
-            className="text-[11px] mt-0.5 text-[#667781]"
+            className="text-[11px] mt-0.5"
+            style={{ color: metaTextColor }}
           >
             {formatSize(attachmentSize) || (isPdf ? 'PDF Document' : isDoc ? 'Word Document' : 'File')}
           </p>
@@ -138,11 +143,8 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
             handleDownload();
           }}
           disabled={downloading}
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-            isMe
-              ? 'text-[#111B21] hover:bg-black/5'
-              : 'text-[#54656F] hover:bg-black/5'
-          }`}
+          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+          style={{ color: bubbleTextColor }}
           title={`Download ${filename}`}
         >
           {downloading ? (
@@ -155,7 +157,10 @@ export const ChatFileBubble: React.FC<ChatFileBubbleProps> = ({
 
       {/* Optional Caption */}
       {hasCaption && (
-        <p className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] mt-1.5 px-1 select-text text-[#111B21]">
+        <p
+          className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed break-words [word-break:normal] mt-1.5 px-1 select-text"
+          style={{ color: bubbleTextColor }}
+        >
           {content}
         </p>
       )}

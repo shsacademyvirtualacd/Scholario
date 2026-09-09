@@ -166,14 +166,14 @@ export const NotificationBell: React.FC = () => {
         }}
         className={`relative w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
           notifOpen
-            ? 'bg-[#111111] border-[#111111] text-[#F4C430]'
-            : 'border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111]'
-        } ${bellPulsing ? 'animate-pulse ring-2 ring-[#F4C430] border-transparent bg-amber-50/50' : ''}`}
+            ? 'bg-[#111111] dark:bg-zinc-800 border-[#111111] dark:border-zinc-700 text-[#F4C430]'
+            : 'border-[#E5E5E5] dark:border-zinc-800 hover:bg-[#F5F5F5] dark:hover:bg-zinc-800 text-[#525252] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white'
+        } ${bellPulsing ? 'animate-pulse ring-2 ring-[#F4C430] border-transparent bg-amber-50/50 dark:bg-amber-950/30' : ''}`}
         title="Notifications"
       >
         <Bell size={16} className={bellPulsing ? 'text-[#F4C430]' : ''} />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ef4444] border-2 border-white rounded-full notif-pulse" />
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ef4444] border-2 border-white dark:border-zinc-900 rounded-full notif-pulse" />
         )}
       </button>
 
@@ -182,21 +182,21 @@ export const NotificationBell: React.FC = () => {
           {/* Click-out backdrop */}
           <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
           {/* Popover panel */}
-          <div className={`${isMobile ? 'fixed left-2 right-2 top-16 w-auto' : 'absolute right-0 mt-2 w-80'} bg-white border border-[#E5E5E5] rounded-2xl shadow-xl z-40 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200`}>
-            <div className="p-3.5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA]">
-              <span className="text-[10px] font-black text-[#111111] uppercase tracking-wider">Notifications</span>
+          <div className={`${isMobile ? 'fixed left-2 right-2 top-16 w-auto' : 'absolute right-0 mt-2 w-80'} bg-white dark:bg-zinc-900 border border-[#E5E5E5] dark:border-zinc-800 rounded-2xl shadow-xl z-40 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200`}>
+            <div className="p-3.5 border-b border-[#F5F5F5] dark:border-zinc-800 flex items-center justify-between bg-[#FAFAFA] dark:bg-zinc-900/80">
+              <span className="text-[10px] font-black text-[#111111] dark:text-zinc-100 uppercase tracking-wider">Notifications</span>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-[10px] font-bold text-[#737373] hover:text-[#111111] transition-colors interactive"
+                  className="text-[10px] font-bold text-[#737373] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-white transition-colors interactive"
                 >
                   Mark all as read
                 </button>
               )}
             </div>
-            <div className="divide-y divide-[#F5F5F5] max-h-72 overflow-y-auto">
+            <div className="divide-y divide-[#F5F5F5] dark:divide-zinc-800 max-h-72 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="p-8 text-center text-xs text-[#A3A3A3] font-semibold">
+                <div className="p-8 text-center text-xs text-[#A3A3A3] dark:text-zinc-500 font-semibold">
                   {loading ? 'Loading notifications...' : 'You are all caught up!'}
                 </div>
               ) : (
@@ -208,21 +208,21 @@ export const NotificationBell: React.FC = () => {
                       onClick={() => handleNotificationClick(notif)}
                       className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors ${
                         notif.is_read
-                          ? 'bg-white hover:bg-[#FAFAFA]'
+                          ? 'bg-white dark:bg-zinc-900 hover:bg-[#FAFAFA] dark:hover:bg-zinc-800/60'
                           : isCrucial
-                          ? 'bg-[#FFF1F2] hover:bg-[#FFE4E6]'
-                          : 'bg-[#FFFDF0] hover:bg-[#FFFBEA]'
+                          ? 'bg-[#FFF1F2] dark:bg-rose-950/30 hover:bg-[#FFE4E6] dark:hover:bg-rose-950/50'
+                          : 'bg-[#FFFDF0] dark:bg-amber-950/20 hover:bg-[#FFFBEA] dark:hover:bg-amber-950/40'
                       } ${isCrucial ? 'border-l-4 border-l-[#E11D48]' : ''}`}
                     >
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                           isCrucial
-                            ? 'bg-[#FFE4E6] text-[#E11D48] border border-[#FECDD3]'
+                            ? 'bg-[#FFE4E6] dark:bg-rose-950/50 text-[#E11D48] dark:text-rose-400 border border-[#FECDD3] dark:border-rose-900/40'
                             : notif.type === 'class_reminder'
-                            ? 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]'
+                            ? 'bg-[#FFFBEB] dark:bg-amber-950/50 text-[#92400E] dark:text-amber-400 border border-[#FDE68A] dark:border-amber-900/40'
                             : (notif.type as string) === 'privacy'
-                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                            : 'bg-blue-50 text-blue-700 border border-blue-100'
+                            ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900/40'
+                            : 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/40'
                         }`}
                       >
                         {isCrucial ? (
@@ -242,14 +242,14 @@ export const NotificationBell: React.FC = () => {
                               Crucial
                             </span>
                           )}
-                          <p className="text-xs font-bold text-[#111111] leading-snug truncate">
+                          <p className="text-xs font-bold text-[#111111] dark:text-zinc-100 leading-snug truncate">
                             {notif.title}
                           </p>
                         </div>
-                        <p className="text-[11px] text-[#525252] leading-relaxed mt-0.5 font-medium">
+                        <p className="text-[11px] text-[#525252] dark:text-zinc-300 leading-relaxed mt-0.5 font-medium">
                           {notif.message}
                         </p>
-                        <span className="text-[9px] text-[#A3A3A3] font-bold block mt-1">
+                        <span className="text-[9px] text-[#A3A3A3] dark:text-zinc-500 font-bold block mt-1">
                           {formatTimestamp(notif.created_at)}
                         </span>
                       </div>

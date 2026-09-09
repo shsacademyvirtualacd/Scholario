@@ -188,6 +188,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
   const bubbleBg = theme ? (isMe ? theme.sentBubbleBg : theme.receivedBubbleBg) : (isMe ? '#D9FDD3' : '#FFFFFF');
   const bubbleTextColor = theme ? (isMe ? theme.sentBubbleText : theme.receivedBubbleText) : '#111B21';
+  const metaTextColor = theme ? (isMe ? theme.sentMetaText : theme.receivedMetaText) : '#667781';
 
   return (
     <div
@@ -248,7 +249,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
                       ? isMe
                         ? 'bg-[#00A884]'
                         : 'bg-[#54656F]'
-                      : 'bg-[#8696A0]/40'
+                      : 'bg-[#8696A0]/40 dark:bg-zinc-600/50'
                   }`}
                 />
               );
@@ -257,7 +258,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
           {/* Time and Speed Info */}
           <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-mono leading-none">
-            <span className="text-[#667781]">
+            <span style={{ color: metaTextColor }}>
               {isPlaying || currentTime > 0
                 ? `${formatAudioDuration(currentTime)} / ${formatAudioDuration(totalDuration)}`
                 : formatAudioDuration(totalDuration)}
@@ -267,11 +268,8 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
             <button
               type="button"
               onClick={cycleSpeed}
-              className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md transition-colors ${
-                isMe
-                  ? 'bg-black/5 hover:bg-black/10 text-[#111B21]'
-                  : 'bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#525252]'
-              }`}
+              className="px-1.5 py-0.5 text-[10px] font-bold rounded-md transition-colors bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20"
+              style={{ color: bubbleTextColor }}
               title="Change playback speed"
             >
               {playbackRate}x
@@ -289,10 +287,11 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
 
       {/* Message Metadata & Delivery Status */}
       <div
-        className={`flex items-center justify-end gap-1.5 mt-1.5 pt-1 text-[10px] text-[#667781]`}
+        className="flex items-center justify-end gap-1.5 mt-1.5 pt-1 text-[10px]"
+        style={{ color: metaTextColor }}
       >
         <span className="flex items-center gap-1 font-sans">
-          <Volume2 size={11} className={isMe ? 'text-[#00A884]' : 'text-[#737373]'} />
+          <Volume2 size={11} className={isMe ? 'text-[#00A884] dark:text-[#25D366]' : 'opacity-70'} />
           Voice Message
         </span>
         <span>•</span>
@@ -302,7 +301,7 @@ export const VoiceMessageBubble: React.FC<VoiceMessageBubbleProps> = ({
             {isRead ? (
               <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
             ) : (
-              <CheckCheck size={14} className="text-[#8696A0] stroke-[1.8]" />
+              <CheckCheck size={14} className="stroke-[1.8]" style={{ color: metaTextColor }} />
             )}
           </span>
         )}

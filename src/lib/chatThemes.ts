@@ -271,6 +271,9 @@ export function getSavedChatTheme(threadId?: string): string {
     if (globalDefault && CHAT_THEMES.some((t) => t.id === globalDefault)) {
       return globalDefault;
     }
+    if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
+      return 'midnight-academic';
+    }
   } catch {
     // ignore localStorage exceptions
   }
