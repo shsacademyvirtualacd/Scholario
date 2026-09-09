@@ -137,11 +137,14 @@ const AdminDashboardPage: React.FC = () => {
     const rawBoards = teacherOfferings.map(o => {
       const b = (o.board_id || o.board || o.class?.board_id || '').toLowerCase();
       const s = (o.subject_name || o.subject || '').toLowerCase();
+      const bName = o.class?.board?.name || (o as any).board_name;
       if (b === 'ielts' || s.includes('ielts')) return 'IELTS';
       if (b === 'sindh') return 'Sindh';
-      return 'FBISE';
-    });
-    const boards = Array.from(new Set(rawBoards)).join(', ') || 'FBISE';
+      if (b === 'fbise') return 'FBISE';
+      if (bName) return bName;
+      return b ? b.toUpperCase() : null;
+    }).filter(Boolean);
+    const boards = Array.from(new Set(rawBoards)).join(', ') || 'N/A';
     
     // Unique grades
     const rawGrades = teacherOfferings.map(o => {

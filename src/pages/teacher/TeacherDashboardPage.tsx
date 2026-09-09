@@ -339,6 +339,16 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
     return `${days[slot.day_of_week]} at ${timeStr}`;
   };
 
+  const nextBoardLabel = String(
+    nextSlot.offering?.board ||
+    (nextSlot.offering as any)?.class?.board?.name ||
+    (nextSlot.offering as any)?.class?.board_id ||
+    (nextSlot.offering as any)?.board_name ||
+    'Curriculum'
+  ).toUpperCase();
+
+  const nextGradeLabel = nextSlot.offering?.grade || (nextSlot.offering as any)?.class?.grade || '';
+
   return (
     <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
       <div className="flex items-center justify-between">
@@ -348,7 +358,7 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
       <div>
         <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
         <div className="text-xs text-[#737373] font-medium truncate mt-0.5">
-          Class {nextSlot.offering?.grade} · FBISE
+          {nextGradeLabel ? `Class ${nextGradeLabel} · ` : ''}{nextBoardLabel}
         </div>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
@@ -901,7 +911,7 @@ export const TeacherDashboardPage: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-xs text-[#111111]">{cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class'}</div>
                       <div className="text-[10px] text-[#737373] font-semibold mt-0.5 truncate">
-                        Class {cls.offering?.grade} (FBISE)
+                        Class {cls.offering?.grade || (cls.offering as any)?.class?.grade || ''} ({String(cls.offering?.board || (cls.offering as any)?.class?.board?.name || (cls.offering as any)?.class?.board_id || (cls.offering as any)?.board_name || 'Curriculum').toUpperCase()})
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -946,7 +956,7 @@ export const TeacherDashboardPage: React.FC = () => {
                         {activeTodaySlot.custom_title || activeOffering?.subject_name || activeOffering?.subject || 'Class Session'}
                       </h2>
                       <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
-                        Class {activeOffering?.grade || '10'} · {(activeOffering?.board || 'FBISE').toUpperCase()}
+                        Class {activeOffering?.grade || (activeOffering as any)?.class?.grade || ''} · {String(activeOffering?.board || (activeOffering as any)?.class?.board?.name || (activeOffering as any)?.class?.board_id || (activeOffering as any)?.board_name || 'Curriculum').toUpperCase()}
                       </span>
                       {activeOffering?.stream && (
                         <span className="text-[10px] bg-[#F5F5F5] text-[#525252] font-bold px-2 py-0.5 rounded">
@@ -1093,36 +1103,36 @@ export const TeacherDashboardPage: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#F0F0F0]">
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Student</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Stream</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Status & Auto-Join Log</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider text-right">Toggle Status</th>
+                  <tr className="border-b border-[#F0F0F0] dark:border-zinc-800">
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Student</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Stream</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Status & Auto-Join Log</th>
+                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider text-right">Toggle Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#FAFAFA]">
+                <tbody className="divide-y divide-[#FAFAFA] dark:divide-zinc-800/60">
                   {rosterStudents.map((st) => {
                     const { status: stStatus, markedAt, markedBy } = getStudentStatus(st.id);
                     const isSaving = savingAttendanceId === st.id;
                     const joinTime = markedAt ? new Date(markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
 
                     return (
-                      <tr key={st.id} className="hover:bg-[#FAFAFA]/50 transition-colors">
+                      <tr key={st.id} className="hover:bg-[#FAFAFA]/50 dark:hover:bg-zinc-800/40 transition-colors">
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-[#FAFAFA] border border-[#F0F0F0] flex items-center justify-center text-[10px] font-bold text-[#525252] shrink-0">
+                            <div className="w-7 h-7 rounded-lg bg-[#FAFAFA] dark:bg-zinc-800 border border-[#F0F0F0] dark:border-zinc-700 flex items-center justify-center text-[10px] font-bold text-[#525252] dark:text-zinc-300 shrink-0">
                               {st.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <span className="text-xs font-bold text-[#111111] block leading-tight truncate">{st.full_name}</span>
-                              <span className="text-[9px] text-[#737373] font-medium leading-tight truncate block">
+                              <span className="text-xs font-bold text-[#111111] dark:text-zinc-100 block leading-tight truncate">{st.full_name}</span>
+                              <span className="text-[9px] text-[#737373] dark:text-zinc-400 font-medium leading-tight truncate block">
                                 {(st as any).email || `ID: ${st.id.slice(0, 8)}`}
                               </span>
                             </div>
                           </div>
                         </td>
 
-                        <td className="py-3 text-xs font-semibold text-[#525252] capitalize whitespace-nowrap">
+                        <td className="py-3 text-xs font-semibold text-[#525252] dark:text-zinc-300 capitalize whitespace-nowrap">
                           {st.stream || 'General'}
                         </td>
 
@@ -1130,47 +1140,47 @@ export const TeacherDashboardPage: React.FC = () => {
                           <div className="flex flex-col gap-0.5">
                             {stStatus === 'pending' ? (
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300">
-                                  <Clock size={10} className="animate-spin text-amber-600" /> Pending Approval
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800">
+                                  <Clock size={10} className="animate-spin text-amber-600 dark:text-amber-400" /> Pending Approval
                                 </span>
                                 {joinTime && (
-                                  <span className="text-[9px] text-amber-700 font-semibold bg-amber-50/70 px-1.5 py-0.5 rounded">
+                                  <span className="text-[9px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-50/70 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
                                     Claimed {joinTime}
                                   </span>
                                 )}
                               </div>
                             ) : stStatus === 'present' ? (
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200" title="Locked: Status is recorded. Click another status to request change.">
-                                  ✓ Present <Lock size={9} className="text-emerald-600/70 ml-0.5" />
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800" title="Locked: Status is recorded. Click another status to request change.">
+                                  ✓ Present <Lock size={9} className="text-emerald-600/70 dark:text-emerald-400/70 ml-0.5" />
                                 </span>
                                 {markedBy === 'self' || markedBy === 'student' || joinTime ? (
-                                  <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50/50 px-1.5 py-0.5 rounded">
+                                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50/50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
                                     ⚡ Joined {joinTime || ''}
                                   </span>
                                 ) : (
-                                  <span className="text-[9px] text-[#737373] font-medium">
+                                  <span className="text-[9px] text-[#737373] dark:text-zinc-400 font-medium">
                                     (Teacher marked)
                                   </span>
                                 )}
                               </div>
                             ) : stStatus === 'late' ? (
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title="Locked: Status is recorded. Click another status to request change.">
-                                  ⏱ Late <Lock size={9} className="text-amber-600/70 ml-0.5" />
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800" title="Locked: Status is recorded. Click another status to request change.">
+                                  ⏱ Late <Lock size={9} className="text-amber-600/70 dark:text-amber-400/70 ml-0.5" />
                                 </span>
                                 {joinTime && (
-                                  <span className="text-[9px] text-amber-600 font-semibold">
+                                  <span className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold">
                                     at {joinTime}
                                   </span>
                                 )}
                               </div>
                             ) : stStatus === 'absent' ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200" title="Locked: Status is recorded. Click another status to request change.">
-                                ✕ Absent <Lock size={9} className="text-rose-600/70 ml-0.5" />
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800" title="Locked: Status is recorded. Click another status to request change.">
+                                ✕ Absent <Lock size={9} className="text-rose-600/70 dark:text-rose-400/70 ml-0.5" />
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-zinc-700">
                                 ○ Unmarked
                               </span>
                             )}
@@ -1200,14 +1210,14 @@ export const TeacherDashboardPage: React.FC = () => {
                               </button>
                             </div>
                           ) : (
-                            <div className="inline-flex items-center bg-[#F5F5F5] p-0.5 rounded-lg border border-[#E5E5E5]">
+                            <div className="inline-flex items-center bg-[#F5F5F5] dark:bg-zinc-800 p-0.5 rounded-lg border border-[#E5E5E5] dark:border-zinc-700">
                               <button
                                 onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'present')}
                                 disabled={isSaving}
                                 className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'present'
                                     ? 'bg-emerald-600 text-white shadow-xs'
-                                    : 'text-[#737373] hover:text-emerald-700 hover:bg-white'
+                                    : 'text-[#737373] dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-700'
                                 }`}
                                 title={
                                   stStatus === 'present'
@@ -1225,7 +1235,7 @@ export const TeacherDashboardPage: React.FC = () => {
                                 className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'late'
                                     ? 'bg-amber-500 text-white shadow-xs'
-                                    : 'text-[#737373] hover:text-amber-700 hover:bg-white'
+                                    : 'text-[#737373] dark:text-zinc-400 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-white dark:hover:bg-zinc-700'
                                 }`}
                                 title={
                                   stStatus === 'late'
@@ -1243,7 +1253,7 @@ export const TeacherDashboardPage: React.FC = () => {
                                 className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'absent'
                                     ? 'bg-rose-600 text-white shadow-xs'
-                                    : 'text-[#737373] hover:text-rose-700 hover:bg-white'
+                                    : 'text-[#737373] dark:text-zinc-400 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-zinc-700'
                                 }`}
                                 title={
                                   stStatus === 'absent'

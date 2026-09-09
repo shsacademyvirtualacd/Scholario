@@ -206,11 +206,11 @@ export const TeacherSchedulePage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <h3 className="text-sm font-bold text-[#111111]">
+                  <h3 className="text-sm font-bold text-[#111111] dark:text-zinc-100">
                     Next Lecture Session: {getSlotSubject(bannerState.nextSlot)}
                   </h3>
-                  <p className="text-xs text-[#737373] mt-0.5 font-medium">
-                    Class {bannerState.nextSlot.offering?.grade} (FBISE) · Scheduled Lecture
+                  <p className="text-xs text-[#737373] dark:text-zinc-400 mt-0.5 font-medium">
+                    Class {bannerState.nextSlot.offering?.grade || (bannerState.nextSlot.offering as any)?.class?.grade || ''} ({String(bannerState.nextSlot.offering?.board || (bannerState.nextSlot.offering as any)?.class?.board?.name || (bannerState.nextSlot.offering as any)?.class?.board_id || (bannerState.nextSlot.offering as any)?.board_name || 'Curriculum').toUpperCase()}) · Scheduled Lecture
                   </p>
                 </>
               )}
@@ -283,12 +283,12 @@ export const TeacherSchedulePage: React.FC = () => {
                   </div>
 
                   {/* Class info */}
-                  <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5]">
-                    <h3 className={`text-base font-extrabold text-[#111111] leading-tight truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`}>
+                  <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5] dark:border-zinc-800">
+                    <h3 className={`text-base font-extrabold text-[#111111] dark:text-zinc-100 leading-tight truncate ${isCancelled ? 'line-through text-[#737373] dark:text-zinc-500' : ''}`}>
                       {subject}
                     </h3>
-                    <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">
-                      Class {slot.offering?.grade} (FBISE) · Session date: {activeSessionDate}
+                    <p className="text-xs text-[#737373] dark:text-zinc-400 mt-0.5 font-medium truncate">
+                      Class {slot.offering?.grade || (slot.offering as any)?.class?.grade || ''} ({String(slot.offering?.board || (slot.offering as any)?.class?.board?.name || (slot.offering as any)?.class?.board_id || (slot.offering as any)?.board_name || 'Curriculum').toUpperCase()}) · Session date: {activeSessionDate}
                     </p>
                   </div>
 

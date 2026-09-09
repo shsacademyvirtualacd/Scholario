@@ -802,9 +802,11 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
                             <span className="px-1.5 py-0.2 bg-[#111111] text-white font-extrabold text-[9px] rounded">
                               Grade {attempt.grade}
                             </span>
-                            <span className="text-[10px] font-bold text-[#737373] uppercase">
-                              {attempt.board || 'FBISE'}
-                            </span>
+                            {(attempt.board || (attempt as any).board_id || profile?.class?.board?.name || teacherOfferings[0]?.board) && (
+                              <span className="text-[10px] font-bold text-[#737373] uppercase">
+                                {attempt.board || (attempt as any).board_id || profile?.class?.board?.name || teacherOfferings[0]?.board}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -920,9 +922,11 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
                             <span className="px-2 py-0.5 rounded-md bg-[#111111] text-white font-extrabold text-[10px]">
                               Grade {attempt.grade}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md bg-[#F5F5F5] border border-[#E5E5E5] text-[#525252] font-bold text-[10px] uppercase">
-                              {attempt.board || 'FBISE'}
-                            </span>
+                            {(attempt.board || (attempt as any).board_id || profile?.class?.board?.name || teacherOfferings[0]?.board) && (
+                              <span className="px-2 py-0.5 rounded-md bg-[#F5F5F5] border border-[#E5E5E5] text-[#525252] font-bold text-[10px] uppercase">
+                                {attempt.board || (attempt as any).board_id || profile?.class?.board?.name || teacherOfferings[0]?.board}
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -1088,7 +1092,7 @@ export const StudentResultsView: React.FC<StudentResultsViewProps> = ({
                 <div className="flex justify-between py-1.5">
                   <span className="font-bold text-[#737373]">Board Curriculum</span>
                   <span className="font-extrabold text-[#111111] uppercase">
-                    {selectedAttempt.board || 'FBISE'} Board
+                    {selectedAttempt.board || (selectedAttempt as any).board_id || profile?.class?.board?.name || 'Curriculum'}
                   </span>
                 </div>
               </div>

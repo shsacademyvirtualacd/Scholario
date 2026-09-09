@@ -447,11 +447,14 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
                 disabled={uploading}
                 className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] dark:border-[#27272A] bg-white dark:bg-[#141416] text-sm font-semibold text-[#111111] dark:text-[#F4F4F5] focus:outline-hidden focus:ring-2 focus:ring-[#111111] dark:focus:ring-[#F4C430]"
               >
-                {availableGrades.map((g) => (
-                  <option key={g.grade} value={g.grade} className="bg-white dark:bg-[#18181B] text-[#111111] dark:text-[#F4F4F5]">
-                    Grade {g.grade} ({g.displayName} {board === 'sindh' ? 'Sindh' : board === 'ielts' ? 'IELTS' : 'FBISE'})
-                  </option>
-                ))}
+                {availableGrades.map((g) => {
+                  const bLabel = board === 'sindh' ? 'Sindh' : board === 'ielts' ? 'IELTS' : board === 'fbise' ? 'FBISE' : board.toUpperCase();
+                  return (
+                    <option key={g.grade} value={g.grade} className="bg-white dark:bg-[#18181B] text-[#111111] dark:text-[#F4F4F5]">
+                      Grade {g.grade} ({g.displayName} {bLabel})
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

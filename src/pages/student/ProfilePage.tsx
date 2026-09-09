@@ -5,7 +5,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import ProfileAvatar from '../../components/common/ProfileAvatar';
 import { useAuth } from '../../features/auth/AuthContext';
 import { updateProfile, getEnrollmentsForStudent, getFeeStatus, getStudentIdForProfile } from '../../lib/db';
-import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { getEnrolledSubjectsForStudent, getStudentBoardLabel } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
 import type { Enrollment } from '../../types';
@@ -139,7 +139,7 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const boardLabel = profile?.class?.board?.name || enrollments[0]?.offering?.class?.board?.name || 'FBISE';
+  const boardLabel = getStudentBoardLabel(profile || {}, enrollments as any, (enrollments || []).map(e => e.offering).filter(Boolean) as any);
   const gradeLabel = profile?.class?.display_name || enrollments[0]?.offering?.class?.display_name || 'Not Enrolled';
   const streamLabel = profile?.stream_obj?.name || profile?.stream || (enrollments[0] as any)?.stream || enrollments[0]?.offering?.stream || 'General Stream';
   

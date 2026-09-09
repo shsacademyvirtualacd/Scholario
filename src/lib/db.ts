@@ -334,17 +334,81 @@ export async function getAllOfferings(): Promise<ClassOffering[]> {
   return rows.map(mapOffering).sort((a: any, b: any) => (a.subject_name || a.subject?.name || '').localeCompare(b.subject_name || b.subject?.name || ''));
 }
 
+/** Helper to resolve all possible IDs for a teacher (UUID, teacher row ID, roster ID) */
+async function resolveTeacherCandidateIds(teacherId: string): Promise<{ ids: Set<string>; rosterClassIds: Set<string> }> {
+  const ids = new Set<string>([teacherId]);
+  const rosterClassIds = new Set<string>();
+
+  try {
+    const [teacherRes, rosterRes] = await Promise.all([
+      (supabase as any)
+        .from('teachers')
+        .select('id, user_id')
+        .or(`id.eq.${teacherId},user_id.eq.${teacherId}`),
+      (supabase as any)
+        .from('roster')
+        .select('id, profile_id, class_ids, role')
+        .eq('role', 'teacher'),
+    ]);
+
+    if (teacherRes?.data && Array.isArray(teacherRes.data)) {
+      teacherRes.data.forEach((t: any) => {
+        if (t.id) ids.add(t.id);
+        if (t.user_id) ids.add(t.user_id);
+      });
+    }
+
+    if (rosterRes?.data && Array.isArray(rosterRes.data)) {
+      rosterRes.data.forEach((r: any) => {
+        if (r.id === teacherId || r.profile_id === teacherId) {
+          if (r.id) ids.add(r.id);
+          if (r.profile_id) ids.add(r.profile_id);
+          if (Array.isArray(r.class_ids)) {
+            r.class_ids.forEach((cid: string) => rosterClassIds.add(cid));
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[resolveTeacherCandidateIds] error:', err);
+  }
+
+  return { ids, rosterClassIds };
+}
+
 /** Teacher: get only offerings assigned to this teacher */
 export async function getOfferingsForTeacher(teacherId?: string): Promise<ClassOffering[]> {
-  let query = supabase
-    .from('class_offerings')
-    .select('*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)');
-  if (teacherId) {
-    query = query.eq('teacher_id', teacherId);
+  if (!teacherId) {
+    const all = await getAllOfferings();
+    return all;
   }
-  const { data, error } = await query;
-  const rows = throwOnError(data, error, 'getOfferingsForTeacher');
-  return rows.map(mapOffering).sort((a: any, b: any) => (a.subject_name || a.subject?.name || '').localeCompare(b.subject_name || b.subject?.name || ''));
+
+  try {
+    const [{ ids, rosterClassIds }, allOfferings] = await Promise.all([
+      resolveTeacherCandidateIds(teacherId),
+      getAllOfferings(),
+    ]);
+
+    const filtered = allOfferings.filter((o: any) => {
+      const offTeacherId = o.teacher_id || o.teacher?.id;
+      const isDirectMatch = offTeacherId && ids.has(offTeacherId);
+      const isRosterMatch = rosterClassIds.has(o.id);
+      return isDirectMatch || isRosterMatch;
+    });
+
+    return filtered.sort((a: any, b: any) => (a.subject_name || a.subject?.name || '').localeCompare(b.subject_name || b.subject?.name || ''));
+  } catch (err) {
+    console.warn('[getOfferingsForTeacher] fallback query:', err);
+    let query = supabase
+      .from('class_offerings')
+      .select('*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)');
+    if (teacherId) {
+      query = query.eq('teacher_id', teacherId);
+    }
+    const { data, error } = await query;
+    const rows = throwOnError(data, error, 'getOfferingsForTeacher');
+    return rows.map(mapOffering).sort((a: any, b: any) => (a.subject_name || a.subject?.name || '').localeCompare(b.subject_name || b.subject?.name || ''));
+  }
 }
 
 /** Student: get offerings the student is enrolled in */
@@ -406,23 +470,35 @@ export async function getAllSlots(): Promise<ClassSlot[]> {
 
 /** Teacher: get slots for this teacher's assigned offerings */
 export async function getSlotsForTeacher(teacherId?: string): Promise<ClassSlot[]> {
-  let query = supabase
-    .from('class_slots')
-    .select('*, offering:class_offerings!inner(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
-    .order('day_of_week')
-    .order('start_time');
-  if (teacherId) {
-    query = query.eq('offering.teacher_id', teacherId);
+  if (!teacherId) {
+    return getAllSlots();
   }
-  const { data, error } = await query;
-  const rows = throwOnError(data, error, 'getSlotsForTeacher');
-  return rows.map((r: any) => ({
-    ...r,
-    start_time: r.start_time || '16:00:00',
-    end_time: r.end_time || '17:00:00',
-    day_of_week: r.day_of_week ?? 0,
-    offering: mapOffering(r.offering),
-  }));
+  try {
+    const teacherOfferings = await getOfferingsForTeacher(teacherId);
+    const offeringIds = new Set(teacherOfferings.map((o) => o.id));
+    if (offeringIds.size === 0) return [];
+    const allSlots = await getAllSlots();
+    return allSlots.filter((s) => s.offering_id && offeringIds.has(s.offering_id));
+  } catch (err) {
+    console.warn('[getSlotsForTeacher] fallback query:', err);
+    let query = supabase
+      .from('class_slots')
+      .select('*, offering:class_offerings!inner(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
+      .order('day_of_week')
+      .order('start_time');
+    if (teacherId) {
+      query = query.eq('offering.teacher_id', teacherId);
+    }
+    const { data, error } = await query;
+    const rows = throwOnError(data, error, 'getSlotsForTeacher');
+    return rows.map((r: any) => ({
+      ...r,
+      start_time: r.start_time || '16:00:00',
+      end_time: r.end_time || '17:00:00',
+      day_of_week: r.day_of_week ?? 0,
+      offering: mapOffering(r.offering),
+    }));
+  }
 }
 
 /** Student: get slots for this student's enrolled offerings */
@@ -871,6 +947,12 @@ export async function getAttendanceForSession(slotId: string, date: string): Pro
 /** Teacher: get all attendance records for classes taught by a teacher */
 export async function getAttendanceForTeacher(teacherId: string, sessionDate?: string): Promise<Attendance[]> {
   try {
+    const [teacherOfferings, { ids }] = await Promise.all([
+      getOfferingsForTeacher(teacherId),
+      resolveTeacherCandidateIds(teacherId),
+    ]);
+    const offeringIds = new Set(teacherOfferings.map((o) => o.id));
+
     let query = supabase
       .from('attendance')
       .select('*, slot:class_slots(*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*)))');
@@ -879,25 +961,25 @@ export async function getAttendanceForTeacher(teacherId: string, sessionDate?: s
       query = query.eq('session_date', sessionDate);
     }
     const { data, error } = await query;
+    let rows: any[] = [];
     if (error) {
       console.warn('[getAttendanceForTeacher] direct query failed, falling back:', error);
-      const all = await getAllAttendance();
-      return all.filter((r) => {
-        const tId = r.slot?.offering?.teacher_id || r.slot?.offering?.teacher?.id;
-        if (tId !== teacherId) return false;
-        if (sessionDate && r.session_date !== sessionDate) return false;
-        return true;
+      rows = await getAllAttendance();
+    } else {
+      rows = (data || []).map((r: any) => {
+        if (r.slot) {
+          r.slot.offering = mapOffering(r.slot.offering);
+        }
+        return r;
       });
     }
-    const rows = (data || []).map((r: any) => {
-      if (r.slot) {
-        r.slot.offering = mapOffering(r.slot.offering);
-      }
-      return r;
-    });
+
     return rows.filter((r: any) => {
+      if (sessionDate && r.session_date !== sessionDate) return false;
+      const offId = r.slot?.offering_id || r.slot?.offering?.id;
+      if (offId && offeringIds.has(offId)) return true;
       const tId = r.slot?.offering?.teacher_id || r.slot?.offering?.teacher?.id;
-      return tId === teacherId;
+      return Boolean(tId && ids.has(tId));
     });
   } catch (err) {
     console.warn('[getAttendanceForTeacher] error:', err);

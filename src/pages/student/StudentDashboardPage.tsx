@@ -505,9 +505,12 @@ const NextClassWidget: React.FC<{
         <span className="text-xs font-semibold text-[#737373]">
           {(() => {
             const b = (nextSlot.offering?.board || nextSlot.offering?.board_id || (nextSlot.offering as any)?.class?.board_id || '').toLowerCase();
+            const bName = (nextSlot.offering as any)?.class?.board?.name || (nextSlot.offering as any)?.board_name;
             if (b === 'ielts') return 'IELTS Preparation';
             if (b === 'sindh') return `Sindh · Gr. ${nextSlot.offering?.grade || '10'}`;
-            return `FBISE · Gr. ${nextSlot.offering?.grade || '10'}`;
+            if (b === 'fbise') return `FBISE · Gr. ${nextSlot.offering?.grade || '10'}`;
+            if (bName) return `${bName} · Gr. ${nextSlot.offering?.grade || '10'}`;
+            return nextSlot.offering?.grade ? `Gr. ${nextSlot.offering.grade}` : 'Scheduled Class';
           })()}
         </span>
       </div>

@@ -464,13 +464,13 @@ export const RosterManagerPage: React.FC = () => {
     const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null) || (entry.email ? Object.values(profilesMap).find((prof: any) => (prof.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
     if (p?.class_id && classesMap[p.class_id]) {
       const cls = classesMap[p.class_id];
-      const bName = cls.board_id === 'sindh' ? 'Sindh' : 'FBISE';
+      const bName = cls.board_id === 'sindh' ? 'Sindh' : cls.board_id === 'ielts' ? 'IELTS' : cls.board_id === 'fbise' ? 'FBISE' : (cls.board?.name || cls.board_id?.toUpperCase() || 'Curriculum');
       return `${cls.display_name} (${bName})`;
     }
     if (entry.class_ids?.length > 0) {
       if (classesMap[entry.class_ids[0]]) {
         const cls = classesMap[entry.class_ids[0]];
-        const bName = cls.board_id === 'sindh' ? 'Sindh' : 'FBISE';
+        const bName = cls.board_id === 'sindh' ? 'Sindh' : cls.board_id === 'ielts' ? 'IELTS' : cls.board_id === 'fbise' ? 'FBISE' : (cls.board?.name || cls.board_id?.toUpperCase() || 'Curriculum');
         return `${cls.display_name} (${bName})`;
       }
       const firstOff = offerings.find(o => o.id === entry.class_ids[0]);
@@ -485,7 +485,7 @@ export const RosterManagerPage: React.FC = () => {
     const stream = getStream(entry);
     return formatShortClassAndBoard({
       gradeName: full,
-      boardName: full.toLowerCase().includes('sindh') ? 'Sindh' : full.toLowerCase().includes('fbise') || full.toLowerCase().includes('federal') ? 'FBISE' : full,
+      boardName: full.toLowerCase().includes('sindh') ? 'Sindh' : full.toLowerCase().includes('ielts') ? 'IELTS' : full.toLowerCase().includes('fbise') || full.toLowerCase().includes('federal') ? 'FBISE' : full,
       streamName: stream,
     });
   };

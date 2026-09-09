@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Megaphone, Calendar, ShieldAlert } from 'lucide-react';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import SectionHeader from '../../components/ui/SectionHeader';
-import { getAnnouncements } from '../../lib/db';
+import { getAnnouncements, getOfferingsForTeacher } from '../../lib/db';
+import { useAuth } from '../../features/auth/AuthContext';
 import { useMobile } from '../../hooks/useMobile';
 import { pageCache } from '../../lib/pageCache';
 import { MathText } from '../../components/common/MathText';
@@ -10,6 +11,7 @@ import type { Announcement } from '../../types';
 
 export const TeacherAnnouncementsPage: React.FC = () => {
   const isMobile = useMobile();
+  const { profile } = useAuth();
   const cachedAnn = pageCache.get<Announcement[]>('teacher_announcements');
   const [announcements, setAnnouncements] = useState<Announcement[]>(cachedAnn || []);
   const [loading, setLoading] = useState(!cachedAnn || cachedAnn.length === 0);
@@ -19,14 +21,29 @@ export const TeacherAnnouncementsPage: React.FC = () => {
     if (announcements.length === 0) {
       setLoading(true);
     }
-    getAnnouncements()
-      .then((data) => {
-        setAnnouncements(data);
-        pageCache.set('teacher_announcements', data);
+    Promise.all([
+      getAnnouncements(),
+      profile?.id ? getOfferingsForTeacher(profile.id) : Promise.resolve([]),
+    ])
+      .then(([allAnnouncements, teacherOfferings]) => {
+        const teacherClassIds = new Set<string>();
+        teacherOfferings.forEach((o) => {
+          if (o.class_id) teacherClassIds.add(o.class_id);
+        });
+
+        // Scope to system announcements + class announcements where teacher teaches that class
+        const scoped = allAnnouncements.filter((ann) => {
+          if (ann.scope === 'system') return true;
+          if (ann.scope === 'class' && ann.class_id && teacherClassIds.has(ann.class_id)) return true;
+          return false;
+        });
+
+        setAnnouncements(scoped);
+        pageCache.set('teacher_announcements', scoped);
       })
       .catch((err) => console.error('[TeacherAnnouncements] Fetch error:', err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [profile?.id]);
 
   const sortedAnnouncements = [...announcements].sort((a, b) => {
     const timeA = new Date(a.created_at).getTime();
@@ -44,18 +61,18 @@ export const TeacherAnnouncementsPage: React.FC = () => {
           />
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6 shadow-2xs">
-          <div className="flex items-center justify-between mb-6 border-b border-[#F5F5F5] pb-4 flex-wrap gap-2">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-[#E5E5E5] dark:border-zinc-800 p-6 shadow-2xs">
+          <div className="flex items-center justify-between mb-6 border-b border-[#F5F5F5] dark:border-zinc-800 pb-4 flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-[#111111] text-base">All Visible Broadcasts</h2>
+              <h2 className="font-bold text-[#111111] dark:text-zinc-100 text-base">All Visible Broadcasts</h2>
               <span className="badge badge-gray text-xs font-bold">{announcements.length} updates</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs font-bold">
-              <span className="text-[#737373]">Sort:</span>
+              <span className="text-[#737373] dark:text-zinc-400">Sort:</span>
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as 'desc' | 'asc')}
-                className="bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111] rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer hover:bg-[#F5F5F5]"
+                className="bg-[#FAFAFA] dark:bg-zinc-800 border border-[#E5E5E5] dark:border-zinc-700 text-[#111111] dark:text-zinc-100 rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer hover:bg-[#F5F5F5] dark:hover:bg-zinc-700"
               >
                 <option value="desc">Newest first</option>
                 <option value="asc">Oldest first</option>
@@ -66,28 +83,28 @@ export const TeacherAnnouncementsPage: React.FC = () => {
           {loading && announcements.length === 0 ? (
             <div className="space-y-4 animate-pulse">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="p-5 rounded-2xl border border-[#E5E5E5] flex flex-col md:flex-row items-start gap-4 bg-white">
-                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 shrink-0 w-12 h-12" />
+                <div key={n} className="p-5 rounded-2xl border border-[#E5E5E5] dark:border-zinc-800 flex flex-col md:flex-row items-start gap-4 bg-white dark:bg-zinc-900">
+                  <div className="p-3 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800 shrink-0 w-12 h-12" />
                   <div className="flex-1 min-w-0 space-y-3 w-full">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <div className="h-5 bg-gray-100 rounded w-1/3" />
-                      <div className="h-5 bg-gray-100 rounded-full w-20" />
-                      <div className="h-5 bg-gray-100 rounded-full w-28" />
+                      <div className="h-5 bg-gray-100 dark:bg-zinc-800 rounded w-1/3" />
+                      <div className="h-5 bg-gray-100 dark:bg-zinc-800 rounded-full w-20" />
+                      <div className="h-5 bg-gray-100 dark:bg-zinc-800 rounded-full w-28" />
                     </div>
-                    <div className="h-4 bg-gray-100 rounded w-full" />
-                    <div className="h-4 bg-gray-100 rounded w-5/6" />
-                    <div className="h-3 bg-gray-100 rounded w-24 pt-1" />
+                    <div className="h-4 bg-gray-100 dark:bg-zinc-800 rounded w-full" />
+                    <div className="h-4 bg-gray-100 dark:bg-zinc-800 rounded w-5/6" />
+                    <div className="h-3 bg-gray-100 dark:bg-zinc-800 rounded w-24 pt-1" />
                   </div>
                 </div>
               ))}
             </div>
           ) : announcements.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center text-center">
-              <div className="w-12 h-12 rounded-full bg-[#F5F5F5] flex items-center justify-center text-[#A3A3A3] mb-3">
+              <div className="w-12 h-12 rounded-full bg-[#F5F5F5] dark:bg-zinc-800 flex items-center justify-center text-[#A3A3A3] dark:text-zinc-500 mb-3">
                 <Megaphone size={22} />
               </div>
-              <h3 className="font-bold text-[#111111] text-sm">No Active Announcements</h3>
-              <p className="text-xs text-[#737373] max-w-sm mt-1 leading-relaxed">
+              <h3 className="font-bold text-[#111111] dark:text-zinc-100 text-sm">No Active Announcements</h3>
+              <p className="text-xs text-[#737373] dark:text-zinc-400 max-w-sm mt-1 leading-relaxed">
                 There are currently no active announcements posted for your assigned classes or school.
               </p>
             </div>
@@ -98,15 +115,15 @@ export const TeacherAnnouncementsPage: React.FC = () => {
                   key={ann.id}
                   className={`p-5 rounded-xl border transition-all flex ${isMobile ? 'flex-col gap-3' : 'items-start gap-4'} ${
                     ann.severity === 'crucial'
-                      ? 'bg-[#FEF2F2]/40 border-[#FECACA] shadow-2xs'
-                      : 'bg-white border-[#E5E5E5] hover:border-[#D4D4D4]'
+                      ? 'bg-[#FEF2F2]/40 dark:bg-red-950/20 border-[#FECACA] dark:border-red-900/40 shadow-2xs'
+                      : 'bg-white dark:bg-zinc-900/80 border-[#E5E5E5] dark:border-zinc-800 hover:border-[#D4D4D4] dark:hover:border-zinc-700'
                   }`}
                 >
                   <div
                     className={`p-3 rounded-xl border shrink-0 flex items-center justify-center ${
                       ann.severity === 'crucial'
-                        ? 'bg-[#FEE2E2] border-[#FECACA] text-[#DC2626]'
-                        : 'bg-[#FAFAFA] border-[#F0F0F0] text-[#111111]'
+                        ? 'bg-[#FEE2E2] dark:bg-red-900/40 border-[#FECACA] dark:border-red-800 text-[#DC2626] dark:text-red-400'
+                        : 'bg-[#FAFAFA] dark:bg-zinc-800 border-[#F0F0F0] dark:border-zinc-700 text-[#111111] dark:text-zinc-100'
                     }`}
                   >
                     {ann.severity === 'crucial' ? <ShieldAlert size={22} /> : <Megaphone size={22} />}
@@ -114,32 +131,32 @@ export const TeacherAnnouncementsPage: React.FC = () => {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <h3 className="font-bold text-[#111111] text-sm md:text-base truncate">
+                      <h3 className="font-bold text-[#111111] dark:text-zinc-100 text-sm md:text-base truncate">
                         <MathText text={ann.title} />
                       </h3>
                       <span
                         className={`badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2.5 rounded-full border ${
                           ann.severity === 'crucial'
-                            ? 'bg-red-50 text-red-600 border-red-200'
-                            : 'bg-green-50 text-green-600 border-green-200'
+                            ? 'bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50'
+                            : 'bg-green-50 dark:bg-green-950/50 text-green-600 dark:text-green-400 border-green-200 dark:border-green-900/50'
                         }`}
                       >
                         {ann.severity === 'crucial' ? '🔴 Crucial' : '🟢 Normal'}
                       </span>
-                      <span className="badge bg-[#FAFAFA] text-[#525252] border border-[#E5E5E5] text-[10px] font-bold py-0.5 px-2.5 rounded-full">
+                      <span className="badge bg-[#FAFAFA] dark:bg-zinc-800 text-[#525252] dark:text-zinc-300 border border-[#E5E5E5] dark:border-zinc-700 text-[10px] font-bold py-0.5 px-2.5 rounded-full">
                         {ann.scope === 'class'
                           ? `🎯 Grade ${ann.class?.grade || ''} • ${ann.stream?.name || 'All Streams'}`
                           : '🌐 Whole System'}
                       </span>
                     </div>
 
-                    <div className="text-xs md:text-sm text-[#525252] mt-2 leading-relaxed font-medium whitespace-pre-wrap">
+                    <div className="text-xs md:text-sm text-[#525252] dark:text-zinc-300 mt-2 leading-relaxed font-medium whitespace-pre-wrap">
                       <MathText text={ann.body} />
                     </div>
 
-                    <div className="flex items-center gap-3 mt-3.5 text-[11px] text-[#A3A3A3] font-bold">
-                      <span className="flex items-center gap-1 text-[#737373]">
-                        <Calendar size={12} className="inline mr-1 text-[#A3A3A3]" />
+                    <div className="flex items-center gap-3 mt-3.5 text-[11px] text-[#A3A3A3] dark:text-zinc-500 font-bold">
+                      <span className="flex items-center gap-1 text-[#737373] dark:text-zinc-400">
+                        <Calendar size={12} className="inline mr-1 text-[#A3A3A3] dark:text-zinc-500" />
                         {new Date(ann.created_at).toLocaleDateString()}
                       </span>
                       <span>•</span>

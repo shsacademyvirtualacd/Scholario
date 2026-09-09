@@ -379,7 +379,7 @@ export const NotesManagerPage: React.FC = () => {
               {scopedOfferings.map((o) => {
                 const subjName = o.subject_name || (typeof o.subject === 'string' ? o.subject : o.subject?.name) || 'Class';
                 const gr = o.grade || (o as any).class?.grade || '10';
-                const boardLabel = o.board === 'sindh' || (o as any).class?.board_id === 'sindh' ? 'Sindh' : 'FBISE';
+                const boardLabel = o.board === 'sindh' || (o as any).class?.board_id === 'sindh' ? 'Sindh' : o.board === 'ielts' || (o as any).class?.board_id === 'ielts' ? 'IELTS' : String(o.board || (o as any).class?.board?.name || (o as any).class?.board_id || (o as any).board_name || 'FBISE').toUpperCase();
                 return (
                   <option key={o.id} value={o.id}>
                     {subjName} ({gr}th {boardLabel})

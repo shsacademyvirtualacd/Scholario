@@ -367,7 +367,7 @@ export const NoteUploadForm: React.FC<NoteUploadFormProps> = ({
             const subjName = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || 'Class';
             const gr = offering.grade || (offering as any).class?.grade || '10';
             const st = typeof offering.stream === 'string' ? offering.stream : offering.stream?.name || 'All Streams';
-            const offBoard = offering.board === 'sindh' || (offering as any).class?.board_id === 'sindh' ? 'Sindh' : offering.board === 'ielts' || (offering as any).class?.board_id === 'ielts' ? 'IELTS' : 'FBISE';
+            const offBoard = offering.board === 'sindh' || (offering as any).class?.board_id === 'sindh' ? 'Sindh' : offering.board === 'ielts' || (offering as any).class?.board_id === 'ielts' ? 'IELTS' : String(offering.board || (offering as any).class?.board?.name || (offering as any).class?.board_id || (offering as any).board_name || 'Curriculum').toUpperCase();
             return (
               <option key={offering.id} value={offering.id}>
                 {subjName} — Grade {gr} {offBoard} ({st})

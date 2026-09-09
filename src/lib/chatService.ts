@@ -1023,27 +1023,14 @@ export async function getStudentChatContacts(studentId: string): Promise<{
 }
 
 /**
- * For Teacher: Get all students (enrolled + all students) and Admins so teacher can text both
+ * For Teacher: Get all students enrolled in teacher's assigned classes and Admins so teacher can text both.
+ * Zero-trust: If teacher has no enrolled students, returns empty students list.
  */
 export async function getTeacherChatContacts(teacherId: string): Promise<{
   students: Profile[];
   admins: Profile[];
 }> {
-  let students = await getStudentsForTeacherClasses(teacherId);
-
-  // Fallback to all students if teacher has no enrolled students listed yet
-  if (students.length === 0) {
-    try {
-      const { data: allStudents } = await (supabase as any)
-        .from('profiles')
-        .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
-        .eq('role', 'student')
-        .order('full_name');
-      students = allStudents || [];
-    } catch (err) {
-      console.warn('[chatService] Error fetching all students fallback:', err);
-    }
-  }
+  const students = await getStudentsForTeacherClasses(teacherId);
 
   let admins: Profile[] = [];
   try {
@@ -1070,7 +1057,7 @@ export async function getTeacherChatContacts(teacherId: string): Promise<{
     admins = enrichProfilesList(admins);
   }
 
-  // Ensure students are also enriched with fallback names and details
+  // Ensure enrolled students are also enriched with fallback names and details
   const enrichedStudents = enrichProfilesList(students);
 
   return { students: enrichedStudents, admins };
@@ -1115,27 +1102,71 @@ export async function getAdminChatContacts(): Promise<{
  * For Teacher: Get all students enrolled in any class taught by this teacher
  */
 export async function getStudentsForTeacherClasses(teacherId: string): Promise<Profile[]> {
+  if (!teacherId) return [];
   try {
-    const { data: offerings } = await (supabase as any)
-      .from('class_offerings')
-      .select('id')
-      .eq('teacher_id', teacherId);
+    // 1. Gather all alternate identifiers for this teacher (UUID, teacher record id, etc.)
+    const teacherIds = new Set<string>([teacherId]);
+    const { data: teacherRecords } = await (supabase as any)
+      .from('teachers')
+      .select('id, user_id')
+      .or(`id.eq.${teacherId},user_id.eq.${teacherId}`);
+    if (teacherRecords) {
+      teacherRecords.forEach((t: any) => {
+        if (t.id) teacherIds.add(t.id);
+        if (t.user_id) teacherIds.add(t.user_id);
+      });
+    }
 
-    if (!offerings || offerings.length === 0) return [];
-    const offeringIds = offerings.map((o: any) => o.id);
+    // 2. Fetch class offerings assigned to any of these teacher IDs
+    const { data: allOfferings } = await (supabase as any)
+      .from('class_offerings')
+      .select('id, teacher_id, class_id');
+
+    const matchedOfferings = (allOfferings || []).filter((o: any) => teacherIds.has(o.teacher_id));
+    if (matchedOfferings.length === 0) return [];
+    const offeringIds = matchedOfferings.map((o: any) => o.id);
+    const classIds = matchedOfferings.map((o: any) => o.class_id).filter(Boolean);
+
+    // 3. Find enrolled students via offering_id or class_offering_id
+    const studentIds = new Set<string>();
 
     const { data: enrollments } = await (supabase as any)
       .from('enrollments')
-      .select('student_id')
-      .in('class_offering_id', offeringIds);
+      .select('student_id, offering_id, class_offering_id');
 
-    if (!enrollments || enrollments.length === 0) return [];
-    const studentIds = Array.from(new Set(enrollments.map((e: any) => e.student_id)));
+    if (enrollments && enrollments.length > 0) {
+      enrollments.forEach((e: any) => {
+        const offId = e.offering_id || e.class_offering_id;
+        if (offId && offeringIds.includes(offId) && e.student_id) {
+          studentIds.add(e.student_id);
+        }
+      });
+    }
+
+    // 4. Also check roster table for students assigned to these offerings or classes
+    const { data: rosterStudents } = await (supabase as any)
+      .from('roster')
+      .select('id, profile_id, class_ids, role')
+      .eq('role', 'student');
+
+    if (rosterStudents && Array.isArray(rosterStudents)) {
+      rosterStudents.forEach((r: any) => {
+        if (Array.isArray(r.class_ids)) {
+          const match = r.class_ids.some((cid: string) => offeringIds.includes(cid) || classIds.includes(cid));
+          if (match) {
+            const sid = r.profile_id || r.id;
+            if (sid) studentIds.add(sid);
+          }
+        }
+      });
+    }
+
+    if (studentIds.size === 0) return [];
 
     const { data: studentProfiles } = await (supabase as any)
       .from('profiles')
       .select('*, class:classes(*, board:boards(*)), stream_obj:streams(*)')
-      .in('id', studentIds)
+      .in('id', Array.from(studentIds))
       .order('full_name');
 
     return studentProfiles || [];

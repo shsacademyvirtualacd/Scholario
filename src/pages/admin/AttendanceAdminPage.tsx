@@ -897,7 +897,7 @@ export const AttendanceAdminPage: React.FC = () => {
                                   const subjectTitle = offering.subject_name || offering.subject;
                                   const gradeLabel = offering.grade || (offering as any).class?.grade || '10';
                                   const streamLabel = offering.stream ? (typeof offering.stream === 'string' ? offering.stream : (offering.stream as any).name) : null;
-                                  const boardLabel = offering.board ? offering.board.toUpperCase() : 'FBISE';
+                                  const boardLabel = String(offering.board || (offering as any).class?.board?.name || (offering as any).class?.board_id || (offering as any).board_name || 'Curriculum').toUpperCase();
 
                                   return (
                                     <React.Fragment key={offering.id}>

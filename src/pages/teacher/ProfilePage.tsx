@@ -127,14 +127,17 @@ export const ProfilePage: React.FC = () => {
               <p className="text-xs text-[#737373] italic">No active class offerings assigned to you yet.</p>
             ) : (
               <div className={isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
-                {classes.map((cls) => (
-                  <div key={cls.id} className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl flex items-center justify-between">
-                    <div>
-                      <span className="block text-xs font-bold text-[#111111]">{cls.subject_name || cls.subject}</span>
-                      <span className="text-[10px] font-semibold text-[#737373]">Grade {cls.grade} (FBISE)</span>
+                {classes.map((cls) => {
+                  const bName = String(cls.board || (cls as any).class?.board?.name || (cls as any).class?.board_id || (cls as any).board_name || 'Curriculum').toUpperCase();
+                  return (
+                    <div key={cls.id} className="p-3 bg-[#FAFAFA] dark:bg-zinc-800 border border-[#E5E5E5] dark:border-zinc-700 rounded-xl flex items-center justify-between">
+                      <div>
+                        <span className="block text-xs font-bold text-[#111111] dark:text-zinc-100">{cls.subject_name || cls.subject}</span>
+                        <span className="text-[10px] font-semibold text-[#737373] dark:text-zinc-400">Grade {cls.grade} ({bName})</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
