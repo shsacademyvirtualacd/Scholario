@@ -127,6 +127,9 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   }, [offeringId, isDuplicate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter offerings based on chosen class and stream.
+  const selectedClassObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
+  const isSindhBoardSelected = selectedClassObj?.board_id === 'sindh';
+
   const filteredOfferings = offerings.filter(o => {
     if (selectedClassId && o.class_id !== selectedClassId && (o as any)?.class?.id !== selectedClassId) {
       return false;
@@ -135,12 +138,19 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       const offStreamId = o.stream_id || (o as any)?.stream?.id;
       if (offStreamId && offStreamId !== selectedStreamId) return false;
     }
+    // Hard constraint (Rule 3): Islamiat is only a valid subject for FBISE.
+    // It must not appear as a selectable subject option anywhere when Sindh Board is selected.
+    const subName = (o.subject_name || o.subject?.name || '').toLowerCase().trim();
+    if (isSindhBoardSelected && subName.includes('islamiat')) {
+      return false;
+    }
     return true;
   });
 
   const currentSelectedOffering = offerings.find(o => o.id === offeringId);
+  const isCurrentIslamiatOnSindh = isSindhBoardSelected && (currentSelectedOffering?.subject_name || currentSelectedOffering?.subject?.name || '').toLowerCase().includes('islamiat');
   const selectableOfferings = [...filteredOfferings];
-  if (currentSelectedOffering && !selectableOfferings.some(o => o.id === currentSelectedOffering.id)) {
+  if (currentSelectedOffering && !isCurrentIslamiatOnSindh && !selectableOfferings.some(o => o.id === currentSelectedOffering.id)) {
     selectableOfferings.unshift(currentSelectedOffering);
   }
 
@@ -148,7 +158,14 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     if (isDuplicate) return;
     setSelectedClassId(val);
     setSelectedStreamId('');
-    setOfferingId('');
+    const cls = taxonomy?.classes?.find((c: any) => c.id === val);
+    if (cls?.board_id === 'sindh') {
+      const curSub = offerings.find(o => o.id === offeringId);
+      const subName = (curSub?.subject_name || curSub?.subject?.name || '').toLowerCase();
+      if (subName.includes('islamiat')) {
+        setOfferingId('');
+      }
+    }
   };
 
   const handleStreamChange = (val: string) => {
@@ -245,6 +262,69 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     if (isDuplicate && selectedDays.length === 0) {
       setError('Please select at least one day of the week to duplicate this slot to.');
       return;
+    }
+
+    // --- HARD CONSTRAINTS VALIDATION ---
+    const targetOffering = offerings.find(o => o.id === offeringId);
+    const subjectName = (slotMode === 'offering'
+      ? (targetOffering?.subject_name || targetOffering?.subject?.name || '')
+      : customTitle
+    ).toLowerCase().trim();
+
+    const targetClass = taxonomy?.classes?.find((c: any) => c.id === selectedClassId) || (targetOffering as any)?.class;
+    const boardId = targetClass?.board_id || '';
+    const grade = String(targetClass?.grade || '');
+
+    const timeToMins = (t: string) => {
+      if (!t) return 0;
+      const [h = 0, m = 0] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const slotStart = timeToMins(startTime);
+    const slotEnd = timeToMins(endTime);
+
+    // Period 1 window: 17:00 (5:00 PM) – 17:30 (5:30 PM) -> [1020, 1050 mins]
+    const overlapsP1 = Math.max(slotStart, 1020) < Math.min(slotEnd, 1050);
+    // Period 2 window: 17:30 (5:30 PM) – 18:00 (6:00 PM) -> [1050, 1080 mins]
+    const overlapsP2 = Math.max(slotStart, 1050) < Math.min(slotEnd, 1080);
+
+    // Rule 1: Physics, English, and Mathematics must NEVER be assigned to Period 1 (5:00–5:30 PM)
+    const isPhysicsEngMath =
+      subjectName.includes('physics') ||
+      subjectName.includes('english') ||
+      subjectName.includes('mathematics') ||
+      subjectName.includes('math');
+
+    if (isPhysicsEngMath && overlapsP1) {
+      setError('Rule 1 Violation: Physics, English, and Mathematics must NEVER be assigned to Period 1 (5:00–5:30 PM). Please assign to Period 2, 3, or 4.');
+      return;
+    }
+
+    // Rule 2: Urdu must NEVER be assigned to Period 1 or Period 2 (5:00–6:00 PM) — only Period 3 or Period 4
+    const isUrdu = subjectName.includes('urdu');
+    if (isUrdu && (overlapsP1 || overlapsP2)) {
+      setError('Rule 2 Violation: Urdu must NEVER be assigned to Period 1 or Period 2 (5:00–6:00 PM). Urdu may only be scheduled in Period 3 (6:00–6:30 PM) or Period 4 (6:30–7:00 PM).');
+      return;
+    }
+
+    // Rule 3: Islamiat is only a valid subject for FBISE — it must not appear or be saved for Sindh Board
+    const isIslamiat = subjectName.includes('islamiat');
+    if (isIslamiat && boardId === 'sindh') {
+      setError('Rule 3 Violation: Islamiat is only a valid subject for FBISE and cannot be scheduled for Sindh Board.');
+      return;
+    }
+
+    // Rule 4: Islamiat must default to Period 0 (4:30 PM) or Period 3/4 — cannot be in Period 1, except FBISE Grade 11 on Wed/Thu
+    if (isIslamiat && overlapsP1) {
+      const isFbiseGrade11 = boardId === 'fbise' && grade === '11';
+      const daysToCheck = isDuplicate ? selectedDays : [dayOfWeek];
+      const hasInvalidP1Day = daysToCheck.some(d => !(isFbiseGrade11 && (d === 2 || d === 3))); // 2=Wed, 3=Thu
+
+      if (hasInvalidP1Day) {
+        setError('Rule 4 Violation: Islamiat cannot be placed in Period 1 (5:00–5:30 PM). It must be scheduled in Period 0 (4:30–5:00 PM) or Period 3/4. (Exception: Period 1 is only permitted for FBISE Grade 11 on Wednesday and Thursday).');
+        return;
+      }
     }
 
     const fullStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
@@ -611,11 +691,11 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           </div>
         )}
 
-        {/* FBISE Quick Period Presets */}
+        {/* Quick Period Presets */}
         <div className="space-y-1.5 p-3 bg-blue-50/50 border border-blue-100/80 rounded-xl">
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-extrabold text-blue-900 block uppercase tracking-wider">
-              ⚡ FBISE Period Presets (4:00 PM – 6:50 PM)
+              ⚡ Timetable Period Presets (P0: 4:30 PM | P1–P4: 5:00 – 7:00 PM)
             </label>
             {isDuplicate && (
               <span className="text-[10px] font-bold text-blue-700">Editable for duplicates</span>
@@ -623,12 +703,12 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           </div>
           <div className={`grid gap-1.5 ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
             {[
-              { label: 'Period 1 (4:00 - 4:30 PM)', start: '16:00', end: '16:30' },
-              { label: 'Period 2 (4:30 - 5:00 PM)', start: '16:30', end: '17:00' },
-              { label: 'Period 3 (5:00 - 5:30 PM)', start: '17:00', end: '17:30' },
-              { label: 'Period 4 (5:30 - 6:00 PM)', start: '17:30', end: '18:00' },
-              { label: 'Period 5 (6:00 - 6:25 PM)', start: '18:00', end: '18:25' },
-              { label: 'Period 6 (6:25 - 6:50 PM)', start: '18:25', end: '18:50' },
+              { label: 'Period 0 (4:30 - 5:00 PM)', start: '16:30', end: '17:00' },
+              { label: 'Period 1 (5:00 - 5:30 PM)', start: '17:00', end: '17:30' },
+              { label: 'Period 2 (5:30 - 6:00 PM)', start: '17:30', end: '18:00' },
+              { label: 'Period 3 (6:00 - 6:30 PM)', start: '18:00', end: '18:30' },
+              { label: 'Period 4 (6:30 - 7:00 PM)', start: '18:30', end: '19:00' },
+              { label: 'Legacy (4:00 - 4:30 PM)', start: '16:00', end: '16:30' },
             ].map((p, idx) => {
               const isSelected = startTime === p.start && endTime === p.end;
               return (

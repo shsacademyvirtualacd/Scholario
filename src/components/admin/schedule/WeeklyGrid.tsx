@@ -18,15 +18,24 @@ interface WeeklyGridProps {
 const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const SHORT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// Canonical FBISE period schedule (reference presets & fallback when schedule has no slots yet)
+// Canonical period schedule (reference presets & fallback when schedule has no slots yet)
 export const CANONICAL_PERIODS = [
-  { start_time: '16:00:00', end_time: '16:30:00', label: 'Period 1' },
-  { start_time: '16:30:00', end_time: '17:00:00', label: 'Period 2' },
-  { start_time: '17:00:00', end_time: '17:30:00', label: 'Period 3' },
-  { start_time: '17:30:00', end_time: '18:00:00', label: 'Period 4' },
-  { start_time: '18:00:00', end_time: '18:25:00', label: 'Period 5' },
-  { start_time: '18:25:00', end_time: '18:50:00', label: 'Period 6' },
+  { start_time: '16:30:00', end_time: '17:00:00', label: 'Period 0' },
+  { start_time: '17:00:00', end_time: '17:30:00', label: 'Period 1' },
+  { start_time: '17:30:00', end_time: '18:00:00', label: 'Period 2' },
+  { start_time: '18:00:00', end_time: '18:30:00', label: 'Period 3' },
+  { start_time: '18:30:00', end_time: '19:00:00', label: 'Period 4' },
 ];
+
+export const getPeriodDisplayLabel = (startTime: string, fallbackIdx: number): string => {
+  const mins = timeStrToMins(startTime);
+  if (mins >= 16 * 60 + 20 && mins <= 16 * 60 + 40) return 'Period 0'; // 16:30 (4:30 PM)
+  if (mins >= 16 * 60 + 50 && mins <= 17 * 60 + 10) return 'Period 1'; // 17:00 (5:00 PM)
+  if (mins >= 17 * 60 + 20 && mins <= 17 * 60 + 40) return 'Period 2'; // 17:30 (5:30 PM)
+  if (mins >= 17 * 60 + 50 && mins <= 18 * 60 + 10) return 'Period 3'; // 18:00 (6:00 PM)
+  if (mins >= 18 * 60 + 20 && mins <= 18 * 60 + 40) return 'Period 4'; // 18:30 (6:30 PM)
+  return `Period ${fallbackIdx + 1}`;
+};
 
 export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
   slots,
@@ -235,7 +244,7 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                     <div className="flex items-center gap-1">
                       <Clock size={10} className="text-[#A3A3A3] shrink-0" />
                       <span className="text-[10px] font-black text-[#111111] block uppercase tracking-wider">
-                        Period {idx + 1}
+                        {getPeriodDisplayLabel(group.startTime, idx)}
                       </span>
                     </div>
                     <span className="text-[10px] font-bold text-[#525252] block mt-0.5">
@@ -310,7 +319,7 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <Clock size={11} className="text-[#A3A3A3] shrink-0" />
                         <span className="text-xs font-black text-[#111111] tracking-tight">
-                          Period {pIdx + 1}
+                          {getPeriodDisplayLabel(period.start_time, pIdx)}
                         </span>
                       </div>
                       <div className="text-[10px] font-semibold text-[#737373]">

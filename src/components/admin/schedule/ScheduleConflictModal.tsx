@@ -53,12 +53,12 @@ interface ScheduleConflictModalProps {
 }
 
 const CANONICAL_PERIODS = [
-  { label: 'Period 1', start: '16:00:00', end: '16:30:00', startShort: '16:00', endShort: '16:30' },
-  { label: 'Period 2', start: '16:30:00', end: '17:00:00', startShort: '16:30', endShort: '17:00' },
-  { label: 'Period 3', start: '17:00:00', end: '17:30:00', startShort: '17:00', endShort: '17:30' },
-  { label: 'Period 4', start: '17:30:00', end: '18:00:00', startShort: '17:30', endShort: '18:00' },
-  { label: 'Period 5', start: '18:00:00', end: '18:25:00', startShort: '18:00', endShort: '18:25' },
-  { label: 'Period 6', start: '18:25:00', end: '18:50:00', startShort: '18:25', endShort: '18:50' },
+  { label: 'Period 0 (4:30 PM)', start: '16:30:00', end: '17:00:00', startShort: '16:30', endShort: '17:00' },
+  { label: 'Period 1 (5:00 PM)', start: '17:00:00', end: '17:30:00', startShort: '17:00', endShort: '17:30' },
+  { label: 'Period 2 (5:30 PM)', start: '17:30:00', end: '18:00:00', startShort: '17:30', endShort: '18:00' },
+  { label: 'Period 3 (6:00 PM)', start: '18:00:00', end: '18:30:00', startShort: '18:00', endShort: '18:30' },
+  { label: 'Period 4 (6:30 PM)', start: '18:30:00', end: '19:00:00', startShort: '18:30', endShort: '19:00' },
+  { label: 'Legacy (4:00 PM)', start: '16:00:00', end: '16:30:00', startShort: '16:00', endShort: '16:30' },
 ];
 
 export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
