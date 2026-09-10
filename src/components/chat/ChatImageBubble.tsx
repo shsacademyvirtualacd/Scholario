@@ -19,6 +19,15 @@ interface ChatImageBubbleProps {
   senderName?: string;
   onReply?: (text: string) => void | Promise<void>;
   theme?: ChatTheme;
+  onSelectImage?: (img: {
+    imageUrl: string;
+    downloadUrl: string;
+    filename: string;
+    fileSize?: number | null;
+    senderName?: string;
+    timestamp?: string;
+    caption?: string;
+  }) => void;
 }
 
 export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
@@ -34,6 +43,7 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
   senderName,
   onReply,
   theme,
+  onSelectImage,
 }) => {
   const [token, setToken] = useState<string>('');
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -90,7 +100,33 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
         >
           {/* Image Thumbnail Container */}
           <div
-            onClick={() => !loadError && setIsViewerOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (loadError) return;
+              if (onSelectImage) {
+                onSelectImage({
+                  imageUrl,
+                  downloadUrl,
+                  filename,
+                  fileSize: attachmentSize,
+                  senderName: senderName || (isMe ? 'You' : 'Photo'),
+                  timestamp: createdAt,
+                  caption: hasCaption ? content : undefined,
+                });
+              } else {
+                setIsViewerOpen(true);
+              }
+            }}
+            onMouseDown={(e) => {
+              // Prevent bubble's long-press timer from firing when clicking photo to view
+              e.stopPropagation();
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+            }}
+            onContextMenu={(e) => {
+              e.stopPropagation();
+            }}
             className="relative w-full aspect-auto max-h-[300px] overflow-hidden bg-neutral-100 cursor-pointer select-none"
           >
             {isLoading && !loadError && (
@@ -177,19 +213,21 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
         {hasTail && <ChatBubbleTail isMe={isMe} fillColor={bubbleBg} />}
       </div>
 
-      {/* Fullscreen Pinch-to-zoom Viewer Modal */}
-      <ImageViewerModal
-        isOpen={isViewerOpen}
-        onClose={() => setIsViewerOpen(false)}
-        imageUrl={imageUrl}
-        downloadUrl={downloadUrl}
-        filename={filename}
-        fileSize={attachmentSize}
-        senderName={senderName || (isMe ? 'You' : 'Photo')}
-        timestamp={createdAt}
-        caption={hasCaption ? content : undefined}
-        onReply={onReply}
-      />
+      {/* Fullscreen Pinch-to-zoom Viewer Modal (fallback when no centralized onSelectImage) */}
+      {!onSelectImage && (
+        <ImageViewerModal
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+          imageUrl={imageUrl}
+          downloadUrl={downloadUrl}
+          filename={filename}
+          fileSize={attachmentSize}
+          senderName={senderName || (isMe ? 'You' : 'Photo')}
+          timestamp={createdAt}
+          caption={hasCaption ? content : undefined}
+          onReply={onReply}
+        />
+      )}
     </>
   );
 };

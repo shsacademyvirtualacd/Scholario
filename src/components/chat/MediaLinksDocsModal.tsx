@@ -296,6 +296,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                       <div
                         key={item.id}
                         onClick={() => {
+                          onClose();
                           onSelectImage?.({
                             imageUrl: imgUrl,
                             downloadUrl,

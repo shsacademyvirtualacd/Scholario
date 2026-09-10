@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import {
   ArrowLeft,
   Download,
@@ -46,6 +48,8 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   onReply,
   onForward,
 }) => {
+  useModalScrollLock(isOpen);
+
   // Zoom & Pan state
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -343,7 +347,9 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -352,7 +358,8 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 bg-black flex flex-col select-none touch-none overflow-hidden"
+          className="fixed inset-0 z-[99999] bg-black flex flex-col select-none touch-none overflow-hidden"
+          style={{ zIndex: 99999 }}
         >
           {/* ═════════════ TOP HEADER OVERLAY ═════════════ */}
           <AnimatePresence>
@@ -747,6 +754,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
           </AnimatePresence>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

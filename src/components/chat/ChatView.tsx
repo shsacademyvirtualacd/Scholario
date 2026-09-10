@@ -154,6 +154,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     imageUrl: string;
     downloadUrl: string;
     filename: string;
+    fileSize?: number | null;
     senderName?: string;
     timestamp?: string;
     caption?: string;
@@ -2294,6 +2295,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 senderName={isMe ? 'You' : (activeThread?.other_participant?.full_name || 'Contact')}
                                 onReply={handleReplyFromViewer}
                                 theme={activeChatTheme}
+                                onSelectImage={(img) => {
+                                  setActionMenuMessage(null);
+                                  setActionMenuCoords(null);
+                                  setDeleteConfirmMessage(null);
+                                  setShowMediaDocsModal(false);
+                                  setShowContactInfoModal(false);
+                                  setShowChatThemeModal(false);
+                                  setActiveViewerImage(img);
+                                }}
                               />
                             ) : msg.message_type === 'file' && msg.attachment_key ? (
                               <ChatFileBubble
@@ -3065,6 +3075,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
           messages={messages}
           contactName={activeThread.other_participant?.full_name || 'Contact'}
           onSelectImage={(img) => {
+            setActionMenuMessage(null);
+            setActionMenuCoords(null);
+            setDeleteConfirmMessage(null);
+            setShowMediaDocsModal(false);
+            setShowContactInfoModal(false);
+            setShowChatThemeModal(false);
             setActiveViewerImage(img);
           }}
         />
@@ -3078,6 +3094,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           imageUrl={activeViewerImage.imageUrl}
           downloadUrl={activeViewerImage.downloadUrl}
           filename={activeViewerImage.filename}
+          fileSize={activeViewerImage.fileSize}
           senderName={activeViewerImage.senderName || activeThread?.other_participant?.full_name || 'Contact'}
           timestamp={activeViewerImage.timestamp}
           caption={activeViewerImage.caption}

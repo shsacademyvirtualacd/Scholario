@@ -5,7 +5,13 @@ import { BOARDS, getGradesForBoard, getDefaultPrice } from '../../lib/taxonomy';
 import { getAllLiveFeeConfigs } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
+/**
+ * PricingSection: Public-facing interactive Pricing Calculator on the marketing landing page.
+ * Completely independent from any authenticated teacher/student profile or assigned board.
+ * Any visitor freely selects between Federal Board (FBISE), Sindh Board, or IELTS Preparation.
+ */
 const PricingSection: React.FC = () => {
+  // Public, visitor-controlled independent selection state
   const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh' | 'ielts'>('fbise');
   const [selectedGradeValue, setSelectedGradeValue] = useState('10');
   const [selectedIeltsStream, setSelectedIeltsStream] = useState<'Academic' | 'General Training'>('Academic');
@@ -134,11 +140,12 @@ const PricingSection: React.FC = () => {
                 {BOARDS.map((board) => (
                   <button
                     key={board.id}
+                    id={`pricing-board-btn-${board.id}`}
                     type="button"
                     onClick={() => {
                       setSelectedBoardId(board.id as 'fbise' | 'sindh' | 'ielts');
                     }}
-                    className={`py-2.5 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2.5 px-3 rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       selectedBoardId === board.id
                         ? 'bg-white text-[#111111] shadow-sm border border-[#E5E5E5]'
                         : 'text-[#737373] hover:text-[#111111]'
@@ -162,9 +169,10 @@ const PricingSection: React.FC = () => {
                   {(['Academic', 'General Training'] as const).map((stream) => (
                     <button
                       key={stream}
+                      id={`pricing-ielts-stream-btn-${stream.toLowerCase().replace(/\s+/g, '-')}`}
                       type="button"
                       onClick={() => setSelectedIeltsStream(stream)}
-                      className={`py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-center ${
+                      className={`py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
                         selectedIeltsStream === stream
                           ? 'bg-[#111111] text-white shadow-sm'
                           : 'text-[#737373] hover:text-[#111111] bg-white/40'
@@ -179,9 +187,10 @@ const PricingSection: React.FC = () => {
                   {['9', '10', '11', '12'].map((gr) => (
                     <button
                       key={gr}
+                      id={`pricing-grade-btn-${gr}`}
                       type="button"
                       onClick={() => setSelectedGradeValue(gr)}
-                      className={`py-2 px-2 rounded-lg text-xs font-bold transition-all text-center ${
+                      className={`py-2 px-2 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
                         selectedGradeValue === gr
                           ? 'bg-[#111111] text-white shadow-sm'
                           : 'text-[#737373] hover:text-[#111111] bg-white/40'
