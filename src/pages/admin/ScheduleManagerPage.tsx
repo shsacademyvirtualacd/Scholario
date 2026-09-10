@@ -571,7 +571,7 @@ export const ScheduleManagerPage: React.FC = () => {
   };
 
   // Drawer triggers
-  const handleAddTrigger = (dayOfWeekIndex: number = 0) => {
+  const handleAddTrigger = (dayOfWeekIndex: number = 0, startTime?: string, endTime?: string) => {
     setEditingSlotId(null);
     setSelectedSlot(null);
     setIsDuplicateMode(false);
@@ -580,8 +580,8 @@ export const ScheduleManagerPage: React.FC = () => {
     const newSlotTemplate: Partial<ClassSlot> = {
       offering_id: '',
       day_of_week: dayOfWeekIndex as any,
-      start_time: '16:00:00',
-      end_time: '17:30:00',
+      start_time: startTime || '16:00:00',
+      end_time: endTime || '16:30:00',
     };
     setSelectedSlot(newSlotTemplate as any);
   };
