@@ -45,6 +45,8 @@ export const ScheduleManagerPage: React.FC = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
+  const [sourceDuplicateSlot, setSourceDuplicateSlot] = useState<ClassSlot | null>(null);
 
   // Filters - default to Grade 10 class-wise view with 'all' streams selected for full institutional visibility
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
@@ -290,7 +292,7 @@ export const ScheduleManagerPage: React.FC = () => {
     return null;
   };
 
-  // Handle drawer save (Add / Edit)
+  // Handle drawer save (Add / Edit / Duplicate)
   const handleSaveSlot = async (formData: {
     offering_id: string | null;
     custom_title?: string | null;
@@ -301,14 +303,28 @@ export const ScheduleManagerPage: React.FC = () => {
     end_time: string;
     publish_to_news: boolean;
     notify_affected?: boolean;
+    days_of_week?: number[];
   }) => {
-    const isEditMode = !!editingSlotId;
+    const isEditMode = !isDuplicateMode && !!editingSlotId;
 
     // Check for duplicate / instructor conflict first
-    const conflict = checkSlotConflict(formData, editingSlotId);
-    if (conflict) {
-      setConflictData(conflict);
-      return;
+    if (formData.days_of_week && formData.days_of_week.length > 0) {
+      for (const d of formData.days_of_week) {
+        const conflict = checkSlotConflict({ ...formData, day_of_week: d }, null);
+        if (conflict) {
+          setConflictData({
+            ...conflict,
+            pendingFormData: { ...formData, day_of_week: d },
+          });
+          return;
+        }
+      }
+    } else {
+      const conflict = checkSlotConflict(formData, editingSlotId);
+      if (conflict) {
+        setConflictData(conflict);
+        return;
+      }
     }
 
     // Intercept move (when day or start time changes on an existing slot) with a confirmation modal
@@ -341,21 +357,41 @@ export const ScheduleManagerPage: React.FC = () => {
   };
 
   const executeSaveSlot = async (formData: any) => {
-    const isEditMode = !!editingSlotId;
+    const isEditMode = !isDuplicateMode && !!editingSlotId;
     const targetSlotId = isEditMode ? editingSlotId : undefined;
     
     try {
-      await upsertSlot({
-        id: targetSlotId,
-        offering_id: formData.offering_id || null,
-        custom_title: formData.custom_title || null,
-        class_id: formData.class_id || null,
-        stream_id: formData.stream_id || null,
-        day_of_week: formData.day_of_week as any,
-        start_time: formData.start_time,
-        end_time: formData.end_time,
-        is_cancelled: formData.is_cancelled !== undefined ? formData.is_cancelled : false,
-      });
+      const targetDays: number[] = (formData.days_of_week && formData.days_of_week.length > 0)
+        ? formData.days_of_week
+        : [formData.day_of_week];
+
+      if (targetDays.length > 1 || isDuplicateMode) {
+        for (const d of targetDays) {
+          await upsertSlot({
+            id: undefined,
+            offering_id: formData.offering_id || null,
+            custom_title: formData.custom_title || null,
+            class_id: formData.class_id || null,
+            stream_id: formData.stream_id || null,
+            day_of_week: d as any,
+            start_time: formData.start_time,
+            end_time: formData.end_time,
+            is_cancelled: false,
+          });
+        }
+      } else {
+        await upsertSlot({
+          id: targetSlotId,
+          offering_id: formData.offering_id || null,
+          custom_title: formData.custom_title || null,
+          class_id: formData.class_id || null,
+          stream_id: formData.stream_id || null,
+          day_of_week: formData.day_of_week as any,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          is_cancelled: formData.is_cancelled !== undefined ? formData.is_cancelled : false,
+        });
+      }
 
       // Reload slots
       await loadData();
@@ -364,15 +400,15 @@ export const ScheduleManagerPage: React.FC = () => {
       if (formData.publish_to_news || formData.notify_affected) {
         const offering = offerings.find((o) => o.id === formData.offering_id);
         const subject = formData.custom_title || (offering ? (offering.subject_name || offering.subject?.name || 'Class') : 'Class');
-        const dayName = DAYS_OF_WEEK_FULL[formData.day_of_week] || 'Scheduled Day';
-        const timeStr = formData.start_time.slice(0, 5);
+        const dayNames = targetDays.map(d => DAYS_OF_WEEK_FULL[d] || 'Day').join(', ');
+        const timeStr = formatTime12h(formData.start_time);
 
         const targetClassId = formData.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
         const targetStreamId = formData.stream_id && formData.stream_id !== 'all' ? formData.stream_id : (offering?.stream_id || null);
 
         await createAnnouncement({
           title: 'Schedule Update',
-          body: `${subject} on ${dayName} at ${timeStr} has been ${isEditMode ? 'rescheduled' : 'scheduled'}.`,
+          body: `${subject} at ${timeStr} has been ${isEditMode ? 'rescheduled' : `scheduled for ${dayNames}`}.`,
           severity: 'crucial',
           scope: 'class',
           class_id: targetClassId || null,
@@ -381,7 +417,11 @@ export const ScheduleManagerPage: React.FC = () => {
         setShowPublishBanner(true);
         setTimeout(() => setShowPublishBanner(false), 4000);
       }
-      toast.success(isEditMode ? 'Class slot rescheduled.' : 'Class slot scheduled successfully.');
+      if (targetDays.length > 1 || isDuplicateMode) {
+        toast.success(`Class slot duplicated to ${targetDays.length} days successfully.`);
+      } else {
+        toast.success(isEditMode ? 'Class slot rescheduled.' : 'Class slot scheduled successfully.');
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to save class slot.');
@@ -390,6 +430,8 @@ export const ScheduleManagerPage: React.FC = () => {
     setDrawerOpen(false);
     setSelectedSlot(null);
     setEditingSlotId(null);
+    setIsDuplicateMode(false);
+    setSourceDuplicateSlot(null);
     setPendingMoveData(null);
     setMoveModalOpen(false);
   };
@@ -532,6 +574,8 @@ export const ScheduleManagerPage: React.FC = () => {
   const handleAddTrigger = (dayOfWeekIndex: number = 0) => {
     setEditingSlotId(null);
     setSelectedSlot(null);
+    setIsDuplicateMode(false);
+    setSourceDuplicateSlot(null);
     setDrawerOpen(true);
     const newSlotTemplate: Partial<ClassSlot> = {
       offering_id: '',
@@ -545,18 +589,44 @@ export const ScheduleManagerPage: React.FC = () => {
   const handleEditTrigger = (slot: ClassSlot) => {
     setEditingSlotId(slot.id);
     setSelectedSlot(slot);
+    setIsDuplicateMode(false);
+    setSourceDuplicateSlot(null);
     setDrawerOpen(true);
   };
 
   const handleDuplicateTrigger = () => {
     if (!selectedSlot) return;
+    setIsDuplicateMode(true);
+    setSourceDuplicateSlot(selectedSlot);
     setEditingSlotId(null);
     const dupTemplate: Partial<ClassSlot> = {
       ...selectedSlot,
       id: undefined,
     };
     setSelectedSlot(dupTemplate as any);
-    toast.info('Switched to Duplicate mode. Pick a day and click Add Class Slot.');
+    toast.info('Switched to Duplicate mode. Pick days to copy this class schedule.');
+  };
+
+  const handleCancelDuplicate = () => {
+    if (sourceDuplicateSlot) {
+      setSelectedSlot(sourceDuplicateSlot);
+      setEditingSlotId(sourceDuplicateSlot.id);
+      setIsDuplicateMode(false);
+      setSourceDuplicateSlot(null);
+    } else {
+      setIsDuplicateMode(false);
+      setDrawerOpen(false);
+      setSelectedSlot(null);
+      setEditingSlotId(null);
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false);
+    setSelectedSlot(null);
+    setEditingSlotId(null);
+    setIsDuplicateMode(false);
+    setSourceDuplicateSlot(null);
   };
 
   const resetFilters = () => {
@@ -905,30 +975,30 @@ export const ScheduleManagerPage: React.FC = () => {
         onToggleSelectSlot={handleToggleSelectSlot}
       />
 
-      {/* Add / Edit Drawer */}
+      {/* Add / Edit / Duplicate Drawer */}
       <AdminDrawer
         open={drawerOpen}
-        onClose={() => {
-          setDrawerOpen(false);
-          setSelectedSlot(null);
-          setEditingSlotId(null);
-        }}
-        title={editingSlotId ? 'Edit Class Slot' : 'Schedule New Class'}
+        onClose={handleCloseDrawer}
+        title={
+          isDuplicateMode
+            ? 'Duplicate Class Slot to Multiple Days'
+            : editingSlotId
+            ? 'Edit Class Slot'
+            : 'Schedule New Class'
+        }
       >
         <SlotForm
-          key={editingSlotId || 'new'}
+          key={isDuplicateMode ? `dup-${sourceDuplicateSlot?.id || 'active'}` : (editingSlotId || 'new')}
           slot={selectedSlot}
           offerings={offerings}
           taxonomy={taxonomy}
           defaultClassId={activeClass?.id || ''}
           defaultStreamId={selectedStream || ''}
+          isDuplicateMode={isDuplicateMode}
           onSave={handleSaveSlot}
           onDuplicate={handleDuplicateTrigger}
-          onCancel={() => {
-            setDrawerOpen(false);
-            setSelectedSlot(null);
-            setEditingSlotId(null);
-          }}
+          onCancelDuplicate={handleCancelDuplicate}
+          onCancel={handleCloseDrawer}
         />
       </AdminDrawer>
 
