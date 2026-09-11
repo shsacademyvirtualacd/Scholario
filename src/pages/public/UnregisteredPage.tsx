@@ -469,9 +469,19 @@ export const UnregisteredPage: React.FC = () => {
     );
   }
 
-  const classesForBoard = taxonomy.classes.filter((c: any) => c.board_id === selectedBoardId);
-  const selectedClassObj = taxonomy.classes.find((c: any) => c.id === selectedClassId);
   const currentBoardDef = getBoardDef(selectedBoardId);
+  let classesForBoard = taxonomy.classes.filter((c: any) => c.board_id === selectedBoardId);
+  if (classesForBoard.length === 0) {
+    const boardGrades = getGradesForBoard(selectedBoardId);
+    classesForBoard = boardGrades.map((g) => ({
+      id: `${selectedBoardId}-${g.grade}`,
+      board_id: selectedBoardId,
+      grade: g.grade,
+      display_name: g.displayName,
+      board: { id: selectedBoardId, name: currentBoardDef.name },
+    })) as any[];
+  }
+  const selectedClassObj = taxonomy.classes.find((c: any) => c.id === selectedClassId) || classesForBoard.find((c: any) => c.id === selectedClassId);
 
   // Extract streams for selected class, with seamless fallback to taxonomy definitions
   let streamsForClass: any[] = taxonomy.streams.filter((s: any) => s.class_id === selectedClassId);
@@ -492,7 +502,7 @@ export const UnregisteredPage: React.FC = () => {
     const targetGrade = selectedClassObj?.grade || queryGrade || '10';
     const targetStream = streamsForClass.find(
       (st: any) => st.id === selectedStreamId || st.name.toLowerCase() === selectedStreamId?.toLowerCase()
-    );
+    ) || streamsForClass[0];
     return (
       <PlanComparisonPage
         boardId={selectedBoardId}
@@ -793,13 +803,14 @@ export const UnregisteredPage: React.FC = () => {
                     <span className="text-[10px] text-[#A3A3A3] font-medium">Curriculum Standard</span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-[#F5F5F5] p-1.5 rounded-2xl border border-[#E5E5E5]">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 bg-[#F5F5F5] p-1.5 rounded-2xl border border-[#E5E5E5]">
                     {BOARDS.map((b) => (
                       <button
                         key={b.id}
+                        id={`btn-board-${b.id}`}
                         type="button"
                         onClick={() => setSelectedBoardId(b.id as BoardId)}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                        className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                           selectedBoardId === b.id
                             ? 'bg-white text-[#111111] shadow-sm border border-[#E5E5E5]'
                             : 'text-[#737373] hover:text-[#111111]'
@@ -875,9 +886,10 @@ export const UnregisteredPage: React.FC = () => {
                         {classesForBoard.map((c: any) => (
                           <button
                             key={c.id}
+                            id={`btn-class-${c.grade}`}
                             type="button"
                             onClick={() => setSelectedClassId(c.id)}
-                            className={`p-3.5 rounded-2xl border-2 text-center transition-all duration-200 ${selectedClassId === c.id
+                            className={`p-3.5 rounded-2xl border-2 text-center transition-all duration-200 cursor-pointer ${selectedClassId === c.id
                                 ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm font-black text-[#111111]'
                                 : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4] font-bold text-[#737373]'
                               }`}
@@ -921,6 +933,7 @@ export const UnregisteredPage: React.FC = () => {
                             return (
                               <button
                                 key={s.id}
+                                id={`btn-stream-${s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                                 type="button"
                                 onClick={() => {
                                   setSelectedStreamId(s.id);
@@ -931,7 +944,7 @@ export const UnregisteredPage: React.FC = () => {
                                     setSelectedSubjects(streamSubjects.slice(0, 2));
                                   }
                                 }}
-                                className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between ${selectedStreamId === s.id
+                                className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col justify-between cursor-pointer ${selectedStreamId === s.id
                                     ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
                                     : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
                                   }`}

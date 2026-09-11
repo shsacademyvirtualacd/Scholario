@@ -450,47 +450,47 @@ export const KPK_GRADES: GradeDef[] = [
 export const PUNJAB_GRADES: GradeDef[] = [
   {
     grade: '9',
-    displayName: '9th (Matric)',
+    displayName: '9th',
     boardId: 'punjab',
     commonSubjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran', 'Mathematics'],
     streams: [
       {
-        name: 'Science (Biology)',
+        name: 'Biology',
         subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
       {
-        name: 'Science (Computer Science)',
+        name: 'Computer Science',
         subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Computer Science', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
       {
-        name: 'General / Arts',
+        name: 'General',
         subjects: ['English', 'Urdu', 'General Mathematics', 'General Science', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
     ],
   },
   {
     grade: '10',
-    displayName: '10th (Matric)',
+    displayName: '10th',
     boardId: 'punjab',
     commonSubjects: ['English', 'Urdu', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran', 'Mathematics'],
     streams: [
       {
-        name: 'Science (Biology)',
+        name: 'Biology',
         subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
       {
-        name: 'Science (Computer Science)',
+        name: 'Computer Science',
         subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Computer Science', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
       {
-        name: 'General / Arts',
+        name: 'General',
         subjects: ['English', 'Urdu', 'General Mathematics', 'General Science', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
     ],
   },
   {
     grade: '11',
-    displayName: '11th (Inter)',
+    displayName: '11th',
     boardId: 'punjab',
     commonSubjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran'],
     streams: [
@@ -503,7 +503,7 @@ export const PUNJAB_GRADES: GradeDef[] = [
         subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
       {
-        name: 'Computer Science (ICS)',
+        name: 'ICS (Computer Science)',
         subjects: ['English', 'Urdu', 'Physics', 'Computer Science', 'Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
       },
       {
@@ -522,7 +522,7 @@ export const PUNJAB_GRADES: GradeDef[] = [
   },
   {
     grade: '12',
-    displayName: '12th (Inter)',
+    displayName: '12th',
     boardId: 'punjab',
     commonSubjects: ['English', 'Urdu', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
     streams: [
@@ -535,7 +535,7 @@ export const PUNJAB_GRADES: GradeDef[] = [
         subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
       },
       {
-        name: 'Computer Science (ICS)',
+        name: 'ICS (Computer Science)',
         subjects: ['English', 'Urdu', 'Physics', 'Computer Science', 'Mathematics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
       },
       {

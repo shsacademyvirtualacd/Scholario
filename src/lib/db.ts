@@ -3659,18 +3659,22 @@ export async function getTaxonomy(): Promise<{
   classesData.sort((a: any, b: any) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
 
   const streamsData: StreamEntry[] = [...(s.data || [])];
-  // Ensure streams exist for all classes
+  // Ensure streams exist for all classes with subjects populated
   for (const cls of classesData) {
     const grades = getGradesForBoard(cls.board_id);
     const gradeDef = grades.find((g) => String(g.grade) === String(cls.grade));
     if (gradeDef) {
       for (const st of gradeDef.streams) {
-        if (!streamsData.some((sItem) => sItem.class_id === cls.id && sItem.name.toLowerCase() === st.name.toLowerCase())) {
+        const existing = streamsData.find((sItem) => sItem.class_id === cls.id && sItem.name.toLowerCase() === st.name.toLowerCase());
+        if (!existing) {
           streamsData.push({
             id: st.name,
             class_id: cls.id,
             name: st.name,
+            subjects: st.subjects,
           } as any);
+        } else if (!(existing as any).subjects || (existing as any).subjects.length === 0) {
+          (existing as any).subjects = st.subjects;
         }
       }
     }
