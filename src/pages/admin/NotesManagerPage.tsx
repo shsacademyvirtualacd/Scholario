@@ -18,7 +18,11 @@ import type { Note, ClassOffering } from '../../types';
 
 const BOARDS = [
   { id: 'fbise', label: 'Federal Board (FBISE)' },
+  { id: 'punjab', label: 'Punjab Board' },
   { id: 'sindh', label: 'Sindh Board' },
+  { id: 'kpk', label: 'KPK Board' },
+  { id: 'olevel', label: 'O Levels' },
+  { id: 'alevel', label: 'A Levels' },
   { id: 'ielts', label: 'IELTS' },
 ];
 
@@ -86,7 +90,8 @@ export const NotesManagerPage: React.FC = () => {
     seenGrades.add(g.id);
     return true;
   });
-  activeGrades.push({ id: 'all', label: selectedBoard === 'sindh' ? 'All Sindh' : selectedBoard === 'ielts' ? 'All IELTS' : 'All FBISE' });
+  const allLabel = selectedBoard === 'punjab' ? 'All Punjab' : selectedBoard === 'sindh' ? 'All Sindh' : selectedBoard === 'kpk' ? 'All KPK' : selectedBoard === 'olevel' ? 'All O Levels' : selectedBoard === 'alevel' ? 'All A Levels' : selectedBoard === 'ielts' ? 'All IELTS' : 'All FBISE';
+  activeGrades.push({ id: 'all', label: allLabel });
 
   // Compute active streams for selected grade
   const activeClass = taxonomy?.classes?.find(
@@ -379,7 +384,8 @@ export const NotesManagerPage: React.FC = () => {
               {scopedOfferings.map((o) => {
                 const subjName = o.subject_name || (typeof o.subject === 'string' ? o.subject : o.subject?.name) || 'Class';
                 const gr = o.grade || (o as any).class?.grade || '10';
-                const boardLabel = o.board === 'sindh' || (o as any).class?.board_id === 'sindh' ? 'Sindh' : o.board === 'ielts' || (o as any).class?.board_id === 'ielts' ? 'IELTS' : String(o.board || (o as any).class?.board?.name || (o as any).class?.board_id || (o as any).board_name || 'FBISE').toUpperCase();
+                const bId = (o.board || (o as any).class?.board_id || '').toLowerCase();
+                const boardLabel = bId === 'punjab' ? 'Punjab' : bId === 'sindh' ? 'Sindh' : bId === 'kpk' ? 'KPK' : bId === 'ielts' ? 'IELTS' : bId === 'olevel' ? 'O Levels' : bId === 'alevel' ? 'A Levels' : 'FBISE';
                 return (
                   <option key={o.id} value={o.id}>
                     {subjName} ({gr}th {boardLabel})

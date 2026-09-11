@@ -240,37 +240,60 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
             </div>
           </div>
 
+          {/* Plain Non-Blocking Warning Banner */}
+          <div className="px-4 sm:px-5 pt-3">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900 font-medium">
+              <span className="text-base shrink-0">⚠️</span>
+              <div className="leading-relaxed">
+                <strong className="font-bold text-amber-950">This slot conflicts with an existing class.</strong> You can save anyway or resolve it below.
+              </div>
+            </div>
+          </div>
+
           {/* Resolution Options Tabs */}
           <div className="p-4 sm:p-5 space-y-4">
           <div>
             <label className="text-[11px] font-black uppercase tracking-wider text-gray-700 block mb-2">
               Choose Resolution Strategy:
             </label>
-            <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-2xl">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 bg-gray-100 p-1 rounded-2xl">
               <button
                 type="button"
                 onClick={() => setActiveTab('another_day')}
-                className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 sm:px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeTab === 'another_day'
                     ? 'bg-white text-[#111111] shadow-xs'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 <CalendarDays size={13} />
-                <span>Pick Another Day</span>
+                <span className="truncate">Pick Another Day</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('different_time')}
-                className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 sm:px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeTab === 'different_time'
                     ? 'bg-white text-[#111111] shadow-xs'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 <Clock size={13} />
-                <span>Pick Different Time</span>
+                <span className="truncate">Pick Different Time</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('override')}
+                className={`py-2 px-2 sm:px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'override'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-amber-800 hover:text-amber-950 hover:bg-amber-100/50'
+                }`}
+              >
+                <AlertTriangle size={13} />
+                <span className="truncate">Save Anyway</span>
               </button>
             </div>
           </div>
@@ -412,10 +435,40 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
                 <button
                   type="button"
                   onClick={handleApplyDifferentTime}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer"
                 >
                   <Check size={13} />
                   <span>Apply New Time</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Option C: Save Anyway / Confirm Override */}
+          {activeTab === 'override' && (
+            <div className="space-y-3 p-4 bg-amber-50/40 border border-amber-200/80 rounded-2xl animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-900">
+                  Allow Parallel Time Slot / Double-Booking:
+                </span>
+                <span className="text-[10px] text-amber-800 font-bold px-2 py-0.5 bg-amber-100 rounded-md">
+                  Non-blocking warning
+                </span>
+              </div>
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Saving anyway will keep both classes scheduled on <strong>{DAYS_OF_WEEK_FULL[conflict.dayIndex]}</strong> at <strong>{formatTime12h(conflict.startTime)}</strong>. Both slots will coexist in the timetable schedule.
+              </p>
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs gap-2">
+                <span className="text-[11px] text-gray-600 font-medium">
+                  Allow both classes to occupy this slot.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleApplyOverride}
+                  className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer"
+                >
+                  <Check size={13} />
+                  <span>Save Anyway (Confirm Override)</span>
                 </button>
               </div>
             </div>
@@ -428,26 +481,21 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition-colors text-center"
+          className="w-full sm:w-auto px-4 py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition-colors text-center cursor-pointer"
         >
-          Cancel (Discard Change)
+          Cancel
         </button>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {conflict.type === 'teacher_double_booking' || conflict.type === 'cohort_clash' ? (
-            <span className="text-[11px] text-red-600 font-semibold px-2 py-1 bg-red-50 border border-red-200 rounded-lg">
-              Override blocked: timetable rules prohibit double-booking & cohort clashes.
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={handleApplyOverride}
-              title="Explicitly confirm and save anyway if this parallel schedule is intended"
-              className="w-full sm:w-auto px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-100/70 hover:bg-amber-200 border border-amber-300/80 rounded-xl transition-colors text-center"
-            >
-              Keep Here Anyway (Confirm)
-            </button>
-          )}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button
+            type="button"
+            onClick={handleApplyOverride}
+            title="Save anyway and allow both slots to coexist in this time slot"
+            className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 active:bg-amber-800 rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all text-center cursor-pointer"
+          >
+            <Check size={14} />
+            <span>Save Anyway (Confirm Override)</span>
+          </button>
         </div>
       </div>
       </div>

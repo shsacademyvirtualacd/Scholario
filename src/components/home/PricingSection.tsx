@@ -8,7 +8,7 @@ import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 /**
  * PricingSection: Public-facing interactive Pricing Calculator on the marketing landing page.
  * Completely independent from any authenticated teacher/student profile or assigned board.
- * Any visitor freely selects between Federal Board (FBISE), Sindh Board, IELTS Preparation, O Levels, A Levels, or KPK Board.
+ * Any visitor freely selects between Federal Board (FBISE), Punjab Board, Sindh Board, IELTS Preparation, O Levels, A Levels, or KPK Board.
  */
 const PricingSection: React.FC = () => {
   // Public, visitor-controlled independent selection state

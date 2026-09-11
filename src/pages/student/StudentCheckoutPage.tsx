@@ -23,7 +23,6 @@ export const StudentCheckoutPage: React.FC = () => {
   const [feeConfig, setFeeConfig] = useState<any | null>(null);
   const [feeStatus, setFeeStatus] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [studentClass, setStudentClass] = useState<any | null>(null);
   const [studentBoardId, setStudentBoardId] = useState<BoardId>((profile?.board_id as any) || 'fbise');
   const [studentGrade, setStudentGrade] = useState<string>('10');
   const [copiedText, setCopiedText] = useState(false);
@@ -49,7 +48,6 @@ export const StudentCheckoutPage: React.FC = () => {
 
       if (enrolls && enrolls.length > 0) {
         const offering = enrolls[0].offering;
-        setStudentClass(offering);
         if (offering && (offering.class?.grade || offering.grade)) {
           grade = offering.class?.grade || offering.grade;
         }
@@ -143,7 +141,17 @@ export const StudentCheckoutPage: React.FC = () => {
     if (!profile) return;
     try {
       setUpdating(true);
-      await updateFeeStatus(profile.id, 'pending', 'Student clicked "I have sent my proof of payment" button.');
+      const boardDef = getBoardDef(studentBoardId);
+      const activeSubs = (feeConfig?.subjects && feeConfig.subjects.length > 0) ? feeConfig.subjects : (profile.subjects || []);
+      const isCustom = (feeConfig?.plan_type === 'custom' || studentBoardId === 'alevel' || studentBoardId === 'olevel') && activeSubs.length > 0;
+      const subSummary = isCustom 
+        ? ` (${activeSubs.length} subjects: ${activeSubs.join(', ')})`
+        : ' (All Subjects Package)';
+      const planName = studentBoardId === 'ielts'
+        ? 'IELTS Complete Preparation Program'
+        : `${boardDef.name} Grade ${formatGradeDisplay(studentGrade, studentBoardId)}${subSummary}`;
+      const note = `Student submitted payment proof for PKR ${(feeConfig?.amount || 0).toLocaleString()} for ${planName}.`;
+      await updateFeeStatus(profile.id, 'pending', note);
       await fetchFeeDetails();
     } catch (err: any) {
       setError(err.message || 'Failed to update fee status.');
@@ -162,11 +170,14 @@ export const StudentCheckoutPage: React.FC = () => {
       cleanPhone = '92' + cleanPhone;
     }
     const boardDef = getBoardDef(studentBoardId);
+    const activeSubs = (feeConfig?.subjects && feeConfig.subjects.length > 0) ? feeConfig.subjects : (profile?.subjects || []);
+    const isCustom = (feeConfig?.plan_type === 'custom' || studentBoardId === 'alevel' || studentBoardId === 'olevel') && activeSubs.length > 0;
+    const subSummary = isCustom 
+      ? ` (${activeSubs.length} subjects: ${activeSubs.join(', ')})`
+      : ' (All Subjects Package)';
     const className = studentBoardId === 'ielts'
       ? 'IELTS Complete Preparation Program'
-      : (studentClass 
-          ? `${studentClass.subject_name || studentClass.subject || boardDef.shortName} (${boardDef.shortName} Grade ${studentClass.grade || studentGrade})` 
-          : `${boardDef.name} (Class ${studentGrade}th)`);
+      : `${boardDef.name} (Grade ${formatGradeDisplay(studentGrade, studentBoardId)})${subSummary}`;
     const message = `Hello, I am ${profile?.full_name || 'Student'}. I have sent the payment proof for my class fee (PKR ${feeConfig.amount.toLocaleString()}) for ${className}. Please verify and authorize my account.`;
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
@@ -287,9 +298,9 @@ export const StudentCheckoutPage: React.FC = () => {
                       <p className="text-xs text-[#737373] mt-0.5">
                         {studentBoardId === 'ielts'
                           ? 'IELTS Complete Preparation Program'
-                          : (studentClass 
-                              ? `${studentClass.subject_name || studentClass.subject || getBoardDef(studentBoardId).shortName} (${getBoardDef(studentBoardId).shortName} ${formatGradeDisplay(studentClass.grade || studentGrade, studentBoardId)})` 
-                              : `${getBoardDef(studentBoardId).name} Academic Program (${formatGradeDisplay(studentGrade, studentBoardId)})`)}
+                          : ((feeConfig?.plan_type === 'custom' || studentBoardId === 'alevel' || studentBoardId === 'olevel') && feeConfig?.subjects && feeConfig.subjects.length > 0
+                              ? `${getBoardDef(studentBoardId).name} • Grade ${formatGradeDisplay(studentGrade, studentBoardId)} (${feeConfig.subjects.length} Active ${feeConfig.subjects.length === 1 ? 'Subject' : 'Subjects'})` 
+                              : `${getBoardDef(studentBoardId).name} Academic Program (Grade ${formatGradeDisplay(studentGrade, studentBoardId)}) • All Subjects Package`)}
                       </p>
                     </div>
                     {getStatusBadge()}
@@ -329,6 +340,26 @@ export const StudentCheckoutPage: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  {feeConfig?.subjects && feeConfig.subjects.length > 0 && (
+                    <div className="pt-3 border-t border-[#F5F5F5] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#111111]">
+                          Enrolled Active Subjects ({feeConfig.subjects.length}):
+                        </span>
+                        <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                          {feeConfig.plan_type === 'custom' || studentBoardId === 'alevel' || studentBoardId === 'olevel' ? 'Custom Subject Plan' : 'Standard Stream'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {feeConfig.subjects.map((sub: string, idx: number) => (
+                          <span key={idx} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] text-[#262626]">
+                            {sub}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {feeStatus?.status !== 'paid' && (
                     <div className="p-3.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] text-xs text-[#525252] leading-relaxed flex items-start gap-2.5">

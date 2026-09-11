@@ -473,7 +473,7 @@ export const AdminTestsPage: React.FC = () => {
                         : 'text-[#525252] hover:text-[#111111]'
                     }`}
                   >
-                    {g === 'all' ? (selectedBoard === 'sindh' ? 'All Sindh' : selectedBoard === 'ielts' ? 'All IELTS' : 'All FBISE') : `${g}th`}
+                    {g === 'all' ? (selectedBoard === 'punjab' ? 'All Punjab' : selectedBoard === 'sindh' ? 'All Sindh' : selectedBoard === 'kpk' ? 'All KPK' : selectedBoard === 'olevel' ? 'All O Levels' : selectedBoard === 'alevel' ? 'All A Levels' : selectedBoard === 'ielts' ? 'All IELTS' : 'All FBISE') : `${g}th`}
                   </button>
                 ))}
               </div>
@@ -931,7 +931,7 @@ export const AdminTestsPage: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-[#525252] mt-1 leading-relaxed">
-                    Auto-pull verified questions from FBISE / Sindh curriculum question banks. Customize MCQs, Short & Long Qs, marks distribution, and live PDF preview.
+                    Auto-pull verified questions from FBISE / Punjab / Sindh curriculum question banks. Customize MCQs, Short & Long Qs, marks distribution, and live PDF preview.
                   </p>
                 </div>
               </button>

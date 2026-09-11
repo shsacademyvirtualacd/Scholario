@@ -18,7 +18,7 @@ export interface GradeDef {
   boardId?: string;
 }
 
-export type BoardId = 'fbise' | 'sindh' | 'ielts' | 'olevel' | 'alevel' | 'kpk';
+export type BoardId = 'fbise' | 'sindh' | 'ielts' | 'olevel' | 'alevel' | 'kpk' | 'punjab';
 
 export interface BoardDef {
   id: BoardId;
@@ -33,6 +33,12 @@ export const BOARDS: BoardDef[] = [
     name: 'Federal Board (FBISE)',
     shortName: 'FBISE',
     description: 'Federal Board of Intermediate & Secondary Education (Islamabad & National)',
+  },
+  {
+    id: 'punjab',
+    name: 'Punjab Board (BISE Lahore & Provincial)',
+    shortName: 'Punjab Board',
+    description: 'Punjab Secondary & Intermediate Boards (BISE Lahore, Rawalpindi, Faisalabad, Multan, Gujranwala, etc.)',
   },
   {
     id: 'sindh',
@@ -441,12 +447,120 @@ export const KPK_GRADES: GradeDef[] = [
   },
 ];
 
+export const PUNJAB_GRADES: GradeDef[] = [
+  {
+    grade: '9',
+    displayName: '9th (Matric)',
+    boardId: 'punjab',
+    commonSubjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran', 'Mathematics'],
+    streams: [
+      {
+        name: 'Science (Biology)',
+        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Science (Computer Science)',
+        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Computer Science', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'General / Arts',
+        subjects: ['English', 'Urdu', 'General Mathematics', 'General Science', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+    ],
+  },
+  {
+    grade: '10',
+    displayName: '10th (Matric)',
+    boardId: 'punjab',
+    commonSubjects: ['English', 'Urdu', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran', 'Mathematics'],
+    streams: [
+      {
+        name: 'Science (Biology)',
+        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Science (Computer Science)',
+        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Computer Science', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'General / Arts',
+        subjects: ['English', 'Urdu', 'General Mathematics', 'General Science', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+    ],
+  },
+  {
+    grade: '11',
+    displayName: '11th (Inter)',
+    boardId: 'punjab',
+    commonSubjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran'],
+    streams: [
+      {
+        name: 'Pre-Medical',
+        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Pre-Engineering',
+        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Computer Science (ICS)',
+        subjects: ['English', 'Urdu', 'Physics', 'Computer Science', 'Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'General Science',
+        subjects: ['English', 'Urdu', 'Mathematics', 'Statistics', 'Economics', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Commerce (I.Com)',
+        subjects: ['English', 'Urdu', 'Principles of Accounting', 'Principles of Economics', 'Principles of Commerce', 'Business Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Humanities / Arts',
+        subjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran', 'Civics', 'Education', 'History of Pakistan'],
+      },
+    ],
+  },
+  {
+    grade: '12',
+    displayName: '12th (Inter)',
+    boardId: 'punjab',
+    commonSubjects: ['English', 'Urdu', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
+    streams: [
+      {
+        name: 'Pre-Medical',
+        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Pre-Engineering',
+        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Computer Science (ICS)',
+        subjects: ['English', 'Urdu', 'Physics', 'Computer Science', 'Mathematics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'General Science',
+        subjects: ['English', 'Urdu', 'Mathematics', 'Statistics', 'Economics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Commerce (I.Com)',
+        subjects: ['English', 'Urdu', 'Principles of Accounting', 'Commercial Geography', 'Banking', 'Business Statistics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
+      },
+      {
+        name: 'Humanities / Arts',
+        subjects: ['English', 'Urdu', 'Pakistan Studies', 'Tarjuma-tul-Quran', 'Civics', 'Education', 'History of Pakistan'],
+      },
+    ],
+  },
+];
+
 // GRADES default alias (FBISE for backward compatibility)
 export const GRADES: GradeDef[] = FBISE_GRADES;
 
 /** Get grades for a specific board */
 export function getGradesForBoard(boardId: string): GradeDef[] {
   const norm = (boardId || '').toLowerCase();
+  if (norm === 'punjab') return PUNJAB_GRADES;
   if (norm === 'sindh') return SINDH_GRADES;
   if (norm === 'ielts') return IELTS_GRADES;
   if (norm === 'olevel') return OLEVEL_GRADES;
@@ -469,7 +583,7 @@ export function getDefaultPrice(grade: string, boardId?: string, streamName?: st
   if (normBoard === 'olevel') {
     return 5000;
   }
-  if (normBoard === 'kpk') {
+  if (normBoard === 'punjab' || normBoard === 'kpk') {
     return ['11', '12'].includes(grade) ? 4000 : 3000;
   }
   const isIelts =
@@ -493,7 +607,7 @@ export function getDefaultPrice(grade: string, boardId?: string, streamName?: st
 /** All unique subject names used across the entire taxonomy */
 export function getAllSubjectNames(): string[] {
   const set = new Set<string>();
-  const allGrades = [...FBISE_GRADES, ...SINDH_GRADES, ...KPK_GRADES, ...OLEVEL_GRADES, ...ALEVEL_GRADES, ...IELTS_GRADES];
+  const allGrades = [...FBISE_GRADES, ...PUNJAB_GRADES, ...SINDH_GRADES, ...KPK_GRADES, ...OLEVEL_GRADES, ...ALEVEL_GRADES, ...IELTS_GRADES];
   for (const g of allGrades) {
     for (const s of g.streams) {
       for (const sub of s.subjects) {
@@ -510,7 +624,7 @@ export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[]
   let rawBoard = String(boardId || '').trim();
 
   // Defensive swap if caller passes (boardId, grade) instead of (grade, boardId)
-  const knownBoards = ['fbise', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'];
+  const knownBoards = ['fbise', 'punjab', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'];
   if (
     rawGrade &&
     knownBoards.some((b) => rawGrade.toLowerCase().includes(b)) &&
@@ -958,6 +1072,8 @@ export function formatShortClassAndBoard(params: {
   let shortBoard = '';
   if (b.toLowerCase().includes('fbise') || b.toLowerCase().includes('federal')) {
     shortBoard = 'FBISE';
+  } else if (b.toLowerCase().includes('punjab')) {
+    shortBoard = 'Punjab';
   } else if (b.toLowerCase().includes('sindh')) {
     shortBoard = 'Sindh';
   } else if (b.toLowerCase().includes('olevel') || b.toLowerCase().includes('o level')) {

@@ -489,7 +489,7 @@ export const RosterManagerPage: React.FC = () => {
     const bDef = getBoardDef(p?.board_id || p?.board);
     return formatShortClassAndBoard({
       gradeName: full,
-      boardName: bDef?.shortName || (full.toLowerCase().includes('sindh') ? 'Sindh' : full.toLowerCase().includes('ielts') ? 'IELTS' : full.toLowerCase().includes('fbise') || full.toLowerCase().includes('federal') ? 'FBISE' : full),
+      boardName: bDef?.shortName || (full.toLowerCase().includes('punjab') ? 'Punjab' : full.toLowerCase().includes('sindh') ? 'Sindh' : full.toLowerCase().includes('ielts') ? 'IELTS' : full.toLowerCase().includes('fbise') || full.toLowerCase().includes('federal') ? 'FBISE' : full),
       streamName: stream,
     });
   };
@@ -552,7 +552,7 @@ export const RosterManagerPage: React.FC = () => {
     setEditStudentEmail(entry.email || p?.email || '');
 
     const rawBoard = (p?.board_id || p?.board || 'fbise').toLowerCase() as BoardId;
-    const validBoards: BoardId[] = ['fbise', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'];
+    const validBoards: BoardId[] = ['fbise', 'punjab', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'];
     const boardVal: BoardId = validBoards.includes(rawBoard) ? rawBoard : 'fbise';
     setEditStudentBoard(boardVal);
 

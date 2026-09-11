@@ -139,7 +139,11 @@ const AdminDashboardPage: React.FC = () => {
       const s = (o.subject_name || o.subject || '').toLowerCase();
       const bName = o.class?.board?.name || (o as any).board_name;
       if (b === 'ielts' || s.includes('ielts')) return 'IELTS';
+      if (b === 'punjab') return 'Punjab';
       if (b === 'sindh') return 'Sindh';
+      if (b === 'kpk') return 'KPK';
+      if (b === 'olevel') return 'O Levels';
+      if (b === 'alevel') return 'A Levels';
       if (b === 'fbise') return 'FBISE';
       if (bName) return bName;
       return b ? b.toUpperCase() : null;

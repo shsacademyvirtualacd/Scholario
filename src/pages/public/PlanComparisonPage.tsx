@@ -460,7 +460,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
             </div>
           </div>
         ) : (
-          /* STANDARD BOARDS: OPTION A vs OPTION B (FBISE, SINDH, KPK, IELTS) */
+          /* STANDARD BOARDS: OPTION A vs OPTION B (FBISE, PUNJAB, SINDH, KPK, IELTS) */
           <>
             {/* Informational Guidance Notice */}
             <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-100 flex items-start gap-2.5 text-xs text-blue-900 leading-relaxed">

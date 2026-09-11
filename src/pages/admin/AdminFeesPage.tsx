@@ -273,7 +273,8 @@ export const AdminFeesPage: React.FC = () => {
   // Filter list
   const filteredPending = pendingList.filter(item => 
     item.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.class_name.toLowerCase().includes(searchTerm.toLowerCase())
+    item.class_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (Array.isArray(item.subjects) && item.subjects.some((s: string) => s.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   const filteredClasses = selectedBoardFilter === 'all'
@@ -287,7 +288,7 @@ export const AdminFeesPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SectionHeader
             title="Institutional Fee Management"
-            description="Manage active student billing, per-class tuition rates across all boards (FBISE, Sindh Board & IELTS Preparation), and WhatsApp verification."
+            description="Manage active student billing, per-class tuition rates across all boards (FBISE, Punjab Board, Sindh Board & IELTS Preparation), and WhatsApp verification."
           />
         </div>
 
@@ -385,17 +386,52 @@ export const AdminFeesPage: React.FC = () => {
                     {filteredPending.map((item) => (
                       <div key={item.student_id} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 flex flex-col gap-4">
                         {/* Student Meta */}
-                        <div className="space-y-1 flex-1">
+                        <div className="space-y-2 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-extrabold text-[#111111]">{item.full_name}</span>
-                            <span className="badge badge-gray text-[10px]">{item.class_name}</span>
+                            <span className="badge badge-gray text-[10px] whitespace-nowrap">{item.class_name}</span>
+                            {item.plan_type === 'custom' && item.subjects && item.subjects.length > 0 ? (
+                              <span className="px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 text-purple-800 text-[10px] font-bold whitespace-nowrap">
+                                {item.subjects.length} Active {item.subjects.length === 1 ? 'Subject' : 'Subjects'}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[10px] font-bold whitespace-nowrap">
+                                All Subjects Package
+                              </span>
+                            )}
                             {item.amount && typeof item.amount === 'number' && item.amount > 0 && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black">
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black whitespace-nowrap">
                                 PKR {item.amount.toLocaleString()} / term
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[#737373]">{item.email}</p>
+
+                          {/* Active Enrolled Subjects Pills */}
+                          {item.subjects && item.subjects.length > 0 && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                              <span className="text-[10px] text-[#737373] font-bold uppercase tracking-wider mr-1">
+                                Active Subjects:
+                              </span>
+                              {item.subjects.map((subj: string, sIdx: number) => (
+                                <span
+                                  key={sIdx}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#FAFAFA] border border-[#E5E5E5] text-[#262626] whitespace-nowrap"
+                                >
+                                  {subj}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {item.email && <p className="text-xs text-[#737373]">{item.email}</p>}
+
+                          {item.submission_note && (
+                            <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 font-medium leading-relaxed mt-1">
+                              <span className="font-bold text-amber-900">Proof Submission Details: </span>
+                              {item.submission_note}
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-1.5 text-[10px] text-[#A3A3A3] font-semibold mt-1">
                             <Clock size={11} />
                             <span>Submitted: {new Date(item.updated_at).toLocaleString()}</span>
@@ -444,7 +480,7 @@ export const AdminFeesPage: React.FC = () => {
                           Per-Class Tuition Rates (All Boards & Classes)
                         </h2>
                         <p className="text-xs text-[#737373] mt-0.5">
-                          Configure official tuition fee amounts across Federal Board (FBISE), Sindh Board, and IELTS Preparation. Prices set here apply instantly across student onboarding, checkout, and the public fee calculator.
+                          Configure official tuition fee amounts across Federal Board (FBISE), Punjab Board, Sindh Board, and IELTS Preparation. Prices set here apply instantly across student onboarding, checkout, and the public fee calculator.
                         </p>
                       </div>
                     </div>

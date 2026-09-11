@@ -45,7 +45,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   slot,
   offerings,
   taxonomy,
-  existingSlots = [],
+  existingSlots: _existingSlots = [],
   defaultClassId = '',
   defaultStreamId = '',
   isDuplicateMode: isDuplicateModeProp = false,
@@ -340,52 +340,8 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       }
     }
 
-    // --- PERMANENT TIMETABLE RULES: COHORT COLLISION & INSTRUCTOR DOUBLE-BOOKING ---
-    if (existingSlots && existingSlots.length > 0) {
-      const daysToCheck = isDuplicate ? selectedDays : [dayOfWeek];
-      const editingId = slot && 'id' in slot ? slot.id : null;
-      const targetTeacherId = targetOffering?.teacher_id || targetOffering?.teacher?.id;
-      const targetTeacherName = targetOffering?.teacher?.full_name || 'Assigned Instructor';
-
-      for (const d of daysToCheck) {
-        for (const s of existingSlots) {
-          if (s.is_cancelled || s.id === editingId) continue;
-          if (s.day_of_week !== d) continue;
-
-          const sStart = timeToMins(s.start_time);
-          const sEnd = timeToMins(s.end_time);
-          const timeOverlap = Math.max(slotStart, sStart) < Math.min(slotEnd, sEnd);
-
-          if (!timeOverlap) continue;
-
-          const sOffering = offerings.find(o => o.id === s.offering_id);
-          const sClass = taxonomy?.classes?.find((c: any) => c.id === (s.class_id || sOffering?.class_id));
-          const sGrade = String(sClass?.grade || '');
-          const sBoard = sClass?.board_id || '';
-          const sSubject = (s.custom_title || sOffering?.subject_name || sOffering?.subject?.name || 'Class').trim();
-          const sTeacherId = sOffering?.teacher_id || sOffering?.teacher?.id;
-
-          // Rule 5: Cohort Collision - same class cannot have two simultaneous classes
-          if (s.class_id === selectedClassId) {
-            setError(`Cohort Collision: ${classSummaryText || 'This cohort'} already has ${sSubject} scheduled from ${formatTime12h(s.start_time)} to ${formatTime12h(s.end_time)} on ${DAYS[d]?.label || 'this day'}. Simultaneous classes are not permitted.`);
-            return;
-          }
-
-          // Rule 6: Instructor Double-Booking Check
-          if (targetTeacherId && sTeacherId && targetTeacherId === sTeacherId) {
-            // Check if this is an intended joint parallel lecture (same grade & same subject, e.g., FBISE 11 + Sindh 11)
-            const isJointLecture = grade === sGrade && subjectName.toLowerCase() === sSubject.toLowerCase();
-            if (!isJointLecture) {
-              const sBoardDef = getBoardDef(sBoard);
-              const sBoardLabel = sBoardDef?.shortName || sBoard.toUpperCase();
-              setError(`Instructor Conflict: ${targetTeacherName} is already scheduled to teach ${sSubject} (${sBoardLabel} ${formatGradeDisplay(sGrade, sBoard)}) from ${formatTime12h(s.start_time)} to ${formatTime12h(s.end_time)} on ${DAYS[d]?.label || 'this day'}. Teacher double-booking is strictly prohibited.`);
-              return;
-            }
-          }
-        }
-      }
-    }
-
+    // Note: Cohort collision and instructor double-booking checks are handled non-blockingly
+    // by the ScheduleConflictModal via onSave -> checkSlotConflict.
     const fullStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
     const fullEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
 

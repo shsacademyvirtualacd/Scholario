@@ -18,7 +18,11 @@ import type { ClassSlot, ClassOffering, Teacher } from '../../types';
 
 const BOARDS = [
   { id: 'fbise', label: 'FBISE' },
+  { id: 'punjab', label: 'Punjab Board' },
   { id: 'sindh', label: 'Sindh Board' },
+  { id: 'kpk', label: 'KPK Board' },
+  { id: 'olevel', label: 'O Levels' },
+  { id: 'alevel', label: 'A Levels' },
   { id: 'ielts', label: 'IELTS' },
 ];
 
@@ -348,10 +352,6 @@ export const ScheduleManagerPage: React.FC = () => {
   };
 
   const handleConflictConfirmAnyway = async (updatedFormData: any) => {
-    if (conflictData && (conflictData.type === 'teacher_double_booking' || conflictData.type === 'cohort_clash')) {
-      toast.error('Cannot override: Teacher double-booking and cohort time clashes are strictly prohibited by timetable rules.');
-      return;
-    }
     setConflictData(null);
     await executeSaveSlot(updatedFormData);
   };

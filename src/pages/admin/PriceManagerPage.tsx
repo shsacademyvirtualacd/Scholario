@@ -118,7 +118,7 @@ export const PriceManagerPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <SectionHeader
             title="Syllabus Price & Fee Manager"
-            description="Configure official tuition pricing and fee rates across all boards (FBISE, Sindh Board & IELTS Preparation). Changes apply instantly across student onboarding, checkout, and the public fee calculator."
+            description="Configure official tuition pricing and fee rates across all boards (FBISE, Punjab Board, Sindh Board & IELTS Preparation). Changes apply instantly across student onboarding, checkout, and the public fee calculator."
           />
         </div>
 

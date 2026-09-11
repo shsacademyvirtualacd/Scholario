@@ -8,7 +8,7 @@
 import { supabase } from './supabase';
 import { pageCache } from './pageCache';
 import { getPKTNow } from './scheduleUtils';
-import { BOARDS, getGradesForBoard } from './taxonomy';
+import { BOARDS, getGradesForBoard, getBoardDef, formatGradeDisplay, BoardId } from './taxonomy';
 // getSubjectsForStream is defined below, reading from cachedTaxonomy — no longer imported from taxonomy.ts.
 import type {
   Profile, Teacher, ClassOffering, ClassSlot, ClassSessionLink,
@@ -24,6 +24,8 @@ export * from './chatService';
 export * from './subjectEnrollmentService';
 import {
   getStudentSubjectPlan,
+  getStudentSubjectPlanSync,
+  getAllStudentSubjectPlans,
   saveStudentSubjectPlan,
   getSubjectPricingSettings,
   calculateSubjectEnrollmentFee
@@ -41,13 +43,17 @@ function mapOffering(off: any): any {
   const rawSubjName = off.subject?.name || (typeof off.subject === 'string' ? off.subject : null) || off.subject_name || 'Subject';
   const classNameLower = String(off.class?.name || off.class_name || '').toLowerCase();
   let inferredBoard = '';
-  if (classNameLower.includes('sindh')) inferredBoard = 'sindh';
+  if (classNameLower.includes('punjab')) inferredBoard = 'punjab';
+  else if (classNameLower.includes('sindh')) inferredBoard = 'sindh';
   else if (classNameLower.includes('ielts')) inferredBoard = 'ielts';
+  else if (classNameLower.includes('kpk')) inferredBoard = 'kpk';
+  else if (classNameLower.includes('olevel') || classNameLower.includes('o level')) inferredBoard = 'olevel';
+  else if (classNameLower.includes('alevel') || classNameLower.includes('a level')) inferredBoard = 'alevel';
   else if (classNameLower.includes('fbise') || classNameLower.includes('federal')) inferredBoard = 'fbise';
 
   const rawBoard = off.class?.board_id || off.class?.board?.id || off.class?.board?.code || off.board_id || off.board || inferredBoard || '';
   const boardId = String(rawBoard).toLowerCase();
-  const boardName = off.class?.board?.name || (boardId === 'sindh' ? 'Sindh Board' : boardId === 'ielts' ? 'IELTS Preparation' : boardId === 'fbise' ? 'Federal Board (FBISE)' : (rawBoard ? String(rawBoard).toUpperCase() : ''));
+  const boardName = off.class?.board?.name || (boardId === 'punjab' ? 'Punjab Board' : boardId === 'sindh' ? 'Sindh Board' : boardId === 'kpk' ? 'KPK Board' : boardId === 'olevel' ? 'O Levels' : boardId === 'alevel' ? 'A Levels' : boardId === 'ielts' ? 'IELTS Preparation' : boardId === 'fbise' ? 'Federal Board (FBISE)' : (rawBoard ? String(rawBoard).toUpperCase() : ''));
   
   // Unify subject name for IELTS teacher assignment offerings
   const isIelts = boardId === 'ielts' || String(off.class?.grade || off.grade || '').toLowerCase() === 'ielts' || rawSubjName.toLowerCase().includes('ielts');
@@ -198,7 +204,7 @@ export async function completeStudentOnboarding(
     await saveStudentSubjectPlan(studentId, [], 'all');
   }
   
-  if (isUUID(classId) && (isUUID(boardId) || ['fbise', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'].includes(boardId))) {
+  if (isUUID(classId) && (isUUID(boardId) || ['fbise', 'punjab', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'].includes(boardId))) {
     const { error } = await (supabase as any).rpc('complete_student_onboarding', {
       p_student_id: studentId,
       p_board_id: boardId,
@@ -238,7 +244,7 @@ export async function completeStudentOnboarding(
   }
 
   // If custom subjects are specified, synchronize enrollments to only those matching subjects
-  if (isUUID(classId) && Array.isArray(selectedSubjects) && selectedSubjects.length > 0 && planType === 'custom') {
+  if (isUUID(classId) && Array.isArray(selectedSubjects) && selectedSubjects.length > 0 && effectivePlanType === 'custom') {
     try {
       const { data: offerings } = await (supabase as any)
         .from('class_offerings')
@@ -3140,13 +3146,30 @@ export async function resolveGradeFeeConfig(
     try {
       const plan = await getStudentSubjectPlan(studentId);
       const isCambridge = targetBoard === 'alevel' || targetBoard === 'olevel';
-      if ((plan?.plan_type === 'custom' || isCambridge) && Array.isArray(plan?.subjects) && plan.subjects.length > 0) {
+
+      let effectiveSubjects = (plan?.subjects && plan.subjects.length > 0) ? plan.subjects : null;
+      let effectivePlanType = plan?.plan_type || (isCambridge ? 'custom' : 'all');
+
+      if (!effectiveSubjects) {
+        // Fallback: check profile in Supabase
+        const { data: prof } = await (supabase as any)
+          .from('profiles')
+          .select('subjects, plan_type')
+          .eq('id', studentId)
+          .maybeSingle();
+        if (prof?.subjects && Array.isArray(prof.subjects) && prof.subjects.length > 0) {
+          effectiveSubjects = prof.subjects;
+          effectivePlanType = prof.plan_type || (isCambridge ? 'custom' : 'all');
+        }
+      }
+
+      if ((effectivePlanType === 'custom' || isCambridge) && Array.isArray(effectiveSubjects) && effectiveSubjects.length > 0) {
         const settings = await getSubjectPricingSettings();
         perSubFee = targetBoard === 'alevel' ? 6500 : targetBoard === 'olevel' ? 5000 : settings.per_subject_fee;
-        studentSubjects = plan.subjects;
+        studentSubjects = effectiveSubjects;
         const feeCalc = calculateSubjectEnrollmentFee({
           baseClassFee: amount,
-          selectedSubjects: plan.subjects,
+          selectedSubjects: effectiveSubjects,
           perSubjectFee: perSubFee,
           threshold: settings.auto_upgrade_threshold,
           boardId: targetBoard,
@@ -3240,10 +3263,9 @@ export async function getFeeStatus(studentId: string): Promise<any | null> {
 export async function updateFeeStatus(
   studentId: string,
   status: 'unpaid' | 'pending' | 'paid',
-  _notes?: string
+  notes?: string
 ): Promise<void> {
-  // Real Supabase flow: updates fee_statuses. The trigger automatically creates the audit entry.
-  // First, verify status exists. If not, insert first.
+  // Real Supabase flow: updates fee_statuses.
   const { data: existing } = await (supabase as any)
     .from('fee_statuses')
     .select('*')
@@ -3262,6 +3284,21 @@ export async function updateFeeStatus(
       .eq('student_id', studentId);
     if (updErr) throw updErr;
   }
+
+  // Also record in fee_audit_trail if notes are provided
+  if (notes) {
+    try {
+      await (supabase as any).from('fee_audit_trail').insert({
+        student_id: studentId,
+        status_from: existing?.status || 'unpaid',
+        status_to: status,
+        notes: notes,
+        changed_at: new Date().toISOString()
+      });
+    } catch (auditErr) {
+      console.warn('[db:updateFeeStatus] Audit trail note insertion notice:', auditErr);
+    }
+  }
 }
 
 export async function getPendingFeeStatuses(): Promise<any[]> {
@@ -3272,11 +3309,20 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       status,
       updated_at,
       profiles!inner (
+        id,
         full_name,
+        phone,
+        board_id,
         class_id,
+        stream,
+        stream_id,
+        subjects,
+        plan_type,
         enrollments (
           class_offerings (
+            id,
             class:classes (
+              id,
               grade,
               board:boards (
                 id,
@@ -3284,6 +3330,7 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
               )
             ),
             subject:subjects (
+              id,
               name
             )
           )
@@ -3294,35 +3341,135 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
 
   if (error) throw error;
 
-  // Also fetch all fee configs so we can attach the exact live amount per student's class
-  const { data: allFeeConfigs } = await (supabase as any)
-    .from('fee_configs')
-    .select('class_id, amount');
+  // Concurrent lookups for single source of truth resolution:
+  const [allFeeConfigsRes, allClassesRes, allPlans, pricingSettings, rosterRes, auditRes] = await Promise.all([
+    (supabase as any).from('fee_configs').select('class_id, amount'),
+    (supabase as any).from('classes').select('id, grade, board_id'),
+    getAllStudentSubjectPlans().catch(() => ({})),
+    getSubjectPricingSettings().catch(() => ({ per_subject_fee: 1000, auto_upgrade_threshold: 3 })),
+    (supabase as any).from('roster').select('profile_id, email, full_name'),
+    (supabase as any).from('fee_audit_trail').select('student_id, notes, changed_at').order('changed_at', { ascending: false }).limit(200)
+  ]);
 
   const feeMap = new Map<string, number>();
-  (allFeeConfigs || []).forEach((fc: any) => {
+  (allFeeConfigsRes.data || []).forEach((fc: any) => {
     if (fc.class_id && typeof fc.amount === 'number') {
       feeMap.set(fc.class_id, fc.amount);
     }
   });
 
-  return (data || []).map((row: any) => {
-    const classOfferings = row.profiles?.enrollments?.map((e: any) => e.class_offerings).filter(Boolean) || [];
-    const className = classOfferings.length > 0 
-      ? `${classOfferings[0].subject?.name || ''} (${classOfferings[0].class?.grade || ''})`
-      : 'No Class';
+  const classMap = new Map<string, { id: string; grade: string; board_id: string }>();
+  (allClassesRes.data || []).forEach((c: any) => {
+    if (c.id) {
+      classMap.set(c.id, c);
+    }
+  });
 
-    const classId = row.profiles?.class_id;
-    const amount = classId && feeMap.has(classId) ? feeMap.get(classId) : null;
+  const emailMap = new Map<string, string>();
+  (rosterRes.data || []).forEach((r: any) => {
+    if (r.profile_id && r.email) {
+      emailMap.set(r.profile_id, r.email);
+    }
+  });
+
+  const latestAuditNotes = new Map<string, string>();
+  (auditRes.data || []).forEach((a: any) => {
+    if (a.student_id && a.notes && !latestAuditNotes.has(a.student_id)) {
+      latestAuditNotes.set(a.student_id, a.notes);
+    }
+  });
+
+  return (data || []).map((row: any) => {
+    const studentId = row.student_id;
+    const prof = row.profiles;
+    const classOfferings = prof?.enrollments?.map((e: any) => e.class_offerings).filter(Boolean) || [];
+
+    // Extract enrolled offering subjects
+    const enrolledSubjects = Array.from(
+      new Set(
+        classOfferings
+          .map((co: any) => co.subject?.name)
+          .filter(Boolean)
+      )
+    ) as string[];
+
+    // Grade and board determination
+    const classId = prof?.class_id;
+    const classObj = classId ? classMap.get(classId) : null;
+    const rawBoard = ((prof?.board_id || classObj?.board_id || classOfferings[0]?.class?.board?.id || 'fbise') as string).toLowerCase() as BoardId;
+    const boardDef = getBoardDef(rawBoard);
+    const grade = classObj?.grade || classOfferings[0]?.class?.grade || '10';
+
+    // Base class fee
+    let baseFee = classId && feeMap.has(classId) ? feeMap.get(classId)! : null;
+    if (baseFee === null || baseFee <= 0) {
+      baseFee = ['11', '12'].includes(grade) ? 4000 : 3000;
+    }
+
+    // Determine student's active subjects & plan type
+    const storedPlan = (allPlans as Record<string, any>)[studentId] || getStudentSubjectPlanSync(studentId);
+    let activeSubjects: string[] = [];
+    let planType: 'custom' | 'all' = 'all';
+
+    const isCambridge = rawBoard === 'alevel' || rawBoard === 'olevel';
+
+    if (storedPlan && Array.isArray(storedPlan.subjects) && storedPlan.subjects.length > 0) {
+      activeSubjects = storedPlan.subjects.filter(Boolean);
+      planType = storedPlan.plan_type || (isCambridge ? 'custom' : 'custom');
+    } else if (prof?.subjects && Array.isArray(prof.subjects) && prof.subjects.length > 0) {
+      activeSubjects = prof.subjects.filter(Boolean);
+      planType = prof.plan_type || (isCambridge ? 'custom' : 'custom');
+    } else if (isCambridge && enrolledSubjects.length > 0) {
+      activeSubjects = enrolledSubjects;
+      planType = 'custom';
+    } else if (prof?.plan_type === 'custom' && enrolledSubjects.length > 0) {
+      activeSubjects = enrolledSubjects;
+      planType = 'custom';
+    } else {
+      activeSubjects = enrolledSubjects;
+      planType = 'all';
+    }
+
+    // Fee calculation using the central calculateSubjectEnrollmentFee engine
+    let finalAmount = baseFee;
+    if ((planType === 'custom' || isCambridge) && activeSubjects.length > 0) {
+      const perSubRate = rawBoard === 'alevel' ? 6500 : rawBoard === 'olevel' ? 5000 : pricingSettings.per_subject_fee;
+      const calc = calculateSubjectEnrollmentFee({
+        baseClassFee: baseFee,
+        selectedSubjects: activeSubjects,
+        perSubjectFee: perSubRate,
+        threshold: pricingSettings.auto_upgrade_threshold,
+        boardId: rawBoard,
+      });
+      finalAmount = calc.fee;
+      planType = calc.plan_type;
+    }
+
+    // Human-readable class name display
+    let className = 'No Class';
+    if (rawBoard === 'ielts') {
+      className = `IELTS (${formatGradeDisplay(grade, rawBoard)})`;
+    } else if (planType === 'custom' && activeSubjects.length > 0) {
+      className = `${boardDef.shortName} Gr. ${formatGradeDisplay(grade, rawBoard)} (${activeSubjects.length} ${activeSubjects.length === 1 ? 'Subject' : 'Subjects'})`;
+    } else if (grade) {
+      className = `${boardDef.shortName} Gr. ${formatGradeDisplay(grade, rawBoard)} (All Subjects)`;
+    }
 
     return {
-      student_id: row.student_id,
-      full_name: row.profiles?.full_name || 'Unknown Student',
-      email: '',
+      student_id: studentId,
+      full_name: prof?.full_name || 'Unknown Student',
+      email: emailMap.get(studentId) || '',
+      phone: prof?.phone || '',
       status: row.status,
       updated_at: row.updated_at,
       class_name: className,
-      amount
+      subjects: activeSubjects,
+      plan_type: planType,
+      grade,
+      board_id: rawBoard,
+      board_name: boardDef.name,
+      submission_note: latestAuditNotes.get(studentId) || null,
+      amount: finalAmount
     };
   });
 }
@@ -3435,7 +3582,7 @@ export async function getClassesWithFeeConfigs(): Promise<ClassWithFeeConfig[]> 
     const fc = feeMap.get(cls.id);
     const hasConfig = !!fc;
     const amount = fc && typeof fc.amount === 'number' ? fc.amount : (fc?.amount ? Number(fc.amount) : 0);
-    const boardName = cls.board?.name || (cls.board_id === 'sindh' ? 'Sindh Board' : cls.board_id === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)');
+    const boardName = cls.board?.name || getBoardDef(cls.board_id)?.name || (cls.board_id === 'punjab' ? 'Punjab Board' : cls.board_id === 'sindh' ? 'Sindh Board' : cls.board_id === 'ielts' ? 'IELTS' : 'Federal Board (FBISE)');
 
     return {
       id: cls.id,
@@ -3454,7 +3601,8 @@ export async function getClassesWithFeeConfigs(): Promise<ClassWithFeeConfig[]> 
 
   result.sort((a, b) => {
     if (a.board_id !== b.board_id) {
-      return a.board_id === 'fbise' ? -1 : a.board_id === 'sindh' ? 0 : 1;
+      const order: Record<string, number> = { fbise: 1, punjab: 2, sindh: 3, kpk: 4, olevel: 5, alevel: 6, ielts: 7 };
+      return (order[a.board_id] || 99) - (order[b.board_id] || 99);
     }
     return parseInt(a.grade, 10) - parseInt(b.grade, 10);
   });
