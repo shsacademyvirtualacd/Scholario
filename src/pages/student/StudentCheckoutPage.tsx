@@ -9,7 +9,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { getFeeStatus, updateFeeStatus, getFeeAuditLogs, getEnrollmentsForStudent, resolveGradeFeeConfig } from '../../lib/db';
-import { getBoardDef } from '../../lib/taxonomy';
+import { getBoardDef, formatGradeDisplay, BoardId } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 
@@ -24,7 +24,7 @@ export const StudentCheckoutPage: React.FC = () => {
   const [feeStatus, setFeeStatus] = useState<any | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [studentClass, setStudentClass] = useState<any | null>(null);
-  const [studentBoardId, setStudentBoardId] = useState<'fbise' | 'sindh' | 'ielts'>((profile?.board_id as any) || 'fbise');
+  const [studentBoardId, setStudentBoardId] = useState<BoardId>((profile?.board_id as any) || 'fbise');
   const [studentGrade, setStudentGrade] = useState<string>('10');
   const [copiedText, setCopiedText] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -45,7 +45,7 @@ export const StudentCheckoutPage: React.FC = () => {
       }
 
       let grade = '10';
-      let boardId: 'fbise' | 'sindh' | 'ielts' = (profile.board_id as any) || 'fbise';
+      let boardId: BoardId = (profile.board_id as any) || 'fbise';
 
       if (enrolls && enrolls.length > 0) {
         const offering = enrolls[0].offering;
@@ -97,8 +97,8 @@ export const StudentCheckoutPage: React.FC = () => {
       setStudentBoardId(boardId);
       setStudentGrade(grade);
 
-      // Read live fee configuration via centralized resolution helper
-      const resolvedCfg = await resolveGradeFeeConfig(grade, classId, boardId);
+      // Read live fee configuration via centralized resolution helper with student ID context
+      const resolvedCfg = await resolveGradeFeeConfig(grade, classId, boardId, undefined, profile.id);
       const status = await getFeeStatus(profile.id);
       const logs = await getFeeAuditLogs(profile.id);
 
@@ -176,21 +176,21 @@ export const StudentCheckoutPage: React.FC = () => {
     switch (status) {
       case 'paid':
         return (
-          <span className="flex items-center gap-1 text-xs font-bold text-[#16a34a] bg-[#F0FDF4] border border-[#bbf7d0] px-3 py-1 rounded-full">
+          <span className="flex items-center gap-1 text-xs font-bold text-[#16a34a] bg-[#F0FDF4] border border-[#bbf7d0] px-3 py-1 rounded-full whitespace-nowrap shrink-0 self-start sm:self-auto">
             <CheckCircle2 size={14} />
             Authorized / Verified
           </span>
         );
       case 'pending':
         return (
-          <span className="flex items-center gap-1.5 text-xs font-bold text-[#d97706] bg-[#FFFBEB] border border-[#fef3c7] px-3 py-1 rounded-full animate-pulse">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-[#d97706] bg-[#FFFBEB] border border-[#fef3c7] px-3 py-1 rounded-full animate-pulse whitespace-nowrap shrink-0 self-start sm:self-auto">
             <Clock size={14} />
             Pending Verification / Awaiting Authorization
           </span>
         );
       default:
         return (
-          <span className="flex items-center gap-1 text-xs font-bold text-[#dc2626] bg-[#FEF2F2] border border-[#fecaca] px-3 py-1 rounded-full">
+          <span className="flex items-center gap-1 text-xs font-bold text-[#dc2626] bg-[#FEF2F2] border border-[#fecaca] px-3 py-1 rounded-full whitespace-nowrap shrink-0 self-start sm:self-auto">
             <ShieldAlert size={14} />
             Registered but Unauthorized
           </span>
@@ -281,15 +281,15 @@ export const StudentCheckoutPage: React.FC = () => {
               <div className={isMobile ? '' : 'col-span-2 space-y-6'}>
                 {/* Fee Dues Summary */}
                 <div className="bg-white border border-[#E5E5E5] rounded-2xl p-6 space-y-5">
-                  <div className="flex items-center justify-between border-b border-[#F5F5F5] pb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#F5F5F5] pb-4">
                     <div>
                       <h2 className="text-base font-extrabold text-[#111111] tracking-tight">Tuition Fee Package</h2>
                       <p className="text-xs text-[#737373] mt-0.5">
                         {studentBoardId === 'ielts'
                           ? 'IELTS Complete Preparation Program'
                           : (studentClass 
-                              ? `${studentClass.subject_name || studentClass.subject || getBoardDef(studentBoardId).shortName} (${getBoardDef(studentBoardId).shortName} Grade ${studentClass.grade || studentGrade})` 
-                              : `${getBoardDef(studentBoardId).name} Academic Program (Class ${studentGrade}th)`)}
+                              ? `${studentClass.subject_name || studentClass.subject || getBoardDef(studentBoardId).shortName} (${getBoardDef(studentBoardId).shortName} ${formatGradeDisplay(studentClass.grade || studentGrade, studentBoardId)})` 
+                              : `${getBoardDef(studentBoardId).name} Academic Program (${formatGradeDisplay(studentGrade, studentBoardId)})`)}
                       </p>
                     </div>
                     {getStatusBadge()}
@@ -303,7 +303,19 @@ export const StudentCheckoutPage: React.FC = () => {
                           <span className="text-3xl font-black text-[#111111] tracking-tight font-mono">
                             PKR {feeConfig.amount.toLocaleString()}
                           </span>
-                          <span className="text-xs text-[#737373] font-semibold block mt-1">Full Term Access Package</span>
+                          <span className="text-xs text-[#737373] font-semibold block mt-1">
+                            {studentBoardId === 'alevel' || studentBoardId === 'olevel'
+                              ? `Cambridge ${studentBoardId === 'alevel' ? 'A Levels' : 'O Levels'} Per-Subject Enrollment${
+                                  feeConfig?.subjects?.length && feeConfig.subjects.length >= 2
+                                    ? ` (${feeConfig.subjects.length} subjects • 5% discount applied)`
+                                    : feeConfig?.subjects?.length === 1
+                                    ? ' (1 subject • full price)'
+                                    : ''
+                                }`
+                              : feeConfig?.plan_type === 'custom'
+                              ? `Subject Enrollment Package (${feeConfig.subjects?.length || 'Selected'} subjects)`
+                              : 'Full Term Access Package'}
+                          </span>
                         </>
                       ) : (
                         <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-right">

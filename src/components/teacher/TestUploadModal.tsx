@@ -12,7 +12,7 @@ import {
   User,
   Edit3,
 } from 'lucide-react';
-import { getGradesForBoard, getStreamsForGrade } from '../../lib/taxonomy';
+import { getGradesForBoard, getStreamsForGrade, BOARDS, formatGradeDisplay, getBoardDef, BoardId } from '../../lib/taxonomy';
 import { uploadTestPaperToR2, getAllTeachers, getAllRoster, getSubjectsForStream } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
@@ -44,7 +44,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   const [isCustomTeacher, setIsCustomTeacher] = useState<boolean>(false);
   const [customTeacherName, setCustomTeacherName] = useState<string>('');
 
-  const [board, setBoard] = useState<string>(defaultBoard || 'fbise');
+  const [board, setBoard] = useState<BoardId>((defaultBoard as BoardId) || 'fbise');
   const [grade, setGrade] = useState<string>(defaultGrade);
   const [stream, setStream] = useState<string>('all');
   const [subject, setSubject] = useState<string>(defaultSubject);
@@ -65,7 +65,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
 
   // Sync board default if prop changes
   useEffect(() => {
-    if (defaultBoard) setBoard(defaultBoard);
+    if (defaultBoard) setBoard(defaultBoard as BoardId);
   }, [defaultBoard]);
 
   // Fetch teachers & roster when modal is opened
@@ -379,55 +379,27 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
             <label className="block text-xs font-bold text-[#111111] dark:text-[#F4F4F5] mb-2">
               Board Curriculum <span className="text-[#DC2626] dark:text-rose-400">*</span>
             </label>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setBoard('fbise');
-                  setGrade('10');
-                  setStream('all');
-                }}
-                disabled={uploading}
-                className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-                  board === 'fbise'
-                    ? 'border-[#F4C430] text-[#111111] dark:text-[#F4C430]'
-                    : 'border-transparent text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-[#F4F4F5]'
-                }`}
-              >
-                Federal Board (FBISE)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setBoard('sindh');
-                  setGrade('10');
-                  setStream('all');
-                }}
-                disabled={uploading}
-                className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-                  board === 'sindh'
-                    ? 'border-[#F4C430] text-[#111111] dark:text-[#F4C430]'
-                    : 'border-transparent text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-[#F4F4F5]'
-                }`}
-              >
-                Sindh Board
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setBoard('ielts');
-                  setGrade('10');
-                  setStream('all');
-                }}
-                disabled={uploading}
-                className={`pb-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-                  board === 'ielts'
-                    ? 'border-[#F4C430] text-[#111111] dark:text-[#F4C430]'
-                    : 'border-transparent text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-[#F4F4F5]'
-                }`}
-              >
-                IELTS
-              </button>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {BOARDS.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => {
+                    setBoard(b.id);
+                    const grades = getGradesForBoard(b.id);
+                    if (grades.length > 0) setGrade(grades[0].grade);
+                    setStream('all');
+                  }}
+                  disabled={uploading}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition-all cursor-pointer whitespace-nowrap ${
+                    board === b.id
+                      ? 'border-[#111111] dark:border-[#F4C430] bg-[#111111] text-white dark:bg-[#F4C430] dark:text-[#111111]'
+                      : 'border-transparent text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-[#F4F4F5] bg-zinc-100 dark:bg-zinc-800'
+                  }`}
+                >
+                  {b.shortName}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -435,7 +407,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#111111] dark:text-[#F4F4F5] mb-1.5">
-                Target Grade <span className="text-[#DC2626] dark:text-rose-400">*</span>
+                Target Grade / Level <span className="text-[#DC2626] dark:text-rose-400">*</span>
               </label>
               <select
                 id="test-grade-select"
@@ -448,10 +420,12 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
                 className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] dark:border-[#27272A] bg-white dark:bg-[#141416] text-sm font-semibold text-[#111111] dark:text-[#F4F4F5] focus:outline-hidden focus:ring-2 focus:ring-[#111111] dark:focus:ring-[#F4C430]"
               >
                 {availableGrades.map((g) => {
-                  const bLabel = board === 'sindh' ? 'Sindh' : board === 'ielts' ? 'IELTS' : board === 'fbise' ? 'FBISE' : board.toUpperCase();
+                  const bDef = getBoardDef(board);
+                  const bLabel = bDef?.shortName || board.toUpperCase();
+                  const gradeLabel = formatGradeDisplay(g.grade, board);
                   return (
                     <option key={g.grade} value={g.grade} className="bg-white dark:bg-[#18181B] text-[#111111] dark:text-[#F4F4F5]">
-                      Grade {g.grade} ({g.displayName} {bLabel})
+                      {gradeLabel} ({g.displayName} - {bLabel})
                     </option>
                   );
                 })}

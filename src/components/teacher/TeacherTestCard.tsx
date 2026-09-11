@@ -11,6 +11,7 @@ import {
 import type { TestPaper } from '../../types';
 import { downloadTestBlob, deleteTestPaper } from '../../lib/db';
 import { MathText } from '../common/MathText';
+import { getBoardDef, formatGradeDisplay } from '../../lib/taxonomy';
 
 interface TeacherTestCardProps {
   test: TestPaper;
@@ -93,8 +94,10 @@ export const TeacherTestCard: React.FC<TeacherTestCardProps> = ({
             <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#F5F5F5] dark:bg-zinc-800 text-[#525252] dark:text-zinc-300 border border-[#E5E5E5] dark:border-zinc-700 whitespace-nowrap">
               {(() => {
                 const bId = (test.board_id || test.board || '').toLowerCase();
-                const bName = bId === 'sindh' ? 'Sindh' : bId === 'ielts' ? 'IELTS' : bId === 'fbise' ? 'FBISE' : (test.board_id || test.board ? String(test.board_id || test.board).toUpperCase() : '');
-                return `Grade ${test.grade}${bName ? ` ${bName}` : ''}${test.stream && test.stream !== 'all' ? ` • ${test.stream}` : ''}`;
+                const bDef = getBoardDef(bId);
+                const bName = bDef?.shortName || bDef?.name || (test.board_id || test.board ? String(test.board_id || test.board).toUpperCase() : '');
+                const gradeStr = formatGradeDisplay(test.grade, bId);
+                return `${gradeStr}${bName ? ` • ${bName}` : ''}${test.stream && test.stream !== 'all' ? ` • ${test.stream}` : ''}`;
               })()}
             </span>
           </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Copy, Check, Lock } from 'lucide-react';
 import { useMobile } from '../../../hooks/useMobile';
 import { formatTime12h } from '../../../lib/scheduleUtils';
+import { formatGradeDisplay, getBoardDef } from '../../../lib/taxonomy';
 import type { ClassSlot, ClassOffering } from '../../../types';
 
 interface SlotFormProps {
@@ -130,7 +131,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
 
   // Filter offerings based on chosen class and stream.
   const selectedClassObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
-  const isSindhBoardSelected = selectedClassObj?.board_id === 'sindh';
+  const isExcludedIslamiatBoard = ['sindh', 'olevel', 'alevel'].includes(selectedClassObj?.board_id);
 
   const filteredOfferings = offerings.filter(o => {
     if (selectedClassId && o.class_id !== selectedClassId && (o as any)?.class?.id !== selectedClassId) {
@@ -140,19 +141,26 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       const offStreamId = o.stream_id || (o as any)?.stream?.id;
       if (offStreamId && offStreamId !== selectedStreamId) return false;
     }
-    // Hard constraint (Rule 3): Islamiat is only a valid subject for FBISE.
-    // It must not appear as a selectable subject option anywhere when Sindh Board is selected.
+    // Hard constraint (Rule 3): Islamiat / Tarjuma-tul-Quran are only valid subjects for national/provincial curricula (FBISE, KPK).
+    // They must not appear as selectable subject options when Sindh Board or Cambridge O/A Levels are selected.
     const subName = (o.subject_name || o.subject?.name || '').toLowerCase().trim();
-    if (isSindhBoardSelected && subName.includes('islamiat')) {
+    const isReligious = subName.includes('islamiat') || subName.includes('islamiyat') || subName.includes('tarjuma') || subName.includes('quran');
+    if (isExcludedIslamiatBoard && isReligious) {
       return false;
     }
     return true;
   });
 
   const currentSelectedOffering = offerings.find(o => o.id === offeringId);
-  const isCurrentIslamiatOnSindh = isSindhBoardSelected && (currentSelectedOffering?.subject_name || currentSelectedOffering?.subject?.name || '').toLowerCase().includes('islamiat');
+  const curSubLower = (currentSelectedOffering?.subject_name || currentSelectedOffering?.subject?.name || '').toLowerCase();
+  const isCurrentIslamiatExcluded = isExcludedIslamiatBoard && (
+    curSubLower.includes('islamiat') ||
+    curSubLower.includes('islamiyat') ||
+    curSubLower.includes('tarjuma') ||
+    curSubLower.includes('quran')
+  );
   const selectableOfferings = [...filteredOfferings];
-  if (currentSelectedOffering && !isCurrentIslamiatOnSindh && !selectableOfferings.some(o => o.id === currentSelectedOffering.id)) {
+  if (currentSelectedOffering && !isCurrentIslamiatExcluded && !selectableOfferings.some(o => o.id === currentSelectedOffering.id)) {
     selectableOfferings.unshift(currentSelectedOffering);
   }
 
@@ -161,10 +169,10 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     setSelectedClassId(val);
     setSelectedStreamId('');
     const cls = taxonomy?.classes?.find((c: any) => c.id === val);
-    if (cls?.board_id === 'sindh') {
+    if (['sindh', 'olevel', 'alevel'].includes(cls?.board_id)) {
       const curSub = offerings.find(o => o.id === offeringId);
       const subName = (curSub?.subject_name || curSub?.subject?.name || '').toLowerCase();
-      if (subName.includes('islamiat')) {
+      if (subName.includes('islamiat') || subName.includes('islamiyat') || subName.includes('tarjuma') || subName.includes('quran')) {
         setOfferingId('');
       }
     }
@@ -231,7 +239,9 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     : '';
 
   const classObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
-  const classSummaryText = classObj ? `${classObj.board_id === 'sindh' ? 'Sindh' : 'FBISE'} Grade ${classObj.display_name || classObj.grade}` : '';
+  const classSummaryText = classObj
+    ? `${getBoardDef(classObj.board_id)?.shortName || 'Board'} ${formatGradeDisplay(classObj.grade, classObj.board_id)}`
+    : '';
   const streamObj = taxonomy?.streams?.find((s: any) => s.id === selectedStreamId);
   const streamSummaryText = streamObj ? `${streamObj.name} Stream` : '';
   const timeSummaryText = `${formatTime12h(startTime)} – ${formatTime12h(endTime)}`;
@@ -310,21 +320,22 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       return;
     }
 
-    // Rule 3: Islamiat is only a valid subject for FBISE — it must not appear or be saved for Sindh Board
-    const isIslamiat = subjectName.includes('islamiat');
-    if (isIslamiat && boardId === 'sindh') {
-      setError('Rule 3 Violation: Islamiat is only a valid subject for FBISE and cannot be scheduled for Sindh Board.');
+    // Rule 3: Islamiat / Tarjuma-tul-Quran are only valid subjects for national/provincial curricula (FBISE and KPK) — must not appear or be saved for Sindh Board or Cambridge O/A levels
+    const isReligiousSubject = subjectName.includes('islamiat') || subjectName.includes('islamiyat') || subjectName.includes('tarjuma') || subjectName.includes('quran');
+    if (isReligiousSubject && (boardId === 'sindh' || boardId === 'olevel' || boardId === 'alevel')) {
+      const displaySub = (subjectName.includes('tarjuma') || subjectName.includes('quran')) ? 'Tarjuma-tul-Quran' : 'Islamiyat';
+      setError(`Rule 3 Violation: ${displaySub} is not part of the standard curriculum for ${getBoardDef(boardId)?.name || 'this board'}.`);
       return;
     }
 
-    // Rule 4: Islamiat must default to Period 0 (4:30 PM) or Period 3/4 — cannot be in Period 1, except FBISE Grade 11 on Wed/Thu
-    if (isIslamiat && overlapsP1) {
+    // Rule 4: Islamiat and Tarjuma-tul-Quran must default to Period 0 (4:30 PM) or Period 3/4 — cannot be in Period 1, except FBISE Grade 11 on Wed/Thu
+    if (isReligiousSubject && overlapsP1) {
       const isFbiseGrade11 = boardId === 'fbise' && grade === '11';
       const daysToCheck = isDuplicate ? selectedDays : [dayOfWeek];
       const hasInvalidP1Day = daysToCheck.some(d => !(isFbiseGrade11 && (d === 2 || d === 3))); // 2=Wed, 3=Thu
 
       if (hasInvalidP1Day) {
-        setError('Rule 4 Violation: Islamiat cannot be placed in Period 1 (5:00–5:30 PM). It must be scheduled in Period 0 (4:30–5:00 PM) or Period 3/4. (Exception: Period 1 is only permitted for FBISE Grade 11 on Wednesday and Thursday).');
+        setError('Rule 4 Violation: Islamiat and Tarjuma-tul-Quran cannot be placed in Period 1 (5:00–5:30 PM). They must be scheduled in Period 0 (4:30–5:00 PM) or Period 3/4. (Exception: Period 1 is only permitted for FBISE Grade 11 on Wednesday and Thursday).');
         return;
       }
     }
@@ -365,7 +376,9 @@ export const SlotForm: React.FC<SlotFormProps> = ({
             // Check if this is an intended joint parallel lecture (same grade & same subject, e.g., FBISE 11 + Sindh 11)
             const isJointLecture = grade === sGrade && subjectName.toLowerCase() === sSubject.toLowerCase();
             if (!isJointLecture) {
-              setError(`Instructor Conflict: ${targetTeacherName} is already scheduled to teach ${sSubject} (${sBoard.toUpperCase()} Grade ${sGrade}) from ${formatTime12h(s.start_time)} to ${formatTime12h(s.end_time)} on ${DAYS[d]?.label || 'this day'}. Teacher double-booking is strictly prohibited.`);
+              const sBoardDef = getBoardDef(sBoard);
+              const sBoardLabel = sBoardDef?.shortName || sBoard.toUpperCase();
+              setError(`Instructor Conflict: ${targetTeacherName} is already scheduled to teach ${sSubject} (${sBoardLabel} ${formatGradeDisplay(sGrade, sBoard)}) from ${formatTime12h(s.start_time)} to ${formatTime12h(s.end_time)} on ${DAYS[d]?.label || 'this day'}. Teacher double-booking is strictly prohibited.`);
               return;
             }
           }
@@ -476,10 +489,11 @@ export const SlotForm: React.FC<SlotFormProps> = ({
             >
               <option value="">-- Select Class --</option>
               {taxonomy?.classes?.map((c: any) => {
-                const boardLabel = c.board_id === 'sindh' ? 'Sindh Board' : 'FBISE';
+                const boardDef = getBoardDef(c.board_id);
+                const boardLabel = boardDef?.shortName || boardDef?.name || 'Board';
                 return (
                   <option key={c.id} value={c.id}>
-                    {boardLabel} — Grade {c.display_name || c.grade}
+                    {boardLabel} — {formatGradeDisplay(c.grade, c.board_id)}
                   </option>
                 );
               })}

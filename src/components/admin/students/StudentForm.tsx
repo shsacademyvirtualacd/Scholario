@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Profile } from '../../../types';
-import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getStreamsForGrade, BoardId } from '../../../lib/taxonomy';
 
 interface StudentFormProps {
   student?: Profile | null;
@@ -8,7 +8,7 @@ interface StudentFormProps {
     full_name: string;
     phone: string;
     stream: string;
-    board: 'fbise' | 'sindh' | 'ielts';
+    board: BoardId;
     grade: string;
   }) => void;
   onCancel: () => void;
@@ -21,7 +21,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 }) => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [board, setBoard] = useState<'fbise' | 'sindh' | 'ielts'>('fbise');
+  const [board, setBoard] = useState<BoardId>('fbise');
   const [grade, setGrade] = useState('10');
   const [stream, setStream] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +54,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({
       setFullName(student.full_name);
       setPhone(student.phone || '');
       setStream(student.stream || '');
-      const rawBoard = (student.board_id || (typeof student.board === 'string' ? student.board : student.board?.id) || 'fbise').toLowerCase();
-      setBoard(rawBoard === 'sindh' ? 'sindh' : rawBoard === 'ielts' ? 'ielts' : 'fbise');
+      const rawBoard = (student.board_id || (typeof student.board === 'string' ? student.board : student.board?.id) || 'fbise').toLowerCase() as BoardId;
+      const validBoards: BoardId[] = ['fbise', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'];
+      setBoard(validBoards.includes(rawBoard) ? rawBoard : 'fbise');
       setGrade(student.class?.grade || (student as any).grade || '10');
     } else {
       setFullName('');
@@ -130,7 +131,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         <label className="text-xs font-bold text-[#525252] block">Examination Board</label>
         <select
           value={board}
-          onChange={(e) => setBoard(e.target.value as 'fbise' | 'sindh' | 'ielts')}
+          onChange={(e) => setBoard(e.target.value as BoardId)}
           className="input py-2 text-sm w-full bg-white border-[#E5E5E5] rounded-xl"
         >
           {BOARDS.map(b => (

@@ -26,7 +26,7 @@ import {
   saveStudentSubjectPlan, 
   calculateSubjectEnrollmentFee,
 } from '../../lib/subjectEnrollmentService';
-import { getSubjectsForStream, getDefaultPrice, formatShortClassAndBoard } from '../../lib/taxonomy';
+import { getSubjectsForStream, getDefaultPrice, formatShortClassAndBoard, BOARDS, getBoardDef, formatGradeDisplay, BoardId } from '../../lib/taxonomy';
 
 export const RosterManagerPage: React.FC = () => {
   const isMobile = useMobile();
@@ -68,7 +68,7 @@ export const RosterManagerPage: React.FC = () => {
   const [editStudentEntry, setEditStudentEntry] = useState<RosterEntry | null>(null);
   const [editStudentName, setEditStudentName] = useState('');
   const [editStudentEmail, setEditStudentEmail] = useState('');
-  const [editStudentBoard, setEditStudentBoard] = useState<'fbise' | 'sindh' | 'ielts'>('fbise');
+  const [editStudentBoard, setEditStudentBoard] = useState<BoardId>('fbise');
   const [editStudentClass, setEditStudentClass] = useState('');
   const [editStudentStreamId, setEditStudentStreamId] = useState('');
   const [editStudentFeeStatus, setEditStudentFeeStatus] = useState<'unpaid' | 'pending' | 'paid'>('unpaid');
@@ -464,13 +464,15 @@ export const RosterManagerPage: React.FC = () => {
     const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null) || (entry.email ? Object.values(profilesMap).find((prof: any) => (prof.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
     if (p?.class_id && classesMap[p.class_id]) {
       const cls = classesMap[p.class_id];
-      const bName = cls.board_id === 'sindh' ? 'Sindh' : cls.board_id === 'ielts' ? 'IELTS' : cls.board_id === 'fbise' ? 'FBISE' : (cls.board?.name || cls.board_id?.toUpperCase() || 'Curriculum');
+      const bDef = getBoardDef(cls.board_id);
+      const bName = bDef?.shortName || bDef?.name || cls.board?.name || cls.board_id?.toUpperCase() || 'Curriculum';
       return `${cls.display_name} (${bName})`;
     }
     if (entry.class_ids?.length > 0) {
       if (classesMap[entry.class_ids[0]]) {
         const cls = classesMap[entry.class_ids[0]];
-        const bName = cls.board_id === 'sindh' ? 'Sindh' : cls.board_id === 'ielts' ? 'IELTS' : cls.board_id === 'fbise' ? 'FBISE' : (cls.board?.name || cls.board_id?.toUpperCase() || 'Curriculum');
+        const bDef = getBoardDef(cls.board_id);
+        const bName = bDef?.shortName || bDef?.name || cls.board?.name || cls.board_id?.toUpperCase() || 'Curriculum';
         return `${cls.display_name} (${bName})`;
       }
       const firstOff = offerings.find(o => o.id === entry.class_ids[0]);
@@ -483,9 +485,11 @@ export const RosterManagerPage: React.FC = () => {
     const full = getClassGrade(entry);
     if (!full || full === 'Not Assigned') return full;
     const stream = getStream(entry);
+    const p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null);
+    const bDef = getBoardDef(p?.board_id || p?.board);
     return formatShortClassAndBoard({
       gradeName: full,
-      boardName: full.toLowerCase().includes('sindh') ? 'Sindh' : full.toLowerCase().includes('ielts') ? 'IELTS' : full.toLowerCase().includes('fbise') || full.toLowerCase().includes('federal') ? 'FBISE' : full,
+      boardName: bDef?.shortName || (full.toLowerCase().includes('sindh') ? 'Sindh' : full.toLowerCase().includes('ielts') ? 'IELTS' : full.toLowerCase().includes('fbise') || full.toLowerCase().includes('federal') ? 'FBISE' : full),
       streamName: stream,
     });
   };
@@ -547,8 +551,9 @@ export const RosterManagerPage: React.FC = () => {
     setEditStudentName(p?.full_name || entry.full_name || '');
     setEditStudentEmail(entry.email || p?.email || '');
 
-    const rawBoard = (p?.board_id || p?.board || 'fbise').toLowerCase();
-    const boardVal: 'fbise' | 'sindh' | 'ielts' = rawBoard === 'sindh' ? 'sindh' : rawBoard === 'ielts' ? 'ielts' : 'fbise';
+    const rawBoard = (p?.board_id || p?.board || 'fbise').toLowerCase() as BoardId;
+    const validBoards: BoardId[] = ['fbise', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'];
+    const boardVal: BoardId = validBoards.includes(rawBoard) ? rawBoard : 'fbise';
     setEditStudentBoard(boardVal);
 
     const boardClasses = classesList.filter(c => (c.board_id || '').toLowerCase() === boardVal);
@@ -587,7 +592,7 @@ export const RosterManagerPage: React.FC = () => {
     setEditStudentModalOpen(true);
   };
 
-  const handleBoardChangeInModal = (newBoard: 'fbise' | 'sindh' | 'ielts') => {
+  const handleBoardChangeInModal = (newBoard: BoardId) => {
     setEditStudentBoard(newBoard);
     const newClasses = classesList
       .filter(c => (c.board_id || '').toLowerCase() === newBoard)
@@ -831,27 +836,22 @@ export const RosterManagerPage: React.FC = () => {
   const studentCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'student').length, [roster, profilesMap]);
   const teacherCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'teacher').length, [roster, profilesMap]);
 
-  const fbiseOfferings = useMemo(() => {
-    return offerings
-      .filter(o => (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase() === 'fbise')
-      .sort((a, b) => {
-        const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
-        const bGrade = parseInt(String(b.grade || b.class?.grade || '99'), 10);
-        if (aGrade !== bGrade) return aGrade - bGrade;
-        return (a.subject_name || '').localeCompare(b.subject_name || '');
-      });
-  }, [offerings]);
+  const regularBoards = useMemo(() => BOARDS.filter(b => b.id !== 'ielts'), []);
 
-  const sindhOfferings = useMemo(() => {
-    return offerings
-      .filter(o => (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase() === 'sindh')
-      .sort((a, b) => {
-        const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
-        const bGrade = parseInt(String(b.grade || b.class?.grade || '99'), 10);
-        if (aGrade !== bGrade) return aGrade - bGrade;
-        return (a.subject_name || '').localeCompare(b.subject_name || '');
-      });
-  }, [offerings]);
+  const boardOfferingsMap = useMemo(() => {
+    const map: Record<string, ClassOffering[]> = {};
+    regularBoards.forEach(b => {
+      map[b.id] = offerings
+        .filter(o => (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase() === b.id)
+        .sort((a, bOff) => {
+          const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
+          const bGrade = parseInt(String(bOff.grade || bOff.class?.grade || '99'), 10);
+          if (aGrade !== bGrade) return aGrade - bGrade;
+          return (a.subject_name || '').localeCompare(bOff.subject_name || '');
+        });
+    });
+    return map;
+  }, [offerings, regularBoards]);
 
   const ieltsOfferings = useMemo(() => {
     const allIelts = offerings.filter(o => {
@@ -871,10 +871,11 @@ export const RosterManagerPage: React.FC = () => {
   }, [offerings]);
 
   const otherOfferings = useMemo(() => {
+    const knownBoardIds = BOARDS.map(b => b.id as string);
     return offerings
       .filter(o => {
         const bId = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
-        return bId !== 'fbise' && bId !== 'sindh' && bId !== 'ielts' && !(o.subject_name || '').toLowerCase().includes('ielts');
+        return !knownBoardIds.includes(bId) && !(o.subject_name || '').toLowerCase().includes('ielts');
       })
       .sort((a, b) => {
         const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
@@ -1697,177 +1698,108 @@ export const RosterManagerPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* ── SECTION 1: Federal Board (FBISE) ── */}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between pb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0" />
-                        <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                          Federal Board (FBISE)
-                        </h4>
-                        <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
-                          {fbiseOfferings.length}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {selectedClasses.filter(id => fbiseOfferings.some(o => o.id === id)).length > 0 && (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md">
-                            {selectedClasses.filter(id => fbiseOfferings.some(o => o.id === id)).length} selected
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const fbiseIds = fbiseOfferings.map(o => o.id);
-                            const allSelected = fbiseIds.length > 0 && fbiseIds.every(id => selectedClasses.includes(id));
-                            if (allSelected) {
-                              setSelectedClasses(prev => prev.filter(id => !fbiseIds.includes(id)));
-                            } else {
-                              setSelectedClasses(prev => Array.from(new Set([...prev, ...fbiseIds])));
-                            }
-                          }}
-                          className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
-                        >
-                          {fbiseOfferings.length > 0 && fbiseOfferings.every(o => selectedClasses.includes(o.id)) ? 'Deselect All' : 'Select All'}
-                        </button>
-                      </div>
-                    </div>
+                  {/* ── REGULAR BOARDS: FBISE, Sindh, KPK, O Levels, A Levels ── */}
+                  {regularBoards.map((b, idx) => {
+                    const bOffers = boardOfferingsMap[b.id] || [];
+                    const bIds = bOffers.map(o => o.id);
+                    const selectedCount = selectedClasses.filter(id => bIds.includes(id)).length;
+                    const allSelected = bIds.length > 0 && bIds.every(id => selectedClasses.includes(id));
+                    const dotColors = [
+                      'bg-emerald-500 ring-emerald-100',
+                      'bg-blue-500 ring-blue-100',
+                      'bg-teal-500 ring-teal-100',
+                      'bg-indigo-500 ring-indigo-100',
+                      'bg-purple-500 ring-purple-100',
+                    ];
+                    const dotClass = dotColors[idx % dotColors.length];
 
-                    <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
-                      {fbiseOfferings.length === 0 ? (
-                        <div className="p-4 text-xs text-[#737373] text-center">No Federal Board offerings found.</div>
-                      ) : (
-                        fbiseOfferings.map(off => {
-                          const isChecked = selectedClasses.includes(off.id);
-                          const isAssignedToThisTeacher = selectedEntry && (
-                            off.teacher_id === selectedEntry.id || 
-                            off.teacher_id === selectedEntry.profile_id || 
-                            off.teacher?.id === selectedEntry.id || 
-                            off.teacher?.id === selectedEntry.profile_id
-                          );
-                          return (
-                            <label 
-                              key={off.id}
-                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
-                            >
-                              <div className="pr-3">
-                                <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
-                                  <span>{off.subject_name} — Gr. {off.grade}</span>
-                                  {off.stream && (
-                                    <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
-                                      {off.stream}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[11px] mt-0.5">
-                                  {off.teacher ? (
-                                    <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
-                                      Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
-                                      {isAssignedToThisTeacher && ' (Assigned)'}
-                                    </span>
-                                  ) : (
-                                    <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
-                                  )}
-                                </div>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleClassSelect(off.id)}
-                                className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
-                              />
-                            </label>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
+                    return (
+                      <div key={b.id} className="space-y-2.5 pt-2">
+                        <div className="flex items-center justify-between pb-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full ${dotClass} ring-4 shrink-0`} />
+                            <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                              {b.name}
+                            </h4>
+                            <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
+                              {bOffers.length}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedCount > 0 && (
+                              <span className="text-[10px] font-bold text-purple-700 bg-purple-100/90 px-2 py-0.5 rounded-md">
+                                {selectedCount} selected
+                              </span>
+                            )}
+                            {bOffers.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (allSelected) {
+                                    setSelectedClasses(prev => prev.filter(id => !bIds.includes(id)));
+                                  } else {
+                                    setSelectedClasses(prev => Array.from(new Set([...prev, ...bIds])));
+                                  }
+                                }}
+                                className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
+                              >
+                                {allSelected ? 'Deselect All' : 'Select All'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
 
-                  {/* ── SECTION 2: Sindh Board ── */}
-                  <div className="space-y-2.5 pt-2">
-                    <div className="flex items-center justify-between pb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100 shrink-0" />
-                        <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                          Sindh Board
-                        </h4>
-                        <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
-                          {sindhOfferings.length}
-                        </span>
+                        <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
+                          {bOffers.length === 0 ? (
+                            <div className="p-4 text-xs text-[#737373] text-center">No {b.shortName} offerings found.</div>
+                          ) : (
+                            bOffers.map(off => {
+                              const isChecked = selectedClasses.includes(off.id);
+                              const isAssignedToThisTeacher = selectedEntry && (
+                                off.teacher_id === selectedEntry.id || 
+                                off.teacher_id === selectedEntry.profile_id || 
+                                off.teacher?.id === selectedEntry.id || 
+                                off.teacher?.id === selectedEntry.profile_id
+                              );
+                              return (
+                                <label 
+                                  key={off.id}
+                                  className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
+                                >
+                                  <div className="pr-3">
+                                    <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
+                                      <span>{off.subject_name} — {formatGradeDisplay(off.grade || '', b.id)}</span>
+                                      {off.stream && (
+                                        <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
+                                          {off.stream}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] mt-0.5">
+                                      {off.teacher ? (
+                                        <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
+                                          Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
+                                          {isAssignedToThisTeacher && ' (Assigned)'}
+                                        </span>
+                                      ) : (
+                                        <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleClassSelect(off.id)}
+                                    className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
+                                  />
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {selectedClasses.filter(id => sindhOfferings.some(o => o.id === id)).length > 0 && (
-                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-md">
-                            {selectedClasses.filter(id => sindhOfferings.some(o => o.id === id)).length} selected
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const sindhIds = sindhOfferings.map(o => o.id);
-                            const allSelected = sindhIds.length > 0 && sindhIds.every(id => selectedClasses.includes(id));
-                            if (allSelected) {
-                              setSelectedClasses(prev => prev.filter(id => !sindhIds.includes(id)));
-                            } else {
-                              setSelectedClasses(prev => Array.from(new Set([...prev, ...sindhIds])));
-                            }
-                          }}
-                          className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
-                        >
-                          {sindhOfferings.length > 0 && sindhOfferings.every(o => selectedClasses.includes(o.id)) ? 'Deselect All' : 'Select All'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
-                      {sindhOfferings.length === 0 ? (
-                        <div className="p-4 text-xs text-[#737373] text-center">No Sindh Board offerings found.</div>
-                      ) : (
-                        sindhOfferings.map(off => {
-                          const isChecked = selectedClasses.includes(off.id);
-                          const isAssignedToThisTeacher = selectedEntry && (
-                            off.teacher_id === selectedEntry.id || 
-                            off.teacher_id === selectedEntry.profile_id || 
-                            off.teacher?.id === selectedEntry.id || 
-                            off.teacher?.id === selectedEntry.profile_id
-                          );
-                          return (
-                            <label 
-                              key={off.id}
-                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
-                            >
-                              <div className="pr-3">
-                                <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
-                                  <span>{off.subject_name} — Gr. {off.grade}</span>
-                                  {off.stream && (
-                                    <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
-                                      {off.stream}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[11px] mt-0.5">
-                                  {off.teacher ? (
-                                    <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
-                                      Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
-                                      {isAssignedToThisTeacher && ' (Assigned)'}
-                                    </span>
-                                  ) : (
-                                    <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
-                                  )}
-                                </div>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleClassSelect(off.id)}
-                                className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
-                              />
-                            </label>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
+                    );
+                  })}
 
                   {/* ── SECTION 3: IELTS (Unified Single Subject) ── */}
                   <div className="space-y-2.5 pt-2">
@@ -2107,65 +2039,41 @@ export const RosterManagerPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* Board Selection (Federal / Sindh) */}
+              {/* Board Selection */}
               <div>
                 <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
                   Academic Board <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleBoardChangeInModal('fbise')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentBoard === 'fbise'
-                        ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-900">Federal Board</span>
-                      {editStudentBoard === 'fbise' && (
-                        <CheckCircle2 size={14} className="text-purple-600 shrink-0" />
-                      )}
-                    </div>
-                    <span className="text-[11px] text-zinc-500 block mt-0.5">FBISE Curriculum</span>
-                  </button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                  {BOARDS.map(b => {
+                    const isSelected = editStudentBoard === b.id;
+                    const isIelts = b.id === 'ielts';
+                    const activeRing = isIelts
+                      ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
+                      : 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20';
+                    const checkColor = isIelts ? 'text-amber-600' : 'text-purple-600';
 
-                  <button
-                    type="button"
-                    onClick={() => handleBoardChangeInModal('sindh')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentBoard === 'sindh'
-                        ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-900">Sindh Board</span>
-                      {editStudentBoard === 'sindh' && (
-                        <CheckCircle2 size={14} className="text-purple-600 shrink-0" />
-                      )}
-                    </div>
-                    <span className="text-[11px] text-zinc-500 block mt-0.5">BIEK / BSEK Curriculum</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleBoardChangeInModal('ielts')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentBoard === 'ielts'
-                        ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-900">IELTS</span>
-                      {editStudentBoard === 'ielts' && (
-                        <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
-                      )}
-                    </div>
-                    <span className="text-[11px] text-zinc-500 block mt-0.5">International English</span>
-                  </button>
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => handleBoardChangeInModal(b.id)}
+                        className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
+                          isSelected
+                            ? activeRing
+                            : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-zinc-900">{b.shortName}</span>
+                          {isSelected && (
+                            <CheckCircle2 size={14} className={`${checkColor} shrink-0`} />
+                          )}
+                        </div>
+                        <span className="text-[11px] text-zinc-500 block mt-0.5 line-clamp-1">{b.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

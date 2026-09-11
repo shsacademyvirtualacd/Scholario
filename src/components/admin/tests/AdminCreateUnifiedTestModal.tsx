@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../features/auth/AuthContext';
 import { saveWrittenTest } from '../../../lib/writtenTestService';
 import { MathText } from '../../common/MathText';
-import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getStreamsForGrade, formatGradeDisplay, getBoardDef, BoardId } from '../../../lib/taxonomy';
 import { getSubjectsForStream } from '../../../lib/db';
 import type {
   WrittenTest,
@@ -68,7 +68,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
   // STEP 2: Test Details
   // ---------------------------------------------------------------------------
   const [title, setTitle] = useState<string>('Comprehensive Assessment Test');
-  const [board, setBoard] = useState<string>('fbise');
+  const [board, setBoard] = useState<BoardId>('fbise');
   const [grade, setGrade] = useState<string>('9');
   const [stream, setStream] = useState<string>('Biology');
   const [subject, setSubject] = useState<string>('Physics');
@@ -873,7 +873,26 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
                   <label className="text-xs font-bold text-[#111111] block mb-1.5">Board</label>
                   <select
                     value={board}
-                    onChange={(e) => setBoard(e.target.value)}
+                    onChange={(e) => {
+                      const newBoard = e.target.value as BoardId;
+                      setBoard(newBoard);
+                      const newGrades = getGradesForBoard(newBoard);
+                      const validGrade = newGrades.some((g) => String(g.grade) === String(grade))
+                        ? grade
+                        : String(newGrades[0]?.grade || '9');
+                      if (validGrade !== grade) setGrade(validGrade);
+
+                      const newStreams = getStreamsForGrade(validGrade, newBoard);
+                      const validStream = newStreams.some((s) => s.name.toLowerCase() === stream.toLowerCase())
+                        ? stream
+                        : newStreams[0]?.name || '';
+                      if (validStream !== stream) setStream(validStream);
+
+                      const newSubs = getSubjectsForStream(validGrade, validStream, newBoard);
+                      if (!newSubs.includes(subject) && newSubs.length > 0) {
+                        setSubject(newSubs[0]);
+                      }
+                    }}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] text-xs font-bold bg-white text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
                   >
                     {BOARDS.map((b) => (
@@ -893,7 +912,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
                   >
                     {availableGrades.map((g) => (
                       <option key={g.grade} value={g.grade}>
-                        {g.grade}th Grade
+                        {g.displayName || formatGradeDisplay(g.grade, board)}
                       </option>
                     ))}
                   </select>
@@ -1478,7 +1497,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-wider text-[#F4C430]">
-                      {board.toUpperCase()} • Grade {grade} • {stream}
+                      {getBoardDef(board)?.shortName || board.toUpperCase()} • {formatGradeDisplay(grade, board)} • {stream}
                     </span>
                     <h3 className="text-base sm:text-lg font-black mt-0.5">{title}</h3>
                     <p className="text-xs text-white/70 mt-0.5">{subject}</p>

@@ -25,7 +25,7 @@ import {
 } from '../../../lib/testPdfGenerator';
 import { renderLaTeXToText } from '../../../lib/latexRenderer';
 import { PdfPreviewViewer } from './PdfPreviewViewer';
-import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getStreamsForGrade, formatGradeDisplay, BoardId } from '../../../lib/taxonomy';
 import { getSubjectsForStream } from '../../../lib/db';
 import { FBISE_GRADE_9_CURRICULUM, FBISE_GRADE_10_CURRICULUM } from '../../../lib/curriculumFBISE9';
 import { IELTS_CURRICULUM, isIELTSBoard } from '../../../lib/curriculumIELTS';
@@ -841,13 +841,16 @@ export const AdminCreateTestModal: React.FC<AdminCreateTestModalProps> = ({
                     onChange={(e) => setGrade(e.target.value)}
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
                   >
-                    {availableGrades.map((g) => (
-                      <option key={g.grade} value={g.grade}>
-                        {isIELTSBoard(board, g.grade)
-                          ? g.displayName
-                          : `Grade ${g.grade} (${g.displayName} ${board === 'sindh' ? 'Sindh' : 'FBISE'})`}
-                      </option>
-                    ))}
+                    {availableGrades.map((g) => {
+                      const boardDef = BOARDS.find((b) => b.id === board);
+                      return (
+                        <option key={g.grade} value={g.grade}>
+                          {isIELTSBoard(board, g.grade)
+                            ? g.displayName
+                            : `${formatGradeDisplay(g.grade, board as BoardId)} (${g.displayName} - ${boardDef?.shortName || board.toUpperCase()})`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 

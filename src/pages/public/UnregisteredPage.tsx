@@ -5,7 +5,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { getTaxonomy, completeStudentOnboarding, resolveGradeFeeConfig, requestAccountTermination } from '../../lib/db';
 import Logo from '../../components/ui/Logo';
-import { BOARDS, getGradesForBoard, getBoardDef, getDefaultPrice } from '../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getBoardDef, getDefaultPrice, BoardId } from '../../lib/taxonomy';
 import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -74,16 +74,26 @@ export const UnregisteredPage: React.FC = () => {
   };
 
   const isPhoneValid = validatePakistaniPhoneNumber(phone, true).isValid;
-  const [selectedBoardId, setSelectedBoardId] = useState<'fbise' | 'sindh' | 'ielts'>(
-    queryBoard === 'sindh' ? 'sindh' : queryBoard === 'ielts' ? 'ielts' : 'fbise'
-  );
+  const initialBoard = (queryBoard && BOARDS.some((b) => b.id.toLowerCase() === queryBoard.toLowerCase())
+    ? queryBoard.toLowerCase()
+    : 'fbise') as BoardId;
+  const [selectedBoardId, setSelectedBoardId] = useState<BoardId>(initialBoard);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStreamId, setSelectedStreamId] = useState<string | null>(null);
   const [baseClassFee, setBaseClassFee] = useState<number>(3000);
-  const [enrollmentMode, setEnrollmentMode] = useState<'all' | 'custom'>('all');
+  const [enrollmentMode, setEnrollmentMode] = useState<'all' | 'custom'>(
+    initialBoard === 'alevel' || initialBoard === 'olevel' ? 'custom' : 'all'
+  );
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [pricingSettings, setPricingSettings] = useState<SubjectPricingSettings>(getCachedSubjectPricingSettings());
   const [showPlanComparison, setShowPlanComparison] = useState<boolean>(false);
+
+  // Automatically enforce custom per-subject enrollment for Cambridge A/O Levels
+  useEffect(() => {
+    if (selectedBoardId === 'alevel' || selectedBoardId === 'olevel') {
+      setEnrollmentMode('custom');
+    }
+  }, [selectedBoardId]);
 
   const [saving, setSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -303,11 +313,13 @@ export const UnregisteredPage: React.FC = () => {
       return;
     }
 
+    const isCambridge = selectedBoardId === 'alevel' || selectedBoardId === 'olevel';
+    const effectiveEnrollmentMode = isCambridge ? 'custom' : enrollmentMode;
     const availableSubs = getAvailableSubjects();
-    const finalSubjects = enrollmentMode === 'all' ? availableSubs : selectedSubjects;
+    const finalSubjects = effectiveEnrollmentMode === 'all' ? availableSubs : selectedSubjects;
 
-    if (enrollmentMode === 'custom' && finalSubjects.length === 0) {
-      setError('Please select at least one subject to enroll, or choose All Subjects.');
+    if (effectiveEnrollmentMode === 'custom' && finalSubjects.length === 0) {
+      setError(isCambridge ? 'Please select at least one Cambridge subject to enroll.' : 'Please select at least one subject to enroll, or choose All Subjects.');
       toast.error('Please select at least one subject.');
       return;
     }
@@ -427,7 +439,7 @@ export const UnregisteredPage: React.FC = () => {
         [],
         fullName.trim(),
         finalSubjects,
-        enrollmentMode
+        effectiveEnrollmentMode
       );
 
       // 5. Reload profile context
@@ -662,7 +674,7 @@ export const UnregisteredPage: React.FC = () => {
                     <Sparkles size={18} className="text-[#F4C430]" />
                     <h1 className="text-xl font-black text-[#111111] tracking-tight">Student Registration</h1>
                   </div>
-                  <span className="text-xs font-bold text-[#111111] bg-[#F5F5F5] px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  <span className="text-xs font-bold text-[#111111] bg-[#F5F5F5] px-2.5 py-1 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0">
                     {currentBoardDef.shortName}
                   </span>
                 </div>
@@ -781,20 +793,20 @@ export const UnregisteredPage: React.FC = () => {
                     <span className="text-[10px] text-[#A3A3A3] font-medium">Curriculum Standard</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#F5F5F5] p-1.5 rounded-2xl border border-[#E5E5E5]">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-[#F5F5F5] p-1.5 rounded-2xl border border-[#E5E5E5]">
                     {BOARDS.map((b) => (
                       <button
                         key={b.id}
                         type="button"
-                        onClick={() => setSelectedBoardId(b.id as 'fbise' | 'sindh' | 'ielts')}
+                        onClick={() => setSelectedBoardId(b.id as BoardId)}
                         className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                           selectedBoardId === b.id
                             ? 'bg-white text-[#111111] shadow-sm border border-[#E5E5E5]'
                             : 'text-[#737373] hover:text-[#111111]'
                         }`}
                       >
-                        <div className={`w-2 h-2 rounded-full ${selectedBoardId === b.id ? 'bg-[#F4C430]' : 'bg-[#D4D4D4]'}`} />
-                        <span>{b.name}</span>
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${selectedBoardId === b.id ? 'bg-[#F4C430]' : 'bg-[#D4D4D4]'}`} />
+                        <span className="truncate">{b.shortName || b.name}</span>
                       </button>
                     ))}
                   </div>
@@ -952,12 +964,21 @@ export const UnregisteredPage: React.FC = () => {
                     {/* Section 5: Subject Selection / Enrollment Model */}
                     {selectedClassId && selectedStreamId && (() => {
                       const availSubs = getAvailableSubjects();
+                      const isALevel = selectedBoardId === 'alevel';
+                      const isOLevel = selectedBoardId === 'olevel';
+                      const isCambridge = isALevel || isOLevel;
+                      const effectivePerSubRate = isALevel ? 6500 : isOLevel ? 5000 : pricingSettings.per_subject_fee;
+
                       return (
                         <div className="space-y-3 pt-4 border-t border-[#F5F5F5] animate-in fade-in duration-300">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-xs font-bold text-[#111111] uppercase tracking-wider">
                               <BookMarked size={14} className="text-[#F4C430]" />
-                              <span>Step 5: Enrollment Model & Subject Choice</span>
+                              <span>
+                                {isCambridge
+                                  ? `Step 5: Select Your Subjects (${isALevel ? 'A Levels' : 'O Levels'})`
+                                  : 'Step 5: Enrollment Model & Subject Choice'}
+                              </span>
                             </div>
                             <button
                               id="btn-compare-plans-step5"
@@ -966,72 +987,27 @@ export const UnregisteredPage: React.FC = () => {
                               className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92700A] hover:underline cursor-pointer"
                             >
                               <Sparkles size={11} className="text-[#F4C430]" />
-                              <span>Compare Plans</span>
+                              <span>{isCambridge ? 'View Rates & Discounts' : 'Compare Plans'}</span>
                             </button>
                           </div>
 
-                          <div className={isMobile ? 'grid grid-cols-1 gap-2.5' : 'grid grid-cols-2 gap-2.5'}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEnrollmentMode('all');
-                                setSelectedSubjects(availSubs);
-                              }}
-                              className={`p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
-                                enrollmentMode === 'all'
-                                  ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
-                                  : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-black text-[#111111]">All Subjects Package</span>
-                                {enrollmentMode === 'all' && <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />}
-                              </div>
-                              <p className="text-xs text-[#737373]">
-                                Full curriculum access to all {availSubs.length} stream subjects.
-                              </p>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEnrollmentMode('custom');
-                                if (selectedSubjects.length === 0 && availSubs.length > 0) {
-                                  setSelectedSubjects(availSubs.slice(0, 2));
-                                }
-                              }}
-                              className={`p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
-                                enrollmentMode === 'custom'
-                                  ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
-                                  : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-black text-[#111111]">Select Specific Subjects</span>
-                                {enrollmentMode === 'custom' && <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />}
-                              </div>
-                              <p className="text-xs text-[#737373]">
-                                Enroll in 1, 2, 3, or more specific subjects of your choice.
-                              </p>
-                            </button>
-                          </div>
-
-                          {enrollmentMode === 'custom' && (
-                            <div className="p-4 bg-[#F9F9F9] rounded-2xl border border-[#E5E5E5] space-y-3 animate-in fade-in duration-200">
-                              <div className="flex items-center justify-between">
+                          {isCambridge ? (
+                            /* Cambridge Per-Subject Selector (NO All-Subjects Plan or Option A/B framing) */
+                            <div className="p-4 bg-[#FFFBF0] rounded-2xl border border-[#FDE68A] space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                                 <div>
-                                  <span className="text-xs font-bold text-[#111111] block">
-                                    Choose Enrolled Subjects ({selectedSubjects.length} of {availSubs.length} selected):
+                                  <span className="text-xs font-black text-[#111111] block">
+                                    Cambridge {isALevel ? 'A Levels' : 'O Levels'} — Per-Subject Enrollment
                                   </span>
-                                  <span className="text-[11px] text-[#737373]">
-                                    Rate: PKR {pricingSettings.per_subject_fee.toLocaleString()} / subject
+                                  <span className="text-[11px] text-[#92700A]">
+                                    PKR {effectivePerSubRate.toLocaleString()} per subject per term • Flat 5% discount applied automatically on 2 or more subjects
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => setSelectedSubjects(availSubs)}
-                                    className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline"
+                                    className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline cursor-pointer"
                                   >
                                     Select All
                                   </button>
@@ -1039,7 +1015,7 @@ export const UnregisteredPage: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => setSelectedSubjects([])}
-                                    className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline"
+                                    className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline cursor-pointer"
                                   >
                                     Clear
                                   </button>
@@ -1058,7 +1034,7 @@ export const UnregisteredPage: React.FC = () => {
                                           prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
                                         );
                                       }}
-                                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border interactive ${
+                                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border interactive cursor-pointer ${
                                         isSelected
                                           ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
                                           : 'bg-white text-[#525252] border-[#E5E5E5] hover:border-[#D4D4D4]'
@@ -1080,11 +1056,131 @@ export const UnregisteredPage: React.FC = () => {
                               </div>
 
                               {selectedSubjects.length === 0 && (
-                                <p className="text-xs text-amber-700 font-medium bg-amber-50 p-2 rounded-lg border border-amber-200">
-                                  Please select at least 1 subject to enroll, or switch to All Subjects Package.
+                                <p className="text-xs text-amber-800 font-medium bg-white/80 p-2.5 rounded-xl border border-amber-200">
+                                  Please select at least 1 subject to enroll in Cambridge {isALevel ? 'A Levels' : 'O Levels'}.
                                 </p>
                               )}
                             </div>
+                          ) : (
+                            /* Standard Board Enrollment Mode (Package vs Specific Subjects) */
+                            <>
+                              <div className={isMobile ? 'grid grid-cols-1 gap-2.5' : 'grid grid-cols-2 gap-2.5'}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEnrollmentMode('all');
+                                    setSelectedSubjects(availSubs);
+                                  }}
+                                  className={`p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
+                                    enrollmentMode === 'all'
+                                      ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
+                                      : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-sm font-black text-[#111111]">All Subjects Package</span>
+                                    {enrollmentMode === 'all' && <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />}
+                                  </div>
+                                  <p className="text-xs text-[#737373]">
+                                    Full curriculum access to all {availSubs.length} stream subjects.
+                                  </p>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEnrollmentMode('custom');
+                                    if (selectedSubjects.length === 0 && availSubs.length > 0) {
+                                      setSelectedSubjects(availSubs.slice(0, 2));
+                                    }
+                                  }}
+                                  className={`p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
+                                    enrollmentMode === 'custom'
+                                      ? 'border-[#F4C430] bg-[#FFFBF0] shadow-sm'
+                                      : 'border-[#E5E5E5] bg-white hover:border-[#D4D4D4]'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-sm font-black text-[#111111]">Select Specific Subjects</span>
+                                    {enrollmentMode === 'custom' && <CheckCircle2 size={16} className="text-[#F4C430] shrink-0" />}
+                                  </div>
+                                  <p className="text-xs text-[#737373]">
+                                    Enroll in 1, 2, 3, or more specific subjects of your choice.
+                                  </p>
+                                </button>
+                              </div>
+
+                              {enrollmentMode === 'custom' && (
+                                <div className="p-4 bg-[#F9F9F9] rounded-2xl border border-[#E5E5E5] space-y-3 animate-in fade-in duration-200">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <span className="text-xs font-bold text-[#111111] block">
+                                        Choose Enrolled Subjects ({selectedSubjects.length} of {availSubs.length} selected):
+                                      </span>
+                                      <span className="text-[11px] text-[#737373]">
+                                        Rate: PKR {pricingSettings.per_subject_fee.toLocaleString()} / subject
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedSubjects(availSubs)}
+                                        className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline"
+                                      >
+                                        Select All
+                                      </button>
+                                      <span className="text-gray-300">•</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedSubjects([])}
+                                        className="text-[10px] font-bold text-[#737373] hover:text-[#111111] underline"
+                                      >
+                                        Clear
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    {availSubs.map((sub) => {
+                                      const isSelected = selectedSubjects.includes(sub);
+                                      return (
+                                        <button
+                                          key={sub}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedSubjects((prev) =>
+                                              prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
+                                            );
+                                          }}
+                                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border interactive ${
+                                            isSelected
+                                              ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
+                                              : 'bg-white text-[#525252] border-[#E5E5E5] hover:border-[#D4D4D4]'
+                                          }`}
+                                        >
+                                          <div
+                                            className={`w-4 h-4 rounded flex items-center justify-center text-[10px] border ${
+                                              isSelected
+                                                ? 'bg-[#F4C430] text-[#111111] border-[#F4C430]'
+                                                : 'border-[#D4D4D4] bg-white'
+                                            }`}
+                                          >
+                                            {isSelected && <Check size={11} strokeWidth={3} />}
+                                          </div>
+                                          <span>{sub}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {selectedSubjects.length === 0 && (
+                                    <p className="text-xs text-amber-700 font-medium bg-amber-50 p-2 rounded-lg border border-amber-200">
+                                      Please select at least 1 subject to enroll, or switch to All Subjects Package.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       );
@@ -1095,13 +1191,18 @@ export const UnregisteredPage: React.FC = () => {
                 {/* Section 6: Live Tuition Fee Summary */}
                 {selectedClassId && selectedStreamId && (() => {
                   const availSubs = getAvailableSubjects();
-                  const targetSubs = enrollmentMode === 'all' ? availSubs : selectedSubjects;
+                  const isALevel = selectedBoardId === 'alevel';
+                  const isOLevel = selectedBoardId === 'olevel';
+                  const isCambridge = isALevel || isOLevel;
+                  const targetSubs = (isCambridge || enrollmentMode === 'custom') ? selectedSubjects : availSubs;
+                  const effectivePerSubRate = isALevel ? 6500 : isOLevel ? 5000 : pricingSettings.per_subject_fee;
                   const pricingCalc = calculateSubjectEnrollmentFee({
                     baseClassFee: baseClassFee,
                     selectedSubjects: targetSubs,
-                    perSubjectFee: pricingSettings.per_subject_fee,
+                    perSubjectFee: effectivePerSubRate,
                     threshold: pricingSettings.auto_upgrade_threshold,
-                    isAllPlanDirectlySelected: enrollmentMode === 'all',
+                    isAllPlanDirectlySelected: !isCambridge && enrollmentMode === 'all',
+                    boardId: selectedBoardId,
                   });
                   const effectiveFee = pricingCalc.fee;
 
@@ -1119,11 +1220,18 @@ export const UnregisteredPage: React.FC = () => {
                           </span>
                           {effectiveFee !== null && effectiveFee > 0 ? (
                             <span className="text-xl font-black text-[#111111]">
-                              PKR {effectiveFee.toLocaleString()} <span className="text-xs font-bold text-amber-800">/ term</span>
+                              PKR {effectiveFee.toLocaleString()}{' '}
+                              <span className="text-xs font-bold text-amber-800">
+                                {isCambridge
+                                  ? `(${targetSubs.length} ${targetSubs.length === 1 ? 'subject' : 'subjects'} @ PKR ${effectivePerSubRate.toLocaleString()} / subject / term)`
+                                  : '/ term'}
+                              </span>
                             </span>
                           ) : (
                             <span className="text-sm font-black text-amber-900 block mt-0.5">
-                              Price not yet set — contact admin
+                              {isCambridge && targetSubs.length === 0
+                                ? 'Select at least 1 subject to see tuition'
+                                : 'Price not yet set — contact admin'}
                             </span>
                           )}
                         </div>
@@ -1131,7 +1239,20 @@ export const UnregisteredPage: React.FC = () => {
                       <div className="text-left sm:text-right text-[11px] text-amber-900 font-semibold leading-snug">
                         {effectiveFee !== null && effectiveFee > 0 ? (
                           <>
-                            {enrollmentMode === 'all' ? (
+                            {isCambridge ? (
+                              <span>
+                                {targetSubs.length} Subject{targetSubs.length === 1 ? '' : 's'} Selected ({targetSubs.length} × PKR {effectivePerSubRate.toLocaleString()}).
+                                {pricingCalc.discountAmount ? (
+                                  <span className="text-emerald-800 font-bold block">
+                                    5% Multi-Subject Discount (-PKR {pricingCalc.discountAmount.toLocaleString()})
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-800 text-[10px] block">
+                                    (Add 1 more subject to unlock flat 5% discount)
+                                  </span>
+                                )}
+                              </span>
+                            ) : enrollmentMode === 'all' ? (
                               <span>All Subjects Package ({availSubs.length} subjects included).</span>
                             ) : targetSubs.length <= pricingSettings.auto_upgrade_threshold ? (
                               <span>
@@ -1145,8 +1266,14 @@ export const UnregisteredPage: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            Admin Price Manager has not set a fee for this grade yet.<br />
-                            Please check back or contact support.
+                            {isCambridge ? (
+                              <span>Cambridge tuition is calculated based on selected subjects.</span>
+                            ) : (
+                              <span>
+                                Admin Price Manager has not set a fee for this grade yet.<br />
+                                Please check back or contact support.
+                              </span>
+                            )}
                           </>
                         )}
                       </div>

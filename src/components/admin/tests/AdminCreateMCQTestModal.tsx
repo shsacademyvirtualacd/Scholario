@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../features/auth/AuthContext';
 import { saveProctoredMCQTest } from '../../../lib/proctoredMcqService';
 import { MathText } from '../../common/MathText';
-import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getStreamsForGrade, formatGradeDisplay, getBoardDef, BoardId } from '../../../lib/taxonomy';
 import { getSubjectsForStream } from '../../../lib/db';
 import type { ProctoredMCQItem, ProctoredMCQTest } from '../../../types/proctoredMcq';
 import { useModalScrollLock } from '../../../hooks/useModalScrollLock';
@@ -42,7 +42,7 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
 
   // Metadata
   const [title, setTitle] = useState<string>('Term 1 Proctored Examination');
-  const [board, setBoard] = useState<string>('fbise');
+  const [board, setBoard] = useState<BoardId>('fbise');
   const [grade, setGrade] = useState<string>('9');
   const [stream, setStream] = useState<string>('Biology');
   const [subject, setSubject] = useState<string>('Physics');
@@ -372,7 +372,7 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
                     id="admin-mcq-board-select"
                     value={board}
                     onChange={(e) => {
-                      const newBoard = e.target.value;
+                      const newBoard = e.target.value as BoardId;
                       setBoard(newBoard);
                       const newGrades = getGradesForBoard(newBoard);
                       const validGrade = newGrades.some((g) => String(g.grade) === String(grade))
@@ -426,7 +426,7 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
                   >
                     {availableGrades.map((g) => (
                       <option key={g.grade} value={g.grade}>
-                        {g.displayName || `Grade ${g.grade}`}
+                        {g.displayName || formatGradeDisplay(g.grade, board)}
                       </option>
                     ))}
                   </select>
@@ -766,8 +766,8 @@ export const AdminCreateMCQTestModal: React.FC<AdminCreateMCQTestModalProps> = (
                   <div>
                     <h3 className="text-base font-black text-[#111111]">{title}</h3>
                     <p className="text-xs text-[#737373] mt-0.5">
-                      Subject: <strong>{subject}</strong> • Grade: <strong>{grade}</strong> (
-                      {stream}) • Board: <strong>{board.toUpperCase()}</strong>
+                      Subject: <strong>{subject}</strong> • Grade: <strong>{formatGradeDisplay(grade, board)}</strong> (
+                      {stream}) • Board: <strong>{getBoardDef(board)?.shortName || board.toUpperCase()}</strong>
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">

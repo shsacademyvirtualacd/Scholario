@@ -55,7 +55,7 @@ const ComparisonSection: React.FC = () => {
                     <div className="flex flex-col items-center gap-1">
                       {c.highlight && (
                         <span
-                          className="text-[9px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full mb-1"
+                          className="text-[9px] font-bold tracking-widest uppercase px-2.5 py-0.5 rounded-full mb-1 whitespace-nowrap shrink-0 inline-block"
                           style={{ background: '#F4C430', color: '#111111' }}
                         >
                           Recommended

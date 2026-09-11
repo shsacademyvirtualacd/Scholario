@@ -278,19 +278,70 @@ export function calculateSubjectEnrollmentFee(params: {
   subjectCount: number;
   isAutoUpgraded: boolean;
   ratePerSubject: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  rawFee?: number;
 } {
   const {
     baseClassFee,
     baseTuitionFee,
     selectedSubjects,
-    perSubjectFee = DEFAULT_SETTINGS.per_subject_fee,
     threshold = DEFAULT_SETTINGS.auto_upgrade_threshold,
     isAllPlanDirectlySelected = false,
     enrollmentMode,
+    boardId,
   } = params;
 
-  const effectiveBaseFee = baseClassFee ?? baseTuitionFee ?? 0;
+  const normBoard = String(boardId || '').trim().toLowerCase();
+  const isALevel = normBoard === 'alevel';
+  const isOLevel = normBoard === 'olevel';
+
+  // Determine rate per subject
+  let effectivePerSubjectFee = params.perSubjectFee ?? DEFAULT_SETTINGS.per_subject_fee;
+  if (isALevel) {
+    effectivePerSubjectFee = params.perSubjectFee && params.perSubjectFee > 1000 ? params.perSubjectFee : 6500;
+  } else if (isOLevel) {
+    effectivePerSubjectFee = params.perSubjectFee && params.perSubjectFee > 1000 ? params.perSubjectFee : 5000;
+  }
+
+  const effectiveBaseFee = baseClassFee ?? baseTuitionFee ?? (isALevel ? 6500 : isOLevel ? 5000 : 0);
   const isAllDirect = isAllPlanDirectlySelected || enrollmentMode === 'all';
+  const count = selectedSubjects.length;
+
+  // Handle Cambridge A/O Levels modular per-subject pricing (STRICTLY per-subject, NO bundle / all-subjects plan)
+  if (isALevel || isOLevel) {
+    if (count === 0) {
+      return {
+        fee: 0,
+        finalFee: 0,
+        plan_type: 'custom',
+        subjectCount: 0,
+        isAutoUpgraded: false,
+        ratePerSubject: effectivePerSubjectFee,
+        discountPercent: 0,
+        discountAmount: 0,
+        rawFee: 0,
+      };
+    }
+
+    const rawFee = count * effectivePerSubjectFee;
+    // Discount logic: 1 subject = 0% discount; 2+ subjects = FLAT 5% discount on the total
+    const discountPercent = count >= 2 ? 0.05 : 0;
+    const discountAmount = Math.round(rawFee * discountPercent);
+    const discountedFee = rawFee - discountAmount;
+
+    return {
+      fee: discountedFee,
+      finalFee: discountedFee,
+      plan_type: 'custom',
+      subjectCount: count,
+      isAutoUpgraded: false,
+      ratePerSubject: effectivePerSubjectFee,
+      discountPercent: discountPercent * 100, // 0 or 5
+      discountAmount,
+      rawFee,
+    };
+  }
 
   if (isAllDirect || selectedSubjects.length === 0) {
     return {
@@ -299,21 +350,25 @@ export function calculateSubjectEnrollmentFee(params: {
       plan_type: 'all',
       subjectCount: selectedSubjects.length,
       isAutoUpgraded: false,
-      ratePerSubject: perSubjectFee,
+      ratePerSubject: effectivePerSubjectFee,
+      discountPercent: 0,
+      discountAmount: 0,
+      rawFee: effectiveBaseFee,
     };
   }
 
-  const count = selectedSubjects.length;
-
   if (count <= threshold) {
-    const customFee = count * perSubjectFee;
+    const customFee = count * effectivePerSubjectFee;
     return {
       fee: customFee,
       finalFee: customFee,
       plan_type: 'custom',
       subjectCount: count,
       isAutoUpgraded: false,
-      ratePerSubject: perSubjectFee,
+      ratePerSubject: effectivePerSubjectFee,
+      discountPercent: 0,
+      discountAmount: 0,
+      rawFee: customFee,
     };
   }
 
@@ -324,6 +379,9 @@ export function calculateSubjectEnrollmentFee(params: {
     plan_type: 'all',
     subjectCount: count,
     isAutoUpgraded: true, // Internal flag; do NOT surface upgrade message to student
-    ratePerSubject: perSubjectFee,
+    ratePerSubject: effectivePerSubjectFee,
+    discountPercent: 0,
+    discountAmount: 0,
+    rawFee: effectiveBaseFee,
   };
 }

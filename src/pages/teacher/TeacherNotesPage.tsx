@@ -6,7 +6,7 @@ import { AdminNoteCard } from '../../components/admin/notes/AdminNoteCard';
 import NoteViewerModal from '../../components/student/NoteViewerModal';
 import { getOfferingsForTeacher, getNotesForOfferings, getTaxonomy } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
-import { getStreamsForGrade } from '../../lib/taxonomy';
+import { getStreamsForGrade, getBoardDef } from '../../lib/taxonomy';
 import type { Note, ClassOffering } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
@@ -100,8 +100,9 @@ export const TeacherNotesPage: React.FC = () => {
       const rawB = off.board || off.board_id || (off as any).class?.board_id || (off as any).class?.board?.id || '';
       const bId = String(rawB).trim().toLowerCase();
       if (!bId) return;
-      const bName = (off as any).board_name || (off as any).class?.board?.name || (bId === 'sindh' ? 'Sindh Board' : bId === 'ielts' ? 'IELTS Preparation' : bId === 'fbise' ? 'Federal Board (FBISE)' : String(rawB).toUpperCase());
-      const shortName = bId === 'fbise' ? 'FBISE' : bId === 'sindh' ? 'SINDH' : bId === 'ielts' ? 'IELTS' : bId.toUpperCase();
+      const bDef = getBoardDef(bId);
+      const bName = (off as any).board_name || (off as any).class?.board?.name || bDef?.name || String(rawB).toUpperCase();
+      const shortName = bDef?.shortName || bId.toUpperCase();
       if (!map.has(bId)) {
         map.set(bId, { id: bId, name: bName, shortName });
       }

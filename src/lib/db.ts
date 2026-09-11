@@ -190,13 +190,15 @@ export async function completeStudentOnboarding(
   const isUUID = (str?: string | null) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
   // Save student subject plan to persistent store and local cache
+  const isCambridge = boardId === 'alevel' || boardId === 'olevel';
+  const effectivePlanType = isCambridge ? 'custom' : (planType || 'all');
   if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0) {
-    await saveStudentSubjectPlan(studentId, selectedSubjects, planType || 'custom');
-  } else if (planType === 'all') {
+    await saveStudentSubjectPlan(studentId, selectedSubjects, effectivePlanType);
+  } else if (effectivePlanType === 'all') {
     await saveStudentSubjectPlan(studentId, [], 'all');
   }
   
-  if (isUUID(classId) && (isUUID(boardId) || boardId === 'fbise' || boardId === 'sindh' || boardId === 'ielts')) {
+  if (isUUID(classId) && (isUUID(boardId) || ['fbise', 'sindh', 'ielts', 'olevel', 'alevel', 'kpk'].includes(boardId))) {
     const { error } = await (supabase as any).rpc('complete_student_onboarding', {
       p_student_id: studentId,
       p_board_id: boardId,
@@ -219,11 +221,11 @@ export async function completeStudentOnboarding(
   if (isUUID(classId)) updatePayload.class_id = classId;
   if (isUUID(streamId)) updatePayload.stream_id = streamId;
 
-  if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0 && planType === 'custom') {
+  if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0 && effectivePlanType === 'custom') {
     updatePayload.subjects = selectedSubjects;
     updatePayload.plan_type = 'custom';
   } else {
-    updatePayload.plan_type = 'all';
+    updatePayload.plan_type = effectivePlanType;
   }
 
   const { error: profErr } = await (supabase as any)
@@ -3114,6 +3116,10 @@ export async function resolveGradeFeeConfig(
     if (targetBoard === 'ielts' || grade === 'IELTS' || grade === 'ielts') {
       const isGt = streamName && (streamName.toLowerCase().includes('general') || streamName.toLowerCase().includes('gt'));
       amount = isGt || grade === '12' ? 3000 : 2500;
+    } else if (targetBoard === 'alevel') {
+      amount = 6500;
+    } else if (targetBoard === 'olevel') {
+      amount = 5000;
     } else {
       const fallbackPrice = ['11', '12'].includes(grade) ? 4000 : 3000;
       amount = fallbackPrice;
@@ -3133,15 +3139,17 @@ export async function resolveGradeFeeConfig(
   if (studentId) {
     try {
       const plan = await getStudentSubjectPlan(studentId);
-      if (plan?.plan_type === 'custom' && Array.isArray(plan.subjects) && plan.subjects.length > 0) {
+      const isCambridge = targetBoard === 'alevel' || targetBoard === 'olevel';
+      if ((plan?.plan_type === 'custom' || isCambridge) && Array.isArray(plan?.subjects) && plan.subjects.length > 0) {
         const settings = await getSubjectPricingSettings();
-        perSubFee = settings.per_subject_fee;
+        perSubFee = targetBoard === 'alevel' ? 6500 : targetBoard === 'olevel' ? 5000 : settings.per_subject_fee;
         studentSubjects = plan.subjects;
         const feeCalc = calculateSubjectEnrollmentFee({
           baseClassFee: amount,
           selectedSubjects: plan.subjects,
-          perSubjectFee: settings.per_subject_fee,
+          perSubjectFee: perSubFee,
           threshold: settings.auto_upgrade_threshold,
+          boardId: targetBoard,
         });
         finalAmount = feeCalc.fee;
         planType = feeCalc.plan_type;

@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../features/auth/AuthContext';
 import { saveWrittenTest } from '../../../lib/writtenTestService';
 import { MathText } from '../../common/MathText';
-import { BOARDS, getGradesForBoard, getStreamsForGrade } from '../../../lib/taxonomy';
+import { BOARDS, getGradesForBoard, getStreamsForGrade, formatGradeDisplay, getBoardDef, BoardId } from '../../../lib/taxonomy';
 import { getSubjectsForStream } from '../../../lib/db';
 import type { WrittenQuestionItem, WrittenTest, WrittenTestType } from '../../../types/writtenTest';
 import { useModalScrollLock } from '../../../hooks/useModalScrollLock';
@@ -64,7 +64,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
       setPassMarks(typeToUse === 'short_question' ? 12 : 20);
     }
   }, [isOpen, propTestType, defaultType]);
-  const [board, setBoard] = useState<string>('fbise');
+  const [board, setBoard] = useState<BoardId>('fbise');
   const [grade, setGrade] = useState<string>('9');
   const [stream, setStream] = useState<string>('Biology');
   const [subject, setSubject] = useState<string>('Physics');
@@ -455,7 +455,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
                     id="admin-written-board-select"
                     value={board}
                     onChange={(e) => {
-                      const newBoard = e.target.value;
+                      const newBoard = e.target.value as BoardId;
                       setBoard(newBoard);
                       const newGrades = getGradesForBoard(newBoard);
                       const validGrade = newGrades.some((g) => String(g.grade) === String(grade))
@@ -509,7 +509,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
                   >
                     {availableGrades.map((g) => (
                       <option key={g.grade} value={g.grade}>
-                        {g.displayName || `Grade ${g.grade}`}
+                        {g.displayName || formatGradeDisplay(g.grade, board)}
                       </option>
                     ))}
                   </select>
@@ -805,7 +805,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div className="p-2.5 rounded-xl bg-[#FAFAFA] border border-[#F0F0F0]">
                     <span className="text-[#737373] block text-[10px] uppercase font-bold">Class & Board</span>
-                    <span className="font-extrabold text-[#111111]">Grade {grade} • {board.toUpperCase()}</span>
+                    <span className="font-extrabold text-[#111111]">{formatGradeDisplay(grade, board)} • {getBoardDef(board)?.shortName || board.toUpperCase()}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#FAFAFA] border border-[#F0F0F0]">
                     <span className="text-[#737373] block text-[10px] uppercase font-bold">Stream</span>

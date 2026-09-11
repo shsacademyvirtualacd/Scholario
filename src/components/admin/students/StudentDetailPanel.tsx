@@ -176,7 +176,7 @@ export const StudentDetailPanel: React.FC<StudentDetailPanelProps> = ({ student 
       <div className="space-y-3 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
           <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">Enrolled Subjects</h4>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border self-start sm:self-auto ${
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border self-start sm:self-auto whitespace-nowrap shrink-0 ${
             isCustomPlan
               ? 'bg-purple-50 text-purple-700 border-purple-200'
               : 'bg-zinc-100 text-zinc-700 border-zinc-200'
