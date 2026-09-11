@@ -348,6 +348,10 @@ export const ScheduleManagerPage: React.FC = () => {
   };
 
   const handleConflictConfirmAnyway = async (updatedFormData: any) => {
+    if (conflictData && (conflictData.type === 'teacher_double_booking' || conflictData.type === 'cohort_clash')) {
+      toast.error('Cannot override: Teacher double-booking and cohort time clashes are strictly prohibited by timetable rules.');
+      return;
+    }
     setConflictData(null);
     await executeSaveSlot(updatedFormData);
   };
@@ -992,6 +996,7 @@ export const ScheduleManagerPage: React.FC = () => {
           slot={selectedSlot}
           offerings={offerings}
           taxonomy={taxonomy}
+          existingSlots={slots}
           defaultClassId={activeClass?.id || ''}
           defaultStreamId={selectedStream || ''}
           isDuplicateMode={isDuplicateMode}

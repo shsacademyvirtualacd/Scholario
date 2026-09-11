@@ -434,14 +434,20 @@ export const ScheduleConflictModal: React.FC<ScheduleConflictModalProps> = ({
         </button>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={handleApplyOverride}
-            title="Explicitly confirm and save anyway if this parallel schedule is intended"
-            className="w-full sm:w-auto px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-100/70 hover:bg-amber-200 border border-amber-300/80 rounded-xl transition-colors text-center"
-          >
-            Keep Here Anyway (Confirm)
-          </button>
+          {conflict.type === 'teacher_double_booking' || conflict.type === 'cohort_clash' ? (
+            <span className="text-[11px] text-red-600 font-semibold px-2 py-1 bg-red-50 border border-red-200 rounded-lg">
+              Override blocked: timetable rules prohibit double-booking & cohort clashes.
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleApplyOverride}
+              title="Explicitly confirm and save anyway if this parallel schedule is intended"
+              className="w-full sm:w-auto px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-100/70 hover:bg-amber-200 border border-amber-300/80 rounded-xl transition-colors text-center"
+            >
+              Keep Here Anyway (Confirm)
+            </button>
+          )}
         </div>
       </div>
       </div>
