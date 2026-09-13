@@ -130,9 +130,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   }, [offeringId, isDuplicate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter offerings based on chosen class and stream.
-  const selectedClassObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
-  const isExcludedIslamiatBoard = ['sindh', 'olevel', 'alevel'].includes(selectedClassObj?.board_id);
-
   const filteredOfferings = offerings.filter(o => {
     if (selectedClassId && o.class_id !== selectedClassId && (o as any)?.class?.id !== selectedClassId) {
       return false;
@@ -141,26 +138,12 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       const offStreamId = o.stream_id || (o as any)?.stream?.id;
       if (offStreamId && offStreamId !== selectedStreamId) return false;
     }
-    // Hard constraint (Rule 3): Islamiat / Tarjuma-tul-Quran are only valid subjects for national/provincial curricula (FBISE, KPK).
-    // They must not appear as selectable subject options when Sindh Board or Cambridge O/A Levels are selected.
-    const subName = (o.subject_name || o.subject?.name || '').toLowerCase().trim();
-    const isReligious = subName.includes('islamiat') || subName.includes('islamiyat') || subName.includes('tarjuma') || subName.includes('quran');
-    if (isExcludedIslamiatBoard && isReligious) {
-      return false;
-    }
     return true;
   });
 
   const currentSelectedOffering = offerings.find(o => o.id === offeringId);
-  const curSubLower = (currentSelectedOffering?.subject_name || currentSelectedOffering?.subject?.name || '').toLowerCase();
-  const isCurrentIslamiatExcluded = isExcludedIslamiatBoard && (
-    curSubLower.includes('islamiat') ||
-    curSubLower.includes('islamiyat') ||
-    curSubLower.includes('tarjuma') ||
-    curSubLower.includes('quran')
-  );
   const selectableOfferings = [...filteredOfferings];
-  if (currentSelectedOffering && !isCurrentIslamiatExcluded && !selectableOfferings.some(o => o.id === currentSelectedOffering.id)) {
+  if (currentSelectedOffering && !selectableOfferings.some(o => o.id === currentSelectedOffering.id)) {
     selectableOfferings.unshift(currentSelectedOffering);
   }
 
@@ -168,14 +151,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     if (isDuplicate) return;
     setSelectedClassId(val);
     setSelectedStreamId('');
-    const cls = taxonomy?.classes?.find((c: any) => c.id === val);
-    if (['sindh', 'olevel', 'alevel'].includes(cls?.board_id)) {
-      const curSub = offerings.find(o => o.id === offeringId);
-      const subName = (curSub?.subject_name || curSub?.subject?.name || '').toLowerCase();
-      if (subName.includes('islamiat') || subName.includes('islamiyat') || subName.includes('tarjuma') || subName.includes('quran')) {
-        setOfferingId('');
-      }
-    }
   };
 
   const handleStreamChange = (val: string) => {
@@ -274,70 +249,6 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     if (isDuplicate && selectedDays.length === 0) {
       setError('Please select at least one day of the week to duplicate this slot to.');
       return;
-    }
-
-    // --- HARD CONSTRAINTS VALIDATION ---
-    const targetOffering = offerings.find(o => o.id === offeringId);
-    const subjectName = (slotMode === 'offering'
-      ? (targetOffering?.subject_name || targetOffering?.subject?.name || '')
-      : customTitle
-    ).toLowerCase().trim();
-
-    const targetClass = taxonomy?.classes?.find((c: any) => c.id === selectedClassId) || (targetOffering as any)?.class;
-    const boardId = targetClass?.board_id || '';
-    const grade = String(targetClass?.grade || '');
-
-    const timeToMins = (t: string) => {
-      if (!t) return 0;
-      const [h = 0, m = 0] = t.split(':').map(Number);
-      return h * 60 + m;
-    };
-
-    const slotStart = timeToMins(startTime);
-    const slotEnd = timeToMins(endTime);
-
-    // Period 1 window: 17:00 (5:00 PM) – 17:30 (5:30 PM) -> [1020, 1050 mins]
-    const overlapsP1 = Math.max(slotStart, 1020) < Math.min(slotEnd, 1050);
-    // Period 2 window: 17:30 (5:30 PM) – 18:00 (6:00 PM) -> [1050, 1080 mins]
-    const overlapsP2 = Math.max(slotStart, 1050) < Math.min(slotEnd, 1080);
-
-    // Rule 1: Physics, English, and Mathematics must NEVER be assigned to Period 1 (5:00–5:30 PM)
-    const isPhysicsEngMath =
-      subjectName.includes('physics') ||
-      subjectName.includes('english') ||
-      subjectName.includes('mathematics') ||
-      subjectName.includes('math');
-
-    if (isPhysicsEngMath && overlapsP1) {
-      setError('Rule 1 Violation: Physics, English, and Mathematics must NEVER be assigned to Period 1 (5:00–5:30 PM). Please assign to Period 2, 3, or 4.');
-      return;
-    }
-
-    // Rule 2: Urdu must NEVER be assigned to Period 1 or Period 2 (5:00–6:00 PM) — only Period 3 or Period 4
-    const isUrdu = subjectName.includes('urdu');
-    if (isUrdu && (overlapsP1 || overlapsP2)) {
-      setError('Rule 2 Violation: Urdu must NEVER be assigned to Period 1 or Period 2 (5:00–6:00 PM). Urdu may only be scheduled in Period 3 (6:00–6:30 PM) or Period 4 (6:30–7:00 PM).');
-      return;
-    }
-
-    // Rule 3: Islamiat / Tarjuma-tul-Quran are only valid subjects for national/provincial curricula (FBISE and KPK) — must not appear or be saved for Sindh Board or Cambridge O/A levels
-    const isReligiousSubject = subjectName.includes('islamiat') || subjectName.includes('islamiyat') || subjectName.includes('tarjuma') || subjectName.includes('quran');
-    if (isReligiousSubject && (boardId === 'sindh' || boardId === 'olevel' || boardId === 'alevel')) {
-      const displaySub = (subjectName.includes('tarjuma') || subjectName.includes('quran')) ? 'Tarjuma-tul-Quran' : 'Islamiyat';
-      setError(`Rule 3 Violation: ${displaySub} is not part of the standard curriculum for ${getBoardDef(boardId)?.name || 'this board'}.`);
-      return;
-    }
-
-    // Rule 4: Islamiat and Tarjuma-tul-Quran must default to Period 0 (4:30 PM) or Period 3/4 — cannot be in Period 1, except FBISE Grade 11 on Wed/Thu
-    if (isReligiousSubject && overlapsP1) {
-      const isFbiseGrade11 = boardId === 'fbise' && grade === '11';
-      const daysToCheck = isDuplicate ? selectedDays : [dayOfWeek];
-      const hasInvalidP1Day = daysToCheck.some(d => !(isFbiseGrade11 && (d === 2 || d === 3))); // 2=Wed, 3=Thu
-
-      if (hasInvalidP1Day) {
-        setError('Rule 4 Violation: Islamiat and Tarjuma-tul-Quran cannot be placed in Period 1 (5:00–5:30 PM). They must be scheduled in Period 0 (4:30–5:00 PM) or Period 3/4. (Exception: Period 1 is only permitted for FBISE Grade 11 on Wednesday and Thursday).');
-        return;
-      }
     }
 
     // Note: Cohort collision and instructor double-booking checks are handled non-blockingly
