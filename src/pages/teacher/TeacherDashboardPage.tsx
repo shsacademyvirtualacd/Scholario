@@ -404,21 +404,12 @@ export const TeacherDashboardPage: React.FC = () => {
       getSlotsForTeacher(teacherId),
     ]).then(([offs, studs, slots]) => {
       if (!mounted) return;
-      const currentOffs = pageCache.get<ClassOffering[]>('teacher_offerings', teacherId);
-      if (!currentOffs || JSON.stringify(currentOffs) !== JSON.stringify(offs)) {
-        setOfferings(offs);
-        pageCache.set('teacher_offerings', offs, teacherId);
-      }
-      const currentStuds = pageCache.get<Profile[]>('teacher_students', teacherId);
-      if (!currentStuds || JSON.stringify(currentStuds) !== JSON.stringify(studs)) {
-        setStudents(studs);
-        pageCache.set('teacher_students', studs, teacherId);
-      }
-      const currentSlots = pageCache.get<ClassSlot[]>('teacher_slots', teacherId);
-      if (!currentSlots || JSON.stringify(currentSlots) !== JSON.stringify(slots)) {
-        setAllSlots(slots);
-        pageCache.set('teacher_slots', slots, teacherId);
-      }
+      setOfferings(offs);
+      pageCache.set('teacher_offerings', offs, teacherId);
+      setStudents(studs);
+      pageCache.set('teacher_students', studs, teacherId);
+      setAllSlots(slots);
+      pageCache.set('teacher_slots', slots, teacherId);
     }).catch(console.error).finally(() => {
       if (mounted) setLoading(false);
     });

@@ -181,14 +181,19 @@ export const ScheduleManagerPage: React.FC = () => {
       'Class';
     const formTeacherId = formOffering?.teacher_id;
     const formTeacher = teachers.find((t) => t.id === formTeacherId);
+
+    // Resolve form cohort with strict board and grade awareness
     const formClassId =
       formData.class_id ||
       formOffering?.class_id ||
       (formOffering as any)?.class?.id ||
-      taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
+      taxonomy?.classes?.find((c: any) => c.board_id === selectedBoard && String(c.grade) === String(selectedGrade))?.id;
+    const formClass = taxonomy?.classes?.find((c: any) => c.id === formClassId) ||
+      taxonomy?.classes?.find((c: any) => c.board_id === selectedBoard && String(c.grade) === String(selectedGrade));
+    const formBoard = formClass?.board_id || selectedBoard;
+    const formGrade = formClass?.grade || selectedGrade;
+
     const formStreamId = formData.stream_id || formOffering?.stream_id || null;
-    const formGrade =
-      taxonomy?.classes?.find((c: any) => c.id === formClassId)?.grade || selectedGrade;
     const formStreamObj = taxonomy?.streams?.find((s: any) => s.id === formStreamId);
 
     const timeToMins = (t: string) => {
@@ -219,12 +224,18 @@ export const ScheduleManagerPage: React.FC = () => {
       const sTeacherId = sOffering?.teacher_id;
       const sTeacher = teachers.find((t) => t.id === sTeacherId);
       const sClassId = s.class_id || sOffering?.class_id || (sOffering as any)?.class?.id;
+      const sClass = taxonomy?.classes?.find((c: any) => c.id === sClassId);
+      const sBoard = sClass?.board_id || sOffering?.board || (sOffering as any)?.class?.board_id || (sOffering as any)?.class?.board?.id;
+      const sGrade = sClass?.grade || sOffering?.grade || (sOffering as any)?.class?.grade;
       const sStreamId = s.stream_id || sOffering?.stream_id || null;
-      const sGrade =
-        taxonomy?.classes?.find((c: any) => c.id === sClassId)?.grade || formGrade;
 
+      // Strict same-class check:
+      // Slots belong to the same cohort only if explicit class IDs match,
+      // or if BOTH board and grade match. Cross-board cohorts (e.g. FBISE vs Punjab) never clash.
       const isSameClass =
-        !formClassId || !sClassId || formClassId === sClassId || String(formGrade) === String(sGrade);
+        (formClassId && sClassId && formClassId === sClassId) ||
+        (formBoard && sBoard && formBoard === sBoard && String(formGrade) === String(sGrade));
+
       const isSameStream =
         !formStreamId ||
         !sStreamId ||
@@ -240,7 +251,7 @@ export const ScheduleManagerPage: React.FC = () => {
         return {
           type: 'duplicate_class',
           title: `${formSubject} already exists`,
-          message: `${formSubject} already exists on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for Grade ${formGrade}${formStreamObj ? ` (${formStreamObj.name})` : ''}. Do you want to keep it here as well, or move it?`,
+          message: `${formSubject} already exists on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for ${formBoard ? formBoard.toUpperCase() + ' ' : ''}Grade ${formGrade}${formStreamObj ? ` (${formStreamObj.name})` : ''}. Do you want to keep it here as well, or move it?`,
           subjectName: formSubject,
           teacherName: formTeacher?.full_name || 'Instructor',
           dayIndex: formData.day_of_week,
@@ -254,12 +265,12 @@ export const ScheduleManagerPage: React.FC = () => {
         };
       }
 
-      // Check 2: Instructor double-booking (same teacher, same day, overlapping time)
+      // Check 2: Instructor double-booking (same teacher, same day, overlapping time across any class/board)
       if (formTeacherId && sTeacherId && formTeacherId === sTeacherId) {
         return {
           type: 'teacher_double_booking',
           title: `Instructor Double-Booking Conflict`,
-          message: `Instructor ${formTeacher?.full_name || 'Teacher'} is already scheduled to teach ${sSubject} on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)}${sGrade ? ` (Grade ${sGrade})` : ''}.`,
+          message: `Instructor ${formTeacher?.full_name || 'Teacher'} is already scheduled to teach ${sSubject} on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)}${sGrade ? ` (${sBoard ? sBoard.toUpperCase() + ' ' : ''}Grade ${sGrade})` : ''}.`,
           subjectName: formSubject,
           teacherName: formTeacher?.full_name || 'Instructor',
           dayIndex: formData.day_of_week,
@@ -273,12 +284,12 @@ export const ScheduleManagerPage: React.FC = () => {
         };
       }
 
-      // Check 3: Cohort Time Slot Collision
+      // Check 3: Cohort Time Slot Collision (same board & grade, same stream, but different subject)
       if (isSameClass && isSameStream && !isSameSubject) {
         return {
           type: 'cohort_clash',
           title: `Class Slot Already Occupied`,
-          message: `${sSubject} (${sTeacher?.full_name || 'Instructor'}) is already scheduled on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for Grade ${formGrade}.`,
+          message: `${sSubject} (${sTeacher?.full_name || 'Instructor'}) is already scheduled on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for ${formBoard ? formBoard.toUpperCase() + ' ' : ''}Grade ${formGrade}.`,
           subjectName: formSubject,
           teacherName: formTeacher?.full_name || 'Instructor',
           dayIndex: formData.day_of_week,
@@ -407,7 +418,7 @@ export const ScheduleManagerPage: React.FC = () => {
         const dayNames = targetDays.map(d => DAYS_OF_WEEK_FULL[d] || 'Day').join(', ');
         const timeStr = formatTime12h(formData.start_time);
 
-        const targetClassId = formData.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
+        const targetClassId = formData.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => c.board_id === selectedBoard && String(c.grade) === String(selectedGrade))?.id;
         const targetStreamId = formData.stream_id && formData.stream_id !== 'all' ? formData.stream_id : (offering?.stream_id || null);
 
         await createAnnouncement({

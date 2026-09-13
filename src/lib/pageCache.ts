@@ -6,15 +6,23 @@ export interface CacheEntry<T> {
 export const pageCache = {
   /**
    * Get cached data for a specific key and user ID from sessionStorage.
+   * Optionally invalidates if entry exceeds maxAgeMs.
    */
-  get<T>(key: string, userId?: string): T | null {
+  get<T>(key: string, userId?: string, maxAgeMs?: number): T | null {
     if (!userId || typeof window === 'undefined') return null;
     try {
       const storageKey = `scholario_cache_${key}_${userId}`;
       const raw = sessionStorage.getItem(storageKey);
       if (!raw) return null;
       const entry: CacheEntry<T> = JSON.parse(raw);
-      return entry?.data !== undefined ? entry.data : null;
+      if (!entry || entry.data === undefined) return null;
+      if (maxAgeMs !== undefined && typeof entry.timestamp === 'number') {
+        if (Date.now() - entry.timestamp > maxAgeMs) {
+          sessionStorage.removeItem(storageKey);
+          return null;
+        }
+      }
+      return entry.data;
     } catch (err) {
       console.warn(`[pageCache] Failed to retrieve cache for ${key}:`, err);
       return null;
