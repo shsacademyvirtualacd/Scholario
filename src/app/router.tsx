@@ -20,6 +20,10 @@ import UnregisteredPage from '../pages/public/UnregisteredPage';
 import PlanComparisonPage from '../pages/public/PlanComparisonPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 
+// ─── Legal Pages (lazy) ────────────────────────
+const PrivacyPolicyPage = lazy(() => import('../pages/public/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('../pages/public/TermsOfServicePage'));
+
 // ─── Marketing page (eager — entry point) ───
 import LandingShell from '../pages/public/LandingShell';
 
@@ -128,6 +132,10 @@ const AppRouter: React.FC = () => (
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/unregistered" element={<UnregisteredPage />} />
           <Route path="/enrollment/compare" element={<PlanComparisonPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
           {/* Student Portal */}
           <Route
