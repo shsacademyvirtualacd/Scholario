@@ -15,9 +15,9 @@ import { onRequestGet as submissionDlHandler } from '../functions/api/submission
 import { onRequestPost as submissionGradeHandler } from '../functions/api/submissions/grade';
 import { onRequestPost as avatarUploadHandler } from '../functions/api/profiles/avatar/upload';
 import { onRequestDelete as avatarDeleteHandler, onRequestPost as avatarDeletePostHandler } from '../functions/api/profiles/avatar/delete';
-import { onRequestGet as avatarViewHandler } from '../functions/api/profiles/avatar/view/[...key]';
+import { onRequestGet as avatarViewHandler } from '../functions/api/profiles/avatar/view/[[key]]';
 import { onRequestPost as chatUploadHandler } from '../functions/api/chat/upload';
-import { onRequestGet as chatAttachmentHandler } from '../functions/api/chat/attachment/[...key]';
+import { onRequestGet as chatAttachmentHandler } from '../functions/api/chat/attachment/[[key]]';
 
 export interface Env {
   NOTES_BUCKET: any;
