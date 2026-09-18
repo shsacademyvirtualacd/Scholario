@@ -2722,6 +2722,7 @@ export async function getAllRoster(): Promise<RosterEntry[]> {
       existing.profile_id = existing.profile_id || t.id;
       existing.full_name = t.full_name || existing.full_name;
       existing.role = 'teacher';
+      entryByProfileId.set(t.id, existing);
     } else {
       const newEntry: RosterEntry = {
         id: t.id,
