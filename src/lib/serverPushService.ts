@@ -173,7 +173,9 @@ export async function getUserSubscriptions(
         .in('user_id', userIds);
 
       if (!error && dbSubs && dbSubs.length > 0) {
-        for (const sub of dbSubs) {
+        const len = dbSubs.length;
+        for (let i = 0; i < len; i++) {
+          const sub = dbSubs[i];
           if (sub.endpoint) {
             subscriptionsMemory.set(sub.endpoint, sub);
           }
@@ -200,7 +202,9 @@ export async function getSubscriptionsForRole(
         .eq('role', role);
 
       if (!error && dbSubs && dbSubs.length > 0) {
-        for (const sub of dbSubs) {
+        const len = dbSubs.length;
+        for (let i = 0; i < len; i++) {
+          const sub = dbSubs[i];
           if (sub.endpoint) {
             subscriptionsMemory.set(sub.endpoint, sub);
           }
