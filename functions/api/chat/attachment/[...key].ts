@@ -73,30 +73,8 @@ export async function onRequestGet(context: EventContext<Env, any, any>): Promis
   // Query database to verify message and thread membership
   if (!isAuthorized) {
     try {
-      // Query chat_messages by attachment_key
-      const { data: msg } = await (supabase as any)
-        .from('chat_messages')
-        .select('id, sender_id, thread_id, attachment_key')
-        .eq('attachment_key', objectKey)
-        .maybeSingle();
-
-      if (msg) {
-        if (msg.sender_id === userId) {
-          isAuthorized = true;
-        } else if (msg.thread_id) {
-          // Check thread participants
-          const { data: thread } = await (supabase as any)
-            .from('chat_threads')
-            .select('id, participant_one_id, participant_two_id')
-            .eq('id', msg.thread_id)
-            .maybeSingle();
-
-          if (thread && (thread.participant_one_id === userId || thread.participant_two_id === userId)) {
-            isAuthorized = true;
-          }
-        }
-      } else if (conversationIdFromKey) {
-        // If message row was just being created or queried by conversation
+      // 1. Direct thread check using conversationIdFromKey (fastest, 1 query)
+      if (conversationIdFromKey) {
         const { data: thread } = await (supabase as any)
           .from('chat_threads')
           .select('id, participant_one_id, participant_two_id')
@@ -108,7 +86,32 @@ export async function onRequestGet(context: EventContext<Env, any, any>): Promis
         }
       }
 
-      // If still not authorized, check if user is an admin / super_admin
+      // 2. If not authorized yet, check chat_messages
+      if (!isAuthorized) {
+        const { data: msg } = await (supabase as any)
+          .from('chat_messages')
+          .select('id, sender_id, thread_id, attachment_key')
+          .eq('attachment_key', objectKey)
+          .maybeSingle();
+
+        if (msg) {
+          if (msg.sender_id === userId) {
+            isAuthorized = true;
+          } else if (msg.thread_id && msg.thread_id !== conversationIdFromKey) {
+            const { data: thread } = await (supabase as any)
+              .from('chat_threads')
+              .select('id, participant_one_id, participant_two_id')
+              .eq('id', msg.thread_id)
+              .maybeSingle();
+
+            if (thread && (thread.participant_one_id === userId || thread.participant_two_id === userId)) {
+              isAuthorized = true;
+            }
+          }
+        }
+      }
+
+      // 3. If still not authorized, check if user is an admin / super_admin
       if (!isAuthorized) {
         const { data: profile } = await (supabase as any)
           .from('profiles')
@@ -153,6 +156,19 @@ export async function onRequestGet(context: EventContext<Env, any, any>): Promis
     });
   }
 
+  // Check ETag for 304 Not Modified to allow instant repeat loads from browser cache
+  const objectEtag = object.httpEtag || `"${object.etag || objectKey}"`;
+  const ifNoneMatch = request.headers.get('if-none-match');
+  if (ifNoneMatch && (ifNoneMatch === objectEtag || ifNoneMatch === `"${objectKey}"`)) {
+    return new Response(null, {
+      status: 304,
+      headers: {
+        'Cache-Control': 'private, max-age=86400, stale-while-revalidate=604800, immutable',
+        'ETag': objectEtag,
+      },
+    });
+  }
+
   // 5. Determine Content-Type and Content-Disposition headers
   const headers = new Headers();
   object.writeHttpMetadata(headers as any);
@@ -187,7 +203,8 @@ export async function onRequestGet(context: EventContext<Env, any, any>): Promis
   const isImage = (headers.get('Content-Type') || '').startsWith('image/');
   const dispositionType = forceDownload || !isImage ? 'attachment' : 'inline';
   headers.set('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(filename)}"`);
-  headers.set('Cache-Control', 'private, max-age=3600');
+  headers.set('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800, immutable');
+  headers.set('ETag', objectEtag);
   headers.set('Accept-Ranges', 'bytes');
   headers.set('Content-Length', `${object.size}`);
 

@@ -3362,8 +3362,21 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
       // Check authorization (sender or recipient)
       const keyParts = key.split('/');
+      const conversationIdFromKey = keyParts[0];
       const senderIdFromKey = keyParts[1];
       let authorized = Boolean(senderIdFromKey && senderIdFromKey === userId);
+
+      // Fast-path: Check chat_threads directly if conversationIdFromKey is present
+      if (!authorized && conversationIdFromKey) {
+        const { data: thread } = await supabaseServer
+          .from('chat_threads')
+          .select('id, participant_one_id, participant_two_id')
+          .eq('id', conversationIdFromKey)
+          .maybeSingle();
+        if (thread && (thread.participant_one_id === userId || thread.participant_two_id === userId)) {
+          authorized = true;
+        }
+      }
 
       if (!authorized) {
         const { data: msg } = await supabaseServer
@@ -3375,7 +3388,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         if (msg) {
           if (msg.sender_id === userId) {
             authorized = true;
-          } else if (msg.thread_id) {
+          } else if (msg.thread_id && msg.thread_id !== conversationIdFromKey) {
             const { data: thread } = await supabaseServer
               .from('chat_threads')
               .select('id, participant_one_id, participant_two_id')
@@ -3409,13 +3422,22 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(404).send('Attachment not found');
       }
 
+      // ETag check for 304 Not Modified
+      const etag = `"${Buffer.from(key).toString('base64').slice(0, 24)}"`;
+      if (req.headers['if-none-match'] === etag) {
+        res.setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800, immutable');
+        res.setHeader('ETag', etag);
+        return res.status(304).end();
+      }
+
       const forceDownload = req.query.download === '1';
       const isImage = (stored.mimeType || '').startsWith('image/');
       const disposition = forceDownload || !isImage ? 'attachment' : 'inline';
 
       res.setHeader('Content-Type', stored.mimeType || 'application/octet-stream');
       res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(stored.filename || 'attachment')}"`);
-      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.setHeader('ETag', etag);
+      res.setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800, immutable');
       return res.send(stored.buffer);
     } catch (err: any) {
       console.error('[server /api/chat/attachment] Error:', err);

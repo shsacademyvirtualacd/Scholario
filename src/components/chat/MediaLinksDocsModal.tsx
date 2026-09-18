@@ -312,7 +312,7 @@ export const MediaLinksDocsModal: React.FC<MediaLinksDocsModalProps> = ({
                           src={imgUrl}
                           alt={item.attachment_name || 'Chat image'}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                          loading="lazy"
+                          decoding="async"
                           referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">

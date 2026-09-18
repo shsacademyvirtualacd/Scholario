@@ -49,6 +49,7 @@ import { MediaLinksDocsModal } from './MediaLinksDocsModal';
 import { ImageViewerModal } from './ImageViewerModal';
 import { WhatsAppEmojiPicker } from './WhatsAppEmojiPicker';
 import { ChatAttachmentPreviewModal, PendingAttachment } from './ChatAttachmentPreviewModal';
+import { compressImageForUpload, chatThumbnailCache } from '../../lib/imageCompression';
 import { SageChatView } from '../sage/SageChatView';
 import { formatAudioDuration } from '../../lib/voiceRecordingService';
 import { useChatPresence } from '../../hooks/useChatPresence';
@@ -99,7 +100,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   availableContacts: initialAvailableContacts = [],
   onStartNewChatTitle = 'Start Direct Conversation',
 }) => {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const currentUserId = profile?.id;
 
   const [threads, setThreads] = useState<ChatThreadWithDetails[]>([]);
@@ -1236,11 +1237,32 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setSendError(null);
 
     const isImage = (fileToSend.type || '').toLowerCase().startsWith('image/');
+    let processedFile = fileToSend;
+    let thumbDataUrl: string | undefined;
+
+    if (isImage) {
+      try {
+        const compressed = await compressImageForUpload(fileToSend, 0, {
+          maxWidth: 1600,
+          maxHeight: 1600,
+          quality: 0.80,
+        });
+        processedFile = compressed.file;
+        thumbDataUrl = compressed.thumbnailDataUrl;
+      } catch (cErr) {
+        console.warn('[ChatView] Pre-upload compression safeguard error:', cErr);
+      }
+    }
 
     try {
-      const uploadRes = await uploadChatAttachment(fileToSend, activeThreadId, (progress) => {
+      const uploadRes = await uploadChatAttachment(processedFile, activeThreadId, (progress) => {
         setUploadProgress(progress);
       });
+
+      // Cache thumbnail locally so sender and conversation render it instantly
+      if (thumbDataUrl && uploadRes.key) {
+        chatThumbnailCache.set(uploadRes.key, thumbDataUrl);
+      }
 
       const finalCaption = captionText.trim() ? captionText.trim() : undefined;
       const createdMsg = await sendAttachmentChatMessage(
@@ -2295,6 +2317,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 senderName={isMe ? 'You' : (activeThread?.other_participant?.full_name || 'Contact')}
                                 onReply={handleReplyFromViewer}
                                 theme={activeChatTheme}
+                                authToken={session?.access_token}
                                 onSelectImage={(img) => {
                                   setActionMenuMessage(null);
                                   setActionMenuCoords(null);

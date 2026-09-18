@@ -10,6 +10,7 @@ import {
   Check,
 } from 'lucide-react';
 import { WhatsAppEmojiPicker } from './WhatsAppEmojiPicker';
+import { compressImageForUpload, chatThumbnailCache } from '../../lib/imageCompression';
 
 export interface PendingAttachment {
   file: File;
@@ -148,9 +149,26 @@ export const ChatAttachmentPreviewModal: React.FC<ChatAttachmentPreviewModalProp
   const handleSendClick = async () => {
     if (isUploading) return;
     let fileToSend = file;
-    if (isImage && rotation !== 0) {
-      fileToSend = await produceRotatedFile(file, rotation);
+
+    if (isImage) {
+      try {
+        const compressed = await compressImageForUpload(file, rotation, {
+          maxWidth: 1600,
+          maxHeight: 1600,
+          quality: 0.80,
+        });
+        fileToSend = compressed.file;
+        if (compressed.thumbnailDataUrl && previewUrl) {
+          chatThumbnailCache.set(previewUrl, compressed.thumbnailDataUrl);
+        }
+      } catch (err) {
+        console.warn('[ChatAttachmentPreview] Compression error, sending original:', err);
+        if (rotation !== 0) {
+          fileToSend = await produceRotatedFile(file, rotation);
+        }
+      }
     }
+
     onSend(fileToSend, caption);
   };
 

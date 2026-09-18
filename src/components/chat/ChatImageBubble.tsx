@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCheck, Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { CheckCheck, Loader2, Image as ImageIcon, AlertCircle, RefreshCw } from 'lucide-react';
 import { ImageViewerModal } from './ImageViewerModal';
 import { ChatBubbleTail } from './ChatBubbleTail';
 import { getAttachmentUrl } from '../../lib/chatService';
 import { supabase } from '../../lib/supabase';
 import { ChatTheme } from '../../types/chatTheme';
+import { chatThumbnailCache, loadedImageUrls } from '../../lib/imageCompression';
 
 interface ChatImageBubbleProps {
   messageId: string;
@@ -19,6 +20,7 @@ interface ChatImageBubbleProps {
   senderName?: string;
   onReply?: (text: string) => void | Promise<void>;
   theme?: ChatTheme;
+  authToken?: string;
   onSelectImage?: (img: {
     imageUrl: string;
     downloadUrl: string;
@@ -43,24 +45,37 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
   senderName,
   onReply,
   theme,
+  authToken,
   onSelectImage,
 }) => {
-  const [token, setToken] = useState<string>('');
+  const [token, setToken] = useState<string>(authToken || '');
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [reloadCounter, setReloadCounter] = useState(0);
 
+  // Keep token synced if prop changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session?.access_token) {
-        setToken(data.session.access_token);
-      }
-    });
-  }, []);
+    if (authToken) {
+      setToken(authToken);
+    } else if (!token) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session?.access_token) {
+          setToken(data.session.access_token);
+        }
+      });
+    }
+  }, [authToken]);
 
   const filename = attachmentName || 'Photo';
   const imageUrl = getAttachmentUrl(attachmentKey, token);
   const downloadUrl = getAttachmentUrl(attachmentKey, token, true);
+
+  // Check if this image was already loaded in this session to prevent spinner flicker
+  const isAlreadyLoaded = loadedImageUrls.has(imageUrl);
+  const [isLoading, setIsLoading] = useState(!isAlreadyLoaded);
+
+  // Check for an instant thumbnail placeholder from cache
+  const cachedThumb = chatThumbnailCache.get(attachmentKey);
 
   const formatTime = (isoString: string) => {
     try {
@@ -76,6 +91,13 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
   const bubbleBg = theme ? (isMe ? theme.sentBubbleBg : theme.receivedBubbleBg) : (isMe ? '#D9FDD3' : '#FFFFFF');
   const bubbleTextColor = theme ? (isMe ? theme.sentBubbleText : theme.receivedBubbleText) : '#111B21';
   const metaTextColor = theme ? (isMe ? theme.sentMetaText : theme.receivedMetaText) : '#667781';
+
+  const handleRetry = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoadError(false);
+    setIsLoading(true);
+    setReloadCounter((prev) => prev + 1);
+  };
 
   return (
     <>
@@ -129,10 +151,29 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
             }}
             className="relative w-full aspect-auto max-h-[300px] overflow-hidden bg-neutral-100 cursor-pointer select-none"
           >
-            {isLoading && !loadError && (
-              <div className="w-full h-40 flex flex-col items-center justify-center bg-neutral-100 dark:bg-zinc-800 text-neutral-400 dark:text-zinc-400">
-                <Loader2 size={24} className="animate-spin text-[#F4C430]" />
-                <span className="text-[11px] font-medium mt-2 text-neutral-600 dark:text-zinc-300">Loading image...</span>
+            {/* Instant Blurred Thumbnail Placeholder */}
+            {isLoading && cachedThumb && !loadError && (
+              <div className="absolute inset-0 overflow-hidden">
+                <img
+                  src={cachedThumb}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-cover filter blur-md scale-110 opacity-70 transition-opacity"
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-[1px]">
+                  <Loader2 size={20} className="animate-spin text-white drop-shadow" />
+                </div>
+              </div>
+            )}
+
+            {/* Shimmer Skeleton if no thumbnail is available yet */}
+            {isLoading && !cachedThumb && !loadError && (
+              <div className="w-full h-44 flex flex-col items-center justify-center bg-neutral-200/80 dark:bg-zinc-800/80 animate-pulse text-neutral-400 dark:text-zinc-500">
+                <ImageIcon size={28} className="opacity-40 mb-2" />
+                <div className="flex items-center gap-1.5">
+                  <Loader2 size={13} className="animate-spin text-[#F4C430]" />
+                  <span className="text-[11px] font-medium text-neutral-500 dark:text-zinc-400">Loading image...</span>
+                </div>
               </div>
             )}
 
@@ -141,18 +182,30 @@ export const ChatImageBubble: React.FC<ChatImageBubbleProps> = ({
                 <AlertCircle size={22} className="text-rose-500 mb-1" />
                 <span className="text-xs font-semibold text-neutral-800 dark:text-zinc-100">Unable to load image</span>
                 <span className="text-[10px] text-neutral-500 dark:text-zinc-400 mt-0.5 line-clamp-1">{filename}</span>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 rounded-md border border-amber-200 dark:border-amber-800/40 hover:bg-amber-100 transition-colors"
+                >
+                  <RefreshCw size={11} />
+                  <span>Retry</span>
+                </button>
               </div>
             ) : (
               <img
+                key={`img-${attachmentKey}-${reloadCounter}`}
                 src={imageUrl}
                 alt={filename}
-                loading="lazy"
-                onLoad={() => setIsLoading(false)}
+                decoding="async"
+                onLoad={() => {
+                  setIsLoading(false);
+                  loadedImageUrls.add(imageUrl);
+                }}
                 onError={() => {
                   setIsLoading(false);
                   setLoadError(true);
                 }}
-                className={`w-full max-h-[280px] object-cover transition-transform duration-300 group-hover:scale-102 ${
+                className={`w-full max-h-[280px] object-cover transition-all duration-300 group-hover:scale-101 ${
                   isLoading ? 'opacity-0' : 'opacity-100'
                 }`}
               />
