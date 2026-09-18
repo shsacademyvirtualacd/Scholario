@@ -274,13 +274,18 @@ export async function sendPushToUsers(
   }
 
   const subs = await getUserSubscriptions(userIds, supabase);
-  let attemptedCount = 0;
+  if (subs.length === 0) {
+    return { attemptedCount: 0, deliveredCount: 0, failedCount: 0 };
+  }
+
+  const pushResults = await Promise.all(
+    subs.map((sub) => sendWebPush(sub, payload, supabase))
+  );
+
   let deliveredCount = 0;
   let failedCount = 0;
 
-  for (const sub of subs) {
-    attemptedCount++;
-    const success = await sendWebPush(sub, payload, supabase);
+  for (const success of pushResults) {
     if (success) {
       deliveredCount++;
     } else {
@@ -288,7 +293,11 @@ export async function sendPushToUsers(
     }
   }
 
-  return { attemptedCount, deliveredCount, failedCount };
+  return {
+    attemptedCount: subs.length,
+    deliveredCount,
+    failedCount,
+  };
 }
 
 // ── Event-Based Push Triggers ────────────────────────────────────────────────
@@ -625,11 +634,10 @@ export async function checkAndSendTeacherPushReminders(
           },
         };
 
-        let slotSentCount = 0;
-        for (const sub of teacherSubs) {
-          const success = await sendWebPush(sub, payload, supabase);
-          if (success) slotSentCount++;
-        }
+        const pushResults = await Promise.all(
+          teacherSubs.map((sub) => sendWebPush(sub, payload, supabase))
+        );
+        const slotSentCount = pushResults.filter(Boolean).length;
 
         if (slotSentCount > 0) {
           lastTeacherPushSentAt.set(scheduleId, now);
