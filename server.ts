@@ -3716,7 +3716,12 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   }, 60 * 1000);
 
   // Vite middleware for dev or static serving for production
-  if (process.env.NODE_ENV !== 'production') {
+  const isProduction =
+    process.env.NODE_ENV === 'production' ||
+    fs.existsSync(path.join(__dirname, 'index.html')) ||
+    (typeof __filename !== 'undefined' && __filename.endsWith('.cjs'));
+
+  if (!isProduction) {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
@@ -3726,10 +3731,53 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*all', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    const distPath = fs.existsSync(path.join(__dirname, 'index.html'))
+      ? __dirname
+      : path.join(process.cwd(), 'dist');
+    const indexPath = path.join(distPath, 'index.html');
+
+    // 1. Unhandled API calls return 404 JSON, preventing fall-through to HTML
+    app.use('/api', (_req, res) => {
+      res.status(404).json({ error: 'API endpoint not found' });
+    });
+
+    // 2. Serve static assets directly from dist
+    app.use(express.static(distPath, {
+      maxAge: '1d',
+      index: false,
+    }));
+
+    // 3. Exclude static asset paths: if a file in /assets/ is requested and not found, return 404
+    app.use('/assets', (_req, res) => {
+      res.status(404).send('Asset not found');
+    });
+
+    // 4. SPA catch-all handler: serves index.html for direct navigation & refreshes
+    const handleSpaFallback = (req: express.Request, res: express.Response) => {
+      // If the request is for a missing file with an extension, return 404 instead of index.html
+      if (path.extname(req.path)) {
+        return res.status(404).end('Not found');
+      }
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(500).send('Frontend build index.html not found');
+      }
+    };
+
+    // Express 5 named parameter wildcard route
+    try {
+      app.get('{*all}', handleSpaFallback);
+    } catch {
+      app.get('*all', handleSpaFallback);
+    }
+
+    // Ultimate fallback for GET/HEAD requests
+    app.use((req, res, next) => {
+      if (req.method === 'GET' || req.method === 'HEAD') {
+        return handleSpaFallback(req, res);
+      }
+      next();
     });
   }
 
