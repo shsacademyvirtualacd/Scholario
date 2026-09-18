@@ -2801,6 +2801,34 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.json({ success: true });
   });
 
+  // ── Helper to authenticate user from JWT token (signature validation) ──────
+  async function getAuthenticatedUserFromToken(token?: string): Promise<{ id: string; role: string; email?: string } | null> {
+    if (!token) return null;
+    const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
+    if (!cleanToken) return null;
+
+    try {
+      const { data: authData, error: authErr } = await supabaseServer.auth.getUser(cleanToken);
+      if (!authErr && authData?.user) {
+        const role = authData.user.user_metadata?.role || authData.user.app_metadata?.role || '';
+        return { id: authData.user.id, role, email: authData.user.email };
+      }
+
+      const requestSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: `Bearer ${cleanToken}` } },
+      });
+      const { data: fallbackAuth, error: fallbackErr } = await requestSupabase.auth.getUser();
+      if (!fallbackErr && fallbackAuth?.user) {
+        const role = fallbackAuth.user.user_metadata?.role || fallbackAuth.user.app_metadata?.role || '';
+        return { id: fallbackAuth.user.id, role, email: fallbackAuth.user.email };
+      }
+    } catch (err: any) {
+      console.warn('[server.ts getAuthenticatedUserFromToken error]:', err?.message || err);
+    }
+
+    return null;
+  }
+
   // ── Helper to verify Teacher or Admin Role ─────────
   const verifyTeacherOrAdminRole = async (req: express.Request): Promise<{ authorized: boolean; error?: string; status?: number; user?: any }> => {
     try {
@@ -3008,10 +3036,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       let userId = 'anonymous';
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
-        try {
-          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
-          if (payload?.sub) userId = payload.sub;
-        } catch {}
+        const authUser = await getAuthenticatedUserFromToken(authHeader.slice(7));
+        if (authUser) {
+          userId = authUser.id;
+        }
       }
 
       const cleanFilename = (file.originalname || `attachment_${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -3350,10 +3378,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
       let userId = '';
       if (token) {
-        try {
-          const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-          userId = payload?.sub || '';
-        } catch {}
+        const authUser = await getAuthenticatedUserFromToken(token);
+        if (authUser) {
+          userId = authUser.id;
+        }
       }
 
       if (!userId) {
@@ -3506,20 +3534,16 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(400).json({ error: 'messageId is required' });
       }
 
-      // 1. Authenticate user from Bearer token or x-user-id header
+      // 1. Authenticate user from Bearer token
       let userId = '';
       let userRole = '';
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
-        try {
-          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
-          userId = payload?.sub || '';
-          userRole = payload?.user_metadata?.role || payload?.role || '';
-        } catch {}
-      }
-
-      if (!userId && req.headers['x-user-id']) {
-        userId = String(req.headers['x-user-id']).trim();
+        const authUser = await getAuthenticatedUserFromToken(authHeader.slice(7));
+        if (authUser) {
+          userId = authUser.id;
+          userRole = authUser.role;
+        }
       }
 
       if (!userId) {
