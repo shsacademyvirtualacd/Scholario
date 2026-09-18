@@ -26,95 +26,114 @@ export async function getAssignedTeacherIdsForStudent(studentId: string): Promis
     const enrollments = enrollmentsRes?.data || [];
 
     // 1. Collect teacher IDs directly from enrollments -> class_offerings
+    const missingOfferingIds: string[] = [];
     if (enrollments.length > 0) {
-      const directOfferingIds: string[] = [];
       enrollments.forEach((e: any) => {
-        const offId = e.offering_id || e.class_offering_id || e.offering?.id;
-        if (offId) directOfferingIds.push(offId);
-        if (e.offering?.teacher_id) assignedIds.add(e.offering.teacher_id);
-        if (e.offering?.teacher?.id) assignedIds.add(e.offering.teacher.id);
-      });
-
-      if (directOfferingIds.length > 0) {
-        const { data: offs } = await (supabase as any)
-          .from('class_offerings')
-          .select('id, teacher_id')
-          .in('id', directOfferingIds);
-        if (offs) {
-          offs.forEach((o: any) => {
-            if (o.teacher_id) assignedIds.add(o.teacher_id);
-          });
+        const teacherId = e.offering?.teacher_id || e.offering?.teacher?.id;
+        if (teacherId) {
+          assignedIds.add(teacherId);
+        } else {
+          const offId = e.offering_id || e.class_offering_id || e.offering?.id;
+          if (offId) missingOfferingIds.push(offId);
         }
-      }
+      });
     }
 
-    // 2. Collect teacher IDs from student's enrolled class / stream offerings
+    // 2. Prepare remaining class_offerings queries in parallel to avoid sequential network roundtrips
     const classId = studentProf?.class_id || studentProf?.class?.id;
+    const pendingQueries: Promise<any>[] = [];
+
+    // Query 2a: Only fetch offering details if teacher_id wasn't populated in enrollment join
+    if (missingOfferingIds.length > 0) {
+      pendingQueries.push(
+        (supabase as any)
+          .from('class_offerings')
+          .select('id, teacher_id')
+          .in('id', missingOfferingIds)
+      );
+    } else {
+      pendingQueries.push(Promise.resolve({ data: [] }));
+    }
+
+    // Query 2b: Fetch class offerings for student's enrolled class
     if (classId) {
-      const { data: classOfferings } = await (supabase as any)
-        .from('class_offerings')
-        .select('id, class_id, subject_id, teacher_id, stream_id, subject:subjects(name), stream:streams(name)')
-        .eq('class_id', classId);
+      pendingQueries.push(
+        (supabase as any)
+          .from('class_offerings')
+          .select('id, class_id, subject_id, teacher_id, stream_id, subject:subjects(name), stream:streams(name)')
+          .eq('class_id', classId)
+      );
+    } else {
+      pendingQueries.push(Promise.resolve({ data: [] }));
+    }
 
-      if (classOfferings && classOfferings.length > 0) {
-        const studentBoardId = studentProf?.board_id || studentProf?.class?.board_id || studentProf?.class?.board?.id;
-        const isIelts =
-          (studentBoardId && String(studentBoardId).toLowerCase() === 'ielts') ||
-          (studentProf?.class?.grade && String(studentProf.class.grade).toLowerCase() === 'ielts') ||
-          (studentProf?.stream && String(studentProf.stream).toLowerCase().includes('ielts'));
+    const [missingOffsRes, classOfferingsRes] = await Promise.all(pendingQueries);
 
-        const studentStreamName = studentProf?.stream_obj?.name || studentProf?.stream || '';
-        const studentStreamId = studentProf?.stream_id || studentProf?.stream_obj?.id;
+    if (missingOffsRes?.data) {
+      missingOffsRes.data.forEach((o: any) => {
+        if (o.teacher_id) assignedIds.add(o.teacher_id);
+      });
+    }
 
-        let customEnrolledSubjects: string[] | null = null;
-        if (studentProf?.plan_type === 'custom' && Array.isArray(studentProf?.subjects) && studentProf.subjects.length > 0) {
-          customEnrolledSubjects = studentProf.subjects;
-        } else if (typeof window !== 'undefined') {
-          try {
-            const cachedPlans = localStorage.getItem('scholario_student_subject_plans');
-            const plan = cachedPlans ? JSON.parse(cachedPlans)[studentId] : null;
-            if (plan?.plan_type === 'custom' && Array.isArray(plan.subjects) && plan.subjects.length > 0) {
-              customEnrolledSubjects = plan.subjects;
-            }
-          } catch {
-            // ignore
+    const classOfferings = classOfferingsRes?.data || [];
+    if (classOfferings.length > 0) {
+      const studentBoardId = studentProf?.board_id || studentProf?.class?.board_id || studentProf?.class?.board?.id;
+      const isIelts =
+        (studentBoardId && String(studentBoardId).toLowerCase() === 'ielts') ||
+        (studentProf?.class?.grade && String(studentProf.class.grade).toLowerCase() === 'ielts') ||
+        (studentProf?.stream && String(studentProf.stream).toLowerCase().includes('ielts'));
+
+      const studentStreamName = studentProf?.stream_obj?.name || studentProf?.stream || '';
+      const studentStreamId = studentProf?.stream_id || studentProf?.stream_obj?.id;
+
+      let customEnrolledSubjects: string[] | null = null;
+      if (studentProf?.plan_type === 'custom' && Array.isArray(studentProf?.subjects) && studentProf.subjects.length > 0) {
+        customEnrolledSubjects = studentProf.subjects;
+      } else if (typeof window !== 'undefined') {
+        try {
+          const cachedPlans = localStorage.getItem('scholario_student_subject_plans');
+          const plan = cachedPlans ? JSON.parse(cachedPlans)[studentId] : null;
+          if (plan?.plan_type === 'custom' && Array.isArray(plan.subjects) && plan.subjects.length > 0) {
+            customEnrolledSubjects = plan.subjects;
           }
+        } catch {
+          // ignore
+        }
+      }
+
+      classOfferings.forEach((off: any) => {
+        if (!off.teacher_id) return;
+
+        // If student has custom enrolled subjects, teacher MUST teach one of those subjects
+        if (customEnrolledSubjects && customEnrolledSubjects.length > 0) {
+          const subName = (off.subject?.name || off.subject_name || '').toLowerCase().trim();
+          const matchesCustom = customEnrolledSubjects.some(
+            (cs) => subName.includes(cs.toLowerCase().trim()) || cs.toLowerCase().trim().includes(subName)
+          );
+          if (!matchesCustom) return;
         }
 
-        classOfferings.forEach((off: any) => {
-          if (!off.teacher_id) return;
+        if (isIelts) {
+          // For IELTS, any teacher assigned to an IELTS class offering is an assigned IELTS teacher
+          assignedIds.add(off.teacher_id);
+        } else {
+          const offStreamName = off.stream?.name || '';
+          const offStreamId = off.stream_id;
 
-          // If student has custom enrolled subjects, teacher MUST teach one of those subjects
-          if (customEnrolledSubjects && customEnrolledSubjects.length > 0) {
-            const subName = (off.subject?.name || off.subject_name || '').toLowerCase().trim();
-            const matchesCustom = customEnrolledSubjects.some(
-              (cs) => subName.includes(cs.toLowerCase().trim()) || cs.toLowerCase().trim().includes(subName)
-            );
-            if (!matchesCustom) return;
-          }
-
-          if (isIelts) {
-            // For IELTS, any teacher assigned to an IELTS class offering is an assigned IELTS teacher
+          if (offStreamId && studentStreamId && offStreamId === studentStreamId) {
             assignedIds.add(off.teacher_id);
-          } else {
-            const offStreamName = off.stream?.name || '';
-            const offStreamId = off.stream_id;
-
-            if (offStreamId && studentStreamId && offStreamId === studentStreamId) {
-              assignedIds.add(off.teacher_id);
-            } else if (
-              studentStreamName &&
-              offStreamName &&
-              offStreamName.toLowerCase() === studentStreamName.toLowerCase()
-            ) {
-              assignedIds.add(off.teacher_id);
-            } else if (!offStreamId && !offStreamName) {
-              // Common/compulsory subject offering for the whole class
-              assignedIds.add(off.teacher_id);
-            }
+          } else if (
+            studentStreamName &&
+            offStreamName &&
+            offStreamName.toLowerCase() === studentStreamName.toLowerCase()
+          ) {
+            assignedIds.add(off.teacher_id);
+          } else if (!offStreamId && !offStreamName) {
+            // Common/compulsory subject offering for the whole class
+            assignedIds.add(off.teacher_id);
           }
-        });
-      }
+        }
+      });
     }
   } catch (err) {
     console.warn('[chatService] Error calculating assigned teacher IDs:', err);
