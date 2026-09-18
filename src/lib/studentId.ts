@@ -36,12 +36,14 @@ export async function generateUniqueNumericStudentId(): Promise<string> {
 
 /**
  * Normalizes and formats student ID for display:
+ * - If it is missing or empty, returns fallback "—"
  * - If it is a legacy UUID (contains hyphens), displays the 8-character prefix (e.g. "d5079d9d")
  * - If it is a new numeric ID (e.g. "48213", "9042"), displays as-is
  */
 export function formatStudentId(id?: string | null): string {
   if (!id) return '—';
   const clean = id.trim();
+  if (!clean) return '—';
   if (clean.includes('-')) {
     return clean.slice(0, 8);
   }
