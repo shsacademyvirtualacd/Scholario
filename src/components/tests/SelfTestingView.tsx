@@ -447,7 +447,6 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
         currentList = [...currentList, ...validNew];
         setQuestions([...currentList]);
-        console.log(`[Background Generation] Progressive questions updated: ${currentList.length}/${targetTotal}`);
 
         // Brief delay between background calls if more needed
         if (currentList.length < targetTotal) {
