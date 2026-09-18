@@ -3716,10 +3716,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   }, 60 * 1000);
 
   // Vite middleware for dev or static serving for production
-  const isProduction =
-    process.env.NODE_ENV === 'production' ||
-    fs.existsSync(path.join(__dirname, 'index.html')) ||
-    (typeof __filename !== 'undefined' && __filename.endsWith('.cjs'));
+  const isCjsBundle = typeof __filename !== 'undefined' && __filename.endsWith('.cjs');
+  const isProduction = process.env.NODE_ENV === 'production' || isCjsBundle;
 
   if (!isProduction) {
     const vite = await createViteServer({
@@ -3731,8 +3729,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = fs.existsSync(path.join(__dirname, 'index.html'))
-      ? __dirname
+    const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+    const distPath = fs.existsSync(path.join(currentDir, 'index.html'))
+      ? currentDir
       : path.join(process.cwd(), 'dist');
     const indexPath = path.join(distPath, 'index.html');
 
