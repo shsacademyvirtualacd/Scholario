@@ -1842,22 +1842,22 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   });
 
   // ── Teacher Subject-Level Authorization Helper (Server-Side) ─────────────
-  async function isTeacherAuthorizedForSubjectServer(
-    teacherIdentifier?: string,
-    subject?: string,
-    board?: string,
-    _grade?: string
-  ): Promise<{ authorized: boolean; reason?: string; assignedSubjects?: string[] }> {
-    if (!teacherIdentifier) {
-      return { authorized: false, reason: 'Teacher identifier is required for subject authorization check.' };
-    }
+  interface TeacherAuthorizationInfo {
+    assignedSubjects: Set<string>;
+    isIeltsAssigned: boolean;
+    hasError: boolean;
+  }
 
-    const normTargetSubject = (subject || '').trim().toLowerCase();
-    const normTargetBoard = (board || '').trim().toLowerCase();
-    const isTargetIelts = normTargetBoard === 'ielts' || normTargetSubject.includes('ielts');
-
+  async function getTeacherAuthorizationInfoServer(
+    teacherIdentifier?: string
+  ): Promise<TeacherAuthorizationInfo> {
     const assignedSubjects = new Set<string>();
     let isIeltsAssigned = false;
+    let hasError = false;
+
+    if (!teacherIdentifier) {
+      return { assignedSubjects, isIeltsAssigned, hasError: false };
+    }
 
     const addSubjects = (str?: string) => {
       if (!str) return;
@@ -1936,33 +1936,64 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
           });
         }
       }
-
-      // If target is IELTS assessment and teacher has IELTS assigned
-      if (isTargetIelts && isIeltsAssigned) {
-        return { authorized: true, assignedSubjects: Array.from(assignedSubjects) };
-      }
-
-      // Match subject
-      for (const assigned of assignedSubjects) {
-        if (
-          assigned === normTargetSubject ||
-          assigned.includes(normTargetSubject) ||
-          normTargetSubject.includes(assigned)
-        ) {
-          return { authorized: true, assignedSubjects: Array.from(assignedSubjects) };
-        }
-      }
-
-      return {
-        authorized: false,
-        reason: `Subject "${subject || 'Unknown'}" is not among assigned subjects: [${Array.from(assignedSubjects).join(', ')}]`,
-        assignedSubjects: Array.from(assignedSubjects),
-      };
     } catch (err: any) {
-      console.warn('[server:isTeacherAuthorizedForSubjectServer] error during check:', err);
-      // Fallback to true if DB query fails to prevent catastrophic failure
-      return { authorized: true };
+      console.warn('[server:getTeacherAuthorizationInfoServer] error during check:', err);
+      hasError = true;
     }
+
+    return { assignedSubjects, isIeltsAssigned, hasError };
+  }
+
+  function checkTeacherSubjectAuthFromInfo(
+    info: TeacherAuthorizationInfo,
+    subject?: string,
+    board?: string,
+    _grade?: string
+  ): { authorized: boolean; reason?: string; assignedSubjects?: string[] } {
+    if (info.hasError) {
+      // Fallback to true if DB query fails to prevent catastrophic failure
+      return { authorized: true, assignedSubjects: Array.from(info.assignedSubjects) };
+    }
+
+    const normTargetSubject = (subject || '').trim().toLowerCase();
+    const normTargetBoard = (board || '').trim().toLowerCase();
+    const isTargetIelts = normTargetBoard === 'ielts' || normTargetSubject.includes('ielts');
+
+    // If target is IELTS assessment and teacher has IELTS assigned
+    if (isTargetIelts && info.isIeltsAssigned) {
+      return { authorized: true, assignedSubjects: Array.from(info.assignedSubjects) };
+    }
+
+    // Match subject
+    for (const assigned of info.assignedSubjects) {
+      if (
+        assigned === normTargetSubject ||
+        assigned.includes(normTargetSubject) ||
+        normTargetSubject.includes(assigned)
+      ) {
+        return { authorized: true, assignedSubjects: Array.from(info.assignedSubjects) };
+      }
+    }
+
+    return {
+      authorized: false,
+      reason: `Subject "${subject || 'Unknown'}" is not among assigned subjects: [${Array.from(info.assignedSubjects).join(', ')}]`,
+      assignedSubjects: Array.from(info.assignedSubjects),
+    };
+  }
+
+  async function isTeacherAuthorizedForSubjectServer(
+    teacherIdentifier?: string,
+    subject?: string,
+    board?: string,
+    _grade?: string
+  ): Promise<{ authorized: boolean; reason?: string; assignedSubjects?: string[] }> {
+    if (!teacherIdentifier) {
+      return { authorized: false, reason: 'Teacher identifier is required for subject authorization check.' };
+    }
+
+    const info = await getTeacherAuthorizationInfoServer(teacherIdentifier);
+    return checkTeacherSubjectAuthFromInfo(info, subject, board, _grade);
   }
 
   // ── Proctored MCQ Tests APIs ────────────────────────
@@ -2007,11 +2038,12 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
     const normRole = (typeof role === 'string' ? role : '').toLowerCase();
     if (normRole === 'teacher' && teacher_id) {
+      const teacherAuth = await getTeacherAuthorizationInfoServer(String(teacher_id));
       const filtered: any[] = [];
       for (const s of list) {
         const test = proctoredMcqTests.get(s.test_id);
         const subSubject = s.subject && s.subject !== 'Assessment' ? s.subject : test?.subject;
-        const auth = await isTeacherAuthorizedForSubjectServer(String(teacher_id), subSubject, test?.board, s.grade || test?.grade);
+        const auth = checkTeacherSubjectAuthFromInfo(teacherAuth, subSubject, test?.board, s.grade || test?.grade);
         if (auth.authorized) {
           filtered.push(s);
         }
@@ -2401,9 +2433,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
     const normRole = (typeof role === 'string' ? role : '').toLowerCase();
     if (normRole === 'teacher' && teacher_id) {
+      const teacherAuth = await getTeacherAuthorizationInfoServer(String(teacher_id));
       const filtered: any[] = [];
       for (const sub of list) {
-        const auth = await isTeacherAuthorizedForSubjectServer(String(teacher_id), sub.subject, undefined, sub.grade);
+        const auth = checkTeacherSubjectAuthFromInfo(teacherAuth, sub.subject, undefined, sub.grade);
         if (auth.authorized) {
           filtered.push(sub);
         }
