@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle, Check, BookMarked } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { getTaxonomy, completeStudentOnboarding, resolveGradeFeeConfig, requestAccountTermination } from '../../lib/db';
@@ -1328,10 +1328,23 @@ export const UnregisteredPage: React.FC = () => {
           )}
         </div>
 
-        {/* Footer */}
-        <p className="text-xs text-[#A3A3A3] mt-6 text-center font-medium">
-          Scholario LMS Security System · Encrypted & Verified
-        </p>
+        {/* Legal & Security Footer */}
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-xs text-[#737373]">
+            By continuing, you agree to our{' '}
+            <Link id="unregistered-terms-link" to="/terms" className="font-semibold text-[#D4A017] hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link id="unregistered-privacy-link" to="/privacy" className="font-semibold text-[#D4A017] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+          <p className="text-xs text-[#A3A3A3] font-medium">
+            Scholario LMS Security System · Encrypted & Verified
+          </p>
+        </div>
       </div>
     </div>
   );

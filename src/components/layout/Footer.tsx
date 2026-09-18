@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
-import { LegalModal } from '../ui/LegalModal';
 import { AboutModal } from '../ui/AboutModal';
 import { ContactModal } from '../ui/ContactModal';
 import Logo from '../ui/Logo';
@@ -37,32 +37,23 @@ interface FooterProps {
   onNavigate?: (page: string) => void;
 }
 
+type FooterItem =
+  | { label: string; to: string; id: string }
+  | { label: string; action: () => void };
+
 const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
-  const [legalModalType, setLegalModalType] = useState<'privacy' | 'terms' | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
 
-  const links = {
-    Company: ['About Us', 'Contact'],
-    Legal: ['Privacy Policy', 'Terms of Conditions'],
-  };
-
-  const handleLinkClick = (e: React.MouseEvent, category: string, item: string) => {
-    if (category === 'Legal') {
-      e.preventDefault();
-      if (item === 'Privacy Policy') {
-        setLegalModalType('privacy');
-      } else if (item === 'Terms of Conditions') {
-        setLegalModalType('terms');
-      }
-    } else if (category === 'Company') {
-      e.preventDefault();
-      if (item === 'About Us') {
-        setAboutOpen(true);
-      } else if (item === 'Contact') {
-        setContactOpen(true);
-      }
-    }
+  const links: Record<string, FooterItem[]> = {
+    Company: [
+      { label: 'About Us', action: () => setAboutOpen(true) },
+      { label: 'Contact', action: () => setContactOpen(true) },
+    ],
+    Legal: [
+      { label: 'Privacy Policy', to: '/privacy', id: 'footer-privacy-link' },
+      { label: 'Terms of Service', to: '/terms', id: 'footer-terms-link' },
+    ],
   };
 
   return (
@@ -139,14 +130,24 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </h4>
               <ul className="space-y-2.5">
                 {items.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      onClick={(e) => handleLinkClick(e, category, item)}
-                      className="text-sm text-[#737373] hover:text-white transition-colors duration-150"
-                    >
-                      {item}
-                    </a>
+                  <li key={item.label}>
+                    {'to' in item ? (
+                      <Link
+                        id={item.id}
+                        to={item.to}
+                        className="text-sm text-[#737373] hover:text-white transition-colors duration-150 inline-block"
+                      >
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={item.action}
+                        className="text-sm text-[#737373] hover:text-white transition-colors duration-150 text-left cursor-pointer"
+                      >
+                        {item.label}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -179,7 +180,6 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
-      <LegalModal type={legalModalType} onClose={() => setLegalModalType(null)} />
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </footer>

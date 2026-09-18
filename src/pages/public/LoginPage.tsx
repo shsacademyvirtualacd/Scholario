@@ -102,6 +102,19 @@ const LoginPage: React.FC = () => {
             )}
           </button>
 
+          {/* Terms & Privacy */}
+          <p className="mt-4 text-center text-xs text-[#737373]">
+            By continuing, you agree to Scholario's{' '}
+            <Link id="login-terms-link" to="/terms" className="font-semibold text-[#D4A017] hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link id="login-privacy-link" to="/privacy" className="font-semibold text-[#D4A017] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+
           {/* Access notice */}
           <div className="mt-6 p-4 rounded-xl bg-[#FFFBF0] border border-[#F4C43033]">
             <p className="text-xs text-[#92700A] leading-relaxed">

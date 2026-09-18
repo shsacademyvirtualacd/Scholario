@@ -391,13 +391,16 @@ export default {
 
     // Serve Static Assets for all other routes
     if (env.ASSETS) {
+      const isApi = url.pathname.startsWith('/api/');
+      const hasFileExt = /\.[a-zA-Z0-9]+$/.test(url.pathname);
+
       const assetResponse = await env.ASSETS.fetch(request);
       
-      // If 404 and the request is for a web page (not an API or static file with extension)
+      // If not-found (status 404 or >= 400) and the request is for a web page (not an API or static file with extension)
       if (
-        assetResponse.status === 404 && 
-        !url.pathname.startsWith('/api/') && 
-        !url.pathname.match(/\.[a-zA-Z0-9]+$/)
+        (assetResponse.status === 404 || assetResponse.status >= 400) && 
+        !isApi && 
+        !hasFileExt
       ) {
         // SPA Fallback: serve /index.html for React client-side routing
         const indexUrl = new URL('/index.html', request.url);

@@ -100,6 +100,19 @@ export const RegisterPage: React.FC = () => {
             )}
           </button>
 
+          {/* Terms & Privacy */}
+          <p className="mt-4 text-center text-xs text-[#737373]">
+            By signing up, you agree to our{' '}
+            <Link id="register-terms-link" to="/terms" className="font-semibold text-[#D4A017] hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link id="register-privacy-link" to="/privacy" className="font-semibold text-[#D4A017] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+
           {/* Quick Notice */}
           <div className="mt-6 p-4 rounded-xl bg-blue-50/50 border border-blue-100/50 text-left">
             <p className="text-xs text-blue-900 leading-relaxed">
