@@ -1871,6 +1871,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     };
 
     try {
+      // Properly escape PostgREST filter values to prevent SQL/NoSQL filter injection in .or()
+      const safeTeacherIdentifier = `"${String(teacherIdentifier).replace(/"/g, '""')}"`;
+
       // 1. Check teachers table via pgPool or supabaseServer
       const { rows: teacherRows } = await pgPool.query(
         `SELECT id, user_id, email, full_name, subjects_assigned FROM public.teachers
@@ -1883,7 +1886,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         const { data: tData } = await (supabaseServer as any)
           .from('teachers')
           .select('id, user_id, email, full_name, subjects_assigned')
-          .or(`id.eq.${teacherIdentifier},user_id.eq.${teacherIdentifier},email.eq.${teacherIdentifier}`);
+          .or(`id.eq.${safeTeacherIdentifier},user_id.eq.${safeTeacherIdentifier},email.eq.${safeTeacherIdentifier}`);
         if (tData && Array.isArray(tData)) {
           tData.forEach((r: any) => addSubjects(r.subjects_assigned));
         }
@@ -1901,7 +1904,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         const { data: rData } = await (supabaseServer as any)
           .from('roster')
           .select('id, profile_id, email, full_name, subjects, role')
-          .or(`id.eq.${teacherIdentifier},profile_id.eq.${teacherIdentifier},email.eq.${teacherIdentifier}`);
+          .or(`id.eq.${safeTeacherIdentifier},profile_id.eq.${safeTeacherIdentifier},email.eq.${safeTeacherIdentifier}`);
         if (rData && Array.isArray(rData)) {
           rData.filter((r: any) => r.role === 'teacher').forEach((r: any) => addSubjects(r.subjects));
         }
