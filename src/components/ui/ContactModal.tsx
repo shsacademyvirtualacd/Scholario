@@ -88,8 +88,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
         publicKey: envPublicKey
       }
     )
-    .then((response) => {
-      console.log('SUCCESS!', response.status, response.text);
+    .then(() => {
       setIsSubmitting(false);
       setIsSuccess(true);
       setFormData({
@@ -110,7 +109,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
       if ((import.meta as any).env?.VITE_EMAILJS_SERVICE_ID) {
          alert('Failed to send message. Please verify your EmailJS keys or try again later.');
       } else {
-         console.log('Simulating success since no EmailJS keys were provided.');
          setIsSuccess(true);
       }
     });
