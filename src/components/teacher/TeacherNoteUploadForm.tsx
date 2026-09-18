@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, FileText, Image as ImageIcon, AlertCircle, Loader2, BookOpen, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ClassOffering } from '../../types';
+import type { ClassOffering, TaxonomyData, NoteFileType } from '../../types';
 import { uploadNoteFileToR2, getTaxonomy } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
 import { getStreamsForGrade, GRADES } from '../../lib/taxonomy';
 import { useMobile } from '../../hooks/useMobile';
-import type { NoteFileType } from '../../types';
 
 interface TeacherNoteUploadFormProps {
   offerings: ClassOffering[];
@@ -24,6 +23,45 @@ interface TeacherNoteUploadFormProps {
   initialOfferingId?: string;
 }
 
+const getOfferingBoardId = (o: ClassOffering): string => {
+  if (typeof o.board === 'string') return o.board;
+  if (o.board && typeof o.board === 'object' && 'id' in o.board) return o.board.id;
+  if (o.class?.board_id) return o.class.board_id;
+  if (o.class?.board?.id) return o.class.board.id;
+  if (o.board_id) return o.board_id;
+  return 'fbise';
+};
+
+const getOfferingBoardName = (o: ClassOffering): string => {
+  if (o.class?.board?.name) return o.class.board.name;
+  if (o.board_name) return o.board_name;
+  const bId = getOfferingBoardId(o).toLowerCase();
+  return bId === 'fbise' ? 'FBISE' : bId.toUpperCase();
+};
+
+const getOfferingGrade = (o: ClassOffering, taxonomy?: TaxonomyData | null): string => {
+  if (o.grade) return o.grade;
+  if (o.class?.grade) return o.class.grade;
+  if (taxonomy && o.class_id) {
+    const matchedClass = taxonomy.classes.find((c) => c.id === o.class_id);
+    if (matchedClass?.grade) return matchedClass.grade;
+  }
+  return '';
+};
+
+const getOfferingSubjectName = (o: ClassOffering): string => {
+  if (o.subject_name) return o.subject_name;
+  if (typeof o.subject === 'string') return o.subject;
+  if (o.subject && typeof o.subject === 'object' && 'name' in o.subject) return o.subject.name;
+  return 'Class';
+};
+
+const getOfferingStreamName = (o: ClassOffering): string => {
+  if (typeof o.stream === 'string') return o.stream;
+  if (o.stream && typeof o.stream === 'object' && 'name' in o.stream) return o.stream.name;
+  return 'All Streams';
+};
+
 export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
   offerings,
   onUpload,
@@ -33,25 +71,27 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
   initialOfferingId,
 }) => {
   const isMobile = useMobile();
-  const [taxonomy, setTaxonomy] = useState<any>(null);
+  const [taxonomy, setTaxonomy] = useState<TaxonomyData | null>(null);
 
   // Compute available boards directly from teacher's offerings
   const availableBoards = useMemo(() => {
     const bSet = new Map<string, string>();
     offerings.forEach((o) => {
-      const bId = (o.board || (o as any).class?.board_id || (o as any).class?.board?.id || (o as any).board_id || 'fbise').toLowerCase();
-      const bName = (o as any).class?.board?.name || (o as any).board_name || (bId === 'fbise' ? 'FBISE' : bId.toUpperCase());
+      const bId = getOfferingBoardId(o).toLowerCase();
+      const bName = getOfferingBoardName(o);
       bSet.set(bId, bName);
     });
     if (bSet.size === 0) bSet.set('fbise', 'FBISE');
     return Array.from(bSet.entries()).map(([id, name]) => ({ id, name }));
   }, [offerings]);
 
-  const defaultBoard = offerings[0]?.board || (offerings[0] as any)?.class?.board_id || availableBoards[0]?.id || 'fbise';
+  const defaultBoard = offerings[0] ? getOfferingBoardId(offerings[0]) : (availableBoards[0]?.id || 'fbise');
   const [selectedBoard, setSelectedBoard] = useState<string>(defaultBoard);
 
   const [selectedGrade, setSelectedGrade] = useState<string>(
-    initialGrade && initialGrade !== 'all' ? initialGrade : (offerings[0]?.grade || (offerings[0] as any)?.class?.grade || '10')
+    initialGrade && initialGrade !== 'all'
+      ? initialGrade
+      : (offerings[0] ? (getOfferingGrade(offerings[0], taxonomy) || '10') : '10')
   );
   const [selectedStream, setSelectedStream] = useState<string>(
     initialStream && initialStream !== 'all' ? initialStream : 'all'
@@ -76,9 +116,9 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
   const activeGrades = useMemo(() => {
     const gradesFromOfferings = new Map<string, string>();
     offerings.forEach((o) => {
-      const bId = (o.board || (o as any).class?.board_id || (o as any).class?.board?.id || 'fbise').toLowerCase();
+      const bId = getOfferingBoardId(o).toLowerCase();
       if (!selectedBoard || selectedBoard === 'all' || bId === selectedBoard.toLowerCase()) {
-        const gr = String(o.grade || (o as any).class?.grade || '');
+        const gr = getOfferingGrade(o, taxonomy);
         if (gr) {
           gradesFromOfferings.set(gr, `${gr}th`);
         }
@@ -91,12 +131,12 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
 
     const rawGrades = taxonomy && taxonomy.classes && taxonomy.classes.length > 0
       ? taxonomy.classes
-          .filter((c: any) => !selectedBoard || selectedBoard === 'all' || c.board_id === selectedBoard || !c.board_id)
-          .map((c: any) => ({ id: String(c.grade), label: c.display_name || `${c.grade}th` }))
+          .filter((c) => !selectedBoard || selectedBoard === 'all' || c.board_id === selectedBoard || !c.board_id)
+          .map((c) => ({ id: String(c.grade), label: c.display_name || `${c.grade}th` }))
       : GRADES.map((g) => ({ id: g.grade, label: g.displayName }));
 
     const seen = new Set<string>();
-    return rawGrades.filter((g: any) => {
+    return rawGrades.filter((g) => {
       if (seen.has(g.id)) return false;
       seen.add(g.id);
       return true;
@@ -105,37 +145,35 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
 
   // Compute active streams for selected grade
   const activeClass = taxonomy?.classes?.find(
-    (c: any) => String(c.grade) === String(selectedGrade) && (c.board_id === selectedBoard || !c.board_id)
+    (c) => String(c.grade) === String(selectedGrade) && (c.board_id === selectedBoard || !c.board_id)
   );
   const dbStreams = activeClass && taxonomy?.streams
-    ? taxonomy.streams.filter((s: any) => s.class_id === activeClass.id)
+    ? taxonomy.streams.filter((s) => s.class_id === activeClass.id)
     : [];
 
   const activeStreams: { id: string; name: string }[] = dbStreams.length > 0
-    ? dbStreams.map((s: any) => ({ id: s.id, name: s.name }))
+    ? dbStreams.map((s) => ({ id: s.id, name: s.name }))
     : getStreamsForGrade(selectedGrade).map((s) => ({ id: s.name, name: s.name }));
 
   // Scope offerings by selected Board, Grade, and Stream
   const scopedOfferings = useMemo(() => {
     return offerings.filter((offering) => {
-      const offGrade = String(
-        offering.grade || (offering as any).class?.grade || taxonomy?.classes?.find((c: any) => c.id === (offering as any).class_id)?.grade || ''
-      );
+      const offGrade = getOfferingGrade(offering, taxonomy);
       if (selectedGrade && selectedGrade !== 'all' && offGrade !== String(selectedGrade)) {
         return false;
       }
 
-      const offBoard = (offering.board || (offering as any).class?.board_id || (offering as any).class?.board?.id || 'fbise').toLowerCase();
+      const offBoard = getOfferingBoardId(offering).toLowerCase();
       if (selectedBoard && selectedBoard !== 'all' && offBoard !== selectedBoard.toLowerCase()) {
         return false;
       }
 
       if (selectedStream && selectedStream !== 'all') {
-        const activeStreamObj = activeStreams.find((s: any) => s.id === selectedStream || s.name === selectedStream);
+        const activeStreamObj = activeStreams.find((s) => s.id === selectedStream || s.name === selectedStream);
         const streamName = activeStreamObj?.name || (typeof selectedStream === 'string' ? selectedStream : '');
         if (streamName && selectedGrade && selectedGrade !== 'all') {
           const streamSubjects = getSubjectsForStream(String(selectedGrade), streamName) || [];
-          const offeringSubject = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || '';
+          const offeringSubject = getOfferingSubjectName(offering);
           if (
             offering.stream_id === selectedStream ||
             (typeof offering.stream === 'string' && offering.stream === streamName) ||
@@ -224,12 +262,20 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
 
       setUploadPct(100);
       setDone(true);
-      await onUpload(createdNote as any);
+      await onUpload({
+        offering_id: createdNote.offering_id,
+        chapter_name: createdNote.chapter_name,
+        title: createdNote.title,
+        file_url: createdNote.file_url,
+        file_path: createdNote.file_path || '',
+        file_type: createdNote.file_type,
+      });
       toast.success(`"${title.trim()}" uploaded successfully.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Upload error:', err);
-      setError(err.message || 'Failed to upload note file. Please check your network or storage permissions.');
-      toast.error(err.message || 'Failed to upload note file.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to upload note file. Please check your network or storage permissions.';
+      setError(errMsg);
+      toast.error(errMsg);
       setUploadPct(0);
       setDone(false);
     } finally {
@@ -311,7 +357,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
           2. Cohort Grade:
         </span>
         <div className={isMobile ? 'flex flex-col gap-2' : 'flex flex-wrap items-center gap-1.5'}>
-          {activeGrades.map((g: any) => (
+          {activeGrades.map((g) => (
             <button
               key={g.id}
               type="button"
@@ -349,7 +395,7 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
             >
               All Streams
             </button>
-            {activeStreams.map((s: any) => (
+            {activeStreams.map((s) => (
               <button
                 key={s.id || s.name}
                 type="button"
@@ -388,10 +434,10 @@ export const TeacherNoteUploadForm: React.FC<TeacherNoteUploadFormProps> = ({
               : `Select Subject (${scopedOfferings.length} available)...`}
           </option>
           {scopedOfferings.map((offering) => {
-            const subjName = offering.subject_name || (typeof offering.subject === 'string' ? offering.subject : offering.subject?.name) || 'Class';
-            const gr = offering.grade || (offering as any).class?.grade || '10';
-            const brd = String(offering.board || (offering as any).class?.board_id || (offering as any).class?.board?.name || selectedBoard || 'Curriculum').toUpperCase();
-            const st = typeof offering.stream === 'string' ? offering.stream : offering.stream?.name || 'All Streams';
+            const subjName = getOfferingSubjectName(offering);
+            const gr = getOfferingGrade(offering, taxonomy) || '10';
+            const brd = getOfferingBoardName(offering).toUpperCase();
+            const st = getOfferingStreamName(offering);
             return (
               <option key={offering.id} value={offering.id}>
                 {subjName} — Grade {gr} {brd} ({st})
