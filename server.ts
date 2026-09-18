@@ -419,20 +419,21 @@ Key Guidelines:
             });
 
             if (genRes.functionCalls && genRes.functionCalls.length > 0) {
-              const toolParts: any[] = [];
-              for (const call of genRes.functionCalls) {
-                const toolName = call.name || '';
-                const data = await executeAdminDataQuery(toolName, call.args || {}, requestSupabase);
-                toolParts.push({
-                  functionResponse: {
-                    name: toolName,
-                    response: {
-                      result: data,
+              const toolParts = await Promise.all(
+                genRes.functionCalls.map(async (call) => {
+                  const toolName = call.name || '';
+                  const data = await executeAdminDataQuery(toolName, call.args || {}, requestSupabase);
+                  return {
+                    functionResponse: {
+                      name: toolName,
+                      response: {
+                        result: data,
+                      },
+                      ...(call.id ? { id: call.id } : {}),
                     },
-                    ...(call.id ? { id: call.id } : {}),
-                  },
-                });
-              }
+                  };
+                })
+              );
 
               const modelCandidate = genRes.candidates?.[0]?.content;
               if (modelCandidate) {
