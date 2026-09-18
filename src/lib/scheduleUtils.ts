@@ -91,6 +91,8 @@ export function timeStrToMins(timeStr: string): number {
   if (!timeStr || typeof timeStr !== 'string') return 0;
   
   const parts = timeStr.trim().split(':');
+  if (parts.length < 2) return 0;
+
   const cleanParts = parts.map(part => {
     const digits = part.replace(/\D/g, '');
     return digits ? parseInt(digits, 10) : 0;
