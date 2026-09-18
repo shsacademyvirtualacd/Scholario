@@ -143,24 +143,37 @@ export async function isTeacherAssignedToStudent(teacherId: string, studentId: s
     const tRec = teacherRes?.data;
     const possibleIds = new Set<string>([teacherId]);
 
+    const crossRefPromises: Promise<any>[] = [];
+
     if (prof) {
-      const { data: matchedTeachers } = await (supabase as any)
-        .from('teachers')
-        .select('id')
-        .or(`id.eq.${prof.id}${prof.email ? `,email.ilike.${prof.email}` : ''}${prof.phone ? `,phone.eq.${prof.phone}` : ''}`);
-      if (matchedTeachers) {
-        matchedTeachers.forEach((t: any) => possibleIds.add(t.id));
-      }
+      crossRefPromises.push(
+        (supabase as any)
+          .from('teachers')
+          .select('id')
+          .or(`id.eq.${prof.id}${prof.email ? `,email.ilike.${prof.email}` : ''}${prof.phone ? `,phone.eq.${prof.phone}` : ''}`)
+      );
+    } else {
+      crossRefPromises.push(Promise.resolve({ data: null }));
     }
 
     if (tRec) {
-      const { data: matchedProfiles } = await (supabase as any)
-        .from('profiles')
-        .select('id')
-        .or(`id.eq.${tRec.id}${tRec.email ? `,email.ilike.${tRec.email}` : ''}${tRec.phone ? `,phone.eq.${tRec.phone}` : ''}`);
-      if (matchedProfiles) {
-        matchedProfiles.forEach((p: any) => possibleIds.add(p.id));
-      }
+      crossRefPromises.push(
+        (supabase as any)
+          .from('profiles')
+          .select('id')
+          .or(`id.eq.${tRec.id}${tRec.email ? `,email.ilike.${tRec.email}` : ''}${tRec.phone ? `,phone.eq.${tRec.phone}` : ''}`)
+      );
+    } else {
+      crossRefPromises.push(Promise.resolve({ data: null }));
+    }
+
+    const [matchedTeachersRes, matchedProfilesRes] = await Promise.all(crossRefPromises);
+
+    if (matchedTeachersRes?.data) {
+      matchedTeachersRes.data.forEach((t: any) => possibleIds.add(t.id));
+    }
+    if (matchedProfilesRes?.data) {
+      matchedProfilesRes.data.forEach((p: any) => possibleIds.add(p.id));
     }
 
     for (const id of possibleIds) {
