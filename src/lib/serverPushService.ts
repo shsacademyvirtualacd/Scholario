@@ -57,12 +57,14 @@ function loadSubscriptionsFromDisk(): void {
       const raw = fs.readFileSync(SUBSCRIPTIONS_FILE, 'utf-8');
       const list: PushSubscriptionRecord[] = JSON.parse(raw);
       if (Array.isArray(list)) {
-        subscriptionsMemory.clear();
-        for (const item of list) {
-          if (item.endpoint) {
-            subscriptionsMemory.set(item.endpoint, item);
+        const nextMemory = new Map<string, PushSubscriptionRecord>();
+        for (let i = 0; i < list.length; i++) {
+          const item = list[i];
+          if (item?.endpoint) {
+            nextMemory.set(item.endpoint, item);
           }
         }
+        subscriptionsMemory = nextMemory;
         console.log(`[ServerPush] Loaded ${subscriptionsMemory.size} push subscriptions from disk`);
       }
     }
