@@ -176,7 +176,7 @@ for (const file of jsonFiles) {
         allIssues.push({ file, subject, chapter, index: idx, id, issue: 'Missing or empty question text' });
       } else {
         const qText = mcq.question.trim();
-        if (qText.endsWith('...') || qText.endsWith('…') || qText.endsWith('TODO') || qText.length < 5) {
+        if (qText.endsWith('...') || qText.endsWith('…') || /\btodo\b/i.test(qText) || qText.length < 5) {
           allIssues.push({ file, subject, chapter, index: idx, id, issue: `Question text appears truncated: "${qText}"` });
         }
         const dollarCount = (qText.match(/\$/g) || []).length;
