@@ -671,8 +671,8 @@ export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[]
  * @deprecated Import getSubjectsForStream from 'src/lib/db' instead.
  * That version reads authoritative subject names directly from the DB via
  * cachedTaxonomy (stream_subjects → subjects join), eliminating static-string
- * drift. This stub is kept only so that getEnrolledSubjectsForStudent (which
- * calls it internally) continues to build until it is separately migrated.
+ * drift. This stub is kept only so that legacy static taxonomy lookups continue
+ * to work for backward compatibility.
  */
 export function getSubjectsForStream(grade: string, streamName: string, boardId?: string): string[] {
   const normBoard = (boardId || '').trim().toLowerCase();
@@ -729,7 +729,10 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
   return g.streams[0]?.subjects ?? g.commonSubjects ?? ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
 }
 
-/** Derive exact enrolled taxonomy subjects for a student profile and enrollments */
+/**
+ * @deprecated Import getEnrolledSubjectsForStudent from 'src/lib/db' instead.
+ * The DB-backed version in db.ts uses cachedTaxonomy for accurate subject resolution.
+ */
 export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[]): string[] {
   // 1. If profile explicitly has custom subjects enrolled (e.g. 1, 2, or 3 subjects), prioritize them
   if (profile?.plan_type === 'custom' && Array.isArray(profile?.subjects) && profile.subjects.length > 0) {
