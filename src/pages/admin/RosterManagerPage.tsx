@@ -12,7 +12,8 @@ import ConfirmModal from '../../components/admin/ConfirmModal';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { 
   getAllRoster, addRosterEntry, updateRosterEntry, 
-  deleteRosterEntry, getAllOfferings, toggleRosterAccess, toggleFeeSuspension, updateFeeStatus
+  deleteRosterEntry, getAllOfferings, toggleRosterAccess, toggleFeeSuspension, updateFeeStatus,
+  getSubjectsForStream
 } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ import {
   saveStudentSubjectPlan, 
   calculateSubjectEnrollmentFee,
 } from '../../lib/subjectEnrollmentService';
-import { getSubjectsForStream, getDefaultPrice, formatShortClassAndBoard, BOARDS, getBoardDef, formatGradeDisplay, BoardId } from '../../lib/taxonomy';
+import { getDefaultPrice, formatShortClassAndBoard, BOARDS, getBoardDef, formatGradeDisplay, BoardId } from '../../lib/taxonomy';
 
 export const RosterManagerPage: React.FC = () => {
   const isMobile = useMobile();
