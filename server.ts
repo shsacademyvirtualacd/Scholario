@@ -3008,10 +3008,11 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       let userId = 'anonymous';
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
-        try {
-          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
-          if (payload?.sub) userId = payload.sub;
-        } catch {}
+        const token = authHeader.slice(7).trim();
+        const { data: authData } = await supabaseServer.auth.getUser(token);
+        if (authData?.user) {
+          userId = authData.user.id;
+        }
       }
 
       const cleanFilename = (file.originalname || `attachment_${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -3343,17 +3344,17 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       // Authenticate
       let token = '';
       if (req.headers.authorization?.startsWith('Bearer ')) {
-        token = req.headers.authorization.slice(7);
+        token = req.headers.authorization.slice(7).trim();
       } else if (req.query.token) {
-        token = String(req.query.token);
+        token = String(req.query.token).trim();
       }
 
       let userId = '';
       if (token) {
-        try {
-          const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-          userId = payload?.sub || '';
-        } catch {}
+        const { data: authData } = await supabaseServer.auth.getUser(token);
+        if (authData?.user) {
+          userId = authData.user.id;
+        }
       }
 
       if (!userId) {
@@ -3506,20 +3507,17 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(400).json({ error: 'messageId is required' });
       }
 
-      // 1. Authenticate user from Bearer token or x-user-id header
+      // 1. Authenticate user from Bearer token
       let userId = '';
       let userRole = '';
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
-        try {
-          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
-          userId = payload?.sub || '';
-          userRole = payload?.user_metadata?.role || payload?.role || '';
-        } catch {}
-      }
-
-      if (!userId && req.headers['x-user-id']) {
-        userId = String(req.headers['x-user-id']).trim();
+        const token = authHeader.slice(7).trim();
+        const { data: authData } = await supabaseServer.auth.getUser(token);
+        if (authData?.user) {
+          userId = authData.user.id;
+          userRole = authData.user.user_metadata?.role || authData.user.app_metadata?.role || '';
+        }
       }
 
       if (!userId) {
