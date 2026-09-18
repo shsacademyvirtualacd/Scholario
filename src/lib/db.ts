@@ -1329,16 +1329,26 @@ export async function upsertAttendanceBatch(records: Array<{
     marked_at: r.marked_at || nowTimestamp,
     marked_by: r.marked_by || 'admin',
   }));
-  
-  // Try batch upsert first
-  const { error } = await (supabase as any)
-    .from('attendance')
-    .upsert(recordsWithTimestamp, { onConflict: 'student_id,slot_id,session_date' });
-    
-  if (error) {
-    console.warn('[upsertAttendanceBatch] batch upsert failed, executing sequential updates:', error);
-    for (const rec of recordsWithTimestamp) {
-      await recordAttendance(rec).catch(console.error);
+
+  // Chunk records into batches of 100
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < recordsWithTimestamp.length; i += CHUNK_SIZE) {
+    const chunk = recordsWithTimestamp.slice(i, i + CHUNK_SIZE);
+    const { error } = await (supabase as any)
+      .from('attendance')
+      .upsert(chunk, { onConflict: 'student_id,slot_id,session_date' });
+
+    if (error) {
+      console.warn('[upsertAttendanceBatch] batch upsert chunk failed, executing parallel fallback upserts:', error);
+      // Fallback: Parallel individual upserts using onConflict to avoid N+1 select-then-update queries
+      await Promise.allSettled(
+        chunk.map(rec =>
+          (supabase as any)
+            .from('attendance')
+            .upsert(rec, { onConflict: 'student_id,slot_id,session_date' })
+            .catch(console.error)
+        )
+      );
     }
   }
 }
