@@ -2692,8 +2692,12 @@ export async function getAllRoster(): Promise<RosterEntry[]> {
       existing.full_name = p.full_name || existing.full_name;
       existing.role = p.role || existing.role;
       existing.email = emailKey || existing.email;
-      if (p.class_id && !existing.class_ids?.includes(p.class_id)) {
-        existing.class_ids = [...(existing.class_ids || []), p.class_id];
+      if (p.class_id) {
+        if (!existing.class_ids) {
+          existing.class_ids = [p.class_id];
+        } else if (!existing.class_ids.includes(p.class_id)) {
+          existing.class_ids.push(p.class_id);
+        }
       }
       entryByProfileId.set(p.id, existing);
     } else {
