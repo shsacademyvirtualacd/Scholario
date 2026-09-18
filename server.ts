@@ -3009,8 +3009,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
         try {
-          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
-          if (payload?.sub) userId = payload.sub;
+          const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+          const { data: authData } = await supabaseServer.auth.getUser(token);
+          if (authData?.user?.id) userId = authData.user.id;
         } catch {}
       }
 
@@ -3351,8 +3352,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       let userId = '';
       if (token) {
         try {
-          const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-          userId = payload?.sub || '';
+          const { data: authData } = await supabaseServer.auth.getUser(token);
+          if (authData?.user?.id) userId = authData.user.id;
         } catch {}
       }
 
@@ -3484,25 +3485,34 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(400).json({ error: 'messageId is required' });
       }
 
-      // 1. Authenticate user from Bearer token or x-user-id header
-      let userId = '';
-      let userRole = '';
-      const authHeader = req.headers.authorization;
-      if (authHeader?.startsWith('Bearer ')) {
-        try {
-          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
-          userId = payload?.sub || '';
-          userRole = payload?.user_metadata?.role || payload?.role || '';
-        } catch {}
-      }
-
-      if (!userId && req.headers['x-user-id']) {
-        userId = String(req.headers['x-user-id']).trim();
-      }
-
-      if (!userId) {
+      // 1. Authenticate user from Bearer token
+      const authHeader = (req.headers.authorization || req.headers['authorization']) as string | undefined;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Unauthorized: Valid authentication token required' });
       }
+
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      let user: any = null;
+
+      const { data: authData, error: authErr } = await supabaseServer.auth.getUser(token);
+      if (!authErr && authData?.user) {
+        user = authData.user;
+      } else {
+        const requestSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: fallbackAuth, error: fallbackErr } = await requestSupabase.auth.getUser();
+        if (!fallbackErr && fallbackAuth?.user) {
+          user = fallbackAuth.user;
+        }
+      }
+
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized: Valid authentication token required' });
+      }
+
+      const userId = user.id;
+      const userRole = (user.user_metadata?.role || user.app_metadata?.role || '').toLowerCase();
 
       // 2. Fetch existing message record from database to verify ownership & attachment details
       let messageData: any = null;

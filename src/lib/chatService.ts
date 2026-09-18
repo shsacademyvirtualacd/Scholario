@@ -808,7 +808,6 @@ export async function deleteChatMessage(
 
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData?.session?.access_token;
-  const currentUserId = sessionData?.session?.user?.id;
 
   // 1. Call server API for backend hard-delete and R2 bucket object removal
   try {
@@ -817,7 +816,6 @@ export async function deleteChatMessage(
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(currentUserId ? { 'x-user-id': currentUserId } : {}),
       },
     });
   } catch (apiErr) {
