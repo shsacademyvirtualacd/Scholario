@@ -3630,9 +3630,11 @@ export async function getTaxonomy(): Promise<{
   ]);
 
   const boardsList: BoardEntry[] = [...(b.data || [])];
+  const existingBoardIds = new Set(boardsList.map((bItem) => bItem.id));
   // Ensure all boards are represented
   for (const boardDef of BOARDS) {
-    if (!boardsList.some((bItem) => bItem.id === boardDef.id)) {
+    if (!existingBoardIds.has(boardDef.id)) {
+      existingBoardIds.add(boardDef.id);
       boardsList.push({
         id: boardDef.id,
         name: boardDef.name,
@@ -3641,11 +3643,14 @@ export async function getTaxonomy(): Promise<{
   }
 
   const classesData: ClassEntry[] = [...(c.data || [])];
+  const existingClassKeys = new Set(classesData.map((cls) => `${cls.board_id}:${cls.grade}`));
   // Ensure classes exist for all boards (FBISE, Sindh, IELTS)
   for (const boardDef of BOARDS) {
     const grades = getGradesForBoard(boardDef.id);
     for (const g of grades) {
-      if (!classesData.some((cls) => cls.board_id === boardDef.id && String(cls.grade) === String(g.grade))) {
+      const key = `${boardDef.id}:${g.grade}`;
+      if (!existingClassKeys.has(key)) {
+        existingClassKeys.add(key);
         classesData.push({
           id: `${boardDef.id}-${g.grade}`,
           board_id: boardDef.id,
@@ -3659,20 +3664,28 @@ export async function getTaxonomy(): Promise<{
   classesData.sort((a: any, b: any) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
 
   const streamsData: StreamEntry[] = [...(s.data || [])];
+  const streamMap = new Map<string, StreamEntry>();
+  for (const sItem of streamsData) {
+    streamMap.set(`${sItem.class_id}:${sItem.name.toLowerCase()}`, sItem);
+  }
+
   // Ensure streams exist for all classes with subjects populated
   for (const cls of classesData) {
     const grades = getGradesForBoard(cls.board_id);
     const gradeDef = grades.find((g) => String(g.grade) === String(cls.grade));
     if (gradeDef) {
       for (const st of gradeDef.streams) {
-        const existing = streamsData.find((sItem) => sItem.class_id === cls.id && sItem.name.toLowerCase() === st.name.toLowerCase());
+        const streamKey = `${cls.id}:${st.name.toLowerCase()}`;
+        const existing = streamMap.get(streamKey);
         if (!existing) {
-          streamsData.push({
+          const newStream = {
             id: st.name,
             class_id: cls.id,
             name: st.name,
             subjects: st.subjects,
-          } as any);
+          } as any;
+          streamsData.push(newStream);
+          streamMap.set(streamKey, newStream);
         } else if (!(existing as any).subjects || (existing as any).subjects.length === 0) {
           (existing as any).subjects = st.subjects;
         }
