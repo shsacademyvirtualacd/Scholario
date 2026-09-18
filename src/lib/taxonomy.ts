@@ -604,18 +604,23 @@ export function getDefaultPrice(grade: string, boardId?: string, streamName?: st
   return ['11', '12'].includes(grade) ? 4000 : 3000;
 }
 
+let cachedSubjectNames: string[] | null = null;
+
 /** All unique subject names used across the entire taxonomy */
 export function getAllSubjectNames(): string[] {
-  const set = new Set<string>();
-  const allGrades = [...FBISE_GRADES, ...PUNJAB_GRADES, ...SINDH_GRADES, ...KPK_GRADES, ...OLEVEL_GRADES, ...ALEVEL_GRADES, ...IELTS_GRADES];
-  for (const g of allGrades) {
-    for (const s of g.streams) {
-      for (const sub of s.subjects) {
-        set.add(sub);
+  if (!cachedSubjectNames) {
+    const set = new Set<string>();
+    const allGrades = [...FBISE_GRADES, ...PUNJAB_GRADES, ...SINDH_GRADES, ...KPK_GRADES, ...OLEVEL_GRADES, ...ALEVEL_GRADES, ...IELTS_GRADES];
+    for (const g of allGrades) {
+      for (const s of g.streams) {
+        for (const sub of s.subjects) {
+          set.add(sub);
+        }
       }
     }
+    cachedSubjectNames = Array.from(set).sort();
   }
-  return Array.from(set).sort();
+  return [...cachedSubjectNames];
 }
 
 /** Get streams available for a given grade and optional board */
