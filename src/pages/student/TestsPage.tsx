@@ -24,10 +24,9 @@ import ProctoredMCQAccessModal from '../../components/student/ProctoredMCQAccess
 import { ProctoredMCQExamModal } from '../../components/student/ProctoredMCQExamModal';
 import ProctoredMCQResultModal from '../../components/student/ProctoredMCQResultModal';
 import { WrittenTestExamModal } from '../../components/student/WrittenTestExamModal';
-import { getTestsForStudent, getSubmissionsForStudent, getOfferingsForStudent } from '../../lib/db';
+import { getTestsForStudent, getSubmissionsForStudent, getOfferingsForStudent, getEnrolledSubjectsForStudent } from '../../lib/db';
 import { getProctoredMCQTests, getProctoredMCQSubmissions } from '../../lib/proctoredMcqService';
 import { getWrittenTests, getWrittenSubmissions } from '../../lib/writtenTestService';
-import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { TestPaper, TestSubmission } from '../../types';
