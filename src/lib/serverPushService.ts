@@ -625,11 +625,10 @@ export async function checkAndSendTeacherPushReminders(
           },
         };
 
-        let slotSentCount = 0;
-        for (const sub of teacherSubs) {
-          const success = await sendWebPush(sub, payload, supabase);
-          if (success) slotSentCount++;
-        }
+        const results = await Promise.all(
+          teacherSubs.map((sub) => sendWebPush(sub, payload, supabase))
+        );
+        const slotSentCount = results.filter(Boolean).length;
 
         if (slotSentCount > 0) {
           lastTeacherPushSentAt.set(scheduleId, now);
