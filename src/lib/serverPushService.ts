@@ -560,6 +560,16 @@ export async function checkAndSendTeacherPushReminders(
     let remindersSent = 0;
     const now = Date.now();
 
+    // First pass: identify slots that need reminders and gather all teacher IDs to batch fetch subscriptions
+    const qualifyingSlots: {
+      slot: any;
+      scheduleId: string;
+      minsUntilStart: number;
+      teacherId: string;
+    }[] = [];
+
+    const teacherIdsToFetch = new Set<string>();
+
     for (const slot of slots) {
       const scheduleId = `${slot.id}_${dateString}`;
 
@@ -572,7 +582,6 @@ export async function checkAndSendTeacherPushReminders(
       const minsUntilStart = startMins - totalMins;
 
       // Only remind if class has NOT started yet AND is within the 10-minute window
-      // (stops once class starts: minsUntilStart <= 0)
       if (minsUntilStart > 0 && minsUntilStart <= 10) {
         // Enforce 2-minute (110 seconds) throttle between pushes for the same scheduleId / slot
         const lastSentDb = slot.last_reminder_sent_at ? new Date(slot.last_reminder_sent_at).getTime() : 0;
@@ -592,9 +601,29 @@ export async function checkAndSendTeacherPushReminders(
           continue;
         }
 
-        const teacherSubs = (await getUserSubscriptions([teacherId], supabase)).filter(
-          (s) => s.role === 'teacher'
-        );
+        qualifyingSlots.push({ slot, scheduleId, minsUntilStart, teacherId });
+        teacherIdsToFetch.add(teacherId);
+      }
+    }
+
+    if (qualifyingSlots.length === 0) {
+      return 0;
+    }
+
+    // Batch fetch subscriptions for all qualifying teachers in a single DB query
+    const allTeacherSubs = await getUserSubscriptions(Array.from(teacherIdsToFetch), supabase);
+    const subsByTeacherMap = new Map<string, PushSubscriptionRecord[]>();
+
+    for (const sub of allTeacherSubs) {
+      if (sub.role === 'teacher') {
+        const existingList = subsByTeacherMap.get(sub.user_id) || [];
+        existingList.push(sub);
+        subsByTeacherMap.set(sub.user_id, existingList);
+      }
+    }
+
+    for (const { slot, scheduleId, minsUntilStart, teacherId } of qualifyingSlots) {
+      const teacherSubs = subsByTeacherMap.get(teacherId) || [];
 
         if (teacherSubs.length === 0) {
           continue;
@@ -644,7 +673,6 @@ export async function checkAndSendTeacherPushReminders(
               .eq('id', slot.id);
           } catch (dbErr) {
             console.warn('[ServerPush] Error updating slot last_reminder_sent_at:', dbErr);
-          }
         }
       }
     }
