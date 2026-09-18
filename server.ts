@@ -3351,8 +3351,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       let userId = '';
       if (token) {
         try {
-          const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-          userId = payload?.sub || '';
+          const { data: authData, error: authErr } = await supabaseServer.auth.getUser(token);
+          if (!authErr && authData?.user) {
+            userId = authData.user.id;
+          }
         } catch {}
       }
 
