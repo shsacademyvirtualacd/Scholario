@@ -1,6 +1,6 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../../env';
-import { getAuthenticatedSupabaseClient } from '../../../_lib/supabaseAuth';
+import { getAuthenticatedUser } from '../../../_lib/supabaseAuth';
 
 export async function onRequestDelete(context: EventContext<Env, any, any>): Promise<Response> {
   return handleAvatarDelete(context);
@@ -12,27 +12,15 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
 async function handleAvatarDelete(context: EventContext<Env, any, any>): Promise<Response> {
   const { request, env } = context;
-  const auth = getAuthenticatedSupabaseClient(request, env);
+  const auth = await getAuthenticatedUser(request, env);
   if (!auth) {
     return new Response(JSON.stringify({ error: 'Unauthorized: Missing or invalid authentication token' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  const { supabase, token } = auth;
-
-  let userId: string;
-  try {
-    const payloadBase64 = token.split('.')[1];
-    const payload = JSON.parse(atob(payloadBase64));
-    userId = payload.sub;
-    if (!userId) throw new Error('No sub claim');
-  } catch {
-    return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token payload' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const { supabase, user } = auth;
+  const userId = user.id;
 
   // Fetch current avatar_url
   let previousAvatarUrl: string | null = null;
