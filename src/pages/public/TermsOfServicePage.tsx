@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Scale, Calendar, Mail, Phone, ArrowLeft } from 'lucide-react';
+import { Scale, Calendar, Mail, Phone, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
@@ -234,6 +234,12 @@ export const TermsOfServicePage: React.FC = () => {
                 <p>
                   These Terms are governed by the laws of the Islamic Republic of Pakistan.
                 </p>
+                <div className="p-4 rounded-xl bg-[#FAFAFA] dark:bg-[#1A1A1A] border border-[#E5E5E5] dark:border-[#262626] text-xs text-[#737373] dark:text-[#A3A3A3] flex items-start gap-3 mt-3">
+                  <AlertCircle size={16} className="text-[#D4A017] shrink-0 mt-0.5" />
+                  <p className="m-0 leading-relaxed">
+                    <strong>Disclaimer:</strong> This document is not a substitute for professional legal advice; consult a qualified lawyer for legal matters specific to your situation.
+                  </p>
+                </div>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />

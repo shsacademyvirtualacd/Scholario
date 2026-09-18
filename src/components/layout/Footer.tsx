@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 import { AboutModal } from '../ui/AboutModal';
 import { ContactModal } from '../ui/ContactModal';
@@ -42,8 +42,17 @@ type FooterItem =
   | { label: string; action: () => void };
 
 const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const navigate = useNavigate();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+
+  const handleGetStarted = () => {
+    if (onNavigate) {
+      onNavigate('login');
+    } else {
+      navigate('/login');
+    }
+  };
 
   const links: Record<string, FooterItem[]> = {
     Company: [
@@ -75,7 +84,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button 
-              onClick={() => onNavigate && onNavigate('login')}
+              onClick={handleGetStarted}
               className="btn btn-gold btn-lg interactive"
             >
               Get Started
@@ -160,7 +169,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
       <div className="border-t border-[#1F1F1F]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-[#525252]">
-            © 2025 Scholario. All rights reserved. Made with ❤️ in Pakistan.
+            © 2026 Scholario. All rights reserved. Made with ❤️ in Pakistan.
           </div>
           <div className="flex items-center gap-2">
             {[
