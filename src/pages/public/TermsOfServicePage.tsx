@@ -272,6 +272,10 @@ export const TermsOfServicePage: React.FC = () => {
                 </div>
               </section>
 
+              <div className="mt-8 p-5 rounded-2xl bg-[#FDF3C8]/50 dark:bg-[#D4A017]/10 border border-[#FDF3C8] dark:border-[#D4A017]/25 text-xs text-[#B8860B] dark:text-[#E5B53B] italic leading-relaxed">
+                These Terms of Conditions are drafted specifically for Scholario's current single-institution, manual-payment stage. They are a working document prepared for an early-stage product and have not been reviewed by a licensed lawyer. Before Scholario scales beyond SHS Virtual Academy, integrates a payment gateway, or handles meaningful transaction volume, it is strongly recommended that this document be reviewed by legal counsel familiar with Pakistani contract, consumer protection, and education law.
+              </div>
+
             </div>
 
           </div>

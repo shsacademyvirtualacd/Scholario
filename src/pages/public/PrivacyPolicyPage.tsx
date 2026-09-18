@@ -346,6 +346,10 @@ export const PrivacyPolicyPage: React.FC = () => {
                 </div>
               </section>
 
+              <div className="mt-8 p-5 rounded-2xl bg-[#FDF3C8]/50 dark:bg-[#D4A017]/10 border border-[#FDF3C8] dark:border-[#D4A017]/25 text-xs text-[#B8860B] dark:text-[#E5B53B] italic leading-relaxed">
+                This Privacy Policy is intended to accurately describe Scholario's current data practices as a single-institution platform for SHS Virtual Academy. It is a working document drafted for an early-stage product and has not been reviewed by a licensed lawyer. Before Scholario scales beyond SHS Virtual Academy, or before payment volume becomes significant, it is strongly recommended that this document be reviewed by legal counsel familiar with Pakistani data protection and education law.
+              </div>
+
             </div>
 
           </div>
