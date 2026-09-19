@@ -4,6 +4,7 @@ import Footer from '../../components/layout/Footer';
 import HomePage from '../HomePage';
 import JsonLdSchema from '../../components/seo/JsonLdSchema';
 import { useNavigate } from 'react-router-dom';
+import PublicAnnouncementModal from '../../components/announcements/PublicAnnouncementModal';
 
 /**
  * Wraps the existing marketing HomePage with real navigation via React Router.
@@ -26,6 +27,7 @@ const LandingShell: React.FC = () => {
       <Navbar onNavigate={handleNavigate} />
       <HomePage onNavigate={handleNavigate} />
       <Footer onNavigate={handleNavigate} />
+      <PublicAnnouncementModal />
     </div>
   );
 };

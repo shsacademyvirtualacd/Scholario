@@ -3884,11 +3884,16 @@ export function getSubjectsForStream(grade: string, streamName: string, boardId?
 // ANNOUNCEMENTS
 // =============================================================================
 
-export async function getAnnouncements(): Promise<Announcement[]> {
-  const { data, error } = await supabase
+export async function getAnnouncements(options?: { type?: 'public' | 'dashboard' | 'all' }): Promise<Announcement[]> {
+  let query = supabase
     .from('announcements')
-    .select('*, class:classes(*, board:boards(*)), stream:streams(*), creator:profiles(*)')
-    .order('created_at', { ascending: false });
+    .select('*, class:classes(*, board:boards(*)), stream:streams(*), creator:profiles(*)');
+
+  if (options?.type && options.type !== 'all') {
+    query = query.eq('announcement_type', options.type);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
   const rows = throwOnError(data, error, 'getAnnouncements');
   return rows as unknown as Announcement[];
 }

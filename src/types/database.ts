@@ -283,20 +283,40 @@ export interface StudySession {
 }
 
 // ─── announcements ──────────────────────────
+export type AnnouncementType = 'public' | 'dashboard';
+
 export interface Announcement {
   id: string;
   title: string;
   body: string;
+  announcement_type?: AnnouncementType;
+  target_roles?: string[]; // e.g. ['student'], ['teacher'], ['student', 'teacher'], ['all']
+  is_active?: boolean;
+  starts_at?: string;
+  ends_at?: string | null;
+  action_label?: string | null;
+  action_url?: string | null;
+  badge_label?: string | null;
   severity: 'normal' | 'crucial';
   scope: 'system' | 'class';
   class_id?: string | null;
   stream_id?: string | null;
   created_by?: string | null;
   created_at: string;
-  // joined
+  updated_at?: string;
+  // joined & computed
+  dismissal_count?: number;
+  is_dismissed?: boolean;
   class?: ClassEntry;
   stream?: StreamEntry;
   creator?: Profile;
+}
+
+export interface AnnouncementDismissal {
+  id: string;
+  announcement_id: string;
+  user_id: string;
+  dismissed_at: string;
 }
 
 // ─── chat_threads & chat_messages ───────────

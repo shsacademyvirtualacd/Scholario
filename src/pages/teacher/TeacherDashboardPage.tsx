@@ -35,6 +35,7 @@ import {
 import { useMobile } from '../../hooks/useMobile';
 import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
 import { stopClassReminder } from '../../lib/teacherReminderService';
+import DashboardNoticeModal from '../../components/announcements/DashboardNoticeModal';
 
 // ─── Live Link Editor for Teacher (per-session date instance) ──────────
 export const LiveLinkEditor: React.FC<{
@@ -1330,6 +1331,8 @@ export const TeacherDashboardPage: React.FC = () => {
           </div>
         )}
       </ConfirmModal>
+
+      <DashboardNoticeModal role="teacher" />
     </TeacherShell>
   );
 };

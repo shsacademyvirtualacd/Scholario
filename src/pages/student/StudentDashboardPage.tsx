@@ -20,6 +20,7 @@ import {
 } from '../../lib/db';
 import TeacherAttendanceRatingCard from '../../components/student/TeacherAttendanceRatingCard';
 import NotificationPermissionBanner from '../../components/student/NotificationPermissionBanner';
+import DashboardNoticeModal from '../../components/announcements/DashboardNoticeModal';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
@@ -1278,6 +1279,7 @@ const StudentDashboardPage: React.FC = () => {
         </div>
       </div>
 
+      <DashboardNoticeModal role="student" />
     </StudentShell>
   );
 };
