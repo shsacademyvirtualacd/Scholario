@@ -7,6 +7,13 @@ import { adminToolDeclarations, executeAdminDataQuery } from '../../../src/lib/a
 interface ChatMessagePayload {
   role: 'user' | 'assistant' | 'model';
   content: string;
+  attachment?: {
+    key?: string;
+    filename?: string;
+    size?: number;
+    mime_type?: string;
+    base64?: string;
+  };
 }
 
 interface ChatRequestBody {
@@ -15,6 +22,11 @@ interface ChatRequestBody {
   userName?: string;
   grade?: string;
   stream?: string;
+  page_context?: {
+    path?: string;
+    title?: string;
+    summary?: string;
+  };
 }
 
 const CORS_HEADERS = {
@@ -59,7 +71,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     );
   }
 
-  const { messages, userRole = 'student', userName, grade, stream } = body;
+  const { messages, userRole = 'student', userName, grade, stream, page_context } = body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return new Response(
@@ -99,16 +111,29 @@ ACCESS CONTROL & PRIVACY RULE: You are in general-purpose academic assistant mod
       }${stream ? ` (${stream} stream)` : ''}. Assist with academic questions, step-by-step problem solving, revision notes, conceptual explanations, and exam preparation.
 ACCESS CONTROL & PRIVACY RULE: You are an academic study assistant and DO NOT have access to administrative database records or private platform data. If the student asks data-specific questions about real platform data (such as how many students are enrolled, other students' records, or private administrative settings), politely explain that this information isn't available to them here and suggest checking with an administrator or their student dashboard instead.`;
 
+  // Page-aware context prompt
+  let pageContextPrompt = '';
+  if (page_context && (page_context.path || page_context.title)) {
+    pageContextPrompt = `\nCURRENT APPLICATION PAGE CONTEXT:
+The user is currently viewing (or just navigated from) the following screen:
+- Route: ${page_context.path || 'Unknown'}
+- Page Title: ${page_context.title || 'Scholario Portal'}
+- Visible State/Activity: ${page_context.summary || 'Active view'}
+If the user asks questions such as "what am I looking at?", "how do I use this page?", or refers to "this test" / "this schedule", directly incorporate this screen context without asking them to re-explain.`;
+  }
+
   const systemInstruction = `You are Sage, the intelligent, friendly, and expert AI study and academic companion built exclusively for Scholario & SHS Virtual Academy (FBISE and Sindh Board 9th-12th grade curricula: Mathematics, Physics, Chemistry, Biology, Computer Science, English, Urdu, Islamiat, and Pakistan Studies).
 
 ${roleDescription}
+${pageContextPrompt}
 
 Key Guidelines:
 1. **Be Concise & Direct by Default**: Keep answers short, direct, and to the point (typically 1-3 focused paragraphs or bullet points). Avoid conversational fluff or unnecessary preambles.
 2. **Detailed Drafts on Request Only**: Provide comprehensive documents, full essay-length breakdowns, or complete circular notices ONLY when the user explicitly requests a "full draft", "complete notice", "complete document", "in-depth explanation", or similar.
 3. **Format with Markdown & LaTeX Math**: Use standard Markdown (headings, bold, lists, tables). For all mathematical or scientific formulas, write standard LaTeX syntax using inline \`$formula$\` (e.g. \`$E = mc^2$\`, \`$v = u + at$\`, \`$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$\`) or block \`$$equation$$\`.
-4. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
-5. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
+4. **Multimodal Analysis**: When the user provides an image or PDF attachment, thoroughly inspect formulas, diagrams, handwritten workings, or document text, and ground your response directly in the attachment content.
+5. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
+6. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
 
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
@@ -151,11 +176,32 @@ Key Guidelines:
         return;
       }
 
-      // Format conversation history for @google/genai
-      const contents = messages.map((m) => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }],
-      }));
+      // Format conversation history for @google/genai with multimodal inlineData
+      const contents = messages.map((m) => {
+        const parts: any[] = [];
+        if (m.content) {
+          parts.push({ text: m.content });
+        }
+        if (m.attachment?.base64) {
+          const cleanBase64 = m.attachment.base64.includes('base64,')
+            ? m.attachment.base64.split('base64,')[1]
+            : m.attachment.base64;
+          const mimeType = m.attachment.mime_type || (m.attachment.filename?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+          parts.push({
+            inlineData: {
+              data: cleanBase64,
+              mimeType,
+            },
+          });
+        }
+        if (parts.length === 0) {
+          parts.push({ text: ' ' });
+        }
+        return {
+          role: m.role === 'user' ? 'user' : 'model',
+          parts,
+        };
+      });
 
       const ai = new GoogleGenAI({
         apiKey,
@@ -165,7 +211,7 @@ Key Guidelines:
           },
         },
       });
-      const targetModel = 'gemini-3.6-flash';
+      const targetModel = 'gemini-2.5-flash';
 
       if (isAdmin) {
         let currentContents: any[] = [...contents];

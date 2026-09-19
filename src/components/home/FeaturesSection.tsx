@@ -48,8 +48,8 @@ const features = [
   },
   {
     icon: Sparkles,
-    title: 'Sage',
-    description: 'Meet Sage, your AI study companion — get instant answers to subject questions, summarized notes, and personalized study help, anytime.',
+    title: 'Sage AI Assistant (Gemini 2.5 Flash)',
+    description: 'Powered by Google Gemini 2.5 Flash with multimodal document and image analysis, pgvector semantic search across Subject Note Vault materials, and real-time page-aware context.',
     tag: 'AI',
     fullWidth: true,
   },

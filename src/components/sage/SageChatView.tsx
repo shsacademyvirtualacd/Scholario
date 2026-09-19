@@ -18,11 +18,27 @@ import {
   Smile,
   Brain,
   ArrowLeft,
+  Paperclip,
+  X,
+  FileText,
+  Compass,
+  Sparkles,
+  Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
 import { SageAvatar } from './SageAvatar';
 import { SageEmotion, SAGE_EMOTIONS, detectSageEmotion } from './sageEmotion';
+import { getLastPageContext, PageContextInfo } from '../../lib/pageContext';
+
+export interface ChatAttachment {
+  key?: string;
+  filename: string;
+  size: number;
+  mime_type: string;
+  url?: string;
+  base64?: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -30,6 +46,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   emotion?: SageEmotion;
+  attachment?: ChatAttachment;
 }
 
 interface SageChatViewProps {
@@ -255,14 +272,114 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [manualEmotion, setManualEmotion] = useState<SageEmotion | null>(null);
+  const [activePageContext, setActivePageContext] = useState<PageContextInfo | null>(() => getLastPageContext());
+  const [pendingAttachment, setPendingAttachment] = useState<{
+    file: File;
+    filename: string;
+    size: number;
+    mime_type: string;
+    previewUrl?: string;
+    base64?: string;
+    key?: string;
+    isUploading?: boolean;
+  } | null>(null);
+  const [isSyncingNotes, setIsSyncingNotes] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Sync to session storage
   useEffect(() => {
     sessionStorage.setItem(`sage_chat_${role}`, JSON.stringify(messages));
   }, [messages, role]);
+
+  // Keep active page context refreshed from session / navigation
+  useEffect(() => {
+    const ctx = getLastPageContext();
+    if (ctx && (!activePageContext || activePageContext.path !== ctx.path)) {
+      setActivePageContext(ctx);
+    }
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('File exceeds 20MB limit');
+      return;
+    }
+
+    const isImage = file.type.startsWith('image/');
+    const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
+
+    const attachmentObj = {
+      file,
+      filename: file.name,
+      size: file.size,
+      mime_type: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream'),
+      previewUrl,
+      base64: undefined as string | undefined,
+      key: undefined as string | undefined,
+      isUploading: true,
+    };
+
+    setPendingAttachment(attachmentObj);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Str = reader.result as string;
+      attachmentObj.base64 = base64Str;
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('channel_id', `sage-${profile?.id || 'session'}`);
+        formData.append('client_generated_id', `sage-att-${Date.now()}`);
+
+        const uploadRes = await fetch('/api/chat/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (uploadRes.ok) {
+          const uploadData = (await uploadRes.json()) as { key?: string };
+          attachmentObj.key = uploadData.key;
+        }
+      } catch {
+        // base64 is still available for multimodal model
+      } finally {
+        attachmentObj.isUploading = false;
+        setPendingAttachment({ ...attachmentObj });
+        toast.success(`Attached ${file.name}`);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSyncNotes = async () => {
+    setIsSyncingNotes(true);
+    try {
+      const res = await fetch('/api/knowledge-base/sync-notes', {
+        method: 'POST',
+      });
+      const data = (await res.json()) as { synced?: number; error?: string };
+      if (res.ok) {
+        toast.success(`Knowledge Base synced! Indexed ${data.synced ?? 0} notes into vector knowledge base.`);
+      } else {
+        toast.error(data.error || 'Failed to sync notes');
+      }
+    } catch {
+      toast.info('Knowledge base sync requested.');
+    } finally {
+      setIsSyncingNotes(false);
+    }
+  };
 
   // Derive current overall Sage emotional state
   const latestAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
@@ -335,14 +452,26 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
   const handleSend = async (userText?: string) => {
     const textToSend = (userText || input).trim();
-    if (!textToSend || isLoading) return;
+    if ((!textToSend && !pendingAttachment) || isLoading) return;
 
     setErrorMsg(null);
+    const currentAtt = pendingAttachment
+      ? {
+          key: pendingAttachment.key,
+          filename: pendingAttachment.filename,
+          size: pendingAttachment.size,
+          mime_type: pendingAttachment.mime_type,
+          url: pendingAttachment.previewUrl,
+          base64: pendingAttachment.base64,
+        }
+      : undefined;
+
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: textToSend,
+      content: textToSend || (currentAtt ? `Please analyze this attached file: ${currentAtt.filename}` : ''),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      attachment: currentAtt,
     };
 
     const assistantMsgId = `sage-${Date.now() + 1}`;
@@ -356,6 +485,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     const newHistory = [...messages, userMsg];
     setMessages([...newHistory, placeholderAssistantMsg]);
     setInput('');
+    setPendingAttachment(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -370,6 +500,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       const payloadMessages = newHistory.map((m) => ({
         role: m.role,
         content: m.content,
+        attachment: m.attachment,
       }));
 
       const headers: Record<string, string> = {
@@ -389,6 +520,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           userName: profile?.full_name || '',
           grade: (profile as any)?.grade || '',
           stream: (profile as any)?.stream || '',
+          page_context: activePageContext || undefined,
         }),
         signal: abortController.signal,
       });
@@ -575,6 +707,26 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             })}
           </div>
 
+          {/* Knowledge Base & Note Vault RAG Indicator */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#1C1C1E] border border-[#2B2B2B] text-[11px] text-[#A3A3A3]">
+            <Database size={12} className="text-[#38BDF8]" />
+            <span className="font-semibold text-white">RAG Note Vault</span>
+          </div>
+
+          {(role === 'admin' || role === 'teacher') && (
+            <button
+              type="button"
+              id="sync-note-vault-btn"
+              onClick={handleSyncNotes}
+              disabled={isSyncingNotes}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors border border-[#3D3D3D] disabled:opacity-50 interactive"
+              title="Index Subject Note Vault documents into vector knowledge base"
+            >
+              <Sparkles size={13} className={isSyncingNotes ? 'animate-spin text-amber-400' : 'text-amber-400'} />
+              <span>{isSyncingNotes ? 'Syncing...' : 'Sync Notes'}</span>
+            </button>
+          )}
+
           <button
             id="clear-chat-btn"
             onClick={handleClear}
@@ -586,6 +738,34 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           </button>
         </div>
       </div>
+
+      {/* ── Page-Aware Context Bar ── */}
+      {activePageContext && (
+        <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 sm:px-6 py-2 flex items-center justify-between text-xs text-amber-900 transition-all shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Compass size={14} className="text-amber-700 shrink-0" />
+            <span className="font-bold text-amber-950 truncate">Page Context: {activePageContext.title}</span>
+            <span className="hidden md:inline text-amber-800/80 truncate text-[11px]">— {activePageContext.summary}</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            <button
+              type="button"
+              onClick={() => handleSend(`Can you guide me on what I'm looking at on the ${activePageContext.title} page?`)}
+              className="px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 text-amber-950 text-[11px] font-semibold transition-colors cursor-pointer"
+            >
+              Ask about this screen
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePageContext(null)}
+              className="p-1 hover:bg-amber-200/70 rounded-lg text-amber-700 hover:text-amber-950 transition-colors"
+              title="Dismiss page context"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Chat Messages Stream ── */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70">
@@ -625,6 +805,43 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       : 'bg-white text-[#262626] border border-[#E5E5E5] rounded-tl-xs'
                   }`}
                 >
+                  {/* Attachment preview in message bubble */}
+                  {msg.attachment && (
+                    <div
+                      className={`mb-2.5 p-2 rounded-xl border flex items-center gap-2.5 text-left ${
+                        isUser
+                          ? 'bg-white/10 border-white/20 text-white'
+                          : 'bg-[#F4F4F5] border-[#E4E4E7] text-[#18181B]'
+                      }`}
+                    >
+                      {msg.attachment.mime_type.startsWith('image/') &&
+                      (msg.attachment.url || msg.attachment.base64) ? (
+                        <img
+                          src={msg.attachment.url || msg.attachment.base64}
+                          alt={msg.attachment.filename}
+                          className="w-12 h-12 object-cover rounded-lg border border-black/10 shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                            isUser ? 'bg-white/10 text-white' : 'bg-gray-200 text-gray-700'
+                          }`}
+                        >
+                          <FileText size={18} />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold truncate max-w-[210px] sm:max-w-[320px]">
+                          {msg.attachment.filename}
+                        </p>
+                        <p className={`text-[10px] ${isUser ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {(msg.attachment.size / 1024).toFixed(1)} KB •{' '}
+                          {msg.attachment.mime_type.split('/')[1]?.toUpperCase() || 'DOCUMENT'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {isUser ? (
                     <p className="text-[14px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   ) : isPendingFirstToken ? (
@@ -758,6 +975,45 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
       {/* ── Input Box & Controls ── */}
       <div className="p-4 sm:p-5 bg-white border-t border-[#E5E5E5] shrink-0">
+        {/* Pending Attachment Preview */}
+        {pendingAttachment && (
+          <div className="mb-2.5 p-2.5 bg-[#F4F4F5] border border-[#E4E4E7] rounded-xl flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {pendingAttachment.previewUrl ? (
+                <img
+                  src={pendingAttachment.previewUrl}
+                  alt={pendingAttachment.filename}
+                  className="w-10 h-10 object-cover rounded-lg border border-[#D4D4D8] shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-[#E4E4E7] flex items-center justify-center text-[#52525B] shrink-0">
+                  <FileText size={18} />
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="font-semibold text-[#18181B] truncate max-w-[200px] sm:max-w-[340px]">
+                  {pendingAttachment.filename}
+                </p>
+                <p className="text-[10px] text-[#71717A]">
+                  {(pendingAttachment.size / 1024).toFixed(1)} KB •{' '}
+                  {pendingAttachment.mime_type.split('/')[1]?.toUpperCase() || 'FILE'}
+                  {pendingAttachment.isUploading && (
+                    <span className="ml-1 text-purple-600 font-medium animate-pulse">(Uploading...)</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingAttachment(null)}
+              className="p-1 rounded-lg hover:bg-[#E4E4E7] text-[#71717A] hover:text-[#18181B] transition-colors"
+              title="Remove attachment"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -765,6 +1021,25 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           }}
           className="relative flex items-end gap-2 bg-[#F9F9F9] border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white rounded-2xl p-2 transition-all shadow-inner"
         >
+          {/* File input and attach button */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/*,application/pdf,.txt,.doc,.docx"
+            className="hidden"
+            id="sage-file-upload-input"
+          />
+          <button
+            type="button"
+            id="sage-attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2.5 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#EAEAEA] transition-colors shrink-0 interactive"
+            title="Attach image or document (diagrams, exam papers, textbook problems)"
+          >
+            <Paperclip size={18} />
+          </button>
+
           <textarea
             ref={textareaRef}
             id="sage-chat-input"
@@ -780,7 +1055,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             }
             rows={1}
             disabled={isLoading}
-            className="w-full resize-none bg-transparent px-2.5 py-2 text-sm text-[#111111] placeholder:text-[#A3A3A3] focus:outline-none max-h-36 font-normal leading-relaxed"
+            className="w-full resize-none bg-transparent px-1.5 py-2 text-sm text-[#111111] placeholder:text-[#A3A3A3] focus:outline-none max-h-36 font-normal leading-relaxed"
           />
 
           {isLoading ? (
@@ -797,9 +1072,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             <button
               type="submit"
               id="sage-chat-send-btn"
-              disabled={!input.trim()}
+              disabled={!input.trim() && !pendingAttachment}
               className={`p-3 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                input.trim()
+                input.trim() || pendingAttachment
                   ? 'bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive'
                   : 'bg-[#E5E5E5] text-[#A3A3A3] cursor-not-allowed'
               }`}
@@ -812,7 +1087,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3]">
           <span>Shift + Enter for new line • Enter to send</span>
-          <span className="text-[#737373] font-medium">Scholario Sage v1.0</span>
+          <span className="text-[#737373] font-medium">Scholario Sage v2.0 (Gemini 2.5 Flash + RAG)</span>
         </div>
       </div>
     </div>

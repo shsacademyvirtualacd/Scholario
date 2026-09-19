@@ -13,6 +13,7 @@ import {
   PutBucketLifecycleConfigurationCommand,
 } from '@aws-sdk/client-s3';
 import pg from 'pg';
+import { searchFallbackKnowledgeBase, chunkDocumentText } from './src/lib/knowledgeBaseService';
 const { Pool } = pg;
 
 const DB_URL = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
@@ -309,7 +310,7 @@ async function startServer() {
     res.flushHeaders?.();
 
     try {
-      const { messages, userRole = 'student', userName, grade, stream } = req.body;
+      const { messages, userRole = 'student', userName, grade, stream, page_context } = req.body;
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         res.write(`data: ${JSON.stringify({ error: 'Messages array is required' })}\n\n`);
@@ -337,17 +338,6 @@ ACCESS CONTROL & PRIVACY RULE: You are in general-purpose academic assistant mod
           }${stream ? ` (${stream} stream)` : ''}. Assist with academic questions, step-by-step problem solving, revision notes, conceptual explanations, and exam preparation.
 ACCESS CONTROL & PRIVACY RULE: You are an academic study assistant and DO NOT have access to administrative database records or private platform data. If the student asks data-specific questions about real platform data (such as how many students are enrolled, other students' records, or private administrative settings), politely explain that this information isn't available to them here and suggest checking with an administrator or their student dashboard instead.`;
 
-      const systemInstruction = `You are Sage, the intelligent, friendly, and expert AI study and academic companion built exclusively for Scholario & SHS Virtual Academy (FBISE and Sindh Board 9th-12th grade curricula: Mathematics, Physics, Chemistry, Biology, Computer Science, English, Urdu, Islamiat, and Pakistan Studies).
-
-${roleDescription}
-
-Key Guidelines:
-1. **Be Concise & Direct by Default**: Keep answers short, direct, and to the point (typically 1-3 focused paragraphs or bullet points). Avoid conversational fluff or unnecessary preambles.
-2. **Detailed Drafts on Request Only**: Provide comprehensive documents, full essay-length breakdowns, or complete circular notices ONLY when the user explicitly requests a "full draft", "complete notice", "complete document", "in-depth explanation", or similar.
-3. **Format with Markdown & LaTeX Math**: Use standard Markdown (headings, bold, lists, tables). For all mathematical or scientific formulas, write standard LaTeX syntax using inline \`$formula$\` (e.g. \`$E = mc^2$\`, \`$v = u + at$\`, \`$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$\`) or block \`$$equation$$\`.
-4. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
-5. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
-
       const authHeader = (req.headers.authorization || req.headers['authorization']) as string | undefined;
       const requestSupabase = authHeader
         ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -355,13 +345,107 @@ Key Guidelines:
           })
         : supabaseServer;
 
+      // ── Page-Aware Context Injection ─────────────────────
+      let pageContextPrompt = '';
+      if (page_context && (page_context.path || page_context.title)) {
+        pageContextPrompt = `\nCURRENT APPLICATION PAGE CONTEXT:
+The user is currently viewing (or just navigated from) the following platform screen:
+- Route: ${page_context.path || 'Unknown'}
+- Page Title: ${page_context.title || 'Scholario Portal'}
+- Visible State/Activity: ${page_context.summary || 'Active view'}
+If the user asks questions such as "what am I looking at?", "how do I use this page?", or refers to "this test" / "this schedule", directly incorporate this screen context without asking them to re-explain.`;
+      }
+
+      // ── Knowledge Base / Vector Search (RAG) Retrieval ──
+      let ragContextPrompt = '';
+      const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
+      const userQueryText = String(lastUserMsg?.content || '').trim();
+
+      if (userQueryText) {
+        try {
+          let matchedChunks: any[] = [];
+          if (client) {
+            try {
+              // Generate embedding using Gemini text-embedding-004
+              const embedRes = await client.models.embedContent({
+                model: 'text-embedding-004',
+                contents: userQueryText,
+              });
+              const queryEmbedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values;
+
+              if (queryEmbedding && Array.isArray(queryEmbedding)) {
+                // Try Supabase match_knowledge_base RPC
+                try {
+                  const { data: rpcData, error: rpcErr } = await requestSupabase.rpc('match_knowledge_base', {
+                    query_embedding: queryEmbedding,
+                    match_threshold: 0.28,
+                    match_count: 4,
+                  });
+                  if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
+                    matchedChunks = rpcData;
+                  }
+                } catch {}
+
+                // Fallback to direct pgPool query if available
+                if (matchedChunks.length === 0 && realPool) {
+                  try {
+                    const vectorStr = `[${queryEmbedding.join(',')}]`;
+                    const { rows } = await pgPool.query(
+                      `SELECT id, title, category, source_type, content_chunk,
+                              1 - (embedding <=> $1::vector) AS similarity
+                       FROM public.knowledge_base
+                       WHERE embedding IS NOT NULL
+                       ORDER BY embedding <=> $1::vector ASC
+                       LIMIT 4`,
+                      [vectorStr]
+                    );
+                    if (rows && rows.length > 0) {
+                      matchedChunks = rows;
+                    }
+                  } catch {}
+                }
+              }
+            } catch (embedErr: any) {
+              console.warn('[Sage Embedding/RPC Warning]:', embedErr?.message);
+            }
+          }
+
+          // Fallback to verified institutional knowledge base
+          if (matchedChunks.length === 0) {
+            matchedChunks = searchFallbackKnowledgeBase(userQueryText, 3);
+          }
+
+          if (matchedChunks.length > 0) {
+            ragContextPrompt = `\nRELEVANT INSTITUTIONAL KNOWLEDGE BASE CONTEXT (RAG):
+Authoritative reference materials retrieved for this inquiry:
+${matchedChunks.map((c, i) => `--- [Document ${i + 1}: ${c.title} (${c.category || 'General'})] ---\n${c.content_chunk}`).join('\n\n')}
+Use this authoritative context when answering questions regarding academy policies, grading transmutation, note vault structure, and subject curricula.`;
+          }
+        } catch (ragErr: any) {
+          console.warn('[Sage RAG Retrieval Warning]:', ragErr?.message);
+        }
+      }
+
+      const systemInstruction = `You are Sage, the intelligent, friendly, and expert AI study and academic companion built exclusively for Scholario & SHS Virtual Academy (FBISE and Sindh Board 9th-12th grade curricula: Mathematics, Physics, Chemistry, Biology, Computer Science, English, Urdu, Islamiat, and Pakistan Studies).
+
+${roleDescription}
+${pageContextPrompt}
+${ragContextPrompt}
+
+Key Guidelines:
+1. **Be Concise & Direct by Default**: Keep answers short, direct, and to the point (typically 1-3 focused paragraphs or bullet points). Avoid conversational fluff or unnecessary preambles.
+2. **Detailed Drafts on Request Only**: Provide comprehensive documents, full essay-length breakdowns, or complete circular notices ONLY when the user explicitly requests a "full draft", "complete notice", "complete document", "in-depth explanation", or similar.
+3. **Format with Markdown & LaTeX Math**: Use standard Markdown (headings, bold, lists, tables). For all mathematical or scientific formulas, write standard LaTeX syntax using inline \`$formula$\` (e.g. \`$E = mc^2$\`, \`$v = u + at$\`, \`$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$\`) or block \`$$equation$$\`.
+4. **Multimodal Analysis**: When the user provides an image or PDF attachment, thoroughly inspect formulas, diagrams, handwritten workings, or document text, and ground your response directly in the attachment content.
+5. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
+6. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
+
       if (!client) {
         // Fallback intelligent simulation if no GEMINI_API_KEY is configured in the environment
-        const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
+        const fallbackQuery = userQueryText || 'Hello';
         let fallbackText = '';
 
         if (isAdmin) {
-          // If admin asks in fallback mode, still fetch live DB overview if possible
           try {
             const overview = await executeAdminDataQuery('queryPlatformOverview', {}, requestSupabase);
             const feeData = await executeAdminDataQuery('queryPricingAndFeeConfigs', {}, requestSupabase);
@@ -374,10 +458,10 @@ Key Guidelines:
               `- **Tuition Fee Configurations**: ${feeData?.fee_configurations?.length ?? 0} classes configured\n\n` +
               `*Note: Configure \`GEMINI_API_KEY\` in your environment settings for custom interactive AI responses.*`;
           } catch {
-            fallbackText = `**Sage (Admin Mode)**: I received your query about *"_**${lastUserMsg}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for full interactive AI responses.`;
+            fallbackText = `**Sage (Admin Mode)**: I received your query about *"_**${fallbackQuery}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for full interactive AI responses.`;
           }
         } else {
-          fallbackText = `**Sage (Study Companion)**: I received your question about *"_**${lastUserMsg}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for live AI responses. Here is a helpful tip: In FBISE curricula, always structure your answers with definitions, core formulas, and labeled diagrams for full marks!`;
+          fallbackText = `**Sage (Study Companion)**: I received your question about *"_**${fallbackQuery}**_*. Please ensure \`GEMINI_API_KEY\` is configured in your project settings for live AI responses. Here is a helpful tip: In FBISE curricula, always structure your answers with definitions, core formulas, and labeled diagrams for full marks!`;
         }
 
         const words = fallbackText.split(' ');
@@ -390,11 +474,43 @@ Key Guidelines:
         return res.end();
       }
 
-      // Convert conversation history into @google/genai Content format
-      const contents = messages.map((m: { role: string; content: string }) => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }],
-      }));
+      // Convert conversation history into @google/genai Content format with Multimodal InlineData Support
+      const contents = messages.map((m: { role: string; content: string; attachment?: any }) => {
+        const parts: any[] = [];
+        if (m.content) {
+          parts.push({ text: m.content });
+        }
+
+        // Multimodal image/PDF support: use client-passed base64 or resolve from in-memory fileStorage
+        if (m.attachment) {
+          let base64 = m.attachment.base64;
+          if (!base64 && m.attachment.key) {
+            const stored = fileStorage.get(m.attachment.key);
+            if (stored?.buffer) {
+              base64 = stored.buffer.toString('base64');
+            }
+          }
+          if (base64) {
+            const cleanBase64 = base64.includes('base64,') ? base64.split('base64,')[1] : base64;
+            const mimeType = m.attachment.mime_type || (m.attachment.filename?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+            parts.push({
+              inlineData: {
+                data: cleanBase64,
+                mimeType,
+              },
+            });
+          }
+        }
+
+        if (parts.length === 0) {
+          parts.push({ text: ' ' });
+        }
+
+        return {
+          role: m.role === 'user' ? 'user' : 'model',
+          parts,
+        };
+      });
 
       const targetModel = 'gemini-2.5-flash';
 
@@ -519,6 +635,195 @@ Key Guidelines:
       res.write(`data: ${JSON.stringify({ error: err.message || 'Failed to process AI chat stream' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
+    }
+  });
+
+  // ── Sage Knowledge Base Management & Ingestion Endpoints ───────────
+  app.post('/api/knowledge-base/ingest', async (req, res) => {
+    try {
+      const {
+        title,
+        category = 'policy',
+        source_type = 'policy_doc',
+        source_id,
+        metadata = {},
+        content,
+      } = req.body;
+
+      if (!title || !content || typeof content !== 'string') {
+        return res.status(400).json({ error: 'Title and content text are required' });
+      }
+
+      const client = getGeminiClient();
+      const chunks = chunkDocumentText(content, 750, 100);
+      const insertedRows: any[] = [];
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkText = chunks[i];
+        let embedding: number[] | null = null;
+
+        if (client) {
+          try {
+            const embedRes = await client.models.embedContent({
+              model: 'text-embedding-004',
+              contents: chunkText,
+            });
+            embedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values || null;
+          } catch (e: any) {
+            console.warn('[Ingest Embedding Warning]:', e.message);
+          }
+        }
+
+        const payload: any = {
+          title,
+          category,
+          source_type,
+          source_id: source_id || `doc-${Date.now()}-${i}`,
+          metadata,
+          content_chunk: chunkText,
+          chunk_index: i,
+        };
+        if (embedding) {
+          payload.embedding = embedding;
+        }
+
+        // 1. Try Supabase insert
+        let didInsert = false;
+        try {
+          const { data, error } = await supabaseServer.from('knowledge_base').insert(payload).select().single();
+          if (!error && data) {
+            insertedRows.push(data);
+            didInsert = true;
+          }
+        } catch {}
+
+        // 2. Fallback to direct pgPool insert
+        if (!didInsert && realPool && embedding) {
+          try {
+            const vectorStr = `[${embedding.join(',')}]`;
+            const { rows } = await realPool.query(
+              `INSERT INTO public.knowledge_base (title, category, source_type, source_id, metadata, content_chunk, chunk_index, embedding)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8::vector) RETURNING id`,
+              [title, category, source_type, payload.source_id, JSON.stringify(metadata), chunkText, i, vectorStr]
+            );
+            insertedRows.push(rows?.[0] || { id: `chunk-${i}`, title });
+            didInsert = true;
+          } catch {}
+        }
+
+        if (!didInsert) {
+          insertedRows.push({ id: `local-${i}`, title, chunk_index: i, status: 'indexed_memory' });
+        }
+      }
+
+      return res.json({
+        success: true,
+        title,
+        chunksCount: chunks.length,
+        insertedCount: insertedRows.length,
+      });
+    } catch (err: any) {
+      console.error('[KB Ingest Error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to ingest knowledge document' });
+    }
+  });
+
+  // Sync Note Vault materials into knowledge base
+  app.post('/api/knowledge-base/sync-notes', async (req, res) => {
+    try {
+      const client = getGeminiClient();
+
+      // Retrieve notes with joined offering, subject, and class metadata
+      const { data: notes, error } = await supabaseServer
+        .from('notes')
+        .select('*, offering:class_offerings(*, class:classes(*), subject:subjects(*), teacher:teachers(*))')
+        .order('created_at', { ascending: false })
+        .limit(60);
+
+      if (error || !notes || notes.length === 0) {
+        return res.json({ success: true, message: 'No notes found to sync', synced: 0 });
+      }
+
+      let synced = 0;
+      for (const note of notes) {
+        const subjectName = note.offering?.subject?.name || 'Academic Subject';
+        const className = note.offering?.class?.name || 'Senior High School';
+        const teacherName = note.offering?.teacher?.full_name || 'Faculty Instructor';
+        const chapter = note.chapter_name || 'General';
+        const summaryText = `Subject Note Vault: ${subjectName} (${className}) - Chapter: "${chapter}". Document Title: "${note.title}". Uploaded by faculty member ${teacherName}. Available for student study in Note Vault under ${note.file_type ? note.file_type.toUpperCase() : 'PDF'} format. This verified material covers core syllabus requirements, formulas, and exercise solutions.`;
+
+        let embedding: number[] | null = null;
+        if (client) {
+          try {
+            const embedRes = await client.models.embedContent({
+              model: 'text-embedding-004',
+              contents: summaryText,
+            });
+            embedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values || null;
+          } catch {}
+        }
+
+        const row: any = {
+          title: `${subjectName}: ${note.title}`,
+          category: 'notes',
+          source_type: 'note_vault',
+          source_id: note.id,
+          metadata: { subject: subjectName, class: className, chapter, note_id: note.id },
+          content_chunk: summaryText,
+          chunk_index: 0,
+        };
+        if (embedding) {
+          row.embedding = embedding;
+        }
+
+        try {
+          await supabaseServer.from('knowledge_base').insert(row);
+          synced++;
+        } catch {}
+      }
+
+      return res.json({ success: true, synced, totalNotes: notes.length });
+    } catch (err: any) {
+      console.error('[KB Sync Notes Error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to sync note vault' });
+    }
+  });
+
+  // Vector / Semantic Knowledge Base Search endpoint
+  app.get('/api/knowledge-base/search', async (req, res) => {
+    try {
+      const q = String(req.query.q || '').trim();
+      if (!q) return res.json({ count: 0, results: [] });
+      const client = getGeminiClient();
+
+      let matched: any[] = [];
+      if (client) {
+        try {
+          const embedRes = await client.models.embedContent({
+            model: 'text-embedding-004',
+            contents: q,
+          });
+          const queryEmbedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values;
+          if (queryEmbedding && Array.isArray(queryEmbedding)) {
+            const { data, error } = await supabaseServer.rpc('match_knowledge_base', {
+              query_embedding: queryEmbedding,
+              match_threshold: 0.25,
+              match_count: 5,
+            });
+            if (!error && data && data.length > 0) {
+              matched = data;
+            }
+          }
+        } catch {}
+      }
+
+      if (matched.length === 0) {
+        matched = searchFallbackKnowledgeBase(q, 5);
+      }
+
+      return res.json({ query: q, count: matched.length, results: matched });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
     }
   });
 

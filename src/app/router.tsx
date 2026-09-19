@@ -12,6 +12,7 @@ import { OfflineBanner } from '../components/common/OfflineBanner';
 import { LiveSessionNotificationListener } from '../components/common/LiveSessionNotificationListener';
 import { TeacherLiveReminderListener } from '../components/teacher/TeacherLiveReminderListener';
 import { AdminLiveNotificationListener } from '../components/admin/AdminLiveNotificationListener';
+import { PageContextTracker } from '../components/common/PageContextTracker';
 
 // ─── Public pages (eager loaded — small) ────
 import LoginPage from '../pages/public/LoginPage';
@@ -116,6 +117,7 @@ const RootRedirect: React.FC = () => {
 // ─── Router ──────────────────────────────────
 const AppRouter: React.FC = () => (
   <BrowserRouter>
+    <PageContextTracker />
     <OfflineBanner />
     <TopLoadingBar />
     <Toaster position="top-right" richColors closeButton />
