@@ -3347,6 +3347,303 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     }
   });
 
+  // ── Scholarship Documents & Verification System ────────────────
+  app.post('/api/scholarships/upload', upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'No document file uploaded' });
+      }
+
+      const docId = `sch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const mimeType = file.mimetype || 'application/pdf';
+
+      fileStorage.set(docId, {
+        buffer: file.buffer,
+        mimeType,
+        filename: file.originalname || 'scholarship_proof.pdf',
+      });
+
+      // Upload to Cloudflare R2 bucket if configured
+      const s3Client = getR2Client();
+      const r2Key = `scholarships/${docId}_${file.originalname || 'proof.pdf'}`;
+      if (s3Client) {
+        try {
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: R2_EXAM_BUCKET,
+              Key: r2Key,
+              Body: file.buffer,
+              ContentType: mimeType,
+            })
+          );
+        } catch (r2Err: any) {
+          console.warn('[server.ts] R2 scholarship proof upload note:', r2Err?.message);
+        }
+      }
+
+      return res.json({
+        success: true,
+        url: `/api/scholarships/document/${docId}`,
+        file_url: `/api/scholarships/document/${docId}`,
+        key: docId,
+        filename: file.originalname || 'scholarship_proof.pdf',
+        size: file.size,
+      });
+    } catch (err: any) {
+      console.error('[server.ts Scholarship Upload Error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to upload scholarship proof' });
+    }
+  });
+
+  app.get('/api/scholarships/document/:docId', async (req, res) => {
+    const { docId } = req.params;
+    const stored = fileStorage.get(docId);
+    if (stored) {
+      res.setHeader('Content-Type', stored.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${stored.filename}"`);
+      return res.send(stored.buffer);
+    }
+
+    // Try R2 bucket fallback
+    const s3Client = getR2Client();
+    if (s3Client) {
+      try {
+        const getRes = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: R2_EXAM_BUCKET,
+            Key: `scholarships/${docId}`,
+          })
+        );
+        if (getRes.Body) {
+          const stream = getRes.Body as any;
+          if (getRes.ContentType) res.setHeader('Content-Type', getRes.ContentType);
+          res.setHeader('Content-Disposition', 'inline');
+          return stream.pipe(res);
+        }
+      } catch {}
+    }
+
+    return res.status(404).json({ error: 'Scholarship document not found' });
+  });
+
+  app.post('/api/scholarships/applications/:id/approve', express.json(), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { verified_marks_percentage, discount_percentage, reviewer_id, notes } = req.body;
+      const now = new Date().toISOString();
+
+      const { data: appData, error: fetchErr } = await (supabaseServer as any)
+        .from('scholarship_applications')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchErr || !appData) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const verifiedMarks = Number(verified_marks_percentage) || Number(appData.claimed_marks_percentage);
+      const discountPct = Number(discount_percentage) || 40;
+      const studentId = appData.student_id;
+
+      await (supabaseServer as any)
+        .from('scholarship_applications')
+        .update({
+          status: 'verified',
+          verified_marks_percentage: verifiedMarks,
+          applied_discount_percentage: discountPct,
+          reviewed_by: reviewer_id || null,
+          reviewed_at: now,
+          admin_notes: notes || null,
+          updated_at: now,
+        })
+        .eq('id', id);
+
+      if (studentId) {
+        await (supabaseServer as any)
+          .from('fee_statuses')
+          .update({
+            scholarship_status: 'verified',
+            scholarship_discount_percentage: discountPct,
+            scholarship_application_id: id,
+            updated_at: now,
+          })
+          .eq('student_id', studentId);
+
+        try {
+          await (supabaseServer as any).from('fee_audit_trail').insert({
+            student_id: studentId,
+            status_from: 'scholarship_review',
+            status_to: 'scholarship_verified',
+            changed_by: reviewer_id || null,
+            notes: `Merit Scholarship Approved: ${discountPct}% tuition discount applied based on verified marks (${verifiedMarks}%). ${notes ? 'Note: ' + notes : ''}`,
+            changed_at: now,
+          });
+        } catch {}
+
+        try {
+          await (supabaseServer as any).from('notifications').insert({
+            recipient_id: studentId,
+            type: 'announcement',
+            title: '🎉 Merit Scholarship Approved!',
+            message: `Congratulations! Your scholarship application has been verified. A ${discountPct}% tuition discount has been applied to your account.`,
+            severity: 'crucial',
+            is_read: false,
+            created_at: now,
+          });
+        } catch {}
+      }
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[server /api/scholarships/applications/:id/approve error]:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.post('/api/scholarships/applications/:id/reject', express.json(), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rejection_reason, reviewer_id } = req.body;
+      const now = new Date().toISOString();
+
+      const { data: appData } = await (supabaseServer as any)
+        .from('scholarship_applications')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!appData) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const studentId = appData.student_id;
+
+      await (supabaseServer as any)
+        .from('scholarship_applications')
+        .update({
+          status: 'rejected',
+          rejection_reason: rejection_reason || 'Criteria not met',
+          applied_discount_percentage: 0,
+          reviewed_by: reviewer_id || null,
+          reviewed_at: now,
+          updated_at: now,
+        })
+        .eq('id', id);
+
+      if (studentId) {
+        await (supabaseServer as any)
+          .from('fee_statuses')
+          .update({
+            scholarship_status: 'rejected',
+            scholarship_discount_percentage: 0,
+            updated_at: now,
+          })
+          .eq('student_id', studentId);
+
+        try {
+          await (supabaseServer as any).from('fee_audit_trail').insert({
+            student_id: studentId,
+            status_from: 'scholarship_review',
+            status_to: 'scholarship_rejected',
+            changed_by: reviewer_id || null,
+            notes: `Merit Scholarship Rejected: ${rejection_reason}`,
+            changed_at: now,
+          });
+        } catch {}
+
+        try {
+          await (supabaseServer as any).from('notifications').insert({
+            recipient_id: studentId,
+            type: 'announcement',
+            title: 'Scholarship Application Update',
+            message: `Your scholarship application was reviewed and could not be approved at this time. Reason: ${rejection_reason}. Your standard tuition fee remains payable.`,
+            severity: 'normal',
+            is_read: false,
+            created_at: now,
+          });
+        } catch {}
+      }
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[server /api/scholarships/applications/:id/reject error]:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.post('/api/scholarships/applications/:id/revoke', express.json(), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { revocation_reason, reviewer_id } = req.body;
+      const now = new Date().toISOString();
+
+      const { data: appData } = await (supabaseServer as any)
+        .from('scholarship_applications')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!appData) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const studentId = appData.student_id;
+
+      await (supabaseServer as any)
+        .from('scholarship_applications')
+        .update({
+          status: 'revoked',
+          revocation_reason: revocation_reason || 'Revoked by administrator',
+          applied_discount_percentage: 0,
+          reviewed_by: reviewer_id || null,
+          reviewed_at: now,
+          updated_at: now,
+        })
+        .eq('id', id);
+
+      if (studentId) {
+        await (supabaseServer as any)
+          .from('fee_statuses')
+          .update({
+            scholarship_status: 'revoked',
+            scholarship_discount_percentage: 0,
+            updated_at: now,
+          })
+          .eq('student_id', studentId);
+
+        try {
+          await (supabaseServer as any).from('fee_audit_trail').insert({
+            student_id: studentId,
+            status_from: 'scholarship_verified',
+            status_to: 'scholarship_revoked',
+            changed_by: reviewer_id || null,
+            notes: `Merit Scholarship Revoked: ${revocation_reason}. Tuition fee reverted to standard base rate.`,
+            changed_at: now,
+          });
+        } catch {}
+
+        try {
+          await (supabaseServer as any).from('notifications').insert({
+            recipient_id: studentId,
+            type: 'announcement',
+            title: 'Scholarship Status Update: Revoked',
+            message: `Your scholarship discount has been revoked: ${revocation_reason}. Tuition fee dues have been restored to standard pricing.`,
+            severity: 'crucial',
+            is_read: false,
+            created_at: now,
+          });
+        } catch {}
+      }
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[server /api/scholarships/applications/:id/revoke error]:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
   app.post('/api/chat/presence/heartbeat', express.json(), async (req, res) => {
     try {
       const { userId, isOnline } = req.body || {};

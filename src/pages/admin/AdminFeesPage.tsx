@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, Clock, Search, Check,
-  AlertCircle, Sparkles, Save, Loader2, Coins, BookOpen
+  AlertCircle, Sparkles, Save, Loader2, Coins, BookOpen,
+  Award, FileText, ExternalLink, XCircle, CheckCircle2, Plus, Trash2, ShieldAlert, X
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -19,11 +20,36 @@ import {
   getSubjectPricingSettings,
   updateSubjectPricingSettings,
 } from '../../lib/subjectEnrollmentService';
+import {
+  getScholarshipApplications,
+  getScholarshipTiers,
+  saveScholarshipTiers,
+  adminApproveScholarship,
+  adminRejectScholarship,
+  adminRevokeScholarship,
+  DEFAULT_SCHOLARSHIP_TIERS
+} from '../../lib/scholarshipService';
+import { ScholarshipApplication, ScholarshipTier } from '../../types/scholarship';
+import { toast } from 'sonner';
 
 export const AdminFeesPage: React.FC = () => {
   const isMobile = useMobile();
   // Tabs
-  const [activeTab, setActiveTab] = useState<'pending' | 'configs'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'scholarships' | 'configs'>('pending');
+
+  // Scholarship Queue & Config States
+  const [scholarshipApps, setScholarshipApps] = useState<ScholarshipApplication[]>([]);
+  const [scholarshipTiers, setScholarshipTiers] = useState<ScholarshipTier[]>(DEFAULT_SCHOLARSHIP_TIERS);
+  const [scholarshipFilterStatus, setScholarshipFilterStatus] = useState<string>('all');
+  const [scholarshipFilterBoard, setScholarshipFilterBoard] = useState<string>('all');
+  const [scholarshipSearch, setScholarshipSearch] = useState<string>('');
+  const [processingSchId, setProcessingSchId] = useState<string | null>(null);
+  const [rejectModalAppId, setRejectModalAppId] = useState<string | null>(null);
+  const [rejectReasonText, setRejectReasonText] = useState<string>('');
+  const [verifiedMarksInputs, setVerifiedMarksInputs] = useState<Record<string, string>>({});
+  const [verifiedDiscountInputs, setVerifiedDiscountInputs] = useState<Record<string, string>>({});
+  const [reviewNotesInputs, setReviewNotesInputs] = useState<Record<string, string>>({});
+  const [savingTiers, setSavingTiers] = useState<boolean>(false);
 
   // Loaders & Errors
   const [loading, setLoading] = useState(true);
@@ -99,14 +125,18 @@ export const AdminFeesPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [pendingData, configData, classesData, subjectPricingData] = await Promise.all([
+      const [pendingData, configData, classesData, subjectPricingData, schApps, schTiers] = await Promise.all([
         getPendingFeeStatuses(),
         getUniversalFeeConfig(),
         getClassesWithFeeConfigs(),
         getSubjectPricingSettings().catch(() => ({ per_subject_fee: 1000, auto_upgrade_threshold: 3 })),
+        getScholarshipApplications().catch(() => []),
+        getScholarshipTiers().catch(() => DEFAULT_SCHOLARSHIP_TIERS),
       ]);
       setPendingList(pendingData);
       setClassesList(classesData);
+      setScholarshipApps(schApps);
+      setScholarshipTiers(schTiers);
 
       if (subjectPricingData) {
         setPerSubjectFee(subjectPricingData.per_subject_fee);
@@ -151,6 +181,105 @@ export const AdminFeesPage: React.FC = () => {
       setPendingList(fresh);
     },
   });
+
+  // Keep scholarship list live
+  useRealtimeTable({
+    table: 'scholarship_applications',
+    onInsert: async () => {
+      const fresh = await getScholarshipApplications().catch(() => []);
+      setScholarshipApps(fresh);
+      const freshPending = await getPendingFeeStatuses().catch(() => []);
+      setPendingList(freshPending);
+    },
+    onUpdate: async () => {
+      const fresh = await getScholarshipApplications().catch(() => []);
+      setScholarshipApps(fresh);
+      const freshPending = await getPendingFeeStatuses().catch(() => []);
+      setPendingList(freshPending);
+    },
+    onDelete: async () => {
+      const fresh = await getScholarshipApplications().catch(() => []);
+      setScholarshipApps(fresh);
+      const freshPending = await getPendingFeeStatuses().catch(() => []);
+      setPendingList(freshPending);
+    },
+  });
+
+  const handleApproveScholarship = async (app: ScholarshipApplication) => {
+    try {
+      setProcessingSchId(app.id);
+      setError(null);
+      const marks = parseFloat(verifiedMarksInputs[app.id] ?? app.claimed_marks_percentage.toString());
+      const defaultDiscount = marks >= 90 ? 60 : 40;
+      const discount = parseFloat(verifiedDiscountInputs[app.id] ?? defaultDiscount.toString());
+      const notes = reviewNotesInputs[app.id] || '';
+
+      await adminApproveScholarship(app.id, {
+        verified_marks_percentage: isNaN(marks) ? app.claimed_marks_percentage : marks,
+        discount_percentage: isNaN(discount) ? defaultDiscount : discount,
+        review_notes: notes,
+      });
+
+      toast.success(`Scholarship approved for ${app.applicant_name} (${discount}% discount)!`);
+      showNotification(`Scholarship authorized: ${discount}% fee reduction applied.`);
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to approve scholarship application.');
+      toast.error('Approval failed: ' + err.message);
+    } finally {
+      setProcessingSchId(null);
+    }
+  };
+
+  const handleRejectScholarship = async (appId: string) => {
+    try {
+      setProcessingSchId(appId);
+      setError(null);
+      const reason = rejectReasonText.trim() || 'Eligibility criteria not met or unverified mark sheet.';
+      await adminRejectScholarship(appId, reason);
+      toast.success('Scholarship application rejected.');
+      showNotification('Scholarship application rejected.');
+      setRejectModalAppId(null);
+      setRejectReasonText('');
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to reject scholarship.');
+      toast.error('Rejection failed: ' + err.message);
+    } finally {
+      setProcessingSchId(null);
+    }
+  };
+
+  const handleRevokeScholarship = async (appId: string) => {
+    try {
+      setProcessingSchId(appId);
+      setError(null);
+      await adminRevokeScholarship(appId, 'Revoked by administrator');
+      toast.success('Scholarship revoked and fee restored to standard amount.');
+      showNotification('Scholarship revoked and fee restored.');
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to revoke scholarship.');
+      toast.error('Revocation failed: ' + err.message);
+    } finally {
+      setProcessingSchId(null);
+    }
+  };
+
+  const handleSaveTiers = async () => {
+    try {
+      setSavingTiers(true);
+      setError(null);
+      await saveScholarshipTiers(scholarshipTiers);
+      toast.success('Scholarship tiers saved successfully!');
+      showNotification('Scholarship tiers configuration updated!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to save tiers.');
+      toast.error('Failed to save tiers: ' + err.message);
+    } finally {
+      setSavingTiers(false);
+    }
+  };
 
   const handlePriceChange = (classId: string, value: string) => {
     const parsed = parseInt(value, 10);
@@ -330,6 +459,25 @@ export const AdminFeesPage: React.FC = () => {
             Pending Verification ({pendingList.length})
           </button>
           <button
+            onClick={() => setActiveTab('scholarships')}
+            className={`flex items-center gap-2 transition-all duration-200 ${
+              isMobile
+                ? `px-4 py-3 text-xs font-bold border-b-2 w-full ${
+                    activeTab === 'scholarships'
+                      ? 'border-[#F4C430] text-[#111111] bg-amber-50/30'
+                      : 'border-transparent text-[#737373]'
+                  }`
+                : `px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 ${
+                    activeTab === 'scholarships'
+                      ? 'border-[#F4C430] text-[#111111]'
+                      : 'border-transparent text-[#737373] hover:text-[#262626]'
+                  }`
+            }`}
+          >
+            <Award size={14} />
+            Scholarship Queue ({scholarshipApps.filter((a) => a.status === 'pending').length})
+          </button>
+          <button
             onClick={() => setActiveTab('configs')}
             className={`flex items-center gap-2 transition-all duration-200 ${
               isMobile
@@ -404,6 +552,18 @@ export const AdminFeesPage: React.FC = () => {
                                 PKR {item.amount.toLocaleString()} / term
                               </span>
                             )}
+                            {item.scholarship_status === 'verified' && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-black whitespace-nowrap flex items-center gap-1">
+                                <Award size={12} />
+                                Scholarship: {item.scholarship_discount_percentage}% Verified
+                              </span>
+                            )}
+                            {item.scholarship_status === 'pending' && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black whitespace-nowrap flex items-center gap-1">
+                                <Clock size={12} />
+                                Scholarship Pending ({item.scholarship_claimed_marks}% Marks)
+                              </span>
+                            )}
                           </div>
 
                           {/* Active Enrolled Subjects Pills */}
@@ -424,6 +584,21 @@ export const AdminFeesPage: React.FC = () => {
                           )}
 
                           {item.email && <p className="text-xs text-[#737373]">{item.email}</p>}
+
+                          {item.scholarship_proof_url && (
+                            <div className="pt-1">
+                              <a
+                                href={item.scholarship_proof_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs text-amber-800 hover:text-amber-950 font-bold bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-200 transition-colors"
+                              >
+                                <FileText size={13} />
+                                <span>View Marksheet Proof Document</span>
+                                <ExternalLink size={12} />
+                              </a>
+                            </div>
+                          )}
 
                           {item.submission_note && (
                             <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 font-medium leading-relaxed mt-1">
@@ -467,7 +642,612 @@ export const AdminFeesPage: React.FC = () => {
               </div>
             )}
 
-            {/* Tab 2: Configurations */}
+            {/* Tab 2: Scholarship Verification Queue & Tiers */}
+            {activeTab === 'scholarships' && (
+              <div className="space-y-8">
+                {/* Metrics Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 space-y-1">
+                    <span className="text-[11px] font-bold text-[#737373] uppercase tracking-wider block">
+                      Total Applications
+                    </span>
+                    <span className="text-2xl font-black text-[#111111] font-mono block">
+                      {scholarshipApps.length}
+                    </span>
+                  </div>
+                  <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 space-y-1">
+                    <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+                      Pending Review
+                    </span>
+                    <span className="text-2xl font-black text-amber-900 font-mono block">
+                      {scholarshipApps.filter((a) => a.status === 'pending').length}
+                    </span>
+                  </div>
+                  <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-1">
+                    <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                      Approved & Active
+                    </span>
+                    <span className="text-2xl font-black text-emerald-900 font-mono block">
+                      {scholarshipApps.filter((a) => a.status === 'verified').length}
+                    </span>
+                  </div>
+                  <div className="bg-rose-50/50 border border-rose-200 rounded-2xl p-4 space-y-1">
+                    <span className="text-[11px] font-bold text-rose-800 uppercase tracking-wider block">
+                      Rejected
+                    </span>
+                    <span className="text-2xl font-black text-rose-900 font-mono block">
+                      {scholarshipApps.filter((a) => a.status === 'rejected').length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 sm:max-w-xs">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
+                    <input
+                      type="text"
+                      placeholder="Search applicant name, email, or board..."
+                      value={scholarshipSearch}
+                      onChange={(e) => setScholarshipSearch(e.target.value)}
+                      className="input pl-9 py-2 text-xs w-full bg-[#FAFAFA] border-[#F0F0F0]"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Status Filter */}
+                    <div className="flex items-center bg-[#F5F5F5] p-1 rounded-xl">
+                      {['all', 'pending', 'verified', 'rejected'].map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setScholarshipFilterStatus(st)}
+                          className={`px-3 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
+                            scholarshipFilterStatus === st
+                              ? 'bg-white text-[#111111] shadow-xs'
+                              : 'text-[#737373] hover:text-[#111111]'
+                          }`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Board Filter */}
+                    <select
+                      value={scholarshipFilterBoard}
+                      onChange={(e) => setScholarshipFilterBoard(e.target.value)}
+                      className="input py-1.5 px-3 text-xs bg-white border border-[#E5E5E5] rounded-xl font-bold text-[#111111]"
+                    >
+                      <option value="all">All Boards & Streams</option>
+                      {BOARDS.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Queue of Applications */}
+                <div className="space-y-4">
+                  {(() => {
+                    const filtered = scholarshipApps.filter((app) => {
+                      const matchesStatus =
+                        scholarshipFilterStatus === 'all' || app.status === scholarshipFilterStatus;
+                      const matchesBoard =
+                        scholarshipFilterBoard === 'all' || app.board === scholarshipFilterBoard;
+                      const q = scholarshipSearch.toLowerCase().trim();
+                      const matchesSearch =
+                        !q ||
+                        (app.applicant_name && app.applicant_name.toLowerCase().includes(q)) ||
+                        (app.applicant_email && app.applicant_email.toLowerCase().includes(q)) ||
+                        (app.board && app.board.toLowerCase().includes(q));
+                      return matchesStatus && matchesBoard && matchesSearch;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="bg-white rounded-2xl border border-[#E5E5E5] text-center py-16 p-6 space-y-2">
+                          <Award size={32} className="mx-auto text-amber-500 mb-2" />
+                          <h3 className="text-sm font-bold text-[#111111]">No scholarship applications found</h3>
+                          <p className="text-xs text-[#737373]">
+                            {scholarshipApps.length === 0
+                              ? 'No students have applied for merit scholarships yet.'
+                              : 'No applications match the currently selected filters.'}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 gap-4">
+                        {filtered.map((app) => {
+                          const isPending = app.status === 'pending';
+                          const isApproved = app.status === 'verified';
+                          const isRejected = app.status === 'rejected';
+                          const isProcessing = processingSchId === app.id;
+
+                          const curVerifiedMarks =
+                            verifiedMarksInputs[app.id] !== undefined
+                              ? verifiedMarksInputs[app.id]
+                              : app.claimed_marks_percentage.toString();
+                          const curMarksNum = parseFloat(curVerifiedMarks) || app.claimed_marks_percentage;
+                          const recommendedDiscount = curMarksNum >= 90 ? 60 : curMarksNum >= 80 ? 40 : 0;
+                          const curDiscount =
+                            verifiedDiscountInputs[app.id] !== undefined
+                              ? verifiedDiscountInputs[app.id]
+                              : recommendedDiscount.toString();
+
+                          return (
+                            <div
+                              key={app.id}
+                              className="bg-white rounded-2xl border border-[#E5E5E5] p-6 flex flex-col gap-4 shadow-xs"
+                            >
+                              {/* Header Meta */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#F5F5F5] pb-3">
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-extrabold text-[#111111]">
+                                      {app.applicant_name}
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-extrabold uppercase">
+                                      {app.board}
+                                    </span>
+                                    <span className="badge badge-gray text-[10px]">
+                                      Grade / Class {app.class_grade}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-[#737373] mt-0.5">{app.applicant_email}</p>
+                                </div>
+
+                                <div>
+                                  {isPending && (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                      <Clock size={13} />
+                                      Pending Verification
+                                    </span>
+                                  )}
+                                  {isApproved && (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                      <CheckCircle2 size={13} />
+                                      Verified ({app.applied_discount_percentage || app.discount_percentage || 0}% Waiver Applied)
+                                    </span>
+                                  )}
+                                  {isRejected && (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-900 border border-rose-300">
+                                      <XCircle size={13} />
+                                      Rejected
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Application Details & Marksheet Proof */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#FAFAFA] p-4 rounded-xl border border-[#F0F0F0]">
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-[#737373] block">
+                                    Claimed Marks / Grade
+                                  </span>
+                                  <span className="text-base font-black text-[#111111] font-mono">
+                                    {app.claimed_marks_percentage}%
+                                  </span>
+                                  <span className="text-[10px] font-semibold text-amber-700 block mt-0.5">
+                                    Recommended: {recommendedDiscount}% Tuition Waiver
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-[#737373] block">
+                                    Submission Date
+                                  </span>
+                                  <span className="text-xs font-bold text-[#111111] block mt-0.5">
+                                    {new Date(app.created_at).toLocaleDateString()} at{' '}
+                                    {new Date(app.created_at).toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">
+                                    Result Card Marksheet
+                                  </span>
+                                  {app.proof_document_url ? (
+                                    <a
+                                      href={app.proof_document_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1.5 text-xs text-amber-800 hover:text-amber-950 font-bold bg-white px-3 py-1.5 rounded-lg border border-amber-200 shadow-xs hover:border-amber-400 transition-colors"
+                                    >
+                                      <FileText size={13} />
+                                      <span>Inspect Marksheet</span>
+                                      <ExternalLink size={12} />
+                                    </a>
+                                  ) : (
+                                    <span className="text-xs text-[#A3A3A3] italic">No document attached</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Action Bar / Form */}
+                              {isPending && (
+                                <div className="space-y-3 pt-1">
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                      <label className="text-[11px] font-bold text-[#404040] block mb-1">
+                                        Verified Marks (%)
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.1"
+                                        value={curVerifiedMarks}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setVerifiedMarksInputs((prev) => ({ ...prev, [app.id]: val }));
+                                          const num = parseFloat(val);
+                                          if (!isNaN(num)) {
+                                            const autoDisc = num >= 90 ? '60' : num >= 80 ? '40' : '0';
+                                            setVerifiedDiscountInputs((prev) => ({ ...prev, [app.id]: autoDisc }));
+                                          }
+                                        }}
+                                        className="input py-1.5 px-3 text-xs w-full font-mono font-bold bg-white border-[#D4D4D4]"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[11px] font-bold text-[#404040] block mb-1">
+                                        Fee Discount (%)
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={curDiscount}
+                                        onChange={(e) =>
+                                          setVerifiedDiscountInputs((prev) => ({
+                                            ...prev,
+                                            [app.id]: e.target.value,
+                                          }))
+                                        }
+                                        className="input py-1.5 px-3 text-xs w-full font-mono font-bold bg-white border-[#D4D4D4]"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[11px] font-bold text-[#404040] block mb-1">
+                                        Verification Notes (Optional)
+                                      </label>
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. Verified from official board gazette"
+                                        value={reviewNotesInputs[app.id] || ''}
+                                        onChange={(e) =>
+                                          setReviewNotesInputs((prev) => ({
+                                            ...prev,
+                                            [app.id]: e.target.value,
+                                          }))
+                                        }
+                                        className="input py-1.5 px-3 text-xs w-full bg-white border-[#D4D4D4]"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-end gap-2.5 pt-2">
+                                    <button
+                                      type="button"
+                                      disabled={isProcessing}
+                                      onClick={() => {
+                                        setRejectModalAppId(app.id);
+                                        setRejectReasonText('Marksheet document could not be verified or does not meet the 80% merit requirement.');
+                                      }}
+                                      className="px-4 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors"
+                                    >
+                                      Reject Application
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isProcessing}
+                                      onClick={() => handleApproveScholarship(app)}
+                                      className="btn btn-gold px-5 py-2 text-xs font-bold flex items-center gap-1.5"
+                                    >
+                                      {isProcessing ? (
+                                        <Loader2 size={14} className="animate-spin" />
+                                      ) : (
+                                        <Check size={14} />
+                                      )}
+                                      <span>Verify & Apply {curDiscount}% Scholarship</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {isApproved && (
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#F5F5F5]">
+                                  <div className="text-xs text-[#737373]">
+                                    <span className="font-bold text-[#111111]">
+                                      Verified Marks: {app.verified_marks_percentage}%
+                                    </span>{' '}
+                                    • Approved by Admin on{' '}
+                                    {(app.reviewed_at || app.verified_at) ? new Date((app.reviewed_at || app.verified_at)!).toLocaleDateString() : 'Recent'}
+                                    {(app.admin_notes || app.review_notes) && (
+                                      <span className="block text-[11px] text-[#525252] mt-0.5 italic">
+                                        Notes: {app.admin_notes || app.review_notes}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={isProcessing}
+                                    onClick={() => handleRevokeScholarship(app.id)}
+                                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors self-start sm:self-auto"
+                                  >
+                                    Revoke Scholarship
+                                  </button>
+                                </div>
+                              )}
+
+                              {isRejected && (
+                                <div className="pt-2 border-t border-[#F5F5F5] text-xs text-rose-800">
+                                  <span className="font-bold">Rejection Reason: </span>
+                                  <span>{app.rejection_reason || 'Criteria not met.'}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Section 2: Scholarship Tiers Configuration */}
+                <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#F5F5F5] pb-4">
+                    <div className="flex items-center gap-2">
+                      <Award size={18} className="text-[#D4A017]" />
+                      <div>
+                        <h2 className="font-extrabold text-[#111111] text-base">
+                          Configurable Scholarship Tiers (All Boards & Classes)
+                        </h2>
+                        <p className="text-xs text-[#737373] mt-0.5">
+                          Set the minimum marks percentage requirements and corresponding fee discount waivers. These tiers apply automatically to registration and tuition checkout across FBISE, Punjab, Sindh, KPK, Cambridge O/A Levels, and IELTS.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tiers List */}
+                  <div className="space-y-3">
+                    {scholarshipTiers.map((tier, idx) => (
+                      <div
+                        key={tier.id || idx}
+                        className="bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      >
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1">
+                          <div>
+                            <label className="text-[10px] uppercase font-bold text-[#737373] block mb-1">
+                              Tier Label
+                            </label>
+                            <input
+                              type="text"
+                              value={tier.tier_name || tier.description || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setScholarshipTiers((prev) =>
+                                  prev.map((t, i) => (i === idx ? { ...t, tier_name: val, description: val } : t))
+                                );
+                              }}
+                              className="input py-1.5 px-3 text-xs w-full bg-white font-bold text-[#111111]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] uppercase font-bold text-[#737373] block mb-1">
+                              Min Marks (%)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={tier.min_marks_percentage}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                setScholarshipTiers((prev) =>
+                                  prev.map((t, i) =>
+                                    i === idx ? { ...t, min_marks_percentage: val } : t
+                                  )
+                                );
+                              }}
+                              className="input py-1.5 px-3 text-xs w-full font-mono font-bold bg-white text-[#111111]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] uppercase font-bold text-[#737373] block mb-1">
+                              Max Marks (%)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={tier.max_marks_percentage ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                                setScholarshipTiers((prev) =>
+                                  prev.map((t, i) =>
+                                    i === idx ? { ...t, max_marks_percentage: val } : t
+                                  )
+                                );
+                              }}
+                              className="input py-1.5 px-3 text-xs w-full font-mono font-bold bg-white text-[#111111]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] uppercase font-bold text-[#737373] block mb-1">
+                              Tuition Discount (%)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={tier.discount_percentage}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                setScholarshipTiers((prev) =>
+                                  prev.map((t, i) =>
+                                    i === idx ? { ...t, discount_percentage: val } : t
+                                  )
+                                );
+                              }}
+                              className="input py-1.5 px-3 text-xs w-full font-mono font-bold bg-white text-emerald-800"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 text-xs font-bold text-[#525252] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={tier.is_active}
+                              onChange={(e) => {
+                                const val = e.target.checked;
+                                setScholarshipTiers((prev) =>
+                                  prev.map((t, i) => (i === idx ? { ...t, is_active: val } : t))
+                                );
+                              }}
+                              className="rounded text-[#D4A017] focus:ring-[#D4A017]"
+                            />
+                            <span>Active</span>
+                          </label>
+
+                          {scholarshipTiers.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScholarshipTiers((prev) => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="p-1.5 text-[#737373] hover:text-rose-600 rounded-lg transition-colors"
+                              title="Delete tier"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#F5F5F5]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScholarshipTiers((prev) => [
+                          ...prev,
+                          {
+                            id: `tier_${Date.now()}`,
+                            tier_name: 'Custom Merit Tier',
+                            description: 'Custom Merit Tier',
+                            min_marks_percentage: 95,
+                            max_marks_percentage: 100,
+                            discount_percentage: 75,
+                            applicable_boards: 'all',
+                            is_active: true,
+                          },
+                        ]);
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D4A017] hover:text-[#b8890e] self-start sm:self-auto"
+                    >
+                      <Plus size={14} />
+                      <span>Add New Tier</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={savingTiers}
+                      onClick={handleSaveTiers}
+                      className="btn btn-gold px-6 py-2.5 text-xs font-bold flex items-center gap-2 self-start sm:self-auto"
+                    >
+                      {savingTiers ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Save size={14} />
+                      )}
+                      <span>Save Scholarship Tiers</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Reject Modal */}
+                {rejectModalAppId && (
+                  <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white border border-[#E5E5E5] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                      <div className="flex items-center justify-between border-b border-[#F5F5F5] pb-3">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert size={18} className="text-rose-600" />
+                          <h3 className="text-sm font-extrabold text-[#111111]">
+                            Reject Scholarship Application
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setRejectModalAppId(null)}
+                          className="text-[#737373] hover:text-[#111111]"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-[#737373]">
+                        Please provide a reason for rejecting this application. This reason will be recorded in the audit log and communicated to the student.
+                      </p>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-[#404040] block mb-1">
+                          Rejection Reason
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={rejectReasonText}
+                          onChange={(e) => setRejectReasonText(e.target.value)}
+                          className="input w-full p-2.5 text-xs bg-[#FAFAFA] border-[#D4D4D4] rounded-xl outline-none"
+                          placeholder="State reason (e.g. Marksheet proof illegible or marks below 80%)..."
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F5F5F5]">
+                        <button
+                          type="button"
+                          onClick={() => setRejectModalAppId(null)}
+                          className="px-4 py-2 text-xs font-bold text-[#737373] hover:text-[#111111] rounded-xl"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={processingSchId === rejectModalAppId}
+                          onClick={() => handleRejectScholarship(rejectModalAppId)}
+                          className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl flex items-center gap-1.5 shadow-sm"
+                        >
+                          {processingSchId === rejectModalAppId ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <XCircle size={13} />
+                          )}
+                          <span>Confirm Rejection</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 3: Configurations */}
             {activeTab === 'configs' && (
               <div className="space-y-8 max-w-4xl mx-auto">
                 {/* Section 1: Per-Class Tuition Rates */}

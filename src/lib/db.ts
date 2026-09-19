@@ -3074,6 +3074,9 @@ export async function resolveGradeFeeConfig(
   studentId?: string
 ): Promise<{
   amount: number;
+  original_amount?: number;
+  scholarship_discount_percentage?: number;
+  scholarship_status?: string;
   payment_instructions: string;
   whatsapp_number: string;
   plan_type?: 'custom' | 'all';
@@ -3182,8 +3185,56 @@ export async function resolveGradeFeeConfig(
     }
   }
 
+  let scholarshipDiscountPct = 0;
+  let scholarshipStatus: string = 'none';
+
+  if (studentId) {
+    try {
+      // Check student fee status
+      const { data: feeStat } = await (supabase as any)
+        .from('fee_statuses')
+        .select('scholarship_status, scholarship_discount_percentage')
+        .eq('student_id', studentId)
+        .maybeSingle();
+
+      if (feeStat) {
+        scholarshipStatus = feeStat.scholarship_status || 'none';
+        scholarshipDiscountPct = Number(feeStat.scholarship_discount_percentage) || 0;
+      }
+
+      // If not marked verified in fee_statuses, check scholarship_applications table
+      if (scholarshipStatus === 'none' || scholarshipStatus === 'pending') {
+        const { data: appData } = await (supabase as any)
+          .from('scholarship_applications')
+          .select('status, applied_discount_percentage')
+          .eq('student_id', studentId)
+          .in('status', ['pending', 'verified'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (appData) {
+          scholarshipStatus = appData.status;
+          if (appData.status === 'verified') {
+            scholarshipDiscountPct = Number(appData.applied_discount_percentage) || 0;
+          }
+        }
+      }
+    } catch (schErr) {
+      console.warn('[db:resolveGradeFeeConfig] Scholarship status lookup note:', schErr);
+    }
+  }
+
+  const baseBeforeScholarship = finalAmount;
+  if (scholarshipStatus === 'verified' && scholarshipDiscountPct > 0) {
+    finalAmount = Math.max(0, Math.round(baseBeforeScholarship * (1 - scholarshipDiscountPct / 100)));
+  }
+
   return {
     amount: finalAmount,
+    original_amount: baseBeforeScholarship,
+    scholarship_discount_percentage: scholarshipDiscountPct,
+    scholarship_status: scholarshipStatus,
     payment_instructions: rawInstructions,
     whatsapp_number: classConfig?.whatsapp_number || config?.whatsapp_number || '03222314436',
     plan_type: planType,
@@ -3307,6 +3358,9 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
     .select(`
       student_id,
       status,
+      scholarship_status,
+      scholarship_discount_percentage,
+      scholarship_application_id,
       updated_at,
       profiles!inner (
         id,
@@ -3342,13 +3396,14 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
   if (error) throw error;
 
   // Concurrent lookups for single source of truth resolution:
-  const [allFeeConfigsRes, allClassesRes, allPlans, pricingSettings, rosterRes, auditRes] = await Promise.all([
+  const [allFeeConfigsRes, allClassesRes, allPlans, pricingSettings, rosterRes, auditRes, schAppsRes] = await Promise.all([
     (supabase as any).from('fee_configs').select('class_id, amount'),
     (supabase as any).from('classes').select('id, grade, board_id'),
     getAllStudentSubjectPlans().catch(() => ({})),
     getSubjectPricingSettings().catch(() => ({ per_subject_fee: 1000, auto_upgrade_threshold: 3 })),
     (supabase as any).from('roster').select('profile_id, email, full_name'),
-    (supabase as any).from('fee_audit_trail').select('student_id, notes, changed_at').order('changed_at', { ascending: false }).limit(200)
+    (supabase as any).from('fee_audit_trail').select('student_id, notes, changed_at').order('changed_at', { ascending: false }).limit(200),
+    (supabase as any).from('scholarship_applications').select('id, student_id, status, applied_discount_percentage, claimed_marks_percentage, verified_marks_percentage, proof_document_url').catch(() => ({ data: [] }))
   ]);
 
   const feeMap = new Map<string, number>();
@@ -3376,6 +3431,13 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
   (auditRes.data || []).forEach((a: any) => {
     if (a.student_id && a.notes && !latestAuditNotes.has(a.student_id)) {
       latestAuditNotes.set(a.student_id, a.notes);
+    }
+  });
+
+  const schAppMap = new Map<string, any>();
+  ((schAppsRes as any)?.data || []).forEach((app: any) => {
+    if (app.student_id && (!schAppMap.has(app.student_id) || app.status === 'verified')) {
+      schAppMap.set(app.student_id, app);
     }
   });
 
@@ -3445,6 +3507,15 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       planType = calc.plan_type;
     }
 
+    // Scholarship calculation
+    const schApp = schAppMap.get(studentId);
+    const schStatus = schApp?.status || row.scholarship_status || 'none';
+    const schDiscount = Number(schApp?.applied_discount_percentage || row.scholarship_discount_percentage || 0);
+    const originalAmount = finalAmount;
+    if (schStatus === 'verified' && schDiscount > 0) {
+      finalAmount = Math.max(0, Math.round(originalAmount * (1 - schDiscount / 100)));
+    }
+
     // Human-readable class name display
     let className = 'No Class';
     if (rawBoard === 'ielts') {
@@ -3461,6 +3532,12 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       email: emailMap.get(studentId) || '',
       phone: prof?.phone || '',
       status: row.status,
+      scholarship_status: schStatus,
+      scholarship_discount_percentage: schDiscount,
+      scholarship_application_id: schApp?.id || row.scholarship_application_id || null,
+      claimed_marks: schApp?.claimed_marks_percentage || null,
+      verified_marks: schApp?.verified_marks_percentage || null,
+      proof_document_url: schApp?.proof_document_url || null,
       updated_at: row.updated_at,
       class_name: className,
       subjects: activeSubjects,
@@ -3469,7 +3546,8 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       board_id: rawBoard,
       board_name: boardDef.name,
       submission_note: latestAuditNotes.get(studentId) || null,
-      amount: finalAmount
+      amount: finalAmount,
+      original_amount: originalAmount
     };
   });
 }

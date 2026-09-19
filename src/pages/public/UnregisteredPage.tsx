@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle, Check, BookMarked } from 'lucide-react';
+import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle, Check, BookMarked, Award, UploadCloud, FileText } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -17,6 +17,14 @@ import {
   calculateSubjectEnrollmentFee,
   SubjectPricingSettings,
 } from '../../lib/subjectEnrollmentService';
+import {
+  getScholarshipTiers,
+  calculateDiscountForMarks,
+  uploadScholarshipProofFile,
+  submitScholarshipApplication,
+  DEFAULT_SCHOLARSHIP_TIERS
+} from '../../lib/scholarshipService';
+import { ScholarshipTier } from '../../types/scholarship';
 import PlanComparisonPage from './PlanComparisonPage';
 
 export const UnregisteredPage: React.FC = () => {
@@ -99,6 +107,19 @@ export const UnregisteredPage: React.FC = () => {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [terminationStep, setTerminationStep] = useState<'idle' | 'confirm' | 'goodbye'>('idle');
+
+  // Scholarship System State
+  const [scholarshipTiers, setScholarshipTiers] = useState<ScholarshipTier[]>(DEFAULT_SCHOLARSHIP_TIERS);
+  const [applyScholarship, setApplyScholarship] = useState<boolean>(false);
+  const [claimedMarks, setClaimedMarks] = useState<string>('');
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofUrl, setProofUrl] = useState<string>('');
+  const [uploadingProof, setUploadingProof] = useState<boolean>(false);
+  const [proofError, setProofError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getScholarshipTiers().then(setScholarshipTiers).catch(console.warn);
+  }, []);
 
   // Load subject fee pricing settings
   useEffect(() => {
@@ -324,6 +345,25 @@ export const UnregisteredPage: React.FC = () => {
       return;
     }
 
+    if (applyScholarship) {
+      const marksNum = parseFloat(claimedMarks);
+      if (isNaN(marksNum) || marksNum < 0 || marksNum > 100) {
+        setError('Please enter a valid marks percentage between 0 and 100.');
+        toast.error('Please enter a valid marks percentage.');
+        return;
+      }
+      if (marksNum < 80) {
+        setError('Merit scholarships require at least 80% marks (or equivalent grade). Standard tuition applies below 80%.');
+        toast.error('Merit scholarship threshold is 80%+ marks.');
+        return;
+      }
+      if (!proofFile && !proofUrl) {
+        setError('Please upload your marksheet or result card proof to apply for a scholarship.');
+        toast.error('Marksheet/transcript proof document is required.');
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
 
@@ -442,10 +482,40 @@ export const UnregisteredPage: React.FC = () => {
         effectiveEnrollmentMode
       );
 
-      // 5. Reload profile context
+      // 5. Submit scholarship application if requested
+      if (applyScholarship && claimedMarks) {
+        try {
+          let finalDocUrl = proofUrl;
+          if (!finalDocUrl && proofFile) {
+            const uploadRes = await uploadScholarshipProofFile(proofFile);
+            finalDocUrl = uploadRes.url;
+            setProofUrl(uploadRes.url);
+          }
+
+          if (finalDocUrl) {
+            const clsObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
+            const gradeName = clsObj?.grade ? String(clsObj.grade) : '10';
+            await submitScholarshipApplication({
+              student_id: user.id,
+              applicant_name: fullName.trim(),
+              applicant_email: user.email || '',
+              board: selectedBoardId,
+              class_grade: gradeName,
+              claimed_marks_percentage: parseFloat(claimedMarks),
+              proof_document_url: finalDocUrl,
+            });
+            toast.info('Scholarship application submitted. Administration will verify your marksheet.');
+          }
+        } catch (schErr: any) {
+          console.warn('[Register] Scholarship submission notice:', schErr);
+          toast.warning(schErr.message || 'Scholarship application saved with pending review.');
+        }
+      }
+
+      // 6. Reload profile context
       await refreshProfile();
 
-      // 6. Route directly to checkout
+      // 7. Route directly to checkout
       navigate('/student/checkout', { replace: true });
       toast.success('Registration completed successfully.');
 
@@ -1201,7 +1271,184 @@ export const UnregisteredPage: React.FC = () => {
                   </>
                 )}
 
-                {/* Section 6: Live Tuition Fee Summary */}
+                {/* Section 6: Merit Scholarship Application (Optional) */}
+                {selectedClassId && selectedStreamId && (
+                  <div className="space-y-4 pt-2 border-t border-[#F5F5F5] animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-black text-[#111111] uppercase tracking-wider">
+                        <span className="w-5 h-5 rounded-full bg-[#F4C430] text-[#111111] flex items-center justify-center text-[10px] font-black shrink-0">
+                          6
+                        </span>
+                        <Award size={15} className="text-[#D4A017]" />
+                        <span>Merit Scholarship Application (Optional)</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        80%+ Marks = 40%–60% Off
+                      </span>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-[#FCFBF8] to-[#F7F5EE] border border-[#E5E0D0] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="apply-scholarship-toggle"
+                          checked={applyScholarship}
+                          onChange={(e) => {
+                            setApplyScholarship(e.target.checked);
+                            if (!e.target.checked) {
+                              setClaimedMarks('');
+                              setProofFile(null);
+                              setProofUrl('');
+                              setProofError(null);
+                            }
+                          }}
+                          className="mt-1 w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] border-[#D4D4D4] cursor-pointer"
+                        />
+                        <label htmlFor="apply-scholarship-toggle" className="cursor-pointer text-xs font-semibold text-[#262626] leading-relaxed">
+                          <span className="font-bold text-[#111111] block text-sm mb-0.5">
+                            Apply for Merit-Based Scholarship (40% or 60% Tuition Waiver)
+                          </span>
+                          Eligible for high-achieving students scoring 80%+ marks (or A/A* equivalent) in previous board or Cambridge exams across all classes.
+                        </label>
+                      </div>
+
+                      {applyScholarship && (
+                        <div className="pt-3 border-t border-[#E8E3D5] space-y-4 animate-in fade-in duration-200">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            {/* Marks / Percentage input */}
+                            <div>
+                              <label className="block text-xs font-bold text-[#404040] mb-1">
+                                Previous Marks / Grade Percentage <span className="text-red-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.1"
+                                  placeholder="e.g. 88.5 or 92"
+                                  value={claimedMarks}
+                                  onChange={(e) => {
+                                    setClaimedMarks(e.target.value);
+                                    setProofError(null);
+                                  }}
+                                  className="w-full bg-white border border-[#D4D4D4] focus:border-[#D4A017] focus:ring-1 focus:ring-[#D4A017] rounded-xl px-3.5 py-2.5 text-sm font-semibold text-[#111111] placeholder:text-[#A3A3A3] outline-none"
+                                />
+                                <span className="absolute right-3.5 top-2.5 text-xs font-extrabold text-[#737373]">
+                                  %
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-[#737373] mt-1">
+                                O/A Levels: A = 80%+ equivalent, A* = 90%+ equivalent.
+                              </p>
+                            </div>
+
+                            {/* Eligibility preview */}
+                            <div className="flex flex-col justify-end">
+                              {(() => {
+                                const marksNum = parseFloat(claimedMarks);
+                                const calc = calculateDiscountForMarks(marksNum, selectedBoardId, scholarshipTiers);
+                                if (!claimedMarks) {
+                                  return (
+                                    <div className="bg-white/80 border border-[#E5E0D0] rounded-xl p-3 text-[11px] text-[#737373]">
+                                      Enter your marks percentage to view your eligible tuition scholarship tier.
+                                    </div>
+                                  );
+                                }
+                                if (calc.eligible) {
+                                  return (
+                                    <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-xs text-emerald-900 flex items-center gap-2.5 font-bold">
+                                      <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                                      <div>
+                                        <span className="block text-emerald-800 font-extrabold">
+                                          {calc.discountPercentage}% Scholarship Tier Eligible!
+                                        </span>
+                                        <span className="text-[10px] text-emerald-700 font-normal">
+                                          {calc.discountPercentage === 60 ? 'High Distinction (90%+)' : 'Distinction (80%+)'} — Pending Admin Document Verification
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-center gap-2 font-medium">
+                                    <AlertCircle size={16} className="text-amber-700 shrink-0" />
+                                    <span>Merit scholarships start at 80% marks. Standard pricing applies below 80%.</span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+
+                          {/* Proof document upload */}
+                          <div>
+                            <label className="block text-xs font-bold text-[#404040] mb-1">
+                              Upload Result Card / Marksheet Proof <span className="text-red-500">*</span>
+                            </label>
+                            <div className="border-2 border-dashed border-[#D4D4D4] hover:border-[#D4A017] bg-white rounded-xl p-4 text-center transition-colors">
+                              <input
+                                type="file"
+                                id="scholarship-proof-file"
+                                accept=".pdf,image/png,image/jpeg,image/jpg"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setProofFile(file);
+                                  setProofError(null);
+                                  setUploadingProof(true);
+                                  try {
+                                    const res = await uploadScholarshipProofFile(file);
+                                    setProofUrl(res.url);
+                                    toast.success(`Marksheet proof uploaded: ${file.name}`);
+                                  } catch (upErr: any) {
+                                    console.warn('Proof upload note:', upErr);
+                                  } finally {
+                                    setUploadingProof(false);
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                              <label htmlFor="scholarship-proof-file" className="cursor-pointer flex flex-col items-center justify-center gap-1.5">
+                                {uploadingProof ? (
+                                  <Loader2 size={24} className="animate-spin text-[#D4A017]" />
+                                ) : proofFile || proofUrl ? (
+                                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                    <FileText size={15} />
+                                    <span className="truncate max-w-[220px]">{proofFile?.name || 'Marksheet Document Ready'}</span>
+                                    <CheckCircle2 size={14} className="text-emerald-600" />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <UploadCloud size={24} className="text-[#A3A3A3]" />
+                                    <span className="text-xs font-bold text-[#111111]">
+                                      Click to select or drag & drop Result Card
+                                    </span>
+                                    <span className="text-[10px] text-[#737373]">
+                                      Supports PDF, PNG, JPG (Board mark sheet, official school transcript)
+                                    </span>
+                                  </>
+                                )}
+                              </label>
+                            </div>
+                            {proofError && (
+                              <p className="text-xs text-red-600 font-medium mt-1">{proofError}</p>
+                            )}
+                          </div>
+
+                          {/* Policy Disclaimer */}
+                          <div className="bg-[#FFFDF7] border border-[#F0EAD6] rounded-xl p-3 text-[11px] text-[#525252] leading-relaxed flex items-start gap-2">
+                            <ShieldAlert size={15} className="text-[#D4A017] shrink-0 mt-0.5" />
+                            <span>
+                              <strong>Verification Policy:</strong> Scholarship applications are submitted with status <span className="font-bold text-[#111111]">"Pending Verification"</span>. Our academic administration verifies all uploaded marksheets. Once verified, the discount is automatically authorized. Accounts are initially registered with pending status.
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 7: Live Tuition Fee Summary */}
                 {selectedClassId && selectedStreamId && (() => {
                   const availSubs = getAvailableSubjects();
                   const isALevel = selectedBoardId === 'alevel';
@@ -1219,6 +1466,14 @@ export const UnregisteredPage: React.FC = () => {
                   });
                   const effectiveFee = pricingCalc.fee;
 
+                  // Check scholarship discount preview
+                  const marksNum = parseFloat(claimedMarks);
+                  const schEligible = applyScholarship && !isNaN(marksNum) && marksNum >= 80;
+                  const schCalc = schEligible ? calculateDiscountForMarks(marksNum, selectedBoardId, scholarshipTiers) : null;
+                  const schDiscountPct = schCalc?.discountPercentage || 0;
+                  const schDiscountAmount = effectiveFee && schDiscountPct > 0 ? Math.round(effectiveFee * (schDiscountPct / 100)) : 0;
+                  const estimatedPayable = effectiveFee ? Math.max(0, effectiveFee - schDiscountAmount) : 0;
+
                   return (
                     <div className={`bg-[#FFFBF0] border border-[#FDE68A] rounded-2xl p-4 flex ${isMobile ? 'flex-col items-start' : 'flex-row items-center'} justify-between gap-3 animate-in fade-in duration-300`}>
                       <div className="flex items-center gap-3">
@@ -1232,14 +1487,32 @@ export const UnregisteredPage: React.FC = () => {
                               : `Live Tuition Summary (${selectedClassObj?.display_name || ''} - ${currentBoardDef.shortName})`}
                           </span>
                           {effectiveFee !== null && effectiveFee > 0 ? (
-                            <span className="text-xl font-black text-[#111111]">
-                              PKR {effectiveFee.toLocaleString()}{' '}
-                              <span className="text-xs font-bold text-amber-800">
-                                {isCambridge
-                                  ? `(${targetSubs.length} ${targetSubs.length === 1 ? 'subject' : 'subjects'} @ PKR ${effectivePerSubRate.toLocaleString()} / subject / term)`
-                                  : '/ term'}
-                              </span>
-                            </span>
+                            <div>
+                              {schEligible && schDiscountPct > 0 ? (
+                                <div>
+                                  <div className="flex items-baseline gap-2">
+                                    <span className="text-xl font-black text-emerald-800">
+                                      PKR {estimatedPayable.toLocaleString()}
+                                    </span>
+                                    <span className="text-xs text-[#737373] line-through font-semibold">
+                                      PKR {effectiveFee.toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                                    {schDiscountPct}% Scholarship (Pending Admin Verification)
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xl font-black text-[#111111]">
+                                  PKR {effectiveFee.toLocaleString()}{' '}
+                                  <span className="text-xs font-bold text-amber-800">
+                                    {isCambridge
+                                      ? `(${targetSubs.length} ${targetSubs.length === 1 ? 'subject' : 'subjects'} @ PKR ${effectivePerSubRate.toLocaleString()} / subject / term)`
+                                      : '/ term'}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-sm font-black text-amber-900 block mt-0.5">
                               {isCambridge && targetSubs.length === 0
@@ -1252,6 +1525,11 @@ export const UnregisteredPage: React.FC = () => {
                       <div className="text-left sm:text-right text-[11px] text-amber-900 font-semibold leading-snug">
                         {effectiveFee !== null && effectiveFee > 0 ? (
                           <>
+                            {schEligible && schDiscountPct > 0 && (
+                              <span className="text-emerald-800 font-bold block mb-1">
+                                Merit Scholarship: -PKR {schDiscountAmount.toLocaleString()} ({schDiscountPct}% waiver applied upon verification).
+                              </span>
+                            )}
                             {isCambridge ? (
                               <span>
                                 {targetSubs.length} Subject{targetSubs.length === 1 ? '' : 's'} Selected ({targetSubs.length} × PKR {effectivePerSubRate.toLocaleString()}).

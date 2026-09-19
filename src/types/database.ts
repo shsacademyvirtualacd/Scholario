@@ -439,10 +439,52 @@ export interface Database {
           id: string;
           student_id: string;
           status: 'unpaid' | 'pending' | 'paid';
+          scholarship_status?: 'none' | 'pending' | 'verified' | 'rejected' | 'revoked';
+          scholarship_discount_percentage?: number;
+          scholarship_application_id?: string | null;
           updated_at: string;
         };
         Insert: Omit<Database['public']['Tables']['fee_statuses']['Row'], 'id' | 'updated_at'> & { id?: string; updated_at?: string };
         Update: Partial<Database['public']['Tables']['fee_statuses']['Row']>;
+      };
+      scholarship_tiers: {
+        Row: {
+          id: string;
+          min_marks_percentage: number;
+          discount_percentage: number;
+          applicable_boards: any;
+          is_active: boolean;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['scholarship_tiers']['Row'], 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['scholarship_tiers']['Row']>;
+      };
+      scholarship_applications: {
+        Row: {
+          id: string;
+          student_id: string;
+          applicant_name: string;
+          applicant_email: string;
+          board: string;
+          class_grade: string;
+          claimed_marks_percentage: number;
+          verified_marks_percentage: number | null;
+          proof_document_url: string;
+          status: 'pending' | 'verified' | 'rejected' | 'revoked';
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          rejection_reason: string | null;
+          revocation_reason: string | null;
+          applied_discount_percentage: number;
+          academic_term: string;
+          admin_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['scholarship_applications']['Row'], 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['scholarship_applications']['Row']>;
       };
       fee_audit_trail: {
         Row: {
