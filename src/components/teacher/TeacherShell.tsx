@@ -10,7 +10,8 @@ import {
   Bell,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  Clock
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -26,6 +27,7 @@ interface TeacherShellProps {
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',     path: '/teacher' },
   { icon: MessageSquare,   label: 'Chat',          path: '/teacher/chat' },
+  { icon: Clock,           label: 'My Timecard',   path: '/teacher/timecard' },
   { icon: ClipboardCheck,  label: 'Attendance',    path: '/teacher/attendance' },
   { icon: BookMarked,      label: 'Notes Manager', path: '/teacher/notes' },
   { icon: FileCheck2,      label: 'Testing Center', path: '/teacher/tests' },

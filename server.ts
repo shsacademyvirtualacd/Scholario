@@ -4035,6 +4035,285 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     console.warn('[ServerPush] Warning creating realtime channels:', chanErr);
   }
 
+  // ── Remote Staff Attendance & Auto Clock-Out Engine ─────────────────────
+  async function runAutoClockOutSweep(client: any): Promise<{ affectedCount: number; records: any[] }> {
+    const affected: any[] = [];
+    try {
+      // 1. Try invoking PostgreSQL stored function if provisioned
+      try {
+        const { data: rpcData, error: rpcErr } = await client.rpc('auto_clock_out_expired_shifts');
+        if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
+          return { affectedCount: rpcData.length, records: rpcData };
+        }
+      } catch {}
+
+      // 2. Direct query fallback
+      const { data: openLogs, error: logsErr } = await client
+        .from('staff_attendance_logs')
+        .select('id, staff_id, shift_id, segment_index, clock_in_at, notes')
+        .is('clock_out_at', null);
+
+      if (logsErr || !openLogs || openLogs.length === 0) {
+        return { affectedCount: 0, records: [] };
+      }
+
+      const shiftIds = Array.from(new Set(openLogs.map((l: any) => l.shift_id).filter(Boolean)));
+      const shiftsMap = new Map<string, any>();
+      if (shiftIds.length > 0) {
+        const { data: shiftsData } = await client
+          .from('staff_shifts')
+          .select('*')
+          .in('id', shiftIds);
+        if (shiftsData) {
+          shiftsData.forEach((s: any) => shiftsMap.set(s.id, s));
+        }
+      }
+
+      const now = new Date();
+      for (const log of openLogs) {
+        const shift = log.shift_id ? shiftsMap.get(log.shift_id) : null;
+        let shouldAutoClockOut = false;
+        let scheduledEndTime: Date | null = null;
+        const graceMins = shift?.grace_period_minutes ?? 15;
+
+        if (shift && shift.segments && Array.isArray(shift.segments) && shift.segments.length > 0) {
+          const seg = shift.segments.find((s: any) => s.segment_index === log.segment_index) || shift.segments[0];
+          if (seg && seg.end_time) {
+            const [endH, endM] = seg.end_time.split(':').map(Number);
+            const clockInDate = new Date(log.clock_in_at);
+            const endCandidate = new Date(clockInDate);
+            endCandidate.setHours(endH, endM, 0, 0);
+
+            const cutoff = new Date(endCandidate.getTime() + graceMins * 60 * 1000);
+            if (now.getTime() > cutoff.getTime()) {
+              shouldAutoClockOut = true;
+              scheduledEndTime = endCandidate;
+            }
+          }
+        } else {
+          // Safe maximum: auto-close unclocked sessions past 12 hours
+          const elapsedMs = now.getTime() - new Date(log.clock_in_at).getTime();
+          if (elapsedMs > 12 * 60 * 60 * 1000) {
+            shouldAutoClockOut = true;
+            scheduledEndTime = new Date(new Date(log.clock_in_at).getTime() + 8 * 60 * 60 * 1000);
+          }
+        }
+
+        if (shouldAutoClockOut && scheduledEndTime) {
+          const durationSec = Math.max(0, Math.floor((scheduledEndTime.getTime() - new Date(log.clock_in_at).getTime()) / 1000));
+          await client
+            .from('staff_attendance_logs')
+            .update({
+              clock_out_at: scheduledEndTime.toISOString(),
+              status: 'auto_clocked_out',
+              total_active_seconds: durationSec,
+              notes: (log.notes ? `${log.notes} | ` : '') + '[System: Auto clocked-out at scheduled segment end + grace period]',
+              updated_at: now.toISOString(),
+            })
+            .eq('id', log.id);
+
+          affected.push({ log_id: log.id, staff_id: log.staff_id, clock_out_at: scheduledEndTime.toISOString() });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Staff Attendance Auto Clock-Out Sweep]:', err?.message || err);
+    }
+    return { affectedCount: affected.length, records: affected };
+  }
+
+  // API Route: Clock In
+  app.post('/api/staff-attendance/clock-in', express.json(), async (req, res) => {
+    try {
+      const { staff_id, shift_id, segment_index = 0, notes, client_time } = req.body;
+      if (!staff_id) {
+        return res.status(400).json({ error: 'staff_id is required' });
+      }
+
+      const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+      const userAgent = (req.headers['user-agent'] as string) || 'Web Browser';
+      const clockInAt = client_time || new Date().toISOString();
+
+      // Check if open log exists
+      const { data: existingActive } = await supabaseServer
+        .from('staff_attendance_logs')
+        .select('*')
+        .eq('staff_id', staff_id)
+        .is('clock_out_at', null)
+        .order('clock_in_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingActive) {
+        return res.json({ log: existingActive, message: 'Existing active session returned' });
+      }
+
+      // Check shift lateness
+      let status = 'present';
+      let finalNotes = notes || '';
+      if (shift_id) {
+        const { data: shiftData } = await supabaseServer
+          .from('staff_shifts')
+          .select('*')
+          .eq('id', shift_id)
+          .maybeSingle();
+
+        if (shiftData && shiftData.segments) {
+          const seg = shiftData.segments.find((s: any) => s.segment_index === segment_index) || shiftData.segments[0];
+          if (seg && seg.start_time) {
+            const [startH, startM] = seg.start_time.split(':').map(Number);
+            const inDate = new Date(clockInAt);
+            const clockInMins = inDate.getHours() * 60 + inDate.getMinutes();
+            const schedMins = (startH || 0) * 60 + (startM || 0);
+            const diff = clockInMins - schedMins;
+            const grace = shiftData.grace_period_minutes ?? 15;
+
+            if (diff > grace) {
+              status = 'late';
+              finalNotes = finalNotes
+                ? `${finalNotes} (Late by ${diff}m)`
+                : `Late by ${diff}m (Grace: ${grace}m)`;
+            }
+          }
+        }
+      }
+
+      const newRecord = {
+        staff_id,
+        shift_id: shift_id || null,
+        segment_index,
+        clock_in_at: clockInAt,
+        clock_out_at: null,
+        status,
+        ip_address: clientIp,
+        device_info: userAgent,
+        notes: finalNotes || null,
+        idle_flagged: false,
+        idle_minutes: 0,
+        last_heartbeat_at: clockInAt,
+        total_active_seconds: 0,
+      };
+
+      const { data: inserted, error: insertErr } = await supabaseServer
+        .from('staff_attendance_logs')
+        .insert(newRecord)
+        .select()
+        .single();
+
+      if (insertErr) {
+        console.warn('[Server Clock-In DB Warning]:', insertErr.message);
+        return res.json({ log: { id: `log-${Date.now()}`, ...newRecord } });
+      }
+
+      return res.json({ log: inserted });
+    } catch (err: any) {
+      console.error('[Server Clock-In Error]:', err);
+      return res.status(500).json({ error: err?.message || 'Clock in failed' });
+    }
+  });
+
+  // API Route: Clock Out
+  app.post('/api/staff-attendance/clock-out', express.json(), async (req, res) => {
+    try {
+      const { log_id, notes, client_time } = req.body;
+      if (!log_id) {
+        return res.status(400).json({ error: 'log_id is required' });
+      }
+
+      const clockOutAt = client_time || new Date().toISOString();
+
+      const { data: existing } = await supabaseServer
+        .from('staff_attendance_logs')
+        .select('clock_in_at, notes')
+        .eq('id', log_id)
+        .maybeSingle();
+
+      let durationSec = 0;
+      if (existing?.clock_in_at) {
+        durationSec = Math.max(
+          0,
+          Math.floor((new Date(clockOutAt).getTime() - new Date(existing.clock_in_at).getTime()) / 1000)
+        );
+      }
+
+      const mergedNotes = notes
+        ? `${existing?.notes || ''} | ${notes}`.trim()
+        : existing?.notes;
+
+      const { data: updated, error: updateErr } = await supabaseServer
+        .from('staff_attendance_logs')
+        .update({
+          clock_out_at: clockOutAt,
+          total_active_seconds: durationSec,
+          notes: mergedNotes,
+          updated_at: clockOutAt,
+        })
+        .eq('id', log_id)
+        .select()
+        .single();
+
+      if (updateErr) {
+        return res.json({
+          log: {
+            id: log_id,
+            clock_out_at: clockOutAt,
+            total_active_seconds: durationSec,
+            notes: mergedNotes,
+          },
+        });
+      }
+
+      return res.json({ log: updated });
+    } catch (err: any) {
+      console.error('[Server Clock-Out Error]:', err);
+      return res.status(500).json({ error: err?.message || 'Clock out failed' });
+    }
+  });
+
+  // API Route: Heartbeat
+  app.post('/api/staff-attendance/heartbeat', express.json(), async (req, res) => {
+    try {
+      const { log_id, idle_minutes = 0, idle_flagged = false, client_time } = req.body;
+      if (!log_id) return res.status(400).json({ error: 'log_id is required' });
+
+      const heartbeatTime = client_time || new Date().toISOString();
+
+      await supabaseServer
+        .from('staff_attendance_logs')
+        .update({
+          last_heartbeat_at: heartbeatTime,
+          idle_minutes,
+          idle_flagged,
+          updated_at: heartbeatTime,
+        })
+        .eq('id', log_id);
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message || 'Heartbeat failed' });
+    }
+  });
+
+  // API Route: Auto Clock-Out Trigger (for Cloudflare Cron Trigger or admin manual run)
+  app.all('/api/staff-attendance/auto-clock-out', async (_req, res) => {
+    try {
+      const sweepResult = await runAutoClockOutSweep(supabaseServer);
+      return res.json(sweepResult);
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message || 'Sweep failed' });
+    }
+  });
+
+  // ── Background Server-Side Cron: Staff Attendance Auto Clock-Out Sweep (Every 3 mins) ──
+  setInterval(() => {
+    runAutoClockOutSweep(supabaseServer).then((res) => {
+      if (res.affectedCount > 0) {
+        console.log(`[Staff Attendance] Auto clocked-out ${res.affectedCount} expired sessions.`);
+      }
+    }).catch((cronErr) => {
+      console.warn('[Staff Attendance Background Sweep Error]:', cronErr);
+    });
+  }, 3 * 60 * 1000);
+
   // ── Background Server-Side Cron: Teacher Reminders (Every 60s) ──
   setInterval(() => {
     checkAndSendTeacherPushReminders(supabaseServer).catch((cronErr) => {

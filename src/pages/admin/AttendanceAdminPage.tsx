@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import TeacherAttendanceRatingsAdminView from '../../components/admin/TeacherAttendanceRatingsAdminView';
+import StaffAttendanceAdminView from '../../components/admin/attendance/StaffAttendanceAdminView';
 import {
   getAllTeachers,
   getAllOfferings,
@@ -72,7 +73,7 @@ export const AttendanceAdminPage: React.FC = () => {
   const [expandedTeacherIds, setExpandedTeacherIds] = useState<Set<string>>(new Set());
   const [expandedClassIds, setExpandedClassIds] = useState<Set<string>>(new Set());
   const [hideEmptyClasses, setHideEmptyClasses] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'by_teacher' | 'all_records' | 'low_attendance' | 'teacher_ratings'>('by_teacher');
+  const [activeTab, setActiveTab] = useState<'by_teacher' | 'all_records' | 'low_attendance' | 'teacher_ratings' | 'staff_attendance'>('by_teacher');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Locked attendance confirmation modal state
@@ -560,10 +561,23 @@ export const AttendanceAdminPage: React.FC = () => {
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F4C430]" />
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab('staff_attendance')}
+          className={`pb-3 text-xs font-bold transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+            activeTab === 'staff_attendance' ? 'text-[#111111]' : 'text-[#737373] hover:text-[#111111]'
+          }`}
+        >
+          <Clock size={15} />
+          <span>Staff Attendance (Remote)</span>
+          {activeTab === 'staff_attendance' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F4C430]" />
+          )}
+        </button>
       </div>
 
       {/* Filters Toolbar for Student Attendance Tabs */}
-      {activeTab !== 'teacher_ratings' && (
+      {activeTab !== 'teacher_ratings' && activeTab !== 'staff_attendance' && (
         <div className="card mb-6 p-4 bg-white border border-[#E5E5E5] rounded-xl shadow-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {/* Session Date */}
@@ -1477,6 +1491,11 @@ export const AttendanceAdminPage: React.FC = () => {
           loading={loading}
           onRefresh={fetchData}
         />
+      )}
+
+      {/* ── TAB 5: REMOTE STAFF ATTENDANCE & SHIFTS ── */}
+      {activeTab === 'staff_attendance' && (
+        <StaffAttendanceAdminView />
       )}
 
       {/* ── ATTENDANCE CHANGE CONFIRMATION MODAL ── */}
