@@ -366,10 +366,11 @@ If the user asks questions such as "what am I looking at?", "how do I use this p
           let matchedChunks: any[] = [];
           if (client) {
             try {
-              // Generate embedding using Gemini text-embedding-004
+              // Generate embedding using Gemini embedding model (gemini-embedding-001, 768-dim)
               const embedRes = await client.models.embedContent({
-                model: 'text-embedding-004',
+                model: 'gemini-embedding-001',
                 contents: userQueryText,
+                config: { outputDimensionality: 768 },
               });
               const queryEmbedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values;
 
@@ -512,7 +513,7 @@ Key Guidelines:
         };
       });
 
-      const targetModel = 'gemini-2.5-flash';
+      const targetModel = 'gemini-3.6-flash';
 
       if (isAdmin) {
         // Admin flow: Call generateContent with read-only tools
@@ -665,8 +666,9 @@ Key Guidelines:
         if (client) {
           try {
             const embedRes = await client.models.embedContent({
-              model: 'text-embedding-004',
+              model: 'gemini-embedding-001',
               contents: chunkText,
+              config: { outputDimensionality: 768 },
             });
             embedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values || null;
           } catch (e: any) {
@@ -756,8 +758,9 @@ Key Guidelines:
         if (client) {
           try {
             const embedRes = await client.models.embedContent({
-              model: 'text-embedding-004',
+              model: 'gemini-embedding-001',
               contents: summaryText,
+              config: { outputDimensionality: 768 },
             });
             embedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values || null;
           } catch {}
@@ -800,8 +803,9 @@ Key Guidelines:
       if (client) {
         try {
           const embedRes = await client.models.embedContent({
-            model: 'text-embedding-004',
+            model: 'gemini-embedding-001',
             contents: q,
+            config: { outputDimensionality: 768 },
           });
           const queryEmbedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values;
           if (queryEmbedding && Array.isArray(queryEmbedding)) {

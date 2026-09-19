@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.knowledge_base (
     metadata JSONB DEFAULT '{}'::jsonb, -- e.g. { "subject": "Physics", "grade": "10", "board": "FBISE", "chapter": "Kinematics" }
     content_chunk TEXT NOT NULL,
     chunk_index INT DEFAULT 0,
-    embedding vector(768), -- Gemini text-embedding-004 produces 768-dimensional embeddings
+    embedding vector(768), -- Gemini gemini-embedding-001 produces 768-dimensional embeddings (via outputDimensionality: 768)
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

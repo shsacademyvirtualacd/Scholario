@@ -211,7 +211,7 @@ Key Guidelines:
           },
         },
       });
-      const targetModel = 'gemini-2.5-flash';
+      const targetModel = 'gemini-3.6-flash';
 
       if (isAdmin) {
         let currentContents: any[] = [...contents];
