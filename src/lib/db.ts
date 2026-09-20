@@ -3474,7 +3474,13 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
     getSubjectPricingSettings().catch(() => ({ per_subject_fee: 1000, auto_upgrade_threshold: 3 })),
     (supabase as any).from('roster').select('profile_id, email, full_name'),
     (supabase as any).from('fee_audit_trail').select('student_id, notes, changed_at').order('changed_at', { ascending: false }).limit(200),
-    (supabase as any).from('scholarship_applications').select('id, student_id, status, applied_discount_percentage, claimed_marks_percentage, verified_marks_percentage, proof_document_url').catch(() => ({ data: [] }))
+    (supabase as any)
+      .from('scholarship_applications')
+      .select('id, student_id, status, applied_discount_percentage, claimed_marks_percentage, verified_marks_percentage, proof_document_url')
+      .then(
+        (res: any) => (res?.data ? res : { data: [] }),
+        () => ({ data: [] })
+      )
   ]);
 
   const feeMap = new Map<string, number>();
