@@ -334,12 +334,51 @@ export async function uploadScholarshipProofFile(file: File): Promise<{ url: str
     console.warn('[scholarshipService:uploadScholarshipProofFile] Server endpoint unreachable, using client blob:', netErr);
   }
 
-  // Fallback: create base64 data URL for offline/preview test
+  // Fallback: create base64 data URL for offline/preview test with safe image compression
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
+      const rawResult = reader.result as string;
+      if (file.type.startsWith('image/')) {
+        try {
+          const img = new Image();
+          img.onload = () => {
+            const MAX_DIM = 1920;
+            let width = img.width;
+            let height = img.height;
+            if (width > MAX_DIM || height > MAX_DIM) {
+              if (width > height) {
+                height = Math.round((height * MAX_DIM) / width);
+                width = MAX_DIM;
+              } else {
+                width = Math.round((width * MAX_DIM) / height);
+                height = MAX_DIM;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressedUrl = canvas.toDataURL('image/jpeg', 0.85);
+              resolve({
+                url: compressedUrl,
+                key: `local_${Date.now()}_${file.name}`
+              });
+              return;
+            }
+            resolve({ url: rawResult, key: `local_${Date.now()}_${file.name}` });
+          };
+          img.onerror = () => resolve({ url: rawResult, key: `local_${Date.now()}_${file.name}` });
+          img.src = rawResult;
+          return;
+        } catch {
+          // fallback to rawResult if canvas manipulation fails
+        }
+      }
       resolve({
-        url: reader.result as string,
+        url: rawResult,
         key: `local_${Date.now()}_${file.name}`
       });
     };

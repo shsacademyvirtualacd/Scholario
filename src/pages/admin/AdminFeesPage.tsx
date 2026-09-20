@@ -32,6 +32,7 @@ import {
 } from '../../lib/scholarshipService';
 import { ScholarshipApplication, ScholarshipTier } from '../../types/scholarship';
 import { toast } from 'sonner';
+import { MarksheetInspectorModal, MarksheetInspectorData } from '../../components/admin/MarksheetInspectorModal';
 
 export const AdminFeesPage: React.FC = () => {
   const isMobile = useMobile();
@@ -51,6 +52,8 @@ export const AdminFeesPage: React.FC = () => {
   const [verifiedDiscountInputs, setVerifiedDiscountInputs] = useState<Record<string, string>>({});
   const [reviewNotesInputs, setReviewNotesInputs] = useState<Record<string, string>>({});
   const [savingTiers, setSavingTiers] = useState<boolean>(false);
+  const [inspectModalData, setInspectModalData] = useState<MarksheetInspectorData | null>(null);
+  const [isInspectModalOpen, setIsInspectModalOpen] = useState<boolean>(false);
 
   // Loaders & Errors
   const [loading, setLoading] = useState(true);
@@ -744,16 +747,24 @@ export const AdminFeesPage: React.FC = () => {
 
                           {item.scholarship_proof_url && (
                             <div className="pt-1">
-                              <a
-                                href={item.scholarship_proof_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs text-amber-800 hover:text-amber-950 font-bold bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-200 transition-colors"
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInspectModalData({
+                                    applicant_name: item.full_name || 'Student',
+                                    class_grade: item.grade_label || '',
+                                    board: item.board_id || '',
+                                    claimed_marks_percentage: item.claimed_marks || 0,
+                                    proof_document_url: item.scholarship_proof_url,
+                                  });
+                                  setIsInspectModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1.5 text-xs text-amber-800 hover:text-amber-950 font-bold bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-200 transition-colors cursor-pointer"
                               >
                                 <FileText size={13} />
                                 <span>View Marksheet Proof Document</span>
                                 <ExternalLink size={12} />
-                              </a>
+                              </button>
                             </div>
                           )}
 
@@ -1056,16 +1067,24 @@ export const AdminFeesPage: React.FC = () => {
                                     Result Card Marksheet
                                   </span>
                                   {app.proof_document_url ? (
-                                    <a
-                                      href={app.proof_document_url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="inline-flex items-center gap-1.5 text-xs text-amber-800 hover:text-amber-950 font-bold bg-white px-3 py-1.5 rounded-lg border border-amber-200 shadow-xs hover:border-amber-400 transition-colors"
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setInspectModalData({
+                                          applicant_name: app.applicant_name,
+                                          class_grade: app.class_grade,
+                                          board: app.board,
+                                          claimed_marks_percentage: app.claimed_marks_percentage,
+                                          proof_document_url: app.proof_document_url,
+                                        });
+                                        setIsInspectModalOpen(true);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-xs text-amber-800 hover:text-amber-950 font-bold bg-white px-3 py-1.5 rounded-lg border border-amber-200 shadow-xs hover:border-amber-400 transition-colors cursor-pointer"
                                     >
                                       <FileText size={13} />
                                       <span>Inspect Marksheet</span>
                                       <ExternalLink size={12} />
-                                    </a>
+                                    </button>
                                   ) : (
                                     <span className="text-xs text-[#A3A3A3] italic">No document attached</span>
                                   )}
@@ -1787,6 +1806,16 @@ export const AdminFeesPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Safe Marksheet Inspector Modal */}
+        <MarksheetInspectorModal
+          isOpen={isInspectModalOpen}
+          onClose={() => {
+            setIsInspectModalOpen(false);
+            setInspectModalData(null);
+          }}
+          data={inspectModalData}
+        />
       </div>
     </AdminShell>
   );

@@ -3366,15 +3366,18 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
       // Upload to Cloudflare R2 bucket if configured
       const s3Client = getR2Client();
-      const r2Key = `scholarships/${docId}_${file.originalname || 'proof.pdf'}`;
       if (s3Client) {
         try {
+          // Store under direct docId for unambiguous retrieval
           await s3Client.send(
             new PutObjectCommand({
               Bucket: R2_EXAM_BUCKET,
-              Key: r2Key,
+              Key: `scholarships/${docId}`,
               Body: file.buffer,
               ContentType: mimeType,
+              Metadata: {
+                originalname: encodeURIComponent(file.originalname || 'proof.pdf')
+              }
             })
           );
         } catch (r2Err: any) {
