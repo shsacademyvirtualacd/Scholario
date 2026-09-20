@@ -45,11 +45,22 @@ export const StudentCheckoutPage: React.FC = () => {
   const [scholarshipTiers, setScholarshipTiers] = useState<ScholarshipTier[]>(DEFAULT_SCHOLARSHIP_TIERS);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applyMarks, setApplyMarks] = useState('');
+  const [isImprovement, setIsImprovement] = useState(false);
   const [applyProofFile, setApplyProofFile] = useState<File | null>(null);
   const [applyProofUrl, setApplyProofUrl] = useState('');
   const [submittingScholarship, setSubmittingScholarship] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [scholarshipError, setScholarshipError] = useState<string | null>(null);
+
+  // Auto-open scholarship modal if query param present
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('applyScholarship') === 'true') {
+        setShowApplyModal(true);
+      }
+    } catch {}
+  }, []);
 
   const fetchFeeDetails = async () => {
     if (!profile) return;
@@ -622,10 +633,33 @@ export const StudentCheckoutPage: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                {/* Improvement Student Checkbox */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isImprovement}
+                      onChange={(e) => {
+                        setIsImprovement(e.target.checked);
+                        setScholarshipError(null);
+                      }}
+                      className="w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800">
+                        I am an Improvement Student (50% Scholarship)
+                      </span>
+                      <p className="text-[10px] text-slate-500">
+                        Special 50% tuition waiver for students repeating or improving grades.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
                 {/* Marks percentage input */}
                 <div>
                   <label className="block text-xs font-bold text-[#404040] mb-1">
-                    Previous Marks / Percentage (%) <span className="text-red-500">*</span>
+                    Previous Marks / Percentage (%) {!isImprovement && <span className="text-red-500">*</span>}
                   </label>
                   <div className="relative">
                     <input
@@ -653,15 +687,15 @@ export const StudentCheckoutPage: React.FC = () => {
                 {/* Tier calculation preview */}
                 {(() => {
                   const marks = parseFloat(applyMarks);
-                  const calc = calculateDiscountForMarks(marks, studentBoardId, scholarshipTiers);
-                  if (isNaN(marks)) return null;
+                  const calc = calculateDiscountForMarks(marks, studentBoardId, scholarshipTiers, isImprovement);
+                  if (isNaN(marks) && !isImprovement) return null;
                   if (calc.eligible) {
                     return (
                       <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-xs text-emerald-900 flex items-center gap-2.5 font-bold">
                         <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
                         <div>
                           <span className="block text-emerald-800 font-extrabold">
-                            {calc.discountPercentage}% Scholarship Eligible!
+                            {calc.discountPercentage}% Scholarship Eligible! {isImprovement ? '(Improvement Student)' : ''}
                           </span>
                           <span className="text-[10px] text-emerald-700 font-normal">
                             Tuition will reduce from PKR {feeConfig?.amount?.toLocaleString()} to PKR {Math.round((feeConfig?.amount || 0) * (1 - calc.discountPercentage / 100)).toLocaleString()} upon verification.
@@ -673,7 +707,7 @@ export const StudentCheckoutPage: React.FC = () => {
                   return (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-center gap-2 font-medium">
                       <AlertCircle size={16} className="text-amber-700 shrink-0" />
-                      <span>Merit scholarships require at least 80% marks.</span>
+                      <span>Merit scholarships require at least 80% marks (or check Improvement student).</span>
                     </div>
                   );
                 })()}
@@ -755,12 +789,12 @@ export const StudentCheckoutPage: React.FC = () => {
                   disabled={submittingScholarship || uploadingProof}
                   onClick={async () => {
                     const marks = parseFloat(applyMarks);
-                    if (isNaN(marks) || marks < 0 || marks > 100) {
+                    if (!isImprovement && (isNaN(marks) || marks < 0 || marks > 100)) {
                       setScholarshipError('Please enter a valid marks percentage between 0 and 100.');
                       return;
                     }
-                    if (marks < 80) {
-                      setScholarshipError('Merit scholarships require at least 80% marks.');
+                    if (!isImprovement && marks < 80) {
+                      setScholarshipError('Merit scholarships require at least 80% marks (or check Improvement student).');
                       return;
                     }
                     if (!applyProofFile && !applyProofUrl) {
@@ -786,8 +820,9 @@ export const StudentCheckoutPage: React.FC = () => {
                         applicant_email: (profile as any)?.email || user?.email || '',
                         board: studentBoardId,
                         class_grade: studentGrade,
-                        claimed_marks_percentage: marks,
+                        claimed_marks_percentage: isNaN(marks) ? (isImprovement ? 75 : 0) : marks,
                         proof_document_url: finalUrl,
+                        admin_notes: isImprovement ? 'Applicant is an Improvement Student (50% Scholarship)' : undefined,
                       });
 
                       toast.success('Scholarship application submitted for admin verification!');

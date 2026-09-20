@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, Clock, Search, Check,
   AlertCircle, Sparkles, Save, Loader2, Coins, BookOpen,
-  Award, FileText, ExternalLink, XCircle, CheckCircle2, Plus, Trash2, ShieldAlert, X
+  Award, FileText, ExternalLink, XCircle, CheckCircle2, Plus, Trash2, ShieldAlert, X,
+  AlertTriangle, RefreshCw
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -57,6 +58,12 @@ export const AdminFeesPage: React.FC = () => {
   const [savingClasses, setSavingClasses] = useState(false);
   const [savingClassId, setSavingClassId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [queryErrors, setQueryErrors] = useState<{
+    pending?: { message: string; code?: string; details?: string };
+    configs?: { message: string; code?: string; details?: string };
+    classes?: { message: string; code?: string; details?: string };
+    scholarships?: { message: string; code?: string; details?: string };
+  }>({});
   const [successNotif, setSuccessNotif] = useState<string | null>(null);
 
   // Data States
@@ -125,41 +132,123 @@ export const AdminFeesPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [pendingData, configData, classesData, subjectPricingData, schApps, schTiers] = await Promise.all([
+      const errors: {
+        pending?: { message: string; code?: string; details?: string };
+        configs?: { message: string; code?: string; details?: string };
+        classes?: { message: string; code?: string; details?: string };
+        scholarships?: { message: string; code?: string; details?: string };
+      } = {};
+
+      const [
+        pendingRes,
+        configRes,
+        classesRes,
+        subjectPricingRes,
+        schAppsRes,
+        schTiersRes
+      ] = await Promise.allSettled([
         getPendingFeeStatuses(),
         getUniversalFeeConfig(),
         getClassesWithFeeConfigs(),
-        getSubjectPricingSettings().catch(() => ({ per_subject_fee: 1000, auto_upgrade_threshold: 3 })),
-        getScholarshipApplications().catch(() => []),
-        getScholarshipTiers().catch(() => DEFAULT_SCHOLARSHIP_TIERS),
+        getSubjectPricingSettings(),
+        getScholarshipApplications(),
+        getScholarshipTiers(),
       ]);
-      setPendingList(pendingData);
-      setClassesList(classesData);
-      setScholarshipApps(schApps);
-      setScholarshipTiers(schTiers);
 
-      if (subjectPricingData) {
-        setPerSubjectFee(subjectPricingData.per_subject_fee);
-        setAutoUpgradeThreshold(subjectPricingData.auto_upgrade_threshold);
+      if (pendingRes.status === 'fulfilled') {
+        setPendingList(pendingRes.value || []);
+      } else {
+        const err = pendingRes.reason;
+        console.error('[AdminFeesPage:loadData] Pending fee status query error:', {
+          message: err?.message,
+          code: err?.code,
+          details: err?.details,
+          hint: err?.hint
+        });
+        errors.pending = {
+          message: err?.message || 'Failed to retrieve fee_statuses from Supabase.',
+          code: err?.code,
+          details: err?.details || err?.hint,
+        };
       }
 
-      const initialPrices: Record<string, number> = {};
-      classesData.forEach((cls) => {
-        initialPrices[cls.id] = cls.amount || 0;
-      });
-      setClassPrices(initialPrices);
-
-      if (configData) {
-        setInstructions(configData.payment_instructions);
-        setWhatsappNum(configData.whatsapp_number);
+      if (configRes.status === 'fulfilled') {
+        const configData = configRes.value;
+        if (configData) {
+          setInstructions(configData.payment_instructions);
+          setWhatsappNum(configData.whatsapp_number);
+        } else {
+          setInstructions('Easypaisa:\nNumber: 03335292094\nName: Sadia Fatima\n\nJazzCash:\nNumber: 03058969050\nName: Haseena Bibi');
+          setWhatsappNum('03222314436');
+        }
       } else {
-        // Fallback default structure
-        setInstructions('Easypaisa:\nNumber: 03335292094\nName: Sadia Fatima\n\nJazzCash:\nNumber: 03058969050\nName: Haseena Bibi');
-        setWhatsappNum('03222314436');
+        const err = configRes.reason;
+        console.error('[AdminFeesPage:loadData] Universal fee config query error:', err);
+        errors.configs = {
+          message: err?.message || 'Universal fee configuration query failed.',
+          code: err?.code,
+          details: err?.details,
+        };
+      }
+
+      if (classesRes.status === 'fulfilled') {
+        const classesData = classesRes.value || [];
+        setClassesList(classesData);
+        const initialPrices: Record<string, number> = {};
+        classesData.forEach((cls) => {
+          initialPrices[cls.id] = cls.amount || 0;
+        });
+        setClassPrices(initialPrices);
+      } else {
+        const err = classesRes.reason;
+        console.error('[AdminFeesPage:loadData] Classes query error:', err);
+        errors.classes = {
+          message: err?.message || 'Failed to retrieve classes & fee rates.',
+          code: err?.code,
+          details: err?.details,
+        };
+      }
+
+      if (subjectPricingRes.status === 'fulfilled' && subjectPricingRes.value) {
+        setPerSubjectFee(subjectPricingRes.value.per_subject_fee);
+        setAutoUpgradeThreshold(subjectPricingRes.value.auto_upgrade_threshold);
+      }
+
+      if (schAppsRes.status === 'fulfilled') {
+        setScholarshipApps(schAppsRes.value || []);
+      } else {
+        const err = schAppsRes.reason;
+        console.error('[AdminFeesPage:loadData] Scholarship applications query error:', {
+          message: err?.message,
+          code: err?.code,
+          details: err?.details,
+          hint: err?.hint
+        });
+        errors.scholarships = {
+          message: err?.message || 'Failed to retrieve scholarship_applications from Supabase.',
+          code: err?.code,
+          details: err?.details || err?.hint,
+        };
+      }
+
+      if (schTiersRes.status === 'fulfilled') {
+        setScholarshipTiers(schTiersRes.value || DEFAULT_SCHOLARSHIP_TIERS);
+      } else {
+        setScholarshipTiers(DEFAULT_SCHOLARSHIP_TIERS);
+      }
+
+      setQueryErrors(errors);
+
+      const errKeys = Object.keys(errors) as (keyof typeof errors)[];
+      if (errKeys.length > 0) {
+        const detailStr = errKeys
+          .map(k => `${k.toUpperCase()}: ${errors[k]?.message}${errors[k]?.code ? ` (Code: ${errors[k]?.code})` : ''}`)
+          .join(' | ');
+        setError(`Database Error: ${detailStr}`);
       }
     } catch (err: any) {
-      console.error(err);
-      setError('Failed to retrieve fee information. Please check database connectivity.');
+      console.error('[AdminFeesPage:loadData] Unexpected failure:', err);
+      setError(err?.message || 'Unexpected failure occurred while loading fee data.');
     } finally {
       setLoading(false);
     }
@@ -431,9 +520,24 @@ export const AdminFeesPage: React.FC = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#fecaca] text-sm text-[#dc2626] flex items-center gap-2">
-            <AlertCircle size={16} />
-            <span className="font-semibold">{error}</span>
+          <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#fecaca] text-sm text-[#dc2626] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <AlertCircle size={18} className="shrink-0 mt-0.5 sm:mt-0 text-[#dc2626]" />
+              <div className="space-y-0.5">
+                <span className="font-bold block">{error}</span>
+                <span className="text-xs text-rose-700 block">
+                  Verify Supabase RLS policies and table structures. One failing query no longer blanks the page.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => loadData()}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#dc2626] text-white rounded-lg text-xs font-bold hover:bg-rose-700 transition-colors shrink-0 shadow-2xs"
+            >
+              <RefreshCw size={13} />
+              Retry Failed Queries
+            </button>
           </div>
         )}
 
@@ -456,7 +560,12 @@ export const AdminFeesPage: React.FC = () => {
             }`}
           >
             <Clock size={14} />
-            Pending Verification ({pendingList.length})
+            <span>Pending Verification</span>
+            {queryErrors.pending ? (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200">Error</span>
+            ) : (
+              <span className="text-xs">({pendingList.length})</span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('scholarships')}
@@ -475,7 +584,12 @@ export const AdminFeesPage: React.FC = () => {
             }`}
           >
             <Award size={14} />
-            Scholarship Queue ({scholarshipApps.filter((a) => a.status === 'pending').length})
+            <span>Scholarship Queue</span>
+            {queryErrors.scholarships ? (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200">Error</span>
+            ) : (
+              <span className="text-xs">({scholarshipApps.filter((a) => a.status === 'pending').length})</span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('configs')}
@@ -522,8 +636,36 @@ export const AdminFeesPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* List */}
-                {filteredPending.length === 0 ? (
+                {/* Query Error State or List */}
+                {queryErrors.pending ? (
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-8 text-center space-y-4">
+                    <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                      <AlertTriangle size={24} />
+                    </div>
+                    <div className="max-w-md mx-auto space-y-2">
+                      <h3 className="text-sm font-black text-rose-900">Failed to Retrieve Fee Verification Records</h3>
+                      <p className="text-xs font-medium text-rose-700">
+                        {queryErrors.pending.message}
+                      </p>
+                      {(queryErrors.pending.code || queryErrors.pending.details) && (
+                        <div className="text-[11px] font-mono text-rose-800 bg-white/80 p-3 rounded-xl text-left border border-rose-200 break-all space-y-1">
+                          {queryErrors.pending.code && <div><span className="font-bold">Supabase Code:</span> {queryErrors.pending.code}</div>}
+                          {queryErrors.pending.details && <div><span className="font-bold">Details:</span> {queryErrors.pending.details}</div>}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => loadData()}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shadow-sm"
+                      >
+                        <RefreshCw size={14} />
+                        Retry Verification Query
+                      </button>
+                    </div>
+                  </div>
+                ) : filteredPending.length === 0 ? (
                   <div className="card text-center py-16 interactive">
                     <ShieldCheck size={32} className="mx-auto text-emerald-500 mb-3" />
                     <h3 className="text-sm font-bold text-[#111111]">All caught up!</h3>
@@ -547,11 +689,20 @@ export const AdminFeesPage: React.FC = () => {
                                 All Subjects Package
                               </span>
                             )}
-                            {item.amount && typeof item.amount === 'number' && item.amount > 0 && (
+                            {item.original_amount && item.amount && item.original_amount > item.amount ? (
+                              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                <span className="text-xs line-through text-slate-400 font-bold">
+                                  PKR {item.original_amount.toLocaleString()}
+                                </span>
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs font-black">
+                                  PKR {item.amount.toLocaleString()} / term
+                                </span>
+                              </div>
+                            ) : item.amount && typeof item.amount === 'number' && item.amount > 0 ? (
                               <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black whitespace-nowrap">
                                 PKR {item.amount.toLocaleString()} / term
                               </span>
-                            )}
+                            ) : null}
                             {item.scholarship_status === 'verified' && (
                               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-black whitespace-nowrap flex items-center gap-1">
                                 <Award size={12} />
@@ -561,7 +712,13 @@ export const AdminFeesPage: React.FC = () => {
                             {item.scholarship_status === 'pending' && (
                               <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-black whitespace-nowrap flex items-center gap-1">
                                 <Clock size={12} />
-                                Scholarship Pending ({item.scholarship_claimed_marks}% Marks)
+                                Scholarship Pending ({item.scholarship_discount_percentage}% Waiver Claimed{item.claimed_marks ? ` • ${item.claimed_marks}% Marks` : ''})
+                              </span>
+                            )}
+                            {item.explanation_label && (
+                              <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1 bg-emerald-50/70 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <Sparkles size={11} className="text-emerald-600" />
+                                {item.explanation_label}
                               </span>
                             )}
                           </div>
@@ -652,7 +809,11 @@ export const AdminFeesPage: React.FC = () => {
                       Total Applications
                     </span>
                     <span className="text-2xl font-black text-[#111111] font-mono block">
-                      {scholarshipApps.length}
+                      {queryErrors.scholarships ? (
+                        <span className="text-rose-600 text-sm font-bold">Error</span>
+                      ) : (
+                        scholarshipApps.length
+                      )}
                     </span>
                   </div>
                   <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 space-y-1">
@@ -660,7 +821,11 @@ export const AdminFeesPage: React.FC = () => {
                       Pending Review
                     </span>
                     <span className="text-2xl font-black text-amber-900 font-mono block">
-                      {scholarshipApps.filter((a) => a.status === 'pending').length}
+                      {queryErrors.scholarships ? (
+                        <span className="text-rose-600 text-sm font-bold">Error</span>
+                      ) : (
+                        scholarshipApps.filter((a) => a.status === 'pending').length
+                      )}
                     </span>
                   </div>
                   <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-1">
@@ -668,7 +833,11 @@ export const AdminFeesPage: React.FC = () => {
                       Approved & Active
                     </span>
                     <span className="text-2xl font-black text-emerald-900 font-mono block">
-                      {scholarshipApps.filter((a) => a.status === 'verified').length}
+                      {queryErrors.scholarships ? (
+                        <span className="text-rose-600 text-sm font-bold">Error</span>
+                      ) : (
+                        scholarshipApps.filter((a) => a.status === 'verified').length
+                      )}
                     </span>
                   </div>
                   <div className="bg-rose-50/50 border border-rose-200 rounded-2xl p-4 space-y-1">
@@ -676,7 +845,11 @@ export const AdminFeesPage: React.FC = () => {
                       Rejected
                     </span>
                     <span className="text-2xl font-black text-rose-900 font-mono block">
-                      {scholarshipApps.filter((a) => a.status === 'rejected').length}
+                      {queryErrors.scholarships ? (
+                        <span className="text-rose-600 text-sm font-bold">Error</span>
+                      ) : (
+                        scholarshipApps.filter((a) => a.status === 'rejected').length
+                      )}
                     </span>
                   </div>
                 </div>
@@ -731,7 +904,35 @@ export const AdminFeesPage: React.FC = () => {
 
                 {/* Queue of Applications */}
                 <div className="space-y-4">
-                  {(() => {
+                  {queryErrors.scholarships ? (
+                    <div className="bg-rose-50 border border-rose-200 rounded-2xl p-8 text-center space-y-4">
+                      <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                        <AlertTriangle size={24} />
+                      </div>
+                      <div className="max-w-md mx-auto space-y-2">
+                        <h3 className="text-sm font-black text-rose-900">Failed to Retrieve Scholarship Applications</h3>
+                        <p className="text-xs font-medium text-rose-700">
+                          {queryErrors.scholarships.message}
+                        </p>
+                        {(queryErrors.scholarships.code || queryErrors.scholarships.details) && (
+                          <div className="text-[11px] font-mono text-rose-800 bg-white/80 p-3 rounded-xl text-left border border-rose-200 break-all space-y-1">
+                            {queryErrors.scholarships.code && <div><span className="font-bold">Supabase Code:</span> {queryErrors.scholarships.code}</div>}
+                            {queryErrors.scholarships.details && <div><span className="font-bold">Details:</span> {queryErrors.scholarships.details}</div>}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => loadData()}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shadow-sm"
+                        >
+                          <RefreshCw size={14} />
+                          Retry Scholarship Query
+                        </button>
+                      </div>
+                    </div>
+                  ) : (() => {
                     const filtered = scholarshipApps.filter((app) => {
                       const matchesStatus =
                         scholarshipFilterStatus === 'all' || app.status === scholarshipFilterStatus;

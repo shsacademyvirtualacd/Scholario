@@ -109,8 +109,10 @@ export const UnregisteredPage: React.FC = () => {
   const [terminationStep, setTerminationStep] = useState<'idle' | 'confirm' | 'goodbye'>('idle');
 
   // Scholarship System State
+  const queryScholarship = searchParams.get('scholarship') === 'true';
   const [scholarshipTiers, setScholarshipTiers] = useState<ScholarshipTier[]>(DEFAULT_SCHOLARSHIP_TIERS);
-  const [applyScholarship, setApplyScholarship] = useState<boolean>(false);
+  const [applyScholarship, setApplyScholarship] = useState<boolean>(queryScholarship);
+  const [isImprovementStudent, setIsImprovementStudent] = useState<boolean>(false);
   const [claimedMarks, setClaimedMarks] = useState<string>('');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofUrl, setProofUrl] = useState<string>('');
@@ -483,7 +485,7 @@ export const UnregisteredPage: React.FC = () => {
       );
 
       // 5. Submit scholarship application if requested
-      if (applyScholarship && claimedMarks) {
+      if (applyScholarship && (claimedMarks || isImprovementStudent)) {
         try {
           let finalDocUrl = proofUrl;
           if (!finalDocUrl && proofFile) {
@@ -495,14 +497,16 @@ export const UnregisteredPage: React.FC = () => {
           if (finalDocUrl) {
             const clsObj = taxonomy?.classes?.find((c: any) => c.id === selectedClassId);
             const gradeName = clsObj?.grade ? String(clsObj.grade) : '10';
+            const marksVal = parseFloat(claimedMarks);
             await submitScholarshipApplication({
               student_id: user.id,
               applicant_name: fullName.trim(),
               applicant_email: user.email || '',
               board: selectedBoardId,
               class_grade: gradeName,
-              claimed_marks_percentage: parseFloat(claimedMarks),
+              claimed_marks_percentage: isNaN(marksVal) ? (isImprovementStudent ? 75 : 0) : marksVal,
               proof_document_url: finalDocUrl,
+              admin_notes: isImprovementStudent ? 'Applicant is an Improvement Student (50% Scholarship)' : undefined,
             });
             toast.info('Scholarship application submitted. Administration will verify your marksheet.');
           }
@@ -1314,11 +1318,34 @@ export const UnregisteredPage: React.FC = () => {
 
                       {applyScholarship && (
                         <div className="pt-3 border-t border-[#E8E3D5] space-y-4 animate-in fade-in duration-200">
+                          {/* Improvement Student Toggle */}
+                          <div className="p-3 bg-white border border-[#E5E0D0] rounded-xl">
+                            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={isImprovementStudent}
+                                onChange={(e) => {
+                                  setIsImprovementStudent(e.target.checked);
+                                  setProofError(null);
+                                }}
+                                className="w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] cursor-pointer"
+                              />
+                              <div>
+                                <span className="text-xs font-bold text-slate-800">
+                                  I am an Improvement Student (50% Scholarship)
+                                </span>
+                                <p className="text-[10px] text-slate-500">
+                                  Repeating or improving grades in FSC/Matric? Claim 50% tuition waiver across all subjects.
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                             {/* Marks / Percentage input */}
                             <div>
                               <label className="block text-xs font-bold text-[#404040] mb-1">
-                                Previous Marks / Grade Percentage <span className="text-red-500">*</span>
+                                Previous Marks / Grade Percentage {!isImprovementStudent && <span className="text-red-500">*</span>}
                               </label>
                               <div className="relative">
                                 <input
@@ -1347,8 +1374,8 @@ export const UnregisteredPage: React.FC = () => {
                             <div className="flex flex-col justify-end">
                               {(() => {
                                 const marksNum = parseFloat(claimedMarks);
-                                const calc = calculateDiscountForMarks(marksNum, selectedBoardId, scholarshipTiers);
-                                if (!claimedMarks) {
+                                const calc = calculateDiscountForMarks(marksNum, selectedBoardId, scholarshipTiers, isImprovementStudent);
+                                if (!claimedMarks && !isImprovementStudent) {
                                   return (
                                     <div className="bg-white/80 border border-[#E5E0D0] rounded-xl p-3 text-[11px] text-[#737373]">
                                       Enter your marks percentage to view your eligible tuition scholarship tier.
@@ -1361,10 +1388,10 @@ export const UnregisteredPage: React.FC = () => {
                                       <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
                                       <div>
                                         <span className="block text-emerald-800 font-extrabold">
-                                          {calc.discountPercentage}% Scholarship Tier Eligible!
+                                          {calc.discountPercentage}% Scholarship Tier Eligible! {isImprovementStudent ? '(Improvement Student)' : ''}
                                         </span>
                                         <span className="text-[10px] text-emerald-700 font-normal">
-                                          {calc.discountPercentage === 60 ? 'High Distinction (90%+)' : 'Distinction (80%+)'} — Pending Admin Document Verification
+                                          {isImprovementStudent ? 'Improvement student discount' : (calc.discountPercentage === 60 ? 'High Distinction (90%+)' : 'Distinction (80%+) / Merit')} — Pending Admin Document Verification
                                         </span>
                                       </div>
                                     </div>
@@ -1373,7 +1400,7 @@ export const UnregisteredPage: React.FC = () => {
                                 return (
                                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-center gap-2 font-medium">
                                     <AlertCircle size={16} className="text-amber-700 shrink-0" />
-                                    <span>Merit scholarships start at 80% marks. Standard pricing applies below 80%.</span>
+                                    <span>Merit scholarships start at 80% marks (or select Improvement Student).</span>
                                   </div>
                                 );
                               })()}

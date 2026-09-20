@@ -30,6 +30,7 @@ import {
   getSubjectPricingSettings,
   calculateSubjectEnrollmentFee
 } from './subjectEnrollmentService';
+import { computePayableFee } from './feeCalculation';
 
 // ── tiny helper ───────────────────────────────────────────────────────────────
 function throwOnError<T>(data: T | null, error: unknown, ctx: string): T {
@@ -3077,6 +3078,8 @@ export async function resolveGradeFeeConfig(
   original_amount?: number;
   scholarship_discount_percentage?: number;
   scholarship_status?: string;
+  is_provisional?: boolean;
+  explanation_label?: string;
   payment_instructions: string;
   whatsapp_number: string;
   plan_type?: 'custom' | 'all';
@@ -3190,23 +3193,23 @@ export async function resolveGradeFeeConfig(
 
   if (studentId) {
     try {
-      // Check student fee status
+      // Check student fee status including single source of truth columns
       const { data: feeStat } = await (supabase as any)
         .from('fee_statuses')
-        .select('scholarship_status, scholarship_discount_percentage')
+        .select('scholarship_status, scholarship_discount_percentage, base_fee, discount_percent, discount_status, payable_amount')
         .eq('student_id', studentId)
         .maybeSingle();
 
       if (feeStat) {
         scholarshipStatus = feeStat.scholarship_status || 'none';
-        scholarshipDiscountPct = Number(feeStat.scholarship_discount_percentage) || 0;
+        scholarshipDiscountPct = Number(feeStat.discount_percent ?? feeStat.scholarship_discount_percentage) || 0;
       }
 
-      // If not marked verified in fee_statuses, check scholarship_applications table
-      if (scholarshipStatus === 'none' || scholarshipStatus === 'pending') {
+      // If not marked verified or discount is 0, check scholarship_applications table
+      if (scholarshipStatus === 'none' || scholarshipStatus === 'pending' || scholarshipDiscountPct === 0) {
         const { data: appData } = await (supabase as any)
           .from('scholarship_applications')
-          .select('status, applied_discount_percentage')
+          .select('status, applied_discount_percentage, claimed_marks_percentage, claimed_marks')
           .eq('student_id', studentId)
           .in('status', ['pending', 'verified'])
           .order('created_at', { ascending: false })
@@ -3217,6 +3220,12 @@ export async function resolveGradeFeeConfig(
           scholarshipStatus = appData.status;
           if (appData.status === 'verified') {
             scholarshipDiscountPct = Number(appData.applied_discount_percentage) || 0;
+          } else if (appData.status === 'pending') {
+            const marks = Number(appData.claimed_marks_percentage ?? appData.claimed_marks) || 0;
+            const recDiscount = marks >= 90 ? 60 : marks >= 80 ? 40 : 0;
+            if (recDiscount > 0) {
+              scholarshipDiscountPct = recDiscount;
+            }
           }
         }
       }
@@ -3226,15 +3235,28 @@ export async function resolveGradeFeeConfig(
   }
 
   const baseBeforeScholarship = finalAmount;
-  if (scholarshipStatus === 'verified' && scholarshipDiscountPct > 0) {
-    finalAmount = Math.max(0, Math.round(baseBeforeScholarship * (1 - scholarshipDiscountPct / 100)));
+  let finalPayable = baseBeforeScholarship;
+  let isProvisional = false;
+  let explanationLabel = '';
+
+  if (scholarshipDiscountPct > 0 && (scholarshipStatus === 'verified' || scholarshipStatus === 'pending')) {
+    const feeCalc = computePayableFee({
+      base_fee: baseBeforeScholarship,
+      discount_percent: scholarshipDiscountPct,
+      discount_status: (scholarshipStatus === 'verified' ? 'verified' : 'pending') as any
+    });
+    finalPayable = feeCalc.payable_amount;
+    isProvisional = feeCalc.is_provisional;
+    explanationLabel = feeCalc.explanation_label;
   }
 
   return {
-    amount: finalAmount,
+    amount: finalPayable,
     original_amount: baseBeforeScholarship,
     scholarship_discount_percentage: scholarshipDiscountPct,
     scholarship_status: scholarshipStatus,
+    is_provisional: isProvisional,
+    explanation_label: explanationLabel,
     payment_instructions: rawInstructions,
     whatsapp_number: classConfig?.whatsapp_number || config?.whatsapp_number || '03222314436',
     plan_type: planType,
@@ -3353,47 +3375,96 @@ export async function updateFeeStatus(
 }
 
 export async function getPendingFeeStatuses(): Promise<any[]> {
-  const { data, error } = await (supabase as any)
-    .from('fee_statuses')
-    .select(`
-      student_id,
-      status,
-      scholarship_status,
-      scholarship_discount_percentage,
-      scholarship_application_id,
-      updated_at,
-      profiles!inner (
-        id,
-        full_name,
-        phone,
-        board_id,
-        class_id,
-        stream,
-        stream_id,
-        subjects,
-        plan_type,
-        enrollments (
-          class_offerings (
-            id,
-            class:classes (
+  let rawData: any[] = [];
+  try {
+    const { data, error } = await (supabase as any)
+      .from('fee_statuses')
+      .select(`
+        student_id,
+        status,
+        scholarship_status,
+        scholarship_discount_percentage,
+        scholarship_application_id,
+        base_fee,
+        discount_percent,
+        discount_status,
+        payable_amount,
+        updated_at,
+        profiles!inner (
+          id,
+          full_name,
+          phone,
+          board_id,
+          class_id,
+          stream,
+          stream_id,
+          subjects,
+          plan_type,
+          enrollments (
+            class_offerings (
               id,
-              grade,
-              board:boards (
+              class:classes (
+                id,
+                grade,
+                board:boards (
+                  id,
+                  name
+                )
+              ),
+              subject:subjects (
                 id,
                 name
               )
-            ),
-            subject:subjects (
-              id,
-              name
             )
           )
         )
-      )
-    `)
-    .eq('status', 'pending');
+      `)
+      .eq('status', 'pending');
 
-  if (error) throw error;
+    if (error) throw error;
+    rawData = data || [];
+  } catch (complexErr: any) {
+    console.warn('[db:getPendingFeeStatuses] Complex join notice, falling back to simple select:', complexErr?.message);
+    // Simple query fallback
+    const { data: simpleData, error: simpleErr } = await (supabase as any)
+      .from('fee_statuses')
+      .select('*')
+      .eq('status', 'pending');
+
+    if (simpleErr) {
+      console.error('[db:getPendingFeeStatuses] Supabase DB error on fee_statuses:', {
+        message: simpleErr.message,
+        code: simpleErr.code,
+        details: simpleErr.details,
+        hint: simpleErr.hint,
+      });
+      throw simpleErr;
+    }
+
+    if (simpleData && simpleData.length > 0) {
+      const studentIds = simpleData.map((d: any) => d.student_id).filter(Boolean);
+      const { data: profs } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name, phone, board_id, class_id, stream, stream_id, subjects, plan_type')
+        .in('id', studentIds);
+
+      const pMap = new Map<string, any>();
+      (profs || []).forEach((p: any) => pMap.set(p.id, p));
+
+      rawData = simpleData.map((row: any) => ({
+        ...row,
+        profiles: pMap.get(row.student_id) || {
+          id: row.student_id,
+          full_name: 'Student',
+          phone: '',
+          board_id: 'fbise',
+          class_id: null
+        }
+      }));
+    } else {
+      rawData = [];
+    }
+  }
 
   // Concurrent lookups for single source of truth resolution:
   const [allFeeConfigsRes, allClassesRes, allPlans, pricingSettings, rosterRes, auditRes, schAppsRes] = await Promise.all([
@@ -3441,7 +3512,7 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
     }
   });
 
-  return (data || []).map((row: any) => {
+  return (rawData || []).map((row: any) => {
     const studentId = row.student_id;
     const prof = row.profiles;
     const classOfferings = prof?.enrollments?.map((e: any) => e.class_offerings).filter(Boolean) || [];
@@ -3493,7 +3564,7 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
     }
 
     // Fee calculation using the central calculateSubjectEnrollmentFee engine
-    let finalAmount = baseFee;
+    let calculatedClassFee = baseFee;
     if ((planType === 'custom' || isCambridge) && activeSubjects.length > 0) {
       const perSubRate = rawBoard === 'alevel' ? 6500 : rawBoard === 'olevel' ? 5000 : pricingSettings.per_subject_fee;
       const calc = calculateSubjectEnrollmentFee({
@@ -3503,18 +3574,24 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
         threshold: pricingSettings.auto_upgrade_threshold,
         boardId: rawBoard,
       });
-      finalAmount = calc.fee;
+      calculatedClassFee = calc.fee;
       planType = calc.plan_type;
     }
 
-    // Scholarship calculation
+    // Scholarship & fee math using single source of truth
     const schApp = schAppMap.get(studentId);
     const schStatus = schApp?.status || row.scholarship_status || 'none';
-    const schDiscount = Number(schApp?.applied_discount_percentage || row.scholarship_discount_percentage || 0);
-    const originalAmount = finalAmount;
-    if (schStatus === 'verified' && schDiscount > 0) {
-      finalAmount = Math.max(0, Math.round(originalAmount * (1 - schDiscount / 100)));
-    }
+    const schDiscount = Number(schApp?.applied_discount_percentage || row.scholarship_discount_percentage || row.discount_percent || 0);
+    const claimedMarks = Number(schApp?.claimed_marks_percentage ?? schApp?.claimed_marks ?? 0);
+    const claimedDiscount = claimedMarks >= 90 ? 60 : claimedMarks >= 80 ? 40 : 0;
+    const effectiveDiscount = schDiscount > 0 ? schDiscount : (schStatus === 'pending' ? claimedDiscount : 0);
+
+    const baseToUse = Number(row.base_fee) || calculatedClassFee;
+    const feeCalc = computePayableFee({
+      base_fee: baseToUse,
+      discount_percent: effectiveDiscount,
+      discount_status: (schStatus === 'verified' ? 'verified' : schStatus === 'pending' ? 'pending' : 'none') as any,
+    });
 
     // Human-readable class name display
     let className = 'No Class';
@@ -3533,9 +3610,9 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       phone: prof?.phone || '',
       status: row.status,
       scholarship_status: schStatus,
-      scholarship_discount_percentage: schDiscount,
+      scholarship_discount_percentage: effectiveDiscount,
       scholarship_application_id: schApp?.id || row.scholarship_application_id || null,
-      claimed_marks: schApp?.claimed_marks_percentage || null,
+      claimed_marks: claimedMarks || null,
       verified_marks: schApp?.verified_marks_percentage || null,
       proof_document_url: schApp?.proof_document_url || null,
       updated_at: row.updated_at,
@@ -3546,8 +3623,10 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       board_id: rawBoard,
       board_name: boardDef.name,
       submission_note: latestAuditNotes.get(studentId) || null,
-      amount: finalAmount,
-      original_amount: originalAmount
+      amount: feeCalc.payable_amount,
+      original_amount: feeCalc.base_fee,
+      is_provisional: feeCalc.is_provisional,
+      explanation_label: feeCalc.explanation_label,
     };
   });
 }

@@ -261,7 +261,7 @@ export const ProfilePage: React.FC = () => {
                     value={email}
                     disabled
                   />
-                  <p className="text-[10px] text-[#A3A3A3] mt-1">To change login credentials, contact system administrators.</p>
+                  <p className="text-[10px] text-[#A3A3A3] mt-1">To change login Google account, contact system administrators.</p>
                 </div>
 
                 <div className={`flex gap-2 pt-3 border-t border-[#F5F5F5] ${isMobile ? 'flex-col-reverse mt-2' : 'justify-end mt-4'}`}>

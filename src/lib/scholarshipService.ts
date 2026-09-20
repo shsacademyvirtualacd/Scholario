@@ -6,6 +6,7 @@ import {
   ScholarshipRejectionPayload, 
   ScholarshipRevocationPayload 
 } from '../types/scholarship';
+import { computePayableFee } from './feeCalculation';
 
 export const DEFAULT_SCHOLARSHIP_TIERS: ScholarshipTier[] = [
   {
@@ -14,6 +15,7 @@ export const DEFAULT_SCHOLARSHIP_TIERS: ScholarshipTier[] = [
     discount_percentage: 60,
     applicable_boards: 'all',
     is_active: true,
+    tier_name: 'High Distinction Merit (90%+ Marks)',
     description: 'High Distinction Merit Scholarship (90%+ Marks / A* equivalent) — 60% tuition waiver',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -24,7 +26,19 @@ export const DEFAULT_SCHOLARSHIP_TIERS: ScholarshipTier[] = [
     discount_percentage: 40,
     applicable_boards: 'all',
     is_active: true,
+    tier_name: 'Distinction Merit (80%+ Marks)',
     description: 'Distinction Merit Scholarship (80%+ Marks / A equivalent) — 40% tuition waiver',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'tier-improvement-50',
+    min_marks_percentage: 0,
+    discount_percentage: 50,
+    applicable_boards: 'all',
+    is_active: true,
+    tier_name: 'Improvement students - 50%',
+    description: 'Improvement students — 50% tuition scholarship upon result card verification',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
@@ -38,7 +52,21 @@ function getLocalTiers(): ScholarshipTier[] {
     const raw = localStorage.getItem(LOCAL_TIERS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure improvement tier is present if not already added
+        const hasImprovement = parsed.some((t: ScholarshipTier) => 
+          t.id === 'tier-improvement-50' || 
+          (t.tier_name && t.tier_name.toLowerCase().includes('improvement')) ||
+          (t.description && t.description.toLowerCase().includes('improvement'))
+        );
+        if (!hasImprovement) {
+          const improvementTier = DEFAULT_SCHOLARSHIP_TIERS.find(t => t.id === 'tier-improvement-50')!;
+          const updated = [...parsed, improvementTier];
+          saveLocalTiers(updated);
+          return updated;
+        }
+        return parsed;
+      }
     }
   } catch {}
   return DEFAULT_SCHOLARSHIP_TIERS;
@@ -89,10 +117,23 @@ export async function getScholarshipTiers(): Promise<ScholarshipTier[]> {
         discount_percentage: Number(d.discount_percentage),
         applicable_boards: d.applicable_boards === 'all' || !d.applicable_boards ? 'all' : d.applicable_boards,
         is_active: Boolean(d.is_active),
+        tier_name: d.tier_name || d.name || undefined,
         description: d.description,
         created_at: d.created_at,
         updated_at: d.updated_at
       }));
+
+      // Ensure improvement tier exists
+      const hasImprovement = formatted.some((t) => 
+        t.id === 'tier-improvement-50' || 
+        (t.tier_name && t.tier_name.toLowerCase().includes('improvement')) ||
+        (t.description && t.description.toLowerCase().includes('improvement'))
+      );
+      if (!hasImprovement) {
+        const improvementTier = DEFAULT_SCHOLARSHIP_TIERS.find(t => t.id === 'tier-improvement-50')!;
+        formatted.push(improvementTier);
+      }
+
       saveLocalTiers(formatted);
       return formatted;
     }
@@ -109,16 +150,40 @@ export async function getScholarshipTiers(): Promise<ScholarshipTier[]> {
 export function calculateDiscountForMarks(
   marksPercentage: number,
   boardId: string,
-  tiers: ScholarshipTier[] = DEFAULT_SCHOLARSHIP_TIERS
+  tiers: ScholarshipTier[] = DEFAULT_SCHOLARSHIP_TIERS,
+  isImprovementStudent?: boolean
 ): { discountPercentage: number; tier: ScholarshipTier | null; eligible: boolean } {
+  // If explicitly designated as improvement student
+  if (isImprovementStudent) {
+    const improvementTier = tiers.find(
+      (t) => t.is_active && (
+        t.id === 'tier-improvement-50' || 
+        (t.tier_name && t.tier_name.toLowerCase().includes('improvement')) ||
+        (t.description && t.description.toLowerCase().includes('improvement'))
+      )
+    );
+    if (improvementTier) {
+      return {
+        discountPercentage: improvementTier.discount_percentage,
+        tier: improvementTier,
+        eligible: true
+      };
+    }
+    return {
+      discountPercentage: 50,
+      tier: DEFAULT_SCHOLARSHIP_TIERS.find(t => t.id === 'tier-improvement-50') || null,
+      eligible: true
+    };
+  }
+
   if (isNaN(marksPercentage) || marksPercentage <= 0) {
     return { discountPercentage: 0, tier: null, eligible: false };
   }
 
   const normalizedBoard = (boardId || '').toLowerCase();
-  // Filter active tiers and sort by min_marks_percentage descending
+  // Filter active tiers (excluding 0% minimum unless improvement match) and sort by min_marks_percentage descending
   const activeTiers = [...tiers]
-    .filter((t) => t.is_active)
+    .filter((t) => t.is_active && t.min_marks_percentage > 0)
     .sort((a, b) => b.min_marks_percentage - a.min_marks_percentage);
 
   for (const t of activeTiers) {
@@ -146,11 +211,11 @@ export async function saveScholarshipTier(tier: Partial<ScholarshipTier>): Promi
   const isNew = !tier.id || tier.id.startsWith('tier-temp');
   const now = new Date().toISOString();
   const payload = {
-    min_marks_percentage: Number(tier.min_marks_percentage) || 80,
+    min_marks_percentage: Number(tier.min_marks_percentage) || 0,
     discount_percentage: Number(tier.discount_percentage) || 40,
     applicable_boards: tier.applicable_boards || 'all',
     is_active: tier.is_active !== undefined ? tier.is_active : true,
-    description: tier.description || null,
+    description: tier.description || tier.tier_name || null,
     updated_at: now
   };
 
@@ -168,6 +233,7 @@ export async function saveScholarshipTier(tier: Partial<ScholarshipTier>): Promi
           discount_percentage: Number(data.discount_percentage),
           applicable_boards: data.applicable_boards,
           is_active: data.is_active,
+          tier_name: tier.tier_name || data.description,
           description: data.description,
           created_at: data.created_at,
           updated_at: data.updated_at
@@ -190,6 +256,7 @@ export async function saveScholarshipTier(tier: Partial<ScholarshipTier>): Promi
           discount_percentage: Number(data.discount_percentage),
           applicable_boards: data.applicable_boards,
           is_active: data.is_active,
+          tier_name: tier.tier_name || data.description,
           description: data.description,
           created_at: data.created_at,
           updated_at: data.updated_at
@@ -207,11 +274,12 @@ export async function saveScholarshipTier(tier: Partial<ScholarshipTier>): Promi
   const generatedId = tier.id || `tier_${Date.now()}`;
   const localTier: ScholarshipTier = {
     id: generatedId,
-    min_marks_percentage: Number(tier.min_marks_percentage) || 80,
+    min_marks_percentage: Number(tier.min_marks_percentage) || 0,
     discount_percentage: Number(tier.discount_percentage) || 40,
     applicable_boards: tier.applicable_boards || 'all',
     is_active: tier.is_active !== undefined ? tier.is_active : true,
-    description: tier.description || null,
+    tier_name: tier.tier_name || tier.description || undefined,
+    description: tier.description || tier.tier_name || null,
     created_at: tier.created_at || now,
     updated_at: now
   };
@@ -292,8 +360,19 @@ export async function submitScholarshipApplication(payload: {
   claimed_marks_percentage: number;
   proof_document_url: string;
   academic_term?: string;
+  admin_notes?: string;
+  matched_tier_id?: string;
+  base_fee?: number;
 }): Promise<ScholarshipApplication> {
   const term = payload.academic_term || 'Current Term';
+  const marks = Number(payload.claimed_marks_percentage) || 0;
+  const recommendedDiscount = marks >= 90 ? 60 : marks >= 80 ? 40 : 0;
+  const baseFee = Math.max(0, Math.round(Number(payload.base_fee) || 3000));
+  const feeCalc = computePayableFee({
+    base_fee: baseFee,
+    discount_percent: recommendedDiscount,
+    discount_status: 'pending'
+  });
 
   // Check for existing pending or verified applications for this student
   try {
@@ -315,24 +394,30 @@ export async function submitScholarshipApplication(payload: {
   }
 
   const now = new Date().toISOString();
-  const insertData = {
+  const insertData: Record<string, any> = {
     student_id: payload.student_id,
     applicant_name: payload.applicant_name,
     applicant_email: payload.applicant_email,
     board: payload.board,
     class_grade: payload.class_grade,
-    claimed_marks_percentage: Number(payload.claimed_marks_percentage),
+    class: payload.class_grade,
+    claimed_marks_percentage: marks,
+    claimed_marks: marks,
+    matched_tier_id: payload.matched_tier_id || null,
     verified_marks_percentage: null,
     proof_document_url: payload.proof_document_url,
+    proof_url: payload.proof_document_url,
     status: 'pending' as const,
     applied_discount_percentage: 0,
     academic_term: term,
+    admin_notes: payload.admin_notes || null,
     created_at: now,
     updated_at: now
   };
 
   let newRecord: ScholarshipApplication | null = null;
 
+  // Try direct Supabase insert first
   try {
     const { data, error } = await (supabase as any)
       .from('scholarship_applications')
@@ -342,16 +427,76 @@ export async function submitScholarshipApplication(payload: {
 
     if (error) {
       console.warn('[submitScholarshipApplication] Supabase insert warning:', error.message);
+      // If error mentions unknown column, retry with clean standard columns
+      const cleanData = {
+        student_id: payload.student_id,
+        applicant_name: payload.applicant_name,
+        applicant_email: payload.applicant_email,
+        board: payload.board,
+        class_grade: payload.class_grade,
+        claimed_marks_percentage: marks,
+        proof_document_url: payload.proof_document_url,
+        status: 'pending',
+        applied_discount_percentage: 0,
+        academic_term: term,
+        admin_notes: payload.admin_notes || null,
+        created_at: now,
+        updated_at: now
+      };
+      const { data: cleanRes, error: cleanErr } = await (supabase as any)
+        .from('scholarship_applications')
+        .insert(cleanData)
+        .select('*')
+        .single();
+      if (!cleanErr && cleanRes) {
+        newRecord = {
+          ...cleanRes,
+          class_grade: cleanRes.class_grade || cleanRes.class,
+          claimed_marks_percentage: Number(cleanRes.claimed_marks_percentage ?? cleanRes.claimed_marks),
+          verified_marks_percentage: cleanRes.verified_marks_percentage !== null ? Number(cleanRes.verified_marks_percentage) : null,
+          applied_discount_percentage: Number(cleanRes.applied_discount_percentage) || 0,
+          proof_document_url: cleanRes.proof_document_url || cleanRes.proof_url
+        };
+      }
     } else if (data) {
       newRecord = {
         ...data,
-        claimed_marks_percentage: Number(data.claimed_marks_percentage),
+        class_grade: data.class_grade || data.class,
+        claimed_marks_percentage: Number(data.claimed_marks_percentage ?? data.claimed_marks),
         verified_marks_percentage: data.verified_marks_percentage !== null ? Number(data.verified_marks_percentage) : null,
-        applied_discount_percentage: Number(data.applied_discount_percentage) || 0
+        applied_discount_percentage: Number(data.applied_discount_percentage) || 0,
+        proof_document_url: data.proof_document_url || data.proof_url
       };
     }
   } catch (err) {
-    console.warn('[submitScholarshipApplication] DB fallback:', err);
+    console.warn('[submitScholarshipApplication] DB direct insert error:', err);
+  }
+
+  // If Supabase direct insert didn't succeed (e.g. client RLS restrictions), invoke server route
+  if (!newRecord) {
+    try {
+      const srvRes = await fetch('/api/scholarships/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...insertData,
+          base_fee: baseFee
+        })
+      });
+      if (srvRes.ok) {
+        const srvData: any = await srvRes.json();
+        if (srvData && srvData.application) {
+          newRecord = {
+            ...srvData.application,
+            claimed_marks_percentage: Number(srvData.application.claimed_marks_percentage ?? srvData.application.claimed_marks ?? marks),
+            verified_marks_percentage: null,
+            applied_discount_percentage: 0
+          };
+        }
+      }
+    } catch (srvErr) {
+      console.warn('[submitScholarshipApplication] Server route apply fallback error:', srvErr);
+    }
   }
 
   if (!newRecord) {
@@ -365,15 +510,28 @@ export async function submitScholarshipApplication(payload: {
       rejection_reason: null,
       revocation_reason: null,
       admin_notes: null
-    };
+    } as ScholarshipApplication;
   }
 
   // Update local cache
   const localList = getLocalApps().filter((a) => a.id !== newRecord!.id);
   saveLocalApps([newRecord, ...localList]);
 
-  // Update fee_statuses table to reflect scholarship_status = 'pending'
+  // Update fee_statuses table with single source of truth fee math
   try {
+    const feeStatusPayload = {
+      student_id: payload.student_id,
+      status: 'unpaid',
+      scholarship_status: 'pending',
+      scholarship_discount_percentage: recommendedDiscount,
+      scholarship_application_id: newRecord.id,
+      base_fee: feeCalc.base_fee,
+      discount_percent: feeCalc.discount_percent,
+      discount_status: 'pending',
+      payable_amount: feeCalc.payable_amount,
+      updated_at: now
+    };
+
     const { data: existingFee } = await (supabase as any)
       .from('fee_statuses')
       .select('id, student_id')
@@ -383,23 +541,12 @@ export async function submitScholarshipApplication(payload: {
     if (existingFee) {
       await (supabase as any)
         .from('fee_statuses')
-        .update({
-          scholarship_status: 'pending',
-          scholarship_application_id: newRecord.id,
-          updated_at: now
-        })
+        .update(feeStatusPayload)
         .eq('student_id', payload.student_id);
     } else {
       await (supabase as any)
         .from('fee_statuses')
-        .insert({
-          student_id: payload.student_id,
-          status: 'unpaid',
-          scholarship_status: 'pending',
-          scholarship_discount_percentage: 0,
-          scholarship_application_id: newRecord.id,
-          updated_at: now
-        });
+        .insert(feeStatusPayload);
     }
   } catch (feeErr) {
     console.warn('[submitScholarshipApplication] fee_statuses update warning:', feeErr);
@@ -409,7 +556,9 @@ export async function submitScholarshipApplication(payload: {
 }
 
 /**
- * Fetch all scholarship applications for admin queue
+ * Fetch all scholarship applications for admin queue.
+ * Throws real Supabase errors when queries fail so the admin UI can show an error
+ * state with a Retry button rather than displaying a false 0.
  */
 export async function getScholarshipApplications(
   statusFilter?: 'all' | 'pending' | 'verified' | 'rejected' | 'revoked'
@@ -440,46 +589,88 @@ export async function getScholarshipApplications(
     const { data, error } = await query;
 
     if (error) {
-      console.warn('[getScholarshipApplications] Complex query error, trying simple select:', error.message);
-      // Fallback simple query
+      console.warn('[getScholarshipApplications] Complex join notice, trying standalone select:', error.message);
+      // Fallback simple query on scholarship_applications table
       let simpleQuery = (supabase as any)
         .from('scholarship_applications')
         .select('*')
         .order('created_at', { ascending: false });
+
       if (statusFilter && statusFilter !== 'all') {
         simpleQuery = simpleQuery.eq('status', statusFilter);
       }
+
       const { data: simpleData, error: simpleErr } = await simpleQuery;
-      if (!simpleErr && simpleData) {
-        return simpleData.map((d: any) => ({
-          ...d,
-          claimed_marks_percentage: Number(d.claimed_marks_percentage),
-          verified_marks_percentage: d.verified_marks_percentage !== null ? Number(d.verified_marks_percentage) : null,
-          applied_discount_percentage: Number(d.applied_discount_percentage) || 0
-        }));
+
+      if (simpleErr) {
+        console.error('[getScholarshipApplications] Supabase Database Error:', {
+          message: simpleErr.message,
+          code: simpleErr.code,
+          details: simpleErr.details,
+          hint: simpleErr.hint,
+        });
+        throw simpleErr;
       }
-      throw error;
+
+      if (simpleData) {
+        const studentIds = simpleData.map((d: any) => d.student_id).filter(Boolean);
+        const profileMap = new Map<string, any>();
+        if (studentIds.length > 0) {
+          try {
+            const { data: profData } = await (supabase as any)
+              .from('profiles')
+              .select('id, full_name, phone, board_id, class_id')
+              .in('id', studentIds);
+            (profData || []).forEach((p: any) => profileMap.set(p.id, p));
+          } catch {}
+        }
+
+        const mapped = simpleData.map((d: any) => {
+          const prof = profileMap.get(d.student_id);
+          return {
+            ...d,
+            applicant_name: d.applicant_name || prof?.full_name || 'Student',
+            class_grade: d.class_grade || d.class || '',
+            claimed_marks_percentage: Number(d.claimed_marks_percentage ?? d.claimed_marks ?? 0),
+            verified_marks_percentage: d.verified_marks_percentage !== null && d.verified_marks_percentage !== undefined ? Number(d.verified_marks_percentage) : null,
+            applied_discount_percentage: Number(d.applied_discount_percentage) || 0,
+            proof_document_url: d.proof_document_url || d.proof_url || '',
+            student_phone: prof?.phone || null,
+          };
+        });
+
+        saveLocalApps(mapped);
+        return mapped;
+      }
     }
 
     if (data) {
-      return data.map((d: any) => ({
+      const mapped = data.map((d: any) => ({
         ...d,
-        claimed_marks_percentage: Number(d.claimed_marks_percentage),
-        verified_marks_percentage: d.verified_marks_percentage !== null ? Number(d.verified_marks_percentage) : null,
+        applicant_name: d.applicant_name || d.student?.full_name || 'Student',
+        class_grade: d.class_grade || d.class || '',
+        claimed_marks_percentage: Number(d.claimed_marks_percentage ?? d.claimed_marks ?? 0),
+        verified_marks_percentage: d.verified_marks_percentage !== null && d.verified_marks_percentage !== undefined ? Number(d.verified_marks_percentage) : null,
         applied_discount_percentage: Number(d.applied_discount_percentage) || 0,
+        proof_document_url: d.proof_document_url || d.proof_url || '',
         student_phone: d.student?.phone || null,
         reviewer_name: d.reviewer?.full_name || null
       }));
+      saveLocalApps(mapped);
+      return mapped;
     }
-  } catch (err) {
-    console.warn('[getScholarshipApplications] Supabase fallback to local apps:', err);
+  } catch (err: any) {
+    console.error('[getScholarshipApplications] Database Fetch Exception:', {
+      message: err?.message,
+      code: err?.code,
+      details: err?.details,
+      hint: err?.hint,
+    });
+    // Rethrow error so AdminFeesPage knows the fetch failed and presents the Retry button
+    throw err;
   }
 
-  const local = getLocalApps();
-  if (statusFilter && statusFilter !== 'all') {
-    return local.filter((a) => a.status === statusFilter);
-  }
-  return local;
+  return [];
 }
 
 /**
@@ -567,23 +758,36 @@ export async function approveScholarshipApplication(
     })
     .eq('id', payload.application_id);
 
-  // 3. Update fee_statuses row for the student
+  // 3. Update fee_statuses row for the student using single source of truth
   if (studentId) {
     const { data: existingFee } = await (supabase as any)
       .from('fee_statuses')
-      .select('id, status')
+      .select('*')
       .eq('student_id', studentId)
       .maybeSingle();
+
+    const baseFee = Number(existingFee?.base_fee) || 3000;
+    const feeCalc = computePayableFee({
+      base_fee: baseFee,
+      discount_percent: discountPct,
+      discount_status: 'verified'
+    });
+
+    const feeUpdateData = {
+      scholarship_status: 'verified',
+      scholarship_discount_percentage: discountPct,
+      scholarship_application_id: payload.application_id,
+      base_fee: feeCalc.base_fee,
+      discount_percent: feeCalc.discount_percent,
+      discount_status: 'verified',
+      payable_amount: feeCalc.payable_amount,
+      updated_at: now
+    };
 
     if (existingFee) {
       await (supabase as any)
         .from('fee_statuses')
-        .update({
-          scholarship_status: 'verified',
-          scholarship_discount_percentage: discountPct,
-          scholarship_application_id: payload.application_id,
-          updated_at: now
-        })
+        .update(feeUpdateData)
         .eq('student_id', studentId);
     } else {
       await (supabase as any)
@@ -591,10 +795,7 @@ export async function approveScholarshipApplication(
         .insert({
           student_id: studentId,
           status: 'unpaid',
-          scholarship_status: 'verified',
-          scholarship_discount_percentage: discountPct,
-          scholarship_application_id: payload.application_id,
-          updated_at: now
+          ...feeUpdateData
         });
     }
 
@@ -605,7 +806,7 @@ export async function approveScholarshipApplication(
         status_from: 'scholarship_review',
         status_to: 'scholarship_verified',
         changed_by: payload.reviewer_id || null,
-        notes: `Merit Scholarship Approved: ${discountPct}% tuition discount applied based on verified marks (${verifiedMarks}%). ${payload.notes ? 'Note: ' + payload.notes : ''}`,
+        notes: `Merit Scholarship Approved: ${discountPct}% tuition discount applied based on verified marks (${verifiedMarks}%). Payable: PKR ${feeCalc.payable_amount.toLocaleString()} (original: PKR ${feeCalc.base_fee.toLocaleString()}). ${payload.notes ? 'Note: ' + payload.notes : ''}`,
         changed_at: now
       });
     } catch (auditErr) {
@@ -618,7 +819,7 @@ export async function approveScholarshipApplication(
         recipient_id: studentId,
         type: 'announcement',
         title: '🎉 Merit Scholarship Approved!',
-        message: `Congratulations! Your scholarship application has been verified. A ${discountPct}% tuition discount has been applied to your account.`,
+        message: `Congratulations! Your scholarship application has been verified. A ${discountPct}% tuition discount has been applied to your account. Your payable tuition fee is PKR ${feeCalc.payable_amount.toLocaleString()}.`,
         severity: 'crucial',
         is_read: false,
         created_at: now
@@ -687,13 +888,30 @@ export async function rejectScholarshipApplication(
     })
     .eq('id', payload.application_id);
 
-  // 2. Update fee_statuses
+  // 2. Update fee_statuses using single source of truth
   if (studentId) {
+    const { data: existingFee } = await (supabase as any)
+      .from('fee_statuses')
+      .select('*')
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    const baseFee = Number(existingFee?.base_fee) || 3000;
+    const feeCalc = computePayableFee({
+      base_fee: baseFee,
+      discount_percent: 0,
+      discount_status: 'rejected'
+    });
+
     await (supabase as any)
       .from('fee_statuses')
       .update({
         scholarship_status: 'rejected',
         scholarship_discount_percentage: 0,
+        base_fee: feeCalc.base_fee,
+        discount_percent: 0,
+        discount_status: 'rejected',
+        payable_amount: feeCalc.payable_amount,
         updated_at: now
       })
       .eq('student_id', studentId);
@@ -705,7 +923,7 @@ export async function rejectScholarshipApplication(
         status_from: 'scholarship_review',
         status_to: 'scholarship_rejected',
         changed_by: payload.reviewer_id || null,
-        notes: `Merit Scholarship Rejected: ${payload.rejection_reason}`,
+        notes: `Merit Scholarship Rejected: ${payload.rejection_reason}. Standard tuition payable: PKR ${feeCalc.payable_amount.toLocaleString()}.`,
         changed_at: now
       });
     } catch (auditErr) {
@@ -718,7 +936,7 @@ export async function rejectScholarshipApplication(
         recipient_id: studentId,
         type: 'announcement',
         title: 'Scholarship Application Update',
-        message: `Your scholarship application was reviewed and could not be approved at this time. Reason: ${payload.rejection_reason}. Your standard tuition fee remains payable.`,
+        message: `Your scholarship application was reviewed and could not be approved at this time. Reason: ${payload.rejection_reason}. Your standard tuition fee (PKR ${feeCalc.payable_amount.toLocaleString()}) remains payable.`,
         severity: 'normal',
         is_read: false,
         created_at: now
@@ -786,13 +1004,30 @@ export async function revokeScholarship(
     })
     .eq('id', payload.application_id);
 
-  // 2. Update fee_statuses: reset discount to 0
+  // 2. Update fee_statuses: reset discount to 0 using single source of truth
   if (studentId) {
+    const { data: existingFee } = await (supabase as any)
+      .from('fee_statuses')
+      .select('*')
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    const baseFee = Number(existingFee?.base_fee) || 3000;
+    const feeCalc = computePayableFee({
+      base_fee: baseFee,
+      discount_percent: 0,
+      discount_status: 'revoked'
+    });
+
     await (supabase as any)
       .from('fee_statuses')
       .update({
         scholarship_status: 'revoked',
         scholarship_discount_percentage: 0,
+        base_fee: feeCalc.base_fee,
+        discount_percent: 0,
+        discount_status: 'revoked',
+        payable_amount: feeCalc.payable_amount,
         updated_at: now
       })
       .eq('student_id', studentId);
@@ -804,7 +1039,7 @@ export async function revokeScholarship(
         status_from: 'scholarship_verified',
         status_to: 'scholarship_revoked',
         changed_by: payload.reviewer_id || null,
-        notes: `Merit Scholarship Revoked: ${payload.revocation_reason}. Tuition fee reverted to standard base rate.`,
+        notes: `Merit Scholarship Revoked: ${payload.revocation_reason}. Tuition fee reverted to standard base rate (PKR ${feeCalc.payable_amount.toLocaleString()}).`,
         changed_at: now
       });
     } catch (auditErr) {

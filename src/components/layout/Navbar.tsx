@@ -49,24 +49,19 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Balanced 3-column grid: empty | centered logo | right actions */}
-        <div className="grid grid-cols-3 items-center h-20">
+        <div className="flex items-center justify-between h-20">
 
-          {/* Left Column — empty spacer */}
-          <div />
+          {/* Left Column — Logo + Brand Name */}
+          <Link
+            to="/"
+            className="flex items-center gap-0 shrink-0"
+            style={{ outline: 'none', border: 'none', boxShadow: 'none', WebkitTapHighlightColor: 'transparent' }}
+          >
+            <Logo size="md" variant="full" className="sm:hidden" />
+            <Logo size="lg" variant="full" className="hidden sm:flex" />
+          </Link>
 
-          {/* Center Column — Logo */}
-          <div className="flex justify-center">
-            <Link
-              to="/"
-              className="flex items-center gap-0"
-              style={{ outline: 'none', border: 'none', boxShadow: 'none', WebkitTapHighlightColor: 'transparent' }}
-            >
-              <Logo size="lg" variant="full" />
-            </Link>
-          </div>
-
-          {/* Right Column — Theme Toggle + Single Unified CTA */}
+          {/* Right Column — Desktop Theme Toggle + Single Unified CTA */}
           <div className="hidden md:flex justify-end items-center gap-4">
             <ThemeToggleSwitch variant="compact" />
             
@@ -99,8 +94,8 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) => {
             </div>
           </div>
 
-          {/* Mobile Toggle */}
-          <div className="flex md:hidden justify-end items-center gap-2">
+          {/* Right Column — Mobile Controls (Theme Toggle + Menu) */}
+          <div className="flex md:hidden items-center gap-2">
             <ThemeToggleSwitch variant="compact" />
             <button
               id="mobile-menu-toggle"

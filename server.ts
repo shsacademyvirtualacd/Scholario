@@ -3427,6 +3427,145 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     return res.status(404).json({ error: 'Scholarship document not found' });
   });
 
+  // ── Fee and Scholarship Calculation & Management ───────────
+  app.post('/api/fees/calculate', express.json(), async (req, res) => {
+    try {
+      const { base_fee, discount_percent, discount_status } = req.body;
+      const base = Math.max(0, Math.round(Number(base_fee) || 0));
+      const pct = Math.max(0, Math.min(100, Math.round(Number(discount_percent) || 0)));
+      const status = (discount_status || 'none').toLowerCase();
+
+      let payable_amount = base;
+      let discount_amount = 0;
+      let is_provisional = false;
+      let explanation_label = '';
+
+      if (status === 'verified' && pct > 0) {
+        discount_amount = Math.round(base * (pct / 100));
+        payable_amount = Math.max(0, base - discount_amount);
+        explanation_label = `Verified ${pct}% merit scholarship applied (original: PKR ${base.toLocaleString()})`;
+      } else if (status === 'pending' && pct > 0) {
+        discount_amount = Math.round(base * (pct / 100));
+        payable_amount = Math.max(0, base - discount_amount);
+        is_provisional = true;
+        explanation_label = `Pending verification of ${pct}% scholarship (original: PKR ${base.toLocaleString()})`;
+      } else if (status === 'rejected') {
+        payable_amount = base;
+        explanation_label = `Scholarship application rejected. Standard tuition fee payable: PKR ${base.toLocaleString()}`;
+      } else {
+        payable_amount = base;
+        explanation_label = `Standard tuition fee: PKR ${base.toLocaleString()}`;
+      }
+
+      return res.json({
+        base_fee: base,
+        discount_percent: pct,
+        discount_status: status,
+        discount_amount,
+        payable_amount,
+        is_provisional,
+        formatted_base_fee: `PKR ${base.toLocaleString()}`,
+        formatted_payable_amount: `PKR ${payable_amount.toLocaleString()}`,
+        explanation_label,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Fee calculation error' });
+    }
+  });
+
+  app.post('/api/scholarships/apply', express.json(), async (req, res) => {
+    try {
+      const {
+        student_id,
+        applicant_name,
+        applicant_email,
+        board,
+        class_grade,
+        claimed_marks_percentage,
+        proof_document_url,
+        matched_tier_id,
+        academic_term,
+        admin_notes,
+        base_fee
+      } = req.body;
+
+      if (!student_id) {
+        return res.status(400).json({ error: 'student_id is required' });
+      }
+
+      const marks = Number(claimed_marks_percentage) || 0;
+      const recommendedDiscount = marks >= 90 ? 60 : marks >= 80 ? 40 : 0;
+      const term = academic_term || 'Current Term';
+      const now = new Date().toISOString();
+      const baseFee = Math.max(0, Math.round(Number(base_fee) || 3000));
+      const payableAmount = Math.max(0, Math.round(baseFee * (1 - recommendedDiscount / 100)));
+
+      // Insert or update scholarship_applications using supabaseServer
+      const insertPayload: Record<string, any> = {
+        student_id,
+        applicant_name: applicant_name || 'Student',
+        applicant_email: applicant_email || '',
+        board: board || 'Federal Board',
+        class_grade: class_grade || '',
+        class: class_grade || '',
+        claimed_marks_percentage: marks,
+        claimed_marks: marks,
+        matched_tier_id: matched_tier_id || null,
+        proof_document_url: proof_document_url || '',
+        proof_url: proof_document_url || '',
+        status: 'pending',
+        applied_discount_percentage: 0,
+        academic_term: term,
+        admin_notes: admin_notes || null,
+        created_at: now,
+        updated_at: now
+      };
+
+      const { data: appData, error: appErr } = await (supabaseServer as any)
+        .from('scholarship_applications')
+        .insert(insertPayload)
+        .select('*')
+        .single();
+
+      if (appErr) {
+        console.warn('[server /api/scholarships/apply insert warning]:', appErr.message);
+      }
+
+      // Upsert fee_statuses row with provisional calculation
+      const appId = appData?.id || null;
+      await (supabaseServer as any)
+        .from('fee_statuses')
+        .upsert({
+          student_id,
+          status: 'unpaid',
+          scholarship_status: 'pending',
+          scholarship_discount_percentage: recommendedDiscount,
+          scholarship_application_id: appId,
+          base_fee: baseFee,
+          discount_percent: recommendedDiscount,
+          discount_status: 'pending',
+          payable_amount: payableAmount,
+          updated_at: now
+        }, { onConflict: 'student_id' });
+
+      return res.json({
+        success: true,
+        application: appData || insertPayload,
+        calculation: {
+          base_fee: baseFee,
+          discount_percent: recommendedDiscount,
+          discount_status: 'pending',
+          payable_amount: payableAmount,
+          is_provisional: true,
+          explanation_label: `Pending verification of ${recommendedDiscount}% scholarship (original: PKR ${baseFee.toLocaleString()})`
+        }
+      });
+    } catch (err: any) {
+      console.error('[server /api/scholarships/apply error]:', err);
+      return res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
   app.post('/api/scholarships/applications/:id/approve', express.json(), async (req, res) => {
     try {
       const { id } = req.params;
@@ -3443,8 +3582,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(404).json({ error: 'Application not found' });
       }
 
-      const verifiedMarks = Number(verified_marks_percentage) || Number(appData.claimed_marks_percentage);
-      const discountPct = Number(discount_percentage) || 40;
+      const verifiedMarks = Number(verified_marks_percentage) || Number(appData.claimed_marks_percentage || appData.claimed_marks);
+      const discountPct = Number(discount_percentage) || (verifiedMarks >= 90 ? 60 : 40);
       const studentId = appData.student_id;
 
       await (supabaseServer as any)
@@ -3461,12 +3600,27 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         .eq('id', id);
 
       if (studentId) {
+        // Retrieve existing fee status to get base_fee
+        const { data: existingFee } = await (supabaseServer as any)
+          .from('fee_statuses')
+          .select('*')
+          .eq('student_id', studentId)
+          .maybeSingle();
+
+        const baseFee = Number(existingFee?.base_fee) || 3000;
+        const discountAmt = Math.round(baseFee * (discountPct / 100));
+        const payableAmount = Math.max(0, baseFee - discountAmt);
+
         await (supabaseServer as any)
           .from('fee_statuses')
           .update({
             scholarship_status: 'verified',
             scholarship_discount_percentage: discountPct,
             scholarship_application_id: id,
+            base_fee: baseFee,
+            discount_percent: discountPct,
+            discount_status: 'verified',
+            payable_amount: payableAmount,
             updated_at: now,
           })
           .eq('student_id', studentId);
@@ -3477,7 +3631,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
             status_from: 'scholarship_review',
             status_to: 'scholarship_verified',
             changed_by: reviewer_id || null,
-            notes: `Merit Scholarship Approved: ${discountPct}% tuition discount applied based on verified marks (${verifiedMarks}%). ${notes ? 'Note: ' + notes : ''}`,
+            notes: `Merit Scholarship Approved: ${discountPct}% tuition discount applied based on verified marks (${verifiedMarks}%). Payable: PKR ${payableAmount.toLocaleString()} (was PKR ${baseFee.toLocaleString()}). ${notes ? 'Note: ' + notes : ''}`,
             changed_at: now,
           });
         } catch {}
@@ -3487,7 +3641,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
             recipient_id: studentId,
             type: 'announcement',
             title: '🎉 Merit Scholarship Approved!',
-            message: `Congratulations! Your scholarship application has been verified. A ${discountPct}% tuition discount has been applied to your account.`,
+            message: `Congratulations! Your scholarship application has been verified. A ${discountPct}% tuition discount has been applied to your account. Your payable tuition fee is PKR ${payableAmount.toLocaleString()}.`,
             severity: 'crucial',
             is_read: false,
             created_at: now,
@@ -3495,7 +3649,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         } catch {}
       }
 
-      return res.json({ success: true });
+      return res.json({ success: true, discount_percentage: discountPct });
     } catch (err: any) {
       console.error('[server /api/scholarships/applications/:id/approve error]:', err);
       return res.status(500).json({ error: err.message || 'Internal server error' });
@@ -3519,12 +3673,13 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       }
 
       const studentId = appData.student_id;
+      const reason = rejection_reason || 'Marksheet document could not be verified or does not meet scholarship criteria.';
 
       await (supabaseServer as any)
         .from('scholarship_applications')
         .update({
           status: 'rejected',
-          rejection_reason: rejection_reason || 'Criteria not met',
+          rejection_reason: reason,
           applied_discount_percentage: 0,
           reviewed_by: reviewer_id || null,
           reviewed_at: now,
@@ -3533,11 +3688,23 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         .eq('id', id);
 
       if (studentId) {
+        const { data: existingFee } = await (supabaseServer as any)
+          .from('fee_statuses')
+          .select('*')
+          .eq('student_id', studentId)
+          .maybeSingle();
+
+        const baseFee = Number(existingFee?.base_fee) || 3000;
+
         await (supabaseServer as any)
           .from('fee_statuses')
           .update({
             scholarship_status: 'rejected',
             scholarship_discount_percentage: 0,
+            base_fee: baseFee,
+            discount_percent: 0,
+            discount_status: 'rejected',
+            payable_amount: baseFee,
             updated_at: now,
           })
           .eq('student_id', studentId);
@@ -3548,7 +3715,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
             status_from: 'scholarship_review',
             status_to: 'scholarship_rejected',
             changed_by: reviewer_id || null,
-            notes: `Merit Scholarship Rejected: ${rejection_reason}`,
+            notes: `Merit Scholarship Rejected: ${reason}. Full tuition of PKR ${baseFee.toLocaleString()} is payable.`,
             changed_at: now,
           });
         } catch {}
@@ -3558,7 +3725,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
             recipient_id: studentId,
             type: 'announcement',
             title: 'Scholarship Application Update',
-            message: `Your scholarship application was reviewed and could not be approved at this time. Reason: ${rejection_reason}. Your standard tuition fee remains payable.`,
+            message: `Your scholarship application was reviewed and could not be approved at this time. Reason: ${reason}. Your standard tuition fee (PKR ${baseFee.toLocaleString()}) remains payable.`,
             severity: 'normal',
             is_read: false,
             created_at: now,
@@ -3590,12 +3757,13 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       }
 
       const studentId = appData.student_id;
+      const reason = revocation_reason || 'Revoked by administrator';
 
       await (supabaseServer as any)
         .from('scholarship_applications')
         .update({
           status: 'revoked',
-          revocation_reason: revocation_reason || 'Revoked by administrator',
+          revocation_reason: reason,
           applied_discount_percentage: 0,
           reviewed_by: reviewer_id || null,
           reviewed_at: now,
@@ -3604,11 +3772,23 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         .eq('id', id);
 
       if (studentId) {
+        const { data: existingFee } = await (supabaseServer as any)
+          .from('fee_statuses')
+          .select('*')
+          .eq('student_id', studentId)
+          .maybeSingle();
+
+        const baseFee = Number(existingFee?.base_fee) || 3000;
+
         await (supabaseServer as any)
           .from('fee_statuses')
           .update({
             scholarship_status: 'revoked',
             scholarship_discount_percentage: 0,
+            base_fee: baseFee,
+            discount_percent: 0,
+            discount_status: 'revoked',
+            payable_amount: baseFee,
             updated_at: now,
           })
           .eq('student_id', studentId);
@@ -3619,20 +3799,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
             status_from: 'scholarship_verified',
             status_to: 'scholarship_revoked',
             changed_by: reviewer_id || null,
-            notes: `Merit Scholarship Revoked: ${revocation_reason}. Tuition fee reverted to standard base rate.`,
+            notes: `Merit Scholarship Revoked: ${reason}. Full fee of PKR ${baseFee.toLocaleString()} restored.`,
             changed_at: now,
-          });
-        } catch {}
-
-        try {
-          await (supabaseServer as any).from('notifications').insert({
-            recipient_id: studentId,
-            type: 'announcement',
-            title: 'Scholarship Status Update: Revoked',
-            message: `Your scholarship discount has been revoked: ${revocation_reason}. Tuition fee dues have been restored to standard pricing.`,
-            severity: 'crucial',
-            is_read: false,
-            created_at: now,
           });
         } catch {}
       }
