@@ -22,7 +22,7 @@ const LandingShell: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white page-transition">
+    <div className="min-h-screen bg-white">
       <JsonLdSchema includeCourses includeFaq />
       <Navbar onNavigate={handleNavigate} />
       <HomePage onNavigate={handleNavigate} />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -24,9 +25,26 @@ export const AdmissionsAnnouncementModal: React.FC = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(!session);
+  const [mounted, setMounted] = useState(false);
   const [scholarshipTiers, setScholarshipTiers] = useState<ScholarshipTier[]>([]);
   const [fscFee, setFscFee] = useState<number>(4000);
   const [matricFee, setMatricFee] = useState<number>(3000);
+
+  // Set mounted client-side for React portal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll when modal is active on mobile/desktop
+  useEffect(() => {
+    if (isOpen && !session && mounted) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen, session, mounted]);
 
   // 1. Fetch live scholarship tiers for dynamic discounts
   useEffect(() => {
@@ -95,8 +113,8 @@ export const AdmissionsAnnouncementModal: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleClose]);
 
-  // Do not show modal if closed or if user is logged in (student, teacher, or admin)
-  if (!isOpen || session) return null;
+  // Do not show modal if closed, logged in, or not yet mounted
+  if (!isOpen || session || !mounted) return null;
 
   // Resolve scholarship percentages from tiers or fallbacks
   const tier90 = scholarshipTiers.find((t) => t.is_active && t.min_marks_percentage >= 90);
@@ -118,9 +136,18 @@ export const AdmissionsAnnouncementModal: React.FC = () => {
     window.open('https://chat.whatsapp.com/L3EYfjDXFNOGTzZjAjRuvg', '_blank', 'noopener,noreferrer');
   };
 
-  return (
+  const modalElement = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-2.5 sm:p-5 bg-black/80 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="admissions-announcement-title"
@@ -129,13 +156,13 @@ export const AdmissionsAnnouncementModal: React.FC = () => {
       <div className="absolute inset-0" onClick={handleClose} />
 
       {/* Main Dialog Container */}
-      <div className="relative w-full max-w-2xl bg-white dark:bg-[#0B1120] rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] animate-in zoom-in-95 duration-200 z-10">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-[#0B1120] rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[88vh] animate-in zoom-in-95 duration-200 z-10 my-auto">
         
         {/* ─── 1. Header Bar (Navy #082B5C, Gold Underline #E6A900) ─── */}
-        <div className="bg-[#082B5C] border-b-2 border-[#E6A900] px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-between text-white shrink-0 shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-[#E6A900]/20 flex items-center justify-center text-[#E6A900] shrink-0 border border-[#E6A900]/40">
-              <Megaphone size={14} className="animate-pulse" />
+        <div className="bg-[#082B5C] border-b-2 border-[#E6A900] px-3.5 py-2.5 sm:px-6 sm:py-3.5 flex items-center justify-between text-white shrink-0 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#E6A900]/20 flex items-center justify-center text-[#E6A900] shrink-0 border border-[#E6A900]/40">
+              <Megaphone size={13} className="animate-pulse" />
             </div>
             <h1
               id="admissions-announcement-title"
@@ -146,7 +173,7 @@ export const AdmissionsAnnouncementModal: React.FC = () => {
           </div>
           <button
             onClick={handleClose}
-            className="p-1.5 sm:p-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white transition-all cursor-pointer"
+            className="p-1 sm:p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white transition-all cursor-pointer"
             aria-label="Close Announcement"
             title="Close"
           >
@@ -155,7 +182,7 @@ export const AdmissionsAnnouncementModal: React.FC = () => {
         </div>
 
         {/* ─── Scrollable Modal Body ─── */}
-        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 text-slate-800 dark:text-slate-200 select-text">
+        <div className="overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4 text-slate-800 dark:text-slate-200 select-text overscroll-contain">
           
           {/* ─── 2. Hero Card (Dark Midnight #031426, Rounded, Subtle Border) ─── */}
           <div className="relative rounded-2xl bg-[#031426] border border-[#0d2847] p-4 sm:p-5 text-white overflow-hidden shadow-inner">
@@ -471,6 +498,8 @@ export const AdmissionsAnnouncementModal: React.FC = () => {
       </div>
     </div>
   );
+
+  return createPortal(modalElement, document.body);
 };
 
 export default AdmissionsAnnouncementModal;
