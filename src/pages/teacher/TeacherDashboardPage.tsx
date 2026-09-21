@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Users, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
+  BookOpen, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
   Link as LinkIcon, Check, X, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TeacherShell from '../../components/teacher/TeacherShell';
 import StatusPill from '../../components/ui/StatusPill';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import StaffAttendanceWidget from '../../components/staff/StaffAttendanceWidget';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   getOfferingsForTeacher,
@@ -776,10 +777,10 @@ export const TeacherDashboardPage: React.FC = () => {
       {/* ── Browser Notification Permission Banner for Class Reminders ── */}
       <NotificationPermissionBanner role="teacher" />
 
-      {/* ── Metrics Strip ── */}
-      <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-2 xl:grid-cols-4 gap-4'}>
+      {/* ── Metrics Strip (3 Quick Overview Stat Cards) ── */}
+      <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-1 md:grid-cols-3 gap-4'}>
         {loading ? (
-          [1, 2, 3, 4].map((n) => (
+          [1, 2, 3].map((n) => (
             <div key={n} className="stat-card flex flex-col justify-between min-h-[140px] animate-pulse">
               <div className="flex items-center justify-between">
                 <div className="h-3 bg-gray-100 rounded w-24" />
@@ -815,24 +816,6 @@ export const TeacherDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Total Students */}
-            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Enrolled Students</span>
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Users size={14} />
-                </div>
-              </div>
-              <div>
-                <div className="stat-value">{students.length}</div>
-                <div className="stat-label">Unique students in your classes</div>
-              </div>
-              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
-                <span>Enrolled Students Roster</span>
-                <span className="text-emerald-600">Secure</span>
-              </div>
-            </div>
-
             {/* Next ClassCountdown Widget */}
             <TeacherNextClassWidget slots={allSlots} teacherId={teacherId} />
 
@@ -855,6 +838,11 @@ export const TeacherDashboardPage: React.FC = () => {
             </div>
           </>
         )}
+      </div>
+
+      {/* ── Staff Attendance & Timecard (Direct Punch, Timer & Recent Logs) ── */}
+      <div id="teacher-timecard-dashboard-widget" className="w-full">
+        <StaffAttendanceWidget standalone={true} />
       </div>
 
       {/* ── Today's Timetable + Class Roster Section ── */}

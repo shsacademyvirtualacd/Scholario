@@ -275,7 +275,7 @@ const AppRouter: React.FC = () => (
           />
           <Route
             path="/teacher/timecard"
-            element={<ProtectedRoute requiredRole="teacher"><StaffAttendancePage /></ProtectedRoute>}
+            element={<Navigate to="/teacher" replace />}
           />
           <Route
             path="/staff/attendance"

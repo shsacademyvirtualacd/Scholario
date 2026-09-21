@@ -5,6 +5,7 @@ import {
   GraduationCap, Percent, Megaphone, ShieldCheck
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
+import TeacherAttendanceOverviewCard from '../../components/admin/attendance/TeacherAttendanceOverviewCard';
 import {
   getDashboardCounts,
   getAllTeachers,
@@ -254,6 +255,9 @@ const AdminDashboardPage: React.FC = () => {
           })
         )}
       </div>
+
+      {/* ── Teacher Attendance & Timecard Activity (Front Page Overview) ── */}
+      <TeacherAttendanceOverviewCard />
 
       {/* ── Teachers overview ── */}
       <div className="card card-elevated interactive bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A]">
