@@ -716,17 +716,33 @@ export async function upsertSessionLink(
   sessionDate: string,
   linkUrl: string,
   offeringId?: string | null,
-  createdBy?: string | null
+  createdBy?: string | null,
+  options?: {
+    updatedBy?: string | null;
+    updatedByRole?: 'admin' | 'teacher';
+    substituteTeacherId?: string | null;
+    substituteTeacherName?: string | null;
+  }
 ): Promise<ClassSessionLink> {
   const trimmed = linkUrl.trim();
+  const nowIso = new Date().toISOString();
   const payload: any = {
     slot_id: slotId,
     session_date: sessionDate,
     link_url: trimmed,
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso,
+    link_updated_at: nowIso,
   };
   if (offeringId) payload.offering_id = offeringId;
   if (createdBy) payload.created_by = createdBy;
+  if (options?.updatedBy || createdBy) payload.link_updated_by = options?.updatedBy || createdBy;
+  if (options?.updatedByRole) {
+    payload.link_updated_by_role = options.updatedByRole;
+  } else if (createdBy) {
+    payload.link_updated_by_role = 'teacher';
+  }
+  if (options?.substituteTeacherId) payload.substitute_teacher_id = options.substituteTeacherId;
+  if (options?.substituteTeacherName) payload.substitute_teacher_name = options.substituteTeacherName;
 
   const { data, error } = await (supabase as any)
     .from('class_session_links')
@@ -742,12 +758,100 @@ export async function upsertSessionLink(
     sessionDate,
     linkUrl: trimmed,
     offeringId,
-    teacherId: createdBy,
+    teacherId: options?.substituteTeacherId || createdBy,
   }).catch((err) => {
     console.warn('[db:upsertSessionLink] live session trigger warning:', err);
   });
 
   return savedLink;
+}
+
+/** Admin: Override or add a class link on behalf of a teacher with audit logging and student alerts */
+export async function adminOverrideClassLink(params: {
+  slotId: string;
+  sessionDate?: string;
+  linkUrl: string;
+  applyToSessionDate?: boolean;
+  applyToRecurringSlot?: boolean;
+  offeringId?: string | null;
+  adminProfileId?: string | null;
+  substituteTeacherId?: string | null;
+  substituteTeacherName?: string | null;
+  notifyStudents?: boolean;
+  subjectName?: string;
+  slotTimeDisplay?: string;
+  classId?: string | null;
+  streamId?: string | null;
+}): Promise<{ sessionLink?: ClassSessionLink; slot?: ClassSlot }> {
+  const trimmed = params.linkUrl.trim();
+  const nowIso = new Date().toISOString();
+  let resultSessionLink: ClassSessionLink | undefined;
+  let resultSlot: ClassSlot | undefined;
+
+  // 1. Session date instance override
+  if (params.applyToSessionDate && params.sessionDate) {
+    if (trimmed) {
+      resultSessionLink = await upsertSessionLink(
+        params.slotId,
+        params.sessionDate,
+        trimmed,
+        params.offeringId,
+        params.adminProfileId,
+        {
+          updatedBy: params.adminProfileId,
+          updatedByRole: 'admin',
+          substituteTeacherId: params.substituteTeacherId,
+          substituteTeacherName: params.substituteTeacherName,
+        }
+      );
+    } else {
+      await deleteSessionLink(params.slotId, params.sessionDate);
+    }
+  }
+
+  // 2. Slot recurring default link update
+  if (params.applyToRecurringSlot) {
+    const slotUpdatePayload: any = {
+      room_or_link: trimmed || null,
+      link_updated_by: params.adminProfileId || null,
+      link_updated_at: nowIso,
+      link_updated_by_role: 'admin',
+      substitute_teacher_id: params.substituteTeacherId || null,
+      substitute_teacher_name: params.substituteTeacherName || null,
+    };
+    const { data, error } = await (supabase as any)
+      .from('class_slots')
+      .update(slotUpdatePayload)
+      .eq('id', params.slotId)
+      .select()
+      .single();
+    if (error) {
+      console.warn('[adminOverrideClassLink] slot update error:', error);
+    } else {
+      resultSlot = data as ClassSlot;
+    }
+  }
+
+  // 3. Optional notification to students
+  if (params.notifyStudents && trimmed && (params.classId || params.offeringId)) {
+    try {
+      const subInfo = params.substituteTeacherName ? ` Substitute Teacher: ${params.substituteTeacherName}.` : '';
+      const timeInfo = params.slotTimeDisplay ? ` (${params.slotTimeDisplay})` : '';
+      await createAnnouncement({
+        title: `Class Link Updated: ${params.subjectName || 'Class'}`,
+        body: `The meeting link for ${params.subjectName || 'your class'}${timeInfo}${params.sessionDate ? ` on ${params.sessionDate}` : ''} has been updated by administration.${subInfo} Join here: ${trimmed}`,
+        severity: 'crucial',
+        scope: params.classId ? 'class' : 'system',
+        class_id: params.classId || null,
+        stream_id: params.streamId || null,
+        created_by: params.adminProfileId || null,
+      });
+    } catch (notifErr) {
+      console.warn('[adminOverrideClassLink] notify students warning:', notifErr);
+    }
+  }
+
+  return { sessionLink: resultSessionLink, slot: resultSlot };
 }
 
 /** Delete / clear a session link for a specific slot and session date */

@@ -6,9 +6,11 @@ import { formatTime12h, timeStrToMins } from '../../../lib/scheduleUtils';
 
 interface WeeklyGridProps {
   slots: any[];
+  sessionLinks?: Record<string, any>;
   onAddSlot?: (dayIndex: number, startTime?: string, endTime?: string) => void;
   onEdit: (slot: any) => void;
   onDelete: (slotId: string) => void;
+  onEditLink?: (slot: any) => void;
   onToggleCancel: (slotId: string, currentStatus: boolean) => void;
   selectionMode?: boolean;
   selectedSlotIds?: string[];
@@ -39,9 +41,11 @@ export const getPeriodDisplayLabel = (startTime: string, fallbackIdx: number): s
 
 export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
   slots,
+  sessionLinks,
   onAddSlot,
   onEdit,
   onDelete,
+  onEditLink,
   onToggleCancel,
   selectionMode = false,
   selectedSlotIds = [],
@@ -262,8 +266,10 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                         <SlotCard
                           key={slot.id}
                           slot={slot}
+                          sessionLink={sessionLinks?.[slot.id]}
                           onEdit={onEdit}
                           onDelete={onDelete}
+                          onEditLink={onEditLink}
                           onToggleCancel={onToggleCancel}
                           selectionMode={selectionMode}
                           isSelected={selectedSlotIds.includes(slot.id)}
@@ -342,8 +348,10 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                                 <SlotCard
                                   key={slot.id}
                                   slot={slot}
+                                  sessionLink={sessionLinks?.[slot.id]}
                                   onEdit={onEdit}
                                   onDelete={onDelete}
+                                  onEditLink={onEditLink}
                                   onToggleCancel={onToggleCancel}
                                   selectionMode={selectionMode}
                                   isSelected={selectedSlotIds.includes(slot.id)}

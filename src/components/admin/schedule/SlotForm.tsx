@@ -21,6 +21,7 @@ interface SlotFormProps {
     day_of_week: number;
     start_time: string;
     end_time: string;
+    room_or_link?: string | null;
     is_cancelled?: boolean;
     publish_to_news: boolean;
     notify_affected?: boolean;
@@ -65,6 +66,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [startTime, setStartTime] = useState('16:00');
   const [endTime, setEndTime] = useState('16:30');
+  const [roomOrLink, setRoomOrLink] = useState('');
   const [isCancelled, setIsCancelled] = useState(false);
   const [notifyAffected, setNotifyAffected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
 
     if (hasSlotData && slot) {
       setIsCancelled(!!slot.is_cancelled);
+      setRoomOrLink(slot.room_or_link || '');
       if (slot.offering_id) {
         setSlotMode('offering');
         setOfferingId(slot.offering_id);
@@ -107,6 +110,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     } else {
       // Defaults for a brand new slot
       setIsCancelled(false);
+      setRoomOrLink('');
       setSelectedClassId(defaultClassId || '');
       setSelectedStreamId('');
       setSlotMode('offering');
@@ -267,6 +271,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           day_of_week: selectedDays[0],
           start_time: fullStartTime,
           end_time: fullEndTime,
+          room_or_link: roomOrLink.trim() || null,
           is_cancelled: false,
           publish_to_news: notifyAffected,
           notify_affected: notifyAffected,
@@ -281,6 +286,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           day_of_week: dayOfWeek,
           start_time: fullStartTime,
           end_time: fullEndTime,
+          room_or_link: roomOrLink.trim() || null,
           is_cancelled: isCancelled,
           publish_to_news: notifyAffected,
           notify_affected: notifyAffected,
@@ -675,6 +681,26 @@ export const SlotForm: React.FC<SlotFormProps> = ({
               className="input py-2.5 text-sm w-full bg-white border-[#E5E5E5] rounded-xl font-medium"
             />
           </div>
+        </div>
+
+        {/* Meeting Link (Recurring Default) */}
+        <div className="space-y-1 pt-1">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-[#262626] block">
+              Meeting / Room Link (Default)
+            </label>
+            <span className="text-[10px] text-gray-400 font-semibold">Optional</span>
+          </div>
+          <input
+            type="text"
+            placeholder="https://meet.google.com/... or https://zoom.us/j/..."
+            value={roomOrLink}
+            onChange={(e) => setRoomOrLink(e.target.value)}
+            className="input py-2.5 text-sm w-full bg-white border-[#E5E5E5] rounded-xl font-medium"
+          />
+          <p className="text-[11px] text-[#737373]">
+            Default recurring meeting link for this class. You can also override live links with teacher substitution per-session from the schedule view.
+          </p>
         </div>
       </div>
 

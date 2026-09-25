@@ -111,8 +111,14 @@ export interface ClassSlot {
   room_or_link: string | null;
   is_cancelled: boolean;
   created_at: string;
+  link_updated_by?: string | null;
+  link_updated_at?: string | null;
+  link_updated_by_role?: 'admin' | 'teacher' | null;
+  substitute_teacher_id?: string | null;
+  substitute_teacher_name?: string | null;
   // joined
   offering?: ClassOffering;
+  link_updater_profile?: { full_name?: string; role?: string } | null;
 }
 
 // ─── class_session_links ────────────────────
@@ -125,9 +131,15 @@ export interface ClassSessionLink {
   created_by?: string | null;
   created_at: string;
   updated_at: string;
+  link_updated_by?: string | null;
+  link_updated_at?: string | null;
+  link_updated_by_role?: 'admin' | 'teacher' | null;
+  substitute_teacher_id?: string | null;
+  substitute_teacher_name?: string | null;
   // joined
   slot?: ClassSlot;
   offering?: ClassOffering;
+  updater_profile?: { full_name?: string; role?: string } | null;
 }
 
 // ─── live_sessions ──────────────────────────

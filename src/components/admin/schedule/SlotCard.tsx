@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Edit2, Trash2, X } from 'lucide-react';
-import type { ClassSlot } from '../../../types';
+import { Edit2, Trash2, X, Video } from 'lucide-react';
+import type { ClassSlot, ClassSessionLink } from '../../../types';
 
 interface SlotCardProps {
   slot: ClassSlot & {
@@ -15,8 +15,10 @@ interface SlotCardProps {
       teacher?: { full_name: string };
     };
   };
+  sessionLink?: ClassSessionLink | null;
   onEdit: (slot: any) => void;
   onDelete: (slotId: string) => void;
+  onEditLink?: (slot: any) => void;
   onToggleCancel?: (slotId: string, currentStatus: boolean) => void;
   selectionMode?: boolean;
   isSelected?: boolean;
@@ -25,8 +27,10 @@ interface SlotCardProps {
 
 export const SlotCard: React.FC<SlotCardProps> = ({
   slot,
+  sessionLink,
   onEdit,
   onDelete,
+  onEditLink,
   selectionMode = false,
   isSelected = false,
   onToggleSelect,
@@ -35,6 +39,13 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const isCancelled = slot.is_cancelled;
   const subject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class';
   const teacherName = slot.offering?.teacher?.full_name || 'Staff';
+
+  // Meeting Link Status and Audit Resolution
+  const effectiveLink = (sessionLink?.link_url || slot.room_or_link || '').trim();
+  const hasLink = Boolean(effectiveLink);
+  const auditRole = sessionLink?.link_updated_by_role || slot.link_updated_by_role;
+  const isAdminOverride = auditRole === 'admin';
+  const substituteName = sessionLink?.substitute_teacher_name || slot.substitute_teacher_name;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (selectionMode && onToggleSelect) {
@@ -126,6 +137,49 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         <div className="text-[10px] font-bold text-[#525252] truncate mt-0.5" title={teacherName}>
           {teacherName}
         </div>
+
+        {/* Live Meeting Link Status Pill / Quick Add */}
+        <div className="mt-1.5 flex items-center gap-1">
+          {hasLink ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditLink?.(slot);
+              }}
+              className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-md border transition-all cursor-pointer truncate max-w-full shadow-2xs ${
+                isAdminOverride
+                  ? 'bg-amber-100 text-amber-950 border-amber-300 hover:bg-amber-200'
+                  : 'bg-emerald-50 text-emerald-900 border-emerald-300/80 hover:bg-emerald-100'
+              }`}
+              title={
+                isAdminOverride
+                  ? `Admin override link: ${effectiveLink}${substituteName ? ` (Substitute: ${substituteName})` : ''} - Click to edit`
+                  : `Class link: ${effectiveLink} - Click to edit or substitute`
+              }
+            >
+              <Video size={10} className={isAdminOverride ? 'text-amber-700 shrink-0' : 'text-emerald-700 shrink-0'} />
+              <span className="truncate">
+                {isAdminOverride
+                  ? (substituteName ? `Sub: ${substituteName}` : 'Admin Link')
+                  : 'Link Ready'}
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditLink?.(slot);
+              }}
+              className="inline-flex items-center gap-1 text-[9px] font-bold text-gray-500 hover:text-amber-800 bg-white/90 hover:bg-amber-50 border border-dashed border-gray-300 hover:border-amber-400 px-1.5 py-0.5 rounded-md transition-all cursor-pointer shadow-2xs"
+              title="Add meeting link on behalf of teacher"
+            >
+              <Video size={10} className="text-gray-400 shrink-0" />
+              <span>+ Add Link</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Footer: Core/Elective/Stream badge & Cancelled status */}
@@ -154,6 +208,23 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-gray-200/90 rounded-lg p-0.5 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 z-10"
         >
+          {/* Edit / Substitute Link (Video Camera) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditLink?.(slot);
+            }}
+            title={hasLink ? 'Edit / Substitute class meeting link' : 'Add class meeting link on behalf of teacher'}
+            className={`p-1 rounded-md transition-colors cursor-pointer ${
+              hasLink
+                ? 'text-amber-700 hover:text-amber-900 hover:bg-amber-100'
+                : 'text-gray-500 hover:text-amber-600 hover:bg-amber-50'
+            }`}
+          >
+            <Video size={12} />
+          </button>
+
           {/* Edit (Pencil) */}
           <button
             type="button"

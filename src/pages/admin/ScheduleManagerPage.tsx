@@ -7,14 +7,15 @@ import AdminDrawer from '../../components/admin/AdminDrawer';
 import SlotForm from '../../components/admin/schedule/SlotForm';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import ScheduleConflictModal, { ConflictDetails } from '../../components/admin/schedule/ScheduleConflictModal';
-import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, deleteSlots, getTaxonomy, createAnnouncement } from '../../lib/db';
+import AdminClassLinkModal from '../../components/admin/schedule/AdminClassLinkModal';
+import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, deleteSlots, getTaxonomy, createAnnouncement, getSessionLinksForDates } from '../../lib/db';
 import { getSubjectsForStream } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
-import { DAYS_OF_WEEK_FULL, formatTime12h } from '../../lib/scheduleUtils';
+import { DAYS_OF_WEEK_FULL, formatTime12h, getPKTNow } from '../../lib/scheduleUtils';
 import { toast } from 'sonner';
 import { useMobile } from '../../hooks/useMobile';
 import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
-import type { ClassSlot, ClassOffering, Teacher } from '../../types';
+import type { ClassSlot, ClassOffering, Teacher, ClassSessionLink } from '../../types';
 
 const BOARDS = [
   { id: 'fbise', label: 'FBISE' },
@@ -52,12 +53,42 @@ export const ScheduleManagerPage: React.FC = () => {
   const [isDuplicateMode, setIsDuplicateMode] = useState(false);
   const [sourceDuplicateSlot, setSourceDuplicateSlot] = useState<ClassSlot | null>(null);
 
+  // Link Override & Teacher Substitution Modal States
+  const [sessionLinksMap, setSessionLinksMap] = useState<Record<string, ClassSessionLink>>({});
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [slotForLinkModal, setSlotForLinkModal] = useState<any>(null);
+
   // Filters - default to Grade 10 class-wise view with 'all' streams selected for full institutional visibility
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>('10');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [showPublishBanner, setShowPublishBanner] = useState(false);
+
+  const fetchSessionLinks = async () => {
+    try {
+      const pktnow = getPKTNow();
+      const dates: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        dates.push(d.toISOString().slice(0, 10));
+      }
+      if (!dates.includes(pktnow.dateString)) {
+        dates.push(pktnow.dateString);
+      }
+      const links = await getSessionLinksForDates(dates);
+      const map: Record<string, ClassSessionLink> = {};
+      links.forEach((l) => {
+        if (l.slot_id) {
+          map[l.slot_id] = l;
+        }
+      });
+      setSessionLinksMap(map);
+    } catch (err) {
+      console.warn('[ScheduleManagerPage] error fetching session links:', err);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -72,6 +103,7 @@ export const ScheduleManagerPage: React.FC = () => {
       setOfferings(o);
       setTeachers(t);
       setTaxonomy(tax);
+      await fetchSessionLinks();
     } catch (err) {
       console.error(err);
     } finally {
@@ -95,6 +127,11 @@ export const ScheduleManagerPage: React.FC = () => {
       const s = await getAllSlots();
       setSlots(s);
     }
+  });
+
+  useRealtimeTable({
+    table: 'class_session_links',
+    onAny: fetchSessionLinks,
   });
 
   // Enrich raw slots with offering and teacher details for rendering
@@ -391,6 +428,7 @@ export const ScheduleManagerPage: React.FC = () => {
             day_of_week: d as any,
             start_time: formData.start_time,
             end_time: formData.end_time,
+            room_or_link: formData.room_or_link !== undefined ? formData.room_or_link : null,
             is_cancelled: false,
           });
         }
@@ -404,6 +442,7 @@ export const ScheduleManagerPage: React.FC = () => {
           day_of_week: formData.day_of_week as any,
           start_time: formData.start_time,
           end_time: formData.end_time,
+          room_or_link: formData.room_or_link !== undefined ? formData.room_or_link : (selectedSlot?.room_or_link || null),
           is_cancelled: formData.is_cancelled !== undefined ? formData.is_cancelled : false,
         });
       }
@@ -981,9 +1020,14 @@ export const ScheduleManagerPage: React.FC = () => {
       {/* Timetable Weekly Columns */}
       <WeeklyGrid
         slots={filteredSlots}
+        sessionLinks={sessionLinksMap}
         onAddSlot={handleAddTrigger}
         onEdit={handleEditTrigger}
         onDelete={handleDeleteTrigger}
+        onEditLink={(slot) => {
+          setSlotForLinkModal(slot);
+          setLinkModalOpen(true);
+        }}
         onToggleCancel={handleToggleCancel}
         selectionMode={selectionMode}
         selectedSlotIds={selectedSlotIds}
@@ -1126,6 +1170,20 @@ export const ScheduleManagerPage: React.FC = () => {
             })}
         </div>
       </ConfirmModal>
+
+      {/* Admin Class Link & Teacher Substitution Modal */}
+      <AdminClassLinkModal
+        open={linkModalOpen}
+        onClose={() => {
+          setLinkModalOpen(false);
+          setSlotForLinkModal(null);
+        }}
+        slot={slotForLinkModal}
+        teachers={teachers}
+        onLinkUpdated={async () => {
+          await Promise.all([loadData(), fetchSessionLinks()]);
+        }}
+      />
     </AdminShell>
   );
 };

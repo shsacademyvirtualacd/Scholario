@@ -86,7 +86,10 @@ export const LiveLinkEditor: React.FC<{
     try {
       if (trimmed) {
         stopClassReminder(`${slot.id}_${sessionDate}`);
-        await upsertSessionLink(slot.id, sessionDate, trimmed, slot.offering_id, teacherId);
+        await upsertSessionLink(slot.id, sessionDate, trimmed, slot.offering_id, teacherId, {
+          updatedBy: teacherId,
+          updatedByRole: 'teacher',
+        });
         await triggerLiveSession({
           slot,
           slotId: slot.id,

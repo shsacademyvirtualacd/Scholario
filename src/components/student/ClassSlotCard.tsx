@@ -28,6 +28,7 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
   const [pktnow, setPktnow] = useState(getPKTNow);
   const [isMarking, setIsMarking] = useState(false);
   const [fetchedLink, setFetchedLink] = useState<string | null>(null);
+  const [fetchedSubstitute, setFetchedSubstitute] = useState<string | null>(null);
 
   const effectiveSessionDate = propSessionDate || (
     slot.day_of_week === pktnow.dayIndex
@@ -41,6 +42,7 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     try {
       const rec = await getSessionLink(slot.id, effectiveSessionDate);
       setFetchedLink(rec?.link_url || null);
+      setFetchedSubstitute(rec?.substitute_teacher_name || slot.substitute_teacher_name || null);
     } catch (err) {
       console.warn('[ClassSlotCard] fetch link error:', err);
     }
@@ -208,7 +210,14 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
             ) : null
           )}
         </div>
-        <p className="text-xs text-[#737373] mt-0.5 font-medium truncate">{teacherName}</p>
+        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+          <p className="text-xs text-[#737373] font-medium truncate">{teacherName}</p>
+          {(fetchedSubstitute || slot.substitute_teacher_name) && (
+            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+              Sub: {fetchedSubstitute || slot.substitute_teacher_name}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Attendance & Join Actions */}
