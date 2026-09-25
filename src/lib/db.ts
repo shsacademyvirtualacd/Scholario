@@ -1644,7 +1644,7 @@ async function enrichNotesUrls(notes: any[]): Promise<Note[]> {
   );
 }
 
-/** Get view URL for a note via Cloudflare R2 /api/notes/view endpoint */
+/** Get view URL for a note via /api/notes/view endpoint */
 export async function getNoteSignedUrl(_filePath: string, noteId?: string): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || '';
@@ -1654,7 +1654,7 @@ export async function getNoteSignedUrl(_filePath: string, noteId?: string): Prom
   return '';
 }
 
-/** Upload note file and insert row via Cloudflare R2 /api/notes/upload endpoint */
+/** Upload note file and insert row via /api/notes/upload endpoint */
 export async function uploadNoteFileToR2(
   file: File,
   payload: {
@@ -1710,12 +1710,12 @@ export async function uploadNoteFileToR2(
   });
 }
 
-/** Legacy signature stub kept to prevent breaking unknown imports — points to Cloudflare R2 API */
+/** Legacy signature stub kept to prevent breaking unknown imports — points to cloud storage API */
 export async function uploadNoteFile(_file: File, _folderPath: string = 'uploads'): Promise<{ path: string; url: string }> {
-  throw new Error('uploadNoteFile direct Supabase Storage call removed. Use uploadNoteFileToR2.');
+  throw new Error('Legacy storage call removed. Use uploadNoteFileToR2.');
 }
 
-/** Securely download a note via fetch-then-blob calling Cloudflare R2 /api/notes/dl endpoint */
+/** Securely download a note via fetch-then-blob calling /api/notes/dl endpoint */
 export async function downloadNoteBlob(note: any, onProgress?: (progress: number) => void): Promise<void> {
   if (!note.id) {
     throw new Error('Note ID is required for download.');
@@ -2183,7 +2183,7 @@ export async function getTestsForTeacher(
   }
 }
 
-/** Upload test paper file to Cloudflare R2 /api/tests/upload */
+/** Upload test paper file to cloud storage via /api/tests/upload */
 export async function uploadTestPaperToR2(
   file: File,
   payload: {
@@ -2278,7 +2278,7 @@ export async function deleteTestPaper(testId: string): Promise<void> {
   }
 }
 
-/** Student: upload answer sheet file to Cloudflare R2 /api/submissions/upload */
+/** Student: upload answer sheet file to cloud storage via /api/submissions/upload */
 export async function uploadTestSubmissionToR2(
   file: File,
   payload: {
@@ -3261,7 +3261,7 @@ export async function resolveGradeFeeConfig(
       let effectivePlanType = plan?.plan_type || (isCambridge ? 'custom' : 'all');
 
       if (!effectiveSubjects) {
-        // Fallback: check profile in Supabase
+        // Fallback: check profile in database
         const { data: prof } = await (supabase as any)
           .from('profiles')
           .select('subjects, plan_type')
@@ -3442,7 +3442,7 @@ export async function updateFeeStatus(
   status: 'unpaid' | 'pending' | 'paid',
   notes?: string
 ): Promise<void> {
-  // Real Supabase flow: updates fee_statuses.
+  // Backend flow: updates fee_statuses.
   const { data: existing } = await (supabase as any)
     .from('fee_statuses')
     .select('*')
@@ -3536,7 +3536,7 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       .eq('status', 'pending');
 
     if (simpleErr) {
-      console.error('[db:getPendingFeeStatuses] Supabase DB error on fee_statuses:', {
+      console.error('[db:getPendingFeeStatuses] Database error on fee_statuses:', {
         message: simpleErr.message,
         code: simpleErr.code,
         details: simpleErr.details,

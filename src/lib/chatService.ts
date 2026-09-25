@@ -692,7 +692,7 @@ export async function sendVoiceChatMessage(
 }
 
 /**
- * Upload a chat attachment to Cloudflare R2 via Worker endpoint
+ * Upload a chat attachment to cloud storage via backend endpoint
  */
 export async function uploadChatAttachment(
   file: File,
@@ -793,8 +793,8 @@ export function getAttachmentUrl(key: string, token?: string, download?: boolean
 
 /**
  * Permanently delete a sent message from Scholario Chat.
- * Hard deletes the row from Supabase (both messages & chat_messages tables),
- * deletes any attachment from R2 (scholario-chat-attachments bucket),
+ * Hard deletes the row from the database (both messages & chat_messages tables),
+ * deletes any attachment from cloud storage,
  * and broadcasts the real-time removal to the recipient.
  * Leaves zero trace or placeholder.
  */
@@ -810,7 +810,7 @@ export async function deleteChatMessage(
   const token = sessionData?.session?.access_token;
   const currentUserId = sessionData?.session?.user?.id;
 
-  // 1. Call server API for backend hard-delete and R2 bucket object removal
+  // 1. Call server API for backend hard-delete and storage bucket object removal
   try {
     await fetch(`/api/chat/messages/${encodeURIComponent(messageId)}`, {
       method: 'DELETE',
@@ -821,15 +821,15 @@ export async function deleteChatMessage(
       },
     });
   } catch (apiErr) {
-    console.warn('[chatService] Server delete API call warning, using direct Supabase fallback:', apiErr);
+    console.warn('[chatService] Server delete API call warning, using direct database fallback:', apiErr);
   }
 
-  // 2. Direct hard delete from Supabase client as fallback/instant guarantee
+  // 2. Direct hard delete from database client as fallback/instant guarantee
   try {
     await (supabase as any).from('messages').delete().eq('id', messageId);
     await (supabase as any).from('chat_messages').delete().eq('id', messageId);
   } catch (dbErr) {
-    console.warn('[chatService] Supabase direct delete warning:', dbErr);
+    console.warn('[chatService] Database direct delete warning:', dbErr);
   }
 
   // 3. Realtime broadcast to recipient so message vanishes immediately from their screen

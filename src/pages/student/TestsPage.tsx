@@ -618,7 +618,7 @@ export const TestsPage: React.FC = () => {
                               <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200/60">
                                 {isUnified
                                   ? 'Your multiple choice answers have been auto-checked, and written responses uploaded for evaluation. Marks will be displayed once released.'
-                                  : 'Your handwritten answer photos have been securely uploaded to Cloudflare R2 for teacher evaluation. Marks will be displayed here once released.'}
+                                  : 'Your handwritten answer photos have been securely uploaded to secure cloud storage for teacher evaluation. Marks will be displayed here once released.'}
                               </p>
                             </div>
                           );

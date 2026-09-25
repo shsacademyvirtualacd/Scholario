@@ -102,7 +102,7 @@ export const RegisterPage: React.FC = () => {
               </span>
             </label>
             <p className="text-[11px] text-[#737373] pl-6.5">
-              <em>Note for minors:</em> If you are under 18, parent/guardian contact and consent will be confirmed on the enrollment setup form.
+              <em>Students under 18:</em> A parent/guardian email can be provided during profile setup.
             </p>
           </div>
 

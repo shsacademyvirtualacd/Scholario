@@ -230,7 +230,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                   <div className="space-y-3">
                     <h4 className="font-bold text-[#111111]">3.6 Technical & Usage Data</h4>
                     <ul className="list-disc pl-5 space-y-1">
-                      <li>Log data (IP address, browser/device type, access timestamps) collected automatically via our hosting and security infrastructure (Cloudflare).</li>
+                      <li>Log data (IP address, browser/device type, access timestamps) collected automatically via our hosting and security infrastructure.</li>
                       <li>Basic diagnostic data to identify and fix errors or abuse.</li>
                     </ul>
                   </div>
@@ -294,13 +294,13 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                       </thead>
                       <tbody className="divide-y divide-[#E5E5E5]">
                         <tr>
-                          <td className="px-4 py-3 font-semibold text-[#111111]">Supabase</td>
-                          <td className="px-4 py-3 text-[#525252]">Database (Postgres), authentication, file storage, and backend logic (Edge Functions)</td>
+                          <td className="px-4 py-3 font-semibold text-[#111111]">Primary Database Infrastructure</td>
+                          <td className="px-4 py-3 text-[#525252]">Database, authentication, file storage, and backend logic</td>
                           <td className="px-4 py-3 text-[#525252]">All account, academic, fee, and communication data described above</td>
                         </tr>
                         <tr>
-                          <td className="px-4 py-3 font-semibold text-[#111111]">Cloudflare Pages</td>
-                          <td className="px-4 py-3 text-[#525252]">Website hosting and content delivery</td>
+                          <td className="px-4 py-3 font-semibold text-[#111111]">Cloud Web Hosting</td>
+                          <td className="px-4 py-3 text-[#525252]">Website hosting and content delivery network</td>
                           <td className="px-4 py-3 text-[#525252]">Technical/usage logs, IP addresses</td>
                         </tr>
                         <tr>
@@ -321,7 +321,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                     We do not sell personal data to any third party. Data is only shared with the providers above as necessary to operate the platform, and with SHS Virtual Academy staff on a need-to-know basis appropriate to their role.
                   </p>
                   <p className="text-xs text-[#737373] leading-relaxed">
-                    <strong>Note on data location:</strong> Supabase and Cloudflare may store or process data on servers located outside Pakistan, depending on the hosting region selected for the project. If this applies, data leaving Pakistan is limited to what's needed for these providers to deliver hosting, database, and CDN services, under their respective data processing agreements.
+                    <strong>Note on data location:</strong> Our cloud hosting and database providers may store or process data on encrypted servers located outside Pakistan. Data transmission is limited to what's needed for these providers to deliver hosting, database, and CDN services, under strict data protection terms.
                   </p>
                 </section>
 
@@ -331,7 +331,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 <section id="security" className="space-y-4">
                   <h3 className="text-xl font-bold text-[#111111]">7. Data Security</h3>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li><strong>Role-based access control</strong>, enforced through Supabase Row-Level Security (RLS) policies, ensures each user (student, parent, teacher, admin) can only access data appropriate to their role.</li>
+                    <li><strong>Role-based access control</strong>, enforced through granular Row-Level Security (RLS) policies, ensures each user (student, parent, teacher, admin) can only access data appropriate to their role.</li>
                     <li><strong>Audit logs</strong> record sensitive edits — including changes to grades, attendance, and fee records — capturing who made a change and when.</li>
                     <li>Data is transmitted using encrypted connections (HTTPS/TLS).</li>
                     <li>Access to administrative functions is restricted to authorized Academy staff.</li>
@@ -389,7 +389,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                 <section id="cookies" className="space-y-4">
                   <h3 className="text-xl font-bold text-[#111111]">11. Cookies</h3>
                   <p className="leading-relaxed">
-                    Scholario uses minimal cookies/local storage necessary for authentication sessions and basic security (via Cloudflare). We do not use third-party advertising or tracking cookies.
+                    Scholario uses minimal cookies/local storage necessary for authentication sessions and basic security. We do not use third-party advertising or tracking cookies.
                   </p>
                 </section>
 
@@ -609,7 +609,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                   </p>
                   <ul className="list-disc pl-5 space-y-1">
                     <li>Scholario and its developer are not liable for indirect, incidental, or consequential damages arising from use of, or inability to use, the Platform.</li>
-                    <li>Scholario is not liable for the accuracy of academic records entered by Academy staff, for the outcome of fee verification processes conducted by Academy admins, or for the availability or conduct of third-party services (Google, Zoom, Google Meet, Supabase, Cloudflare) integrated into the Platform.</li>
+                    <li>Scholario is not liable for the accuracy of academic records entered by Academy staff, for the outcome of fee verification processes conducted by Academy admins, or for the availability or conduct of third-party services (Google, Zoom, Google Meet, and cloud infrastructure providers) integrated into the Platform.</li>
                     <li>Nothing in these Terms limits liability that cannot be excluded under applicable law.</li>
                   </ul>
                 </section>

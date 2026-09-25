@@ -1600,7 +1600,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
                         <span>Section B: Short Answer Questions ({addedShorts.length})</span>
                       </h4>
                       <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">
-                        Camera Photo Answer • 24h R2
+                        Camera Photo Answer • 24h Cloud
                       </span>
                     </div>
 
@@ -1634,7 +1634,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
                         <span>Section C: Long Answer Questions ({addedLongs.length})</span>
                       </h4>
                       <span className="text-xs font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded">
-                        Camera Photo Answer • 24h R2
+                        Camera Photo Answer • 24h Cloud
                       </span>
                     </div>
 

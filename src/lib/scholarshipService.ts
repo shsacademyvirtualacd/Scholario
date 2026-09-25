@@ -305,7 +305,7 @@ export async function deleteScholarshipTier(id: string): Promise<void> {
 }
 
 /**
- * Upload proof document to Cloudflare R2 / Server storage
+ * Upload proof document to Cloud / Server storage
  */
 export async function uploadScholarshipProofFile(file: File): Promise<{ url: string; key: string }> {
   if (!file) {
@@ -456,7 +456,7 @@ export async function submitScholarshipApplication(payload: {
 
   let newRecord: ScholarshipApplication | null = null;
 
-  // Try direct Supabase insert first
+  // Try direct database insert first
   try {
     const { data, error } = await (supabase as any)
       .from('scholarship_applications')
@@ -465,7 +465,7 @@ export async function submitScholarshipApplication(payload: {
       .single();
 
     if (error) {
-      console.warn('[submitScholarshipApplication] Supabase insert warning:', error.message);
+      console.warn('[submitScholarshipApplication] Database insert warning:', error.message);
       // If error mentions unknown column, retry with clean standard columns
       const cleanData = {
         student_id: payload.student_id,
@@ -511,7 +511,7 @@ export async function submitScholarshipApplication(payload: {
     console.warn('[submitScholarshipApplication] DB direct insert error:', err);
   }
 
-  // If Supabase direct insert didn't succeed (e.g. client RLS restrictions), invoke server route
+  // If direct database insert didn't succeed (e.g. client security restrictions), invoke server route
   if (!newRecord) {
     try {
       const srvRes = await fetch('/api/scholarships/apply', {
@@ -596,7 +596,7 @@ export async function submitScholarshipApplication(payload: {
 
 /**
  * Fetch all scholarship applications for admin queue.
- * Throws real Supabase errors when queries fail so the admin UI can show an error
+ * Throws real database errors when queries fail so the admin UI can show an error
  * state with a Retry button rather than displaying a false 0.
  */
 export async function getScholarshipApplications(
@@ -642,7 +642,7 @@ export async function getScholarshipApplications(
       const { data: simpleData, error: simpleErr } = await simpleQuery;
 
       if (simpleErr) {
-        console.error('[getScholarshipApplications] Supabase Database Error:', {
+        console.error('[getScholarshipApplications] Database Error:', {
           message: simpleErr.message,
           code: simpleErr.code,
           details: simpleErr.details,

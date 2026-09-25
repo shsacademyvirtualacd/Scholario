@@ -77,7 +77,7 @@ export const CookieConsentBanner: React.FC = () => {
                 </span>
               </p>
               <p className="text-[#525252] dark:text-[#A3A3A3] leading-relaxed max-w-3xl">
-                Scholario uses strictly necessary session cookies (Supabase Authentication) and local storage for interface preferences (dark mode, chat themes). We do <strong>not</strong> use advertising or tracking cookies.{' '}
+                Scholario uses strictly necessary session cookies (secure authentication) and local storage for interface preferences (dark mode, chat themes). We do <strong>not</strong> use advertising or tracking cookies.{' '}
                 <Link to="/cookies" className="text-[#D4A017] font-bold hover:underline">
                   Read Cookie Policy
                 </Link>{' '}
@@ -158,7 +158,7 @@ export const CookieConsentBanner: React.FC = () => {
                     <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Always Active</span>
                   </div>
                   <p className="text-[11px] leading-relaxed">
-                    Required for Supabase student authentication, session validation, and CSRF protection. Cannot be disabled.
+                    Required for student authentication, session validation, and CSRF protection. Cannot be disabled.
                   </p>
                 </div>
                 <input

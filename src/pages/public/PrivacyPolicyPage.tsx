@@ -8,11 +8,11 @@ const privacySections = [
   { id: 'intro', label: '1. Introduction' },
   { id: 'responsible', label: '2. Controller & Operator' },
   { id: 'collect', label: '3. Student & Parent Data We Collect' },
-  { id: 'storage', label: '4. Storage Architecture (Supabase & R2)' },
+  { id: 'storage', label: '4. Storage Architecture & Cloud Storage' },
   { id: 'minors', label: '5. Protection of Minors & Parental Rights' },
   { id: 'deletion-flow', label: '6. Parental Deletion Request Procedure' },
-  { id: 'third-party', label: '7. Third-Party SDK & Service Basis' },
-  { id: 'ai-processing', label: '8. AI Assistant (Sage) & Gemini API' },
+  { id: 'third-party', label: '7. Third-Party Service Processing Basis' },
+  { id: 'ai-processing', label: '8. AI Academic Assistant (Sage) Safeguards' },
   { id: 'security', label: '9. Data Security & RLS Controls' },
   { id: 'retention', label: '10. Data Retention & Auto-Purge' },
   { id: 'cookies', label: '11. Cookies & Storage' },
@@ -70,7 +70,7 @@ export const PrivacyPolicyPage: React.FC = () => {
             </div>
 
             <p className="text-sm text-[#525252] dark:text-[#A3A3A3] max-w-3xl leading-relaxed">
-              This Privacy Policy details the exact data collected by <strong>Scholario</strong> on behalf of <strong>SHS Virtual Academy</strong>, our encrypted storage architecture across Supabase and Cloudflare R2, our third-party data processing legal bases, and the formal procedures available to parents and guardians of minor students to request data access or permanent account deletion.
+              This Privacy Policy details the exact data collected by <strong>Scholario</strong> on behalf of <strong>SHS Virtual Academy</strong>, our encrypted storage architecture across our secure database and cloud infrastructure, our third-party data processing legal bases, and the formal procedures available to parents and guardians of minor students to request data access or permanent account deletion.
             </p>
           </div>
 
@@ -146,10 +146,9 @@ export const PrivacyPolicyPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.2 Minor Protection & Parent/Guardian Details</h3>
+                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.2 Minor Contact & Parent/Guardian Details</h3>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li><strong>Parent / Legal Guardian Email Address:</strong> Required during registration for all minor students under 18 years of age.</li>
-                    <li><strong>Parental Consent Record:</strong> Electronic confirmation of parental authorization for educational service delivery, homework file submissions, and test participation.</li>
+                    <li><strong>Parent / Legal Guardian Email Address:</strong> Collected during registration for students under 18 years of age and stored for academic notifications and record access. For students 18 and older, this step is skipped entirely.</li>
                   </ul>
                 </div>
 
@@ -182,7 +181,7 @@ export const PrivacyPolicyPage: React.FC = () => {
 
               {/* 4. Storage Architecture */}
               <section id="storage" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">4. Storage Architecture & Encryption (Supabase & Cloudflare R2)</h2>
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">4. Storage Architecture & Encryption</h2>
                 <p>
                   Scholario employs a dual-tier hardened cloud storage architecture:
                 </p>
@@ -190,17 +189,17 @@ export const PrivacyPolicyPage: React.FC = () => {
                   <div className="p-4 rounded-xl border border-[#E5E5E5] dark:border-[#262626] bg-[#FAFAFA] dark:bg-[#181818] space-y-2">
                     <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wide">
                       <Database size={16} />
-                      <span>Supabase (PostgreSQL & Storage)</span>
+                      <span>Primary Relational Database</span>
                     </div>
                     <p className="text-xs text-[#525252] dark:text-[#A3A3A3]">
-                      Primary structured data storage (profiles, rosters, attendance, test scores, fee audit trails). Secured with PostgreSQL Row-Level Security (RLS) policies guaranteeing strict multi-tenant isolation.
+                      Primary structured data storage (profiles, rosters, attendance, test scores, fee audit trails). Secured with granular Row-Level Security (RLS) policies guaranteeing strict multi-tenant isolation.
                     </p>
                   </div>
 
                   <div className="p-4 rounded-xl border border-[#E5E5E5] dark:border-[#262626] bg-[#FAFAFA] dark:bg-[#181818] space-y-2">
                     <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wide">
                       <Lock size={16} />
-                      <span>Cloudflare R2 Object Storage</span>
+                      <span>Encrypted Cloud Storage</span>
                     </div>
                     <p className="text-xs text-[#525252] dark:text-[#A3A3A3]">
                       Encrypted bucket storage for large binaries (chat attachments, written exam submission photo scans, scholarship marksheets). Temporary exam photos are subject to automated 24-hour lifecycle expiry.
@@ -250,7 +249,7 @@ export const PrivacyPolicyPage: React.FC = () => {
                       <strong>Verification:</strong> Our administration verifies parental identity within <strong>48 hours</strong>.
                     </li>
                     <li>
-                      <strong>Purge Execution:</strong> Upon confirmation, all student profile details, test submissions, chat attachments in Cloudflare R2, and database rows are irreversibly deleted within <strong>30 calendar days</strong>, retaining only basic financial ledger receipts required by Pakistani tax and regulatory audit laws.
+                      <strong>Purge Execution:</strong> Upon confirmation, all student profile details, test submissions, chat attachments in cloud storage, and database rows are irreversibly deleted within <strong>30 calendar days</strong>, retaining only basic financial ledger receipts required by Pakistani tax and regulatory audit laws.
                     </li>
                   </ol>
                 </div>
@@ -268,39 +267,39 @@ export const PrivacyPolicyPage: React.FC = () => {
                   <table className="min-w-full divide-y divide-[#E5E5E5] dark:divide-[#262626] text-left text-xs">
                     <thead className="bg-[#FAFAFA] dark:bg-[#1A1A1A]">
                       <tr>
-                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Service / SDK</th>
-                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Role & Function</th>
+                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Service / Role</th>
+                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Function & Operation</th>
                         <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Data Processed</th>
                         <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Legal Processing Basis</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5E5E5] dark:divide-[#262626]">
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Supabase (PostgreSQL)</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Database host & Auth Provider</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Primary Database Infrastructure</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Database host & Auth Service</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">User profiles, rosters, attendance, test scores, chat records</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Contractual Educational Service Delivery</td>
                       </tr>
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Cloudflare R2</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">S3-compatible Object Storage</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Encrypted Cloud Storage</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Object & Attachment Storage</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Chat attachments, written test scan photos, scholarship marksheets</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Contractual Educational Assessment</td>
                       </tr>
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Google Gemini API</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">AI Model Inference Infrastructure</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Academic AI Assistant (Sage)</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Ephemeral student queries and homework question prompts</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Explicit User Request / Legitimate Study Interest</td>
                       </tr>
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Resend / EmailJS</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Transactional Email Delivery</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Transactional Email Delivery</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Notification Dispatch</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Account verification, password reset, exam submission receipts</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Contractual Necessity (Transactional Notices Only)</td>
                       </tr>
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Semaphore SMS / WhatsApp</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">SMS & Messaging Dispatch</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Emergency Timetable & Fee Alerts</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Student/Parent phone number, class link updates</td>
                         <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Explicit Consent & Timetable Operation</td>
@@ -314,13 +313,13 @@ export const PrivacyPolicyPage: React.FC = () => {
 
               {/* 8. AI Processing */}
               <section id="ai-processing" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">8. AI Assistant (Sage) & Gemini API Safeguards</h2>
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">8. AI Assistant (Sage) Safeguards</h2>
                 <p>
-                  Scholario includes an optional academic study assistant named <strong>Sage</strong> powered by Google's Gemini API. When you interact with Sage:
+                  Scholario includes an optional academic study assistant named <strong>Sage</strong> powered by our advanced AI model infrastructure. When you interact with Sage:
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Prompts and questions are processed ephemerally to generate explanations, formula derivations, and study guides.</li>
-                  <li>Per Google Enterprise Cloud terms, student prompts are <strong>not</strong> used to train public foundational AI models.</li>
+                  <li>Per enterprise data protection terms, student prompts are <strong>not</strong> used to train public foundational AI models.</li>
                   <li>Students may clear their active Sage conversation memory at any time using the in-chat "Clear History" button.</li>
                 </ul>
               </section>
@@ -331,7 +330,7 @@ export const PrivacyPolicyPage: React.FC = () => {
               <section id="security" className="scroll-mt-32 space-y-3">
                 <h2 className="text-xl font-bold text-[#111111] dark:text-white">9. Data Security & RLS Controls</h2>
                 <p>
-                  We implement multi-layered defenses including HTTPS/TLS 1.3 encryption in transit, AES-256 encryption at rest in Cloudflare R2 and Supabase, granular Row-Level Security policies, and audit logs tracking any administrative status alterations.
+                  We implement multi-layered defenses including HTTPS/TLS 1.3 encryption in transit, AES-256 encryption at rest across our database and cloud storage, granular Row-Level Security policies, and audit logs tracking any administrative status alterations.
                 </p>
               </section>
 

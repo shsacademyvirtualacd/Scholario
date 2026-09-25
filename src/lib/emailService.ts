@@ -86,7 +86,7 @@ export function buildCompliantEmailHtml(options: EmailOptions): string {
 }
 
 /**
- * Returns RFC-compliant unsubscribe headers for Resend or SMTP payloads.
+ * Returns RFC-compliant unsubscribe headers for email dispatcher or SMTP payloads.
  */
 export function getEmailComplianceHeaders(recipientEmail: string) {
   const unsubscribeUrl = `https://scholario.pk/settings?action=unsubscribe&email=${encodeURIComponent(recipientEmail)}`;

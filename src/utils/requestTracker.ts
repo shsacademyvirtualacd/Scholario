@@ -32,7 +32,7 @@ export const getPendingCount = () => activeFetches + activeSuspense;
 
 export const trackedFetch: typeof fetch = async (...args) => {
   const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
-  const isTracked = typeof url === 'string' && url.includes('.supabase.co');
+  const isTracked = typeof url === 'string' && (url.includes('/rest/v1') || url.includes('/auth/v1') || url.includes('/api/') || url.includes('supabase.co'));
 
   if (isTracked) {
     activeFetches++;
@@ -56,7 +56,7 @@ if (typeof window !== 'undefined') {
     const originalFetch = window.fetch.bind(window);
     const customFetch: typeof fetch = async (...args) => {
       const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
-      const isTracked = typeof url === 'string' && url.includes('.supabase.co');
+      const isTracked = typeof url === 'string' && (url.includes('/rest/v1') || url.includes('/auth/v1') || url.includes('/api/') || url.includes('supabase.co'));
 
       if (isTracked) {
         activeFetches++;

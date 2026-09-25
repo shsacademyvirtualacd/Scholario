@@ -167,8 +167,8 @@ export const adminToolDeclarations: FunctionDeclaration[] = [
 ];
 
 /**
- * Execute strictly read-only queries against Supabase / PostgreSQL database for Admin tools.
- * Prioritizes direct PostgreSQL pool for complete, unconstrained administrative reads.
+ * Execute strictly read-only queries against our database for Admin tools.
+ * Prioritizes direct connection pool for complete, unconstrained administrative reads.
  */
 export async function executeAdminDataQuery(
   toolName: string,

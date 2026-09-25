@@ -3,7 +3,7 @@
  * 
  * Provides:
  * 1. Document chunking pipeline with configurable token/character boundaries
- * 2. Vector search integration with Supabase pgvector (match_knowledge_base RPC)
+ * 2. Vector search integration with database vector store (match_knowledge_base RPC)
  * 3. Authoritative institutional seed knowledge (Grading policies, Note Vault, Attendance, Rules)
  * 4. Fallback search mechanism when database vector extension is pending
  */

@@ -676,7 +676,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
           {uploading && (
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-semibold text-[#525252] dark:text-[#A1A1AA]">
-                <span>Uploading test paper to Cloudflare storage...</span>
+                <span>Uploading test paper to cloud storage...</span>
                 <span>{progress}%</span>
               </div>
               <div className="w-full h-2 bg-[#E5E5E5] dark:bg-[#27272A] rounded-full overflow-hidden">

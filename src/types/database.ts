@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────
 // Scholario — Database Types
-// Mirrors the Supabase schema exactly
+// Mirrors the database schema exactly
 // ─────────────────────────────────────────────
 
 export type Role = 'student' | 'admin' | 'teacher';
@@ -404,7 +404,7 @@ export interface RosterEntry {
   created_at: string;
 }
 
-// ─── Supabase Database shape ─────────────────
+// ─── Database shape ─────────────────
 export interface Database {
   public: {
     Tables: {

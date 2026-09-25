@@ -169,7 +169,7 @@ export const AdminFeesPage: React.FC = () => {
           hint: err?.hint
         });
         errors.pending = {
-          message: err?.message || 'Failed to retrieve fee_statuses from Supabase.',
+          message: err?.message || 'Failed to retrieve fee_statuses from database.',
           code: err?.code,
           details: err?.details || err?.hint,
         };
@@ -228,7 +228,7 @@ export const AdminFeesPage: React.FC = () => {
           hint: err?.hint
         });
         errors.scholarships = {
-          message: err?.message || 'Failed to retrieve scholarship_applications from Supabase.',
+          message: err?.message || 'Failed to retrieve scholarship_applications from database.',
           code: err?.code,
           details: err?.details || err?.hint,
         };
@@ -529,7 +529,7 @@ export const AdminFeesPage: React.FC = () => {
               <div className="space-y-0.5">
                 <span className="font-bold block">{error}</span>
                 <span className="text-xs text-rose-700 block">
-                  Verify Supabase RLS policies and table structures. One failing query no longer blanks the page.
+                  Verify database security policies and table structures. One failing query no longer blanks the page.
                 </span>
               </div>
             </div>
@@ -652,7 +652,7 @@ export const AdminFeesPage: React.FC = () => {
                       </p>
                       {(queryErrors.pending.code || queryErrors.pending.details) && (
                         <div className="text-[11px] font-mono text-rose-800 bg-white/80 p-3 rounded-xl text-left border border-rose-200 break-all space-y-1">
-                          {queryErrors.pending.code && <div><span className="font-bold">Supabase Code:</span> {queryErrors.pending.code}</div>}
+                          {queryErrors.pending.code && <div><span className="font-bold">Error Code:</span> {queryErrors.pending.code}</div>}
                           {queryErrors.pending.details && <div><span className="font-bold">Details:</span> {queryErrors.pending.details}</div>}
                         </div>
                       )}
@@ -927,7 +927,7 @@ export const AdminFeesPage: React.FC = () => {
                         </p>
                         {(queryErrors.scholarships.code || queryErrors.scholarships.details) && (
                           <div className="text-[11px] font-mono text-rose-800 bg-white/80 p-3 rounded-xl text-left border border-rose-200 break-all space-y-1">
-                            {queryErrors.scholarships.code && <div><span className="font-bold">Supabase Code:</span> {queryErrors.scholarships.code}</div>}
+                            {queryErrors.scholarships.code && <div><span className="font-bold">Error Code:</span> {queryErrors.scholarships.code}</div>}
                             {queryErrors.scholarships.details && <div><span className="font-bold">Details:</span> {queryErrors.scholarships.details}</div>}
                           </div>
                         )}

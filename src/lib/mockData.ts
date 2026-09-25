@@ -79,7 +79,7 @@ export const getStudentsByTeacher = (_teacherId: string): Profile[] => {
   return [];
 };
 
-// (Announcements now backed by real Supabase table and types)
+// (Announcements now backed by real database table and types)
 
 
 export interface RosterEntry {

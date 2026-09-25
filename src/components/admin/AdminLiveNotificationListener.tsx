@@ -11,7 +11,7 @@ import {
  * AdminLiveNotificationListener
  * ─────────────────────────────────────────────────────────────────────────────
  * Single global Realtime listener for administrators.
- * - Subscribes to Supabase Realtime changes on table `live_sessions`.
+ * - Subscribes to real-time changes on table `live_sessions`.
  * - Fires a browser notification when ANY teacher posts a class link (status transitions to 'live').
  * - No enrollment/grade filter: admin monitors all subjects and grades.
  * - Stale session filter: ignores sessions that were already 'live' at page load.

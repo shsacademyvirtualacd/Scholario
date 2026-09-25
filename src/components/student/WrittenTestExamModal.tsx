@@ -1302,7 +1302,7 @@ export const WrittenTestExamModal: React.FC<WrittenTestExamModalProps> = ({
                   <div className="flex justify-between items-center pt-1 border-t border-[#F0F0F0]">
                     <span className="text-[#737373]">Written Answers:</span>
                     <span className="font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                      Cloudflare R2 (Awaiting Teacher Grading)
+                      Cloud Storage (Awaiting Teacher Grading)
                     </span>
                   </div>
                 )}

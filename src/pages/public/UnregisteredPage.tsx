@@ -45,11 +45,9 @@ export const UnregisteredPage: React.FC = () => {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [suggestedFix, setSuggestedFix] = useState<string | null>(null);
 
-  // Minor Protection & Consent Fields (Students under 18)
-  const [isMinor, setIsMinor] = useState<boolean>(true);
+  // Minor Contact Fields (Students under 18)
+  const [isMinor, setIsMinor] = useState<boolean>(false);
   const [parentEmail, setParentEmail] = useState<string>('');
-  const [parentName, setParentName] = useState<string>('');
-  const [parentConsent, setParentConsent] = useState<boolean>(false);
   const [termsConsent, setTermsConsent] = useState<boolean>(false);
 
   // Real-time phone input handler
@@ -334,22 +332,12 @@ export const UnregisteredPage: React.FC = () => {
       return;
     }
 
-    // Minor Protection & Parent Consent Validation (for students under 18)
-    if (isMinor) {
+    // Parent / guardian email collection for students under 18 (skipped for 18+)
+    if (isMinor && parentEmail.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!parentEmail.trim() || !emailRegex.test(parentEmail.trim())) {
-        setError('A valid Parent / Guardian Email address is required for students under 18.');
-        toast.error('Parent / Guardian email required.');
-        return;
-      }
-      if (!parentName.trim()) {
-        setError('Please enter the full name of your Parent / Legal Guardian.');
-        toast.error('Parent / Guardian full name required.');
-        return;
-      }
-      if (!parentConsent) {
-        setError('Parent / Legal Guardian consent is required for students under 18.');
-        toast.error('Parental consent confirmation required.');
+      if (!emailRegex.test(parentEmail.trim())) {
+        setError('Please enter a valid Parent / Guardian Email address.');
+        toast.error('Invalid parent email format.');
         return;
       }
     }
@@ -504,6 +492,18 @@ export const UnregisteredPage: React.FC = () => {
       if (profileUpsertErr) {
         console.error('Profile upsert error:', profileUpsertErr);
         throw new Error(profileUpsertErr.message || 'Student profile creation failed.');
+      }
+
+      // Store parent email if user is under 18
+      if (isMinor && parentEmail.trim()) {
+        try {
+          await supabase.auth.updateUser({
+            data: { parent_email: parentEmail.trim(), is_minor: true },
+          });
+          localStorage.setItem(`scholario_parent_email_${user.id}`, parentEmail.trim());
+        } catch (metaErr) {
+          console.warn('[Register] Parent email storage notice:', metaErr);
+        }
       }
 
       // 4. Perform complete onboarding and enrollment assignment with clean UUIDs
@@ -900,19 +900,18 @@ export const UnregisteredPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Minor Protection & Parent / Guardian Step */}
-                  <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 space-y-3">
+                  {/* Minor Contact: Users Under 18 */}
+                  <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/70 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-[#F4C430] text-[#111111] flex items-center justify-center text-[10px] font-black shrink-0">
-                          !
+                      <div>
+                        <span className="text-xs font-bold text-[#111111] block">
+                          Are you under 18 years of age?
                         </span>
-                        <span className="text-xs font-bold text-[#111111] dark:text-white uppercase tracking-wider">
-                          Minor Protection (Users Under 18)
+                        <span className="text-[11px] text-[#737373]">
+                          Students under 18 can provide a parent or guardian email for academic records.
                         </span>
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <span className="text-[11px] font-semibold text-[#525252]">Under 18?</span>
                         <input
                           id="minor-status-toggle"
                           type="checkbox"
@@ -920,60 +919,23 @@ export const UnregisteredPage: React.FC = () => {
                           onChange={(e) => setIsMinor(e.target.checked)}
                           className="w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] cursor-pointer"
                         />
+                        <span className="text-xs font-semibold text-[#111111]">Under 18</span>
                       </label>
                     </div>
 
-                    <p className="text-[11px] text-[#737373] leading-relaxed">
-                      FBISE Class 9–12 and Cambridge students are predominantly minors. In accordance with student privacy regulations and the <em>Contract Act 1872</em>, minor enrollment requires verified parent/guardian consent.
-                    </p>
-
                     {isMinor && (
-                      <div className="pt-2 border-t border-amber-200/60 space-y-3 animate-in fade-in duration-200">
-                        <div className={isMobile ? 'flex flex-col gap-2.5' : 'grid grid-cols-2 gap-2.5'}>
-                          <div>
-                            <label className="label text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1 block">
-                              Parent / Guardian Email <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              id="parent-email-input"
-                              type="email"
-                              required={isMinor}
-                              value={parentEmail}
-                              onChange={(e) => setParentEmail(e.target.value)}
-                              placeholder="parent@example.com"
-                              className="input text-xs py-2 bg-white font-semibold w-full"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="label text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1 block">
-                              Parent / Guardian Full Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              id="parent-name-input"
-                              type="text"
-                              required={isMinor}
-                              value={parentName}
-                              onChange={(e) => setParentName(e.target.value)}
-                              placeholder="Parent / Guardian full legal name"
-                              className="input text-xs py-2 bg-white font-semibold w-full"
-                            />
-                          </div>
-                        </div>
-
-                        <label className="flex items-start gap-2.5 cursor-pointer select-none bg-white p-2.5 rounded-xl border border-amber-200">
-                          <input
-                            id="parent-consent-checkbox"
-                            type="checkbox"
-                            required={isMinor}
-                            checked={parentConsent}
-                            onChange={(e) => setParentConsent(e.target.checked)}
-                            className="mt-0.5 w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] border-[#D4D4D4] cursor-pointer"
-                          />
-                          <span className="text-xs font-semibold text-[#111111] leading-relaxed">
-                            I confirm that my parent or legal guardian has reviewed and explicitly authorized my enrollment, data processing, and test participation on Scholario LMS. <span className="text-red-500">*</span>
-                          </span>
+                      <div className="pt-2 border-t border-amber-200/60 animate-in fade-in duration-200">
+                        <label className="label text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1 block">
+                          Parent / Guardian Email
                         </label>
+                        <input
+                          id="parent-email-input"
+                          type="email"
+                          value={parentEmail}
+                          onChange={(e) => setParentEmail(e.target.value)}
+                          placeholder="parent@example.com"
+                          className="input text-xs py-2 bg-white font-semibold w-full"
+                        />
                       </div>
                     )}
                   </div>
@@ -1743,13 +1705,10 @@ export const UnregisteredPage: React.FC = () => {
                       </span>
                     </label>
 
-                    {isMinor && (
-                      <div className="pl-6.5 text-[11px] text-[#737373] space-y-0.5">
+                    {isMinor && parentEmail.trim() && (
+                      <div className="pl-6.5 text-[11px] text-[#737373]">
                         <p>
-                          Parent/Guardian email: <span className="font-mono font-bold text-[#111111]">{parentEmail || 'Not entered yet'}</span>
-                        </p>
-                        <p>
-                          Parental Consent status: <span className={parentConsent ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}>{parentConsent ? 'Confirmed ✓' : 'Pending checkbox in Step 1'}</span>
+                          Parent/Guardian email: <span className="font-mono font-bold text-[#111111]">{parentEmail}</span>
                         </p>
                       </div>
                     )}
@@ -1759,7 +1718,7 @@ export const UnregisteredPage: React.FC = () => {
                 <div className="pt-2 flex flex-col gap-2.5">
                   <button
                     type="submit"
-                    disabled={saving || !selectedClassId || !selectedStreamId || !termsConsent || (isMinor && (!parentConsent || !parentEmail.trim()))}
+                    disabled={saving || !selectedClassId || !selectedStreamId || !termsConsent}
                     className="btn btn-primary w-full flex items-center justify-center gap-2 py-3.5 font-extrabold text-sm shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed interactive"
                   >
                     {saving ? (

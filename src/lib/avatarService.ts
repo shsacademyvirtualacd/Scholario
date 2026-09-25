@@ -4,8 +4,8 @@ const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
 /**
- * Validates and uploads a user profile picture to Cloudflare R2 via the backend API.
- * Updates the user's Supabase profile and deletes any prior R2 profile picture.
+ * Validates and uploads a user profile picture to cloud storage via the backend API.
+ * Updates the user's profile and deletes any prior profile picture.
  */
 export async function uploadProfilePicture(file: File): Promise<string> {
   if (!file) {
@@ -28,7 +28,7 @@ export async function uploadProfilePicture(file: File): Promise<string> {
     throw new Error(`File is too large (${sizeInMB} MB). Maximum allowed size is 2 MB.`);
   }
 
-  // Retrieve current active Supabase auth session
+  // Retrieve current active auth session
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('You must be signed in to upload a profile picture.');
@@ -60,7 +60,7 @@ export async function uploadProfilePicture(file: File): Promise<string> {
 }
 
 /**
- * Deletes the user's profile picture from Cloudflare R2 and clears avatar_url in the database.
+ * Deletes the user's profile picture from cloud storage and clears avatar_url in the database.
  */
 export async function deleteProfilePicture(): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();

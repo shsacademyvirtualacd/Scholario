@@ -102,11 +102,11 @@ export const CookiePolicyPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-[#E5E5E5] dark:divide-[#262626]">
                     <tr>
-                      <td className="px-4 py-3 font-mono font-bold text-[#111111] dark:text-white">sb-*-auth-token</td>
+                      <td className="px-4 py-3 font-mono font-bold text-[#111111] dark:text-white">auth-token</td>
                       <td className="px-4 py-3 text-emerald-700 dark:text-emerald-400 font-semibold">Strictly Essential</td>
                       <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Session (Renewable)</td>
                       <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">
-                        Supabase authentication JWT token maintaining secure logged-in access for students, teachers, and admins.
+                        Primary authentication session token maintaining secure logged-in access for students, teachers, and admins.
                       </td>
                     </tr>
                     <tr>

@@ -496,7 +496,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     abortControllerRef.current = abortController;
 
     try {
-      // Build API payload for streaming Gemini route
+      // Build API payload for streaming AI assistant route
       const payloadMessages = newHistory.map((m) => ({
         role: m.role,
         content: m.content,
@@ -1087,7 +1087,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3]">
           <span>Shift + Enter for new line • Enter to send</span>
-          <span className="text-[#737373] font-medium">Scholario Sage v2.0 (Gemini 3.6 Flash + RAG)</span>
+          <span className="text-[#737373] font-medium">Scholario Sage v2.0 (AI Assistant + RAG)</span>
         </div>
       </div>
     </div>

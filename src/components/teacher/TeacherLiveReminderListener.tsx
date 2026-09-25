@@ -57,7 +57,7 @@ export const TeacherLiveReminderListener: React.FC = () => {
       }
     }, 60_000);
 
-    // 3. Supabase Realtime subscriptions for instantaneous stop on link creation
+    // 3. Realtime subscriptions for instantaneous stop on link creation
     const linksChannel = supabase
       .channel(`teacher-reminders-${teacherId}-${Date.now()}`)
       .on(

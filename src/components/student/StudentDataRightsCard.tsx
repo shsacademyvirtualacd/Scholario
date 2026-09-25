@@ -124,7 +124,7 @@ export const StudentDataRightsCard: React.FC = () => {
   const mailtoDeletionRequest = `mailto:shs.academy.virtual@gmail.com?subject=${encodeURIComponent(
     `Permanent Account & Data Deletion Request - ${studentName} (#${studentId.slice(0, 8)})`
   )}&body=${encodeURIComponent(
-    `Dear SHS Virtual Academy Data Protection Officer,\n\nI hereby formally request the permanent deletion of my Scholario LMS account and associated student data in accordance with the Scholario Privacy Policy.\n\nStudent Name: ${studentName}\nRegistered Email: ${studentEmail}\nStudent ID: ${studentId}\nParent/Guardian Contact: ${parentEmailInput || 'Pending verification'}\nReason for Deletion: ${deleteReason || 'Course completed / No longer enrolled'}\n\nI understand that my uploaded exam attachments and chat media in Cloudflare R2 will be purged, and access to FBISE / Cambridge study materials will be revoked.\n\nSincerely,\n${studentName}`
+    `Dear SHS Virtual Academy Data Protection Officer,\n\nI hereby formally request the permanent deletion of my Scholario LMS account and associated student data in accordance with the Scholario Privacy Policy.\n\nStudent Name: ${studentName}\nRegistered Email: ${studentEmail}\nStudent ID: ${studentId}\nParent/Guardian Contact: ${parentEmailInput || 'Not specified'}\nReason for Deletion: ${deleteReason || 'Course completed / No longer enrolled'}\n\nI understand that my uploaded exam attachments and chat media in secure cloud storage will be purged, and access to study materials will be revoked.\n\nSincerely,\n${studentName}`
   )}`;
 
   return (
@@ -213,7 +213,7 @@ export const StudentDataRightsCard: React.FC = () => {
               <h4 className="text-xs font-bold text-red-950">Delete My Account</h4>
             </div>
             <p className="text-[11px] text-red-900/80 leading-relaxed">
-              Submit a formal request to purge your account, revoke course access, and delete uploaded files from Cloudflare R2.
+              Submit a formal request to purge your account, revoke course access, and delete uploaded files from our cloud storage.
             </p>
           </div>
 
@@ -258,7 +258,7 @@ export const StudentDataRightsCard: React.FC = () => {
                   Student Account Deletion Request
                 </h3>
                 <p className="text-xs text-[#737373]">
-                  Minors' Data Protection & Erasure Procedure
+                  Personal Data & Account Erasure Procedure
                 </p>
               </div>
             </div>
@@ -271,7 +271,7 @@ export const StudentDataRightsCard: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-bold text-[#111111]">Deletion Request Logged</h4>
                   <p className="text-xs text-[#525252] mt-1 max-w-sm mx-auto leading-relaxed">
-                    Your request has been queued. R2 chat attachments and test drafts have been designated for removal. An email notification has been dispatched to <strong>shs.academy.virtual@gmail.com</strong> for administrative validation.
+                    Your request has been queued. Chat attachments and test drafts have been designated for removal. An email notification has been dispatched to <strong>shs.academy.virtual@gmail.com</strong> for administrative validation.
                   </p>
                 </div>
                 <div className="pt-2">
@@ -287,15 +287,15 @@ export const StudentDataRightsCard: React.FC = () => {
             ) : (
               <form onSubmit={handleSubmitDeletionRequest} className="space-y-3.5">
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed space-y-1">
-                  <span className="font-bold block">Important Notice for Minor Students:</span>
+                  <span className="font-bold block">Account Deletion Notice:</span>
                   <p className="text-[11px]">
-                    Under the <em>Punjab Consumer Protection Act 2005</em> and educational regulations, minor student deletion requests must provide a verified parent or legal guardian contact for notification before permanent grade removal.
+                    Submitting this request initiates the permanent purge protocol for your student account, test evaluations, and study history.
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#111111] mb-1">
-                    Parent / Guardian Email (For Minor Verification)
+                    Parent / Guardian Email (Optional for students under 18)
                   </label>
                   <input
                     type="email"
@@ -304,9 +304,6 @@ export const StudentDataRightsCard: React.FC = () => {
                     placeholder="parent@example.com"
                     className="input text-xs w-full py-2 bg-white"
                   />
-                  <p className="text-[10px] text-[#737373] mt-1">
-                    Required if you are under 18 years of age.
-                  </p>
                 </div>
 
                 <div>
@@ -325,7 +322,7 @@ export const StudentDataRightsCard: React.FC = () => {
                 <div className="p-3 bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl text-[11px] text-[#737373] space-y-1">
                   <span className="font-bold text-[#111111] block">What gets deleted?</span>
                   <ul className="list-disc pl-4 space-y-0.5">
-                    <li>R2 Chat Attachments & voice note audio recordings</li>
+                    <li>Chat attachments & voice note audio recordings</li>
                     <li>Uploaded test answer sheets and scholarship marksheets</li>
                     <li>Active live class timetable enrollments & attendance history</li>
                   </ul>

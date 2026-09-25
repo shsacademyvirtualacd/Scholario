@@ -145,7 +145,7 @@ export const ProfilePage: React.FC = () => {
         <div className="lg:col-span-1 bg-white border border-[#E5E5E5] rounded-2xl p-6 text-center shadow-sm relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-2 bg-[#F4C430]" />
           
-          {/* Avatar container with R2 upload/change support */}
+          {/* Avatar container with cloud upload/change support */}
           <div className="mt-4 mb-4">
             <ProfileAvatar
               avatarUrl={profile?.avatar_url}

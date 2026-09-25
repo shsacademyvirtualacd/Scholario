@@ -130,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return prof;
   };
 
-  // ── Real Supabase: roster-gated profile provisioning ─────────────────────
+  // ── Real Auth: roster-gated profile provisioning ─────────────────────
   const provisionProfile = async (newSession: Session) => {
     const userId = newSession.user.id;
     const email  = newSession.user.email ?? '';

@@ -619,7 +619,7 @@ export const AdminCreateWrittenTestModal: React.FC<AdminCreateWrittenTestModalPr
               <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-start gap-3">
                 <Camera className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                 <div className="text-xs text-amber-900 leading-relaxed">
-                  <span className="font-bold">In-Browser Camera Submission Workflow:</span> Students solve each question on handwritten paper. The test displays questions one by one and opens the device camera directly in the browser to snap and attach the answer sheet before advancing to the next question. Submissions auto-expire after 24 hours in Cloudflare R2 storage.
+                  <span className="font-bold">In-Browser Camera Submission Workflow:</span> Students solve each question on handwritten paper. The test displays questions one by one and opens the device camera directly in the browser to snap and attach the answer sheet before advancing to the next question. Submissions auto-expire after 24 hours in secure cloud storage.
                 </div>
               </div>
             </div>

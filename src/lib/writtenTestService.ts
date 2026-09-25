@@ -128,7 +128,7 @@ export async function saveWrittenTest(
     console.warn('[writtenTestService] Sync to backend /api/written-tests warning:', err);
   }
 
-  // 3. Sync to Supabase tests table as well (using instructions payload)
+  // 3. Sync to database tests table as well (using instructions payload)
   try {
     await (supabase as any).from('tests').upsert(
       {
@@ -156,8 +156,8 @@ export async function saveWrittenTest(
       },
       { onConflict: 'id' }
     );
-  } catch (supaErr) {
-    console.warn('[writtenTestService] Supabase upsert note:', supaErr);
+  } catch (dbErr) {
+    console.warn('[writtenTestService] Database upsert note:', dbErr);
   }
 
   return test;
@@ -192,7 +192,7 @@ export async function getWrittenTests(filter?: {
     // Fallback to local
   }
 
-  // Also query Supabase tests table for written tests
+  // Also query database tests table for written tests
   try {
     const { data: supaRows } = await (supabase as any)
       .from('tests')
@@ -291,7 +291,7 @@ export async function publishWrittenTest(testId: string, callerRole: string = 'a
 }
 
 // -----------------------------------------------------------------------------
-// STUDENT SUBMISSION & CAMERA PHOTO UPLOAD (CLOUDFLARE R2)
+// STUDENT SUBMISSION & CAMERA PHOTO UPLOAD (CLOUD STORAGE)
 // -----------------------------------------------------------------------------
 
 export async function uploadExamQuestionPhoto(
@@ -396,8 +396,8 @@ export async function submitWrittenTest(
       },
       { onConflict: 'id' }
     );
-  } catch (supaErr) {
-    console.warn('[writtenTestService] Supabase submission note:', supaErr);
+  } catch (dbErr) {
+    console.warn('[writtenTestService] Database submission note:', dbErr);
   }
 
   return subWithTime;
@@ -609,7 +609,7 @@ export async function gradeWrittenSubmission(
     console.warn('[writtenTestService] Local audit log error:', auditErr);
   }
 
-  // Sync to Express backend (which also validates teacher authorization, deletes R2 objects and records backend audit logs)
+  // Sync to Express backend (which also validates teacher authorization, deletes cloud objects and records backend audit logs)
   try {
     const res = await fetch('/api/written-submissions/grade', {
       method: 'POST',
@@ -640,7 +640,7 @@ export async function gradeWrittenSubmission(
   const updatedList = existing.map((s) => (s.id === updatedSub.id ? updatedSub : s));
   saveStoredWrittenSubmissions(updatedList);
 
-  // Sync to Supabase
+  // Sync to database
   try {
     await (supabase as any)
       .from('test_submissions')

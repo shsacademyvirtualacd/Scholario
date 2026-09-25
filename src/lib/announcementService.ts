@@ -247,7 +247,7 @@ export async function dismissDashboardAnnouncement(
       );
 
     if (error) {
-      console.warn('[announcementService] Upsert dismissal to Supabase failed:', error.message);
+      console.warn('[announcementService] Upsert dismissal to database failed:', error.message);
     }
   } catch (err) {
     console.warn('[announcementService] Dismissal error:', err);

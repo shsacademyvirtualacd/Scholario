@@ -10,7 +10,7 @@ const institutionalPillars = [
   {
     icon: Lock,
     title: 'Zero Third-Party Ad Trackers',
-    description: 'Student data is protected with zero commercial tracking, no advertising beacons, and encrypted database isolation on Supabase and Cloudflare R2.',
+    description: 'Student data is protected with zero commercial tracking, no advertising beacons, and encrypted isolation across our secure database and cloud storage.',
   },
   {
     icon: Clock,
