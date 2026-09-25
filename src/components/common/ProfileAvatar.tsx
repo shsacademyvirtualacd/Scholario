@@ -136,7 +136,7 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
         {hasValidImage ? (
           <img
             src={avatarUrl!}
-            alt={name}
+            alt={`Profile avatar of ${name || 'User'}`}
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
             className="w-full h-full object-cover object-center"

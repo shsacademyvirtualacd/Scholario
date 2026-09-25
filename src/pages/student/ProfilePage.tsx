@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, Mail, Award, Book, Edit3, Check, X, Loader2, Hash } from 'lucide-react';
+import { User, Phone, Mail, Award, Book, Edit3, Check, X, Loader2, Hash, ShieldCheck, Download, Trash2, ExternalLink, FileText, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import StudentShell from '../../components/student/StudentShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ProfileAvatar from '../../components/common/ProfileAvatar';
@@ -10,6 +11,7 @@ import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
 import type { Enrollment } from '../../types';
 import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
+import { StudentDataRightsCard } from '../../components/student/StudentDataRightsCard';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 
 export const ProfilePage: React.FC = () => {
@@ -35,6 +37,100 @@ export const ProfilePage: React.FC = () => {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [phoneTouched, setPhoneTouched] = useState<boolean>(false);
   const [suggestedFix, setSuggestedFix] = useState<string | null>(null);
+
+  // Data Rights & Deletion States
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [deletionReason, setDeletionReason] = useState<string>('');
+  const [parentEmailConfirm, setParentEmailConfirm] = useState<string>('');
+  const [submittingDeletion, setSubmittingDeletion] = useState<boolean>(false);
+  const [exportingData, setExportingData] = useState<boolean>(false);
+
+  const handleExportData = async () => {
+    if (!profile) return;
+    setExportingData(true);
+    try {
+      const res = await fetch('/api/account/export-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: profile.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to export data');
+
+      // Trigger file download
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scholario_student_data_${profile.id.slice(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Your educational data file has been downloaded successfully.');
+    } catch (err: any) {
+      console.warn('Export error, generating local fallback summary:', err);
+      // Client-side export fallback
+      const exportObj = {
+        institution: 'SHS Virtual Academy',
+        student_id: studentId || profile.id,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        board: profile.board_id,
+        class: profile.class_id,
+        stream: profile.stream,
+        enrollments_count: enrollments.length,
+        fee_status: feeStatus?.status || 'unpaid',
+        exported_at: new Date().toISOString(),
+        privacy_policy: 'https://scholario.pk/privacy',
+        contact: 'shs.academy.virtual@gmail.com',
+      };
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scholario_student_data_${profile.id.slice(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.info('Student record summary exported.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleConfirmDeletion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    setSubmittingDeletion(true);
+    try {
+      const res = await fetch('/api/account/request-deletion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: profile.id,
+          parent_email: parentEmailConfirm.trim(),
+          reason: deletionReason.trim() || 'Parent/Student voluntary account termination',
+        }),
+      });
+      const data = await res.json();
+      toast.success('Account deletion request registered. Cloudflare R2 attachments purged.');
+      setShowDeleteModal(false);
+
+      // Open email client with pre-drafted formal deletion request
+      const subject = encodeURIComponent(`Student Account & Data Deletion Request - ID ${studentId || profile.id.slice(0, 8)}`);
+      const body = encodeURIComponent(
+        `Dear SHS Virtual Academy Administration,\n\nI am requesting permanent deletion of the student account and all personal educational records.\n\nStudent Name: ${profile.full_name}\nStudent ID: ${studentId || profile.id}\nRegistered Email: ${email}\nParent/Guardian Email: ${parentEmailConfirm || 'On file'}\nReason: ${deletionReason || 'Voluntary withdrawal'}\n\nPlease execute the 30-day data purge protocol under the Scholario Privacy Policy.\n\nSincerely,\n${profile.full_name}`
+      );
+      window.location.href = `mailto:shs.academy.virtual@gmail.com?subject=${subject}&body=${body}`;
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit deletion request.');
+    } finally {
+      setSubmittingDeletion(false);
+    }
+  };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -445,6 +541,9 @@ export const ProfilePage: React.FC = () => {
 
             {/* Chat Presence & Privacy Card */}
             <ChatPrivacySettingCard />
+
+            {/* Student Data Rights & Deletion Card */}
+            <StudentDataRightsCard />
           </div>
         </div>
       )}

@@ -78,7 +78,7 @@ const TeachersSection: React.FC = () => {
               <div className="relative h-52 overflow-hidden bg-[#F5F5F5]">
                 <img
                   src={teacher.photo}
-                  alt={teacher.name}
+                  alt={`Faculty Member: ${teacher.name}, ${teacher.subject} Specialist at SHS Virtual Academy`}
                   className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                 />
                 {/* Rating pill */}

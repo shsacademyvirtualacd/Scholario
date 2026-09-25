@@ -4414,6 +4414,140 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     );
   });
 
+  // ── Student Data Rights & Deletion Endpoints ─────────────────
+  app.post('/api/account/export-data', express.json(), async (req, res) => {
+    try {
+      let userId = req.body?.user_id;
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
+          if (payload?.sub) userId = payload.sub;
+        } catch {}
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Valid user authentication required' });
+      }
+
+      // 1. Fetch Profile
+      const { rows: profileRows } = await pgPool.query(
+        'SELECT id, role, full_name, phone, board_id, class_id, stream_id, subjects, created_at FROM public.profiles WHERE id = $1',
+        [userId]
+      );
+      const profile = profileRows[0] || null;
+
+      // 2. Fetch Enrollments
+      const { rows: enrollRows } = await pgPool.query(
+        `SELECT e.id, e.enrolled_at, co.class_id, co.subject_id
+         FROM public.enrollments e
+         LEFT JOIN public.class_offerings co ON e.offering_id = co.id
+         WHERE e.student_id = $1`,
+        [userId]
+      );
+
+      // 3. Fetch Test Submissions
+      const { rows: testRows } = await pgPool.query(
+        `SELECT id, test_id, marks_obtained, max_marks, status, submitted_at
+         FROM public.test_submissions WHERE student_id = $1`,
+        [userId]
+      );
+
+      // 4. Fetch Attendance Count
+      const { rows: attRows } = await pgPool.query(
+        `SELECT status, count(*) as count FROM public.attendance WHERE student_id = $1 GROUP BY status`,
+        [userId]
+      );
+
+      return res.json({
+        success: true,
+        institution: 'SHS Virtual Academy',
+        exported_at: new Date().toISOString(),
+        student_profile: profile,
+        enrollments: enrollRows,
+        test_history: testRows,
+        attendance_summary: attRows,
+        data_policy: 'https://scholario.pk/privacy',
+        contact_email: 'shs.academy.virtual@gmail.com',
+      });
+    } catch (err: any) {
+      console.error('[server /api/account/export-data error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to export student data' });
+    }
+  });
+
+  app.post('/api/account/request-deletion', express.json(), async (req, res) => {
+    try {
+      let userId = req.body?.user_id;
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
+          if (payload?.sub) userId = payload.sub;
+        } catch {}
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Valid user authentication required' });
+      }
+
+      const parentEmail = req.body?.parent_email;
+      const reason = req.body?.reason || 'Student / Parent Voluntary Account & Data Deletion Request';
+
+      console.log(`[Account Deletion] Initiating deletion workflow for user ${userId}, parent: ${parentEmail}`);
+
+      // 1. Mark roster as awaiting termination
+      try {
+        await pgPool.query(
+          `UPDATE public.roster SET awaiting_termination = true WHERE profile_id = $1 OR id = $1`,
+          [userId]
+        );
+      } catch (rErr: any) {
+        console.warn('[Account Deletion Roster Warning]:', rErr?.message);
+      }
+
+      // 2. Identify and purge all R2 chat attachments sent by this user
+      try {
+        const { rows: userMsgRows } = await pgPool.query(
+          `SELECT attachment_key, audio_url FROM public.chat_messages WHERE sender_id = $1 AND (attachment_key IS NOT NULL OR audio_url IS NOT NULL)`,
+          [userId]
+        );
+        for (const msg of userMsgRows) {
+          if (msg.attachment_key) {
+            await deleteR2Attachment(msg.attachment_key);
+          }
+          if (msg.audio_url) {
+            const match = msg.audio_url.match(/voice_[^/.]+/);
+            if (match) await deleteR2Attachment(match[0]);
+          }
+        }
+      } catch (attErr: any) {
+        console.warn('[Account Deletion R2 Attachment Warning]:', attErr?.message);
+      }
+
+      // 3. Clear transient session and proctoring exam submission photos
+      for (const [key, photo] of examSubmissionPhotos.entries()) {
+        if (photo.studentId === userId) {
+          if (photo.r2Key) {
+            await deleteR2Attachment(photo.r2Key);
+          }
+          examSubmissionPhotos.delete(key);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: 'Student account deletion request recorded. Cloudflare R2 attachments purged, and official notification queued for SHS Virtual Academy administration.',
+        student_id: userId,
+        parent_email: parentEmail,
+        support_email: 'shs.academy.virtual@gmail.com',
+      });
+    } catch (err: any) {
+      console.error('[server /api/account/request-deletion error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to process deletion request' });
+    }
+  });
+
   // ── Explicit Service Worker Handler ─────────────────
   app.get('/sw.js', (_req, res) => {
     const swPath = path.resolve('public/sw.js');

@@ -223,6 +223,51 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
     }));
   };
 
+  // ── Full Keyboard Navigation for Test-Taking ──────────────────
+  useEffect(() => {
+    if (phase !== 'in_exam' || !test || !test.questions.length) return;
+
+    const handleExamKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      const q = test.questions[currentQuestionIndex];
+      if (!q) return;
+
+      const key = e.key;
+
+      // 1. Navigate Between Questions: ArrowLeft / ArrowRight
+      if (key === 'ArrowRight' || key === 'ArrowDown') {
+        e.preventDefault();
+        setCurrentQuestionIndex((prev) => Math.min(test.questions.length - 1, prev + 1));
+        return;
+      }
+      if (key === 'ArrowLeft' || key === 'ArrowUp') {
+        e.preventDefault();
+        setCurrentQuestionIndex((prev) => Math.max(0, prev - 1));
+        return;
+      }
+
+      // 2. Select Option via A, B, C, D or 1, 2, 3, 4
+      const lower = key.toLowerCase();
+      let selectedIdx = -1;
+      if (lower === 'a' || key === '1') selectedIdx = 0;
+      else if (lower === 'b' || key === '2') selectedIdx = 1;
+      else if (lower === 'c' || key === '3') selectedIdx = 2;
+      else if (lower === 'd' || key === '4') selectedIdx = 3;
+
+      if (selectedIdx >= 0 && selectedIdx < q.options.length) {
+        e.preventDefault();
+        handleSelectOption(q.id, selectedIdx);
+      }
+    };
+
+    window.addEventListener('keydown', handleExamKeyDown);
+    return () => window.removeEventListener('keydown', handleExamKeyDown);
+  }, [phase, test, currentQuestionIndex]);
+
   useModalScrollLock(isOpen && Boolean(test));
 
   if (!isOpen || !test) return null;
@@ -506,15 +551,25 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
               </div>
 
               {/* Options */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Question options">
                 {currentQ.options.map((opt, oIdx) => {
                   const isSelected = selectedAnswers[currentQ.id] === oIdx;
                   const letter = String.fromCharCode(65 + oIdx);
                   return (
-                    <div
+                    <button
                       key={oIdx}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      tabIndex={0}
                       onClick={() => handleSelectOption(currentQ.id, oIdx)}
-                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSelectOption(currentQ.id, oIdx);
+                        }
+                      }}
+                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 text-left w-full focus:outline-none focus:ring-2 focus:ring-[#F4C430] ${
                         isSelected
                           ? 'bg-amber-50/60 border-[#111111] ring-2 ring-[#111111]/10 shadow-xs'
                           : 'bg-white border-[#E5E5E5] hover:border-[#CCCCCC]'
@@ -530,7 +585,7 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
                       <div className="flex-1 text-xs font-semibold text-[#111111]">
                         <MathText text={opt} />
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -542,16 +597,33 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
                   disabled={currentQuestionIndex === 0}
                   onClick={() => setCurrentQuestionIndex((i) => Math.max(0, i - 1))}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#737373] hover:text-[#111111] disabled:opacity-40 cursor-pointer"
+                  aria-label="Previous question"
                 >
                   <ChevronLeft size={16} />
                   <span>Previous</span>
                 </button>
+
+                {/* Keyboard Navigation Helper Banner */}
+                <div className="hidden md:flex items-center gap-2 text-[11px] text-[#737373] bg-[#FAFAFA] px-3 py-1.5 rounded-xl border border-[#EBEBEB]">
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 bg-white border border-[#D4D4D4] rounded font-mono text-[10px] font-bold text-[#111111]">A</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-white border border-[#D4D4D4] rounded font-mono text-[10px] font-bold text-[#111111]">B</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-white border border-[#D4D4D4] rounded font-mono text-[10px] font-bold text-[#111111]">C</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-white border border-[#D4D4D4] rounded font-mono text-[10px] font-bold text-[#111111]">D</kbd> Select Answer
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 bg-white border border-[#D4D4D4] rounded font-mono text-[10px] font-bold text-[#111111]">←</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-white border border-[#D4D4D4] rounded font-mono text-[10px] font-bold text-[#111111]">→</kbd> Prev / Next
+                  </span>
+                </div>
 
                 {currentQuestionIndex < test.questions.length - 1 ? (
                   <button
                     type="button"
                     onClick={() => setCurrentQuestionIndex((i) => Math.min(test.questions.length - 1, i + 1))}
                     className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#111111] text-white text-xs font-bold hover:bg-black cursor-pointer shadow-xs"
+                    aria-label="Next question"
                   >
                     <span>Next</span>
                     <ChevronRight size={16} />
@@ -562,6 +634,7 @@ export const ProctoredMCQExamModal: React.FC<ProctoredMCQExamModalProps> = ({
                     disabled={submitting}
                     onClick={() => executeSubmission()}
                     className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-[#111111] text-[#F4C430] hover:bg-black text-xs font-black cursor-pointer shadow-md active:scale-[0.98]"
+                    aria-label="Complete and submit exam"
                   >
                     <Send size={14} />
                     <span>Complete & Submit Exam</span>

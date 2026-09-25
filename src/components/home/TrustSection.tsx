@@ -1,120 +1,59 @@
 import React from 'react';
-import { Quote, Star } from 'lucide-react';
+import { ShieldCheck, BookOpen, Clock, Lock } from 'lucide-react';
 
-const testimonials = [
+const institutionalPillars = [
   {
-    quote: "Scholario transformed how we deliver education at our institution. The platform is intuitive, fast, and our students actually enjoy using it. We've seen a 40% increase in course completion rates.",
-    author: 'Zainab Naqvi',
-    role: 'Principal, Beacon House School System',
-    avatar: 'ZN',
-    rating: 5,
+    icon: BookOpen,
+    title: 'Curriculum & Board Alignment',
+    description: 'Structured course plans mapped directly to Federal Board (FBISE Class 9–12), Cambridge (O/A Levels), and IELTS standards with full topic breakdowns.',
   },
   {
-    quote: "As an educator from a traditional background, I was skeptical about online LMS platforms. But Scholario made the transition seamless. The analytics help me identify struggling students before they fall behind.",
-    author: 'Prof. Imran Baig',
-    role: 'Senior Faculty, Punjab University',
-    avatar: 'IB',
-    rating: 5,
+    icon: Lock,
+    title: 'Zero Third-Party Ad Trackers',
+    description: 'Student data is protected with zero commercial tracking, no advertising beacons, and encrypted database isolation on Supabase and Cloudflare R2.',
   },
   {
-    quote: "I prepared for my ECAT exam entirely through Scholario. The content was well-structured, the live sessions were incredibly helpful, and the progress tracking kept me motivated throughout.",
-    author: 'Sana Mirza',
-    role: 'Engineering Student, UET Lahore',
-    avatar: 'SM',
-    rating: 5,
+    icon: Clock,
+    title: 'Live Timetable Synchronized',
+    description: 'Instant schedule notifications and admin-verified teacher links ensure students never miss live interactive lecture sessions.',
   },
 ];
 
-
-
-const TrustSection: React.FC = () => {
+export const TrustSection: React.FC = () => {
   return (
-    <section className="py-28 bg-white">
+    <section className="py-24 bg-white dark:bg-[#111111]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Testimonials */}
-        <div className="mb-8">
-          <span className="section-label justify-center mb-4">Testimonials</span>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-center tracking-tight text-[#111111] mb-4">
-            Loved by educators
-            <br />and learners alike
+        <div className="text-center mb-14">
+          <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#D4A017] bg-[#FFFBF0] dark:bg-amber-950/40 px-3 py-1 rounded-full border border-[#FDE68A] dark:border-amber-800/40 mb-3">
+            <ShieldCheck size={14} />
+            Institutional Standards
+          </span>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#111111] dark:text-white tracking-tight">
+            Built for Academic Integrity & Focused Study
           </h2>
+          <p className="text-sm text-[#737373] dark:text-[#A3A3A3] max-w-xl mx-auto mt-2">
+            SHS Virtual Academy operates on educational rigor, transparent billing, and zero marketing distraction.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-12">
-          {testimonials.map((t, i) => (
-            <div
-              key={t.author}
-              className={`relative p-7 rounded-2xl border transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${
-                i === 1
-                  ? 'bg-[#111111] border-[#111111]'
-                  : 'bg-white border-[#E5E5E5]'
-              }`}
-            >
-              {/* Quote icon */}
-              <Quote
-                size={24}
-                className="mb-5"
-                style={{ color: i === 1 ? '#F4C430' : '#F4C430', opacity: 0.7 }}
-              />
-
-              {/* Stars */}
-              <div className="flex items-center gap-0.5 mb-4">
-                {Array.from({ length: t.rating }).map((_, si) => (
-                  <Star
-                    key={si}
-                    size={13}
-                    className="fill-[#F4C430] text-[#F4C430]"
-                  />
-                ))}
-              </div>
-
-              <p
-                className="text-base leading-relaxed mb-6 font-medium"
-                style={{ color: i === 1 ? '#D4D4D4' : '#262626' }}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {institutionalPillars.map((p) => {
+            const Icon = p.icon;
+            return (
+              <div
+                key={p.title}
+                className="p-6 rounded-2xl border border-[#E5E5E5] dark:border-[#262626] bg-[#FAFAFA] dark:bg-[#181818] space-y-3"
               >
-                "{t.quote}"
-              </p>
-
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                  style={{
-                    background: i === 1 ? '#F4C430' : '#111111',
-                    color: i === 1 ? '#111111' : '#ffffff',
-                  }}
-                >
-                  {t.avatar}
+                <div className="w-10 h-10 rounded-xl bg-[#FFFBF0] dark:bg-amber-950/40 border border-[#FDE68A] dark:border-amber-800/40 text-[#D4A017] flex items-center justify-center">
+                  <Icon size={20} />
                 </div>
-                <div>
-                  <div
-                    className="font-semibold text-sm"
-                    style={{ color: i === 1 ? '#ffffff' : '#111111' }}
-                  >
-                    {t.author}
-                  </div>
-                  <div
-                    className="text-xs mt-0.5"
-                    style={{ color: i === 1 ? '#737373' : '#A3A3A3' }}
-                  >
-                    {t.role}
-                  </div>
-                </div>
+                <h3 className="text-base font-bold text-[#111111] dark:text-white">{p.title}</h3>
+                <p className="text-xs text-[#525252] dark:text-[#A3A3A3] leading-relaxed">
+                  {p.description}
+                </p>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Review aggregate */}
-        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 py-8 border-t border-[#F0F0F0]">
-          <div className="flex items-center gap-1">
-            {[1,2,3,4,5].map((s) => (
-              <Star key={s} size={20} className="fill-[#F4C430] text-[#F4C430]" />
-            ))}
-          </div>
-          <div className="text-center sm:text-left">
-            <span className="text-3xl font-extrabold text-[#111111]">4.9/5</span>
-            <span className="text-[#737373] ml-2 text-sm">from 1,240 ratings</span>
-          </div>
+            );
+          })}
         </div>
       </div>
     </section>

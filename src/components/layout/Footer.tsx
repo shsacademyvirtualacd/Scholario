@@ -62,6 +62,8 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     Legal: [
       { label: 'Privacy Policy', to: '/privacy', id: 'footer-privacy-link' },
       { label: 'Terms of Service', to: '/terms', id: 'footer-terms-link' },
+      { label: 'Refund Policy', to: '/refund', id: 'footer-refund-link' },
+      { label: 'Cookie Policy', to: '/cookies', id: 'footer-cookie-link' },
     ],
   };
 
@@ -108,13 +110,18 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <Logo size="sm" variant="full" darkMode className="mb-5" />
-            <p className="text-[#737373] text-sm leading-relaxed mb-6 max-w-xs">
-              Pakistan's premier Learning Management System, built for modern educators and ambitious learners.
+            <p className="text-[#A3A3A3] text-xs font-semibold uppercase tracking-wider mb-2 text-[#F4C430]">
+              SHS Virtual Academy
             </p>
-            <div className="space-y-2.5 text-sm text-[#737373]">
-              <div className="flex items-center gap-2.5">
-                <MapPin size={14} className="shrink-0 text-[#F4C430]" />
-                <span>Rawalpindi, Punjab, Pakistan</span>
+            <p className="text-[#737373] text-sm leading-relaxed mb-4 max-w-xs">
+              Pakistan's premier Learning Management System, built exclusively for SHS Virtual Academy students, faculty, and parents.
+            </p>
+            <div className="space-y-2.5 text-xs text-[#737373]">
+              <div className="flex items-start gap-2.5">
+                <MapPin size={14} className="shrink-0 text-[#F4C430] mt-0.5" />
+                <span>
+                  Digital-First Online Institution (No physical public campus). Registered Administrative Office: Rawalpindi, Punjab, Pakistan.
+                </span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail size={14} className="shrink-0 text-[#F4C430]" />

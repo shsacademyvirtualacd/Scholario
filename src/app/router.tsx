@@ -24,6 +24,9 @@ import NotFoundPage from '../pages/public/NotFoundPage';
 // ─── Legal Pages (lazy) ────────────────────────
 const PrivacyPolicyPage = lazy(() => import('../pages/public/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('../pages/public/TermsOfServicePage'));
+const RefundPolicyPage = lazy(() => import('../pages/public/RefundPolicyPage'));
+const CookiePolicyPage = lazy(() => import('../pages/public/CookiePolicyPage'));
+import { CookieConsentBanner } from '../components/common/CookieConsentBanner';
 
 // ─── Marketing page (eager — entry point) ───
 import LandingShell from '../pages/public/LandingShell';
@@ -121,6 +124,7 @@ const AppRouter: React.FC = () => (
     <PageContextTracker />
     <OfflineBanner />
     <TopLoadingBar />
+    <CookieConsentBanner />
     <Toaster position="top-right" richColors closeButton />
     <AuthProvider>
       <LiveSessionNotificationListener />
@@ -139,6 +143,10 @@ const AppRouter: React.FC = () => (
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+          <Route path="/refund" element={<RefundPolicyPage />} />
+          <Route path="/refund-policy" element={<RefundPolicyPage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
 
           {/* Student Portal */}
           <Route

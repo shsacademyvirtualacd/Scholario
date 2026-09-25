@@ -45,6 +45,13 @@ export const UnregisteredPage: React.FC = () => {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [suggestedFix, setSuggestedFix] = useState<string | null>(null);
 
+  // Minor Protection & Consent Fields (Students under 18)
+  const [isMinor, setIsMinor] = useState<boolean>(true);
+  const [parentEmail, setParentEmail] = useState<string>('');
+  const [parentName, setParentName] = useState<string>('');
+  const [parentConsent, setParentConsent] = useState<boolean>(false);
+  const [termsConsent, setTermsConsent] = useState<boolean>(false);
+
   // Real-time phone input handler
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -318,6 +325,33 @@ export const UnregisteredPage: React.FC = () => {
     if (!fullName.trim() || !phone.trim() || !selectedClassId) {
       setError('Please fill out all required fields.');
       return;
+    }
+
+    // Explicit Consent Validation
+    if (!termsConsent) {
+      setError('You must review and accept the Terms of Service, Privacy Policy, and Refund Policy to register.');
+      toast.error('Terms & Privacy consent required.');
+      return;
+    }
+
+    // Minor Protection & Parent Consent Validation (for students under 18)
+    if (isMinor) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!parentEmail.trim() || !emailRegex.test(parentEmail.trim())) {
+        setError('A valid Parent / Guardian Email address is required for students under 18.');
+        toast.error('Parent / Guardian email required.');
+        return;
+      }
+      if (!parentName.trim()) {
+        setError('Please enter the full name of your Parent / Legal Guardian.');
+        toast.error('Parent / Guardian full name required.');
+        return;
+      }
+      if (!parentConsent) {
+        setError('Parent / Legal Guardian consent is required for students under 18.');
+        toast.error('Parental consent confirmation required.');
+        return;
+      }
     }
 
     // Strict Pakistani Phone Validation (+92 followed by 10 digits starting with 3)
@@ -864,6 +898,84 @@ export const UnregisteredPage: React.FC = () => {
                       disabled
                       className="input bg-[#FAFAFA] border-[#E5E5E5] text-[#737373] font-semibold text-xs cursor-not-allowed py-2"
                     />
+                  </div>
+
+                  {/* Minor Protection & Parent / Guardian Step */}
+                  <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#F4C430] text-[#111111] flex items-center justify-center text-[10px] font-black shrink-0">
+                          !
+                        </span>
+                        <span className="text-xs font-bold text-[#111111] dark:text-white uppercase tracking-wider">
+                          Minor Protection (Users Under 18)
+                        </span>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <span className="text-[11px] font-semibold text-[#525252]">Under 18?</span>
+                        <input
+                          id="minor-status-toggle"
+                          type="checkbox"
+                          checked={isMinor}
+                          onChange={(e) => setIsMinor(e.target.checked)}
+                          className="w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] cursor-pointer"
+                        />
+                      </label>
+                    </div>
+
+                    <p className="text-[11px] text-[#737373] leading-relaxed">
+                      FBISE Class 9–12 and Cambridge students are predominantly minors. In accordance with student privacy regulations and the <em>Contract Act 1872</em>, minor enrollment requires verified parent/guardian consent.
+                    </p>
+
+                    {isMinor && (
+                      <div className="pt-2 border-t border-amber-200/60 space-y-3 animate-in fade-in duration-200">
+                        <div className={isMobile ? 'flex flex-col gap-2.5' : 'grid grid-cols-2 gap-2.5'}>
+                          <div>
+                            <label className="label text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1 block">
+                              Parent / Guardian Email <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              id="parent-email-input"
+                              type="email"
+                              required={isMinor}
+                              value={parentEmail}
+                              onChange={(e) => setParentEmail(e.target.value)}
+                              placeholder="parent@example.com"
+                              className="input text-xs py-2 bg-white font-semibold w-full"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="label text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1 block">
+                              Parent / Guardian Full Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              id="parent-name-input"
+                              type="text"
+                              required={isMinor}
+                              value={parentName}
+                              onChange={(e) => setParentName(e.target.value)}
+                              placeholder="Parent / Guardian full legal name"
+                              className="input text-xs py-2 bg-white font-semibold w-full"
+                            />
+                          </div>
+                        </div>
+
+                        <label className="flex items-start gap-2.5 cursor-pointer select-none bg-white p-2.5 rounded-xl border border-amber-200">
+                          <input
+                            id="parent-consent-checkbox"
+                            type="checkbox"
+                            required={isMinor}
+                            checked={parentConsent}
+                            onChange={(e) => setParentConsent(e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] border-[#D4D4D4] cursor-pointer"
+                          />
+                          <span className="text-xs font-semibold text-[#111111] leading-relaxed">
+                            I confirm that my parent or legal guardian has reviewed and explicitly authorized my enrollment, data processing, and test participation on Scholario LMS. <span className="text-red-500">*</span>
+                          </span>
+                        </label>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1599,11 +1711,56 @@ export const UnregisteredPage: React.FC = () => {
                   );
                 })()}
 
-                <div className="pt-4 border-t border-[#F5F5F5] flex flex-col gap-2.5">
+                {/* Explicit Legal Terms & Privacy Consent Card (Blocks submission until checked) */}
+                <div className="pt-4 border-t border-[#F5F5F5] space-y-3">
+                  <div className="p-4 rounded-2xl bg-white border-2 border-[#E5E5E5] space-y-2.5">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                      <input
+                        id="unregistered-terms-consent-checkbox"
+                        type="checkbox"
+                        checked={termsConsent}
+                        onChange={(e) => setTermsConsent(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] border-[#D4D4D4] cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs text-[#262626] font-semibold leading-relaxed">
+                        I confirm that I have reviewed, understood, and explicitly agree to the{' '}
+                        <Link to="/terms" target="_blank" className="font-extrabold text-[#D4A017] hover:underline">
+                          Terms of Service
+                        </Link>
+                        ,{' '}
+                        <Link to="/privacy" target="_blank" className="font-extrabold text-[#D4A017] hover:underline">
+                          Privacy Policy
+                        </Link>
+                        ,{' '}
+                        <Link to="/refund" target="_blank" className="font-extrabold text-[#D4A017] hover:underline">
+                          Refund Policy
+                        </Link>
+                        , and{' '}
+                        <Link to="/cookies" target="_blank" className="font-extrabold text-[#D4A017] hover:underline">
+                          Cookie Policy
+                        </Link>
+                        . <span className="text-red-500">*</span>
+                      </span>
+                    </label>
+
+                    {isMinor && (
+                      <div className="pl-6.5 text-[11px] text-[#737373] space-y-0.5">
+                        <p>
+                          Parent/Guardian email: <span className="font-mono font-bold text-[#111111]">{parentEmail || 'Not entered yet'}</span>
+                        </p>
+                        <p>
+                          Parental Consent status: <span className={parentConsent ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}>{parentConsent ? 'Confirmed ✓' : 'Pending checkbox in Step 1'}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2.5">
                   <button
                     type="submit"
-                    disabled={saving || !selectedClassId || !selectedStreamId}
-                    className="btn btn-primary w-full flex items-center justify-center gap-2 py-3.5 font-extrabold text-sm shadow-md transition-all disabled:opacity-50 interactive"
+                    disabled={saving || !selectedClassId || !selectedStreamId || !termsConsent || (isMinor && (!parentConsent || !parentEmail.trim()))}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 py-3.5 font-extrabold text-sm shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed interactive"
                   >
                     {saving ? (
                       <>
@@ -1639,10 +1796,18 @@ export const UnregisteredPage: React.FC = () => {
             By continuing, you agree to our{' '}
             <Link id="unregistered-terms-link" to="/terms" className="font-semibold text-[#D4A017] hover:underline">
               Terms of Service
-            </Link>{' '}
-            and{' '}
+            </Link>
+            ,{' '}
             <Link id="unregistered-privacy-link" to="/privacy" className="font-semibold text-[#D4A017] hover:underline">
               Privacy Policy
+            </Link>
+            ,{' '}
+            <Link id="unregistered-refund-link" to="/refund" className="font-semibold text-[#D4A017] hover:underline">
+              Refund Policy
+            </Link>
+            , and{' '}
+            <Link id="unregistered-cookies-link" to="/cookies" className="font-semibold text-[#D4A017] hover:underline">
+              Cookie Policy
             </Link>
             .
           </p>

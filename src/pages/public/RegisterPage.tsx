@@ -12,6 +12,7 @@ export const RegisterPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [termsConsent, setTermsConsent] = useState(false);
 
   // ── Redirect once authenticated ────────────────────────────────────────────
   React.useEffect(() => {
@@ -74,13 +75,44 @@ export const RegisterPage: React.FC = () => {
             </div>
           )}
 
+          {/* Explicit Consent Checkbox (Mandatory before Google Sign-Up) */}
+          <div className="mb-5 p-3.5 rounded-xl bg-white border border-[#E5E5E5] space-y-2">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                id="register-consent-checkbox"
+                type="checkbox"
+                checked={termsConsent}
+                onChange={(e) => setTermsConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded text-[#D4A017] focus:ring-[#D4A017] border-[#D4D4D4] cursor-pointer"
+              />
+              <span className="text-xs text-[#525252] leading-relaxed">
+                I have read and explicitly agree to the{' '}
+                <Link id="register-terms-link" to="/terms" target="_blank" className="font-bold text-[#D4A017] hover:underline">
+                  Terms of Service
+                </Link>
+                ,{' '}
+                <Link id="register-privacy-link" to="/privacy" target="_blank" className="font-bold text-[#D4A017] hover:underline">
+                  Privacy Policy
+                </Link>
+                , and{' '}
+                <Link id="register-refund-link" to="/refund" target="_blank" className="font-bold text-[#D4A017] hover:underline">
+                  Refund Policy
+                </Link>
+                .
+              </span>
+            </label>
+            <p className="text-[11px] text-[#737373] pl-6.5">
+              <em>Note for minors:</em> If you are under 18, parent/guardian contact and consent will be confirmed on the enrollment setup form.
+            </p>
+          </div>
+
           {/* Google OAuth Button */}
           <button
             id="google-sign-up"
             type="button"
             onClick={handleGoogleSignUp}
-            disabled={loading || authLoading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] hover:shadow-md active:scale-[0.98] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed interactive"
+            disabled={loading || authLoading || !termsConsent}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl border border-[#E5E5E5] bg-white hover:bg-[#FAFAFA] hover:border-[#D4D4D4] hover:shadow-md active:scale-[0.98] transition-all duration-200 font-semibold text-sm text-[#262626] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed interactive"
           >
             {loading ? (
               <>

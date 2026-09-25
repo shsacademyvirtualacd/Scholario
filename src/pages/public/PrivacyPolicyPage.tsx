@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Calendar, Mail, Phone, ArrowLeft } from 'lucide-react';
+import { Shield, Calendar, Mail, Phone, ArrowLeft, Database, UserCheck, Trash2, Scale, ExternalLink, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 
 const privacySections = [
   { id: 'intro', label: '1. Introduction' },
-  { id: 'responsible', label: '2. Who Is Responsible' },
-  { id: 'collect', label: '3. Information We Collect' },
-  { id: 'children', label: '4. Children\'s Privacy' },
-  { id: 'use', label: '5. How We Use Information' },
-  { id: 'third-party', label: '6. Third-Party Providers' },
-  { id: 'security', label: '7. Data Security' },
-  { id: 'live-classes', label: '8. Live Classes & External Tools' },
-  { id: 'retention', label: '9. Data Retention' },
-  { id: 'rights', label: '10. Your Rights' },
-  { id: 'cookies', label: '11. Cookies' },
-  { id: 'changes', label: '12. Changes to This Policy' },
-  { id: 'contact', label: '13. Contact' },
+  { id: 'responsible', label: '2. Controller & Operator' },
+  { id: 'collect', label: '3. Student & Parent Data We Collect' },
+  { id: 'storage', label: '4. Storage Architecture (Supabase & R2)' },
+  { id: 'minors', label: '5. Protection of Minors & Parental Rights' },
+  { id: 'deletion-flow', label: '6. Parental Deletion Request Procedure' },
+  { id: 'third-party', label: '7. Third-Party SDK & Service Basis' },
+  { id: 'ai-processing', label: '8. AI Assistant (Sage) & Gemini API' },
+  { id: 'security', label: '9. Data Security & RLS Controls' },
+  { id: 'retention', label: '10. Data Retention & Auto-Purge' },
+  { id: 'cookies', label: '11. Cookies & Storage' },
+  { id: 'advisory', label: '12. Legal Advisory & Compliance Notice' },
+  { id: 'contact', label: '13. Data Protection Inquiries' },
 ];
 
 export const PrivacyPolicyPage: React.FC = () => {
@@ -58,19 +58,19 @@ export const PrivacyPolicyPage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#111111] dark:text-white">
-                  Privacy Policy
+                  Privacy Policy & Student Data Protection
                 </h1>
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-[#737373] dark:text-[#A3A3A3]">
                   <Calendar size={13} />
-                  <span>Effective: July 07, 2026</span>
+                  <span>Effective Date: Academic Session 2026–2027</span>
                   <span>•</span>
-                  <span>Updated: July 06, 2026</span>
+                  <span>FBISE Grade 9–12, Cambridge & IELTS</span>
                 </div>
               </div>
             </div>
 
             <p className="text-sm text-[#525252] dark:text-[#A3A3A3] max-w-3xl leading-relaxed">
-              This Privacy Policy explains what information Scholario collects from students, parents/guardians, and staff of SHS Virtual Academy, how it is handled, and how your privacy is protected.
+              This Privacy Policy details the exact data collected by <strong>Scholario</strong> on behalf of <strong>SHS Virtual Academy</strong>, our encrypted storage architecture across Supabase and Cloudflare R2, our third-party data processing legal bases, and the formal procedures available to parents and guardians of minor students to request data access or permanent account deletion.
             </p>
           </div>
 
@@ -101,163 +101,209 @@ export const PrivacyPolicyPage: React.FC = () => {
             {/* Document Content */}
             <div className="lg:col-span-3 space-y-8 prose prose-sm max-w-none text-[#404040] dark:text-[#D4D4D4] leading-relaxed">
               
-              {/* Intro */}
+              {/* 1. Intro */}
               <section id="intro" className="scroll-mt-32 space-y-3">
                 <h2 className="text-xl font-bold text-[#111111] dark:text-white">1. Introduction</h2>
                 <p>
-                  Scholario ("<strong>Scholario</strong>," "<strong>we</strong>," "<strong>us</strong>," or "<strong>our</strong>") is a Learning Management System built exclusively for and operated on behalf of <strong>SHS Virtual Academy</strong> ("the Academy"). This Privacy Policy explains what information we collect from students, parents/guardians, and staff who use Scholario, how we use it, who we share it with, and what rights you have over it.
+                  Scholario is a dedicated institutional Learning Management System (LMS) engineered exclusively for <strong>SHS Virtual Academy</strong>. It connects enrolled FBISE (Grade 9, 10, 11, 12), Cambridge (O Levels, A Levels), and IELTS students with faculty members, proctored examinations, schedule timetable synchronizations, and academic resources.
                 </p>
                 <p>
-                  Scholario is currently a single-institution platform serving SHS Virtual Academy only. It is not a public product and is not available to other schools or the general public at this time.
-                </p>
-                <p>
-                  By creating an account or otherwise using Scholario, you (or, if you are a minor, your parent/guardian on your behalf) agree to the practices described in this Policy.
+                  Because a significant portion of our student body consists of minors (individuals under 18 years of age), Scholario operates under strict educational data minimization principles: we collect only what is strictly necessary to deliver curriculum education, record attendance, and evaluate examinations.
                 </p>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Responsible */}
+              {/* 2. Responsible */}
               <section id="responsible" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">2. Who Is Responsible for Your Data</h2>
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">2. Data Controller & Operator</h2>
                 <p>
-                  SHS Virtual Academy is the data controller for information processed through Scholario — the Academy determines what data is collected and why, in its capacity as an educational institution. Scholario's development team acts as the technical operator and data processor on the Academy's behalf.
+                  <strong>Data Controller:</strong> SHS Virtual Academy is the educational institution determining the educational curriculum, enrollment rules, and academic records.
                 </p>
-                <div className="p-4 rounded-2xl bg-[#FAFAFA] dark:bg-[#1A1A1A] border border-[#E5E5E5] dark:border-[#262626] space-y-1 text-sm">
-                  <span className="font-bold text-[#111111] dark:text-white">Direct inquiries to:</span>
-                  <p className="text-[#525252] dark:text-[#A3A3A3]">SHS Virtual Academy administration (shs.academy.virtual@gmail.com).</p>
+                <p>
+                  <strong>Technical Operator / Processor:</strong> Scholario platform engineering operates the secure cloud infrastructure, database isolation, and application layers on behalf of the Academy.
+                </p>
+                <div className="p-4 rounded-2xl bg-[#FAFAFA] dark:bg-[#1A1A1A] border border-[#E5E5E5] dark:border-[#262626] space-y-1 text-xs">
+                  <span className="font-bold text-[#111111] dark:text-white">Official Academy Correspondence:</span>
+                  <p className="text-[#525252] dark:text-[#A3A3A3]">Email: <a href="mailto:shs.academy.virtual@gmail.com" className="text-[#D4A017] font-semibold hover:underline">shs.academy.virtual@gmail.com</a> | Phone / WhatsApp: +92 305 86969050</p>
                 </div>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Information We Collect */}
+              {/* 3. Information We Collect */}
               <section id="collect" className="scroll-mt-32 space-y-4">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">3. Information We Collect</h2>
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">3. Student & Parent Data We Collect</h2>
                 
                 <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.1 Account Information</h3>
+                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.1 Student Identification & Contact Info</h3>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li>Name, email address, and profile information provided via <strong>Google OAuth</strong> sign-in.</li>
-                    <li>Role within the platform (student, parent/guardian, teacher/staff, or admin).</li>
-                    <li>Class/section enrollment details.</li>
+                    <li><strong>Full Legal Name</strong> and profile avatar (obtained via Google OAuth).</li>
+                    <li><strong>Pakistani Mobile / WhatsApp Number</strong> (validated format: +92 3XXXXXXXXX) for urgent class link updates and challan verification.</li>
+                    <li><strong>Academic Placement:</strong> Board (Federal FBISE, Punjab, Cambridge, etc.), Grade (9, 10, 11, 12, IELTS), Stream (Pre-Medical, Pre-Engineering, Computer Science, General), and enrolled subject list.</li>
+                    <li><strong>Generated Unique Numeric Student ID:</strong> 8-digit unique identifier for roster verification and attendance records.</li>
                   </ul>
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.2 Academic Data</h3>
+                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.2 Minor Protection & Parent/Guardian Details</h3>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li>Attendance records (per-subject or per-day).</li>
-                    <li>Assignments submitted, grades, and progress tracking data.</li>
-                    <li>Resource library activity (materials accessed, e.g. notes, past papers, recorded lectures).</li>
-                    <li>Participation data related to scheduled live classes (scheduling metadata only).</li>
+                    <li><strong>Parent / Legal Guardian Email Address:</strong> Required during registration for all minor students under 18 years of age.</li>
+                    <li><strong>Parental Consent Record:</strong> Electronic confirmation of parental authorization for educational service delivery, homework file submissions, and test participation.</li>
                   </ul>
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.3 Fee & Payment Records</h3>
+                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.3 Academic Performance & Assessment Records</h3>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Examination Results:</strong> Multiple-choice question (MCQ) answers, timestamps, proctored attempt histories, scores, and teacher evaluations.</li>
+                    <li><strong>Written Submissions & Answer Sheets:</strong> Uploaded photographs or PDF scans of handwritten examination answer booklets.</li>
+                    <li><strong>Attendance Logs:</strong> Daily class attendance per subject slot, entry timestamps, and monthly attendance percentage metrics.</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.4 Communications & Chat Attachments</h3>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Direct Messaging:</strong> Chat messages exchanged between students, faculty members, and academy administration.</li>
+                    <li><strong>Media Attachments & Voice Notes:</strong> Homework images, audio recordings, and document attachments sent within authorized chat threads.</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.5 Scholarship Verification Documents</h3>
                   <p>
-                    Scholario currently uses a <strong>manual fee verification process</strong>, not an automated payment gateway. We collect:
+                    Where a student applies for a merit-based scholarship (40% or 60% tuition waiver) or improvement discount, we collect claimed previous board marks and uploaded scans of official board marksheets or school result cards strictly for administrative verification.
                   </p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Fee amounts due and payment status.</li>
-                    <li>Bank transfer or mobile wallet (Easypaisa/JazzCash) transaction references and receipt confirmations submitted for admin verification.</li>
-                    <li>An audit trail of who confirmed or edited a payment record, and when.</li>
-                  </ul>
-                  <p className="text-xs text-[#737373] dark:text-[#A3A3A3] italic">
-                    We do <strong>not</strong> collect or store card numbers, bank account credentials, or mobile wallet PINs. All payments are made directly between the payer and the receiving bank/wallet account outside of Scholario.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.4 Communications</h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Messages sent through the platform between teachers and students, and between teachers and parents.</li>
-                    <li>Institution-wide and per-class announcements.</li>
-                  </ul>
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.5 Parent Portal Data</h3>
-                  <p>
-                    Where a parent/guardian account is linked to a student, the parent account has <strong>read-only</strong> access to that student's attendance, grades, and announcements.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#111111] dark:text-white">3.6 Technical & Usage Data</h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Log data (IP address, browser/device type, access timestamps) collected automatically via infrastructure providers.</li>
-                    <li>Basic diagnostic data to identify and fix errors or abuse.</li>
-                  </ul>
                 </div>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Children's Privacy */}
-              <section id="children" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">4. Children's Privacy</h2>
+              {/* 4. Storage Architecture */}
+              <section id="storage" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">4. Storage Architecture & Encryption (Supabase & Cloudflare R2)</h2>
                 <p>
-                  Many Scholario users are minors. We treat the protection of student data as a priority:
+                  Scholario employs a dual-tier hardened cloud storage architecture:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-3 not-prose">
+                  <div className="p-4 rounded-xl border border-[#E5E5E5] dark:border-[#262626] bg-[#FAFAFA] dark:bg-[#181818] space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wide">
+                      <Database size={16} />
+                      <span>Supabase (PostgreSQL & Storage)</span>
+                    </div>
+                    <p className="text-xs text-[#525252] dark:text-[#A3A3A3]">
+                      Primary structured data storage (profiles, rosters, attendance, test scores, fee audit trails). Secured with PostgreSQL Row-Level Security (RLS) policies guaranteeing strict multi-tenant isolation.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-[#E5E5E5] dark:border-[#262626] bg-[#FAFAFA] dark:bg-[#181818] space-y-2">
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wide">
+                      <Lock size={16} />
+                      <span>Cloudflare R2 Object Storage</span>
+                    </div>
+                    <p className="text-xs text-[#525252] dark:text-[#A3A3A3]">
+                      Encrypted bucket storage for large binaries (chat attachments, written exam submission photo scans, scholarship marksheets). Temporary exam photos are subject to automated 24-hour lifecycle expiry.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <hr className="border-[#E5E5E5] dark:border-[#262626]" />
+
+              {/* 5. Minor Protection */}
+              <section id="minors" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">5. Protection of Minors & Parental Rights</h2>
+                <p>
+                  We recognize that minors require heightened privacy standards. We enforce the following guardrails:
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Student accounts are created and managed under SHS Virtual Academy's authority, not through open self-registration.</li>
-                  <li>We do not use student data for advertising, and we do not sell or rent student data to any third party, under any circumstance.</li>
-                  <li>Data collected from students is limited to what is necessary for education administration.</li>
-                  <li>Parents/guardians may request access to, correction of, or an explanation of their child's data by contacting the Academy.</li>
+                  <li><strong>Zero Commercial Exploitation:</strong> Minor student data is never monetized, never profiled for marketing, and never shared with advertisers.</li>
+                  <li><strong>Controlled Communication Environment:</strong> Students may only communicate with authenticated teachers and staff enrolled in their active subjects. Public discovery or unmonitored peer-to-peer open chatrooms are prohibited.</li>
+                  <li><strong>Right to Review:</strong> Parents and guardians have the absolute right to inspect any educational record, attendance log, or submitted examination paper associated with their child.</li>
                 </ul>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* How We Use Information */}
-              <section id="use" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">5. How We Use Information</h2>
+              {/* 6. Deletion Procedure */}
+              <section id="deletion-flow" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white flex items-center gap-2">
+                  <Trash2 size={20} className="text-red-500 shrink-0" />
+                  <span>6. Parental Deletion Request Procedure</span>
+                </h2>
                 <p>
-                  We use collected information to:
+                  A parent or legal guardian may request the permanent deletion of their child's account and personal records at any time:
                 </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Operate core academic functions — enrollment, attendance, grading, resource access, and scheduling of live classes.</li>
-                  <li>Verify and reconcile fee payments and maintain a financial audit trail.</li>
-                  <li>Enable communication between teachers, students, and parents.</li>
-                  <li>Generate internal administrative analytics and reporting for the Academy.</li>
-                  <li>Maintain platform security, detect misuse, and enforce our Terms of Service.</li>
-                </ul>
+                <div className="p-4 rounded-2xl bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 space-y-3 not-prose">
+                  <h4 className="text-xs font-bold text-red-900 dark:text-red-300 uppercase tracking-wider">
+                    How to Submit a Data Deletion Notice:
+                  </h4>
+                  <ol className="list-decimal pl-5 space-y-1.5 text-xs text-red-950 dark:text-red-200">
+                    <li>
+                      <strong>Option A (In-App Request):</strong> Navigate to Student Settings / Profile page and click <strong>"Request Account & Data Deletion"</strong>.
+                    </li>
+                    <li>
+                      <strong>Option B (Direct Email):</strong> Send an email from the registered parent/guardian email address to <a href="mailto:shs.academy.virtual@gmail.com" className="font-bold underline">shs.academy.virtual@gmail.com</a> with subject <code>"Student Data Deletion Request - ID [Student Number]"</code>.
+                    </li>
+                    <li>
+                      <strong>Verification:</strong> Our administration verifies parental identity within <strong>48 hours</strong>.
+                    </li>
+                    <li>
+                      <strong>Purge Execution:</strong> Upon confirmation, all student profile details, test submissions, chat attachments in Cloudflare R2, and database rows are irreversibly deleted within <strong>30 calendar days</strong>, retaining only basic financial ledger receipts required by Pakistani tax and regulatory audit laws.
+                    </li>
+                  </ol>
+                </div>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Third-Party Service Providers */}
+              {/* 7. Third-Party Service Table */}
               <section id="third-party" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">6. Third-Party Service Providers</h2>
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">7. Third-Party Service Providers & Processing Basis</h2>
                 <p>
-                  Scholario is built on infrastructure providers that process data on our behalf:
+                  Scholario utilizes trusted infrastructure providers under strict contractual data protection terms:
                 </p>
-                <div className="overflow-x-auto my-4 border border-[#E5E5E5] dark:border-[#262626] rounded-xl">
-                  <table className="min-w-full divide-y divide-[#E5E5E5] dark:divide-[#262626] text-left text-xs sm:text-sm">
+                <div className="overflow-x-auto my-4 border border-[#E5E5E5] dark:border-[#262626] rounded-xl not-prose">
+                  <table className="min-w-full divide-y divide-[#E5E5E5] dark:divide-[#262626] text-left text-xs">
                     <thead className="bg-[#FAFAFA] dark:bg-[#1A1A1A]">
                       <tr>
-                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Provider</th>
-                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Purpose</th>
-                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Data Involved</th>
+                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Service / SDK</th>
+                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Role & Function</th>
+                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Data Processed</th>
+                        <th className="px-4 py-3 font-bold text-[#111111] dark:text-white">Legal Processing Basis</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5E5E5] dark:divide-[#262626]">
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Supabase</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Database, authentication, and file storage</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Account, academic, fee, and communication data</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Supabase (PostgreSQL)</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Database host & Auth Provider</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">User profiles, rosters, attendance, test scores, chat records</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Contractual Educational Service Delivery</td>
                       </tr>
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Google (OAuth)</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Sign-in and identity verification</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Name, email address, profile picture</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Cloudflare R2</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">S3-compatible Object Storage</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Chat attachments, written test scan photos, scholarship marksheets</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Contractual Educational Assessment</td>
                       </tr>
                       <tr>
-                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Zoom / Google Meet</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Live class sessions (external)</td>
-                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Session join links and scheduling metadata</td>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Google Gemini API</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Academic AI Assistant (Sage)</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Ephemeral student queries and homework question prompts</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Explicit User Request / Legitimate Study Interest</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Resend / EmailJS</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Transactional Email Delivery</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Account verification, password reset, exam submission receipts</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Contractual Necessity (Transactional Notices Only)</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-semibold text-[#111111] dark:text-white">Semaphore SMS / WhatsApp</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Emergency Timetable & Fee Alerts</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Student/Parent phone number, class link updates</td>
+                        <td className="px-4 py-3 text-[#525252] dark:text-[#A3A3A3]">Explicit Consent & Timetable Operation</td>
                       </tr>
                     </tbody>
                   </table>
@@ -266,89 +312,86 @@ export const PrivacyPolicyPage: React.FC = () => {
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Data Security */}
-              <section id="security" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">7. Data Security</h2>
+              {/* 8. AI Processing */}
+              <section id="ai-processing" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">8. AI Assistant (Sage) & Gemini API Safeguards</h2>
+                <p>
+                  Scholario includes an optional academic study assistant named <strong>Sage</strong> powered by Google's Gemini API. When you interact with Sage:
+                </p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>Role-based access control</strong> enforced through Row-Level Security (RLS) policies.</li>
-                  <li><strong>Audit logs</strong> recording modifications to grades, attendance, and fee transactions.</li>
-                  <li>Encrypted data transmission over HTTPS/TLS.</li>
+                  <li>Prompts and questions are processed ephemerally to generate explanations, formula derivations, and study guides.</li>
+                  <li>Per Google Enterprise Cloud terms, student prompts are <strong>not</strong> used to train public foundational AI models.</li>
+                  <li>Students may clear their active Sage conversation memory at any time using the in-chat "Clear History" button.</li>
                 </ul>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Live Classes */}
-              <section id="live-classes" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">8. Live Classes & External Tools</h2>
+              {/* 9. Security */}
+              <section id="security" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">9. Data Security & RLS Controls</h2>
                 <p>
-                  Scholario schedules and links to live classes hosted on third-party platforms (Zoom, Google Meet). We do not record or store the video/audio content of these sessions.
+                  We implement multi-layered defenses including HTTPS/TLS 1.3 encryption in transit, AES-256 encryption at rest in Cloudflare R2 and Supabase, granular Row-Level Security policies, and audit logs tracking any administrative status alterations.
                 </p>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Retention */}
+              {/* 10. Retention */}
               <section id="retention" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">9. Data Retention</h2>
-                <p>
-                  Academic and financial records are retained according to Academy educational policy and administrative requirements.
-                </p>
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">10. Data Retention & Auto-Purge Cycles</h2>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>Active Academic Records:</strong> Retained for the duration of the student's enrollment term plus one (1) academic session for transcript re-issuance.</li>
+                  <li><strong>Temporary Exam Photos:</strong> Automatically purged from storage after 24 hours of submission evaluation.</li>
+                  <li><strong>Terminated / Expelled Accounts:</strong> Slated for complete database deletion within 30 days of confirmed termination.</li>
+                </ul>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Rights */}
-              <section id="rights" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">10. Your Rights</h2>
-                <p>
-                  You or your guardian may request access to, correction of, or questions about your personal educational data by contacting the Academy.
-                </p>
-              </section>
-
-              <hr className="border-[#E5E5E5] dark:border-[#262626]" />
-
-              {/* Cookies */}
+              {/* 11. Cookies */}
               <section id="cookies" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">11. Cookies</h2>
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">11. Cookies & Storage</h2>
                 <p>
-                  Scholario uses only essential local storage and session tokens necessary for secure authentication. We do not use third-party tracking or ad cookies.
+                  Scholario sets strictly functional cookies and local storage tokens. Please review our comprehensive{' '}
+                  <Link to="/cookies" className="text-[#D4A017] font-bold hover:underline">
+                    Cookie & Local Storage Policy
+                  </Link>{' '}
+                  for an itemized breakdown.
                 </p>
               </section>
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* Changes */}
-              <section id="changes" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">12. Changes to This Policy</h2>
-                <p>
-                  We may update this Privacy Policy as platform capabilities expand. Material updates will be communicated through the platform.
-                </p>
-              </section>
-
-              <hr className="border-[#E5E5E5] dark:border-[#262626]" />
-
-              {/* Contact */}
-              <section id="contact" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">13. Contact</h2>
-                <div className="p-5 rounded-2xl bg-[#FAFAFA] dark:bg-[#1A1A1A] border border-[#E5E5E5] dark:border-[#262626] space-y-2">
-                  <p className="font-extrabold text-[#111111] dark:text-white">SHS Virtual Academy</p>
-                  <div className="space-y-1.5 text-sm text-[#525252] dark:text-[#A3A3A3]">
-                    <div className="flex items-center gap-2">
-                      <Mail size={14} className="text-[#D4A017]" />
-                      <span>shs.academy.virtual@gmail.com</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone size={14} className="text-[#D4A017]" />
-                      <span>+92 305 86969050</span>
-                    </div>
-                  </div>
+              {/* 12. Legal Advisory */}
+              <section id="advisory" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white flex items-center gap-2">
+                  <Scale size={20} className="text-amber-600 shrink-0" />
+                  <span>12. Legal Advisory & Compliance Notice</span>
+                </h2>
+                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+                  <p className="font-bold">Notice Regarding Pakistani Cyber & Data Protection Legislation:</p>
+                  <p>
+                    Data privacy practices described herein have been drafted to align with the <em>Prevention of Electronic Crimes Act (PECA) 2016</em>, the <em>Contract Act 1872</em> (regarding minor capacity and parental agency), and principles set forth in the draft <em>Personal Data Protection Bill (PDPB)</em> of Pakistan.
+                  </p>
+                  <p className="italic">
+                    This document serves as an operational institutional policy. Formal statutory compliance audits require review by licensed Pakistani legal counsel prior to high-volume multi-school commercial deployment.
+                  </p>
                 </div>
               </section>
 
-              <div className="mt-8 p-5 rounded-2xl bg-[#FDF3C8]/50 dark:bg-[#D4A017]/10 border border-[#FDF3C8] dark:border-[#D4A017]/25 text-xs text-[#B8860B] dark:text-[#E5B53B] italic leading-relaxed">
-                This Privacy Policy is intended to accurately describe Scholario's current data practices as a single-institution platform for SHS Virtual Academy. It is a working document drafted for an early-stage product and has not been reviewed by a licensed lawyer. Before Scholario scales beyond SHS Virtual Academy, or before payment volume becomes significant, it is strongly recommended that this document be reviewed by legal counsel familiar with Pakistani data protection and education law.
-              </div>
+              <hr className="border-[#E5E5E5] dark:border-[#262626]" />
+
+              {/* 13. Contact */}
+              <section id="contact" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">13. Data Protection Inquiries</h2>
+                <div className="p-5 rounded-2xl bg-[#FAFAFA] dark:bg-[#1A1A1A] border border-[#E5E5E5] dark:border-[#262626] space-y-2 text-xs">
+                  <p className="font-extrabold text-[#111111] dark:text-white text-sm">SHS Virtual Academy Data Protection Desk</p>
+                  <p>Registered Administrative Office: Rawalpindi, Punjab, Pakistan</p>
+                  <p>Official Email: <a href="mailto:shs.academy.virtual@gmail.com" className="text-[#D4A017] font-bold hover:underline">shs.academy.virtual@gmail.com</a></p>
+                  <p>Helpline / WhatsApp: +92 305 86969050</p>
+                </div>
+              </section>
 
             </div>
 
