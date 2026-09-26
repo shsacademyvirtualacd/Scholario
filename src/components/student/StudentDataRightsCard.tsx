@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Download, Trash2, Mail, ExternalLink, Loader2, AlertTriangle, CheckCircle2, FileText, Lock } from 'lucide-react';
+import { ShieldCheck, Download, Trash2, Mail, ExternalLink, Loader2, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -42,7 +42,7 @@ export const StudentDataRightsCard: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `scholario_academic_data_${profile?.roll_number || 'student'}_${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `scholario_academic_data_${(profile as any)?.roll_number || (profile as any)?.student_numeric_id || 'student'}_${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

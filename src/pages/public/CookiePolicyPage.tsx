@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Cookie, Calendar, ArrowLeft, ShieldCheck, Database, CheckCircle2, Lock } from 'lucide-react';
+import { Cookie, Calendar, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { RefreshCw, Calendar, Mail, ArrowLeft, AlertCircle, FileText, CheckCircle2, ShieldCheck, Scale } from 'lucide-react';
+import { RefreshCw, Calendar, ArrowLeft, AlertCircle, CheckCircle2, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';

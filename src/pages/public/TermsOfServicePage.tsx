@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Scale, Calendar, Mail, Phone, ArrowLeft, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Scale, Calendar, ArrowLeft, AlertCircle, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
