@@ -220,6 +220,34 @@ export const FBISE_GRADE_9_CURRICULUM: Record<string, FBISEGrade9SubjectCurricul
       { id: 'eng_ch17', number: 17, name: 'Word Formation (Prefixes/Suffixes)', subtopics: ['Common Prefixes (un-, in-, im-, dis-, mis-, re-, pre-, anti-)', 'Common Suffixes (-ment, -tion, -ness, -able, -ful, -less, -ify, -ize)', 'Derivation and conversion between parts of speech (verb -> noun, adjective -> adverb)', 'Compound words formation and root word identification'] },
     ],
   },
+  'Computer Science': {
+    subject: 'Computer Science',
+    aliases: ['computer science', 'cs', 'comp sci', 'computer', 'computer-science'],
+    guidelines: 'Focus on computer architecture, hardware/software, number system conversions (binary, decimal, hex), Boolean logic, networks, operating systems, and computer security strictly aligned with Grade 9 curriculum.',
+    chapters: [
+      { id: 'cs_ch1', number: 1, name: 'Introduction to Computers', subtopics: ['History and generations of computers', 'Types and classification of computers (Supercomputer, Mainframe, Minicomputer, Microcomputer)', 'Role of computers in modern society', 'Information Technology and modern applications'] },
+      { id: 'cs_ch2', number: 2, name: 'Computer Components & Architecture', subtopics: ['Von Neumann architecture', 'Central Processing Unit (ALU, CU, Registers)', 'System Bus (Data bus, Address bus, Control bus)', 'Ports and Expansion slots', 'Motherboard and internal interconnects'] },
+      { id: 'cs_ch3', number: 3, name: 'Input and Output Devices', subtopics: ['Input devices: Keyboard, Mouse, Optical scanners, Barcode readers', 'Output devices: Visual displays (LCD, LED, OLED), Printers (Impact vs Non-impact, Inkjet, Laser)', 'Audio devices and multimedia peripherals'] },
+      { id: 'cs_ch4', number: 4, name: 'Storage Devices', subtopics: ['Primary Memory: RAM (SRAM, DRAM) and ROM (PROM, EPROM, EEPROM)', 'Secondary Storage: Magnetic storage (HDD), Solid-State Drives (SSD), Optical storage (CD, DVD, Blu-ray)', 'Memory hierarchy and access speeds'] },
+      { id: 'cs_ch5', number: 5, name: 'Number Systems and Binary Arithmetic', subtopics: ['Decimal, Binary, Octal, and Hexadecimal number systems', 'Base conversions (Binary to Decimal, Decimal to Binary, Hex to Binary)', 'Binary addition, subtraction, 1s complement, 2s complement', 'Character encoding schemes: BCD, ASCII, EBCDIC, Unicode'] },
+      { id: 'cs_ch6', number: 6, name: 'Computer Software & Operating Systems', subtopics: ['System Software vs Application Software', 'Functions and types of Operating Systems', 'Command Line Interface (CLI) vs Graphical User Interface (GUI)', 'Process management, Memory management, File systems'] },
+      { id: 'cs_ch7', number: 7, name: 'Fundamentals of Computer Networks', subtopics: ['Network models (Peer-to-Peer, Client-Server)', 'Network types: LAN, MAN, WAN, PAN', 'Network Topologies: Bus, Star, Ring, Mesh, Tree', 'Transmission media (Twisted pair, Coaxial cable, Fiber optic, Wireless microwaves/radio)', 'Network devices: NIC, Switch, Router, Gateway, Modem'] },
+      { id: 'cs_ch8', number: 8, name: 'Computer Security and Ethics', subtopics: ['Cyber security threats: Viruses, Worms, Trojan horses, Spyware, Ransomware', 'Security mechanisms: Antivirus, Firewalls, Data encryption, Strong passwords', 'Software piracy, Copyright laws, Intellectual property rights', 'Safe internet practices and cyber safety'] },
+    ],
+  },
+  Islamiat: {
+    subject: 'Islamiat',
+    aliases: ['islamiat', 'islamiyat', 'islamic studies', 'isl'],
+    guidelines: 'Focus on Quranic preservation, core Islamic beliefs (Tawheed, Risalat, Akhirah), Pillars of Islam, Sirat-un-Nabi (Makkan & Madani eras), Islamic ethics, human rights, and social justice strictly aligned with Grade 9 curriculum.',
+    chapters: [
+      { id: 'isl_ch1', number: 1, name: 'القرآن الکریم (تعارف، فضائل و تراجم)', subtopics: ['نزولِ قرآن اور حفاظتِ قرآن', 'تدوین و جمعِ قرآن مجید', 'قرآنی آیات و احادیث کا منتخب فکری مفہوم', 'فضائلِ تلاوت اور فہمِ دین'] },
+      { id: 'isl_ch2', number: 2, name: 'ایمانیات و عبادات', subtopics: ['عقیدہ توحید اور اس کے انسانی زندگی پر اثرات', 'عقیدہ رسالت و ختمِ نبوت', 'عقیدہ آخرت، ملائکہ اور کتبِ سماویہ', 'نماز، روزہ، زکوٰۃ، اور حج کے فلسفہ و مقاصد'] },
+      { id: 'isl_ch3', number: 3, name: 'سیرت النبی ﷺ - مکی دور', subtopics: ['ولادتِ با سعادت اور ابتدائی زندگی', 'بعثت اور آغازِ وحی', 'دعوتِ حق اور قریش کی مخالفت و استقامت', 'ہجرتِ حبشہ اور ہجرتِ مدینہ منورہ'] },
+      { id: 'isl_ch4', number: 4, name: 'سیرت النبی ﷺ - مدنی دور', subtopics: ['تعمیرِ مسجدِ نبوی اور مواخاتِ مدینہ', 'میثاقِ مدینہ کے اہم نکات', 'غزواتِ نبوی (بدر، احد، خندق) اور فتحِ مکہ', 'خطبہ حجۃ الوداع اور انسانی حقوق کا منشور'] },
+      { id: 'isl_ch5', number: 5, name: 'اخلاق و آداب', subtopics: ['صدق و دیانت داری اور کذب سے اجتناب', 'صبر و شکر اور عفو و درگزر', 'عدل و انصاف اور اخوت و مساوات', 'والدین، اساتذہ اور ہمسایوں کے حقوق'] },
+      { id: 'isl_ch6', number: 6, name: 'حسنِ معاملات و معاشرت', subtopics: ['کسبِ حلال اور محنت کی عظمت', 'امانت و دیانت داری معاملات میں', 'خدمتِ خلق اور ایثار کا جذبہ', 'معاشرتی برائیوں (رشوت، ذخیرہ اندوزی) کا سدِ باب'] },
+    ],
+  },
 };
 
 /**
@@ -267,6 +295,24 @@ export function isGrade9FBISE(board?: string | null, grade?: string | null): boo
   const isFbise = b === 'fbise' || b === 'federal' || b.includes('fbise') || b.includes('federal');
   const isNine = g === '9' || g === '9th' || g.toLowerCase() === 'grade 9';
   return isFbise && isNine;
+}
+
+/**
+ * Checks if a given board and grade is Grade 9 Punjab Board
+ */
+export function isGrade9Punjab(board?: string | null, grade?: string | null): boolean {
+  const b = (board || '').toLowerCase();
+  const g = String(grade || '').trim();
+  const isPunjab = b === 'punjab' || b.includes('punjab') || b.includes('lahore') || b.includes('bise');
+  const isNine = g === '9' || g === '9th' || g.toLowerCase() === 'grade 9';
+  return isPunjab && isNine;
+}
+
+/**
+ * Checks if a given board and grade uses Grade 9 National Curriculum (FBISE or Punjab Board)
+ */
+export function isGrade9Curriculum(board?: string | null, grade?: string | null): boolean {
+  return isGrade9FBISE(board, grade) || isGrade9Punjab(board, grade);
 }
 
 export interface ChapterSyllabusScope {

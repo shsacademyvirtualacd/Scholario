@@ -10,6 +10,10 @@ import {
   GraduationCap,
   AlignLeft,
   FileQuestion,
+  Edit3,
+  Plus,
+  X,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MathText } from '../../common/MathText';
@@ -18,6 +22,7 @@ import {
   refreshLiveBankData,
   getStoredShortQuestions,
   getStoredLongQuestions,
+  updateMCQQuestionInBank,
 } from '../../../lib/questionBankService';
 import { BOARDS, getGradesForBoard } from '../../../lib/taxonomy';
 import {
@@ -66,6 +71,32 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
   const [chapterSearchQuery, setChapterSearchQuery] = useState<string>('');
 
+  // Edit / Add Question Modal State
+  const [editingMCQ, setEditingMCQ] = useState<StoredMCQ | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isSavingMCQ, setIsSavingMCQ] = useState<boolean>(false);
+  const [editForm, setEditForm] = useState<{
+    id: string;
+    question: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctAnswer: 'A' | 'B' | 'C' | 'D';
+    explanation: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+  }>({
+    id: '',
+    question: '',
+    optionA: '',
+    optionB: '',
+    optionC: '',
+    optionD: '',
+    correctAnswer: 'A',
+    explanation: '',
+    difficulty: 'medium',
+  });
+
   // 1. Fetch live MCQ bank data from storage
   const fetchLiveBank = useCallback(async (isManualRefresh = false) => {
     try {
@@ -73,9 +104,11 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       else setLoading(true);
 
       const isIelts = isIELTSBoard(selectedBoard);
+      const isPunjab = selectedBoard === 'punjab';
+      const targetBoard = isIelts ? 'ielts' : (isPunjab ? 'punjab' : 'fbise');
       const bankData = isManualRefresh
-        ? await refreshLiveBankData(isIelts ? 'ielts' : 'fbise')
-        : await loadBankData(false, isIelts ? 'ielts' : 'fbise');
+        ? await refreshLiveBankData(targetBoard)
+        : await loadBankData(false, targetBoard);
       setLiveBank(bankData || {});
 
       if (isManualRefresh) {
@@ -85,7 +118,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
             totalCount += (chList || []).length;
           });
         });
-        toast.success(`Question Banks re-synchronized: ${totalCount.toLocaleString()} total MCQs loaded.`);
+        toast.success(`${isPunjab ? 'Punjab Board' : isIelts ? 'IELTS' : 'FBISE'} Question Bank re-synchronized: ${totalCount.toLocaleString()} total MCQs loaded.`);
       }
     } catch (err: any) {
       console.error('[MCQVerification] Failed to fetch live bank:', err);
@@ -127,7 +160,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
     if (isIELTSBoard(selectedBoard)) {
       Object.keys(IELTS_CURRICULUM).forEach((s) => subjectsSet.add(s));
       Object.keys(liveBank).forEach((s) => subjectsSet.add(s));
-    } else if (selectedGrade === '9' && selectedBoard === 'fbise') {
+    } else if (selectedGrade === '9' && (selectedBoard === 'fbise' || selectedBoard === 'punjab')) {
       Object.keys(FBISE_GRADE_9_CURRICULUM).forEach((s) => subjectsSet.add(s));
       Object.keys(liveBank).forEach((s) => subjectsSet.add(s));
     }
@@ -155,7 +188,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
       }
     }
 
-    if (selectedGrade === '9' && selectedBoard === 'fbise') {
+    if (selectedGrade === '9' && (selectedBoard === 'fbise' || selectedBoard === 'punjab')) {
       const canonical = normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject;
       const curData = FBISE_GRADE_9_CURRICULUM[canonical];
       if (curData && curData.chapters && curData.chapters.length > 0) {
@@ -220,7 +253,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   const rawMCQs: StoredMCQ[] = useMemo(() => {
     if (!selectedChapter) return [];
     const isIelts = isIELTSBoard(selectedBoard);
-    if (!isIelts && (selectedGrade !== '9' || selectedBoard !== 'fbise')) return [];
+    if (!isIelts && (selectedGrade !== '9' || (selectedBoard !== 'fbise' && selectedBoard !== 'punjab'))) return [];
 
     const canonical = isIelts ? selectedSubject : (normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject);
     const subjData = liveBank[canonical] || liveBank[selectedSubject] || {};
@@ -247,13 +280,13 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
 
   const rawShortQuestions: StoredShortQuestion[] = useMemo(() => {
     if (!selectedChapter) return [];
-    return getStoredShortQuestions(selectedSubject, selectedChapter);
-  }, [selectedSubject, selectedChapter]);
+    return getStoredShortQuestions(selectedSubject, selectedChapter, selectedGrade, selectedBoard);
+  }, [selectedSubject, selectedChapter, selectedGrade, selectedBoard]);
 
   const rawLongQuestions: StoredLongQuestion[] = useMemo(() => {
     if (!selectedChapter) return [];
-    return getStoredLongQuestions(selectedSubject, selectedChapter);
-  }, [selectedSubject, selectedChapter]);
+    return getStoredLongQuestions(selectedSubject, selectedChapter, selectedGrade, selectedBoard);
+  }, [selectedSubject, selectedChapter, selectedGrade, selectedBoard]);
 
   // Dynamic Chapter counts based on selected bank tab
   const chapterCounts = useMemo(() => {
@@ -279,15 +312,15 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           }
         }
       } else if (bankTab === 'short') {
-        const list = getStoredShortQuestions(selectedSubject, ch.name);
+        const list = getStoredShortQuestions(selectedSubject, ch.name, selectedGrade, selectedBoard);
         counts[ch.name] = list.length;
       } else {
-        const list = getStoredLongQuestions(selectedSubject, ch.name);
+        const list = getStoredLongQuestions(selectedSubject, ch.name, selectedGrade, selectedBoard);
         counts[ch.name] = list.length;
       }
     });
     return counts;
-  }, [currentChapters, selectedSubject, selectedBoard, liveBank, bankTab]);
+  }, [currentChapters, selectedSubject, selectedBoard, liveBank, bankTab, selectedGrade]);
 
   // Subject counts for the active bank tab
   const subjectCounts = useMemo(() => {
@@ -302,16 +335,123 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           total += (qList || []).length;
         });
       } else if (bankTab === 'short') {
-        const list = getStoredShortQuestions(subj, 'All');
+        const list = getStoredShortQuestions(subj, 'All', selectedGrade, selectedBoard);
         total = list.length;
       } else {
-        const list = getStoredLongQuestions(subj, 'All');
+        const list = getStoredLongQuestions(subj, 'All', selectedGrade, selectedBoard);
         total = list.length;
       }
       counts[subj] = total;
     });
     return counts;
-  }, [availableSubjects, selectedBoard, liveBank, bankTab]);
+  }, [availableSubjects, selectedBoard, liveBank, bankTab, selectedGrade]);
+
+  // Handlers for Edit / Add Modal
+  const handleOpenEditModal = (q: StoredMCQ) => {
+    setEditingMCQ(q);
+    setEditForm({
+      id: q.id,
+      question: q.question,
+      optionA: q.options?.A || '',
+      optionB: q.options?.B || '',
+      optionC: q.options?.C || '',
+      optionD: q.options?.D || '',
+      correctAnswer: (q.correctAnswer as any) || 'A',
+      explanation: q.explanation || '',
+      difficulty: (q.difficulty as any) || 'medium',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenAddModal = () => {
+    const newId = `${selectedBoard.toLowerCase()}_${selectedSubject.toLowerCase().slice(0, 3)}_${Date.now()}`;
+    setEditingMCQ(null);
+    setEditForm({
+      id: newId,
+      question: '',
+      optionA: '',
+      optionB: '',
+      optionC: '',
+      optionD: '',
+      correctAnswer: 'A',
+      explanation: '',
+      difficulty: 'medium',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSaveMCQ = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.question.trim() || !editForm.optionA.trim() || !editForm.optionB.trim()) {
+      toast.error('Question text and at least Options A and B are required.');
+      return;
+    }
+    if (!selectedChapter) {
+      toast.error('Please select a chapter before saving.');
+      return;
+    }
+
+    try {
+      setIsSavingMCQ(true);
+      const isIeltsBoardType = isIELTSBoard(selectedBoard);
+      const canonicalSubject = isIeltsBoardType ? selectedSubject : (normalizeFBISEGrade9Subject(selectedSubject) || selectedSubject);
+      const updatedQuestion: StoredMCQ = {
+        id: editForm.id || `q_${Date.now()}`,
+        board: selectedBoard,
+        grade: selectedGrade,
+        subject: canonicalSubject,
+        chapter: selectedChapter,
+        question: editForm.question.trim(),
+        options: {
+          A: editForm.optionA.trim(),
+          B: editForm.optionB.trim(),
+          C: editForm.optionC.trim(),
+          D: editForm.optionD.trim(),
+        },
+        correctAnswer: editForm.correctAnswer,
+        explanation: editForm.explanation.trim(),
+        difficulty: editForm.difficulty,
+        verified: true,
+        source: 'expert-verified',
+        createdAt: editingMCQ?.createdAt || new Date().toISOString(),
+      };
+
+      const res = await updateMCQQuestionInBank({
+        board: selectedBoard,
+        grade: selectedGrade,
+        subject: canonicalSubject,
+        chapter: selectedChapter,
+        question: updatedQuestion,
+      });
+
+      if (res.success) {
+        toast.success(`Question successfully saved to ${selectedBoard === 'punjab' ? 'Punjab Board' : selectedBoard.toUpperCase()} bank!`);
+        // Update local bank state
+        setLiveBank((prev) => {
+          const next = { ...prev };
+          if (!next[canonicalSubject]) next[canonicalSubject] = {};
+          if (!next[canonicalSubject][selectedChapter]) next[canonicalSubject][selectedChapter] = [];
+          const list = [...next[canonicalSubject][selectedChapter]];
+          const existingIdx = list.findIndex((q) => q.id === updatedQuestion.id);
+          if (existingIdx >= 0) {
+            list[existingIdx] = updatedQuestion;
+          } else {
+            list.push(updatedQuestion);
+          }
+          next[canonicalSubject][selectedChapter] = list;
+          return next;
+        });
+        setIsModalOpen(false);
+      } else {
+        toast.error(res.message || 'Failed to save question');
+      }
+    } catch (err: any) {
+      console.error('Failed to save MCQ:', err);
+      toast.error(err.message || 'An error occurred while saving question');
+    } finally {
+      setIsSavingMCQ(false);
+    }
+  };
 
   // Filtered list based on active tab, search, difficulty
   const filteredMCQs = useMemo(() => {
@@ -412,6 +552,13 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={handleOpenAddModal}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4C430] text-[#111111] hover:bg-[#e0b020] text-xs font-black transition-all cursor-pointer shadow-xs"
+            >
+              <Plus size={13} />
+              <span>Add Question</span>
+            </button>
             <button
               onClick={() => fetchLiveBank(true)}
               disabled={refreshing}
@@ -751,9 +898,20 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                   <div key={q.id || idx} className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-xs space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-[#F0F0F0]">
                       <span className="text-xs font-black text-[#111111]">Q{idx + 1}. ({q.id})</span>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        Verified MCQ
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(q)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#F5F5F5] hover:bg-[#E5E5E5] text-[#111111] transition-all cursor-pointer"
+                          title="Edit this MCQ in question bank"
+                        >
+                          <Edit3 size={11} />
+                          <span>Edit</span>
+                        </button>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          Verified MCQ
+                        </span>
+                      </div>
                     </div>
                     <div className="text-sm font-bold text-[#111111]">
                       <MathText text={q.question} />
@@ -881,6 +1039,149 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           )}
         </div>
       </div>
+
+      {/* ── Edit / Add MCQ Modal Dialog ── */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-[#E5E5E5] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F0F0F0]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-black">
+                  <Edit3 size={16} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#111111]">
+                    {editingMCQ ? 'Edit MCQ Question' : 'Add New Question to Bank'}
+                  </h3>
+                  <div className="text-[11px] font-semibold text-[#737373] mt-0.5">
+                    {selectedBoard === 'punjab' ? 'Punjab Board' : selectedBoard.toUpperCase()} • Grade {selectedGrade} • {selectedSubject} • {selectedChapter}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-[#F5F5F5] hover:bg-[#E5E5E5] text-[#525252] hover:text-[#111111] flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMCQ} className="space-y-4">
+              {/* Question Text */}
+              <div>
+                <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                  Question Text <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editForm.question}
+                  onChange={(e) => setEditForm({ ...editForm, question: e.target.value })}
+                  placeholder="Enter MCQ problem statement (LaTeX formulas like $F=ma$ supported)..."
+                  className="w-full p-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-medium text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
+                />
+              </div>
+
+              {/* Options A, B, C, D */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-[#111111]">
+                  Answer Choices (A, B, C, D) <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {(['A', 'B', 'C', 'D'] as const).map((opt) => {
+                    const fieldKey = `option${opt}` as 'optionA' | 'optionB' | 'optionC' | 'optionD';
+                    const isSelectedAnswer = editForm.correctAnswer === opt;
+                    return (
+                      <div
+                        key={opt}
+                        className={`p-2.5 rounded-xl border transition-all ${
+                          isSelectedAnswer
+                            ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500'
+                            : 'border-[#E5E5E5] bg-[#FAFAFA]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="w-5 h-5 rounded-full bg-white border border-[#D4D4D4] flex items-center justify-center font-black text-[10px] text-[#111111]">
+                            {opt}
+                          </span>
+                          <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-[#525252]">
+                            <input
+                              type="radio"
+                              name="correctAnswerChoice"
+                              checked={isSelectedAnswer}
+                              onChange={() => setEditForm({ ...editForm, correctAnswer: opt })}
+                              className="accent-emerald-600 cursor-pointer"
+                            />
+                            <span>Correct</span>
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          required={opt === 'A' || opt === 'B'}
+                          value={editForm[fieldKey]}
+                          onChange={(e) => setEditForm({ ...editForm, [fieldKey]: e.target.value })}
+                          placeholder={`Option ${opt} text`}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#E5E5E5] bg-white text-xs font-medium text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Difficulty & Explanation */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                    Difficulty Level
+                  </label>
+                  <select
+                    value={editForm.difficulty}
+                    onChange={(e) => setEditForm({ ...editForm, difficulty: e.target.value as any })}
+                    className="w-full h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                    Concept Explanation & Syllabus Note
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.explanation}
+                    onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })}
+                    placeholder="Rationale or textbook reference..."
+                    className="w-full h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-medium text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F0F0F0]">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#525252] hover:text-[#111111] hover:bg-[#F5F5F5] transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingMCQ}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#111111] text-white hover:bg-[#262626] text-xs font-black transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  <Save size={13} className={isSavingMCQ ? 'animate-spin' : ''} />
+                  <span>{isSavingMCQ ? 'Saving Changes...' : 'Save to Bank'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -21,6 +21,7 @@ import { supabase } from './supabase';
 
 // Static fallback store loaded in bundle for instant zero-latency client access
 let cachedFbiseBankData: Record<string, Record<string, StoredMCQ[]>> | null = null;
+let cachedPunjabBankData: Record<string, Record<string, StoredMCQ[]>> | null = null;
 let cachedIeltsBankData: Record<string, Record<string, StoredMCQ[]>> | null = null;
 
 /**
@@ -28,25 +29,33 @@ let cachedIeltsBankData: Record<string, Record<string, StoredMCQ[]>> | null = nu
  */
 export async function loadBankData(forceRefresh = false, board = 'fbise'): Promise<Record<string, Record<string, StoredMCQ[]>>> {
   const isIelts = isIELTSBoard(board);
+  const isPunjab = (board || '').toLowerCase().includes('punjab') || (board || '').toLowerCase() === 'punjab';
+  const targetBoard = isIelts ? 'ielts' : (isPunjab ? 'punjab' : 'fbise');
 
   if (!forceRefresh) {
     if (isIelts && cachedIeltsBankData && Object.keys(cachedIeltsBankData).length > 0) {
       return cachedIeltsBankData;
     }
-    if (!isIelts && cachedFbiseBankData && Object.keys(cachedFbiseBankData).length > 0) {
+    if (isPunjab && cachedPunjabBankData && Object.keys(cachedPunjabBankData).length > 0) {
+      return cachedPunjabBankData;
+    }
+    if (!isIelts && !isPunjab && cachedFbiseBankData && Object.keys(cachedFbiseBankData).length > 0) {
       return cachedFbiseBankData;
     }
   }
 
   // 1. Try live API first for real-time storage state
   try {
-    const res = await fetch(`/api/mcq-bank/all?board=${isIelts ? 'ielts' : 'fbise'}`, { cache: 'no-store' });
+    const res = await fetch(`/api/mcq-bank/all?board=${targetBoard}`, { cache: 'no-store' });
     if (res.ok) {
       const json: any = await res.json();
       if (json && json.data && typeof json.data === 'object') {
         if (isIelts) {
           cachedIeltsBankData = json.data;
           return cachedIeltsBankData!;
+        } else if (isPunjab) {
+          cachedPunjabBankData = json.data;
+          return cachedPunjabBankData!;
         } else {
           cachedFbiseBankData = json.data;
           return cachedFbiseBankData!;
@@ -59,10 +68,13 @@ export async function loadBankData(forceRefresh = false, board = 'fbise'): Promi
 
   try {
     // Attempt dynamic import of modular pregenerated banks
-    const { grade9FbiseBank, ieltsBank } = await import('../data/banks');
+    const { grade9FbiseBank, grade9PunjabBank, ieltsBank } = await import('../data/banks');
     if (isIelts) {
       cachedIeltsBankData = ieltsBank as unknown as Record<string, Record<string, StoredMCQ[]>>;
       return cachedIeltsBankData;
+    } else if (isPunjab) {
+      cachedPunjabBankData = (grade9PunjabBank || {}) as unknown as Record<string, Record<string, StoredMCQ[]>>;
+      return cachedPunjabBankData;
     } else {
       cachedFbiseBankData = grade9FbiseBank as unknown as Record<string, Record<string, StoredMCQ[]>>;
       return cachedFbiseBankData;
@@ -72,6 +84,9 @@ export async function loadBankData(forceRefresh = false, board = 'fbise'): Promi
     if (isIelts) {
       if (!cachedIeltsBankData) cachedIeltsBankData = {};
       return cachedIeltsBankData;
+    } else if (isPunjab) {
+      if (!cachedPunjabBankData) cachedPunjabBankData = {};
+      return cachedPunjabBankData;
     } else {
       if (!cachedFbiseBankData) cachedFbiseBankData = {};
       return cachedFbiseBankData;
@@ -83,8 +98,12 @@ export async function loadBankData(forceRefresh = false, board = 'fbise'): Promi
  * Explicitly forces a fresh reload of the question bank from live storage
  */
 export async function refreshLiveBankData(board = 'fbise'): Promise<Record<string, Record<string, StoredMCQ[]>>> {
-  if (isIELTSBoard(board)) {
+  const isIelts = isIELTSBoard(board);
+  const isPunjab = (board || '').toLowerCase().includes('punjab') || (board || '').toLowerCase() === 'punjab';
+  if (isIelts) {
     cachedIeltsBankData = null;
+  } else if (isPunjab) {
+    cachedPunjabBankData = null;
   } else {
     cachedFbiseBankData = null;
   }
@@ -104,12 +123,13 @@ export async function getStoredMCQsForChapter(
   const isIelts = isIELTSBoard(board, grade);
   const isGrade9 = String(grade).trim() === '9' || String(grade).trim().toLowerCase() === '9th';
   const isFbise = (board || '').toLowerCase().includes('fbise') || (board || '').toLowerCase() === 'fbise';
+  const isPunjab = (board || '').toLowerCase().includes('punjab') || (board || '').toLowerCase() === 'punjab';
 
-  if (!isIelts && (!isGrade9 || !isFbise)) {
+  if (!isIelts && (!isGrade9 || (!isFbise && !isPunjab))) {
     return [];
   }
 
-  const bank = await loadBankData(false, isIelts ? 'ielts' : 'fbise');
+  const bank = await loadBankData(false, isIelts ? 'ielts' : (isPunjab ? 'punjab' : 'fbise'));
   const normalizedSubject = isIelts ? subject : (normalizeFBISEGrade9Subject(subject) || subject);
   const subjectData = bank[normalizedSubject];
   if (!subjectData) return [];
@@ -224,6 +244,8 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
   isPartial: boolean;
 }> {
   const isIelts = isIELTSBoard(params.board, params.grade) || String(params.board || '').toLowerCase().includes('ielts');
+  const isPunjab = (params.board || '').toLowerCase().includes('punjab') || (params.board || '').toLowerCase() === 'punjab';
+  const targetBoard = isIelts ? 'ielts' : (isPunjab ? 'punjab' : (params.board || 'fbise'));
   const targetCount = Math.max(1, params.count || 10);
   const normalizedSubject = isIelts ? params.subject : (normalizeFBISEGrade9Subject(params.subject) || params.subject);
   const targetChapOrTopic = (params.chapter || params.topic || '').trim();
@@ -264,7 +286,7 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
         topic: targetChapOrTopic || undefined,
         chapter: targetChapOrTopic || undefined,
         grade: isIelts ? 'ielts' : (params.grade || '9'),
-        board: isIelts ? 'ielts' : (params.board || 'fbise'),
+        board: targetBoard,
         count: targetCount,
         difficulty: params.difficulty,
         excludeIds: params.excludeIds,
@@ -300,7 +322,7 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
   }
 
   // 2. Query local in-memory / bundled bank store instantly
-  const bank = await loadBankData(false, isIelts ? 'ielts' : (params.board || 'fbise'));
+  const bank = await loadBankData(false, targetBoard);
   const subjectData = bank[normalizedSubject] || bank[params.subject] || {};
   const availableChapters = Object.keys(subjectData);
 
@@ -366,9 +388,11 @@ export async function fetchStoredMCQTest(params: BankFetchParams): Promise<{
  */
 export async function getQuestionBankStats(board = 'fbise'): Promise<QuestionBankSummary> {
   const isIelts = isIELTSBoard(board);
-  const bank = await loadBankData(false, isIelts ? 'ielts' : 'fbise');
+  const isPunjab = (board || '').toLowerCase().includes('punjab') || (board || '').toLowerCase() === 'punjab';
+  const targetBoard = isIelts ? 'ielts' : (isPunjab ? 'punjab' : 'fbise');
+  const bank = await loadBankData(false, targetBoard);
   const summary: QuestionBankSummary = {
-    board: isIelts ? 'ielts' : 'fbise',
+    board: targetBoard,
     grade: isIelts ? 'IELTS' : '9',
     totalQuestions: 0,
     targetQuestions: 0,
@@ -731,3 +755,68 @@ export async function pullTestQuestionsFromBanks(params: {
     longQuestions: longQuestions.slice(0, longTarget),
   };
 }
+
+/**
+ * Updates or creates an MCQ in the active question bank (FBISE or Punjab Board)
+ */
+export async function updateMCQQuestionInBank(params: {
+  board: string;
+  grade?: string;
+  subject: string;
+  chapter: string;
+  question: StoredMCQ;
+}): Promise<{ success: boolean; message: string }> {
+  const { board, grade = '9', subject, chapter, question } = params;
+  const isPunjab = (board || '').toLowerCase().includes('punjab') || (board || '').toLowerCase() === 'punjab';
+  const targetBoard = isPunjab ? 'punjab' : 'fbise';
+
+  try {
+    const res = await fetch('/api/mcq-bank/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board: targetBoard,
+        grade,
+        subject,
+        chapter,
+        question,
+      }),
+    });
+
+    if (res.ok) {
+      const data: any = await res.json();
+      // Update client-side cache
+      const activeCache = isPunjab ? cachedPunjabBankData : cachedFbiseBankData;
+      if (activeCache) {
+        if (!activeCache[subject]) activeCache[subject] = {};
+        if (!activeCache[subject][chapter]) activeCache[subject][chapter] = [];
+        const list = activeCache[subject][chapter];
+        const idx = list.findIndex((q) => q.id === question.id);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...question };
+        } else {
+          list.push(question);
+        }
+      }
+      return { success: true, message: data.message || 'Question saved successfully' };
+    }
+    const errData: any = await res.json().catch(() => ({}));
+    return { success: false, message: errData.error || 'Failed to update question on server' };
+  } catch (err: any) {
+    console.warn('[QuestionBankService] Update API error, saving to memory:', err);
+    const activeCache = isPunjab ? cachedPunjabBankData : cachedFbiseBankData;
+    if (activeCache) {
+      if (!activeCache[subject]) activeCache[subject] = {};
+      if (!activeCache[subject][chapter]) activeCache[subject][chapter] = [];
+      const list = activeCache[subject][chapter];
+      const idx = list.findIndex((q) => q.id === question.id);
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...question };
+      } else {
+        list.push(question);
+      }
+    }
+    return { success: true, message: 'Question saved in memory' };
+  }
+}
+

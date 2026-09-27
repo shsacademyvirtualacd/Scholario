@@ -79,10 +79,12 @@ export const FBISE_GRADES: GradeDef[] = [
     grade: '9',
     displayName: '9th',
     boardId: 'fbise',
-    commonSubjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics'],
+    commonSubjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics'],
     streams: [
-      { name: 'Biology', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Biology'] },
-      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Mathematics', 'Chemistry', 'Physics', 'Computer Science'] },
+      { name: 'Medical', subjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics', 'Biology'] },
+      { name: 'Computer Science', subjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics', 'Computer Science'] },
+      { name: 'General Science', subjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics'] },
+      { name: 'Biology', subjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics', 'Biology'] },
     ],
   },
   {
@@ -452,103 +454,19 @@ export const PUNJAB_GRADES: GradeDef[] = [
     grade: '9',
     displayName: '9th',
     boardId: 'punjab',
-    commonSubjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran', 'Mathematics'],
+    commonSubjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics'],
     streams: [
       {
-        name: 'Biology',
-        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Islamiyat', 'Tarjuma-tul-Quran'],
+        name: 'Medical',
+        subjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics', 'Biology'],
       },
       {
         name: 'Computer Science',
-        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Computer Science', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'General',
-        subjects: ['English', 'Urdu', 'General Mathematics', 'General Science', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-    ],
-  },
-  {
-    grade: '10',
-    displayName: '10th',
-    boardId: 'punjab',
-    commonSubjects: ['English', 'Urdu', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran', 'Mathematics'],
-    streams: [
-      {
-        name: 'Biology',
-        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'Computer Science',
-        subjects: ['English', 'Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Computer Science', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'General',
-        subjects: ['English', 'Urdu', 'General Mathematics', 'General Science', 'Pakistan Studies', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-    ],
-  },
-  {
-    grade: '11',
-    displayName: '11th',
-    boardId: 'punjab',
-    commonSubjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran'],
-    streams: [
-      {
-        name: 'Pre-Medical',
-        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'Pre-Engineering',
-        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'ICS (Computer Science)',
-        subjects: ['English', 'Urdu', 'Physics', 'Computer Science', 'Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
+        subjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics', 'Computer Science'],
       },
       {
         name: 'General Science',
-        subjects: ['English', 'Urdu', 'Mathematics', 'Statistics', 'Economics', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'Commerce (I.Com)',
-        subjects: ['English', 'Urdu', 'Principles of Accounting', 'Principles of Economics', 'Principles of Commerce', 'Business Mathematics', 'Islamiyat', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'Humanities / Arts',
-        subjects: ['English', 'Urdu', 'Islamiyat', 'Tarjuma-tul-Quran', 'Civics', 'Education', 'History of Pakistan'],
-      },
-    ],
-  },
-  {
-    grade: '12',
-    displayName: '12th',
-    boardId: 'punjab',
-    commonSubjects: ['English', 'Urdu', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
-    streams: [
-      {
-        name: 'Pre-Medical',
-        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Biology', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'Pre-Engineering',
-        subjects: ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'ICS (Computer Science)',
-        subjects: ['English', 'Urdu', 'Physics', 'Computer Science', 'Mathematics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'General Science',
-        subjects: ['English', 'Urdu', 'Mathematics', 'Statistics', 'Economics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'Commerce (I.Com)',
-        subjects: ['English', 'Urdu', 'Principles of Accounting', 'Commercial Geography', 'Banking', 'Business Statistics', 'Pakistan Studies', 'Tarjuma-tul-Quran'],
-      },
-      {
-        name: 'Humanities / Arts',
-        subjects: ['English', 'Urdu', 'Pakistan Studies', 'Tarjuma-tul-Quran', 'Civics', 'Education', 'History of Pakistan'],
+        subjects: ['English', 'Urdu', 'Islamiat', 'Mathematics', 'Chemistry', 'Physics'],
       },
     ],
   },

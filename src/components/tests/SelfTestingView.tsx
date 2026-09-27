@@ -47,6 +47,7 @@ import { BOARDS, getGradesForBoard, getEnrolledSubjectsForStudent } from '../../
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   isGrade9FBISE,
+  isGrade9Punjab,
   getFBISEGrade9Chapters,
   getFBISEGrade9PopularTopics,
 } from '../../lib/curriculumFBISE9';
@@ -176,6 +177,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   const activeBoard = isStudent ? studentBoardId : board;
   const activeGrade = isStudent ? studentGrade : grade;
   const isFbise9 = isGrade9FBISE(activeBoard, activeGrade);
+  const isPunjab9 = isGrade9Punjab(activeBoard, activeGrade);
+  const isNational9 = isFbise9 || isPunjab9;
   const isIelts =
     String(activeBoard).toLowerCase() === 'ielts' ||
     String(activeGrade).toLowerCase() === 'ielts' ||
@@ -280,8 +283,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     if (isIelts) {
       return ['Grammar', 'Comprehension of Passages'];
     }
-    if (isFbise9) {
-      // Official FBISE Grade 9 Subjects
+    if (isNational9) {
+      // Official Grade 9 National/Provincial Curriculum Subjects (FBISE & Punjab Board)
       return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science', 'English', 'Urdu'];
     }
     return Array.from(
@@ -305,7 +308,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         s.toLowerCase() !== 'islamiyat' &&
         !s.toLowerCase().includes('islam')
     );
-  }, [isIelts, isGt, isFbise9, studentEnrolledSubjects, currentGradeDef]);
+  }, [isIelts, isGt, isNational9, studentEnrolledSubjects, currentGradeDef]);
 
   // Safety fallback if subject is set to Islamiat or not available in current board/grade
   useEffect(() => {
@@ -328,10 +331,10 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   const activeSubjectName = subject === 'Other' ? (customSubject.trim() || 'General Subject') : subject;
 
-  // FBISE Grade 9 Chapters & Weak topics (guaranteed empty for Islamiat)
+  // Grade 9 Chapters & Weak topics (guaranteed empty for Islamiat)
   const fbise9Chapters = useMemo(() => {
     if (
-      !isFbise9 ||
+      !isNational9 ||
       activeSubjectName === 'Islamiat' ||
       activeSubjectName.toLowerCase() === 'islamiat' ||
       activeSubjectName.toLowerCase().includes('islam')
@@ -339,7 +342,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       return [];
     }
     return getFBISEGrade9Chapters(activeSubjectName);
-  }, [isFbise9, activeSubjectName]);
+  }, [isNational9, activeSubjectName]);
 
   const weakTopics = useMemo(() => {
     return getWeakTopicsForStudent(activeSubjectName, activeBoard, activeGrade);
@@ -347,7 +350,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
   // Set default topic whenever subject changes
   useEffect(() => {
-    if (isFbise9) {
+    if (isNational9) {
       const chaps = getFBISEGrade9Chapters(activeSubjectName);
       if (chaps.length > 0) {
         setTopic(chaps[0].name);
@@ -358,7 +361,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         setTopic(SUGGESTED_TOPICS[activeSubjectName][0]);
       }
     }
-  }, [activeSubjectName, isFbise9]);
+  }, [activeSubjectName, isNational9]);
 
   // Handle Chapter multi-select toggle
   const handleToggleChapter = (chapterName: string) => {
@@ -582,7 +585,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     let finalTopic = topic.trim();
     let finalChapters = selectedChapters;
 
-    if (isFbise9) {
+    if (isNational9) {
       if (examMode === 'full_syllabus') {
         finalTopic = 'Full Syllabus';
         finalChapters = fbise9Chapters.map((c) => c.name);
@@ -666,8 +669,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       topic: finalTopic,
       questionCount: initialBatchCount,
       difficulty,
-      examMode: isFbise9 ? examMode : undefined,
-      selectedChapters: isFbise9 ? finalChapters : undefined,
+      examMode: isNational9 ? examMode : undefined,
+      selectedChapters: isNational9 ? finalChapters : undefined,
     };
 
     try {
@@ -795,8 +798,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       topic: activeQuizTopic || topic.trim(),
       questionCount: questions.length,
       difficulty,
-      examMode: isFbise9 ? examMode : undefined,
-      selectedChapters: isFbise9 ? activeQuizChapters : undefined,
+      examMode: isNational9 ? examMode : undefined,
+      selectedChapters: isNational9 ? activeQuizChapters : undefined,
     };
 
     let score = 0;
@@ -964,7 +967,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       );
     }
 
-    const popularTopics = isFbise9
+    const popularTopics = isNational9
       ? getFBISEGrade9PopularTopics(activeSubjectName)
       : SUGGESTED_TOPICS[activeSubjectName] || [
           'Foundations & Core Principles',
@@ -1071,6 +1074,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                   {isIelts
                     ? 'IELTS Self-Testing MCQ Question Bank'
+                    : isPunjab9
+                    ? 'Grade 9 Punjab Board Self-Testing & Exam Generator'
                     : isFbise9
                     ? 'Grade 9 FBISE Self-Testing & Exam Generator'
                     : 'Interactive Self-Testing Center'}
@@ -1078,6 +1083,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 <p className="text-xs sm:text-sm text-[#A3A3A3] leading-relaxed">
                   {isIelts
                     ? 'Practice 200 authentic IELTS MCQs strictly divided into Grammar (100 MCQs) and Comprehension of Passages (100 MCQs) with instant scoring and detailed explanations.'
+                    : isPunjab9
+                    ? 'Practice with 100% official Punjab Board Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
                     : isFbise9
                     ? 'Practice with 100% official FBISE Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
                     : 'Generate 100% curriculum-accurate, syllabus-aligned multiple choice practice questions on any subject or topic. Your practice scores are private to you.'}
@@ -1111,6 +1118,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                   <p className="text-xs text-[#737373] mt-0.5">
                     {isIelts
                       ? 'Select Grammar or Comprehension of Passages to test language proficiency and reading skills.'
+                      : isPunjab9
+                      ? 'Official Punjab Board Grade 9 chapters — select single chapter, multiple chapters, or full subject exam.'
                       : isFbise9
                       ? 'Official FBISE Grade 9 chapters — select single chapter, multiple chapters, or full subject exam.'
                       : 'Customize syllabus parameters to target specific chapters or concepts.'}
@@ -1154,6 +1163,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       <div className="text-xs font-black text-[#111111] mt-0.5">
                         {isIelts
                           ? 'IELTS Preparation'
+                          : activeBoard === 'punjab'
+                          ? 'Punjab Board (BISE Lahore & Provincial)'
                           : activeBoard === 'sindh'
                           ? 'Sindh Board (BSEK / BIEK)'
                           : 'Federal Board (FBISE)'}
@@ -1161,6 +1172,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       <div className="text-[10px] text-[#737373] mt-0.5 truncate">
                         {isIelts
                           ? 'International English Language Testing System'
+                          : activeBoard === 'punjab'
+                          ? 'Punjab Secondary & Intermediate Boards'
                           : activeBoard === 'sindh'
                           ? 'BSEK / BIEK Karachi & Sindh'
                           : 'Federal Board of Inter & Secondary Education'}
@@ -1261,7 +1274,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       type="button"
                       onClick={() => {
                         setSubject(sub);
-                        if (isFbise9) {
+                        if (isNational9) {
                           const chaps = getFBISEGrade9Chapters(sub);
                           if (chaps.length > 0) {
                             setTopic(chaps[0].name);
@@ -1280,7 +1293,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                       {sub}
                     </button>
                   ))}
-                  {!isFbise9 && (
+                  {!isNational9 && (
                     <button
                       type="button"
                       onClick={() => setSubject('Other')}
@@ -1295,7 +1308,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                   )}
                 </div>
 
-                {subject === 'Other' && !isFbise9 && (
+                {subject === 'Other' && !isNational9 && (
                   <input
                     type="text"
                     placeholder="Enter custom subject name..."
@@ -1309,8 +1322,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
             {/* Topic & Parameters */}
             <div className="space-y-4">
-              {/* If Grade 9 FBISE: Show Exam Generator Modes */}
-              {isFbise9 ? (
+              {/* If Grade 9 FBISE or Punjab: Show Exam Generator Modes */}
+              {isNational9 ? (
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-bold text-[#111111] mb-1.5">

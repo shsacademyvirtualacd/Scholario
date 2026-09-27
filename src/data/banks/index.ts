@@ -5,6 +5,7 @@ import chemistry from './chemistry/index';
 import mathematics from './mathematics/index';
 import urdu from './urdu/index';
 import english from './english/index';
+import grade9PunjabJson from '../grade9PunjabBank.json';
 import {
   ieltsMasterBank,
   IELTS_READING_ACADEMIC_BANK,
@@ -39,6 +40,12 @@ export const grade9FbiseBank: FullGrade9Bank = {
 };
 
 /**
+ * Authoritative Punjab Board Grade 9 Question Bank.
+ * Independent copy strictly scoped to Punjab Board Grade 9 curriculum subjects.
+ */
+export const grade9PunjabBank: FullGrade9Bank = grade9PunjabJson as unknown as FullGrade9Bank;
+
+/**
  * Authoritative IELTS Preparation Question Bank.
  * Strictly scoped to IELTS Preparation board & subjects.
  */
@@ -51,6 +58,7 @@ export {
   mathematics,
   urdu,
   english,
+  grade9PunjabJson,
   ieltsMasterBank,
   IELTS_READING_ACADEMIC_BANK,
   IELTS_READING_GT_BANK,

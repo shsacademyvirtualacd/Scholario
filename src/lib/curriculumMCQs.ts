@@ -1,5 +1,6 @@
 import type { MCQQuestion, MCQDifficulty } from '../types/selfTest';
 import { getGrade9FBISEQuestions } from './fbise9QuestionsBank';
+import { getGrade9PunjabQuestions } from './punjab9QuestionsBank';
 import { validateQuestionTopicRelevance, validateMCQQuestion, checkQuestionDuplicate } from './mcqValidator';
 import { getChapterSyllabusScope } from './curriculumFBISE9';
 import { IELTS_GRAMMAR_MCQS, IELTS_COMPREHENSION_MCQS } from '../data/banks/ielts/index';
@@ -66,14 +67,19 @@ export function generateCurriculumFallbackMCQs(
     ? [normTopic]
     : [];
 
-  // 1. Try authoritative Grade 9 FBISE static question bank first
-  const fbise9Questions = getGrade9FBISEQuestions(normSubject, selectedChaps, count, difficulty, excludeTexts);
-  if (fbise9Questions.length >= count) {
-    return fbise9Questions.slice(0, count);
+  const isPunjab = (board || '').toLowerCase().includes('punjab') || (board || '').toLowerCase() === 'punjab';
+
+  // 1. Try authoritative Grade 9 static question bank first (Punjab or FBISE)
+  const static9Questions = isPunjab
+    ? getGrade9PunjabQuestions(normSubject, selectedChaps, count, difficulty, excludeTexts)
+    : getGrade9FBISEQuestions(normSubject, selectedChaps, count, difficulty, excludeTexts);
+
+  if (static9Questions.length >= count) {
+    return static9Questions.slice(0, count);
   }
 
   // 2. Build dedicated, chapter-scoped questions pool
-  const questions: MCQQuestion[] = [...fbise9Questions];
+  const questions: MCQQuestion[] = [...static9Questions];
   const validationContext = { subject: normSubject, topic: normTopic, grade: String(grade), board: String(board) };
   const scope = getChapterSyllabusScope(normSubject, normTopic);
 

@@ -145,7 +145,7 @@ import { generateCurriculumFallbackMCQs } from './src/lib/curriculumMCQs';
 import { validateMCQQuestion, filterAndValidateMCQs, validateQuestionTopicRelevance, checkQuestionDuplicate } from './src/lib/mcqValidator';
 import { getChapterSyllabusScope, FBISE_GRADE_9_CURRICULUM, normalizeFBISEGrade9Subject } from './src/lib/curriculumFBISE9';
 import { IELTS_CURRICULUM, isIELTSBoard } from './src/lib/curriculumIELTS';
-import { grade9FbiseBank, ieltsBank } from './src/data/banks/index';
+import { grade9FbiseBank, grade9PunjabBank, ieltsBank } from './src/data/banks/index';
 import type { StoredMCQ } from './src/types/questionBank';
 import {
   savePushSubscription,
@@ -1172,7 +1172,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   // ── Pre-Generated MCQ Question Bank Endpoints ────────
   let serverCachedBank: Record<string, Record<string, StoredMCQ[]>> | null = null;
+  let serverCachedPunjabBank: Record<string, Record<string, StoredMCQ[]>> | null = null;
   const BANK_FILE_PATH = path.resolve('src/data/grade9FbiseBank.json');
+  const PUNJAB_BANK_FILE_PATH = path.resolve('src/data/grade9PunjabBank.json');
 
   function normalizeChapterString(str: string): string {
     if (!str) return '';
@@ -1218,6 +1220,26 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       return (ieltsBank as unknown as Record<string, Record<string, StoredMCQ[]>>) || {};
     }
 
+    const isPunjab = (boardParam || '').toLowerCase().includes('punjab') || (boardParam || '').toLowerCase() === 'punjab';
+    if (isPunjab) {
+      if (serverCachedPunjabBank && Object.keys(serverCachedPunjabBank).length > 0) {
+        return serverCachedPunjabBank;
+      }
+      try {
+        if (fs.existsSync(PUNJAB_BANK_FILE_PATH)) {
+          const raw = fs.readFileSync(PUNJAB_BANK_FILE_PATH, 'utf-8');
+          serverCachedPunjabBank = JSON.parse(raw);
+          if (serverCachedPunjabBank && Object.keys(serverCachedPunjabBank).length > 0) {
+            return serverCachedPunjabBank;
+          }
+        }
+      } catch (err) {
+        console.warn('[Server MCQ Bank] Error loading Punjab bank file from disk, using fallback modular bank:', err);
+      }
+      serverCachedPunjabBank = (grade9PunjabBank as unknown as Record<string, Record<string, StoredMCQ[]>>) || {};
+      return serverCachedPunjabBank;
+    }
+
     if (serverCachedBank && Object.keys(serverCachedBank).length > 0) {
       return serverCachedBank;
     }
@@ -1230,7 +1252,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         }
       }
     } catch (err) {
-      console.warn('[Server MCQ Bank] Error loading bank file from disk, using fallback modular bank:', err);
+      console.warn('[Server MCQ Bank] Error loading FBISE bank file from disk, using fallback modular bank:', err);
     }
     serverCachedBank = (grade9FbiseBank as unknown as Record<string, Record<string, StoredMCQ[]>>) || {};
     return serverCachedBank;
@@ -1388,7 +1410,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     try {
       const requestedBoard = String(req.query.board || 'fbise').toLowerCase();
       const isIelts = requestedBoard === 'ielts' || requestedBoard.includes('ielts');
-      const bank = getServerBankData(isIelts ? 'ielts' : 'fbise');
+      const isPunjab = requestedBoard === 'punjab' || requestedBoard.includes('punjab');
+      const targetBoard = isIelts ? 'ielts' : (isPunjab ? 'punjab' : 'fbise');
+      const bank = getServerBankData(targetBoard);
       const stats: Record<string, { totalQuestions: number; chapters: Record<string, number> }> = {};
       let grandTotal = 0;
 
@@ -1422,7 +1446,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
       return res.json({
         success: true,
-        board: isIelts ? 'ielts' : 'fbise',
+        board: targetBoard,
         grade: isIelts ? 'IELTS' : '9',
         grandTotal,
         subjects: stats,
@@ -1437,6 +1461,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     try {
       const requestedBoard = String(req.query.board || '').toLowerCase();
       const isIelts = requestedBoard === 'ielts' || requestedBoard.includes('ielts');
+      const isPunjab = requestedBoard === 'punjab' || requestedBoard.includes('punjab');
 
       if (isIelts) {
         return res.json({
@@ -1447,8 +1472,22 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         });
       }
 
+      if (isPunjab) {
+        if (fs.existsSync(PUNJAB_BANK_FILE_PATH)) {
+          const raw = fs.readFileSync(PUNJAB_BANK_FILE_PATH, 'utf-8');
+          const data = JSON.parse(raw);
+          serverCachedPunjabBank = data;
+          return res.json({
+            success: true,
+            board: 'punjab',
+            grade: '9',
+            data,
+          });
+        }
+        return res.json({ success: true, board: 'punjab', grade: '9', data: grade9PunjabBank });
+      }
+
       // Force fresh read from disk file for FBISE Grade 9
-      const BANK_FILE_PATH = path.resolve('src/data/grade9FbiseBank.json');
       if (fs.existsSync(BANK_FILE_PATH)) {
         const raw = fs.readFileSync(BANK_FILE_PATH, 'utf-8');
         const data = JSON.parse(raw);
@@ -1463,6 +1502,58 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       return res.json({ success: true, board: 'fbise', grade: '9', data: grade9FbiseBank });
     } catch (err: any) {
       return res.status(500).json({ error: err?.message || 'Failed to load question bank data from storage' });
+    }
+  });
+
+  // 4. Update / Save an MCQ question in Question Bank (supports Punjab and FBISE independently)
+  app.post('/api/mcq-bank/update', (req, res) => {
+    try {
+      const { board = 'fbise', grade = '9', subject, chapter, question } = req.body || {};
+      if (!subject || !chapter || !question || !question.id) {
+        return res.status(400).json({ error: 'Missing required fields: subject, chapter, and question with id' });
+      }
+
+      const isPunjab = (board || '').toLowerCase().includes('punjab') || (board || '').toLowerCase() === 'punjab';
+      const targetFilePath = isPunjab ? PUNJAB_BANK_FILE_PATH : BANK_FILE_PATH;
+
+      let bankData: Record<string, Record<string, StoredMCQ[]>> = {};
+      if (fs.existsSync(targetFilePath)) {
+        bankData = JSON.parse(fs.readFileSync(targetFilePath, 'utf-8'));
+      } else {
+        bankData = isPunjab ? { ...grade9PunjabBank } : { ...grade9FbiseBank };
+      }
+
+      if (!bankData[subject]) {
+        bankData[subject] = {};
+      }
+      if (!bankData[subject][chapter]) {
+        bankData[subject][chapter] = [];
+      }
+
+      const list = bankData[subject][chapter];
+      const existingIdx = list.findIndex((q) => q.id === question.id);
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...question };
+      } else {
+        list.push(question);
+      }
+
+      fs.writeFileSync(targetFilePath, JSON.stringify(bankData, null, 2), 'utf-8');
+      if (isPunjab) {
+        serverCachedPunjabBank = bankData;
+      } else {
+        serverCachedBank = bankData;
+      }
+
+      return res.json({
+        success: true,
+        message: `Successfully saved question ${question.id} for ${board} ${subject} - ${chapter}`,
+        board: isPunjab ? 'punjab' : 'fbise',
+        question,
+      });
+    } catch (err: any) {
+      console.error('[MCQ Bank Update Error]:', err);
+      return res.status(500).json({ error: err?.message || 'Failed to update question in bank' });
     }
   });
 
