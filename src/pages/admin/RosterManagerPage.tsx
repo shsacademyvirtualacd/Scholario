@@ -28,6 +28,86 @@ import {
 } from '../../lib/subjectEnrollmentService';
 import { getSubjectsForStream, getDefaultPrice, formatShortClassAndBoard, BOARDS, getBoardDef, formatGradeDisplay, BoardId } from '../../lib/taxonomy';
 
+interface StatusBadgeProps {
+  role?: 'student' | 'teacher' | 'admin';
+  showPayment?: boolean;
+  isSuspended: boolean;
+  isActive?: boolean;
+  feeStatusVal?: string;
+  isPendingPayment?: boolean;
+  size?: 'sm' | 'md';
+}
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({
+  role = 'student',
+  showPayment = true,
+  isSuspended,
+  isActive = false,
+  feeStatusVal = 'unpaid',
+  isPendingPayment = false,
+  size = 'md',
+}) => {
+  const isTeacher = role === 'teacher' || !showPayment;
+  const iconSize = size === 'sm' ? 10 : 11;
+  const paddingClass = size === 'sm' ? 'px-2 py-0.5 text-[9px]' : 'px-2.5 py-1 text-[10px]';
+
+  // For teachers: badge depends ONLY on account status (active vs suspended).
+  // Teachers never pay fees, so no payment/paid/unpaid text appears anywhere.
+  if (isTeacher) {
+    if (isSuspended) {
+      return (
+        <span className={`inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0 ${paddingClass}`}>
+          <Lock size={iconSize} /> SUSPENDED
+        </span>
+      );
+    }
+    return (
+      <span className={`inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <UserCheck size={iconSize} /> ACTIVE
+      </span>
+    );
+  }
+
+  // Student & Admin status badge behavior
+  if (isSuspended) {
+    return (
+      <span className={`inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <Lock size={iconSize} /> Suspended
+      </span>
+    );
+  }
+
+  if (isActive) {
+    return (
+      <span className={`inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <UserCheck size={iconSize} /> Active · Paid
+      </span>
+    );
+  }
+
+  if (feeStatusVal === 'pending') {
+    return (
+      <span className={`inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <Clock size={iconSize} /> {size === 'sm' ? 'Verifying' : 'Awaiting Verification'}
+      </span>
+    );
+  }
+
+  if (isPendingPayment) {
+    return (
+      <span className={`inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <DollarSign size={iconSize} /> {size === 'sm' ? 'Unpaid' : 'Pending Payment (Unpaid)'}
+      </span>
+    );
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+      <Clock size={iconSize} /> {size === 'sm' ? 'Pending' : 'Pending Registration'}
+    </span>
+  );
+};
+
 export const RosterManagerPage: React.FC = () => {
   const isMobile = useMobile();
   const [roster, setRoster] = useState<RosterEntry[]>([]);
@@ -814,11 +894,13 @@ export const RosterManagerPage: React.FC = () => {
       const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
       const isSuspended = entry.suspended === true;
       
-      const profileIdForFee = matchedProfile?.id || entry.profile_id;
-      const feeStatusObj = profileIdForFee ? feeMap[profileIdForFee] : null;
-      const feeStatus = feeStatusObj?.status || 'unpaid';
-      
       const isStudent = effectiveRole === 'student';
+
+      // Teachers never pay fees; fee tracking is only evaluated for students
+      const profileIdForFee = isStudent ? (matchedProfile?.id || entry.profile_id) : undefined;
+      const feeStatusObj = profileIdForFee ? feeMap[profileIdForFee] : null;
+      const feeStatus = isStudent ? (feeStatusObj?.status || 'unpaid') : undefined;
+      
       const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
       const isPendingPayment = isStudent ? (!isPendingAccount && feeStatus !== 'paid') : false;
       const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
@@ -946,7 +1028,7 @@ export const RosterManagerPage: React.FC = () => {
       {/* ── Statistics Overview Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div 
-          onClick={() => setActiveSection('admins')}
+          onClick={() => { setActiveSection('admins'); setStatusFilter('all'); }}
           className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'admins' ? 'border-red-500 bg-red-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-red-300'}`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -960,7 +1042,7 @@ export const RosterManagerPage: React.FC = () => {
         </div>
 
         <div 
-          onClick={() => setActiveSection('students')}
+          onClick={() => { setActiveSection('students'); setStatusFilter('all'); }}
           className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'students' ? 'border-indigo-500 bg-indigo-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-indigo-300'}`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -974,7 +1056,7 @@ export const RosterManagerPage: React.FC = () => {
         </div>
 
         <div 
-          onClick={() => setActiveSection('teachers')}
+          onClick={() => { setActiveSection('teachers'); setStatusFilter('all'); }}
           className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'teachers' ? 'border-purple-500 bg-purple-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-purple-300'}`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -1003,7 +1085,7 @@ export const RosterManagerPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E5E5E5] pb-4 mb-6">
         <div className="flex items-center gap-2 bg-[#FAFAFA] p-1 rounded-2xl border border-[#E5E5E5] max-w-full overflow-x-auto no-scrollbar whitespace-nowrap">
           <button
-            onClick={() => setActiveSection('admins')}
+            onClick={() => { setActiveSection('admins'); setStatusFilter('all'); }}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
               activeSection === 'admins'
                 ? 'bg-red-600 text-white shadow-sm'
@@ -1013,7 +1095,7 @@ export const RosterManagerPage: React.FC = () => {
             <Shield size={14} /> Admins ({adminCount})
           </button>
           <button
-            onClick={() => setActiveSection('students')}
+            onClick={() => { setActiveSection('students'); setStatusFilter('all'); }}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
               activeSection === 'students'
                 ? 'bg-indigo-600 text-white shadow-sm'
@@ -1023,7 +1105,7 @@ export const RosterManagerPage: React.FC = () => {
             <GraduationCap size={14} /> Students ({studentCount})
           </button>
           <button
-            onClick={() => setActiveSection('teachers')}
+            onClick={() => { setActiveSection('teachers'); setStatusFilter('all'); }}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
               activeSection === 'teachers'
                 ? 'bg-purple-600 text-white shadow-sm'
@@ -1067,11 +1149,27 @@ export const RosterManagerPage: React.FC = () => {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="input py-2 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-semibold text-[#111111] cursor-pointer flex-1 md:flex-none"
           >
-            <option value="all">All Statuses</option>
-            <option value="active">Active (Paid & Verified)</option>
-            <option value="suspended">Suspended Accounts</option>
-            <option value="pending_account">Pending Registration</option>
-            <option value="pending_payment">Pending Payment</option>
+            {activeSection === 'teachers' ? (
+              <>
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </>
+            ) : activeSection === 'students' ? (
+              <>
+                <option value="all">All Statuses</option>
+                <option value="active">Active (Paid & Verified)</option>
+                <option value="suspended">Suspended Accounts</option>
+                <option value="pending_account">Pending Registration</option>
+                <option value="pending_payment">Pending Payment</option>
+              </>
+            ) : (
+              <>
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended Accounts</option>
+              </>
+            )}
           </select>
         </div>
       </div>
@@ -1095,9 +1193,12 @@ export const RosterManagerPage: React.FC = () => {
               const hasProfile = Boolean(matchedProfile || entry.profile_id);
               const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
               const isSuspended = entry.suspended === true;
-              const profileIdForFee = matchedProfile?.id || entry.profile_id;
-              const feeStatusVal = profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : 'unpaid';
-              const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student';
+              const isTeacher = (matchedProfile?.role || entry.role || '').trim().toLowerCase() === 'teacher' || activeSection === 'teachers';
+              const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student' && !isTeacher;
+
+              // Only students have fee tracking; remove fee/payment lookups and logic for teachers
+              const profileIdForFee = isStudent ? (matchedProfile?.id || entry.profile_id || entry.id) : undefined;
+              const feeStatusVal = isStudent && profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : undefined;
               const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
               const isPendingPayment = isStudent ? (!isPendingAccount && feeStatusVal !== 'paid') : false;
               const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
@@ -1125,27 +1226,15 @@ export const RosterManagerPage: React.FC = () => {
                     </div>
                     {/* Access Status Badge */}
                     <div className="shrink-0">
-                      {isSuspended ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
-                          <Lock size={10} /> Suspended
-                        </span>
-                      ) : isActive ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
-                          <UserCheck size={10} /> Active · Paid
-                        </span>
-                      ) : feeStatusVal === 'pending' ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
-                          <Clock size={10} /> Verifying
-                        </span>
-                      ) : isPendingPayment ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
-                          <DollarSign size={10} /> Unpaid
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider whitespace-nowrap">
-                          <Clock size={10} /> Pending
-                        </span>
-                      )}
+                      <StatusBadge
+                        role={isTeacher ? 'teacher' : isStudent ? 'student' : 'admin'}
+                        showPayment={!isTeacher}
+                        isSuspended={isSuspended}
+                        isActive={isActive}
+                        feeStatusVal={feeStatusVal}
+                        isPendingPayment={isPendingPayment}
+                        size="sm"
+                      />
                     </div>
                   </div>
 
@@ -1326,9 +1415,12 @@ export const RosterManagerPage: React.FC = () => {
                   const hasProfile = Boolean(matchedProfile || entry.profile_id);
                   const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
                   const isSuspended = entry.suspended === true;
-                  const profileIdForFee = matchedProfile?.id || entry.profile_id || entry.id;
-                  const feeStatusVal = profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : 'unpaid';
-                  const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student';
+                  const isTeacher = (matchedProfile?.role || entry.role || '').trim().toLowerCase() === 'teacher' || activeSection === 'teachers';
+                  const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student' && !isTeacher;
+
+                  // Only students have fee tracking; remove fee/payment lookups and logic for teachers
+                  const profileIdForFee = isStudent ? (matchedProfile?.id || entry.profile_id || entry.id) : undefined;
+                  const feeStatusVal = isStudent && profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : undefined;
                   const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
                   const isPendingPayment = isStudent ? (!isPendingAccount && feeStatusVal !== 'paid') : false;
                   const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
@@ -1417,39 +1509,27 @@ export const RosterManagerPage: React.FC = () => {
                               <ShieldAlert size={11} /> Termination Requested
                             </span>
                           )}
-                          {entry.fee_suspended && (
+                          {isStudent && entry.fee_suspended && (
                             <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
                               <DollarSign size={11} /> Billing Locked
                             </span>
                           )}
-                          {isSuspended ? (
-                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
-                              <Lock size={11} /> Suspended
-                            </span>
-                          ) : isActive ? (
-                            <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
-                              <UserCheck size={11} /> Active · Paid
-                            </span>
-                          ) : feeStatusVal === 'pending' ? (
-                            <span className="inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
-                              <Clock size={11} /> Awaiting Verification
-                            </span>
-                          ) : isPendingPayment ? (
-                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
-                              <DollarSign size={11} /> Pending Payment (Unpaid)
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
-                              <Clock size={11} /> Pending Registration
-                            </span>
-                          )}
+                          <StatusBadge
+                            role={isTeacher ? 'teacher' : isStudent ? 'student' : 'admin'}
+                            showPayment={!isTeacher}
+                            isSuspended={isSuspended}
+                            isActive={isActive}
+                            feeStatusVal={feeStatusVal}
+                            isPendingPayment={isPendingPayment}
+                            size="md"
+                          />
 
                           {/* Instant Access Selector (Direct Admin Override) */}
                           {activeSection === 'students' && (
                             <div className="flex items-center gap-1.5 pt-0.5">
                               <span className="text-[10px] text-[#737373] font-bold uppercase tracking-wider">Access:</span>
                               <select
-                                value={feeStatusVal}
+                                value={feeStatusVal || 'unpaid'}
                                 disabled={processingIds[entry.id]}
                                 onChange={(e) => handleSetStudentFeeStatus(entry, e.target.value as 'unpaid' | 'pending' | 'paid')}
                                 className="text-[11px] font-bold bg-white border border-[#E5E5E5] rounded-lg px-2 py-0.5 text-[#111111] focus:ring-1 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
