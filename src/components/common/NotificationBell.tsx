@@ -114,10 +114,25 @@ export const NotificationBell: React.FC = () => {
     }
     setNotifOpen(false);
 
+    if (notif.url) {
+      if (notif.url.startsWith('http://') || notif.url.startsWith('https://')) {
+        window.open(notif.url, '_blank');
+      } else {
+        navigate(notif.url);
+      }
+      return;
+    }
+
     const role = profile?.role || 'student';
-    if (notif.title === 'Schedule Update' || notif.title === 'Class Cancellation' || notif.type === 'announcement') {
+    if (notif.type === 'class_started') {
+      navigate(role === 'student' ? '/student/schedule' : '/admin/schedule');
+    } else if (notif.type === 'teacher_reminder') {
+      navigate('/teacher/schedule');
+    } else if (notif.type === 'admin_live_alert') {
+      navigate('/admin/schedule');
+    } else if (notif.title === 'Schedule Update' || notif.title === 'Class Cancellation' || notif.type === 'announcement') {
       navigate(`/${role}/announcements`);
-    } else if (notif.type === 'class_reminder') {
+    } else {
       navigate(`/${role}/schedule`);
     }
   };
@@ -264,6 +279,19 @@ export const NotificationBell: React.FC = () => {
                   );
                 })
               )}
+            </div>
+            <div className="p-2.5 border-t border-[#F5F5F5] dark:border-zinc-800 bg-[#FAFAFA] dark:bg-zinc-900/80 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifOpen(false);
+                  const role = profile?.role || 'student';
+                  navigate(`/${role}/notifications`);
+                }}
+                className="text-[11px] font-bold text-[#111111] dark:text-zinc-200 hover:text-amber-600 dark:hover:text-[#F4C430] transition-colors"
+              >
+                View all notifications →
+              </button>
             </div>
           </div>
         </>

@@ -1713,10 +1713,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   });
 
   // ── General Push Notification Dispatcher Route ──────
-  // Accepts: { user_id | userId | user_ids | userIds | role, title, body, data, tag, icon, badge }
-  app.post('/api/notifications/send', async (req, res) => {
+  // Accepts: { user_id | userId | user_ids | userIds | role, title, body, url, type, data, tag, icon, badge }
+  app.post(['/api/notifications/send', '/api/send-push'], async (req, res) => {
     try {
-      const { user_id, userId, user_ids, userIds, role, title, body, data, tag, icon, badge } = req.body;
+      const { user_id, userId, user_ids, userIds, role, title, body, data, tag, icon, badge, url, type } = req.body;
 
       if (!title || !body) {
         return res.status(400).json({ error: 'title and body are required' });
@@ -1765,16 +1765,42 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(400).json({ error: 'At least one user_id, userIds array, or role must be specified' });
       }
 
+      const resolvedUrl = url || data?.url || '/';
+      const resolvedType = type || data?.type || 'general';
+
       const payload: PushPayload = {
         title,
         body,
         icon: icon || '/logo.png',
         badge: badge || '/logo.png',
-        tag: tag || `scholario-notify-${Date.now()}`,
-        data: data || {},
+        tag: tag || `scholario-${resolvedType}-${Date.now()}`,
+        data: {
+          ...(data || {}),
+          url: resolvedUrl,
+          type: resolvedType,
+        },
       };
 
       const result = await sendPushToUsers(targetUserIds, payload, supabaseServer);
+
+      // Record in notifications table for in-app history and bell counter
+      if (supabaseServer) {
+        try {
+          const rows = targetUserIds.map((uid) => ({
+            user_id: uid,
+            recipient_id: uid,
+            title,
+            body,
+            message: body,
+            type: resolvedType,
+            url: resolvedUrl === '/' ? null : resolvedUrl,
+            is_read: false,
+          }));
+          await (supabaseServer as any).from('notifications').insert(rows);
+        } catch (dbErr) {
+          console.warn('[server push notification record error]:', dbErr);
+        }
+      }
 
       return res.json({
         success: true,

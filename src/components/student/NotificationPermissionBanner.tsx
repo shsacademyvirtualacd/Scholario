@@ -30,7 +30,7 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
   const defaultDesc = isAdmin
     ? 'Get desktop alerts the moment any teacher posts a link and starts a live class session.'
     : isTeacher
-    ? 'Get desktop alerts 30 minutes before class reminding you to post your live link on time.'
+    ? 'Get desktop alerts 10 minutes before your scheduled class reminding you to add the class link.'
     : 'Get desktop alerts the moment your teacher goes live so you can tap and join immediately.';
 
   const displayTitle = customTitle || defaultTitle;
@@ -89,7 +89,7 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
             description: isAdmin
               ? "You'll receive desktop notifications whenever any teacher posts a class link."
               : isTeacher
-              ? "You'll receive alerts 30 minutes before your scheduled classes to post the live link."
+              ? "You'll receive alerts 10 minutes before your scheduled classes reminding you to add the live link."
               : "You'll receive an instant alert whenever your teacher starts a class.",
           }
         );

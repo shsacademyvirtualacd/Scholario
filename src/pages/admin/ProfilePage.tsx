@@ -8,6 +8,7 @@ import { updateProfile, getDashboardCounts } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
 import { toast } from 'sonner';
 import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
+import { PushNotificationSettings } from '../../components/common/PushNotificationSettings';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 
 export const ProfilePage: React.FC = () => {
@@ -345,6 +346,9 @@ export const ProfilePage: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Push Notification Settings Card */}
+          <PushNotificationSettings />
 
           {/* Chat Presence & Privacy Card */}
           <ChatPrivacySettingCard />

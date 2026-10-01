@@ -25,6 +25,7 @@ import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { supabase } from '../../lib/supabase';
 import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
 import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
+import { NotificationBell } from '../common/NotificationBell';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -192,6 +193,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <NotificationBell />
             <ThemeToggleSwitch variant="compact" />
             <ProfileDropdownMenu
               profile={profile}

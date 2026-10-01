@@ -8,6 +8,7 @@ import { getOfferingsForTeacher } from '../../lib/db';
 import { useMobile } from '../../hooks/useMobile';
 import type { ClassOffering } from '../../types';
 import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
+import { PushNotificationSettings } from '../../components/common/PushNotificationSettings';
 
 export const ProfilePage: React.FC = () => {
   const { profile, user } = useAuth();
@@ -141,6 +142,9 @@ export const ProfilePage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Push Notification Settings Card */}
+          <PushNotificationSettings />
 
           {/* Chat Presence & Privacy Card */}
           <ChatPrivacySettingCard />

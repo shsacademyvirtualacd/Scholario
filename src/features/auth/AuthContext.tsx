@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     profileRef.current = profile;
 
-    // Synchronize Web Push subscription or prompt on first login
+    // Synchronize Web Push subscription if permission was already granted by user
     if (profile?.id && typeof window !== 'undefined' && 'Notification' in window) {
       import('../../lib/pushSubscriptionService')
         .then(({ registerPushServiceWorker, subscribeUserToPush }) => {
@@ -72,20 +72,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             subscribeUserToPush(profile).catch((err) => {
               console.warn('[AuthContext] Push sync warning:', err);
             });
-          } else if (Notification.permission === 'default') {
-            const promptKey = `scholario_push_prompted_${profile.id}`;
-            if (!localStorage.getItem(promptKey)) {
-              localStorage.setItem(promptKey, 'true');
-              setTimeout(() => {
-                Notification.requestPermission()
-                  .then((perm) => {
-                    if (perm === 'granted') {
-                      subscribeUserToPush(profile).catch(() => {});
-                    }
-                  })
-                  .catch(() => {});
-              }, 1200);
-            }
           }
         })
         .catch(() => {});

@@ -4213,12 +4213,15 @@ export async function deleteAnnouncement(id: string): Promise<void> {
 
 export interface NotificationRow {
   id: string;
-  recipient_id: string;
-  announcement_id: string | null;
-  type: 'announcement' | 'class_reminder';
+  user_id?: string;
+  recipient_id?: string;
+  announcement_id?: string | null;
+  type: 'announcement' | 'class_reminder' | 'class_started' | 'teacher_reminder' | 'admin_live_alert' | string;
   title: string;
-  message: string;
-  severity: 'normal' | 'crucial';
+  body?: string;
+  message?: string;
+  url?: string | null;
+  severity?: 'normal' | 'crucial';
   is_read: boolean;
   created_at: string;
 }
@@ -4227,7 +4230,7 @@ export async function getNotificationsForUser(userId: string): Promise<Notificat
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
-    .eq('recipient_id', userId)
+    .or(`user_id.eq.${userId},recipient_id.eq.${userId}`)
     .order('created_at', { ascending: false })
     // Cap at 50 — a reasonable inbox size. Notification tables grow quickly;
     // fetching all historical records would slow down every page load.
@@ -4249,13 +4252,24 @@ export async function markNotificationRead(id: string): Promise<void> {
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  const { data, error } = await (supabase as any)
+  // Update notifications matching either recipient_id or user_id
+  const { error: err1 } = await (supabase as any)
     .from('notifications')
     .update({ is_read: true })
-    .eq('recipient_id', userId)
-    .select('id');
+    .eq('recipient_id', userId);
+
+  const { error: err2 } = await (supabase as any)
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', userId);
+
+  if (err1 && err2) throw err1;
+}
+
+export async function deleteNotification(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('id', id);
   if (error) throw error;
-  if (!data || data.length === 0) {
-    throw new Error(`mark-all-read affected 0 rows for user ${userId} — possible RLS/session mismatch`);
-  }
 }

@@ -21,6 +21,45 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 /**
+ * Detects friendly browser and OS string for device identification.
+ */
+export function getDeviceInfo(): string {
+  if (typeof window === 'undefined') return 'Unknown Device';
+  const ua = navigator.userAgent;
+  let browser = 'Browser';
+  if (ua.includes('Firefox')) browser = 'Firefox';
+  else if (ua.includes('SamsungBrowser')) browser = 'Samsung Internet';
+  else if (ua.includes('Opera') || ua.includes('OPR')) browser = 'Opera';
+  else if (ua.includes('Edge') || ua.includes('Edg')) browser = 'Edge';
+  else if (ua.includes('Chrome')) browser = 'Chrome';
+  else if (ua.includes('Safari')) browser = 'Safari';
+
+  let os = 'Unknown OS';
+  if (ua.includes('Win')) os = 'Windows';
+  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+  else if (ua.includes('Mac')) os = 'macOS';
+  else if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('Linux')) os = 'Linux';
+
+  return `${browser} on ${os}`;
+}
+
+/**
+ * Checks if the current browser already has an active push subscription.
+ */
+export async function isPushSubscribed(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/');
+    if (!reg) return false;
+    const sub = await reg.pushManager.getSubscription();
+    return sub !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Checks if the current browser environment supports Service Worker and Web Push.
  */
 export function isPushSupported(): boolean {
@@ -94,12 +133,14 @@ export async function subscribeUserToPush(
     const auth = subJson.keys?.auth || '';
 
     const role = profile.role || 'student';
+    const deviceInfo = getDeviceInfo();
     const payload = {
       user_id: profile.id,
       role,
       endpoint,
       p256dh,
       auth,
+      device_info: deviceInfo,
       subscription_json: subJson,
       grade: (profile as any).grade || (profile as any).class_id || null,
       board: (profile as any).board_id || (profile as any).board || null,
@@ -134,6 +175,7 @@ export async function subscribeUserToPush(
             endpoint,
             p256dh,
             auth,
+            device_info: deviceInfo,
             subscription_json: subJson,
             updated_at: new Date().toISOString(),
           },

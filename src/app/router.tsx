@@ -22,6 +22,7 @@ import PlanComparisonPage from '../pages/public/PlanComparisonPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 
 // ─── Legal Pages (lazy) ────────────────────────
+const NotificationsPage   = lazy(() => import('../pages/common/NotificationsPage'));
 const PrivacyPolicyPage = lazy(() => import('../pages/public/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('../pages/public/TermsOfServicePage'));
 const RefundPolicyPage = lazy(() => import('../pages/public/RefundPolicyPage'));
@@ -186,6 +187,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="student"><StudentAnnouncementsPage /></ProtectedRoute>}
           />
           <Route
+            path="/student/notifications"
+            element={<ProtectedRoute requiredRole="student"><NotificationsPage /></ProtectedRoute>}
+          />
+          <Route
             path="/student/sage"
             element={<ProtectedRoute requiredRole="student"><StudentSagePage /></ProtectedRoute>}
           />
@@ -248,6 +253,10 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="admin"><AdminAnnouncementsPage /></ProtectedRoute>}
           />
           <Route
+            path="/admin/notifications"
+            element={<ProtectedRoute requiredRole="admin"><NotificationsPage /></ProtectedRoute>}
+          />
+          <Route
             path="/admin/sage"
             element={<ProtectedRoute requiredRole="admin"><AdminSagePage /></ProtectedRoute>}
           />
@@ -306,12 +315,20 @@ const AppRouter: React.FC = () => (
             element={<ProtectedRoute requiredRole="teacher"><TeacherAnnouncementsPage /></ProtectedRoute>}
           />
           <Route
+            path="/teacher/notifications"
+            element={<ProtectedRoute requiredRole="teacher"><NotificationsPage /></ProtectedRoute>}
+          />
+          <Route
             path="/teacher/sage"
             element={<ProtectedRoute requiredRole="teacher"><TeacherSagePage /></ProtectedRoute>}
           />
           <Route
             path="/teacher/profile"
             element={<ProtectedRoute requiredRole="teacher"><TeacherProfilePage /></ProtectedRoute>}
+          />
+          <Route
+            path="/notifications"
+            element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>}
           />
 
           {/* Catch-all */}

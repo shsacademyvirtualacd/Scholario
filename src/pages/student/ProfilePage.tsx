@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import type { Enrollment } from '../../types';
 import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
 import { StudentDataRightsCard } from '../../components/student/StudentDataRightsCard';
+import { PushNotificationSettings } from '../../components/common/PushNotificationSettings';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 
 export const ProfilePage: React.FC = () => {
@@ -443,6 +444,9 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Push Notification Settings Card */}
+            <PushNotificationSettings />
 
             {/* Chat Presence & Privacy Card */}
             <ChatPrivacySettingCard />
