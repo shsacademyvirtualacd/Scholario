@@ -8,7 +8,10 @@ import {
   isPushSubscribed,
   subscribeUserToPush,
   unsubscribeUserFromPush,
-  getDeviceInfo
+  getDeviceInfo,
+  doesSubscriptionMatchVapidKey,
+  cleanupOutdatedSubscription,
+  VAPID_PUBLIC_KEY,
 } from '../../lib/pushSubscriptionService';
 
 export const PushNotificationSettings: React.FC = () => {
@@ -28,6 +31,10 @@ export const PushNotificationSettings: React.FC = () => {
     }
     setSupported(true);
     setPermission(Notification.permission);
+
+    // Check and clean up any outdated subscription registered with previous VAPID key
+    await cleanupOutdatedSubscription();
+
     const sub = await isPushSubscribed();
     setIsSubscribed(sub);
     setLoading(false);
@@ -104,8 +111,9 @@ export const PushNotificationSettings: React.FC = () => {
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
 
-      if (!sub) {
-        console.warn('[PushNotificationSettings] No browser subscription found. Attempting to subscribe now...');
+      // If no subscription exists OR if existing subscription used an older VAPID key
+      if (!sub || !doesSubscriptionMatchVapidKey(sub, VAPID_PUBLIC_KEY)) {
+        console.warn('[PushNotificationSettings] Subscription missing or VAPID key changed. Re-subscribing with updated key...');
         sub = await subscribeUserToPush(profile);
         if (sub) {
           setIsSubscribed(true);

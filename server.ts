@@ -1636,7 +1636,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     const publicKey =
       process.env.VAPID_PUBLIC_KEY ||
       process.env.VITE_VAPID_PUBLIC_KEY ||
-      'BAt10hJjc1FsLa_xXoJNWEYKvR1LALcHu2JLJWPbrOksAQ4rw0M-78JS5xNvr6wkDajphLwdbs-yMBvyrHCE484';
+      'BG1BeEJ4j5MXV95t_QGabbo_K1KrL33bPrKwomccCzC4_sEpXTswN_hCxr19qdX9LgxSy7kG8BSn2GBTO7kFI2A';
     return res.json({ publicKey });
   });
 

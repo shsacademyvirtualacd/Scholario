@@ -3,21 +3,76 @@ import type { Profile } from '../types';
 
 export const VAPID_PUBLIC_KEY =
   (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY ||
-  'BAt10hJjc1FsLa_xXoJNWEYKvR1LALcHu2JLJWPbrOksAQ4rw0M-78JS5xNvr6wkDajphLwdbs-yMBvyrHCE484';
+  'BG1BeEJ4j5MXV95t_QGabbo_K1KrL33bPrKwomccCzC4_sEpXTswN_hCxr19qdX9LgxSy7kG8BSn2GBTO7kFI2A';
 
 /**
  * Converts a base64url VAPID public key string into a Uint8Array required by pushManager.subscribe().
  */
 export function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
+  const cleanStr = (base64String || '').trim();
+  const padding = '='.repeat((4 - (cleanStr.length % 4)) % 4);
+  const base64 = (cleanStr + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = (typeof window !== 'undefined' ? window.atob : atob)(base64);
   const outputArray = new Uint8Array(rawData.length);
 
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+/**
+ * Checks if a subscription's applicationServerKey matches the given VAPID public key.
+ */
+export function doesSubscriptionMatchVapidKey(
+  subscription: PushSubscription | null,
+  vapidPublicKey: string
+): boolean {
+  if (!subscription) return false;
+  try {
+    const rawAppKey = subscription.options?.applicationServerKey;
+    if (!rawAppKey) return false;
+    const currentKeyBytes = urlBase64ToUint8Array(vapidPublicKey);
+    const existingKeyBytes = new Uint8Array(rawAppKey);
+    if (existingKeyBytes.length !== currentKeyBytes.length) {
+      return false;
+    }
+    for (let i = 0; i < existingKeyBytes.length; i++) {
+      if (existingKeyBytes[i] !== currentKeyBytes[i]) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Removes any subscription that doesn't match the current VAPID key
+ * and returns true if an old subscription was cleaned up.
+ */
+export async function cleanupOutdatedSubscription(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub && !doesSubscriptionMatchVapidKey(sub, VAPID_PUBLIC_KEY)) {
+      console.warn('[PushSubscription] Cleaning up outdated VAPID subscription from browser and DB...');
+      const endpoint = sub.endpoint;
+      await sub.unsubscribe();
+      if (endpoint) {
+        await (supabase as any)
+          .from('push_subscriptions')
+          .delete()
+          .eq('endpoint', endpoint);
+      }
+      return true;
+    }
+  } catch (err) {
+    console.warn('[PushSubscription] Error cleaning up outdated subscription:', err);
+  }
+  return false;
 }
 
 /**
@@ -48,14 +103,15 @@ export function getDeviceInfo(): string {
  * Checks if the current browser already has an active push subscription.
  */
 /**
- * Checks if the current browser already has an active push subscription.
+ * Checks if the current browser already has an active push subscription matching current VAPID key.
  */
 export async function isPushSubscribed(): Promise<boolean> {
   if (!isPushSupported()) return false;
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
-    return sub !== null;
+    if (!sub) return false;
+    return doesSubscriptionMatchVapidKey(sub, VAPID_PUBLIC_KEY);
   } catch {
     return false;
   }
@@ -123,27 +179,26 @@ export async function subscribeUserToPush(
 
     // If an existing subscription exists, verify if its public key matches the current VAPID key
     if (subscription) {
-      try {
-        const rawAppKey = subscription.options?.applicationServerKey;
-        if (rawAppKey) {
-          const existingKeyBytes = new Uint8Array(rawAppKey);
-          let keyMatches = existingKeyBytes.length === convertedVapidKey.length;
-          if (keyMatches) {
-            for (let i = 0; i < existingKeyBytes.length; i++) {
-              if (existingKeyBytes[i] !== convertedVapidKey[i]) {
-                keyMatches = false;
-                break;
-              }
-            }
-          }
-          if (!keyMatches) {
-            console.warn('[PushSubscription] VAPID key mismatch detected. Re-subscribing with updated key...');
-            await subscription.unsubscribe();
-            subscription = null;
+      const keyMatches = doesSubscriptionMatchVapidKey(subscription, VAPID_PUBLIC_KEY);
+      if (!keyMatches) {
+        console.warn('[PushSubscription] VAPID key mismatch detected. Removing stale browser subscription and DB record...');
+        const oldEndpoint = subscription.endpoint;
+        try {
+          await subscription.unsubscribe();
+        } catch (unsubErr) {
+          console.warn('[PushSubscription] Could not unsubscribe old subscription:', unsubErr);
+        }
+        if (oldEndpoint) {
+          try {
+            await (supabase as any)
+              .from('push_subscriptions')
+              .delete()
+              .eq('endpoint', oldEndpoint);
+          } catch (delErr) {
+            console.warn('[PushSubscription] Failed to remove stale endpoint from DB:', delErr);
           }
         }
-      } catch (keyErr) {
-        console.warn('[PushSubscription] Could not verify existing applicationServerKey:', keyErr);
+        subscription = null;
       }
     }
 
