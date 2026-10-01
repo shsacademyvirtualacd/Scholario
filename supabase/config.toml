@@ -1,3 +1,7 @@
 # Supabase CLI configuration for Scholario
 [functions.send-push]
 verify_jwt = false
+
+[functions.class-reminders]
+verify_jwt = false
+
