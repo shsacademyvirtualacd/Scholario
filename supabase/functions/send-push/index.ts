@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import webpush from "npm:web-push@3.6.7";
 
+// ─── 1. CORS Headers Configuration ──────────────────────────────────────────
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -9,10 +10,15 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
+  // ─── 2. Immediate Preflight Handler ───────────────────────────────────────
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
+  // ─── 3. Global Boot Safety & Handler ──────────────────────────────────────
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -20,11 +26,13 @@ serve(async (req: Request) => {
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "";
     const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "mailto:admin@scholario.app";
 
-    if (!vapidPublicKey || !vapidPrivateKey) {
+    // Validate Supabase environment
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "VAPID keys not configured in Supabase secrets. Please set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Supabase secrets.",
+          status: 500,
+          error: "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing from environment secrets.",
         }),
         {
           status: 500,
@@ -33,44 +41,62 @@ serve(async (req: Request) => {
       );
     }
 
-    try {
-      webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-    } catch (vErr: any) {
-      console.warn("[send-push] VAPID details warning:", vErr.message);
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-
-    // ── Caller Authentication Verification ────────────────────────────────
-    const authHeader = req.headers.get("Authorization") || "";
-    let callerUser = null;
-    if (authHeader) {
-      const token = authHeader.replace(/^Bearer\s+/i, "");
-      // Allow internal service-role calls (e.g. from pg_net or cron triggers)
-      if (token !== supabaseServiceRoleKey) {
-        const { data: userData, error: authError } = await supabase.auth.getUser(token);
-        if (authError || !userData?.user) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Invalid or expired authorization session. Please log in again." }),
-            {
-              status: 401,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
-        callerUser = userData.user;
-      }
-    } else {
+    // Validate VAPID credentials
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      const missingKeys = [];
+      if (!vapidPublicKey) missingKeys.push("VAPID_PUBLIC_KEY");
+      if (!vapidPrivateKey) missingKeys.push("VAPID_PRIVATE_KEY");
       return new Response(
-        JSON.stringify({ success: false, error: "Missing Authorization header." }),
+        JSON.stringify({
+          success: false,
+          status: 500,
+          error: `VAPID keys not configured in Supabase secrets: missing [${missingKeys.join(", ")}]. Set them via Supabase Dashboard -> Project Settings -> Edge Functions -> Secrets.`,
+        }),
         {
-          status: 401,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
-    const bodyJson = await req.json();
+    // Configure WebPush VAPID
+    try {
+      webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+    } catch (vErr: any) {
+      console.error("[send-push] VAPID configuration error:", vErr);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: 500,
+          error: `VAPID configuration error: ${vErr?.message || vErr}`,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // ─── 4. Safe JSON Body Extraction ───────────────────────────────────────
+    let bodyJson: any = {};
+    try {
+      bodyJson = await req.json();
+    } catch (jsonErr: any) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: 400,
+          error: `Invalid JSON payload: ${jsonErr?.message || "Body must be valid JSON"}`,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const {
       user_ids,
       title,
@@ -86,9 +112,54 @@ serve(async (req: Request) => {
 
     const isTestNotification = is_test || type === "test_notification";
 
+    // ─── 5. JWT / Caller Verification ───────────────────────────────────────
+    const authHeader = req.headers.get("Authorization") || "";
+    let callerUser = null;
+
+    if (authHeader) {
+      const token = authHeader.replace(/^Bearer\s+/i, "");
+      // Allow internal service-role calls (e.g. from database triggers or pg_cron)
+      if (token !== supabaseServiceRoleKey) {
+        const { data: userData, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !userData?.user) {
+          console.warn("[send-push] Invalid authorization session:", authError?.message);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              status: 401,
+              error: "Invalid or expired authorization token. Please log in again.",
+            }),
+            {
+              status: 401,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+        callerUser = userData.user;
+      }
+    } else if (!isTestNotification) {
+      // Require auth for non-test notification requests
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: 401,
+          error: "Missing Authorization header.",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // ─── 6. Validate user_ids ───────────────────────────────────────────────
     if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: "user_ids must be a non-empty array of user UUIDs", status: 400 }),
+        JSON.stringify({
+          success: false,
+          status: 400,
+          error: "user_ids must be a non-empty array of user UUIDs",
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -96,7 +167,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // 1. Fetch push subscriptions from the push_subscriptions table
+    // ─── 7. Fetch push subscriptions from the push_subscriptions table ─────
     const { data: subscriptions, error: subError } = await supabase
       .from("push_subscriptions")
       .select("*")
@@ -107,9 +178,9 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
+          status: 500,
           error: `Database error querying push_subscriptions: ${subError.message}`,
           code: subError.code,
-          status: 500,
         }),
         {
           status: 500,
@@ -122,8 +193,8 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "No active push subscription found for this user in push_subscriptions. Please toggle notifications off and on in Settings to register your device.",
           status: 404,
+          error: "No active push subscription found for this user in push_subscriptions. Please toggle notifications off and on in Settings to register your device.",
           attempted: 0,
           delivered: 0,
         }),
@@ -134,6 +205,7 @@ serve(async (req: Request) => {
       );
     }
 
+    // ─── 8. Construct Notification Payload ──────────────────────────────────
     const payloadString = JSON.stringify({
       title: title || "Scholario Notification",
       body: body || "",
@@ -157,6 +229,7 @@ serve(async (req: Request) => {
     let lastPushErrorMsg = "";
     const expiredEndpoints: string[] = [];
 
+    // ─── 9. Dispatch Push Notifications via WebPush ─────────────────────────
     for (const sub of subscriptions) {
       attempted++;
       const pushSub = {
@@ -186,7 +259,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // 2. Clean up dead/expired endpoints (HTTP 404 / 410 Gone)
+    // ─── 10. Clean up dead/expired endpoints (HTTP 404 / 410 Gone) ──────────
     if (expiredEndpoints.length > 0) {
       await supabase
         .from("push_subscriptions")
@@ -195,13 +268,13 @@ serve(async (req: Request) => {
       console.log(`[send-push] Purged ${expiredEndpoints.length} expired push subscriptions`);
     }
 
-    // 3. Record in notifications table for in-app history and bell counter
-    // DEDUPE RULE:
-    // - Test notifications skip dedupe completely (always insert a fresh row with class_id=null, notify_date=null)
+    // ─── 11. Record in notifications table (In-App History & Bell) ──────────
+    // Deduplication rules:
+    // - Test notifications skip dedupe completely (always insert fresh row with class_id=null, notify_date=null)
     // - Regular class/reminder notifications use clean separate columns: class_id, notify_date, type, user_id
-    //   and upsert on (user_id, class_id, notify_date, type) without touching uuid id
+    //   and upsert on (user_id, class_id, notify_date, type) without modifying uuid id
     let notificationsSaved = 0;
-    let dbErrorMsg = "";
+    let dbWarningMsg = "";
 
     if (!skip_db_insert) {
       const todayDateStr = new Date().toISOString().slice(0, 10);
@@ -227,8 +300,8 @@ serve(async (req: Request) => {
           .insert(notificationInserts);
 
         if (notifErr) {
-          console.warn("[send-push] notifications insert error for test:", notifErr);
-          dbErrorMsg = notifErr.message;
+          console.warn("[send-push] Warning inserting test notification record:", notifErr);
+          dbWarningMsg = notifErr.message;
         } else {
           notificationsSaved = notificationInserts.length;
         }
@@ -248,15 +321,14 @@ serve(async (req: Request) => {
           dedupe_key: dedupe_key || (class_id ? `${uid}_${class_id}_${notify_date || todayDateStr}_${type}` : null),
         }));
 
-        // If class_id and notify_date are present, upsert with clean onConflict
         if (class_id) {
           const { error: notifErr } = await supabase
             .from("notifications")
             .upsert(notificationRows, { onConflict: "user_id,class_id,notify_date,type" });
 
           if (notifErr) {
-            console.warn("[send-push] notifications upsert error:", notifErr);
-            dbErrorMsg = notifErr.message;
+            console.warn("[send-push] Warning upserting notification records:", notifErr);
+            dbWarningMsg = notifErr.message;
           } else {
             notificationsSaved = notificationRows.length;
           }
@@ -266,8 +338,8 @@ serve(async (req: Request) => {
             .insert(notificationRows);
 
           if (notifErr) {
-            console.warn("[send-push] notifications insert error:", notifErr);
-            dbErrorMsg = notifErr.message;
+            console.warn("[send-push] Warning inserting notification records:", notifErr);
+            dbWarningMsg = notifErr.message;
           } else {
             notificationsSaved = notificationRows.length;
           }
@@ -275,7 +347,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // 4. Return appropriate response with exact statuses
+    // ─── 12. Return Responses with Accurate Statuses ────────────────────────
     if (delivered > 0) {
       return new Response(
         JSON.stringify({
@@ -286,11 +358,11 @@ serve(async (req: Request) => {
           failed,
           expiredCleaned: expiredEndpoints.length,
           notificationsSaved,
-          warning: dbErrorMsg || undefined,
+          warning: dbWarningMsg || undefined,
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
@@ -307,8 +379,8 @@ serve(async (req: Request) => {
           delivered: 0,
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 410,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
@@ -323,8 +395,8 @@ serve(async (req: Request) => {
           delivered: 0,
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
@@ -341,15 +413,22 @@ serve(async (req: Request) => {
         failed,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (err: any) {
-    console.error("[send-push] Function fatal error:", err);
-    return new Response(JSON.stringify({ success: false, error: err.message || "Internal server error" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    console.error("[send-push] Fatal handler exception:", err);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        status: 500,
+        error: err?.message || "Internal server error in send-push handler",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });

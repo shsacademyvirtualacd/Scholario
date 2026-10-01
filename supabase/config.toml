@@ -1,0 +1,3 @@
+# Supabase CLI configuration for Scholario
+[functions.send-push]
+verify_jwt = false

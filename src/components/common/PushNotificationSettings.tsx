@@ -156,13 +156,22 @@ export const PushNotificationSettings: React.FC = () => {
 
       // Handle function execution error
       if (error) {
-        let serverErrorMsg = '';
+        console.error('[PushNotificationSettings] Full Edge Function error details:', {
+          name: error.name,
+          message: error.message,
+          context: (error as any)?.context,
+          rawError: error,
+        });
+
         let errorStatus: number | null = null;
+        let serverErrorMsg = '';
 
         try {
           if ('context' in error && (error as any).context) {
             const ctxResponse = (error as any).context as Response;
-            errorStatus = ctxResponse.status;
+            if (ctxResponse && typeof ctxResponse.status === 'number') {
+              errorStatus = ctxResponse.status;
+            }
             try {
               const errBody = (await ctxResponse.clone().json()) as any;
               serverErrorMsg = errBody?.error || errBody?.message || JSON.stringify(errBody);
@@ -175,34 +184,44 @@ export const PushNotificationSettings: React.FC = () => {
         }
 
         const finalErrorMsg = serverErrorMsg || error.message || 'Unknown network error invoking send-push';
-        const statusLabel = errorStatus ? ` (HTTP ${errorStatus})` : '';
+        const isFetchError =
+          error.name === 'FunctionsFetchError' ||
+          error.message?.includes('Failed to send a request') ||
+          error.message?.includes('fetch failed');
 
-        console.error('[PushNotificationSettings] Test push failed with error details:', {
-          status: errorStatus,
-          message: error.message,
-          serverErrorMsg: finalErrorMsg,
-          rawError: error,
-        });
-
-        // Specific, actionable error toasts displaying the real error
-        if (finalErrorMsg.includes('VAPID')) {
-          toast.error(`VAPID Error${statusLabel}`, {
+        // Specific, actionable error toasts
+        if (isFetchError) {
+          toast.error('CORS blocked or Function Unreachable', {
+            description:
+              'The request failed before receiving a valid response. Please ensure "send-push" is deployed with: supabase functions deploy send-push --no-verify-jwt',
+          });
+        } else if (errorStatus === 404 || finalErrorMsg.toLowerCase().includes('function not found')) {
+          toast.error('Function not found (HTTP 404)', {
+            description:
+              'The "send-push" Edge Function has not been deployed to this Supabase project. Deploy with: supabase functions deploy send-push --no-verify-jwt',
+          });
+        } else if (
+          errorStatus === 401 ||
+          finalErrorMsg.toLowerCase().includes('unauthorized') ||
+          finalErrorMsg.toLowerCase().includes('authorization')
+        ) {
+          toast.error('Unauthorized (HTTP 401)', {
+            description: finalErrorMsg || 'Your session token was invalid or missing. Please refresh and try again.',
+          });
+        } else if (errorStatus === 410 || finalErrorMsg.includes('expired')) {
+          toast.error('Push Token Expired (HTTP 410)', {
+            description: finalErrorMsg,
+          });
+        } else if (finalErrorMsg.includes('VAPID')) {
+          toast.error('VAPID Configuration Error', {
             description: finalErrorMsg,
           });
         } else if (errorStatus === 404 && finalErrorMsg.includes('No active push subscription')) {
           toast.error('Subscription Not Found in DB (HTTP 404)', {
             description: finalErrorMsg,
           });
-        } else if (errorStatus === 410 || finalErrorMsg.includes('expired')) {
-          toast.error('Push Token Expired (HTTP 410)', {
-            description: finalErrorMsg,
-          });
-        } else if (errorStatus === 404) {
-          toast.error('Edge Function Not Found (HTTP 404)', {
-            description: 'The "send-push" Edge Function has not been deployed to Supabase yet. Deploy with: supabase functions deploy send-push',
-          });
         } else {
-          toast.error(`Push Error${statusLabel}`, {
+          toast.error(`Push Error${errorStatus ? ` (HTTP ${errorStatus})` : ''}`, {
             description: finalErrorMsg,
           });
         }
