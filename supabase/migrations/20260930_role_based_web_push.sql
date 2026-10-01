@@ -121,22 +121,43 @@ CREATE POLICY "notifications: service_role full"
   USING (true)
   WITH CHECK (true);
 
--- Enable Realtime replication for instant in-app updates
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+-- Enable Realtime replication for instant in-app updates (safe idempotent check)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 
+    FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'notifications'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+  END IF;
+END $$;
 
 -- ─── 4. Classes Table ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.classes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  subject text NOT NULL,
+  subject text,
   batch text,
-  scheduled_start timestamptz NOT NULL,
+  scheduled_start timestamptz,
   class_link text,
-  status text NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'ended')),
+  status text NOT NULL DEFAULT 'scheduled',
   reminder_sent boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Ensure all required columns exist even if public.classes was previously created as a taxonomy table
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS teacher_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS subject text;
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS batch text;
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS scheduled_start timestamptz;
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS class_link text;
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'scheduled';
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS reminder_sent boolean NOT NULL DEFAULT false;
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
 CREATE INDEX IF NOT EXISTS idx_classes_teacher ON public.classes(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_classes_status ON public.classes(status);
