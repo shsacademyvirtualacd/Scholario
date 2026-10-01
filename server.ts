@@ -1576,9 +1576,10 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(400).json({ error: 'class_link is required' });
       }
 
-      const sessionId = id || (slot_id ? `${slot_id}_${new Date().toISOString().slice(0, 10)}` : `live_${Date.now()}`);
-      const row = {
-        id: sessionId,
+      const sessionKey = id || (slot_id ? `${slot_id}_${new Date().toISOString().slice(0, 10)}` : `live_${Date.now()}`);
+      const row: any = {
+        session_key: sessionKey,
+        session_date: new Date().toISOString().slice(0, 10),
         subject_id: String(subject_id || 'general'),
         grade_id: String(grade_id || '9'),
         class_link: class_link.trim(),
@@ -1593,6 +1594,11 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         updated_at: new Date().toISOString(),
       };
 
+      // Only assign id if it is a standard UUID format, never a composite string
+      if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        row.id = id;
+      }
+
       const userToken = req.headers.authorization?.replace('Bearer ', '');
       const requestSupabase = userToken ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: `Bearer ${userToken}` } }
@@ -1600,7 +1606,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
       const { data, error } = await requestSupabase
         .from('live_sessions')
-        .upsert(row, { onConflict: 'id' })
+        .upsert(row, { onConflict: 'session_key' })
         .select()
         .single();
 
@@ -1786,6 +1792,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       // Record in notifications table for in-app history and bell counter
       if (supabaseServer) {
         try {
+          const isTest = resolvedType === 'test_notification' || !req.body.class_id;
           const rows = targetUserIds.map((uid) => ({
             user_id: uid,
             recipient_id: uid,
@@ -1795,8 +1802,18 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
             type: resolvedType,
             url: resolvedUrl === '/' ? null : resolvedUrl,
             is_read: false,
+            class_id: req.body.class_id || null,
+            notify_date: req.body.notify_date || (req.body.class_id ? new Date().toISOString().slice(0, 10) : null),
+            dedupe_key: req.body.dedupe_key || null,
           }));
-          await (supabaseServer as any).from('notifications').insert(rows);
+
+          if (isTest || !req.body.class_id) {
+            await (supabaseServer as any).from('notifications').insert(rows);
+          } else {
+            await (supabaseServer as any)
+              .from('notifications')
+              .upsert(rows, { onConflict: 'user_id,class_id,notify_date,type' });
+          }
         } catch (dbErr) {
           console.warn('[server push notification record error]:', dbErr);
         }
@@ -1925,14 +1942,18 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         global: { headers: { Authorization: `Bearer ${userToken}` } }
       }) : supabaseServer;
 
-      const { error } = await requestSupabase
+      const isUuid = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const query = requestSupabase
         .from('live_sessions')
         .update({
           status: 'ended',
           ended_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
+        });
+
+      const { error } = isUuid
+        ? await query.or(`id.eq.${id},session_key.eq.${id}`)
+        : await query.eq('session_key', id);
 
       if (error) {
         console.warn('[server /api/live-sessions/end warning]:', error.message);

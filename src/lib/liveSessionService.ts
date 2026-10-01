@@ -324,8 +324,9 @@ export async function triggerLiveSession(params: {
   const sessionId = `${slotId}_${sessionDate}`;
   stopClassReminder(sessionId);
 
-  const rowPayload = {
-    id: sessionId,
+  const rowPayload: any = {
+    session_key: sessionId,
+    session_date: sessionDate,
     subject_id: String(subjectId),
     grade_id: String(gradeId),
     class_link: trimmedLink,
@@ -341,10 +342,10 @@ export async function triggerLiveSession(params: {
   };
 
   try {
-    // 1. Direct Supabase Upsert
+    // 1. Direct Supabase Upsert keyed on session_key (or slot_id)
     const { data, error } = await (supabase as any)
       .from('live_sessions')
-      .upsert(rowPayload, { onConflict: 'id' })
+      .upsert(rowPayload, { onConflict: 'session_key' })
       .select()
       .maybeSingle();
 
@@ -393,7 +394,7 @@ export async function endLiveSession(slotId: string, sessionDate: string): Promi
     await (supabase as any)
       .from('live_sessions')
       .update(endPayload)
-      .eq('id', sessionId);
+      .or(`session_key.eq.${sessionId},slot_id.eq.${slotId}`);
   } catch (err) {
     console.warn('[LiveSessionService] Error ending session directly:', err);
   }

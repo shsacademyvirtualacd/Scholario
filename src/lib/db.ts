@@ -4215,6 +4215,9 @@ export interface NotificationRow {
   id: string;
   user_id?: string;
   recipient_id?: string;
+  class_id?: string | null;
+  notify_date?: string | null;
+  dedupe_key?: string | null;
   announcement_id?: string | null;
   type: 'announcement' | 'class_reminder' | 'class_started' | 'teacher_reminder' | 'admin_live_alert' | string;
   title: string;

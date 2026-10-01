@@ -529,7 +529,6 @@ export async function checkAndSendTeacherPushReminders(
     }
 
     const slotIds = slots.map((s: any) => s.id);
-    const sessionIds = slots.map((s: any) => `${s.id}_${dateString}`);
 
     // 2. Fetch existing session links for today
     const { data: sessionLinks } = await (supabase as any)
@@ -545,11 +544,11 @@ export async function checkAndSendTeacherPushReminders(
       }
     });
 
-    // 3. Fetch live_sessions for today
+    // 3. Fetch live_sessions for today by slot_id (clean UUID matching)
     const { data: liveSessions } = await (supabase as any)
       .from('live_sessions')
       .select('id, slot_id, status, class_link')
-      .in('id', sessionIds);
+      .in('slot_id', slotIds);
 
     (liveSessions || []).forEach((ls: any) => {
       if (ls.status === 'live' || (ls.class_link && ls.class_link.trim().length > 0)) {

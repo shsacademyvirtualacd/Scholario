@@ -107,11 +107,11 @@ export async function checkIsLinkPosted(slotId: string, sessionDate: string): Pr
       return true;
     }
 
-    // 2. Check live_sessions table
+    // 2. Check live_sessions table by slot_id (clean UUID matching)
     const { data: liveSession } = await (supabase as any)
       .from('live_sessions')
       .select('status, class_link')
-      .eq('id', scheduleId)
+      .eq('slot_id', slotId)
       .maybeSingle();
 
     if (liveSession?.status === 'live' || (liveSession?.class_link && liveSession.class_link.trim().length > 0)) {
@@ -343,12 +343,11 @@ export async function syncTeacherClassReminders(
       }
     });
 
-    // Check live_sessions
-    const sessionIds = todaySlots.map((s) => `${s.id}_${todayDate}`);
+    // Check live_sessions using slot_id array (clean UUID matching)
     const { data: liveSessions } = await (supabase as any)
       .from('live_sessions')
       .select('id, slot_id, status, class_link')
-      .in('id', sessionIds);
+      .in('slot_id', slotIds);
 
     (liveSessions || []).forEach((ls: any) => {
       if (ls.status === 'live' || (ls.class_link && ls.class_link.trim().length > 0)) {

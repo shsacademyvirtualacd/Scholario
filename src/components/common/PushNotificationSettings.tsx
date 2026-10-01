@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, BellOff, CheckCircle2, AlertTriangle, Send, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
+import { supabase } from '../../lib/supabase';
 import {
   isPushSupported,
   isPushSubscribed,
@@ -83,29 +84,148 @@ export const PushNotificationSettings: React.FC = () => {
     setTestingPush(true);
 
     try {
-      const response = await fetch('/api/send-push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_ids: [profile.id],
-          title: 'Scholario Test Notification',
-          body: `Hello ${profile.full_name || 'there'}! Web push is working perfectly on ${getDeviceInfo()}.`,
-          url: window.location.pathname,
-          type: 'test_notification',
-        }),
+      console.log('[PushNotificationSettings] Initiating test push for user:', profile.id);
+
+      // 1. Verify browser-level subscription
+      if (!isPushSupported()) {
+        toast.error('Web Push is not supported in this browser.');
+        setTestingPush(false);
+        return;
+      }
+
+      if (Notification.permission !== 'granted') {
+        toast.error('Permission not granted', {
+          description: 'Please click the switch to allow notifications first.',
+        });
+        setTestingPush(false);
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+
+      if (!sub) {
+        console.warn('[PushNotificationSettings] No browser subscription found. Attempting to subscribe now...');
+        sub = await subscribeUserToPush(profile);
+        if (sub) {
+          setIsSubscribed(true);
+        } else {
+          toast.error('No push subscription found', {
+            description: 'Could not obtain push subscription from browser. Please toggle off and on.',
+          });
+          setTestingPush(false);
+          return;
+        }
+      }
+
+      // 2. Ensure subscription exists in Supabase push_subscriptions table
+      const { data: dbRows, error: dbQueryErr } = await supabase
+        .from('push_subscriptions')
+        .select('id, endpoint')
+        .eq('user_id', profile.id);
+
+      if (dbQueryErr) {
+        console.warn('[PushNotificationSettings] Could not query push_subscriptions table:', dbQueryErr);
+      }
+
+      if (!dbRows || dbRows.length === 0) {
+        console.warn('[PushNotificationSettings] No push_subscriptions row found in DB. Upserting now...');
+        await subscribeUserToPush(profile);
+      }
+
+      // 3. Invoke Supabase Edge Function: send-push
+      console.log('[PushNotificationSettings] Invoking send-push Edge Function with payload:', {
+        user_ids: [profile.id],
+        type: 'test_notification',
       });
 
-      const data = (await response.json()) as any;
-      if (response.ok && data?.success) {
+      const payload = {
+        user_ids: [profile.id],
+        title: 'Scholario Test Notification',
+        body: `Hello ${profile.full_name || 'there'}! Web push is working perfectly on ${getDeviceInfo()}.`,
+        url: window.location.pathname,
+        type: 'test_notification',
+        is_test: true,
+      };
+
+      const { data, error } = await supabase.functions.invoke('send-push', {
+        body: payload,
+      });
+
+      console.log('[PushNotificationSettings] Full Edge Function Response:', { data, error });
+
+      // Handle function execution error
+      if (error) {
+        let serverErrorMsg = '';
+        let errorStatus: number | null = null;
+
+        try {
+          if ('context' in error && (error as any).context) {
+            const ctxResponse = (error as any).context as Response;
+            errorStatus = ctxResponse.status;
+            try {
+              const errBody = (await ctxResponse.clone().json()) as any;
+              serverErrorMsg = errBody?.error || errBody?.message || JSON.stringify(errBody);
+            } catch {
+              serverErrorMsg = await ctxResponse.clone().text();
+            }
+          }
+        } catch (parseErr) {
+          console.warn('[PushNotificationSettings] Could not parse error context:', parseErr);
+        }
+
+        const finalErrorMsg = serverErrorMsg || error.message || 'Unknown network error invoking send-push';
+        const statusLabel = errorStatus ? ` (HTTP ${errorStatus})` : '';
+
+        console.error('[PushNotificationSettings] Test push failed with error details:', {
+          status: errorStatus,
+          message: error.message,
+          serverErrorMsg: finalErrorMsg,
+          rawError: error,
+        });
+
+        // Specific, actionable error toasts displaying the real error
+        if (finalErrorMsg.includes('VAPID')) {
+          toast.error(`VAPID Error${statusLabel}`, {
+            description: finalErrorMsg,
+          });
+        } else if (errorStatus === 404 && finalErrorMsg.includes('No active push subscription')) {
+          toast.error('Subscription Not Found in DB (HTTP 404)', {
+            description: finalErrorMsg,
+          });
+        } else if (errorStatus === 410 || finalErrorMsg.includes('expired')) {
+          toast.error('Push Token Expired (HTTP 410)', {
+            description: finalErrorMsg,
+          });
+        } else if (errorStatus === 404) {
+          toast.error('Edge Function Not Found (HTTP 404)', {
+            description: 'The "send-push" Edge Function has not been deployed to Supabase yet. Deploy with: supabase functions deploy send-push',
+          });
+        } else {
+          toast.error(`Push Error${statusLabel}`, {
+            description: finalErrorMsg,
+          });
+        }
+        return;
+      }
+
+      if (data?.success) {
         toast.success('Test notification sent!', {
-          description: 'A push notification was dispatched to your registered devices.',
+          description: `Dispatched to ${data.delivered || 1} device(s). Check your notification shade/lock screen!`,
         });
       } else {
-        toast.error('Failed to send test push: ' + (data.error || 'Server error'));
+        const errMsg = data?.error || 'Server did not return a success confirmation';
+        const statusLabel = data?.status ? ` (HTTP ${data.status})` : '';
+        console.error('[PushNotificationSettings] Test push returned non-success response:', data);
+        toast.error(`Push Failed${statusLabel}`, {
+          description: errMsg,
+        });
       }
     } catch (err: any) {
-      console.error('[PushNotificationSettings] Test push failed:', err);
-      toast.error('Failed to send test push.');
+      console.error('[PushNotificationSettings] Unexpected error in handleSendTestPush:', err);
+      toast.error('Push Dispatch Error', {
+        description: err?.message || 'Check browser developer console for error stack.',
+      });
     } finally {
       setTestingPush(false);
     }

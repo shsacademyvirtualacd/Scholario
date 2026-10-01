@@ -47,11 +47,13 @@ export function getDeviceInfo(): string {
 /**
  * Checks if the current browser already has an active push subscription.
  */
+/**
+ * Checks if the current browser already has an active push subscription.
+ */
 export async function isPushSubscribed(): Promise<boolean> {
   if (!isPushSupported()) return false;
   try {
-    const reg = await navigator.serviceWorker.getRegistration('/');
-    if (!reg) return false;
+    const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     return sub !== null;
   } catch {
@@ -83,6 +85,7 @@ export async function registerPushServiceWorker(): Promise<ServiceWorkerRegistra
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
     });
+    await navigator.serviceWorker.ready;
     return registration;
   } catch (err) {
     console.warn('[PushServiceWorker] Registration failed:', err);
@@ -92,7 +95,7 @@ export async function registerPushServiceWorker(): Promise<ServiceWorkerRegistra
 
 /**
  * Subscribes the current user to Web Push notifications using VAPID.
- * Sends the subscription to the backend server and stores it for background delivery.
+ * Sends the subscription to Supabase and stores it in push_subscriptions table.
  */
 export async function subscribeUserToPush(
   profile: Profile | { id: string; role?: string; grade?: string; board?: string } | null
@@ -107,18 +110,48 @@ export async function subscribeUserToPush(
 
   try {
     const registration = await registerPushServiceWorker();
-    if (!registration) return null;
+    if (!registration) {
+      console.warn('[PushSubscription] Service worker registration unavailable');
+      return null;
+    }
 
     // Ensure service worker is active/ready
     await navigator.serviceWorker.ready;
 
     let subscription = await registration.pushManager.getSubscription();
+    const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
+    // If an existing subscription exists, verify if its public key matches the current VAPID key
+    if (subscription) {
+      try {
+        const rawAppKey = subscription.options?.applicationServerKey;
+        if (rawAppKey) {
+          const existingKeyBytes = new Uint8Array(rawAppKey);
+          let keyMatches = existingKeyBytes.length === convertedVapidKey.length;
+          if (keyMatches) {
+            for (let i = 0; i < existingKeyBytes.length; i++) {
+              if (existingKeyBytes[i] !== convertedVapidKey[i]) {
+                keyMatches = false;
+                break;
+              }
+            }
+          }
+          if (!keyMatches) {
+            console.warn('[PushSubscription] VAPID key mismatch detected. Re-subscribing with updated key...');
+            await subscription.unsubscribe();
+            subscription = null;
+          }
+        }
+      } catch (keyErr) {
+        console.warn('[PushSubscription] Could not verify existing applicationServerKey:', keyErr);
+      }
+    }
+
+    // Create a new subscription if none exists or if old one had a key mismatch
     if (!subscription) {
-      const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey.buffer as ArrayBuffer,
+        applicationServerKey: convertedVapidKey as unknown as BufferSource,
       });
     }
 
@@ -134,67 +167,76 @@ export async function subscribeUserToPush(
 
     const role = profile.role || 'student';
     const deviceInfo = getDeviceInfo();
-    const payload = {
-      user_id: profile.id,
-      role,
-      endpoint,
-      p256dh,
-      auth,
-      device_info: deviceInfo,
-      subscription_json: subJson,
-      grade: (profile as any).grade || (profile as any).class_id || null,
-      board: (profile as any).board_id || (profile as any).board || null,
-    };
 
-    // 1. Send subscription to Express / Cloud backend API
+    // 1. Direct Supabase push_subscriptions upsert
+    const { error: dbError } = await (supabase as any)
+      .from('push_subscriptions')
+      .upsert(
+        {
+          user_id: profile.id,
+          role,
+          endpoint,
+          p256dh,
+          auth,
+          device_info: deviceInfo,
+          subscription_json: subJson,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'endpoint' }
+      );
+
+    if (dbError) {
+      console.error('[PushSubscription] Supabase push_subscriptions upsert error:', dbError);
+      throw new Error(`Failed to save subscription in database: ${dbError.message}`);
+    }
+
+    console.log('[PushSubscription] Successfully saved push subscription for user:', profile.id);
+
+    // 2. Remove stale subscriptions for the same user on the same device with older endpoints
+    try {
+      await (supabase as any)
+        .from('push_subscriptions')
+        .delete()
+        .eq('user_id', profile.id)
+        .eq('device_info', deviceInfo)
+        .neq('endpoint', endpoint);
+    } catch (cleanupErr) {
+      console.warn('[PushSubscription] Cleanup stale subscriptions notice:', cleanupErr);
+    }
+
+    // 3. Inform Express server API if running in fullstack mode (non-fatal on Cloudflare Pages)
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-
-      await fetch('/api/push/subscribe', {
+      fetch('/api/push/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
-      });
-      console.log('[PushSubscription] Successfully registered push subscription with backend server');
-    } catch (apiErr) {
-      console.warn('[PushSubscription] API sync warning:', apiErr);
-    }
-
-    // 2. Direct Supabase push_subscriptions upsert for defense in depth
-    try {
-      await (supabase as any)
-        .from('push_subscriptions')
-        .upsert(
-          {
-            user_id: profile.id,
-            role,
-            endpoint,
-            p256dh,
-            auth,
-            device_info: deviceInfo,
-            subscription_json: subJson,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'endpoint' }
-        );
-    } catch (dbErr) {
-      // Non-fatal if table is still caching or handled by server API
-      console.log('[PushSubscription] Direct DB sync status:', dbErr);
+        body: JSON.stringify({
+          user_id: profile.id,
+          role,
+          endpoint,
+          p256dh,
+          auth,
+          device_info: deviceInfo,
+          subscription_json: subJson,
+        }),
+      }).catch(() => {});
+    } catch {
+      // ignore
     }
 
     return subscription;
-  } catch (err) {
+  } catch (err: any) {
     console.error('[PushSubscription] Error subscribing user to push:', err);
-    return null;
+    throw err;
   }
 }
 
 /**
- * Unsubscribes the current device from Web Push and informs the server.
+ * Unsubscribes the current device from Web Push and removes it from Supabase.
  */
 export async function unsubscribeUserFromPush(): Promise<boolean> {
   if (!isPushSupported()) return false;
@@ -207,22 +249,23 @@ export async function unsubscribeUserFromPush(): Promise<boolean> {
       const endpoint = subscription.endpoint;
       await subscription.unsubscribe();
 
-      // Notify backend to remove subscription
+      // Delete from Supabase push_subscriptions table
+      const { error } = await (supabase as any)
+        .from('push_subscriptions')
+        .delete()
+        .eq('endpoint', endpoint);
+
+      if (error) {
+        console.warn('[PushSubscription] Supabase delete subscription error:', error);
+      }
+
+      // Inform Express server API if running (non-fatal)
       try {
-        await fetch('/api/push/unsubscribe', {
+        fetch('/api/push/unsubscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ endpoint }),
-        });
-      } catch (err) {
-        console.warn('[PushSubscription] Unsubscribe server call warning:', err);
-      }
-
-      try {
-        await (supabase as any)
-          .from('push_subscriptions')
-          .delete()
-          .eq('endpoint', endpoint);
+        }).catch(() => {});
       } catch {
         // ignore
       }
