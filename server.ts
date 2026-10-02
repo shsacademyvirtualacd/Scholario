@@ -517,7 +517,7 @@ Key Guidelines:
         };
       });
 
-      const targetModel = 'gemini-3.6-flash';
+      const targetModel = 'gemini-3.8-flash';
 
       if (isAdmin) {
         // Admin flow: Call generateContent with read-only tools
@@ -1119,9 +1119,9 @@ Return ONLY a valid JSON object matching this structure:
 
 Ensure strictly valid JSON output with zero markdown formatting outside the JSON structure.`;
 
-      const modelsToTry = ['gemini-3.6-flash', 'gemini-3.7-flash'];
+      const modelsToTry = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
       let parsedData: any = null;
-      let usedModel = 'gemini-3.6-flash';
+      let usedModel = 'gemini-3.8-flash';
       let lastModelError: string | null = null;
 
       for (const targetModel of modelsToTry) {

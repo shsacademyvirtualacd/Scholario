@@ -194,7 +194,7 @@ Return ONLY a valid JSON object matching this structure:
 
 Ensure strictly valid JSON output with zero markdown formatting outside the JSON structure.`;
 
-    const targetModel = 'gemini-3.7-flash';
+    const targetModel = 'gemini-3.8-flash';
     let parsedData: any = null;
 
     try {

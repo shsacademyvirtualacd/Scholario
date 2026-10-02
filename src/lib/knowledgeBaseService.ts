@@ -8,7 +8,7 @@
  * 4. Fallback search mechanism when database vector extension is pending
  */
 
-export const SAGE_CHAT_MODEL = 'gemini-3.6-flash';
+export const SAGE_CHAT_MODEL = 'gemini-3.8-flash';
 export const SAGE_EMBEDDING_MODEL = 'gemini-embedding-001';
 export const SAGE_EMBEDDING_DIMENSIONS = 768;
 

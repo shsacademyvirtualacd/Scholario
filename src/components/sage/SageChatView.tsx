@@ -1359,6 +1359,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#2B2B2B] text-[#F4C430] border border-[#3D3D3D]">
                 {role === 'student' ? 'Study Companion' : role === 'teacher' ? 'Faculty Assistant' : 'Admin Copilot'}
               </span>
+              <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-purple-950/80 text-purple-300 border border-purple-800/60" title="Powered by Google Gemini 3.8 Flash">
+                Gemini 3.8 Flash
+              </span>
               <span
                 className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${activeEmotionMeta.badgeBg} ${activeEmotionMeta.badgeTextColor}`}
                 title={activeEmotionMeta.description}
@@ -2027,7 +2030,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3]">
           <span>Shift + Enter for new line • Enter to send • Mic for voice note</span>
-          <span className="text-[#737373] font-medium">Scholario Sage v2.0 (AI Assistant + RAG)</span>
+          <span className="text-[#737373] font-medium">Scholario Sage v2.0 • Gemini 3.8 Flash (AI Assistant + RAG)</span>
         </div>
       </div>
 
