@@ -147,7 +147,20 @@ async function main() {
   await run('my_teacher_offering_ids()',
     `CREATE OR REPLACE FUNCTION public.my_teacher_offering_ids()
      RETURNS uuid[] LANGUAGE sql STABLE SECURITY DEFINER AS $$
-       SELECT ARRAY(SELECT id FROM public.class_offerings WHERE teacher_id = auth.uid());
+       SELECT ARRAY(
+         SELECT id FROM public.class_offerings
+         WHERE teacher_id = auth.uid()
+            OR teacher_id IN (
+              SELECT t.id FROM public.teachers t
+              JOIN public.roster r ON lower(t.email) = lower(r.email)
+              WHERE r.profile_id = auth.uid()
+            )
+            OR teacher_id IN (
+              SELECT t.id FROM public.teachers t
+              JOIN auth.users u ON lower(t.email) = lower(u.email)
+              WHERE u.id = auth.uid()
+            )
+       );
      $$`);
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -399,10 +412,12 @@ async function main() {
      USING (is_admin()) WITH CHECK (is_admin())`);
 
   // class_offerings policies
+  await run('drop offerings: read', `DROP POLICY IF EXISTS "offerings: read" ON public.class_offerings`);
+  await run('drop offerings: teacher read', `DROP POLICY IF EXISTS "offerings: teacher read" ON public.class_offerings`);
   await run('drop offerings: student read', `DROP POLICY IF EXISTS "offerings: student read" ON public.class_offerings`);
   await run('create offerings: student read',
     `CREATE POLICY "offerings: student read" ON public.class_offerings FOR SELECT
-     USING (id = ANY(my_enrolled_offering_ids()) OR teacher_id = auth.uid() OR is_admin())`);
+     USING (id = ANY(my_enrolled_offering_ids()) OR id = ANY(my_teacher_offering_ids()) OR is_admin())`);
   await run('drop offerings: admin write', `DROP POLICY IF EXISTS "offerings: admin write" ON public.class_offerings`);
   await run('create offerings: admin write',
     `CREATE POLICY "offerings: admin write" ON public.class_offerings FOR ALL
