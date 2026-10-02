@@ -566,8 +566,27 @@ export interface Database {
         Insert: Omit<VisibilityRequest, 'id' | 'created_at' | 'requested_at' | 'user' | 'reviewer'> & { id?: string; created_at?: string; requested_at?: string };
         Update: Partial<Omit<VisibilityRequest, 'id' | 'created_at' | 'user' | 'reviewer'>>;
       };
+      contact_messages: {
+        Row: ContactMessage;
+        Insert: Omit<ContactMessage, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Omit<ContactMessage, 'id' | 'created_at'>>;
+      };
     };
   };
+}
+
+// ─── contact_messages ───────────────────────
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  role?: string | null;
+  message: string;
+  ip_address?: string | null;
+  status: 'new' | 'read' | 'in_progress' | 'resolved' | string;
+  created_at: string;
+  updated_at: string;
 }
 
 // ─── visibility_requests ─────────────────────
