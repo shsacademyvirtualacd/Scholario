@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Mail, Phone, MapPin, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
+import { X, Mail, Phone, MapPin, Send, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { supabase } from '../../lib/supabase';
@@ -251,17 +251,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => 
                   </div>
                 </div>
 
-              </div>
-
-              {/* Disclaimer Notice: Placed strictly inside Direct Contact/Working Hours section with clear divider */}
-              <div className="pt-4 border-t border-[#E5E5E5] dark:border-zinc-800">
-                <div className="flex items-start gap-2 bg-[#FFFBF0] dark:bg-amber-950/20 border border-[#FDF3C8] dark:border-amber-900/30 rounded-xl p-3">
-                  <ShieldAlert size={16} className="text-[#D4A017] dark:text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-[#737373] dark:text-zinc-400 leading-relaxed font-normal">
-                    <strong className="text-[#111111] dark:text-zinc-200 font-semibold block mb-0.5">Notice:</strong>
-                    SHS Virtual Academy technical administration portal. For admissions or fee disputes, please contact the admin office directly.
-                  </p>
-                </div>
               </div>
             </div>
 
