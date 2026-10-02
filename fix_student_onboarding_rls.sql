@@ -57,13 +57,21 @@ BEGIN
       SELECT subject_id FROM public.stream_subjects WHERE stream_id = p_stream_id
     );
 
-    -- Find class offerings matching the class + those subjects
+    -- Find class offerings matching the class + those subjects, stream_id, or general offerings (stream_id IS NULL)
     v_offering_ids := ARRAY(
       SELECT id FROM public.class_offerings
-      WHERE class_id = p_class_id AND subject_id = ANY(v_subject_ids)
+      WHERE class_id = p_class_id AND (
+        subject_id = ANY(v_subject_ids) OR
+        stream_id = p_stream_id OR
+        stream_id IS NULL
+      )
     );
   ELSE
-    v_offering_ids := ARRAY[]::uuid[];
+    -- General offerings for the class when no specific stream is selected
+    v_offering_ids := ARRAY(
+      SELECT id FROM public.class_offerings
+      WHERE class_id = p_class_id AND stream_id IS NULL
+    );
   END IF;
 
   -- ══════════════════════════════════════════════════════════════════════
