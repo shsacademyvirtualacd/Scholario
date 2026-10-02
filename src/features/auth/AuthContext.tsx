@@ -123,25 +123,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Prevent double-run for the same auth event
     if (processingRef.current.has(userId)) {
-      console.log('[Auth] provisionProfile already running for', userId, '— skipping duplicate');
       return;
     }
     processingRef.current.add(userId);
 
     setLoading(true);
-    console.log('[Auth] provisionProfile started for', email, '(uid:', userId, ')');
 
     try {
       // ── Step 1: Check if profile already exists ──────────────────────────
       // Do this FIRST — the DB trigger may have already created it, or this
       // is a returning user. If profile exists, we're done.
-      console.log('[Auth] Step 1: Checking for existing profile...');
       const existing = await fetchProfile(userId);
 
       if (existing) {
         // Admin users bypass the roster existence check
         if (existing.role === 'admin') {
-          console.log('[Auth] ✅ Admin user bypassing roster check:', email);
           setProfile(existing);
           setFeeStatus('paid');
           return;
@@ -197,12 +193,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', rosterEntry.id);
           if (relinkError) {
             console.warn('[Auth] ⚠️ Roster relink failed (non-fatal):', relinkError.message);
-          } else {
-            console.log('[Auth] ✅ Roster relinked to real auth.uid');
           }
         }
 
-        console.log('[Auth] ✅ Existing profile found — role:', existing.role);
         setSuspended(false);
         setIsBillingSuspended(false);
         setRosterRejected(false);
@@ -221,7 +214,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // ── Step 2: No profile yet — check roster ────────────────────────────
-      console.log('[Auth] Step 2: No profile found. Roster lookup for', email);
       const { data: rosterEntry, error: rosterError } = await (supabase as any)
         .from('roster')
         .select('role, full_name, class_ids, profile_id, suspended, fee_suspended')
@@ -274,7 +266,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      console.log('[Auth] ✅ Roster entry found:', JSON.stringify(rosterEntry));
       setSuspended(false);
       setIsBillingSuspended(false);
       setRosterRejected(false);
@@ -287,8 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email;
 
       if (role !== 'student') {
-        console.log('[Auth] Step 4: Claiming/promoting pre-provisioned roster profile for role:', role);
-        const { data: claimedProfile, error: claimError } = await (supabase as any)
+        const { data: _claimedProfile, error: claimError } = await (supabase as any)
           .rpc('claim_my_roster_profile');
 
         if (claimError) {
@@ -303,11 +293,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        console.log('[Auth] ✅ Profile claimed/promoted successfully via RPC:', JSON.stringify(claimedProfile));
         toast.success(`Account claimed successfully as ${role}!`);
       } else {
-        console.log('[Auth] Step 4: Creating new student profile — name:', fullName);
-
         // For students: onboarding_complete = false (they must pick grade/board/stream)
         const profilePayload: Record<string, unknown> = {
           id: userId,
@@ -351,12 +338,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setProfile(null);
             return;
           }
-        } else {
-          console.log('[Auth] ✅ Student profile created successfully');
         }
 
         // ── Step 5: Link auth uid → roster entry ────────────────────────────
-        console.log('[Auth] Step 5: Linking profile_id to roster entry');
         const { error: rosterLinkError } = await (supabase as any)
           .from('roster')
           .update({ profile_id: userId })
@@ -364,13 +348,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (rosterLinkError) {
           console.warn('[Auth] ⚠️ Roster link update failed (non-fatal):', rosterLinkError.message);
-        } else {
-          console.log('[Auth] ✅ Roster entry linked');
         }
       }
 
       // ── Step 6: Fetch the final profile ─────────────────────────────────
-      console.log('[Auth] Step 6: Fetching final profile...');
       const finalProfile = await fetchProfile(userId);
       setProfile(finalProfile);
       if (finalProfile) {
@@ -385,7 +366,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setFeeStatus('paid');
         }
       }
-      console.log('[Auth] ✅ provisionProfile complete — profile:', JSON.stringify(finalProfile));
 
     } finally {
       processingRef.current.delete(userId);
@@ -423,15 +403,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      console.log('[Auth] onAuthStateChange:', event, session?.user?.email ?? '(no session)');
       setSession(session);
       setUser(session?.user ?? null);
 
       if (event === 'SIGNED_IN' && session) {
         const currentProfile = profileRef.current;
-        if (currentProfile && currentProfile.id === session.user.id) {
-          console.log('[Auth] Redundant SIGNED_IN for already provisioned user:', session.user.email, '— skipping re-provision');
-        } else {
+        if (!currentProfile || currentProfile.id !== session.user.id) {
           provisionProfile(session);
         }
       } else if (event === 'SIGNED_OUT') {
@@ -557,7 +534,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         setFeeStatus(null);
       } else {
-        console.log('[Auth] Realtime: user restored by admin.');
         setSuspended(false);
         setIsBillingSuspended(false);
         setRosterRejected(false);
@@ -583,7 +559,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     onUpdate: (payload) => {
       const newStatus = (payload.new as any)?.status as 'unpaid' | 'pending' | 'paid' | undefined;
       if (!newStatus) return;
-      console.log('[Auth] Realtime: fee_statuses updated →', newStatus);
       setFeeStatus(newStatus);
       // If just approved (paid), unblock any billing suspension and refresh profile
       if (newStatus === 'paid') {
