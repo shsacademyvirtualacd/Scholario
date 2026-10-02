@@ -140,10 +140,6 @@ export async function updateMyPresence(userId: string, isOnline: boolean): Promi
     const verifiedUid = authData?.user?.id || userId;
     const nowIso = new Date().toISOString();
 
-    console.log(
-      `[Presence] updateMyPresence firing: user_id=${verifiedUid}, is_online=${isOnline}, last_seen=${nowIso}, matchesAuthUid=${authData?.user?.id === verifiedUid}`
-    );
-
     // 1. Direct Supabase Client update
     const { error } = await (supabase as any)
       .from('profiles')
