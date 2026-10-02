@@ -19,7 +19,7 @@ import { onRequestGet as avatarViewHandler } from '../functions/api/profiles/ava
 import { onRequestPost as chatUploadHandler } from '../functions/api/chat/upload';
 import { onRequestGet as chatAttachmentHandler } from '../functions/api/chat/attachment/[...key]';
 
-export interface Env {
+interface Env {
   NOTES_BUCKET: any;
   AVATARS_BUCKET?: any;
   CHAT_ATTACHMENTS?: any;
