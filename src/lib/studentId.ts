@@ -16,10 +16,23 @@ export async function generateUniqueNumericStudentId(): Promise<string> {
     console.warn('[studentId] RPC generate_unique_student_id fallback:', err);
   }
 
-  // 2. Client-side generator with direct uniqueness verification
+  // 2. Client-side generator with direct uniqueness verification using CSPRNG
   for (let attempt = 0; attempt < 50; attempt++) {
-    // Generate between 1000 and 99999 (4-5 digits, e.g. "48213", "9042")
-    const candidate = Math.floor(1000 + Math.random() * (99999 - 1000 + 1)).toString();
+    // Cryptographically secure random integer between 1000 and 99999 (range size 99000)
+    const min = 1000;
+    const max = 99999;
+    const range = max - min + 1; // 99000
+    const maxUint32 = 0xffffffff; // 4294967295
+    const limit = maxUint32 - (maxUint32 % range); // Unbiased upper bound
+
+    const array = new Uint32Array(1);
+    let randomVal: number;
+    do {
+      crypto.getRandomValues(array);
+      randomVal = array[0];
+    } while (randomVal >= limit);
+
+    const candidate = (min + (randomVal % range)).toString();
     const { data: existing } = await (supabase as any)
       .from('roster')
       .select('id')
