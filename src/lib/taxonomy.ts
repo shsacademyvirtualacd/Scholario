@@ -472,6 +472,8 @@ export const PUNJAB_GRADES: GradeDef[] = [
   },
 ];
 
+import { getSubjectsForStream } from './db';
+
 // GRADES default alias (FBISE for backward compatibility)
 export const GRADES: GradeDef[] = FBISE_GRADES;
 
@@ -583,68 +585,6 @@ export function getStreamsForGrade(grade: string, boardId?: string): StreamDef[]
 
   // Fallback to first grade's streams if grade is not matched, ensuring availableStreams is NEVER empty for valid boards
   return gradeList[0]?.streams ?? [];
-}
-
-/**
- * @deprecated Import getSubjectsForStream from 'src/lib/db' instead.
- * That version reads authoritative subject names directly from the DB via
- * cachedTaxonomy (stream_subjects → subjects join), eliminating static-string
- * drift. This stub is kept only so that getEnrolledSubjectsForStudent (which
- * calls it internally) continues to build until it is separately migrated.
- */
-export function getSubjectsForStream(grade: string, streamName: string, boardId?: string): string[] {
-  const normBoard = (boardId || '').trim().toLowerCase();
-  const rawGrade = String(grade || '').trim();
-  const cleanGrade = rawGrade.replace(/^(grade|class)\s*/i, '').replace(/th$/i, '').trim().toLowerCase();
-
-  const isIelts =
-    normBoard === 'ielts' ||
-    cleanGrade === 'ielts' ||
-    streamName?.toLowerCase().includes('ielts') ||
-    ((streamName?.toLowerCase() === 'academic' || streamName?.toLowerCase() === 'general training') && (!normBoard || normBoard === 'ielts'));
-
-  if (isIelts) {
-    const isGt =
-      streamName?.toLowerCase().includes('general') ||
-      streamName?.toLowerCase().includes('gt');
-    if (isGt) {
-      return [
-        'IELTS Listening',
-        'IELTS Reading (GT)',
-        'IELTS Writing (GT)',
-        'IELTS Reading (Academic)',
-        'IELTS Writing (Academic)',
-        'IELTS Speaking',
-      ];
-    }
-    return [
-      'IELTS Listening',
-      'IELTS Reading (Academic)',
-      'IELTS Writing (Academic)',
-      'IELTS Speaking',
-    ];
-  }
-
-  const gradesList = getGradesForBoard(normBoard);
-  const g =
-    gradesList.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) ||
-    GRADES.find((gr) => gr.grade.toLowerCase() === cleanGrade || gr.grade.toLowerCase() === rawGrade.toLowerCase()) ||
-    gradesList[0];
-
-  if (!g) return ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
-  if (!streamName) return g.commonSubjects || [];
-
-  const norm = streamName.trim().toLowerCase();
-  const s = g.streams.find(
-    (st) =>
-      st.name.toLowerCase() === norm ||
-      norm.includes(st.name.toLowerCase()) ||
-      st.name.toLowerCase().includes(norm)
-  );
-  if (s && s.subjects && s.subjects.length > 0) return s.subjects;
-
-  // Fallback to first stream or common subjects if stream not recognized
-  return g.streams[0]?.subjects ?? g.commonSubjects ?? ['English', 'Urdu', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'];
 }
 
 /** Derive exact enrolled taxonomy subjects for a student profile and enrollments */
