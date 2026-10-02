@@ -31,7 +31,7 @@ import { SageAvatar } from './SageAvatar';
 import { SageEmotion, SAGE_EMOTIONS, detectSageEmotion } from './sageEmotion';
 import { getLastPageContext, PageContextInfo } from '../../lib/pageContext';
 
-export interface ChatAttachment {
+interface ChatAttachment {
   key?: string;
   filename: string;
   size: number;
