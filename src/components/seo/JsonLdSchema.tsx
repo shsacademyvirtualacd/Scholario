@@ -8,6 +8,19 @@ export interface JsonLdSchemaProps {
   includeFaq?: boolean;
 }
 
+/**
+ * Safely serializes an object to JSON for inclusion in an HTML script tag.
+ * Replaces HTML-sensitive characters (`<`, `>`, `\u2028`, `\u2029`) with Unicode escapes
+ * to prevent XSS script injection attacks when embedded inside script elements.
+ */
+export const safeJsonLdStringify = (data: unknown): string => {
+  return JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+};
+
 export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
   siteUrl = 'https://scholario.app',
   organizationName = 'Scholario Virtual Academy',
@@ -264,30 +277,24 @@ export const JsonLdSchema: React.FC<JsonLdSchemaProps> = ({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareProductSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
-      />
+      <script type="application/ld+json">
+        {safeJsonLdStringify(organizationSchema)}
+      </script>
+      <script type="application/ld+json">
+        {safeJsonLdStringify(softwareProductSchema)}
+      </script>
+      <script type="application/ld+json">
+        {safeJsonLdStringify(websiteSchema)}
+      </script>
       {coursesSchema.map((c, idx) => (
-        <script
-          key={`course-${idx}`}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(c) }}
-        />
+        <script key={`course-${idx}`} type="application/ld+json">
+          {safeJsonLdStringify(c)}
+        </script>
       ))}
       {faqSchema && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-        />
+        <script type="application/ld+json">
+          {safeJsonLdStringify(faqSchema)}
+        </script>
       )}
     </>
   );
