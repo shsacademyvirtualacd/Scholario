@@ -1170,14 +1170,129 @@ export async function adminRevokeScholarship(
 }
 
 /**
- * Convenience wrapper for saving all tiers
+ * Convenience wrapper for bulk saving all scholarship tiers efficiently
  */
 export async function saveScholarshipTiers(tiers: ScholarshipTier[]): Promise<ScholarshipTier[]> {
-  const results: ScholarshipTier[] = [];
-  for (const tier of tiers) {
-    const saved = await saveScholarshipTier(tier);
-    results.push(saved);
+  if (!tiers || tiers.length === 0) {
+    return [];
   }
-  return results;
+
+  const now = new Date().toISOString();
+
+  const isValidUuid = (id?: string) => Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+
+  // Prepare payload items for database insertion/upsert
+  const dbPayloads = tiers.map((tier) => {
+    const hasValidUuid = isValidUuid(tier.id);
+    const payload: Record<string, any> = {
+      min_marks_percentage: Number(tier.min_marks_percentage) || 0,
+      discount_percentage: Number(tier.discount_percentage) || 40,
+      applicable_boards: tier.applicable_boards || 'all',
+      is_active: tier.is_active !== undefined ? tier.is_active : true,
+      description: tier.description || tier.tier_name || null,
+      updated_at: now
+    };
+
+    if (hasValidUuid) {
+      payload.id = tier.id;
+    }
+    if (tier.created_at) {
+      payload.created_at = tier.created_at;
+    } else {
+      payload.created_at = now;
+    }
+
+    return payload;
+  });
+
+  try {
+    const { data, error } = await (supabase as any)
+      .from('scholarship_tiers')
+      .upsert(dbPayloads)
+      .select('*');
+
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      // Map DB returned records back to input tiers safely without assuming index order
+      const uuidMap = new Map<string, ScholarshipTier>();
+      const unassignedNewTiers: ScholarshipTier[] = [];
+
+      for (const tier of tiers) {
+        if (isValidUuid(tier.id)) {
+          uuidMap.set(tier.id!, tier);
+        } else {
+          unassignedNewTiers.push(tier);
+        }
+      }
+
+      const savedTiers: ScholarshipTier[] = data.map((d: any) => {
+        let matchedInputTier: ScholarshipTier | undefined;
+        if (uuidMap.has(d.id)) {
+          matchedInputTier = uuidMap.get(d.id);
+        } else {
+          // Find matching unassigned new tier by min_marks_percentage & discount_percentage
+          const matchIdx = unassignedNewTiers.findIndex(
+            (t) =>
+              Number(t.min_marks_percentage) === Number(d.min_marks_percentage) &&
+              Number(t.discount_percentage) === Number(d.discount_percentage)
+          );
+          if (matchIdx !== -1) {
+            matchedInputTier = unassignedNewTiers.splice(matchIdx, 1)[0];
+          } else if (unassignedNewTiers.length > 0) {
+            matchedInputTier = unassignedNewTiers.shift();
+          }
+        }
+
+        return {
+          id: d.id,
+          min_marks_percentage: Number(d.min_marks_percentage),
+          discount_percentage: Number(d.discount_percentage),
+          applicable_boards: d.applicable_boards,
+          is_active: d.is_active,
+          tier_name: matchedInputTier?.tier_name || d.description,
+          description: d.description,
+          created_at: d.created_at,
+          updated_at: d.updated_at
+        };
+      });
+
+      // Update local storage cache in a single bulk operation, purging both old temporary IDs & new DB UUIDs
+      const currentLocal = getLocalTiers();
+      const savedIdsSet = new Set(savedTiers.map((t) => t.id));
+      const inputIdsSet = new Set(tiers.map((t) => t.id).filter(Boolean));
+      const remainingLocal = currentLocal.filter((t) => !savedIdsSet.has(t.id) && !inputIdsSet.has(t.id));
+      const updatedLocal = [...savedTiers, ...remainingLocal];
+      saveLocalTiers(updatedLocal);
+
+      return savedTiers;
+    } else if (error) {
+      console.warn('[scholarshipService:saveScholarshipTiers] Bulk upsert notice:', error.message);
+    }
+  } catch (err) {
+    console.warn('[scholarshipService:saveScholarshipTiers] DB exception fallback:', err);
+  }
+
+  // Fallback to local cache batch update
+  const currentLocal = getLocalTiers();
+  const localMap = new Map(currentLocal.map((t) => [t.id, t]));
+
+  const localSavedTiers: ScholarshipTier[] = tiers.map((tier) => {
+    const generatedId = tier.id && !tier.id.startsWith('tier-temp') ? tier.id : `tier_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const localTier: ScholarshipTier = {
+      id: generatedId,
+      min_marks_percentage: Number(tier.min_marks_percentage) || 0,
+      discount_percentage: Number(tier.discount_percentage) || 40,
+      applicable_boards: tier.applicable_boards || 'all',
+      is_active: tier.is_active !== undefined ? tier.is_active : true,
+      tier_name: tier.tier_name || tier.description || undefined,
+      description: tier.description || tier.tier_name || null,
+      created_at: tier.created_at || now,
+      updated_at: now
+    };
+    localMap.set(generatedId, localTier);
+    return localTier;
+  });
+
+  saveLocalTiers(Array.from(localMap.values()));
+  return localSavedTiers;
 }
 
