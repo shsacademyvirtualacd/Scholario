@@ -55,7 +55,7 @@ END $$;
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- STEP 1: MANUAL REPAIR FOR MUHAMMAD HASHIR
+-- STEP 1: MANUAL REPAIR FOR MUHAMMAD HASHIR (or any pre-provisioned orphan)
 -- ─────────────────────────────────────────────────────────────────────────
 -- His orphaned placeholder profile_id is:
 --   1a886d0b-0570-4f6c-b5ec-595d59456149
@@ -118,7 +118,7 @@ BEGIN
   RAISE NOTICE '  New real ID:        %', v_new_id;
   RAISE NOTICE '──────────────────────────────────────────────────────────────';
 
-  -- Ensure the new profile row exists (it should from provisionProfile)
+  -- Ensure the new profile row exists
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_new_id) THEN
     RAISE NOTICE '⚠️  No profiles row for new ID %. Creating one from old profile...', v_new_id;
     INSERT INTO public.profiles (id, role, full_name, phone, stream, avatar_url, created_at, onboarding_complete)
@@ -154,7 +154,6 @@ BEGIN
 
   -- fee_statuses.student_id (has UNIQUE constraint — handle conflict)
   IF EXISTS (SELECT 1 FROM public.fee_statuses WHERE student_id = v_old_id) THEN
-    -- Delete any conflicting new-ID row first
     DELETE FROM public.fee_statuses WHERE student_id = v_new_id;
     UPDATE public.fee_statuses SET student_id = v_new_id WHERE student_id = v_old_id;
     GET DIAGNOSTICS v_rows = ROW_COUNT;
@@ -188,24 +187,71 @@ BEGIN
   v_total := v_total + v_rows;
   RAISE NOTICE '  notifications.recipient_id:    % rows migrated', v_rows;
 
-  -- class_offerings.teacher_id (in case he was a teacher)
+  -- teachers.id and class_offerings.teacher_id
+  -- MUST insert into teachers FIRST before updating class_offerings to prevent FK violation
+  IF EXISTS (SELECT 1 FROM public.teachers WHERE id = v_old_id) THEN
+    INSERT INTO public.teachers (id, full_name, email, is_active, joining_date, avatar_url, created_at)
+    SELECT v_new_id, full_name, email, is_active, joining_date, avatar_url, created_at
+    FROM public.teachers WHERE id = v_old_id
+    ON CONFLICT (id) DO UPDATE SET
+      full_name = EXCLUDED.full_name,
+      email = EXCLUDED.email,
+      is_active = EXCLUDED.is_active;
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+    v_total := v_total + v_rows;
+    RAISE NOTICE '  teachers.id (re-keyed):        % rows migrated', v_rows;
+  END IF;
+
+  -- class_offerings.teacher_id
   UPDATE public.class_offerings SET teacher_id = v_new_id WHERE teacher_id = v_old_id;
   GET DIAGNOSTICS v_rows = ROW_COUNT;
   v_total := v_total + v_rows;
   RAISE NOTICE '  class_offerings.teacher_id:    % rows migrated', v_rows;
 
-  -- teachers.id (PK — need INSERT new + DELETE old)
+  -- Delete old teacher row after class_offerings has been updated
   IF EXISTS (SELECT 1 FROM public.teachers WHERE id = v_old_id) THEN
-    INSERT INTO public.teachers (id, full_name, email, is_active, joining_date, avatar_url, created_at)
-    SELECT v_new_id, full_name, email, is_active, joining_date, avatar_url, created_at
-    FROM public.teachers WHERE id = v_old_id
-    ON CONFLICT (id) DO NOTHING;
     DELETE FROM public.teachers WHERE id = v_old_id;
-    GET DIAGNOSTICS v_rows = ROW_COUNT;
-    v_total := v_total + v_rows;
-    RAISE NOTICE '  teachers.id (re-keyed):        % rows migrated', v_rows;
-  ELSE
-    RAISE NOTICE '  teachers.id:                   0 rows (not a teacher)';
+  END IF;
+
+  -- Additional optional tables (safe check)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'announcement_dismissals') THEN
+    EXECUTE 'UPDATE public.announcement_dismissals SET user_id = $1 WHERE user_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'push_subscriptions') THEN
+    EXECUTE 'UPDATE public.push_subscriptions SET user_id = $1 WHERE user_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'teacher_attendance_ratings') THEN
+    EXECUTE 'UPDATE public.teacher_attendance_ratings SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'student_mcq_attempts') THEN
+    EXECUTE 'UPDATE public.student_mcq_attempts SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'scholarship_applications') THEN
+    EXECUTE 'UPDATE public.scholarship_applications SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.scholarship_applications SET reviewed_by = $1 WHERE reviewed_by = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'staff_shifts') THEN
+    EXECUTE 'UPDATE public.staff_shifts SET staff_id = $1 WHERE staff_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'staff_attendance_logs') THEN
+    EXECUTE 'UPDATE public.staff_attendance_logs SET staff_id = $1 WHERE staff_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'chat_threads') THEN
+    EXECUTE 'UPDATE public.chat_threads SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.chat_threads SET staff_id = $1 WHERE staff_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.chat_threads SET participant_one_id = $1 WHERE participant_one_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.chat_threads SET participant_two_id = $1 WHERE participant_two_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'chat_messages') THEN
+    EXECUTE 'UPDATE public.chat_messages SET sender_id = $1 WHERE sender_id = $2' USING v_new_id, v_old_id;
   END IF;
 
   -- roster.profile_id (update to new)
@@ -259,7 +305,23 @@ BEGIN
 
   RAISE NOTICE '[handle_roster_profile_link] Migrating % → % for %', v_old_id, v_new_id, NEW.email;
 
-  -- ── Migrate every known FK column referencing profiles(id) ──
+  -- ── Step 2a: Ensure the new profile row exists in public.profiles ──
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_new_id) THEN
+    INSERT INTO public.profiles (
+      id, role, full_name, avatar_url, phone, stream,
+      onboarding_complete, board_id, class_id, stream_id, created_at
+    )
+    SELECT
+      v_new_id, role, full_name, avatar_url, phone, stream,
+      (role != 'student'), board_id, class_id, stream_id, created_at
+    FROM public.profiles WHERE id = v_old_id;
+  ELSE
+    UPDATE public.profiles
+    SET onboarding_complete = (role != 'student')
+    WHERE id = v_new_id;
+  END IF;
+
+  -- ── Step 2b: Migrate every known FK column referencing profiles(id) ──
 
   -- enrollments.student_id
   UPDATE public.enrollments SET student_id = v_new_id WHERE student_id = v_old_id;
@@ -309,15 +371,9 @@ BEGIN
   GET DIAGNOSTICS v_rows = ROW_COUNT;
   v_total := v_total + v_rows;
 
-  -- class_offerings.teacher_id
-  UPDATE public.class_offerings SET teacher_id = v_new_id WHERE teacher_id = v_old_id;
-  GET DIAGNOSTICS v_rows = ROW_COUNT;
-  v_total := v_total + v_rows;
-
-  -- teachers.id (PK — re-key by INSERT new + DELETE old)
+  -- teachers.id and class_offerings.teacher_id
+  -- MUST insert into teachers BEFORE updating class_offerings to satisfy class_offerings_teacher_id_fkey
   IF EXISTS (SELECT 1 FROM public.teachers WHERE id = v_old_id) THEN
-    -- First update class_offerings to point to new teacher ID (already done above)
-    -- Then insert new teacher row and delete old
     INSERT INTO public.teachers (id, full_name, email, is_active, joining_date, avatar_url, created_at)
     SELECT v_new_id, full_name, email, is_active, joining_date, avatar_url, created_at
     FROM public.teachers WHERE id = v_old_id
@@ -325,9 +381,59 @@ BEGIN
       full_name = EXCLUDED.full_name,
       email = EXCLUDED.email,
       is_active = EXCLUDED.is_active;
-    DELETE FROM public.teachers WHERE id = v_old_id;
     GET DIAGNOSTICS v_rows = ROW_COUNT;
     v_total := v_total + v_rows;
+  END IF;
+
+  -- class_offerings.teacher_id
+  UPDATE public.class_offerings SET teacher_id = v_new_id WHERE teacher_id = v_old_id;
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  v_total := v_total + v_rows;
+
+  -- Safe to delete old teacher row now
+  IF EXISTS (SELECT 1 FROM public.teachers WHERE id = v_old_id) THEN
+    DELETE FROM public.teachers WHERE id = v_old_id;
+  END IF;
+
+  -- Additional optional tables (dynamic checks)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'announcement_dismissals') THEN
+    EXECUTE 'UPDATE public.announcement_dismissals SET user_id = $1 WHERE user_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'push_subscriptions') THEN
+    EXECUTE 'UPDATE public.push_subscriptions SET user_id = $1 WHERE user_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'teacher_attendance_ratings') THEN
+    EXECUTE 'UPDATE public.teacher_attendance_ratings SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'student_mcq_attempts') THEN
+    EXECUTE 'UPDATE public.student_mcq_attempts SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'scholarship_applications') THEN
+    EXECUTE 'UPDATE public.scholarship_applications SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.scholarship_applications SET reviewed_by = $1 WHERE reviewed_by = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'staff_shifts') THEN
+    EXECUTE 'UPDATE public.staff_shifts SET staff_id = $1 WHERE staff_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'staff_attendance_logs') THEN
+    EXECUTE 'UPDATE public.staff_attendance_logs SET staff_id = $1 WHERE staff_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'chat_threads') THEN
+    EXECUTE 'UPDATE public.chat_threads SET student_id = $1 WHERE student_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.chat_threads SET staff_id = $1 WHERE staff_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.chat_threads SET participant_one_id = $1 WHERE participant_one_id = $2' USING v_new_id, v_old_id;
+    EXECUTE 'UPDATE public.chat_threads SET participant_two_id = $1 WHERE participant_two_id = $2' USING v_new_id, v_old_id;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'chat_messages') THEN
+    EXECUTE 'UPDATE public.chat_messages SET sender_id = $1 WHERE sender_id = $2' USING v_new_id, v_old_id;
   END IF;
 
   -- ── Delete the orphaned old placeholder profile ──
@@ -348,21 +454,27 @@ CREATE TRIGGER trg_roster_profile_link
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- STEP 2b: SELF-TEST — Verify the trigger works end-to-end
+-- STEP 2b: SELF-TEST — Verify the trigger works end-to-end for student and teacher
 -- ─────────────────────────────────────────────────────────────────────────
--- Creates a temporary test scenario, fires the trigger, checks results,
+-- Creates temporary test scenarios, fires the trigger, checks results,
 -- and cleans up. Reports pass/fail via RAISE NOTICE.
 -- ─────────────────────────────────────────────────────────────────────────
 DO $$
 DECLARE
   v_old_profile_id uuid := gen_random_uuid();
   v_new_profile_id uuid := gen_random_uuid();
+  v_teacher_old_id uuid := gen_random_uuid();
+  v_teacher_new_id uuid := gen_random_uuid();
   v_roster_id uuid;
+  v_teacher_roster_id uuid;
   v_test_email text := '__test_trigger_verification__@test.internal';
+  v_test_teacher_email text := '__test_teacher_verification__@test.internal';
   v_test_offering_id uuid;
   v_enrollment_count int;
   v_orphan_count int;
   v_notification_count int;
+  v_offering_count int;
+  v_teacher_count int;
 BEGIN
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
   RAISE NOTICE 'SELF-TEST: Verifying handle_roster_profile_link() trigger';
@@ -371,53 +483,43 @@ BEGIN
   -- Clean up any previous failed test run
   DELETE FROM public.notifications WHERE recipient_id IN (v_old_profile_id, v_new_profile_id);
   DELETE FROM public.enrollments WHERE student_id IN (v_old_profile_id, v_new_profile_id);
-  DELETE FROM public.roster WHERE email = v_test_email;
-  DELETE FROM public.profiles WHERE id IN (v_old_profile_id, v_new_profile_id);
+  DELETE FROM public.roster WHERE email IN (v_test_email, v_test_teacher_email);
+  DELETE FROM public.teachers WHERE id IN (v_teacher_old_id, v_teacher_new_id);
+  DELETE FROM public.profiles WHERE id IN (v_old_profile_id, v_new_profile_id, v_teacher_old_id, v_teacher_new_id);
 
-  -- Pick a real offering_id for the test enrollment
+  -- Pick a real offering_id for the test enrollment / teacher assignment
   SELECT id INTO v_test_offering_id FROM public.class_offerings LIMIT 1;
 
-  IF v_test_offering_id IS NULL THEN
-    RAISE NOTICE '⚠️  No class_offerings found — skipping enrollment test';
-  END IF;
-
+  -- ── Test 1: Student Roster Link Migration ──
   -- 1. Create old placeholder profile
   INSERT INTO public.profiles (id, role, full_name) VALUES (v_old_profile_id, 'student', 'Test Trigger Student');
 
-  -- 2. Create new real profile (simulating what provisionProfile() does)
-  INSERT INTO public.profiles (id, role, full_name) VALUES (v_new_profile_id, 'student', 'Test Trigger Student');
-
-  -- 3. Create roster entry pointing to old placeholder
+  -- 2. Create roster entry pointing to old placeholder
   INSERT INTO public.roster (email, full_name, role, class_ids, profile_id)
   VALUES (v_test_email, 'Test Trigger Student', 'student', '{}'::uuid[], v_old_profile_id)
   RETURNING id INTO v_roster_id;
 
-  -- 4. Create test enrollment under old ID
+  -- 3. Create test enrollment under old ID
   IF v_test_offering_id IS NOT NULL THEN
     INSERT INTO public.enrollments (student_id, offering_id, total_classes)
     VALUES (v_old_profile_id, v_test_offering_id, 48);
   END IF;
 
-  -- 5. Create test notification under old ID
+  -- 4. Create test notification under old ID
   INSERT INTO public.notifications (recipient_id, type, title, message, severity)
   VALUES (v_old_profile_id, 'announcement', 'Test', 'Test notification', 'normal');
 
-  RAISE NOTICE '  Created test data: roster=%, old_profile=%, new_profile=%', v_roster_id, v_old_profile_id, v_new_profile_id;
-
-  -- 6. Fire the trigger by updating roster.profile_id → new ID
+  -- 5. Fire the trigger by updating roster.profile_id → new ID (trigger auto-creates profile for v_new_profile_id)
   UPDATE public.roster SET profile_id = v_new_profile_id WHERE id = v_roster_id;
 
-  RAISE NOTICE '  Trigger fired. Checking results...';
-
-  -- 7. Verify: enrollment should now point to new ID
+  -- 6. Verify student migration
   SELECT COUNT(*) INTO v_enrollment_count FROM public.enrollments WHERE student_id = v_new_profile_id;
   IF v_test_offering_id IS NOT NULL AND v_enrollment_count > 0 THEN
-    RAISE NOTICE '  ✅ Enrollment migrated to new profile ID (% rows)', v_enrollment_count;
+    RAISE NOTICE '  ✅ Student enrollment migrated to new profile ID (% rows)', v_enrollment_count;
   ELSIF v_test_offering_id IS NOT NULL THEN
     RAISE NOTICE '  ❌ FAIL: Enrollment NOT migrated! Found % rows for new ID', v_enrollment_count;
   END IF;
 
-  -- 8. Verify: notification should now point to new ID
   SELECT COUNT(*) INTO v_notification_count FROM public.notifications WHERE recipient_id = v_new_profile_id;
   IF v_notification_count > 0 THEN
     RAISE NOTICE '  ✅ Notification migrated to new profile ID (% rows)', v_notification_count;
@@ -425,27 +527,65 @@ BEGIN
     RAISE NOTICE '  ❌ FAIL: Notification NOT migrated!';
   END IF;
 
-  -- 9. Verify: old profile should be deleted (zero orphans)
   SELECT COUNT(*) INTO v_orphan_count FROM public.profiles WHERE id = v_old_profile_id;
   IF v_orphan_count = 0 THEN
-    RAISE NOTICE '  ✅ Old placeholder profile deleted — zero orphans';
+    RAISE NOTICE '  ✅ Old placeholder student profile deleted — zero orphans';
   ELSE
-    RAISE NOTICE '  ❌ FAIL: Old placeholder profile still exists! (% rows)', v_orphan_count;
+    RAISE NOTICE '  ❌ FAIL: Old placeholder student profile still exists! (% rows)', v_orphan_count;
   END IF;
 
-  -- 10. Verify: no enrollment rows left pointing to old ID
-  SELECT COUNT(*) INTO v_enrollment_count FROM public.enrollments WHERE student_id = v_old_profile_id;
-  IF v_enrollment_count = 0 THEN
-    RAISE NOTICE '  ✅ No orphaned enrollment rows pointing to old ID';
-  ELSE
-    RAISE NOTICE '  ❌ FAIL: % enrollment rows still point to old ID', v_enrollment_count;
+  -- ── Test 2: Teacher Roster Link Migration (verifies teachers FK ordering) ──
+  -- 1. Create old placeholder teacher profile & teachers entry
+  INSERT INTO public.profiles (id, role, full_name) VALUES (v_teacher_old_id, 'teacher', 'Test Trigger Teacher');
+  INSERT INTO public.teachers (id, full_name, email, is_active, joining_date)
+  VALUES (v_teacher_old_id, 'Test Trigger Teacher', v_test_teacher_email, TRUE, CURRENT_DATE);
+
+  -- 2. Create roster entry
+  INSERT INTO public.roster (email, full_name, role, class_ids, profile_id)
+  VALUES (v_test_teacher_email, 'Test Trigger Teacher', 'teacher', '{}'::uuid[], v_teacher_old_id)
+  RETURNING id INTO v_teacher_roster_id;
+
+  -- 3. Assign teacher to offering if present
+  IF v_test_offering_id IS NOT NULL THEN
+    UPDATE public.class_offerings SET teacher_id = v_teacher_old_id WHERE id = v_test_offering_id;
   END IF;
 
-  -- 11. Cleanup test data
+  -- 4. Fire trigger by updating roster.profile_id → v_teacher_new_id
+  UPDATE public.roster SET profile_id = v_teacher_new_id WHERE id = v_teacher_roster_id;
+
+  -- 5. Verify teacher migration
+  SELECT COUNT(*) INTO v_teacher_count FROM public.teachers WHERE id = v_teacher_new_id;
+  IF v_teacher_count > 0 THEN
+    RAISE NOTICE '  ✅ Teacher record created for new profile ID';
+  ELSE
+    RAISE NOTICE '  ❌ FAIL: Teacher record NOT created for new ID';
+  END IF;
+
+  IF v_test_offering_id IS NOT NULL THEN
+    SELECT COUNT(*) INTO v_offering_count FROM public.class_offerings WHERE id = v_test_offering_id AND teacher_id = v_teacher_new_id;
+    IF v_offering_count > 0 THEN
+      RAISE NOTICE '  ✅ class_offerings.teacher_id updated to new ID without FK error';
+    ELSE
+      RAISE NOTICE '  ❌ FAIL: class_offerings NOT updated to new teacher ID!';
+    END IF;
+  END IF;
+
+  SELECT COUNT(*) INTO v_orphan_count FROM public.teachers WHERE id = v_teacher_old_id;
+  IF v_orphan_count = 0 THEN
+    RAISE NOTICE '  ✅ Old placeholder teacher record deleted';
+  ELSE
+    RAISE NOTICE '  ❌ FAIL: Old placeholder teacher record still exists!';
+  END IF;
+
+  -- Cleanup test data
+  IF v_test_offering_id IS NOT NULL THEN
+    UPDATE public.class_offerings SET teacher_id = NULL WHERE id = v_test_offering_id;
+  END IF;
   DELETE FROM public.notifications WHERE recipient_id = v_new_profile_id;
   DELETE FROM public.enrollments WHERE student_id = v_new_profile_id;
-  DELETE FROM public.roster WHERE id = v_roster_id;
-  DELETE FROM public.profiles WHERE id = v_new_profile_id;
+  DELETE FROM public.roster WHERE id IN (v_roster_id, v_teacher_roster_id);
+  DELETE FROM public.teachers WHERE id IN (v_teacher_old_id, v_teacher_new_id);
+  DELETE FROM public.profiles WHERE id IN (v_new_profile_id, v_teacher_new_id);
 
   RAISE NOTICE '  🧹 Test data cleaned up';
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
