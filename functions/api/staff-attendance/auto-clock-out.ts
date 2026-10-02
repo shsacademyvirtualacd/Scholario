@@ -2,14 +2,27 @@ import type { EventContext } from '@cloudflare/workers-types';
 import { createClient } from '@supabase/supabase-js';
 import type { Env } from '../../env';
 
-const DEFAULT_URL = 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
-const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Z3J4amx5cmZ6b2p2aXJraGRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNTc3OTksImV4cCI6MjA5ODkzMzc5OX0.ggAT2JiBTg6VG5tbZNnjkig7F73JE0ZzPl_145yuow4';
-
 export async function onRequest(context: EventContext<Env, any, any>): Promise<Response> {
   const { env } = context;
 
-  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL || DEFAULT_URL;
-  const supabaseKey = (env as any).SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+  const supabaseUrl =
+    env?.SUPABASE_URL ||
+    env?.VITE_SUPABASE_URL ||
+    (typeof process !== 'undefined' ? process.env?.SUPABASE_URL || process.env?.VITE_SUPABASE_URL : undefined);
+  const supabaseKey =
+    (env as any)?.SUPABASE_SERVICE_ROLE_KEY ||
+    env?.SUPABASE_ANON_KEY ||
+    env?.VITE_SUPABASE_ANON_KEY ||
+    (typeof process !== 'undefined'
+      ? process.env?.SUPABASE_SERVICE_ROLE_KEY || process.env?.SUPABASE_ANON_KEY || process.env?.VITE_SUPABASE_ANON_KEY
+      : undefined);
+
+  if (!supabaseUrl || !supabaseKey) {
+    return new Response(
+      JSON.stringify({ error: 'Supabase URL or Key environment variables are missing' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 

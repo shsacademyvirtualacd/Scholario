@@ -35,9 +35,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-const DEFAULT_SUPABASE_URL = 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Z3J4amx5cmZ6b2p2aXJraGRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNTc3OTksImV4cCI6MjA5ODkzMzc5OX0.ggAT2JiBTg6VG5tbZNnjkig7F73JE0ZzPl_145yuow4';
-
 export async function onRequestOptions(): Promise<Response> {
   return new Response(null, {
     status: 204,
@@ -84,8 +81,22 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     env?.GEMINI_API_KEY ||
     (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
 
-  const supabaseUrl = env?.SUPABASE_URL || env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-  const supabaseKey = env?.SUPABASE_ANON_KEY || env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
+  const supabaseUrl =
+    env?.SUPABASE_URL ||
+    env?.VITE_SUPABASE_URL ||
+    (typeof process !== 'undefined' ? process.env?.SUPABASE_URL || process.env?.VITE_SUPABASE_URL : undefined);
+  const supabaseKey =
+    env?.SUPABASE_ANON_KEY ||
+    env?.VITE_SUPABASE_ANON_KEY ||
+    (typeof process !== 'undefined' ? process.env?.SUPABASE_ANON_KEY || process.env?.VITE_SUPABASE_ANON_KEY : undefined);
+
+  if (!supabaseUrl || !supabaseKey) {
+    return new Response(
+      JSON.stringify({ error: 'Supabase URL or Key environment variables are missing' }),
+      { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+    );
+  }
+
   const authHeader = request.headers.get('Authorization') || request.headers.get('authorization') || undefined;
   const supabase = createClient(supabaseUrl, supabaseKey, {
     global: {
