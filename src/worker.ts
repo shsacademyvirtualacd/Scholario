@@ -4,6 +4,7 @@ import { onRequestGet as dlHandler } from '../functions/api/notes/dl/[noteId]';
 import { onRequestDelete as delHandler } from '../functions/api/notes/del/[noteId]';
 import { onRequestGet as auditR2Handler } from '../functions/api/admin/audit-r2';
 import { onRequestPost as sageChatPostHandler, onRequestOptions as sageChatOptionsHandler } from '../functions/api/sage/chat';
+import { onRequestPost as sageTranscribePostHandler, onRequestOptions as sageTranscribeOptionsHandler } from '../functions/api/sage/transcribe';
 import { onRequestPost as testUploadHandler } from '../functions/api/tests/upload';
 import { onRequestPost as createTestHandler } from '../functions/api/admin/tests/create-test';
 import { onRequestGet as testViewHandler } from '../functions/api/tests/view/[testId]';
@@ -55,6 +56,34 @@ export default {
           } as any);
         } catch (err: any) {
           return new Response(JSON.stringify({ error: err.message || 'Internal Sage AI error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle Sage AI Audio Transcription Route
+    if (normalizedPath === '/api/sage/transcribe') {
+      if (request.method === 'OPTIONS') {
+        return await sageTranscribeOptionsHandler();
+      }
+      if (request.method === 'POST') {
+        try {
+          return await sageTranscribePostHandler({
+            request,
+            env,
+            params: {},
+            waitUntil: ctx.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+            next: () => Promise.resolve(new Response('')),
+            data: {}
+          } as any);
+        } catch (err: any) {
+          return new Response(JSON.stringify({ error: err.message || 'Audio transcription error' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
           });

@@ -24,12 +24,35 @@ import {
   Compass,
   Sparkles,
   Database,
+  Mic,
+  Play,
+  Pause,
+  Download,
+  FileDown,
+  Eye,
+  Loader2,
+  GraduationCap,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
 import { SageAvatar } from './SageAvatar';
 import { SageEmotion, SAGE_EMOTIONS, detectSageEmotion } from './sageEmotion';
 import { getLastPageContext, PageContextInfo } from '../../lib/pageContext';
+import {
+  SageVoiceRecorder,
+  AudioRecordingResult,
+  transcribeAudioWithGemini,
+} from '../../lib/sageVoiceRecorder';
+import {
+  generateSageContentPdf,
+  downloadSagePdf,
+  hasAcademicContent,
+  hasAnswerKeyOrSolutions,
+  detectPdfRequest,
+  extractAcademicMetadata,
+} from '../../lib/sagePdfGenerator';
 
 export interface ChatAttachment {
   key?: string;
@@ -40,6 +63,21 @@ export interface ChatAttachment {
   base64?: string;
 }
 
+export interface ChatAudioData {
+  blobUrl?: string;
+  durationSeconds: number;
+  transcript?: string;
+  mimeType?: string;
+}
+
+export interface ChatPdfCardData {
+  title: string;
+  subject: string;
+  className: string;
+  docType: string;
+  hasAnswers: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -47,6 +85,8 @@ export interface ChatMessage {
   timestamp: string;
   emotion?: SageEmotion;
   attachment?: ChatAttachment;
+  audio?: ChatAudioData;
+  pdfCard?: ChatPdfCardData;
 }
 
 interface SageChatViewProps {
@@ -104,7 +144,7 @@ const SageMarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
             </blockquote>
           ),
           table: ({ children }) => (
-            <div className="my-2.5 overflow-x-auto rounded-lg border border-[#E5E5E5]">
+            <div className="my-2.5 overflow-x-auto rounded-lg border border-[#E5E5E5] shadow-xs">
               <table className="w-full text-xs text-left border-collapse">{children}</table>
             </div>
           ),
@@ -159,6 +199,387 @@ const SageMarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
+// ── WhatsApp-Style Audio Message Player ──
+const VoiceMessageBubble: React.FC<{
+  audio: ChatAudioData;
+  isUser: boolean;
+}> = ({ audio, isUser }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!audio.blobUrl) return;
+    const el = new Audio(audio.blobUrl);
+    audioRef.current = el;
+
+    el.onended = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    el.ontimeupdate = () => {
+      setCurrentTime(el.currentTime);
+    };
+
+    return () => {
+      el.pause();
+      el.src = '';
+    };
+  }, [audio.blobUrl]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch((e) => {
+        console.warn('Audio play error:', e);
+      });
+    }
+  };
+
+  const handleSeek = (percentage: number) => {
+    if (!audioRef.current) return;
+    const target = percentage * (audio.durationSeconds || 1);
+    audioRef.current.currentTime = target;
+    setCurrentTime(target);
+  };
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const durationSecs = audio.durationSeconds || 1;
+  const progressRatio = Math.min(1, Math.max(0, currentTime / durationSecs));
+
+  // 18 equalizer bars for the WhatsApp waveform look
+  const barHeights = [45, 75, 30, 90, 60, 100, 40, 85, 55, 95, 35, 70, 50, 80, 40, 65, 35, 50];
+
+  return (
+    <div className="w-full max-w-[320px] sm:max-w-[360px]">
+      <div className="flex items-center gap-3 py-1">
+        {/* Play/Pause Button */}
+        <button
+          type="button"
+          onClick={togglePlay}
+          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-transform active:scale-95 ${
+            isUser
+              ? 'bg-[#F4C430] hover:bg-amber-400 text-[#111111]'
+              : 'bg-[#111111] hover:bg-black text-[#F4C430]'
+          }`}
+          title={isPlaying ? 'Pause' : 'Play voice message'}
+        >
+          {isPlaying ? <Pause size={18} className="fill-current" /> : <Play size={18} className="fill-current ml-0.5" />}
+        </button>
+
+        {/* Waveform Equalizer Visualizer */}
+        <div className="flex-1 min-w-0">
+          <div
+            className="flex items-center gap-[3px] h-8 cursor-pointer select-none py-1"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const clickX = e.clientX - rect.left;
+              const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+              handleSeek(ratio);
+            }}
+          >
+            {barHeights.map((h, i) => {
+              const barRatio = i / (barHeights.length - 1);
+              const isPlayed = barRatio <= progressRatio;
+              return (
+                <div
+                  key={i}
+                  className={`flex-1 rounded-full transition-colors ${
+                    isPlayed
+                      ? isUser
+                        ? 'bg-[#F4C430]'
+                        : 'bg-[#111111]'
+                      : isUser
+                      ? 'bg-white/30'
+                      : 'bg-zinc-300'
+                  }`}
+                  style={{ height: `${Math.max(15, h)}%` }}
+                />
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] tracking-tight mt-0.5">
+            <span className={isUser ? 'text-zinc-300' : 'text-zinc-500'}>
+              {isPlaying ? formatTime(currentTime) : formatTime(durationSecs)}
+            </span>
+            <span className={`flex items-center gap-1 font-medium ${isUser ? 'text-zinc-300' : 'text-zinc-500'}`}>
+              <Mic size={10} /> Voice Note
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Transcript Collapsible Toggle */}
+      {audio.transcript && (
+        <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10">
+          <button
+            type="button"
+            onClick={() => setShowTranscript((prev) => !prev)}
+            className={`flex items-center justify-between w-full text-[11px] font-semibold transition-colors ${
+              isUser ? 'text-zinc-200 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <span>{showTranscript ? 'Hide transcript' : 'View transcript'}</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/20 text-current uppercase tracking-wider font-bold">
+                Urdu / Eng
+              </span>
+            </span>
+            {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+
+          {showTranscript && (
+            <div
+              className={`mt-1.5 p-2.5 rounded-xl text-xs leading-relaxed ${
+                isUser
+                  ? 'bg-white/10 text-zinc-100 border border-white/15'
+                  : 'bg-zinc-100 text-zinc-800 border border-zinc-200'
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{audio.transcript}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Interactive PDF Card (When user asks directly or generated) ──
+const SagePdfCard: React.FC<{
+  title: string;
+  subject: string;
+  className: string;
+  hasAnswers: boolean;
+  onDownload: (mode: 'student' | 'teacher') => void;
+  onPreview: (mode: 'student' | 'teacher') => void;
+  isGenerating?: boolean;
+}> = ({ title, subject, className, hasAnswers, onDownload, onPreview, isGenerating }) => {
+  return (
+    <div className="my-3 p-4 bg-gradient-to-br from-amber-50/90 via-white to-zinc-50 border border-amber-200/90 rounded-2xl shadow-xs">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-700 border border-amber-300/50 flex items-center justify-center shrink-0">
+            <FileText size={22} className="text-amber-700" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                PDF Document Ready
+              </span>
+              <span className="text-[11px] text-zinc-500 font-medium">A4 Printable</span>
+            </div>
+            <h4 className="text-sm font-bold text-zinc-900 mt-1 leading-snug">{title}</h4>
+            <p className="text-xs text-zinc-600 mt-0.5">
+              {subject} • {className} • Scholario Verified
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-amber-200/60 flex flex-wrap items-center gap-2">
+        {hasAnswers ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onDownload('student')}
+              disabled={isGenerating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-50 text-xs font-semibold text-emerald-800 border border-emerald-300 shadow-2xs hover:border-emerald-400 transition-all disabled:opacity-50"
+              title="Download clean student test (solutions omitted)"
+            >
+              <GraduationCap size={14} className="text-emerald-600" />
+              <span>Student Copy (No Answers)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onDownload('teacher')}
+              disabled={isGenerating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50"
+              title="Download teacher copy with solutions & answer key"
+            >
+              <Download size={14} />
+              <span>Teacher Copy (With Answers)</span>
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onDownload('teacher')}
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50"
+          >
+            <Download size={14} />
+            <span>Download PDF</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => onPreview(hasAnswers ? 'student' : 'teacher')}
+          disabled={isGenerating}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-semibold text-zinc-700 transition-all disabled:opacity-50"
+        >
+          <Eye size={14} />
+          <span>Preview</span>
+        </button>
+
+        {isGenerating && (
+          <span className="flex items-center gap-1.5 text-xs text-amber-800 font-semibold animate-pulse ml-auto">
+            <Loader2 size={13} className="animate-spin" /> Generating PDF...
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── PDF Preview Modal ──
+const PdfPreviewModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  dataUrl?: string;
+  filename: string;
+  totalPages?: number;
+  loading?: boolean;
+  mode: 'student' | 'teacher';
+  hasAnswers: boolean;
+  onToggleMode: (newMode: 'student' | 'teacher') => void;
+  onDownload: () => void;
+}> = ({
+  isOpen,
+  onClose,
+  dataUrl,
+  filename,
+  totalPages = 1,
+  loading = false,
+  mode,
+  hasAnswers,
+  onToggleMode,
+  onDownload,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs animate-in fade-in">
+      <div className="bg-white rounded-3xl border border-zinc-200 shadow-2xl flex flex-col w-full max-w-4xl h-[92vh] overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-3.5 bg-gradient-to-r from-zinc-900 to-zinc-800 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-400 text-black flex items-center justify-center font-black text-xs shrink-0">
+              PDF
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold truncate max-w-[280px] sm:max-w-md">{filename}</h3>
+              <p className="text-[11px] text-zinc-400">
+                Scholario Sage v2.0 • A4 Document ({totalPages} {totalPages === 1 ? 'page' : 'pages'})
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {hasAnswers && (
+              <div className="hidden sm:flex items-center bg-zinc-800 p-0.5 rounded-xl border border-zinc-700 text-xs">
+                <button
+                  type="button"
+                  onClick={() => onToggleMode('student')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                    mode === 'student' ? 'bg-emerald-600 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Student Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onToggleMode('teacher')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                    mode === 'teacher' ? 'bg-amber-500 text-black shadow-xs' : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Teacher Copy
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={onDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4C430] hover:bg-amber-400 text-black text-xs font-bold transition-colors"
+            >
+              <Download size={14} />
+              <span>Download</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+              title="Close Preview"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Mode Selector for Mobile */}
+        {hasAnswers && (
+          <div className="sm:hidden px-4 py-2 bg-zinc-100 border-b border-zinc-200 flex items-center justify-between text-xs">
+            <span className="font-semibold text-zinc-600">Edition:</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onToggleMode('student')}
+                className={`px-2.5 py-1 rounded-lg font-bold ${
+                  mode === 'student' ? 'bg-emerald-600 text-white' : 'bg-white text-zinc-700'
+                }`}
+              >
+                Student
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleMode('teacher')}
+                className={`px-2.5 py-1 rounded-lg font-bold ${
+                  mode === 'teacher' ? 'bg-amber-500 text-black' : 'bg-white text-zinc-700'
+                }`}
+              >
+                Teacher
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Document Viewer Frame */}
+        <div className="flex-1 bg-zinc-200 overflow-auto flex items-center justify-center p-3 sm:p-6 relative">
+          {loading ? (
+            <div className="flex flex-col items-center gap-2 text-zinc-600">
+              <Loader2 size={32} className="animate-spin text-amber-500" />
+              <span className="text-xs font-semibold">Generating publication-quality A4 PDF...</span>
+            </div>
+          ) : dataUrl ? (
+            <iframe
+              src={dataUrl}
+              title="PDF Preview"
+              className="w-full h-full bg-white rounded-xl shadow-lg border border-zinc-300"
+            />
+          ) : (
+            <div className="text-xs text-zinc-500">Preview not available</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: string; text: string; icon: any; tone?: string }>> = {
   student: [
     {
@@ -188,6 +609,18 @@ const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: st
   ],
   teacher: [
     {
+      label: 'Biology Chapter 3 Quiz (PDF)',
+      text: 'Create a 5-question MCQ quiz on Biology Chapter 3 for Grade 9 with answer key and make this a PDF.',
+      icon: FileQuestion,
+      tone: 'neutral',
+    },
+    {
+      label: 'Genetics Worksheet (Tt × Tt)',
+      text: 'Generate a Grade 10 Genetics worksheet on Mendel monohybrid cross (Tt × Tt) with Punnett square table and export as PDF.',
+      icon: Lightbulb,
+      tone: 'neutral',
+    },
+    {
       label: 'Praise Top Performers',
       text: 'Draft a warm congratulatory note for Class 10 students who scored above 90% in the recent Biology assessment!',
       icon: Smile,
@@ -198,18 +631,6 @@ const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: st
       text: 'Draft an urgent reminder notice for students with unexcused absences and attendance below 75% before board exam cutoff.',
       icon: AlertTriangle,
       tone: 'concerned',
-    },
-    {
-      label: 'Generate Quiz Questions',
-      text: 'Create 5 conceptual Multiple Choice Questions (MCQs) with answer keys for Class 10 Biology Genetics.',
-      icon: FileQuestion,
-      tone: 'neutral',
-    },
-    {
-      label: 'Lesson Plan Outline',
-      text: 'Draft a 45-minute lesson plan outline for teaching Calculus Differentiation basics to 12th graders.',
-      icon: Lightbulb,
-      tone: 'neutral',
     },
   ],
   admin: [
@@ -257,7 +678,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         role: 'assistant',
         content:
           role === 'teacher'
-            ? `Hello **${profile?.full_name || 'Professor'}**! I am **Sage**, your AI academic assistant. How can I assist you with lesson planning, quiz questions, syllabus breakdowns, or announcements today?`
+            ? `Hello **${profile?.full_name || 'Professor'}**! I am **Sage**, your faculty assistant. Ask me for lesson preparation, quiz questions, syllabus breakdowns, voice notes, or export quizzes and notes directly into formatted printable PDFs!`
             : role === 'admin'
             ? `Greetings **${profile?.full_name || 'Administrator'}**! I am **Sage**, your administrative AI assistant with real-time live database access. Ask me about live student counts, board/grade distributions, faculty rosters, active offerings, test submissions, fee configurations, or drafting academic notices!`
             : `Assalam-o-Alaikum **${profile?.full_name || 'Student'}**! 🌟 I'm **Sage**, your AI study companion for SHS Virtual Academy. Ask me anything about your FBISE subjects (Math, Physics, Chemistry, Biology, CS, English, Urdu, etc.), formula derivations, or note summaries!`,
@@ -284,10 +705,44 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     isUploading?: boolean;
   } | null>(null);
   const [isSyncingNotes, setIsSyncingNotes] = useState(false);
+
+  // ── Voice Recording State ──
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingElapsedMs, setRecordingElapsedMs] = useState(0);
+  const [recordingLevel, setRecordingLevel] = useState(0);
+  const [audioPreviewResult, setAudioPreviewResult] = useState<AudioRecordingResult | null>(null);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const [previewTime, setPreviewTime] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
+  // ── PDF Generation & Preview State ──
+  const [generatingPdfMsgId, setGeneratingPdfMsgId] = useState<string | null>(null);
+  const [pdfMenuMsgId, setPdfMenuMsgId] = useState<string | null>(null);
+  const [pdfPreviewModal, setPdfPreviewModal] = useState<{
+    isOpen: boolean;
+    rawContent: string;
+    filename: string;
+    totalPages: number;
+    dataUrl?: string;
+    loading?: boolean;
+    mode: 'student' | 'teacher';
+    hasAnswers: boolean;
+  }>({
+    isOpen: false,
+    rawContent: '',
+    filename: '',
+    totalPages: 1,
+    mode: 'teacher',
+    hasAnswers: false,
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const voiceRecorderRef = useRef<SageVoiceRecorder | null>(null);
+  const previewAudioElRef = useRef<HTMLAudioElement | null>(null);
 
   // Sync to session storage
   useEffect(() => {
@@ -301,6 +756,45 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       setActivePageContext(ctx);
     }
   }, []);
+
+  // Cleanup voice preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPreviewUrl) {
+        URL.revokeObjectURL(audioPreviewUrl);
+      }
+    };
+  }, [audioPreviewUrl]);
+
+  // Handle preview audio element events
+  useEffect(() => {
+    if (!audioPreviewUrl) {
+      if (previewAudioElRef.current) {
+        previewAudioElRef.current.pause();
+        previewAudioElRef.current = null;
+      }
+      setPreviewPlaying(false);
+      setPreviewTime(0);
+      return;
+    }
+
+    const audio = new Audio(audioPreviewUrl);
+    previewAudioElRef.current = audio;
+
+    audio.onended = () => {
+      setPreviewPlaying(false);
+      setPreviewTime(0);
+    };
+
+    audio.ontimeupdate = () => {
+      setPreviewTime(audio.currentTime);
+    };
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+    };
+  }, [audioPreviewUrl]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -399,7 +893,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isTranscribing]);
 
   // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -450,9 +944,197 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     toast.info('Generation stopped');
   };
 
-  const handleSend = async (userText?: string) => {
-    const textToSend = (userText || input).trim();
-    if ((!textToSend && !pendingAttachment) || isLoading) return;
+  // ── Voice Message Handling ──
+  const startVoiceRecording = async () => {
+    try {
+      const recorder = new SageVoiceRecorder();
+      voiceRecorderRef.current = recorder;
+
+      setRecordingElapsedMs(0);
+      setRecordingLevel(0);
+      setIsRecording(true);
+
+      await recorder.startRecording({
+        onTimeUpdate: (elapsed) => {
+          setRecordingElapsedMs(elapsed);
+        },
+        onLevelUpdate: (level) => {
+          setRecordingLevel(level);
+        },
+        onMaxDurationReached: () => {
+          toast.info('2-minute maximum recording limit reached.');
+          stopVoiceRecordingToPreview();
+        },
+      });
+    } catch (err: any) {
+      console.error('Microphone recording error:', err);
+      setIsRecording(false);
+      voiceRecorderRef.current = null;
+      toast.error(err.message || 'Microphone access was denied. Please allow microphone permission in your browser address bar.');
+    }
+  };
+
+  const cancelVoiceRecording = () => {
+    if (voiceRecorderRef.current) {
+      voiceRecorderRef.current.cancelRecording();
+      voiceRecorderRef.current = null;
+    }
+    setIsRecording(false);
+    setRecordingElapsedMs(0);
+    setRecordingLevel(0);
+    if (audioPreviewUrl) {
+      URL.revokeObjectURL(audioPreviewUrl);
+      setAudioPreviewUrl(null);
+    }
+    setAudioPreviewResult(null);
+  };
+
+  const stopVoiceRecordingToPreview = async () => {
+    if (!voiceRecorderRef.current) return;
+    try {
+      const result = await voiceRecorderRef.current.stopRecording();
+      voiceRecorderRef.current = null;
+      setIsRecording(false);
+
+      const url = URL.createObjectURL(result.blob);
+      setAudioPreviewResult(result);
+      setAudioPreviewUrl(url);
+    } catch (err: any) {
+      console.error('Stop recording error:', err);
+      setIsRecording(false);
+      voiceRecorderRef.current = null;
+      toast.error(err.message || "I couldn't hear anything, please try again.");
+    }
+  };
+
+  const sendVoiceRecording = async () => {
+    let result = audioPreviewResult;
+
+    if (!result && voiceRecorderRef.current) {
+      try {
+        result = await voiceRecorderRef.current.stopRecording();
+        voiceRecorderRef.current = null;
+        setIsRecording(false);
+      } catch (err: any) {
+        setIsRecording(false);
+        voiceRecorderRef.current = null;
+        toast.error(err.message || "I couldn't hear anything, please try again.");
+        return;
+      }
+    }
+
+    if (!result) return;
+
+    // Discard preview state
+    const url = audioPreviewUrl || URL.createObjectURL(result.blob);
+    setAudioPreviewResult(null);
+    setAudioPreviewUrl(null);
+
+    setIsTranscribing(true);
+
+    try {
+      const transcript = await transcribeAudioWithGemini(
+        result.base64,
+        result.mimeType,
+        session?.access_token
+      );
+
+      const cleanTranscript = (transcript || '').trim();
+      if (!cleanTranscript) {
+        toast.error("I couldn't hear anything, please try again.");
+        return;
+      }
+
+      // Execute chat send with audio metadata attached to the user message
+      await handleSend(cleanTranscript, {
+        blobUrl: url,
+        durationSeconds: result.durationSeconds,
+        transcript: cleanTranscript,
+        mimeType: result.mimeType,
+      });
+    } catch (transcribeErr: any) {
+      console.error('Voice transcription error:', transcribeErr);
+      toast.error(transcribeErr.message || "I couldn't hear anything, please try again.");
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  // ── PDF Generation Helpers ──
+  const handleDownloadPdf = async (rawContent: string, mode: 'student' | 'teacher' = 'teacher', msgId?: string) => {
+    if (msgId) setGeneratingPdfMsgId(msgId);
+    try {
+      const filename = await downloadSagePdf(rawContent, {
+        teacherName: profile?.full_name || 'Faculty Mentor',
+        mode,
+      });
+      toast.success(`Downloaded: ${filename}`);
+      setPdfMenuMsgId(null);
+    } catch (err: any) {
+      console.error('PDF generation error:', err);
+      toast.error('Failed to generate PDF. Please try again.');
+    } finally {
+      if (msgId) setGeneratingPdfMsgId(null);
+    }
+  };
+
+  const handleOpenPdfPreview = async (rawContent: string, initialMode: 'student' | 'teacher' = 'teacher') => {
+    const hasAnswers = hasAnswerKeyOrSolutions(rawContent);
+    const meta = extractAcademicMetadata(rawContent, profile?.full_name);
+    const filename = `${meta.subject || 'Scholario'}_${meta.className || 'Academic'}_${initialMode === 'student' ? 'Student' : 'Teacher'}.pdf`;
+
+    setPdfPreviewModal({
+      isOpen: true,
+      rawContent,
+      filename,
+      totalPages: 1,
+      mode: initialMode,
+      hasAnswers,
+      loading: true,
+    });
+
+    try {
+      const result = await generateSageContentPdf(rawContent, {
+        teacherName: profile?.full_name || 'Faculty Mentor',
+        mode: initialMode,
+      });
+      setPdfPreviewModal((prev) => ({
+        ...prev,
+        filename: result.filename,
+        dataUrl: result.dataUrl,
+        totalPages: result.totalPages,
+        loading: false,
+      }));
+    } catch (err) {
+      console.error('PDF preview error:', err);
+      toast.error('Could not generate PDF preview.');
+      setPdfPreviewModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleTogglePreviewMode = async (newMode: 'student' | 'teacher') => {
+    setPdfPreviewModal((prev) => ({ ...prev, mode: newMode, loading: true }));
+    try {
+      const result = await generateSageContentPdf(pdfPreviewModal.rawContent, {
+        teacherName: profile?.full_name || 'Faculty Mentor',
+        mode: newMode,
+      });
+      setPdfPreviewModal((prev) => ({
+        ...prev,
+        filename: result.filename,
+        dataUrl: result.dataUrl,
+        totalPages: result.totalPages,
+        loading: false,
+      }));
+    } catch {
+      setPdfPreviewModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  // ── Main Chat Send Handler ──
+  const handleSend = async (userText?: string, voiceAudio?: ChatAudioData) => {
+    const textToSend = (userText !== undefined ? userText : input).trim();
+    if ((!textToSend && !pendingAttachment && !voiceAudio) || isLoading) return;
 
     setErrorMsg(null);
     const currentAtt = pendingAttachment
@@ -472,7 +1154,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       content: textToSend || (currentAtt ? `Please analyze this attached file: ${currentAtt.filename}` : ''),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       attachment: currentAtt,
+      audio: voiceAudio,
     };
+
+    const isPdfQuery = detectPdfRequest(textToSend);
 
     const assistantMsgId = `sage-${Date.now() + 1}`;
     const placeholderAssistantMsg: ChatMessage = {
@@ -496,7 +1181,6 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     abortControllerRef.current = abortController;
 
     try {
-      // Build API payload for streaming AI assistant route
       const payloadMessages = newHistory.map((m) => ({
         role: m.role,
         content: m.content,
@@ -572,7 +1256,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             }
           } catch (parseErr: any) {
             if (parseErr.message && !dataStr.includes('{')) {
-              // Non-JSON or incomplete line ignored
+              // Ignore incomplete lines
             } else if (parseErr.message) {
               throw parseErr;
             }
@@ -580,15 +1264,25 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         }
       }
 
-      // If finished and no text received, provide a fallback message
-      if (!accumulatedText.trim()) {
+      // Check if finished response should attach PDF card
+      const finalContent = accumulatedText.trim();
+      const hasAcademic = hasAcademicContent(finalContent);
+      const shouldCard = isPdfQuery || hasAcademic;
+
+      if (shouldCard) {
+        const meta = extractAcademicMetadata(finalContent, profile?.full_name);
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMsgId
               ? {
                   ...msg,
-                  content:
-                    'I am ready to assist with your FBISE curriculum questions. Please try sending your prompt again.',
+                  pdfCard: {
+                    title: meta.topic || 'Academic Resource',
+                    subject: meta.subject || 'Scholario',
+                    className: meta.className || 'Grade 9-12',
+                    docType: meta.docType || 'general',
+                    hasAnswers: hasAnswerKeyOrSolutions(finalContent),
+                  },
                 }
               : msg
           )
@@ -602,7 +1296,6 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       console.error('[Sage Chat Frontend Error]:', err);
       setErrorMsg(err.message || 'Unable to connect to Sage. Please try again.');
       toast.error('Failed to get response from Sage');
-      // Clean up empty placeholder if failed at beginning
       setMessages((prev) =>
         prev.filter((msg) => msg.id !== assistantMsgId || msg.content.trim().length > 0)
       );
@@ -621,6 +1314,14 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   };
 
   const starters = STARTER_PROMPTS[role];
+
+  // Helper formatting for live timer
+  const formatTimer = (ms: number) => {
+    const totalSecs = Math.floor(ms / 1000);
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   return (
     <div
@@ -683,7 +1384,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Interactive Mood Mode Selector */}
+          {/* Interactive Mood Selector */}
           <div className="hidden md:flex items-center gap-1 bg-[#1C1C1E] p-1 rounded-xl border border-[#2B2B2B]">
             {(['idle', 'thinking', 'positive', 'neutral', 'concerned'] as SageEmotion[]).map((emo) => {
               const eMeta = SAGE_EMOTIONS[emo];
@@ -707,7 +1408,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             })}
           </div>
 
-          {/* Knowledge Base & Note Vault RAG Indicator */}
+          {/* RAG Vault Badge */}
           <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#1C1C1E] border border-[#2B2B2B] text-[11px] text-[#A3A3A3]">
             <Database size={12} className="text-[#38BDF8]" />
             <span className="font-semibold text-white">RAG Note Vault</span>
@@ -739,7 +1440,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         </div>
       </div>
 
-      {/* ── Page-Aware Context Bar ── */}
+      {/* ── Page Context Bar ── */}
       {activePageContext && (
         <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 sm:px-6 py-2 flex items-center justify-between text-xs text-amber-900 transition-all shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -777,12 +1478,15 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             ? 'thinking'
             : msg.emotion || detectSageEmotion(msg.content, false, role);
 
+          const isAcademic = !isUser && hasAcademicContent(msg.content);
+          const hasAnswers = !isUser && hasAnswerKeyOrSolutions(msg.content);
+
           return (
             <div
               key={msg.id}
               className={`flex gap-3 max-w-3xl ${isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
             >
-              {/* Avatar: Animated Sage Avatar or User Icon */}
+              {/* Avatar */}
               {isUser ? (
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold bg-[#111111] text-white shadow-xs">
                   <User size={16} />
@@ -796,8 +1500,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                 />
               )}
 
-              {/* Message Bubble */}
-              <div className="space-y-1 min-w-0 max-w-[85%] sm:max-w-[78%]">
+              {/* Message Bubble Container */}
+              <div className="space-y-1.5 min-w-0 max-w-[88%] sm:max-w-[80%]">
                 <div
                   className={`p-4 rounded-2xl shadow-xs transition-all ${
                     isUser
@@ -805,7 +1509,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       : 'bg-white text-[#262626] border border-[#E5E5E5] rounded-tl-xs'
                   }`}
                 >
-                  {/* Attachment preview in message bubble */}
+                  {/* File Attachment preview */}
                   {msg.attachment && (
                     <div
                       className={`mb-2.5 p-2 rounded-xl border flex items-center gap-2.5 text-left ${
@@ -842,7 +1546,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                     </div>
                   )}
 
-                  {isUser ? (
+                  {/* Audio Message Voice Bubble */}
+                  {msg.audio ? (
+                    <VoiceMessageBubble audio={msg.audio} isUser={isUser} />
+                  ) : isUser ? (
                     <p className="text-[14px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   ) : isPendingFirstToken ? (
                     <div className="flex items-center gap-2 py-0.5 text-xs text-[#737373] font-medium">
@@ -875,9 +1582,22 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                   )}
                 </div>
 
-                {/* Footer info: time, tone indicator & copy */}
+                {/* Inline PDF Card if attached or requested */}
+                {msg.pdfCard && !isCurrentStreaming && (
+                  <SagePdfCard
+                    title={msg.pdfCard.title}
+                    subject={msg.pdfCard.subject}
+                    className={msg.pdfCard.className}
+                    hasAnswers={msg.pdfCard.hasAnswers}
+                    isGenerating={generatingPdfMsgId === msg.id}
+                    onDownload={(m) => handleDownloadPdf(msg.content, m, msg.id)}
+                    onPreview={(m) => handleOpenPdfPreview(msg.content, m)}
+                  />
+                )}
+
+                {/* Footer info: time, tone indicator, copy & Download PDF */}
                 <div
-                  className={`flex items-center gap-2 px-1 text-[11px] text-[#A3A3A3] ${
+                  className={`flex flex-wrap items-center gap-2 px-1 text-[11px] text-[#A3A3A3] ${
                     isUser ? 'justify-end' : 'justify-start'
                   }`}
                 >
@@ -887,9 +1607,11 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       <span className="text-[10px] font-semibold text-[#888888] flex items-center gap-1">
                         • {SAGE_EMOTIONS[msgEmotion]?.badgeLabel}
                       </span>
+
+                      {/* Copy Button */}
                       <button
                         onClick={() => handleCopy(msg.id, msg.content)}
-                        className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1"
+                        className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1 text-zinc-500 hover:text-zinc-900"
                         title="Copy response"
                       >
                         {copiedId === msg.id ? (
@@ -899,8 +1621,76 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                         )}
                         <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                       </button>
+
+                      {/* Download PDF Button */}
+                      {isAcademic && (
+                        <div className="relative inline-block ml-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (hasAnswers) {
+                                setPdfMenuMsgId(pdfMenuMsgId === msg.id ? null : msg.id);
+                              } else {
+                                handleDownloadPdf(msg.content, 'teacher', msg.id);
+                              }
+                            }}
+                            disabled={generatingPdfMsgId === msg.id}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100/70 hover:bg-amber-200/90 text-amber-950 font-semibold text-[11px] border border-amber-300/80 transition-colors disabled:opacity-50"
+                            title="Export this content to a formatted PDF document"
+                          >
+                            {generatingPdfMsgId === msg.id ? (
+                              <Loader2 size={11} className="animate-spin text-amber-700" />
+                            ) : (
+                              <FileDown size={11} className="text-amber-800" />
+                            )}
+                            <span>Download PDF</span>
+                            {hasAnswers && <ChevronDown size={10} />}
+                          </button>
+
+                          {/* Dual Export Dropdown Menu (Student vs Teacher Copy) */}
+                          {pdfMenuMsgId === msg.id && (
+                            <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-zinc-200 p-1.5 z-30 text-left animate-in fade-in slide-in-from-top-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadPdf(msg.content, 'student', msg.id)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-800 hover:bg-emerald-50 transition-colors"
+                              >
+                                <GraduationCap size={14} className="text-emerald-600" />
+                                <div className="text-left">
+                                  <div>Student Copy</div>
+                                  <div className="text-[10px] text-zinc-500 font-normal">Questions only, no answers</div>
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadPdf(msg.content, 'teacher', msg.id)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-900 hover:bg-zinc-100 transition-colors"
+                              >
+                                <Download size={14} className="text-amber-600" />
+                                <div className="text-left">
+                                  <div>Teacher Copy</div>
+                                  <div className="text-[10px] text-zinc-500 font-normal">Full with solutions & marking key</div>
+                                </div>
+                              </button>
+                              <div className="my-1 border-t border-zinc-100" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPdfMenuMsgId(null);
+                                  handleOpenPdfPreview(msg.content, 'student');
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-600 hover:bg-zinc-100 transition-colors"
+                              >
+                                <Eye size={13} />
+                                <span>Preview Document</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
+
                   {isCurrentStreaming && (
                     <span className="text-[10px] text-[#8B5CF6] font-bold tracking-wider uppercase ml-1 animate-pulse flex items-center gap-1">
                       <Brain size={11} className="animate-spin" /> Thinking...
@@ -911,6 +1701,17 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             </div>
           );
         })}
+
+        {/* Transcribing Audio Indicator */}
+        {isTranscribing && (
+          <div className="p-3.5 bg-gradient-to-r from-purple-50 to-amber-50 border border-purple-200 rounded-2xl text-xs text-purple-900 flex items-center gap-3 animate-pulse">
+            <Loader2 size={16} className="animate-spin text-purple-600" />
+            <div>
+              <p className="font-bold">Transcribing voice message with Gemini AI...</p>
+              <p className="text-[11px] text-purple-700">Converting English / Urdu speech to text</p>
+            </div>
+          </div>
+        )}
 
         {/* Error message */}
         {errorMsg && (
@@ -936,7 +1737,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               <Lightbulb size={12} className="text-[#F4C430]" /> Suggested Questions & Interactions
             </div>
             <span className="text-[10px] text-[#A3A3A3] hidden sm:inline">
-              Try different prompts to see Sage react with dynamic expressions
+              Try voice recording or PDF export directly from these prompts
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -965,7 +1766,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                         : 'text-[#F4C430]'
                     }`}
                   />
-                  <span className="font-semibold truncate max-w-[240px]">{item.label}</span>
+                  <span className="font-semibold truncate max-w-[260px]">{item.label}</span>
                 </button>
               );
             })}
@@ -976,7 +1777,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       {/* ── Input Box & Controls ── */}
       <div className="p-4 sm:p-5 bg-white border-t border-[#E5E5E5] shrink-0">
         {/* Pending Attachment Preview */}
-        {pendingAttachment && (
+        {pendingAttachment && !isRecording && (
           <div className="mb-2.5 p-2.5 bg-[#F4F4F5] border border-[#E4E4E7] rounded-xl flex items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5 min-w-0">
               {pendingAttachment.previewUrl ? (
@@ -1014,82 +1815,235 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           </div>
         )}
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-          className="relative flex items-end gap-2 bg-[#F9F9F9] border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white rounded-2xl p-2 transition-all shadow-inner"
-        >
-          {/* File input and attach button */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept="image/*,application/pdf,.txt,.doc,.docx"
-            className="hidden"
-            id="sage-file-upload-input"
-          />
-          <button
-            type="button"
-            id="sage-attach-btn"
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2.5 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#EAEAEA] transition-colors shrink-0 interactive"
-            title="Attach image or document (diagrams, exam papers, textbook problems)"
+        {/* ── Active Voice Recording Bar (When Recording) ── */}
+        {isRecording ? (
+          <div className="flex items-center justify-between gap-3 bg-red-50/90 border-2 border-red-500/80 rounded-2xl p-2.5 sm:px-4 shadow-sm animate-in fade-in duration-200">
+            {/* Left: Red Pulsing Dot & Live Timer */}
+            <div className="flex items-center gap-2.5 min-w-[90px]">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
+              </span>
+              <span className="font-mono text-sm font-black text-red-700">
+                {formatTimer(recordingElapsedMs)}
+              </span>
+            </div>
+
+            {/* Center: Soundwave Level Bars */}
+            <div className="flex-1 flex items-center justify-center gap-[3px] h-7 px-2 overflow-hidden max-w-[280px]">
+              {[35, 65, 90, 45, 100, 80, 50, 75, 40, 95, 60, 85, 50, 70].map((baseH, idx) => {
+                const dynamicH = Math.max(18, Math.min(100, baseH * (0.4 + recordingLevel * 0.9)));
+                return (
+                  <div
+                    key={idx}
+                    className="w-1 rounded-full bg-red-500 transition-all duration-75"
+                    style={{ height: `${dynamicH}%` }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Right: Cancel, Stop to Preview, and Send Buttons */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={cancelVoiceRecording}
+                className="p-2.5 rounded-xl text-zinc-500 hover:text-red-700 hover:bg-red-100 transition-colors"
+                title="Cancel voice recording"
+              >
+                <Trash2 size={18} />
+              </button>
+
+              <button
+                type="button"
+                onClick={stopVoiceRecordingToPreview}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-200 hover:bg-zinc-300 text-zinc-800 text-xs font-bold transition-colors"
+                title="Stop and preview voice message before sending"
+              >
+                <Square size={13} className="fill-current text-zinc-700" />
+                <span className="hidden sm:inline">Preview</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={sendVoiceRecording}
+                className="p-2.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 transition-all"
+                title="Send voice note"
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        ) : audioPreviewResult && audioPreviewUrl ? (
+          /* ── Voice Note Preview Bar (After Recording, Before Sending) ── */
+          <div className="flex items-center justify-between gap-3 bg-zinc-50 border border-zinc-300 rounded-2xl p-2.5 sm:px-4 shadow-sm animate-in fade-in">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!previewAudioElRef.current) return;
+                  if (previewPlaying) {
+                    previewAudioElRef.current.pause();
+                    setPreviewPlaying(false);
+                  } else {
+                    previewAudioElRef.current.play().then(() => setPreviewPlaying(true));
+                  }
+                }}
+                className="w-9 h-9 rounded-full bg-[#111111] text-[#F4C430] flex items-center justify-center shrink-0 shadow-xs hover:scale-105 transition-all"
+                title={previewPlaying ? 'Pause' : 'Play recording preview'}
+              >
+                {previewPlaying ? <Pause size={16} className="fill-current" /> : <Play size={16} className="fill-current ml-0.5" />}
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between text-xs font-semibold text-zinc-800 mb-1">
+                  <span>Voice Note Preview</span>
+                  <span className="font-mono text-[11px] text-zinc-500">
+                    {formatTimer(previewPlaying ? previewTime * 1000 : audioPreviewResult.durationSeconds * 1000)}
+                  </span>
+                </div>
+                <div className="w-full bg-zinc-200 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-[#F4C430] h-full transition-all"
+                    style={{
+                      width: `${Math.min(100, (previewTime / (audioPreviewResult.durationSeconds || 1)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+              <button
+                type="button"
+                onClick={cancelVoiceRecording}
+                className="p-2 rounded-xl text-zinc-500 hover:text-red-700 hover:bg-zinc-200 transition-colors"
+                title="Discard recording"
+              >
+                <Trash2 size={17} />
+              </button>
+
+              <button
+                type="button"
+                onClick={startVoiceRecording}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-200 hover:bg-zinc-300 text-xs font-semibold text-zinc-700 transition-colors"
+                title="Re-record voice note"
+              >
+                <RotateCcw size={12} />
+                <span>Re-record</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={sendVoiceRecording}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-bold shadow-md hover:scale-105 transition-all"
+                title="Transcribe & Send"
+              >
+                <span>Send</span>
+                <Send size={13} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ── Standard Text Form with Mic Button ── */
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="relative flex items-end gap-2 bg-[#F9F9F9] border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white rounded-2xl p-2 transition-all shadow-inner"
           >
-            <Paperclip size={18} />
-          </button>
-
-          <textarea
-            ref={textareaRef}
-            id="sage-chat-input"
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              role === 'student'
-                ? 'Ask Sage any subject question, formula derivation, or study tip... (Press Enter to send)'
-                : role === 'teacher'
-                ? 'Ask Sage for lesson preparation, quiz questions, or explanations... (Press Enter to send)'
-                : 'Ask Sage for announcement drafts, policy summaries, or schedules... (Press Enter to send)'
-            }
-            rows={1}
-            disabled={isLoading}
-            className="w-full resize-none bg-transparent px-1.5 py-2 text-sm text-[#111111] placeholder:text-[#A3A3A3] focus:outline-none max-h-36 font-normal leading-relaxed"
-          />
-
-          {isLoading ? (
+            {/* File input and attach button */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/*,application/pdf,.txt,.doc,.docx"
+              className="hidden"
+              id="sage-file-upload-input"
+            />
             <button
               type="button"
-              id="sage-chat-stop-btn"
-              onClick={handleStop}
-              className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-md hover:scale-105 interactive transition-all"
-              title="Stop Generating"
+              id="sage-attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#EAEAEA] transition-colors shrink-0 interactive"
+              title="Attach image or document (diagrams, exam papers, textbook problems)"
             >
-              <Square size={16} className="fill-current" />
+              <Paperclip size={18} />
             </button>
-          ) : (
-            <button
-              type="submit"
-              id="sage-chat-send-btn"
-              disabled={!input.trim() && !pendingAttachment}
-              className={`p-3 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                input.trim() || pendingAttachment
-                  ? 'bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive'
-                  : 'bg-[#E5E5E5] text-[#A3A3A3] cursor-not-allowed'
-              }`}
-              title="Send Message"
-            >
-              <Send size={16} />
-            </button>
-          )}
-        </form>
+
+            <textarea
+              ref={textareaRef}
+              id="sage-chat-input"
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                role === 'student'
+                  ? 'Ask Sage any subject question, formula derivation, or study tip... (Press Enter to send)'
+                  : role === 'teacher'
+                  ? 'Ask Sage for lesson preparation, quiz questions, or explanations... (Press Enter to send)'
+                  : 'Ask Sage for announcement drafts, policy summaries, or schedules... (Press Enter to send)'
+              }
+              rows={1}
+              disabled={isLoading}
+              className="w-full resize-none bg-transparent px-1.5 py-2 text-sm text-[#111111] placeholder:text-[#A3A3A3] focus:outline-none max-h-36 font-normal leading-relaxed"
+            />
+
+            {isLoading ? (
+              <button
+                type="button"
+                id="sage-chat-stop-btn"
+                onClick={handleStop}
+                className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-md hover:scale-105 interactive transition-all"
+                title="Stop Generating"
+              >
+                <Square size={16} className="fill-current" />
+              </button>
+            ) : !input.trim() && !pendingAttachment ? (
+              /* When input is empty, show the WhatsApp-style Mic button */
+              <button
+                type="button"
+                id="sage-chat-mic-btn"
+                onClick={startVoiceRecording}
+                className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive transition-all cursor-pointer"
+                title="Record voice message (WhatsApp style - tap to record)"
+              >
+                <Mic size={17} />
+              </button>
+            ) : (
+              /* When typing or attached, show Send button */
+              <button
+                type="submit"
+                id="sage-chat-send-btn"
+                className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive transition-all cursor-pointer"
+                title="Send Message"
+              >
+                <Send size={16} />
+              </button>
+            )}
+          </form>
+        )}
 
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3]">
-          <span>Shift + Enter for new line • Enter to send</span>
+          <span>Shift + Enter for new line • Enter to send • Mic for voice note</span>
           <span className="text-[#737373] font-medium">Scholario Sage v2.0 (AI Assistant + RAG)</span>
         </div>
       </div>
+
+      {/* ── PDF Preview Modal ── */}
+      <PdfPreviewModal
+        isOpen={pdfPreviewModal.isOpen}
+        onClose={() => setPdfPreviewModal((prev) => ({ ...prev, isOpen: false }))}
+        dataUrl={pdfPreviewModal.dataUrl}
+        filename={pdfPreviewModal.filename}
+        totalPages={pdfPreviewModal.totalPages}
+        loading={pdfPreviewModal.loading}
+        mode={pdfPreviewModal.mode}
+        hasAnswers={pdfPreviewModal.hasAnswers}
+        onToggleMode={handleTogglePreviewMode}
+        onDownload={() => handleDownloadPdf(pdfPreviewModal.rawContent, pdfPreviewModal.mode)}
+      />
     </div>
   );
 };

@@ -436,10 +436,14 @@ ${ragContextPrompt}
 Key Guidelines:
 1. **Be Concise & Direct by Default**: Keep answers short, direct, and to the point (typically 1-3 focused paragraphs or bullet points). Avoid conversational fluff or unnecessary preambles.
 2. **Detailed Drafts on Request Only**: Provide comprehensive documents, full essay-length breakdowns, or complete circular notices ONLY when the user explicitly requests a "full draft", "complete notice", "complete document", "in-depth explanation", or similar.
-3. **Format with Markdown & LaTeX Math**: Use standard Markdown (headings, bold, lists, tables). For all mathematical or scientific formulas, write standard LaTeX syntax using inline \`$formula$\` (e.g. \`$E = mc^2$\`, \`$v = u + at$\`, \`$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$\`) or block \`$$equation$$\`.
-4. **Multimodal Analysis**: When the user provides an image or PDF attachment, thoroughly inspect formulas, diagrams, handwritten workings, or document text, and ground your response directly in the attachment content.
-5. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
-6. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
+3. **Format with Clean Markdown & Selective LaTeX Math**:
+   - Use standard Markdown with proper spacing (e.g. "**Q1.** What is..." with a space after bolding, NEVER unescaped or malformed raw tags).
+   - ONLY wrap genuine mathematical or scientific formulas with "$formula$" or "$$equation$$" (e.g. "$E = mc^2$", "$v = u + at$").
+   - NEVER wrap plain alphanumeric genetics notation (e.g. Tt, TT, tt, F1, F2), percentages (e.g. 0%, 25%, 50%, 75%, 100%), ratios (3:1, 9:3:3:1), or option letters (A, B, C, D) inside math delimiters. Keep them as normal text so they render in standard readable font.
+4. **Complete Output for Quizzes & Questions**: When asked for N questions (e.g. "5 MCQs"), ALWAYS complete all N questions in full. Never stop prematurely or leave questions unnumbered. Include clear options (A, B, C, D) and an explicit Answer Key section.
+5. **Multimodal Analysis**: When the user provides an image or PDF attachment, thoroughly inspect formulas, diagrams, handwritten workings, or document text, and ground your response directly in the attachment content.
+6. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
+7. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
 
       if (!client) {
         // Fallback intelligent simulation if no GEMINI_API_KEY is configured in the environment
@@ -636,6 +640,105 @@ Key Guidelines:
       res.write(`data: ${JSON.stringify({ error: err.message || 'Failed to process AI chat stream' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
+    }
+  });
+
+  // ── Sage AI Speech-to-Text Audio Transcription Endpoint (Gemini Multimodal Audio) ──
+  app.post('/api/sage/transcribe', async (req, res) => {
+    try {
+      const { audio_base64, mime_type = 'audio/webm' } = req.body;
+
+      if (!audio_base64 || typeof audio_base64 !== 'string') {
+        return res.status(400).json({ error: 'audio_base64 string is required' });
+      }
+
+      const client = getGeminiClient();
+      if (!client) {
+        return res.status(503).json({
+          error: 'Gemini speech-to-text service is currently unconfigured (missing GEMINI_API_KEY).',
+        });
+      }
+
+      const cleanBase64 = audio_base64.includes('base64,')
+        ? audio_base64.split('base64,')[1]
+        : audio_base64;
+
+      const cleanMime = mime_type.split(';')[0].trim() || 'audio/webm';
+
+      const prompt = `Listen to this voice message from a teacher or student carefully.
+Transcribe what the person said verbatim.
+- The speaker may be speaking in English, Urdu, or mixed Urdu and English (Urdish / Roman Urdu / Urdu script).
+- Output ONLY the transcribed text. Do NOT add any preamble, explanation, notes, or punctuation commentary.
+- If the audio is empty, silent, or only background static noise, respond with strictly: [EMPTY]`;
+
+      let rawTranscript = '';
+      try {
+        const response = await client.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: cleanBase64,
+                    mimeType: cleanMime,
+                  },
+                },
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          config: {
+            temperature: 0.1,
+          },
+        });
+        rawTranscript = (response.text || '').trim();
+      } catch (modelErr: any) {
+        console.warn('[server:transcribe] gemini-3.8-flash failed, attempting fallback to gemini-2.5-flash:', modelErr?.message);
+        const fallbackResponse = await client.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: cleanBase64,
+                    mimeType: cleanMime,
+                  },
+                },
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          config: {
+            temperature: 0.1,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        });
+        rawTranscript = (fallbackResponse.text || '').trim();
+      }
+
+      if (!rawTranscript || rawTranscript === '[EMPTY]' || /^(empty|silence|no audio|cannot hear)/i.test(rawTranscript)) {
+        return res.status(200).json({
+          transcript: '',
+          error: "I couldn't hear anything, please try again.",
+        });
+      }
+
+      return res.status(200).json({
+        transcript: rawTranscript,
+      });
+    } catch (transcribeErr: any) {
+      console.error('[Sage Audio Transcription Error]:', transcribeErr);
+      return res.status(500).json({
+        error: transcribeErr.message || 'Audio transcription failed. Please try speaking again.',
+      });
     }
   });
 
