@@ -75,6 +75,16 @@ export async function generateMCQTest(
   const remainingNeeded = targetCount - accumulatedQuestions.length;
   const maxApiRetries = 2;
 
+  let authHeader: string | undefined;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      authHeader = `Bearer ${session.access_token}`;
+    }
+  } catch {
+    // Session retrieval is optional
+  }
+
   for (let attempt = 1; attempt <= maxApiRetries; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout per attempt
@@ -83,14 +93,8 @@ export async function generateMCQTest(
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
-      } catch {
-        // Session retrieval is optional
+      if (authHeader) {
+        headers['Authorization'] = authHeader;
       }
 
       console.log(`[SelfTest] Calling /api/tests/generate-mcq (Attempt ${attempt}/${maxApiRetries}) for ${remainingNeeded} questions...`);
