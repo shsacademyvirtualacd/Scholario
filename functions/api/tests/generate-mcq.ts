@@ -194,7 +194,11 @@ Return ONLY a valid JSON object matching this structure:
 
 Ensure strictly valid JSON output with zero markdown formatting outside the JSON structure.`;
 
-    const targetModel = 'gemini-3.8-flash';
+    const rawModel =
+      env?.GEMINI_MODEL ||
+      (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
+      'gemini-3.8-flash';
+    const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
     let parsedData: any = null;
 
     try {

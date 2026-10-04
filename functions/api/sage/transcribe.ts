@@ -59,6 +59,12 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
     const cleanMime = mime_type.split(';')[0].trim() || 'audio/webm';
 
+    const rawModel =
+      env?.GEMINI_MODEL ||
+      (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
+      'gemini-3.8-flash';
+    const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
+
     const prompt = `Listen to this voice message from a teacher or student carefully.
 Transcribe what the person said verbatim.
 - The speaker may be speaking in English, Urdu, or mixed Urdu and English (Urdish / Roman Urdu / Urdu script).
@@ -68,32 +74,7 @@ Transcribe what the person said verbatim.
     let rawTranscript = '';
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  data: cleanBase64,
-                  mimeType: cleanMime,
-                },
-              },
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        config: {
-          temperature: 0.1,
-        },
-      });
-      rawTranscript = (response.text || '').trim();
-    } catch (modelErr: any) {
-      console.warn('[transcribe] gemini-3.8-flash failed, attempting fallback to gemini-2.5-flash:', modelErr?.message);
-      const fallbackResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: targetModel,
         contents: [
           {
             role: 'user',
@@ -115,7 +96,13 @@ Transcribe what the person said verbatim.
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         },
       });
-      rawTranscript = (fallbackResponse.text || '').trim();
+      rawTranscript = (response.text || '').trim();
+    } catch (modelErr: any) {
+      console.error('[Cloudflare Pages Sage Transcribe Model Error]:', modelErr);
+      return new Response(
+        JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' }),
+        { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (!rawTranscript || rawTranscript === '[EMPTY]' || /^(empty|silence|no audio|cannot hear)/i.test(rawTranscript)) {
@@ -133,8 +120,9 @@ Transcribe what the person said verbatim.
       { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
+    console.error('[Cloudflare Pages Sage Transcribe Outer Error]:', err);
     return new Response(
-      JSON.stringify({ error: err.message || 'Audio transcription error' }),
+      JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' }),
       { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     );
   }

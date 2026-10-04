@@ -8,9 +8,26 @@
  * 4. Fallback search mechanism when database vector extension is pending
  */
 
-export const SAGE_CHAT_MODEL = 'gemini-3.8-flash';
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+export const SAGE_CHAT_MODEL = DEFAULT_GEMINI_MODEL;
 export const SAGE_EMBEDDING_MODEL = 'gemini-embedding-001';
 export const SAGE_EMBEDDING_DIMENSIONS = 768;
+
+/**
+ * Normalizes model string to a clean UI display name:
+ * 'gemini-3.8-flash' -> 'Gemini 3.8 Flash'
+ */
+export function formatModelDisplayName(modelStr: string = SAGE_CHAT_MODEL): string {
+  if (!modelStr) return 'Gemini 3.8 Flash';
+  const clean = modelStr.replace(/^models\//i, '').trim();
+  if (clean.toLowerCase().startsWith('gemini-')) {
+    const parts = clean.split('-');
+    return parts.map((p) => (p.length > 0 ? p.charAt(0).toUpperCase() + p.slice(1) : '')).join(' ');
+  }
+  return clean;
+}
+
+export const SAGE_MODEL_DISPLAY_NAME = formatModelDisplayName(SAGE_CHAT_MODEL);
 
 export interface KnowledgeBaseChunk {
   id?: string;

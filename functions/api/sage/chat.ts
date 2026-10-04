@@ -215,7 +215,11 @@ Key Guidelines:
           },
         },
       });
-      const targetModel = 'gemini-3.8-flash';
+      const rawModel =
+        env?.GEMINI_MODEL ||
+        (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
+        'gemini-3.8-flash';
+      const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
 
       if (isAdmin) {
         let currentContents: any[] = [...contents];
@@ -313,7 +317,7 @@ Key Guidelines:
     } catch (err: any) {
       console.error('[Cloudflare Pages Sage Chat Streaming Error]:', err);
       await writer.write(
-        encoder.encode(`data: ${JSON.stringify({ error: err.message || 'Error processing streaming response' })}\n\n`)
+        encoder.encode(`data: ${JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' })}\n\n`)
       );
       await writer.write(encoder.encode('data: [DONE]\n\n'));
     } finally {

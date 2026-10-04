@@ -517,7 +517,8 @@ Key Guidelines:
         };
       });
 
-      const targetModel = 'gemini-3.8-flash';
+      const rawModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+      const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
 
       if (isAdmin) {
         // Admin flow: Call generateContent with read-only tools
@@ -611,7 +612,7 @@ Key Guidelines:
                 `- **Tuition Fee Configurations**: ${overview?.kpis?.total_fee_configurations ?? 0} active tiers\n`
             })}\n\n`);
           } catch {
-            res.write(`data: ${JSON.stringify({ error: adminAiErr.message || 'Error executing AI response' })}\n\n`);
+            res.write(`data: ${JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' })}\n\n`);
           }
         }
       } else {
@@ -637,7 +638,7 @@ Key Guidelines:
       res.end();
     } catch (err: any) {
       console.error('[Sage Chat Streaming Error]:', err);
-      res.write(`data: ${JSON.stringify({ error: err.message || 'Failed to process AI chat stream' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
     }
@@ -671,35 +672,13 @@ Transcribe what the person said verbatim.
 - Output ONLY the transcribed text. Do NOT add any preamble, explanation, notes, or punctuation commentary.
 - If the audio is empty, silent, or only background static noise, respond with strictly: [EMPTY]`;
 
+      const rawModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+      const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
+
       let rawTranscript = '';
       try {
         const response = await client.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  inlineData: {
-                    data: cleanBase64,
-                    mimeType: cleanMime,
-                  },
-                },
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-          config: {
-            temperature: 0.1,
-          },
-        });
-        rawTranscript = (response.text || '').trim();
-      } catch (modelErr: any) {
-        console.warn('[server:transcribe] gemini-3.8-flash failed, attempting fallback to gemini-2.5-flash:', modelErr?.message);
-        const fallbackResponse = await client.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: targetModel,
           contents: [
             {
               role: 'user',
@@ -721,7 +700,12 @@ Transcribe what the person said verbatim.
             thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           },
         });
-        rawTranscript = (fallbackResponse.text || '').trim();
+        rawTranscript = (response.text || '').trim();
+      } catch (modelErr: any) {
+        console.error('[server:transcribe] model generation failed:', modelErr);
+        return res.status(503).json({
+          error: 'Sage is temporarily unavailable. Please try again in a moment.',
+        });
       }
 
       if (!rawTranscript || rawTranscript === '[EMPTY]' || /^(empty|silence|no audio|cannot hear)/i.test(rawTranscript)) {
@@ -737,7 +721,7 @@ Transcribe what the person said verbatim.
     } catch (transcribeErr: any) {
       console.error('[Sage Audio Transcription Error]:', transcribeErr);
       return res.status(500).json({
-        error: transcribeErr.message || 'Audio transcription failed. Please try speaking again.',
+        error: 'Sage is temporarily unavailable. Please try again in a moment.',
       });
     }
   });
@@ -1119,41 +1103,36 @@ Return ONLY a valid JSON object matching this structure:
 
 Ensure strictly valid JSON output with zero markdown formatting outside the JSON structure.`;
 
-      const modelsToTry = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
+      const rawModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+      const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
       let parsedData: any = null;
-      let usedModel = 'gemini-3.8-flash';
+      let usedModel = targetModel;
       let lastModelError: string | null = null;
 
-      for (const targetModel of modelsToTry) {
-        try {
-          console.log(`[Generate MCQ] Attempting ${count} MCQs with ${targetModel} for ${subject} -> "${syllabusScope.chapter || topic}"`);
-          const aiResponse = await client.models.generateContent({
-            model: targetModel,
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            config: {
-              responseMimeType: 'application/json',
-              temperature: 0.3,
-            },
-          });
+      try {
+        console.log(`[Generate MCQ] Attempting ${count} MCQs with ${targetModel} for ${subject} -> "${syllabusScope.chapter || topic}"`);
+        const aiResponse = await client.models.generateContent({
+          model: targetModel,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.3,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        });
 
-          const responseText = aiResponse.text?.trim() || '';
-          if (responseText) {
-            try {
-              parsedData = JSON.parse(responseText);
-            } catch {
-              const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-              parsedData = JSON.parse(cleaned);
-            }
+        const responseText = aiResponse.text?.trim() || '';
+        if (responseText) {
+          try {
+            parsedData = JSON.parse(responseText);
+          } catch {
+            const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+            parsedData = JSON.parse(cleaned);
           }
-
-          if (parsedData && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
-            usedModel = targetModel;
-            break;
-          }
-        } catch (modelErr: any) {
-          lastModelError = modelErr?.message || String(modelErr);
-          console.warn(`[Generate MCQ] Model ${targetModel} generation failed:`, lastModelError);
         }
+      } catch (modelErr: any) {
+        lastModelError = modelErr?.message || String(modelErr);
+        console.warn(`[Generate MCQ] Model ${targetModel} generation failed:`, lastModelError);
       }
 
       const fallbackPool = generateCurriculumFallbackMCQs(subject, topic, count * 3, difficulty, effectiveGrade, effectiveBoard, normExcludes);

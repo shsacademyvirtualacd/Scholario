@@ -53,6 +53,7 @@ import {
   detectPdfRequest,
   extractAcademicMetadata,
 } from '../../lib/sagePdfGenerator';
+import { SAGE_MODEL_DISPLAY_NAME } from '../../lib/knowledgeBaseService';
 
 export interface ChatAttachment {
   key?: string;
@@ -1053,8 +1054,21 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         mimeType: result.mimeType,
       });
     } catch (transcribeErr: any) {
-      console.error('Voice transcription error:', transcribeErr);
-      toast.error(transcribeErr.message || "I couldn't hear anything, please try again.");
+      console.error('[Sage Voice Transcription Error]:', transcribeErr);
+      const raw = transcribeErr?.message || '';
+      const isUnavailable =
+        raw.includes('temporarily unavailable') ||
+        raw.includes('404') ||
+        raw.includes('NOT_FOUND') ||
+        raw.includes('no longer available') ||
+        raw.includes('"error"') ||
+        raw.includes('models/') ||
+        raw.startsWith('{');
+      if (isUnavailable) {
+        toast.error('Sage is temporarily unavailable. Please try again in a moment.');
+      } else {
+        toast.error(raw || "I couldn't hear anything, please try again.");
+      }
     } finally {
       setIsTranscribing(false);
     }
@@ -1294,8 +1308,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         return;
       }
       console.error('[Sage Chat Frontend Error]:', err);
-      setErrorMsg(err.message || 'Unable to connect to Sage. Please try again.');
-      toast.error('Failed to get response from Sage');
+      const friendlyMsg = 'Sage is temporarily unavailable. Please try again in a moment.';
+      setErrorMsg(friendlyMsg);
+      toast.error(friendlyMsg);
       setMessages((prev) =>
         prev.filter((msg) => msg.id !== assistantMsgId || msg.content.trim().length > 0)
       );
@@ -1359,8 +1374,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#2B2B2B] text-[#F4C430] border border-[#3D3D3D]">
                 {role === 'student' ? 'Study Companion' : role === 'teacher' ? 'Faculty Assistant' : 'Admin Copilot'}
               </span>
-              <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-purple-950/80 text-purple-300 border border-purple-800/60" title="Powered by Google Gemini 3.8 Flash">
-                Gemini 3.8 Flash
+              <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-purple-950/80 text-purple-300 border border-purple-800/60" title={`Powered by Google ${SAGE_MODEL_DISPLAY_NAME}`}>
+                {SAGE_MODEL_DISPLAY_NAME}
               </span>
               <span
                 className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${activeEmotionMeta.badgeBg} ${activeEmotionMeta.badgeTextColor}`}
@@ -1720,12 +1735,6 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         {errorMsg && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center justify-between">
             <span>{errorMsg}</span>
-            <button
-              onClick={() => handleSend()}
-              className="flex items-center gap-1 px-2.5 py-1 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <RotateCcw size={12} /> Retry
-            </button>
           </div>
         )}
 
@@ -2030,7 +2039,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3]">
           <span>Shift + Enter for new line • Enter to send • Mic for voice note</span>
-          <span className="text-[#737373] font-medium">Scholario Sage v2.0 • Gemini 3.8 Flash (AI Assistant + RAG)</span>
+          <span className="text-[#737373] font-medium">Scholario Sage v2.0 • {SAGE_MODEL_DISPLAY_NAME} (AI Assistant + RAG)</span>
         </div>
       </div>
 

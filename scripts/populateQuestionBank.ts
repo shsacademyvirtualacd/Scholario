@@ -109,7 +109,7 @@ Return ONLY a valid JSON object:
   ]
 }`;
 
-  const candidateModels = ['gemini-3.6-flash', 'gemini-3.7-flash'];
+  const candidateModels = [process.env.GEMINI_MODEL || 'gemini-3.8-flash'];
 
   for (const model of candidateModels) {
     try {
