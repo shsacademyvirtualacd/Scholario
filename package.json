@@ -44,7 +44,6 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250408.0",
     "@tailwindcss/vite": "4.1.17",
     "@types/express": "^5.0.6",
     "@types/katex": "^0.16.8",
@@ -59,7 +58,6 @@
     "tsx": "^4.23.12",
     "typescript": "5.9.3",
     "vite": "7.3.2",
-    "vite-plugin-singlefile": "2.3.0",
-    "wrangler": "^3.57.1"
+    "vite-plugin-singlefile": "2.3.0"
   }
 }

@@ -35,6 +35,8 @@ export interface PKTNow {
   hour: number;
   /** Human-readable minute (0-59) in PKT */
   minute: number;
+  /** Human-readable second (0-59) in PKT */
+  second: number;
   /** Formatted date string in PKT timezone (YYYY-MM-DD) */
   dateString: string;
 }
@@ -52,6 +54,7 @@ export function getPKTNow(): PKTNow {
     weekday: 'short',
     hour: 'numeric',
     minute: 'numeric',
+    second: 'numeric',
     hourCycle: 'h23',
   });
 
@@ -75,10 +78,11 @@ export function getPKTNow(): PKTNow {
 
   const hour = parseInt(get('hour'), 10) || 0;
   const minute = parseInt(get('minute'), 10) || 0;
+  const second = parseInt(get('second'), 10) || 0;
   const totalMins = hour * 60 + minute;
   const dateString = dateFmt.format(now);
 
-  return { dayIndex, totalMins, hour, minute, dateString };
+  return { dayIndex, totalMins, hour, minute, second, dateString };
 }
 
 // ─── Time String Helpers ───────────────────────────────────────────────────────
@@ -286,6 +290,28 @@ export function classWidgetState(
 }
 
 // ─── Countdown String Formatter ───────────────────────────────────────────────
+
+/**
+ * Formats a precise countdown to class start time, e.g. "1h 24m 10s" or "24m 10s" or "10s".
+ * Uses purely PKT minute and second fields.
+ */
+export function formatCountdownPrecise(startTimeStr?: string, pktnow: PKTNow = getPKTNow()): string {
+  if (!startTimeStr) return '0s';
+  const startMins = timeStrToMins(startTimeStr);
+  const currentTotalSeconds = pktnow.totalMins * 60 + (pktnow.second || 0);
+  const targetTotalSeconds = startMins * 60;
+  const diffSeconds = targetTotalSeconds - currentTotalSeconds;
+
+  if (diffSeconds <= 0) return '0s';
+
+  const h = Math.floor(diffSeconds / 3600);
+  const m = Math.floor((diffSeconds % 3600) / 60);
+  const s = diffSeconds % 60;
+
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
 
 /**
  * Formats a total-minutes value to "in Xh Ym" or "in Ym".
@@ -570,6 +596,67 @@ export function findActiveOrRecentSlotForRating(
 
   // Otherwise, no class is active or within voting window today -> hidden by default
   return null;
+}
+
+// ─── Concurrent Slots Helpers ────────────────────────────────────────────────
+
+/**
+ * Finds all slots running concurrently with a target slot.
+ * Two slots are concurrent if they are on the same day and have either:
+ * - The exact same start time, OR
+ * - Overlapping time intervals: max(startA, startB) < min(endA, endB)
+ */
+export function findConcurrentSlots(targetSlot: ClassSlot, allSlots: ClassSlot[]): ClassSlot[] {
+  if (!targetSlot || !targetSlot.start_time) return [targetSlot];
+  const targetDay = targetSlot.day_of_week;
+  const targetStart = timeStrToMins(targetSlot.start_time);
+  const targetEnd = targetSlot.end_time ? timeStrToMins(targetSlot.end_time) : targetStart + 60;
+
+  return allSlots.filter(s => {
+    if (s.id === targetSlot.id) return true;
+    if (s.is_cancelled) return false;
+    if (targetDay != null && s.day_of_week != null && s.day_of_week !== targetDay) return false;
+    if (!s.start_time) return false;
+    const sStart = timeStrToMins(s.start_time);
+    const sEnd = s.end_time ? timeStrToMins(s.end_time) : sStart + 60;
+
+    // Same start time or overlapping time interval
+    if (sStart === targetStart && sEnd === targetEnd) return true;
+    return Math.max(targetStart, sStart) < Math.min(targetEnd, sEnd);
+  });
+}
+
+/**
+ * Groups a list of slots into concurrent time blocks (sorted by start time).
+ */
+export interface SlotTimeBlock {
+  key: string;
+  startTime: string;
+  endTime: string;
+  slots: ClassSlot[];
+}
+
+export function groupSlotsByTimeBlock(slots: ClassSlot[]): SlotTimeBlock[] {
+  const active = slots.filter(s => !s.is_cancelled && s.start_time);
+  const sorted = [...active].sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+
+  const blocks: SlotTimeBlock[] = [];
+  const assignedSlotIds = new Set<string>();
+
+  for (const slot of sorted) {
+    if (assignedSlotIds.has(slot.id)) continue;
+    const concurrent = findConcurrentSlots(slot, sorted.filter(s => !assignedSlotIds.has(s.id)));
+    concurrent.forEach(c => assignedSlotIds.add(c.id));
+
+    blocks.push({
+      key: `${slot.start_time}-${slot.end_time || ''}-${slot.day_of_week}`,
+      startTime: slot.start_time || '',
+      endTime: slot.end_time || '',
+      slots: concurrent,
+    });
+  }
+
+  return blocks;
 }
 
 

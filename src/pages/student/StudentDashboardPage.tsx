@@ -2,11 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookMarked, CheckCircle2, ChevronRight, ArrowRight,
-  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, VideoOff, Check, X, XCircle,
+  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, XCircle,
   ClipboardCheck
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
-import StatusPill from '../../components/ui/StatusPill';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   getSlotsForStudent,
@@ -16,19 +15,19 @@ import {
   computeAttendanceStreak,
   markStudentSelfAttendance,
   getTeacherAttendanceRatingsForStudent,
-  getSessionLink
 } from '../../lib/db';
 import TeacherAttendanceRatingCard from '../../components/student/TeacherAttendanceRatingCard';
 import NotificationPermissionBanner from '../../components/student/NotificationPermissionBanner';
 import DashboardNoticeModal from '../../components/announcements/DashboardNoticeModal';
+import MultiClassLiveCard from '../../components/student/MultiClassLiveCard';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { useMobile } from '../../hooks/useMobile';
 import type { ClassSlot, Note, Attendance, TeacherAttendanceRating } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration, getLinkAvailabilityStatus, isSlotOngoing,
-  getClosestDateForDayOfWeek
+  formatTime12h, getLinkAvailabilityStatus, isSlotOngoing,
+  getClosestDateForDayOfWeek, timeStrToMins
 } from '../../lib/scheduleUtils';
 
 // ─── Pomodoro Timer Component ──────────────────────────────────────
@@ -956,6 +955,77 @@ const StudentDashboardPage: React.FC = () => {
         )}
       </div>
 
+      {/* ── Today's Scheduled Classes (Multi-Class Live Cards: Hero Section) ── */}
+      <div id="student-today-classes" className="card card-elevated interactive p-5 mb-5 border-t-4 border-t-[#F4C430]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-[#F5F5F5] pb-3">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-extrabold text-[#111111] tracking-tight">Today's Scheduled Classes</h2>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                {todayClasses.length} {todayClasses.length === 1 ? 'Class' : 'Classes'} Scheduled
+              </span>
+            </div>
+            <p className="text-xs text-[#737373] font-medium mt-0.5">
+              All lectures scheduled for today in Pakistan Standard Time (PKT). Sort by start time with independent Join buttons and attendance trackers.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/student/schedule')}
+            className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors font-semibold self-start sm:self-auto cursor-pointer"
+          >
+            Weekly schedule <ChevronRight size={12} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="stat-card min-h-[160px] bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
+                <div className="h-5 bg-gray-200 rounded w-1/2" />
+                <div className="h-3 bg-gray-200 rounded w-1/3" />
+                <div className="h-8 bg-gray-200 rounded w-full mt-4" />
+              </div>
+            ))}
+          </div>
+        ) : todayClasses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-2xl">
+            <CheckCircle2 size={36} className="text-[#D4D4D4] mb-2" />
+            <p className="text-sm text-[#111111] font-bold">No classes scheduled for today.</p>
+            <p className="text-xs text-[#737373] mt-1">Enjoy your study break or prepare for your next sessions!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {todayClasses.map((cls) => {
+              const att = attendanceRecords.find(
+                a => a.slot_id === cls.id && a.session_date === todayStr
+              );
+              const isOngoing = isSlotOngoing(cls, pktnow);
+              const isNext = todayClasses.find(s => {
+                if (s.start_time && timeStrToMins(s.start_time) > pktnow.totalMins) return true;
+                return false;
+              })?.id === cls.id;
+
+              return (
+                <MultiClassLiveCard
+                  key={cls.id}
+                  slot={cls}
+                  studentId={studentId}
+                  sessionDate={todayStr}
+                  initialAttendance={att}
+                  isNextOrLive={isOngoing || isNext}
+                  onAttendanceMarked={(slotId, rec) => {
+                    setAttendanceRecords(prev => [
+                      rec,
+                      ...prev.filter(p => !(p.slot_id === slotId && p.session_date === todayStr)),
+                    ]);
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* ── Teacher Attendance Verification Card ── */}
       {!loading && studentId && (
         <TeacherAttendanceRatingCard
@@ -1114,168 +1184,66 @@ const StudentDashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Today's Classes + Recent Notes ── */}
-      <div className={`${isMobile ? 'flex flex-col gap-5' : 'grid lg:grid-cols-2 gap-5'}`}>
-        
-        {/* Today's Classes */}
-        <div className="card card-elevated interactive">
+      {/* ── Recent Notes Section ── */}
+      <div className="card card-elevated flex flex-col justify-between interactive p-5 mb-5">
+        <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-[#111111]">Today's Classes</h2>
+            <div>
+              <h2 className="text-sm font-bold text-[#111111]">Recent Notes Vault</h2>
+              <p className="text-xs text-[#737373] font-medium">Study materials uploaded by your teachers</p>
+            </div>
             <button
-              onClick={() => navigate('/student/schedule')}
+              onClick={() => navigate('/student/notes')}
               className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors font-semibold"
             >
-              Full schedule <ChevronRight size={12} />
+              Notes library <ChevronRight size={12} />
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {loading ? (
-              <div className="space-y-3 animate-pulse">
-                {[1, 2].map((n) => (
-                  <div key={n} className="flex items-center gap-4 p-3.5 rounded-xl border border-[#F0F0F0] bg-white">
-                    <div className="w-1.5 h-12 bg-gray-100 rounded-full shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="h-4 bg-gray-100 rounded w-24" />
-                      <div className="h-3 bg-gray-100 rounded w-32" />
-                    </div>
-                    <div className="h-4 bg-gray-100 rounded w-16 shrink-0" />
+              [1, 2, 3].map((n) => (
+                <div key={n} className="flex items-center gap-3 p-3 rounded-xl border border-transparent bg-[#FAFAFA] animate-pulse">
+                  <div className="w-9 h-9 rounded-lg bg-gray-200 shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-32" />
+                    <div className="h-3 bg-gray-200 rounded w-24" />
                   </div>
-                ))}
-              </div>
-            ) : todayClasses.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
-                <CheckCircle2 size={32} className="text-[#D4D4D4] mb-2" />
-                <p className="text-xs text-[#737373] font-semibold">No classes scheduled for today.</p>
-                <p className="text-[10px] text-[#A3A3A3] mt-0.5">Enjoy your rest day!</p>
+                </div>
+              ))
+            ) : recentNotes.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
+                <BookMarked size={28} className="text-[#D4D4D4] mb-2" />
+                <p className="text-xs text-[#737373] font-semibold">No notes uploaded yet.</p>
+                <p className="text-[10px] text-[#A3A3A3] mt-0.5">Your study materials will appear here once teachers upload them.</p>
               </div>
             ) : (
-              todayClasses.map((cls) => {
-                const rawClsSubj = cls.custom_title || (cls.offering as any)?.subject_name || cls.offering?.subject || '';
-                const clsSubj = typeof rawClsSubj === 'string' ? rawClsSubj : ((rawClsSubj as any)?.name || 'Class');
-                const color = getSubjectColor(clsSubj);
-                const att = attendanceRecords.find(
-                  a => a.slot_id === cls.id && a.session_date === todayStr
-                );
-                const isClsOngoing = isSlotOngoing(cls, pktnow);
+              recentNotes.map((note) => {
+                const offering = note.offering;
+                const color = getSubjectColor(offering?.subject || '');
                 return (
-                  <div
-                    key={cls.id}
-                    className="flex items-center gap-3 sm:gap-4 p-3.5 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all hover:shadow-sm bg-white"
+                  <button
+                    key={note.id}
+                    onClick={() => navigate('/student/notes')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] hover:bg-[#FAFAFA] transition-all text-left group bg-white shadow-2xs"
                   >
-                    <div className="w-1.5 h-12 rounded-full shrink-0" style={{ background: color }} />
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: `${color}1A`, border: `1.5px solid ${color}33` }}
+                    >
+                      <BookMarked size={16} style={{ color: color }} />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#111111] truncate">{clsSubj}</span>
-                        {att?.status === 'pending' ? (
-                          <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0 inline-flex items-center gap-1">
-                            <Clock size={9} className="animate-spin text-amber-600" /> Awaiting Approval
-                          </span>
-                        ) : att?.status === 'present' || att?.status === 'late' ? (
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 inline-flex items-center gap-1">
-                            <Check size={9} strokeWidth={3} /> {att.status === 'late' ? 'Late' : 'Present'}
-                          </span>
-                        ) : att?.status === 'absent' && (att.marked_by === 'teacher' || att.marked_by === 'admin') ? (
-                          <span className="text-[9px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shrink-0 inline-flex items-center gap-1">
-                            <X size={9} strokeWidth={3} /> Not Confirmed
-                          </span>
-                        ) : null}
-                      </div>
+                      <div className="text-sm font-bold text-[#111111] truncate">{note.chapter_name}</div>
                       <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
-                        {cls.offering?.teacher?.full_name || 'Staff'} · {calcDuration(cls.start_time, cls.end_time) || '90m'}
+                        {offering?.subject} · {note.title}
                       </div>
                     </div>
-                    <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                      <div className="text-sm font-extrabold text-[#111111]">{formatClassTime(cls.start_time)}</div>
-                      {!att && !cls.is_cancelled ? (
-                        <button
-                          onClick={() => handleMarkTodayAttendance(cls.id)}
-                          disabled={!isClsOngoing}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs transition-all ${
-                            isClsOngoing
-                              ? 'bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] cursor-pointer interactive'
-                              : 'bg-[#F4C430]/40 text-[#737373] border border-[#E5E5E5] cursor-not-allowed opacity-60'
-                          }`}
-                          title={isClsOngoing ? 'Mark your attendance for this class' : 'Attendance can only be marked while class is ongoing'}
-                        >
-                          Mark My Attendance
-                        </button>
-                      ) : (
-                        <StatusPill status={cls.is_cancelled ? 'cancelled' : 'upcoming'} />
-                      )}
-                    </div>
-                  </div>
+                    <ArrowRight size={14} className="text-[#D4D4D4] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </button>
                 );
               })
             )}
           </div>
-        </div>
-
-        {/* Recent Notes */}
-        <div className="card card-elevated flex flex-col justify-between interactive">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-[#111111]">Recent Notes</h2>
-              <button
-                onClick={() => navigate('/student/notes')}
-                className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors font-semibold"
-              >
-                Notes library <ChevronRight size={12} />
-              </button>
-            </div>
-            <div className="space-y-2">
-              {loading ? (
-                <div className="space-y-2 animate-pulse">
-                  {[1, 2].map((n) => (
-                    <div key={n} className="flex items-center gap-3 p-3 rounded-xl border border-transparent bg-white">
-                      <div className="w-9 h-9 rounded-lg bg-gray-100 shrink-0" />
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="h-4 bg-gray-100 rounded w-32" />
-                        <div className="h-3 bg-gray-100 rounded w-24" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : recentNotes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
-                  <BookMarked size={32} className="text-[#D4D4D4] mb-2" />
-                  <p className="text-xs text-[#737373] font-semibold">No notes uploaded yet.</p>
-                  <p className="text-[10px] text-[#A3A3A3] mt-0.5">Your study materials will appear here once teachers upload them.</p>
-                </div>
-              ) : (
-                recentNotes.map((note) => {
-                  const offering = note.offering;
-                  const color = getSubjectColor(offering?.subject || '');
-                  return (
-                    <button
-                      key={note.id}
-                      onClick={() => navigate('/student/notes')}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent hover:border-[#E5E5E5] hover:bg-[#FAFAFA] transition-all text-left group"
-                    >
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: `${color}1A`, border: `1.5px solid ${color}33` }}
-                      >
-                        <BookMarked size={16} style={{ color: color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-[#111111] truncate">{note.chapter_name}</div>
-                        <div className="text-xs text-[#737373] font-medium mt-0.5 truncate">
-                          {offering?.subject} · {note.title}
-                        </div>
-                      </div>
-                      <ArrowRight size={14} className="text-[#D4D4D4] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all shrink-0" />
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/student/notes')}
-            className="btn btn-ghost btn-sm w-full mt-4 border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold interactive"
-          >
-            View all notes
-          </button>
         </div>
       </div>
 

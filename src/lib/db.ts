@@ -710,6 +710,33 @@ export async function getSessionLink(slotId: string, sessionDate: string): Promi
   }
 }
 
+/** Get session links for multiple slots on a given date in a single query */
+export async function getSessionLinksForSlots(
+  slotIds: string[],
+  sessionDate: string
+): Promise<Record<string, ClassSessionLink>> {
+  if (!slotIds || slotIds.length === 0) return {};
+  try {
+    const { data, error } = await (supabase as any)
+      .from('class_session_links')
+      .select('*')
+      .in('slot_id', slotIds)
+      .eq('session_date', sessionDate);
+    if (error) {
+      console.warn('[db:getSessionLinksForSlots] warning:', error.message);
+      return {};
+    }
+    const map: Record<string, ClassSessionLink> = {};
+    (data || []).forEach((row: ClassSessionLink) => {
+      map[row.slot_id] = row;
+    });
+    return map;
+  } catch (err) {
+    console.warn('[db:getSessionLinksForSlots] catch error:', err);
+    return {};
+  }
+}
+
 /** Upsert a live class link for a specific class slot and session date */
 export async function upsertSessionLink(
   slotId: string,
@@ -764,6 +791,88 @@ export async function upsertSessionLink(
   });
 
   return savedLink;
+}
+
+/** Upsert a live class link across multiple concurrent class slots for a session date */
+export async function upsertSessionLinkBatch(
+  slotIds: string[],
+  sessionDate: string,
+  linkUrl: string,
+  slotsMetadata: Array<{ slotId: string; offeringId?: string | null }>,
+  createdBy?: string | null,
+  options?: {
+    updatedBy?: string | null;
+    updatedByRole?: 'admin' | 'teacher';
+    substituteTeacherId?: string | null;
+    substituteTeacherName?: string | null;
+  }
+): Promise<ClassSessionLink[]> {
+  const trimmed = linkUrl.trim();
+  const nowIso = new Date().toISOString();
+  const metaMap = new Map(slotsMetadata.map(m => [m.slotId, m.offeringId]));
+
+  const payloads = slotIds.map(slotId => {
+    const offeringId = metaMap.get(slotId);
+    const payload: any = {
+      slot_id: slotId,
+      session_date: sessionDate,
+      link_url: trimmed,
+      updated_at: nowIso,
+      link_updated_at: nowIso,
+    };
+    if (offeringId) payload.offering_id = offeringId;
+    if (createdBy) payload.created_by = createdBy;
+    if (options?.updatedBy || createdBy) payload.link_updated_by = options?.updatedBy || createdBy;
+    if (options?.updatedByRole) {
+      payload.link_updated_by_role = options.updatedByRole;
+    } else if (createdBy) {
+      payload.link_updated_by_role = 'teacher';
+    }
+    if (options?.substituteTeacherId) payload.substitute_teacher_id = options.substituteTeacherId;
+    if (options?.substituteTeacherName) payload.substitute_teacher_name = options.substituteTeacherName;
+    return payload;
+  });
+
+  const { data, error } = await (supabase as any)
+    .from('class_session_links')
+    .upsert(payloads, { onConflict: 'slot_id,session_date' })
+    .select();
+
+  const savedLinks = throwOnError(data, error, 'upsertSessionLinkBatch') as ClassSessionLink[];
+
+  // Trigger live session status update for all slots in the batch
+  slotIds.forEach(slotId => {
+    const offeringId = metaMap.get(slotId);
+    triggerLiveSession({
+      slotId,
+      sessionDate,
+      linkUrl: trimmed,
+      offeringId,
+      teacherId: options?.substituteTeacherId || createdBy,
+    }).catch((err) => {
+      console.warn('[db:upsertSessionLinkBatch] live session trigger warning:', err);
+    });
+  });
+
+  return savedLinks;
+}
+
+/** Delete / clear session links for multiple slots and session date */
+export async function deleteSessionLinkBatch(slotIds: string[], sessionDate: string): Promise<void> {
+  if (slotIds.length === 0) return;
+  const { error } = await (supabase as any)
+    .from('class_session_links')
+    .delete()
+    .in('slot_id', slotIds)
+    .eq('session_date', sessionDate);
+
+  slotIds.forEach(slotId => {
+    endLiveSession(slotId, sessionDate).catch((err) => {
+      console.warn('[db:deleteSessionLinkBatch] end live session warning:', err);
+    });
+  });
+
+  if (error) throw error;
 }
 
 /** Admin: Override or add a class link on behalf of a teacher with audit logging and student alerts */

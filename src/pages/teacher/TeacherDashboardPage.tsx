@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
-  Link as LinkIcon, Check, X, Lock
+  Link as LinkIcon, Check, X, Lock, Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TeacherShell from '../../components/teacher/TeacherShell';
@@ -31,218 +31,29 @@ import type { ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus } 
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, calcDuration, getLinkAvailabilityStatus,
-  timeStrToMins, getClosestDateForDayOfWeek
+  timeStrToMins, getClosestDateForDayOfWeek, findConcurrentSlots, groupSlotsByTimeBlock
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
 import { stopClassReminder } from '../../lib/teacherReminderService';
 import DashboardNoticeModal from '../../components/announcements/DashboardNoticeModal';
+import ConcurrentLiveLinkEditor from '../../components/teacher/ConcurrentLiveLinkEditor';
 
-// ─── Live Link Editor for Teacher (per-session date instance) ──────────
+// ─── Live Link Editor for Teacher (Backward Compatibility Wrapper) ──────────
 export const LiveLinkEditor: React.FC<{
   slot: ClassSlot;
   sessionDate: string;
   teacherId?: string;
   onLinkUpdated?: (linkUrl: string | null) => void;
 }> = ({ slot, sessionDate, teacherId, onLinkUpdated }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [linkVal, setLinkVal] = useState('');
-  const [currentLink, setCurrentLink] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Load session-specific link for this slot and sessionDate
-  const fetchSessionLink = async () => {
-    if (!slot?.id || !sessionDate) return;
-    try {
-      const rec = await getSessionLink(slot.id, sessionDate);
-      const url = rec?.link_url || null;
-      setCurrentLink(url);
-      setLinkVal(url || '');
-      onLinkUpdated?.(url);
-    } catch (err) {
-      console.warn('[LiveLinkEditor] error fetching session link:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    setIsLoading(true);
-    fetchSessionLink();
-  }, [slot?.id, sessionDate]);
-
-  // Realtime updates for session links
-  useRealtimeTable({
-    table: 'class_session_links',
-    debounceMs: 1000,
-    onAny: fetchSessionLink,
-  });
-
-  const handleSave = async () => {
-    if (!slot?.id || !sessionDate) return;
-    setIsSaving(true);
-    const trimmed = linkVal.trim();
-    try {
-      if (trimmed) {
-        stopClassReminder(`${slot.id}_${sessionDate}`);
-        await upsertSessionLink(slot.id, sessionDate, trimmed, slot.offering_id, teacherId, {
-          updatedBy: teacherId,
-          updatedByRole: 'teacher',
-        });
-        await triggerLiveSession({
-          slot,
-          slotId: slot.id,
-          sessionDate,
-          linkUrl: trimmed,
-          offeringId: slot.offering_id,
-          teacherId,
-        });
-        setCurrentLink(trimmed);
-        onLinkUpdated?.(trimmed);
-      } else {
-        await deleteSessionLink(slot.id, sessionDate);
-        await endLiveSession(slot.id, sessionDate);
-        setCurrentLink(null);
-        onLinkUpdated?.(null);
-      }
-      setIsEditing(false);
-    } catch (err) {
-      console.error('Failed to save session link:', err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleRemove = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!slot?.id || !sessionDate) return;
-    setIsSaving(true);
-    try {
-      await deleteSessionLink(slot.id, sessionDate);
-      await endLiveSession(slot.id, sessionDate);
-      setCurrentLink(null);
-      setLinkVal('');
-      onLinkUpdated?.(null);
-      setIsEditing(false);
-    } catch (err) {
-      console.error('Failed to delete session link:', err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div id={`live-link-editor-${slot?.id}`} className="w-full">
-        <div className="h-7 bg-gray-50 rounded animate-pulse w-full mt-2" />
-      </div>
-    );
-  }
-
-  if (isEditing) {
-    return (
-      <div id={`live-link-editor-${slot?.id}`} className="w-full">
-        <div className="flex flex-col gap-1 mt-2 w-full">
-          <div className="flex items-center gap-1.5 w-full">
-            <input 
-              type="text" 
-              placeholder="https://zoom.us/j/... or https://meet.google.com/..."
-              value={linkVal}
-              onChange={e => setLinkVal(e.target.value)}
-              className="flex-1 text-xs px-2.5 py-1.5 border border-[#E5E5E5] rounded-lg focus:outline-none focus:border-[#F4C430] bg-white shadow-xs"
-              autoFocus
-              onKeyDown={e => e.key === 'Enter' && handleSave()}
-            />
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="p-1.5 bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] rounded-lg interactive disabled:opacity-50"
-              title="Save live class link for this session"
-            >
-              <Check size={13} />
-            </button>
-            <button
-              onClick={() => { setIsEditing(false); setLinkVal(currentLink || ''); }}
-              className="p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
-              title="Cancel"
-            >
-              <X size={13} />
-            </button>
-          </div>
-          <span className="text-[10px] text-[#737373] italic">
-            ℹ️ Link applies ONLY to session ({sessionDate}). Accessible to students 10m before class.
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  const hasLink = currentLink && currentLink.trim().length > 0;
-  const status = getLinkAvailabilityStatus(slot, getPKTNow(), currentLink, sessionDate);
-  
-  if (hasLink) {
-    return (
-      <div id={`live-link-editor-${slot?.id}`} className="w-full">
-        <div className="flex flex-col gap-1.5 w-full mt-2 bg-[#FAFAFA] border border-[#E5E5E5] rounded-lg p-2">
-          <div className="flex items-center justify-between w-full gap-2">
-            <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
-              <LinkIcon size={12} className="text-blue-500 shrink-0" />
-              <a
-                href={currentLink.startsWith('http') ? currentLink : `https://${currentLink}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[11px] font-semibold text-blue-600 hover:underline truncate"
-              >
-                {currentLink}
-              </a>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-[10px] text-[#737373] hover:text-[#111111] font-semibold px-1.5 py-0.5 rounded hover:bg-gray-200 transition-colors"
-              >
-                ✏️ Edit
-              </button>
-              <button
-                onClick={handleRemove}
-                disabled={isSaving}
-                className="text-[10px] text-rose-600 hover:text-rose-700 font-semibold px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors"
-                title="Remove link for this session"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-[9px] font-semibold">
-            {status.isAvailable ? (
-              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                🟢 Accessible to students now
-              </span>
-            ) : status.status === 'ended' ? (
-              <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                Session ended
-              </span>
-            ) : (
-              <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1">
-                <Lock size={9} /> Accessible to students 10m before class
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div id={`live-link-editor-${slot?.id}`} className="w-full">
-      <button
-        onClick={() => setIsEditing(true)}
-        className="flex items-center gap-1.5 text-[11px] text-[#737373] hover:text-[#111111] font-semibold border border-dashed border-[#D4D4D4] hover:border-[#111111] px-2.5 py-1.5 rounded-lg transition-colors w-full justify-center bg-[#FAFAFA] hover:bg-[#F5F5F5] mt-2 shadow-xs cursor-pointer"
-      >
-        🔗 Add Live Class Link (Zoom/Meet)
-      </button>
-    </div>
+    <ConcurrentLiveLinkEditor
+      slots={[slot]}
+      sessionDate={sessionDate}
+      teacherId={teacherId}
+      onLinkUpdated={(map) => onLinkUpdated?.(map[slot?.id] || null)}
+      compact={false}
+    />
   );
 };
 
@@ -279,35 +90,69 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
 
   // ── State A: class is ongoing ──────────────────────────────────────
   if (state.type === 'ongoing') {
-    const subject = getSlotSubject(state.activeSlot);
+    const sessionDate = pktnow.dateString;
+    const concurrentSlots = findConcurrentSlots(
+      state.activeSlot,
+      slots.filter(s => s.day_of_week === pktnow.dayIndex)
+    );
+    const isMulti = concurrentSlots.length > 1;
+    const subject = isMulti
+      ? `${getSlotSubject(state.activeSlot)} (${concurrentSlots.length} Sections)`
+      : getSlotSubject(state.activeSlot);
+
     const remH = Math.floor(state.minsRemaining / 60);
     const remM = state.minsRemaining % 60;
     const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
-    const sessionDate = pktnow.dateString;
 
     return (
       <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Now In Session</span>
-          <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
+          <div className="flex items-center gap-1">
+            {isMulti && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                {concurrentSlots.length} Concurrent
+              </span>
+            )}
+            <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
+          </div>
         </div>
         <div>
           <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
           <div className="text-xs text-emerald-600 font-bold mt-0.5">{remLabel}</div>
-          {state.nextSlot && (
-            <div className="text-[10px] text-[#A3A3A3] font-medium mt-1 truncate">
-              Up next: {getSlotSubject(state.nextSlot)} · {formatTime12h(state.nextSlot.start_time)}
+          {isMulti ? (
+            <div className="text-[10px] text-[#737373] font-medium mt-1 truncate">
+              {concurrentSlots.map(s => {
+                const gr = s.offering?.grade || (s.offering as any)?.class?.grade;
+                const bd = s.offering?.board || (s.offering as any)?.class?.board?.name;
+                return `${gr ? `Gr.${gr}` : ''}${bd ? ` ${bd}` : ''}`;
+              }).filter(Boolean).join(' · ')}
             </div>
+          ) : (
+            state.nextSlot && (
+              <div className="text-[10px] text-[#A3A3A3] font-medium mt-1 truncate">
+                Up next: {getSlotSubject(state.nextSlot)} · {formatTime12h(state.nextSlot.start_time)}
+              </div>
+            )
           )}
         </div>
         <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
           <Zap size={13} className="text-emerald-500 shrink-0" />
-          <span className="text-xs font-bold text-[#111111]">{formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}</span>
+          <span className="text-xs font-bold text-[#111111]">
+            {formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}
+          </span>
           {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time) && (
-            <span className="text-[10px] text-[#A3A3A3]">· {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time)}</span>
+            <span className="text-[10px] text-[#A3A3A3]">
+              · {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time)}
+            </span>
           )}
         </div>
-        <LiveLinkEditor slot={state.activeSlot} sessionDate={sessionDate} teacherId={teacherId} />
+        <ConcurrentLiveLinkEditor
+          slots={concurrentSlots}
+          sessionDate={sessionDate}
+          teacherId={teacherId}
+          compact={true}
+        />
       </div>
     );
   }
@@ -315,11 +160,19 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
   // ── States B/C/D with an upcoming class ─────────────────────────────
   const nextSlot = state.nextSlot!;
   const minsUntil = state.minsUntil ?? 0;
-  const subject = getSlotSubject(nextSlot);
   const sessionDate = nextSlot.day_of_week === pktnow.dayIndex
     ? pktnow.dateString
     : getClosestDateForDayOfWeek(nextSlot.day_of_week ?? 0, pktnow);
-  
+
+  const concurrentSlots = findConcurrentSlots(
+    nextSlot,
+    slots.filter(s => s.day_of_week === nextSlot.day_of_week)
+  );
+  const isMulti = concurrentSlots.length > 1;
+  const subject = isMulti
+    ? `${getSlotSubject(nextSlot)} (${concurrentSlots.length} Sections)`
+    : getSlotSubject(nextSlot);
+
   let badgeLabel = '';
   let isPulsing = false;
 
@@ -344,33 +197,37 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
     return `${days[slot.day_of_week]} at ${timeStr}`;
   };
 
-  const nextBoardLabel = String(
-    nextSlot.offering?.board ||
-    (nextSlot.offering as any)?.class?.board?.name ||
-    (nextSlot.offering as any)?.class?.board_id ||
-    (nextSlot.offering as any)?.board_name ||
-    'Curriculum'
-  ).toUpperCase();
-
-  const nextGradeLabel = nextSlot.offering?.grade || (nextSlot.offering as any)?.class?.grade || '';
-
   return (
     <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
-        <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
+        <div className="flex items-center gap-1">
+          {isMulti && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+              {concurrentSlots.length} Concurrent
+            </span>
+          )}
+          <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
+        </div>
       </div>
       <div>
         <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
         <div className="text-xs text-[#737373] font-medium truncate mt-0.5">
-          {nextGradeLabel ? `Class ${nextGradeLabel} · ` : ''}{nextBoardLabel}
+          {isMulti
+            ? `${concurrentSlots.length} sections scheduled simultaneously`
+            : `${nextSlot.offering?.grade ? `Class ${nextSlot.offering.grade} · ` : ''}${String(nextSlot.offering?.board || 'Curriculum').toUpperCase()}`}
         </div>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
         <Clock size={13} className="text-[#F4C430] shrink-0" />
         <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
       </div>
-      <LiveLinkEditor slot={nextSlot} sessionDate={sessionDate} teacherId={teacherId} />
+      <ConcurrentLiveLinkEditor
+        slots={concurrentSlots}
+        sessionDate={sessionDate}
+        teacherId={teacherId}
+        compact={true}
+      />
     </div>
   );
 };
@@ -529,9 +386,14 @@ export const TeacherDashboardPage: React.FC = () => {
     }
   }, [todayDateStr]);
 
-  // Roster of students enrolled in the auto-resolved class
-  const cachedRoster = (teacherId && activeOfferingId) ? pageCache.get<Profile[]>(`teacher_roster_${activeOfferingId}`, teacherId) : null;
-  const [rosterStudents, setRosterStudents] = useState<Profile[]>(cachedRoster || []);
+  // Detect all slots concurrent with active slot (e.g. 2, 3, or more classes in the same time slot)
+  const activeConcurrentSlots = useMemo(() => {
+    if (!activeTodaySlot) return [];
+    return findConcurrentSlots(activeTodaySlot, todayClasses);
+  }, [activeTodaySlot, todayClasses]);
+
+  const [selectedSectionSlotId, setSelectedSectionSlotId] = useState<string>('all');
+  const [sectionRosters, setSectionRosters] = useState<Record<string, { offering: ClassOffering | null; students: Profile[] }>>({});
   const [teacherAttendance, setTeacherAttendance] = useState<Attendance[]>([]);
   const [savingAttendanceId, setSavingAttendanceId] = useState<string | null>(null);
 
@@ -539,51 +401,115 @@ export const TeacherDashboardPage: React.FC = () => {
   const [pendingChange, setPendingChange] = useState<{
     studentId: string;
     studentName: string;
+    slotId: string;
     currentStatus: AttendanceStatus;
     newStatus: AttendanceStatus;
   } | null>(null);
 
+  // Fetch rosters for ALL concurrent slots in this active slot
   useEffect(() => {
-    if (!activeOfferingId) {
-      setRosterStudents([]);
+    if (activeConcurrentSlots.length === 0) {
+      setSectionRosters({});
       return;
     }
     let mounted = true;
-    const initRoster = pageCache.get<Profile[]>(`teacher_roster_${activeOfferingId}`, teacherId);
-    if (initRoster && mounted) setRosterStudents(initRoster);
-
-    getStudentsInOffering(activeOfferingId).then((studs) => {
+    Promise.all(
+      activeConcurrentSlots.map(async (slot) => {
+        const offId = slot.offering_id || (slot.offering as any)?.id;
+        const off = offerings.find(o => o.id === offId) || (slot.offering as ClassOffering) || null;
+        const studs = offId ? await getStudentsInOffering(offId).catch(() => [] as Profile[]) : [];
+        return { slotId: slot.id, offering: off, students: studs };
+      })
+    ).then((results) => {
       if (!mounted) return;
-      const currentRoster = pageCache.get<Profile[]>(`teacher_roster_${activeOfferingId}`, teacherId);
-      if (!currentRoster || JSON.stringify(currentRoster) !== JSON.stringify(studs)) {
-        setRosterStudents(studs);
-        pageCache.set(`teacher_roster_${activeOfferingId}`, studs, teacherId);
-      }
+      const map: Record<string, { offering: ClassOffering | null; students: Profile[] }> = {};
+      results.forEach(r => {
+        map[r.slotId] = { offering: r.offering, students: r.students };
+      });
+      setSectionRosters(map);
     }).catch(console.error);
 
     return () => {
       mounted = false;
     };
-  }, [activeOfferingId, teacherId]);
+  }, [activeConcurrentSlots, offerings]);
 
+  // Compute all students across concurrent slots and filtered students by selected section tab
+  interface DisplayedStudent extends Profile {
+    _slotId: string;
+    _sectionName: string;
+    _grade: string;
+    _board: string;
+  }
+
+  const allConcurrentStudents = useMemo<DisplayedStudent[]>(() => {
+    const list: DisplayedStudent[] = [];
+    const seen = new Set<string>();
+
+    activeConcurrentSlots.forEach(slot => {
+      const data = sectionRosters[slot.id];
+      const studs = data?.students || [];
+      const off = data?.offering;
+      const secName = getSlotSubject(slot);
+      const gr = off?.grade || (off as any)?.class?.grade || '';
+      const bd = String(off?.board || (off as any)?.class?.board?.name || '').toUpperCase();
+
+      studs.forEach(st => {
+        const key = `${st.id}_${slot.id}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          list.push({
+            ...st,
+            _slotId: slot.id,
+            _sectionName: secName,
+            _grade: gr,
+            _board: bd,
+          });
+        }
+      });
+    });
+
+    return list;
+  }, [activeConcurrentSlots, sectionRosters]);
+
+  const displayedStudents = useMemo<DisplayedStudent[]>(() => {
+    if (selectedSectionSlotId === 'all') return allConcurrentStudents;
+    return allConcurrentStudents.filter(st => st._slotId === selectedSectionSlotId);
+  }, [allConcurrentStudents, selectedSectionSlotId]);
+
+  // Re-fetch enrollments when changed
   useRealtimeTable({
     table: 'enrollments',
     debounceMs: 2000,
     onAny: async () => {
-      if (!teacherId || !activeOfferingId) return;
-      const studs = await getStudentsInOffering(activeOfferingId);
-      setRosterStudents(studs);
-      pageCache.set(`teacher_roster_${activeOfferingId}`, studs, teacherId);
+      if (activeConcurrentSlots.length === 0) return;
+      const results = await Promise.all(
+        activeConcurrentSlots.map(async (slot) => {
+          const offId = slot.offering_id || (slot.offering as any)?.id;
+          const off = offerings.find(o => o.id === offId) || (slot.offering as ClassOffering) || null;
+          const studs = offId ? await getStudentsInOffering(offId).catch(() => [] as Profile[]) : [];
+          return { slotId: slot.id, offering: off, students: studs };
+        })
+      );
+      const map: Record<string, { offering: ClassOffering | null; students: Profile[] }> = {};
+      results.forEach(r => {
+        map[r.slotId] = { offering: r.offering, students: r.students };
+      });
+      setSectionRosters(map);
     }
   });
 
-  // Fetch attendance records for today's session
+  // Fetch attendance records for today's session across all active concurrent slots
   const fetchTeacherAttendance = async () => {
     try {
       let combined: Attendance[] = [];
-      if (activeTodaySlot?.id) {
-        const sessionRecords = await getAttendanceForSession(activeTodaySlot.id, todayDateStr);
-        combined = sessionRecords || [];
+      if (activeConcurrentSlots.length > 0) {
+        const slotSessionRecords = await Promise.all(
+          activeConcurrentSlots.map(s => getAttendanceForSession(s.id, todayDateStr).catch(() => [] as Attendance[]))
+        );
+        slotSessionRecords.forEach(records => {
+          combined.push(...(records || []));
+        });
       }
       if (teacherId) {
         const teacherRecords = await getAttendanceForTeacher(teacherId, todayDateStr);
@@ -604,7 +530,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchTeacherAttendance();
-  }, [teacherId, todayDateStr, activeTodaySlot?.id, activeOfferingId]);
+  }, [teacherId, todayDateStr, activeConcurrentSlots.map(s => s.id).join(',')]);
 
   useRealtimeTable({
     table: 'attendance',
@@ -612,11 +538,10 @@ export const TeacherDashboardPage: React.FC = () => {
     onAny: fetchTeacherAttendance
   });
 
-  // Attendance helpers
-  const getStudentStatus = (studentId: string): { status: AttendanceStatus | 'unmarked'; markedAt?: string; markedBy?: string } => {
-    if (!activeTodaySlot) return { status: 'unmarked' };
+  // Attendance helpers per student and slot
+  const getStudentStatus = (studentId: string, slotId: string): { status: AttendanceStatus | 'unmarked'; markedAt?: string; markedBy?: string } => {
     const record = teacherAttendance.find(
-      a => a.student_id === studentId && a.slot_id === activeTodaySlot.id && a.session_date === todayDateStr
+      a => a.student_id === studentId && a.slot_id === slotId && a.session_date === todayDateStr
     );
     if (!record) return { status: 'unmarked' };
     return {
@@ -626,20 +551,18 @@ export const TeacherDashboardPage: React.FC = () => {
     };
   };
 
-  const handleUpdateStudentStatus = async (studentId: string, newStatus: AttendanceStatus) => {
-    if (!activeTodaySlot) return;
-
+  const handleUpdateStudentStatus = async (studentId: string, newStatus: AttendanceStatus, slotId: string) => {
     setSavingAttendanceId(studentId);
 
     // Optimistic UI update
     setTeacherAttendance(prev => {
       const filtered = prev.filter(
-        a => !(a.student_id === studentId && a.slot_id === activeTodaySlot.id && a.session_date === todayDateStr)
+        a => !(a.student_id === studentId && a.slot_id === slotId && a.session_date === todayDateStr)
       );
       const newRec: Attendance = {
         id: `att-${Date.now()}-${studentId}`,
         student_id: studentId,
-        slot_id: activeTodaySlot.id,
+        slot_id: slotId,
         session_date: todayDateStr,
         status: newStatus,
         marked_at: new Date().toISOString(),
@@ -651,7 +574,7 @@ export const TeacherDashboardPage: React.FC = () => {
     try {
       await recordAttendance({
         student_id: studentId,
-        slot_id: activeTodaySlot.id,
+        slot_id: slotId,
         session_date: todayDateStr,
         status: newStatus,
         marked_by: 'teacher'
@@ -670,6 +593,7 @@ export const TeacherDashboardPage: React.FC = () => {
   const handleTeacherClickAttendance = (
     studentId: string,
     studentName: string,
+    slotId: string,
     currentStatus: AttendanceStatus | 'unmarked',
     targetStatus: AttendanceStatus
   ) => {
@@ -681,7 +605,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
     // First time marking or resolving pending claim -> Direct single-click action
     if (currentStatus === 'unmarked' || currentStatus === 'pending') {
-      handleUpdateStudentStatus(studentId, targetStatus);
+      handleUpdateStudentStatus(studentId, targetStatus, slotId);
       return;
     }
 
@@ -689,19 +613,20 @@ export const TeacherDashboardPage: React.FC = () => {
     setPendingChange({
       studentId,
       studentName,
+      slotId,
       currentStatus,
       newStatus: targetStatus
     });
   };
 
   const handleApproveAllPending = async () => {
-    if (!activeTodaySlot || rosterStudents.length === 0) return;
-    const pendingStudents = rosterStudents.filter(st => getStudentStatus(st.id).status === 'pending');
+    if (displayedStudents.length === 0) return;
+    const pendingStudents = displayedStudents.filter(st => getStudentStatus(st.id, st._slotId).status === 'pending');
     if (pendingStudents.length === 0) return;
 
     const updates = pendingStudents.map(st => ({
       student_id: st.id,
-      slot_id: activeTodaySlot.id,
+      slot_id: st._slotId,
       session_date: todayDateStr,
       status: 'present' as AttendanceStatus,
       marked_at: new Date().toISOString(),
@@ -709,26 +634,28 @@ export const TeacherDashboardPage: React.FC = () => {
 
     // Optimistic update
     setTeacherAttendance(prev => {
-      const studentIds = new Set(pendingStudents.map(s => s.id));
+      const targetPairs = new Set(pendingStudents.map(s => `${s.id}_${s._slotId}`));
       const remaining = prev.filter(
-        a => !(studentIds.has(a.student_id) && a.slot_id === activeTodaySlot.id && a.session_date === todayDateStr)
+        a => !(targetPairs.has(`${a.student_id}_${a.slot_id}`) && a.session_date === todayDateStr)
       );
       return [...remaining, ...updates.map(u => ({ ...u, id: `att-${Date.now()}-${u.student_id}`, marked_by: 'teacher' as const }))];
     });
 
     try {
       await upsertAttendanceBatch(updates);
+      toast.success(`Approved ${updates.length} pending claim${updates.length > 1 ? 's' : ''}`);
     } catch (err) {
       console.error('Error approving all pending claims:', err);
+      toast.error('Failed to approve claims');
     }
   };
 
   const handleMarkAllPresent = async () => {
-    if (!activeTodaySlot || rosterStudents.length === 0) return;
+    if (displayedStudents.length === 0) return;
 
-    const updates = rosterStudents.map(st => ({
+    const updates = displayedStudents.map(st => ({
       student_id: st.id,
-      slot_id: activeTodaySlot.id,
+      slot_id: st._slotId,
       session_date: todayDateStr,
       status: 'present' as AttendanceStatus,
       marked_at: new Date().toISOString(),
@@ -736,17 +663,19 @@ export const TeacherDashboardPage: React.FC = () => {
 
     // Optimistic update
     setTeacherAttendance(prev => {
-      const studentIds = new Set(rosterStudents.map(s => s.id));
+      const targetPairs = new Set(displayedStudents.map(s => `${s.id}_${s._slotId}`));
       const remaining = prev.filter(
-        a => !(studentIds.has(a.student_id) && a.slot_id === activeTodaySlot.id && a.session_date === todayDateStr)
+        a => !(targetPairs.has(`${a.student_id}_${a.slot_id}`) && a.session_date === todayDateStr)
       );
       return [...remaining, ...updates.map(u => ({ ...u, id: `att-${Date.now()}-${u.student_id}`, marked_by: 'teacher' as const }))];
     });
 
     try {
       await upsertAttendanceBatch(updates);
+      toast.success(`Marked ${updates.length} students as Present`);
     } catch (err) {
       console.error('Error in batch marking:', err);
+      toast.error('Failed to mark all present');
     }
   };
 
@@ -885,6 +814,7 @@ export const TeacherDashboardPage: React.FC = () => {
             ) : (
               todayClasses.map((cls) => {
                 const color = getSubjectColor(cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class');
+                const concurrentCount = todayClasses.filter(c => c.start_time === cls.start_time).length;
                 return (
                   <div
                     key={cls.id}
@@ -892,7 +822,16 @@ export const TeacherDashboardPage: React.FC = () => {
                   >
                     <div className="w-1.5 h-10 rounded-full shrink-0" style={{ background: color }} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-xs text-[#111111]">{cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class'}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs text-[#111111] truncate">
+                          {cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class'}
+                        </span>
+                        {concurrentCount > 1 && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
+                            ⚡ {concurrentCount} In Slot
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-[#737373] font-semibold mt-0.5 truncate">
                         Class {cls.offering?.grade || (cls.offering as any)?.class?.grade || ''} ({String(cls.offering?.board || (cls.offering as any)?.class?.board?.name || (cls.offering as any)?.class?.board_id || (cls.offering as any)?.board_name || 'Curriculum').toUpperCase()})
                       </div>
@@ -931,16 +870,37 @@ export const TeacherDashboardPage: React.FC = () => {
           ) : (
             <div>
               <div className="flex flex-col gap-3 mb-4 pb-3 border-b border-[#F5F5F5]">
+                {/* Concurrent Classes Alert Banner */}
+                {activeConcurrentSlots.length > 1 && (
+                  <div className="flex items-center gap-2.5 p-3 bg-gradient-to-r from-amber-50 to-[#FFFDF5] border border-amber-300 rounded-xl text-amber-900 shadow-2xs">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                      <Layers size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                        <span>⚡ Concurrent Session Slot ({activeConcurrentSlots.length} Classes Running Simultaneously)</span>
+                      </div>
+                      <div className="text-[10px] text-amber-800 mt-0.5">
+                        Set the meeting link once below to distribute it immediately to all {activeConcurrentSlots.length} classes. Use the section tabs below to filter the student roster.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Header with Auto-Detected Info */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-sm font-extrabold text-[#111111]">
-                        {activeTodaySlot.custom_title || activeOffering?.subject_name || activeOffering?.subject || 'Class Session'}
+                        {activeConcurrentSlots.length > 1
+                          ? `${getSlotSubject(activeTodaySlot)} (${activeConcurrentSlots.length} Sections)`
+                          : (activeTodaySlot.custom_title || activeOffering?.subject_name || activeOffering?.subject || 'Class Session')}
                       </h2>
-                      <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
-                        Class {activeOffering?.grade || (activeOffering as any)?.class?.grade || ''} · {String(activeOffering?.board || (activeOffering as any)?.class?.board?.name || (activeOffering as any)?.class?.board_id || (activeOffering as any)?.board_name || 'Curriculum').toUpperCase()}
-                      </span>
+                      {activeConcurrentSlots.length === 1 && (
+                        <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
+                          Class {activeOffering?.grade || (activeOffering as any)?.class?.grade || ''} · {String(activeOffering?.board || (activeOffering as any)?.class?.board?.name || (activeOffering as any)?.class?.board_id || (activeOffering as any)?.board_name || 'Curriculum').toUpperCase()}
+                        </span>
+                      )}
                       {activeOffering?.stream && (
                         <span className="text-[10px] bg-[#F5F5F5] text-[#525252] font-bold px-2 py-0.5 rounded">
                           {typeof activeOffering.stream === 'string' ? activeOffering.stream : (activeOffering.stream as any).name}
@@ -975,31 +935,70 @@ export const TeacherDashboardPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleMarkAllPresent}
-                      disabled={rosterStudents.length === 0}
+                      disabled={displayedStudents.length === 0}
                       className="text-[11px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-3 py-1.5 rounded-lg shadow-xs transition-all flex items-center gap-1.5 interactive disabled:opacity-50 cursor-pointer"
-                      title="Mark all currently enrolled students as Present for today's session"
+                      title="Mark all currently displayed students as Present"
                     >
                       <CheckCircle2 size={13} />
-                      <span>Mark All Present</span>
+                      <span>
+                        Mark All Present ({displayedStudents.length})
+                      </span>
                     </button>
                   </div>
                 </div>
 
-                {/* Per-session Live Link for this active class slot */}
-                <div className="w-full max-w-md">
-                  <LiveLinkEditor 
-                    slot={activeTodaySlot} 
+                {/* Concurrent Meeting Link Editor with Per-Class Overrides */}
+                <div className="w-full">
+                  <ConcurrentLiveLinkEditor 
+                    slots={activeConcurrentSlots} 
                     sessionDate={todayDateStr} 
                     teacherId={profile?.id} 
                   />
                 </div>
 
-                {/* Real-time Status Counts for Today's Class */}
-                {rosterStudents.length > 0 && (
+                {/* Section Filter Tabs for Concurrent Slots */}
+                {activeConcurrentSlots.length > 1 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-1 border-t border-[#F5F5F5] no-scrollbar">
+                    <span className="text-[11px] font-bold text-[#737373] mr-1 shrink-0">Filter Roster:</span>
+                    <button
+                      onClick={() => setSelectedSectionSlotId('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                        selectedSectionSlotId === 'all'
+                          ? 'bg-[#111111] text-white shadow-xs'
+                          : 'bg-gray-100 text-[#525252] hover:bg-gray-200'
+                      }`}
+                    >
+                      All Concurrent Sections ({allConcurrentStudents.length})
+                    </button>
+                    {activeConcurrentSlots.map(s => {
+                      const count = sectionRosters[s.id]?.students?.length || 0;
+                      const subj = getSlotSubject(s);
+                      const gr = s.offering?.grade || (s.offering as any)?.class?.grade || '';
+                      const bd = String(s.offering?.board || (s.offering as any)?.class?.board?.name || '').toUpperCase();
+
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setSelectedSectionSlotId(s.id)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                            selectedSectionSlotId === s.id
+                              ? 'bg-[#111111] text-white shadow-xs'
+                              : 'bg-gray-100 text-[#525252] hover:bg-gray-200'
+                          }`}
+                        >
+                          {subj} {gr ? `Gr.${gr}` : ''} {bd ? `· ${bd}` : ''} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Real-time Status Counts for Displayed Students */}
+                {displayedStudents.length > 0 && (
                   <div className="space-y-2 pt-2">
                     {/* Pending Claims Alert Banner */}
                     {(() => {
-                      const pendingStudents = rosterStudents.filter(st => getStudentStatus(st.id).status === 'pending');
+                      const pendingStudents = displayedStudents.filter(st => getStudentStatus(st.id, st._slotId).status === 'pending');
                       if (pendingStudents.length === 0) return null;
                       return (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-amber-900 shadow-xs">
@@ -1019,7 +1018,7 @@ export const TeacherDashboardPage: React.FC = () => {
                           <button
                             onClick={handleApproveAllPending}
                             className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-all cursor-pointer interactive shrink-0"
-                            title="Approve all pending student attendance claims for this session"
+                            title="Approve all pending student attendance claims"
                           >
                             <Check size={13} strokeWidth={3} />
                             <span>Approve All ({pendingStudents.length})</span>
@@ -1032,8 +1031,8 @@ export const TeacherDashboardPage: React.FC = () => {
                     <div className="flex items-center gap-2.5 text-[11px] font-bold text-[#737373] overflow-x-auto flex-wrap">
                       {(() => {
                         let pres = 0, late = 0, abs = 0, un = 0, pend = 0;
-                        rosterStudents.forEach(st => {
-                          const stStatus = getStudentStatus(st.id).status;
+                        displayedStudents.forEach(st => {
+                          const stStatus = getStudentStatus(st.id, st._slotId).status;
                           if (stStatus === 'present') pres++;
                           else if (stStatus === 'late') late++;
                           else if (stStatus === 'absent') abs++;
@@ -1062,7 +1061,7 @@ export const TeacherDashboardPage: React.FC = () => {
                               </span>
                             )}
                             <span className="text-[#111111] ml-auto font-extrabold">
-                              {rosterStudents.length} {rosterStudents.length === 1 ? 'Student' : 'Students'} Enrolled
+                              {displayedStudents.length} {displayedStudents.length === 1 ? 'Student' : 'Students'}
                             </span>
                           </>
                         );
@@ -1072,14 +1071,14 @@ export const TeacherDashboardPage: React.FC = () => {
                 )}
               </div>
 
-              {rosterStudents.length === 0 ? (
+              {displayedStudents.length === 0 ? (
                 <div className="py-14 flex flex-col items-center justify-center text-center">
                   <div className="w-12 h-12 rounded-full bg-[#F5F5F5] flex items-center justify-center text-[#A3A3A3] mb-3">
                     <UserPlus size={20} />
                   </div>
                   <h3 className="font-bold text-[#111111] text-xs">No Students Enrolled</h3>
                   <p className="text-[10px] text-[#737373] max-w-xs mt-1">
-                    There are currently no students enrolled in this class offering.
+                    There are currently no students enrolled in this section.
                   </p>
                 </div>
               ) : (
@@ -1088,19 +1087,22 @@ export const TeacherDashboardPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-[#F0F0F0] dark:border-zinc-800">
                     <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Student</th>
+                    {activeConcurrentSlots.length > 1 && (
+                      <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Class / Section</th>
+                    )}
                     <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Stream</th>
                     <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Status & Auto-Join Log</th>
                     <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider text-right">Toggle Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#FAFAFA] dark:divide-zinc-800/60">
-                  {rosterStudents.map((st) => {
-                    const { status: stStatus, markedAt, markedBy } = getStudentStatus(st.id);
+                  {displayedStudents.map((st) => {
+                    const { status: stStatus, markedAt, markedBy } = getStudentStatus(st.id, st._slotId);
                     const isSaving = savingAttendanceId === st.id;
                     const joinTime = markedAt ? new Date(markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
 
                     return (
-                      <tr key={st.id} className="hover:bg-[#FAFAFA]/50 dark:hover:bg-zinc-800/40 transition-colors">
+                      <tr key={`${st.id}_${st._slotId}`} className="hover:bg-[#FAFAFA]/50 dark:hover:bg-zinc-800/40 transition-colors">
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg bg-[#FAFAFA] dark:bg-zinc-800 border border-[#F0F0F0] dark:border-zinc-700 flex items-center justify-center text-[10px] font-bold text-[#525252] dark:text-zinc-300 shrink-0">
@@ -1114,6 +1116,14 @@ export const TeacherDashboardPage: React.FC = () => {
                             </div>
                           </div>
                         </td>
+
+                        {activeConcurrentSlots.length > 1 && (
+                          <td className="py-3 text-xs whitespace-nowrap">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                              {st._sectionName} {st._grade ? `Gr.${st._grade}` : ''}
+                            </span>
+                          </td>
+                        )}
 
                         <td className="py-3 text-xs font-semibold text-[#525252] dark:text-zinc-300 capitalize whitespace-nowrap">
                           {st.stream || 'General'}
@@ -1174,7 +1184,7 @@ export const TeacherDashboardPage: React.FC = () => {
                           {stStatus === 'pending' ? (
                             <div className="inline-flex items-center gap-1.5 justify-end">
                               <button
-                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'present')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'present')}
                                 disabled={isSaving}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer interactive"
                                 title="Approve attendance claim (Mark Present)"
@@ -1183,7 +1193,7 @@ export const TeacherDashboardPage: React.FC = () => {
                                 <span>Approve</span>
                               </button>
                               <button
-                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'absent')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'absent')}
                                 disabled={isSaving}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer interactive"
                                 title="Reject attendance claim (Mark Absent)"
@@ -1195,7 +1205,7 @@ export const TeacherDashboardPage: React.FC = () => {
                           ) : (
                             <div className="inline-flex items-center bg-[#F5F5F5] dark:bg-zinc-800 p-0.5 rounded-lg border border-[#E5E5E5] dark:border-zinc-700">
                               <button
-                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'present')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'present')}
                                 disabled={isSaving}
                                 className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'present'
@@ -1213,7 +1223,7 @@ export const TeacherDashboardPage: React.FC = () => {
                                 P
                               </button>
                               <button
-                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'late')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'late')}
                                 disabled={isSaving}
                                 className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'late'
@@ -1231,7 +1241,7 @@ export const TeacherDashboardPage: React.FC = () => {
                                 L
                               </button>
                               <button
-                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, stStatus, 'absent')}
+                                onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'absent')}
                                 disabled={isSaving}
                                 className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
                                   stStatus === 'absent'
@@ -1269,7 +1279,7 @@ export const TeacherDashboardPage: React.FC = () => {
         onClose={() => setPendingChange(null)}
         onConfirm={async () => {
           if (pendingChange) {
-            await handleUpdateStudentStatus(pendingChange.studentId, pendingChange.newStatus);
+            await handleUpdateStudentStatus(pendingChange.studentId, pendingChange.newStatus, pendingChange.slotId);
             setPendingChange(null);
           }
         }}
