@@ -26,7 +26,6 @@ const NotificationsPage   = lazy(() => import('../pages/common/NotificationsPage
 const PrivacyPolicyPage = lazy(() => import('../pages/public/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('../pages/public/TermsOfServicePage'));
 const RefundPolicyPage = lazy(() => import('../pages/public/RefundPolicyPage'));
-const CookiePolicyPage = lazy(() => import('../pages/public/CookiePolicyPage'));
 import { CookieConsentBanner } from '../components/common/CookieConsentBanner';
 
 // ─── Marketing page (eager — entry point) ───
@@ -146,8 +145,8 @@ const AppRouter: React.FC = () => (
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
           <Route path="/refund" element={<RefundPolicyPage />} />
           <Route path="/refund-policy" element={<RefundPolicyPage />} />
-          <Route path="/cookies" element={<CookiePolicyPage />} />
-          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+          <Route path="/cookies" element={<Navigate to="/privacy" replace />} />
+          <Route path="/cookie-policy" element={<Navigate to="/privacy" replace />} />
 
           {/* Student Portal */}
           <Route

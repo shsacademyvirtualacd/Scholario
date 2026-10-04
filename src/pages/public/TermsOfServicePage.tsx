@@ -109,13 +109,9 @@ export const TermsOfServicePage: React.FC = () => {
                   <Link to="/privacy" className="text-[#D4A017] font-semibold hover:underline">
                     Privacy Policy
                   </Link>
-                  ,{' '}
+                  {' '}and{' '}
                   <Link to="/refund" className="text-[#D4A017] font-semibold hover:underline">
                     Refund Policy
-                  </Link>
-                  , and{' '}
-                  <Link to="/cookies" className="text-[#D4A017] font-semibold hover:underline">
-                    Cookie Policy
                   </Link>
                   .
                 </p>

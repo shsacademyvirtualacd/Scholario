@@ -63,7 +63,6 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
       { label: 'Privacy Policy', to: '/privacy', id: 'footer-privacy-link' },
       { label: 'Terms of Service', to: '/terms', id: 'footer-terms-link' },
       { label: 'Refund Policy', to: '/refund', id: 'footer-refund-link' },
-      { label: 'Cookie Policy', to: '/cookies', id: 'footer-cookie-link' },
     ],
   };
 

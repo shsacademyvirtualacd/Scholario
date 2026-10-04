@@ -1693,13 +1693,9 @@ export const UnregisteredPage: React.FC = () => {
                         <Link to="/privacy" target="_blank" className="font-extrabold text-[#D4A017] hover:underline">
                           Privacy Policy
                         </Link>
-                        ,{' '}
+                        , and{' '}
                         <Link to="/refund" target="_blank" className="font-extrabold text-[#D4A017] hover:underline">
                           Refund Policy
-                        </Link>
-                        , and{' '}
-                        <Link to="/cookies" target="_blank" className="font-extrabold text-[#D4A017] hover:underline">
-                          Cookie Policy
                         </Link>
                         . <span className="text-red-500">*</span>
                       </span>
@@ -1760,13 +1756,9 @@ export const UnregisteredPage: React.FC = () => {
             <Link id="unregistered-privacy-link" to="/privacy" className="font-semibold text-[#D4A017] hover:underline">
               Privacy Policy
             </Link>
-            ,{' '}
+            , and{' '}
             <Link id="unregistered-refund-link" to="/refund" className="font-semibold text-[#D4A017] hover:underline">
               Refund Policy
-            </Link>
-            , and{' '}
-            <Link id="unregistered-cookies-link" to="/cookies" className="font-semibold text-[#D4A017] hover:underline">
-              Cookie Policy
             </Link>
             .
           </p>

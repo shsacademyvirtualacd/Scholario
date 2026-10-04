@@ -156,7 +156,7 @@ export const StudentDataRightsCard: React.FC = () => {
       <div className="p-3.5 rounded-xl bg-[#FAFAFA] border border-[#E5E5E5] flex items-start gap-2.5 text-xs text-[#525252]">
         <ShieldCheck size={16} className="text-emerald-600 shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <strong>Minors' Data Protection:</strong> Scholario strictly complies with educational data minimization principles. We do not sell student data, use advertising cookies, or retain exam papers longer than required for academic evaluation.
+          <strong>Minors' Data Protection:</strong> Scholario strictly complies with educational data minimization principles. We do not sell student data, use advertising trackers, or retain exam papers longer than required for academic evaluation.
         </p>
       </div>
 
@@ -240,8 +240,6 @@ export const StudentDataRightsCard: React.FC = () => {
           <Link to="/terms" target="_blank" className="hover:text-[#111111]">Terms of Service</Link>
           <span>•</span>
           <Link to="/refund" target="_blank" className="hover:text-[#111111]">Refund Policy</Link>
-          <span>•</span>
-          <Link to="/cookies" target="_blank" className="hover:text-[#111111]">Cookie Policy</Link>
         </div>
       </div>
 

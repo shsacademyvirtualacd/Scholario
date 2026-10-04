@@ -15,7 +15,7 @@ const privacySections = [
   { id: 'ai-processing', label: '8. AI Academic Assistant (Sage) Safeguards' },
   { id: 'security', label: '9. Data Security & RLS Controls' },
   { id: 'retention', label: '10. Data Retention & Auto-Purge' },
-  { id: 'cookies', label: '11. Cookies & Storage' },
+  { id: 'storage-tokens', label: '11. Session & Functional Storage' },
   { id: 'advisory', label: '12. Legal Advisory & Compliance Notice' },
   { id: 'contact', label: '13. Data Protection Inquiries' },
 ];
@@ -348,15 +348,11 @@ export const PrivacyPolicyPage: React.FC = () => {
 
               <hr className="border-[#E5E5E5] dark:border-[#262626]" />
 
-              {/* 11. Cookies */}
-              <section id="cookies" className="scroll-mt-32 space-y-3">
-                <h2 className="text-xl font-bold text-[#111111] dark:text-white">11. Cookies & Storage</h2>
+              {/* 11. Storage & Security */}
+              <section id="storage-tokens" className="scroll-mt-32 space-y-3">
+                <h2 className="text-xl font-bold text-[#111111] dark:text-white">11. Session & Functional Storage</h2>
                 <p>
-                  Scholario sets strictly functional cookies and local storage tokens. Please review our comprehensive{' '}
-                  <Link to="/cookies" className="text-[#D4A017] font-bold hover:underline">
-                    Cookie & Local Storage Policy
-                  </Link>{' '}
-                  for an itemized breakdown.
+                  Scholario utilizes strictly functional session tokens and local browser storage necessary for secure authentication, CSRF defense, and interface preference retention (e.g. theme state). Scholario does not operate third-party advertising, profiling, or cross-site tracking scripts.
                 </p>
               </section>
 

@@ -39,7 +39,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
     { id: 'live-classes', label: '8. Live Classes & External Tools' },
     { id: 'retention', label: '9. Data Retention' },
     { id: 'rights', label: '10. Your Rights' },
-    { id: 'cookies', label: '11. Cookies' },
+    { id: 'storage', label: '11. Storage & Security' },
     { id: 'changes', label: '12. Changes to This Policy' },
     { id: 'contact', label: '13. Contact' }
   ];
@@ -385,11 +385,11 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
 
                 <hr className="border-[#F5F5F5] my-6" />
 
-                {/* Cookies */}
-                <section id="cookies" className="space-y-4">
-                  <h3 className="text-xl font-bold text-[#111111]">11. Cookies</h3>
+                {/* Storage & Security */}
+                <section id="storage" className="space-y-4">
+                  <h3 className="text-xl font-bold text-[#111111]">11. Storage & Security</h3>
                   <p className="leading-relaxed">
-                    Scholario uses minimal cookies/local storage necessary for authentication sessions and basic security. We do not use third-party advertising or tracking cookies.
+                    Scholario uses minimal functional storage necessary for authentication sessions and basic security. We do not use third-party advertising or commercial tracking scripts.
                   </p>
                 </section>
 
