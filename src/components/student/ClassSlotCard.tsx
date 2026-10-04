@@ -299,18 +299,18 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
             <span className="truncate max-w-[140px]">{linkStatus.message}</span>
           </div>
         ) : linkStatus.status === 'ended' ? (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-100 border-gray-200 text-gray-500">
-            <Clock size={12} className="text-gray-400 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-500 dark:text-neutral-400">
+            <Clock size={12} className="text-gray-400 dark:text-neutral-500 shrink-0" />
             <span>Session Ended</span>
           </div>
         ) : !hasLink ? (
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-dashed border-amber-200 bg-amber-50/70 text-amber-800" title="The teacher has not added a live class link for this session yet">
-            <VideoOff size={12} className="text-amber-600 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-dashed border-amber-200 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title="The teacher has not added a live class link for this session yet">
+            <VideoOff size={12} className="text-amber-600 dark:text-amber-400 shrink-0" />
             <span className="truncate max-w-[150px]">Class link not available yet</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500" title="Link accessible 10 minutes before class">
-            <Lock size={12} className="text-gray-400 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-50 dark:bg-neutral-800/60 border-gray-200 dark:border-neutral-700 text-gray-500 dark:text-neutral-400" title="Link accessible 10 minutes before class">
+            <Lock size={12} className="text-gray-400 dark:text-neutral-500 shrink-0" />
             <span>Unlocks 10m before</span>
           </div>
         )}

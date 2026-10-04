@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Clock, Calendar, CheckCircle2, ChevronRight, UserPlus, Zap,
-  Link as LinkIcon, Check, X, Lock, Layers
+  Check, X, Lock, Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TeacherShell from '../../components/teacher/TeacherShell';
@@ -18,24 +18,18 @@ import {
   getAttendanceForTeacher,
   getAttendanceForSession,
   recordAttendance,
-  upsertAttendanceBatch,
-  getSessionLink,
-  upsertSessionLink,
-  deleteSessionLink,
-  triggerLiveSession,
-  endLiveSession
+  upsertAttendanceBatch
 } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassOffering, ClassSlot, Profile, Attendance, AttendanceStatus } from '../../types';
 import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, calcDuration, getLinkAvailabilityStatus,
-  timeStrToMins, getClosestDateForDayOfWeek, findConcurrentSlots, groupSlotsByTimeBlock
+  formatTime12h, calcDuration,
+  timeStrToMins, getClosestDateForDayOfWeek, findConcurrentSlots
 } from '../../lib/scheduleUtils';
 import { useMobile } from '../../hooks/useMobile';
 import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
-import { stopClassReminder } from '../../lib/teacherReminderService';
 import DashboardNoticeModal from '../../components/announcements/DashboardNoticeModal';
 import ConcurrentLiveLinkEditor from '../../components/teacher/ConcurrentLiveLinkEditor';
 

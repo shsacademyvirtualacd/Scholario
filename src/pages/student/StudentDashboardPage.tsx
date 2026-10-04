@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookMarked, CheckCircle2, ChevronRight, ArrowRight,
-  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, XCircle,
+  Clock, Play, Pause, RotateCcw, Zap, Lock, Video, VideoOff, XCircle,
   ClipboardCheck
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
@@ -15,6 +15,7 @@ import {
   computeAttendanceStreak,
   markStudentSelfAttendance,
   getTeacherAttendanceRatingsForStudent,
+  getSessionLink,
 } from '../../lib/db';
 import TeacherAttendanceRatingCard from '../../components/student/TeacherAttendanceRatingCard';
 import NotificationPermissionBanner from '../../components/student/NotificationPermissionBanner';
@@ -352,21 +353,21 @@ const StudentLiveLink: React.FC<{
           <span className="truncate">{linkStatus.message}</span>
         </div>
       ) : linkStatus.status === 'ended' ? (
-        <div className="flex items-center justify-center gap-1.5 w-full bg-gray-100 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
-          <Clock size={12} className="text-gray-400 shrink-0" />
+        <div className="flex items-center justify-center gap-1.5 w-full bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200 dark:border-neutral-700">
+          <Clock size={12} className="text-gray-400 dark:text-neutral-500 shrink-0" />
           <span>Class Session Ended</span>
         </div>
       ) : !hasLink ? (
         <div 
-          className="flex items-center justify-center gap-1.5 w-full bg-amber-50/70 border border-dashed border-amber-200 text-amber-800 text-[11px] font-semibold py-1.5 px-2 rounded-md"
+          className="flex items-center justify-center gap-1.5 w-full bg-amber-50/70 dark:bg-amber-950/30 border border-dashed border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-[11px] font-semibold py-1.5 px-2 rounded-md"
           title="The teacher has not added a live class link for this session yet. It will appear here once added."
         >
-          <VideoOff size={12} className="text-amber-600 shrink-0" />
+          <VideoOff size={12} className="text-amber-600 dark:text-amber-400 shrink-0" />
           <span>Class link not available yet</span>
         </div>
       ) : (
-        <div className="flex items-center justify-center gap-1.5 w-full bg-gray-50 text-gray-500 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200">
-          <Lock size={12} className="text-gray-400 shrink-0" />
+        <div className="flex items-center justify-center gap-1.5 w-full bg-gray-50 dark:bg-neutral-800/60 text-gray-500 dark:text-neutral-400 text-[11px] font-medium py-1.5 px-2 rounded-md border border-gray-200 dark:border-neutral-700">
+          <Lock size={12} className="text-gray-400 dark:text-neutral-500 shrink-0" />
           <span>Unlocks 10m Before Class</span>
         </div>
       )}
@@ -693,7 +694,6 @@ const StudentDashboardPage: React.FC = () => {
     }
   };
 
-  const formatClassTime = formatTime12h;
   const streakMetrics = computeAttendanceStreak(attendanceRecords);
   const todayStr = getPKTNow().dateString || new Date().toISOString().slice(0, 10);
 
@@ -777,16 +777,6 @@ const StudentDashboardPage: React.FC = () => {
         <span>Not Marked</span>
       </span>
     );
-  };
-
-  const handleMarkTodayAttendance = async (slotId: string) => {
-    if (!studentId) return;
-    try {
-      const rec = await markStudentSelfAttendance(studentId, slotId, todayStr);
-      setAttendanceRecords(prev => [rec, ...prev.filter(p => !(p.slot_id === slotId && p.session_date === todayStr))]);
-    } catch (err) {
-      console.error('Failed to mark attendance:', err);
-    }
   };
 
   return (
