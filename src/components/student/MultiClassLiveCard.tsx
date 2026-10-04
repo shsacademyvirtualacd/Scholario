@@ -90,10 +90,11 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
     fetchLink();
   }, [slot?.id, sessionDate]);
 
-  // Realtime updates if teacher adds or updates link
+  // Realtime updates if teacher adds or updates link for this specific slot
   useRealtimeTable({
     table: 'class_session_links',
-    debounceMs: 500,
+    filter: slot?.id ? `slot_id=eq.${slot.id}` : undefined,
+    debounceMs: 1500,
     onAny: fetchLink,
   });
 

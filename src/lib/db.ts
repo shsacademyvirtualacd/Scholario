@@ -1427,16 +1427,19 @@ export async function recordAttendance(params: {
 }
 
 /** Helper to calculate difference in calendar days between two YYYY-MM-DD strings */
-function diffCalendarDays(dateA: string, dateB: string): number {
-  const [yA, mA, dA] = dateA.split('-').map(Number);
-  const [yB, mB, dB] = dateB.split('-').map(Number);
-  const utcA = Date.UTC(yA, mA - 1, dA);
-  const utcB = Date.UTC(yB, mB - 1, dB);
+function diffCalendarDays(dateA?: string, dateB?: string): number {
+  if (!dateA || !dateB || typeof dateA !== 'string' || typeof dateB !== 'string') return 999;
+  const partsA = dateA.slice(0, 10).split('-').map(Number);
+  const partsB = dateB.slice(0, 10).split('-').map(Number);
+  if (partsA.length < 3 || partsB.length < 3 || partsA.some(isNaN) || partsB.some(isNaN)) return 999;
+  const utcA = Date.UTC(partsA[0], partsA[1] - 1, partsA[2]);
+  const utcB = Date.UTC(partsB[0], partsB[1] - 1, partsB[2]);
+  if (isNaN(utcA) || isNaN(utcB)) return 999;
   return Math.round((utcB - utcA) / (1000 * 60 * 60 * 24));
 }
 
 /** Compute live attendance streak metrics for a student based strictly on verified attendance */
-export function computeAttendanceStreak(records: Attendance[]): {
+export function computeAttendanceStreak(records?: Attendance[] | null): {
   currentStreak: number;
   personalBest: number;
   last7Days: boolean[];
@@ -1447,76 +1450,88 @@ export function computeAttendanceStreak(records: Attendance[]): {
     last7Days: [false, false, false, false, false, false, false],
   };
 
-  if (!records || records.length === 0) {
+  if (!records || !Array.isArray(records) || records.length === 0) {
     return emptyResult;
   }
 
-  // 1. Gather all unique calendar dates with confirmed 'present' or 'late' status
-  const attendedDatesSet = new Set<string>();
-  records.forEach((r) => {
-    if (!r.session_date) return;
-    const dateStr = r.session_date.slice(0, 10);
-    if (r.status === 'present' || r.status === 'late') {
-      attendedDatesSet.add(dateStr);
+  try {
+    // 1. Gather all unique calendar dates with confirmed 'present' or 'late' status
+    const attendedDatesSet = new Set<string>();
+    records.forEach((r) => {
+      if (!r || !r.session_date) return;
+      const dateStr = String(r.session_date).slice(0, 10);
+      if (r.status === 'present' || r.status === 'late') {
+        attendedDatesSet.add(dateStr);
+      }
+    });
+
+    const sortedAttendedDates = Array.from(attendedDatesSet).sort();
+    if (sortedAttendedDates.length === 0) {
+      return emptyResult;
     }
-  });
 
-  const sortedAttendedDates = Array.from(attendedDatesSet).sort();
-  if (sortedAttendedDates.length === 0) {
-    return emptyResult;
-  }
-
-  // 2. Compute Personal Best: max consecutive calendar day streak across all history
-  let personalBest = 1;
-  let runningPBStreak = 1;
-  for (let i = 1; i < sortedAttendedDates.length; i++) {
-    const diff = diffCalendarDays(sortedAttendedDates[i - 1], sortedAttendedDates[i]);
-    if (diff === 1) {
-      runningPBStreak += 1;
-    } else {
-      runningPBStreak = 1;
-    }
-    if (runningPBStreak > personalBest) {
-      personalBest = runningPBStreak;
-    }
-  }
-
-  // 3. Compute Current Streak: consecutive calendar days active ending TODAY or YESTERDAY
-  const pkt = getPKTNow();
-  const todayStr = pkt.dateString || new Date().toISOString().slice(0, 10);
-  const lastAttendedDate = sortedAttendedDates[sortedAttendedDates.length - 1];
-  const daysSinceLastAttended = diffCalendarDays(lastAttendedDate, todayStr);
-
-  let currentStreak = 0;
-  // If the last attended session was today (0) or yesterday (1), the streak is alive!
-  if (daysSinceLastAttended >= 0 && daysSinceLastAttended <= 1) {
-    let streakCount = 1;
-    for (let i = sortedAttendedDates.length - 1; i > 0; i--) {
+    // 2. Compute Personal Best: max consecutive calendar day streak across all history
+    let personalBest = 1;
+    let runningPBStreak = 1;
+    for (let i = 1; i < sortedAttendedDates.length; i++) {
       const diff = diffCalendarDays(sortedAttendedDates[i - 1], sortedAttendedDates[i]);
       if (diff === 1) {
-        streakCount += 1;
+        runningPBStreak += 1;
       } else {
-        break;
+        runningPBStreak = 1;
+      }
+      if (runningPBStreak > personalBest) {
+        personalBest = runningPBStreak;
       }
     }
-    currentStreak = streakCount;
-  } else {
-    currentStreak = 0; // Streak lapsed (no attendance today or yesterday)
+
+    // 3. Compute Current Streak: consecutive calendar days active ending TODAY or YESTERDAY
+    const pkt = getPKTNow();
+    const todayStr = pkt.dateString || new Date().toISOString().slice(0, 10);
+    const lastAttendedDate = sortedAttendedDates[sortedAttendedDates.length - 1];
+    const daysSinceLastAttended = diffCalendarDays(lastAttendedDate, todayStr);
+
+    let currentStreak = 0;
+    // If the last attended session was today (0) or yesterday (1), the streak is alive!
+    if (daysSinceLastAttended >= 0 && daysSinceLastAttended <= 1) {
+      let streakCount = 1;
+      for (let i = sortedAttendedDates.length - 1; i > 0; i--) {
+        const diff = diffCalendarDays(sortedAttendedDates[i - 1], sortedAttendedDates[i]);
+        if (diff === 1) {
+          streakCount += 1;
+        } else {
+          break;
+        }
+      }
+      currentStreak = streakCount;
+    } else {
+      currentStreak = 0; // Streak lapsed (no attendance today or yesterday)
+    }
+
+    // 4. Compute last7Days for the current week (Monday=0 ... Sunday=6) in PKT timezone
+    const dateParts = todayStr.split('-').map(Number);
+    const tYear = dateParts[0] || new Date().getFullYear();
+    const tMonth = dateParts[1] || (new Date().getMonth() + 1);
+    const tDay = dateParts[2] || new Date().getDate();
+    const currentDayIndex = pkt.dayIndex ?? 0;
+    const last7Days: boolean[] = [];
+
+    for (let i = 0; i < 7; i++) {
+      const offset = i - currentDayIndex;
+      try {
+        const targetDate = new Date(Date.UTC(tYear, tMonth - 1, tDay + offset));
+        const targetDateStr = targetDate.toISOString().slice(0, 10);
+        last7Days.push(attendedDatesSet.has(targetDateStr));
+      } catch {
+        last7Days.push(false);
+      }
+    }
+
+    return { currentStreak, personalBest, last7Days };
+  } catch (err) {
+    console.warn('[computeAttendanceStreak] Warning:', err);
+    return emptyResult;
   }
-
-  // 4. Compute last7Days for the current week (Monday=0 ... Sunday=6) in PKT timezone
-  const [tYear, tMonth, tDay] = todayStr.split('-').map(Number);
-  const currentDayIndex = pkt.dayIndex; // 0=Mon ... 6=Sun
-  const last7Days: boolean[] = [];
-
-  for (let i = 0; i < 7; i++) {
-    const offset = i - currentDayIndex;
-    const targetDate = new Date(Date.UTC(tYear, tMonth - 1, tDay + offset));
-    const targetDateStr = targetDate.toISOString().slice(0, 10);
-    last7Days.push(attendedDatesSet.has(targetDateStr));
-  }
-
-  return { currentStreak, personalBest, last7Days };
 }
 
 /** Admin / Teacher: bulk upsert attendance records for a session */
@@ -1888,14 +1903,22 @@ function triggerDownload(blob: Blob, note: any) {
 
 /** All roles: get all notes for a set of offering IDs */
 export async function getNotesForOfferings(offeringIds: string[]): Promise<Note[]> {
-  if (offeringIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
-    .in('offering_id', offeringIds)
-    .order('created_at', { ascending: false });
-  const rows = throwOnError(data, error, 'getNotesForOfferings');
-  return enrichNotesUrls(rows);
+  if (!offeringIds || !Array.isArray(offeringIds) || offeringIds.length === 0) return [];
+  try {
+    const { data, error } = await supabase
+      .from('notes')
+      .select('*, offering:class_offerings(*, class:classes(*, board:boards(*)), subject:subjects(*), teacher:teachers(*))')
+      .in('offering_id', offeringIds)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.warn('[getNotesForOfferings] error:', error);
+      return [];
+    }
+    return enrichNotesUrls(data || []);
+  } catch (err) {
+    console.warn('[getNotesForOfferings] exception:', err);
+    return [];
+  }
 }
 
 /** Admin: get all notes */
@@ -2334,6 +2357,7 @@ export async function uploadTestPaperToR2(
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/tests/upload');
+    xhr.timeout = 45000; // 45s timeout guard against hung connections
     if (token) {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     }
@@ -2357,11 +2381,19 @@ export async function uploadTestPaperToR2(
           const parsed = JSON.parse(xhr.responseText);
           if (parsed.error) errMsg = parsed.error;
         } catch {}
-        reject(new Error(`Test upload failed (${xhr.status}): ${errMsg}`));
+        if (xhr.status === 503 || xhr.status === 504 || (errMsg && /busy|timeout|remaining connection slots/i.test(errMsg))) {
+          reject(new Error('The test server is currently busy with other uploads. Please wait a few seconds and retry.'));
+        } else {
+          reject(new Error(`Test upload failed (${xhr.status}): ${errMsg}`));
+        }
       }
     };
 
-    xhr.onerror = () => reject(new Error('Network error during test upload.'));
+    xhr.ontimeout = () => {
+      reject(new Error('Upload timed out after 45 seconds. The server connection may be busy. Please check your connection and retry.'));
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during test upload. Please verify your connection.'));
     xhr.send(formData);
   });
 }
@@ -2417,6 +2449,7 @@ export async function uploadTestSubmissionToR2(
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/submissions/upload');
+    xhr.timeout = 45000;
     if (token) {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     }
@@ -2440,8 +2473,16 @@ export async function uploadTestSubmissionToR2(
           const parsed = JSON.parse(xhr.responseText);
           if (parsed.error) errMsg = parsed.error;
         } catch {}
-        reject(new Error(`Submission upload failed (${xhr.status}): ${errMsg}`));
+        if (xhr.status === 503 || xhr.status === 504 || (errMsg && /busy|timeout/i.test(errMsg))) {
+          reject(new Error('Submission server is temporarily busy. Please wait a moment and try again.'));
+        } else {
+          reject(new Error(`Submission upload failed (${xhr.status}): ${errMsg}`));
+        }
       }
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error('Submission upload timed out after 45 seconds. Please retry.'));
     };
 
     xhr.onerror = () => reject(new Error('Network error during submission upload.'));

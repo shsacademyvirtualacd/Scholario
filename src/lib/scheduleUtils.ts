@@ -298,11 +298,11 @@ export function classWidgetState(
 export function formatCountdownPrecise(startTimeStr?: string, pktnow: PKTNow = getPKTNow()): string {
   if (!startTimeStr) return '0s';
   const startMins = timeStrToMins(startTimeStr);
-  const currentTotalSeconds = pktnow.totalMins * 60 + (pktnow.second || 0);
+  const currentTotalSeconds = (pktnow?.totalMins || 0) * 60 + (pktnow?.second || 0);
   const targetTotalSeconds = startMins * 60;
   const diffSeconds = targetTotalSeconds - currentTotalSeconds;
 
-  if (diffSeconds <= 0) return '0s';
+  if (isNaN(diffSeconds) || diffSeconds <= 0) return '0s';
 
   const h = Math.floor(diffSeconds / 3600);
   const m = Math.floor((diffSeconds % 3600) / 60);
@@ -317,7 +317,7 @@ export function formatCountdownPrecise(startTimeStr?: string, pktnow: PKTNow = g
  * Formats a total-minutes value to "in Xh Ym" or "in Ym".
  */
 export function formatCountdown(minsUntil: number): string {
-  if (minsUntil <= 0) return 'Starting now';
+  if (isNaN(minsUntil) || minsUntil <= 0) return 'Starting now';
   const h = Math.floor(minsUntil / 60);
   const m = minsUntil % 60;
   if (h > 0 && m > 0) return `in ${h}h ${m}m`;
@@ -454,16 +454,28 @@ export function getClosestDateForDayOfWeek(
   targetDayIndex: number,
   basePktNow: PKTNow = getPKTNow()
 ): string {
-  const currentDayIndex = basePktNow.dayIndex;
+  const currentDayIndex = basePktNow?.dayIndex ?? 0;
   let daysOffset = targetDayIndex - currentDayIndex;
   if (daysOffset < 0) {
     daysOffset += 7;
   }
 
   // Parse today's base date in YYYY-MM-DD
-  const [year, month, day] = basePktNow.dateString.split('-').map(Number);
-  const targetDate = new Date(Date.UTC(year, month - 1, day + daysOffset));
-  return targetDate.toISOString().slice(0, 10);
+  const rawDateStr = basePktNow?.dateString || new Date().toISOString().slice(0, 10);
+  const parts = rawDateStr.split('-').map(Number);
+  const year = parts[0] || new Date().getFullYear();
+  const month = parts[1] || (new Date().getMonth() + 1);
+  const day = parts[2] || new Date().getDate();
+
+  try {
+    const targetDate = new Date(Date.UTC(year, month - 1, day + daysOffset));
+    if (isNaN(targetDate.getTime())) {
+      return new Date().toISOString().slice(0, 10);
+    }
+    return targetDate.toISOString().slice(0, 10);
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
 }
 
 /**

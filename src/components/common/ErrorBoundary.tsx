@@ -10,7 +10,7 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -22,8 +22,9 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('CRITICAL UNCAUGHT ERROR:', error);
-    console.error('COMPONENT STACK:', errorInfo.componentStack);
+    console.error('[ErrorBoundary] CRITICAL UNCAUGHT ERROR:', error.message);
+    console.error('[ErrorBoundary] ERROR STACK:', error.stack);
+    console.error('[ErrorBoundary] COMPONENT STACK:', errorInfo?.componentStack);
     this.setState({ errorInfo });
   }
 
@@ -83,6 +84,76 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
+    return this.props.children;
+  }
+}
+
+interface SectionProps {
+  name?: string;
+  fallbackTitle?: string;
+  onRetry?: () => void;
+  children?: ReactNode;
+}
+
+interface SectionState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class SectionErrorBoundary extends Component<SectionProps, SectionState> {
+  public state: SectionState = {
+    hasError: false,
+    error: null,
+  };
+
+  public static getDerivedStateFromError(error: Error): Partial<SectionState> {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error(`[SectionErrorBoundary:${this.props.name || 'Unknown'}] Error:`, error.message);
+    console.error(`[SectionErrorBoundary:${this.props.name || 'Unknown'}] Stack:`, error.stack);
+    console.error(`[SectionErrorBoundary:${this.props.name || 'Unknown'}] Component:`, errorInfo?.componentStack);
+  }
+
+  public reset = () => {
+    this.setState({ hasError: false, error: null });
+    this.props.onRetry?.();
+  };
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 my-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  {this.props.fallbackTitle || `Unable to load ${this.props.name || 'this section'}`}
+                </h4>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 font-medium">
+                  {this.state.error?.message || 'A transient rendering error occurred.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={this.reset}
+              className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-bold text-xs hover:bg-amber-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+            >
+              Retry Section
+            </button>
+          </div>
+        </div>
+      );
+    }
     return this.props.children;
   }
 }

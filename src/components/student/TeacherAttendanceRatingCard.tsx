@@ -35,10 +35,11 @@ export const TeacherAttendanceRatingCard: React.FC<TeacherAttendanceRatingCardPr
   }, []);
 
   const pktnow = getPKTNow();
-  const target = findActiveOrRecentSlotForRating(slots, pktnow);
+  const safeSlots = Array.isArray(slots) ? slots : [];
+  const target = findActiveOrRecentSlotForRating(safeSlots, pktnow);
 
   // Hidden by default when no session is actively in-session or within the post-class voting window
-  if (!target) {
+  if (!target || !target.slot) {
     return null;
   }
 
@@ -50,8 +51,9 @@ export const TeacherAttendanceRatingCard: React.FC<TeacherAttendanceRatingCardPr
   const gradeLevel = slot.offering?.class?.display_name || slot.offering?.grade || '';
 
   // Check if student has already voted for this slot + session date
-  const existingVote = ratings.find(
-    r => r.slot_id === slot.id && r.session_date === sessionDate
+  const safeRatings = Array.isArray(ratings) ? ratings : [];
+  const existingVote = safeRatings.find(
+    r => r && r.slot_id === slot.id && r.session_date === sessionDate
   );
   const hasVoted = Boolean(existingVote);
   const userChoice = existingVote?.rating;

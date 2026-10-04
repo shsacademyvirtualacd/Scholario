@@ -13,7 +13,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import { getGradesForBoard, getStreamsForGrade, BOARDS, formatGradeDisplay, getBoardDef, BoardId } from '../../lib/taxonomy';
-import { uploadTestPaperToR2, getAllTeachers, getAllRoster, getSubjectsForStream } from '../../lib/db';
+import { uploadTestPaperToR2, getAllTeachers, getSubjectsForStream } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import type { TestPaper, Teacher } from '../../types';
@@ -60,6 +60,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
+  const isSubmittingRef = useRef<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,18 +69,16 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
     if (defaultBoard) setBoard(defaultBoard as BoardId);
   }, [defaultBoard]);
 
-  // Fetch teachers & roster when modal is opened
+  // Fetch teachers when modal is opened (lean query instead of full roster/profiles dump)
   useEffect(() => {
     if (!isOpen) return;
 
     let isMounted = true;
     setLoadingTeachers(true);
 
-    Promise.all([
-      getAllTeachers().catch(() => []),
-      getAllRoster().catch(() => []),
-    ])
-      .then(([teacherRows, rosterRows]) => {
+    getAllTeachers()
+      .catch(() => [])
+      .then((teacherRows) => {
         if (!isMounted) return;
 
         const combinedMap = new Map<string, Teacher>();
@@ -87,25 +86,6 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
         // 1. Add teacher table rows
         (teacherRows || []).forEach((t) => {
           if (t && t.id) combinedMap.set(t.id, t);
-        });
-
-        // 2. Add roster teachers and admins
-        (rosterRows || []).forEach((r) => {
-          if (r && (r.role === 'teacher' || r.role === 'admin')) {
-            const existingByName = Array.from(combinedMap.values()).find(
-              (x) => x.full_name.toLowerCase() === r.full_name.toLowerCase()
-            );
-            if (!combinedMap.has(r.id) && !existingByName) {
-              combinedMap.set(r.id, {
-                id: r.id,
-                full_name: r.full_name,
-                email: r.email,
-                phone: r.phone,
-                subjects: r.subjects || [],
-                is_active: true,
-              } as unknown as Teacher);
-            }
-          }
         });
 
         const activeList = Array.from(combinedMap.values()).filter((t) => t.is_active !== false);
@@ -229,6 +209,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current || uploading) return;
     setError(null);
 
     if (!file) {
@@ -252,15 +233,15 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
       return;
     }
 
-    setUploading(true);
-    setProgress(0);
-
     const parsedMarks = totalMarks.trim() ? parseInt(totalMarks.trim(), 10) : 100;
     if (totalMarks.trim() && (isNaN(parsedMarks) || parsedMarks <= 0)) {
       setError('Please enter a valid positive number for total marks (e.g. 50 or 100).');
-      setUploading(false);
       return;
     }
+
+    isSubmittingRef.current = true;
+    setUploading(true);
+    setProgress(0);
 
     try {
       const fileType = file.type.includes('image')
@@ -319,6 +300,7 @@ export const TestUploadModal: React.FC<TestUploadModalProps> = ({
       console.error('Test upload error:', err);
       setError(err.message || 'Failed to upload test paper. Please verify file and retry.');
     } finally {
+      isSubmittingRef.current = false;
       setUploading(false);
     }
   };
