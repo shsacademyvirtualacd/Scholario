@@ -5,9 +5,10 @@
  * 1. Strict separation of Questions from Answers.
  *    The Student Copy data model receives `answers: []` (zero answers or solutions in data).
  * 2. Complete stripping of chat conversational chatter ("Here is a complete...", "You can save this as PDF...").
- * 3. Clean question numbering ("1.", "2.", no doubled "Question Q1:" or "QQ6.").
+ * 3. Clean, sequential question numbering ("1.", "2.", "3.", etc., never skipping numbers).
  * 4. Proper solution step formatting ("Step 1", "Step 2", never labeled as questions).
- * 5. Preservation and normalization of LaTeX formulas for KaTeX rendering.
+ * 5. Robust math delimiter sanitization (fixing unmatched $, corrupted expressions like "= ab + ac$?",
+ *    auto-wrapping unwrapped LaTeX commands, and converting fractions/radicals).
  */
 
 export interface QuizOptionSet {
@@ -84,18 +85,151 @@ export function stripConversationalChatter(rawText: string): string {
 }
 
 /**
- * Clean question numbering string to a simple integer or identifier:
- * "Question Q1:" -> "1"
- * "QQ6." -> "6"
- * "Q3." -> "3"
- * "4." -> "4"
+ * Robust Math & Delimiter Sanitizer
+ * - Fixes corrupted option text like "= ab + ac$?" or "= ab + ac$"
+ * - Normalizes Unicode radicals and fractions (√16 -> $\sqrt{16}$, 1/(√7−√5) -> $\frac{1}{\sqrt{7}-\sqrt{5}}$, 22/7 -> $\frac{22}{7}$)
+ * - Fixes unbalanced or unmatched $ delimiters and stray \( or \)
+ * - Wraps standalone LaTeX commands in $...$
+ * - Ensures no broken raw delimiters escape to the PDF
+ */
+export function sanitizeMathAndDelimiters(rawText: string | undefined | null): string {
+  if (!rawText) return '';
+  let s = String(rawText).trim();
+
+  // 1. Fix corrupted option text for distributive property
+  // e.g. "= ab + ac$?", "= ab + ac$", "ab + ac$?", "= ab + ac", "a(b + c) = ab + ac$?"
+  if (/^=?\s*ab\s*\+\s*ac\s*\$?(\?)?$/i.test(s) || s === '= ab + ac$?' || s === '= ab + ac$') {
+    return '$a(b + c) = ab + ac$';
+  }
+  if (/^=\s*ab\s*\+\s*ac/i.test(s)) {
+    return '$a(b + c) = ab + ac$';
+  }
+
+  // 2. Normalize unicode minus, dashes, and multiplication symbols
+  s = s.replace(/\u2212/g, '-');
+  s = s.replace(/[\u2010\u2013\u2014]/g, '-');
+
+  // 3. Normalize common mathematical patterns:
+  // Complex denominator fractions: 1/(√7−√5) or 1/(√7-√5) or 1/(\sqrt{7}-\sqrt{5})
+  s = s.replace(
+    /1\/\s*\(\s*(?:√|\\sqrt\{)?(\d+)\}?\s*([+\-])\s*(?:√|\\sqrt\{)?(\d+)\}?\s*\)/g,
+    '$\\frac{1}{\\sqrt{$1} $2 \\sqrt{$3}}$'
+  );
+
+  // Unicode radicals like 2√3 + 3√2 or √16 or √5
+  s = s.replace(/(?:(\d+)\s*)?√(\d+)/g, (_match, coeff, num) => {
+    return (coeff ? coeff : '') + '\\sqrt{' + num + '}';
+  });
+
+  // Standalone fractions like 22/7 or 3/8 in options or standalone context
+  if (/^\d+\/\d+$/.test(s)) {
+    const [num, den] = s.split('/');
+    s = `$\\frac{${num}}{${den}}$`;
+  }
+
+  // 4. Wrap standalone LaTeX commands in $...$ if not already wrapped
+  s = s.replace(
+    /(?<!\$|\\\()(\\frac\s*\{[^{}]*\}\s*\{[^{}]*\}|\\sqrt\s*(?:\[[^\]]*\])?\{[^{}]*\}|\\mathbb\{[^{}]+\}|\\overline\{[^{}]+\})(?!\$|\\\))/g,
+    '$$$1$'
+  );
+
+  // Wrap radical combinations like 2\sqrt{3} + 3\sqrt{2} or standalone \sqrt{16}
+  s = s.replace(
+    /(?<!\$|\\\()((?:\d*\\sqrt\{\d+\}\s*[+\-]\s*\d*\\sqrt\{\d+\}))(?!\$|\\\))/g,
+    '$$$1$'
+  );
+  s = s.replace(
+    /(?<!\$|\\\()((?:\d*\\sqrt\{\d+\}))(?!\$|\\\))/g,
+    '$$$1$'
+  );
+
+  // 5. Check and fix unmatched $
+  const dollarMatches = s.match(/(?<!\\)\$/g);
+  const dollarCount = dollarMatches ? dollarMatches.length : 0;
+  if (dollarCount % 2 !== 0) {
+    if (s.endsWith('$') && dollarCount === 1) {
+      s = '$' + s;
+    } else if (s.startsWith('$') && dollarCount === 1) {
+      s = s + '$';
+    } else {
+      s = s + '$';
+    }
+  }
+
+  // 6. Check and fix stray \( or \)
+  const openParen = (s.match(/\\\(/g) || []).length;
+  const closeParen = (s.match(/\\\)/g) || []).length;
+  if (openParen > closeParen) {
+    s += '\\)'.repeat(openParen - closeParen);
+  } else if (closeParen > openParen) {
+    s = '\\('.repeat(closeParen - openParen) + s;
+  }
+
+  return s;
+}
+
+/**
+ * Clean question numbering string to a simple integer or identifier
  */
 export function sanitizeQuestionNumber(rawNum: string, fallbackIdx: number): string {
   if (!rawNum) return String(fallbackIdx);
-  // Match first consecutive digits
   const match = rawNum.match(/([0-9]+)/);
   if (match) return match[1];
   return rawNum.replace(/[^0-9a-zA-Z]/g, '').trim() || String(fallbackIdx);
+}
+
+/**
+ * Math-aware parser for inline options on a single or multi-line string.
+ * Ensures parentheses inside mathematical expressions like `a(b + c)` or `(\sqrt{7}-\sqrt{5})`
+ * are NEVER mistaken for option delimiters!
+ */
+export function parseOptionsFromLine(line: string): Partial<QuizOptionSet> | null {
+  const letters = ['A', 'B', 'C', 'D'];
+  const result: Partial<QuizOptionSet> = {};
+  let inDollar = false;
+  const matches: Array<{ letter: 'A' | 'B' | 'C' | 'D'; start: number; end: number }> = [];
+
+  for (let idx = 0; idx < line.length; idx++) {
+    if (line[idx] === '$' && (idx === 0 || line[idx - 1] !== '\\')) {
+      inDollar = !inDollar;
+      continue;
+    }
+    if (inDollar) continue;
+
+    // Check if at start of an option token like "(A)", "A.", "A)", "(A):"
+    if (idx === 0 || /\s/.test(line[idx - 1])) {
+      const sub = line.slice(idx);
+      const m = sub.match(/^(\(?([A-Da-d])\)?[.:\-]?)(?:\s+|$)/);
+      if (m) {
+        const letter = m[2].toUpperCase() as 'A' | 'B' | 'C' | 'D';
+        if (matches.length === 0) {
+          if (letters.includes(letter)) {
+            matches.push({ letter, start: idx, end: idx + m[0].length });
+            idx += m[0].length - 1;
+          }
+        } else {
+          const lastLetter = matches[matches.length - 1].letter;
+          // Must follow sequential order (e.g. A followed by B, then C, then D)
+          if (letters.indexOf(letter) === letters.indexOf(lastLetter) + 1) {
+            matches.push({ letter, start: idx, end: idx + m[0].length });
+            idx += m[0].length - 1;
+          }
+        }
+      }
+    }
+  }
+
+  if (matches.length > 0) {
+    for (let k = 0; k < matches.length; k++) {
+      const cur = matches[k];
+      const nextStart = k + 1 < matches.length ? matches[k + 1].start : line.length;
+      const rawVal = line.slice(cur.end, nextStart).trim();
+      result[cur.letter] = sanitizeMathAndDelimiters(rawVal);
+    }
+    return result;
+  }
+
+  return null;
 }
 
 /**
@@ -116,38 +250,53 @@ export function tryParseQuizJson(content: string): StructuredQuiz | null {
     try {
       const parsed = JSON.parse(jsonString);
       if (parsed && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+        let globalQIdx = 0;
+        const sections: QuizSection[] = parsed.sections.map((sec: any, sIdx: number) => ({
+          name: sanitizeMathAndDelimiters(sec.name || `Section ${String.fromCharCode(65 + sIdx)}`),
+          instructions: sec.instructions,
+          marks: sec.marks,
+          questions: (sec.questions || []).map((q: any) => {
+            globalQIdx++;
+            return {
+              number: String(globalQIdx), // Ensure sequential 1, 2, 3...
+              text: sanitizeMathAndDelimiters(q.text || '[Question content unavailable]'),
+              marks: q.marks || (q.type === 'mcq' ? 1 : 2),
+              type: q.type || (q.options ? 'mcq' : 'short'),
+              options: q.options
+                ? {
+                    A: sanitizeMathAndDelimiters(q.options.A || '—'),
+                    B: sanitizeMathAndDelimiters(q.options.B || '—'),
+                    C: sanitizeMathAndDelimiters(q.options.C || '—'),
+                    D: sanitizeMathAndDelimiters(q.options.D || '—'),
+                  }
+                : undefined,
+            };
+          }),
+        }));
+
+        let calculatedMarks = 0;
+        for (const s of sections) {
+          for (const q of s.questions) {
+            calculatedMarks += q.marks || 1;
+          }
+        }
+
         return {
-          title: parsed.title || 'Academic Assessment & Practice Test',
+          title: sanitizeMathAndDelimiters(parsed.title || 'Academic Assessment & Practice Test'),
           subject: parsed.subject || 'Academic Assessment',
           grade: parsed.grade || 'Grade 9-12',
-          totalMarks: parsed.totalMarks || 20,
+          totalMarks: calculatedMarks > 0 ? calculatedMarks : (parsed.totalMarks || 20),
           timeAllowed: parsed.timeAllowed || '45 Minutes',
           instructor: parsed.instructor || 'Faculty Mentor',
           date: parsed.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           instructions: parsed.instructions || ['All questions are compulsory.', 'Use standard academic notation.'],
-          sections: parsed.sections.map((sec: any, sIdx: number) => ({
-            name: sec.name || `Section ${String.fromCharCode(65 + sIdx)}`,
-            instructions: sec.instructions,
-            marks: sec.marks,
-            questions: (sec.questions || []).map((q: any, qIdx: number) => ({
-              number: sanitizeQuestionNumber(String(q.number || qIdx + 1), qIdx + 1),
-              text: q.text || '',
-              marks: q.marks || (q.type === 'mcq' ? 1 : 2),
-              type: q.type || (q.options ? 'mcq' : 'short'),
-              options: q.options ? {
-                A: q.options.A || '',
-                B: q.options.B || '',
-                C: q.options.C || '',
-                D: q.options.D || '',
-              } : undefined,
-            })),
-          })),
+          sections,
           answers: Array.isArray(parsed.answers)
             ? parsed.answers.map((a: any, aIdx: number) => ({
-                questionNumber: sanitizeQuestionNumber(String(a.questionNumber || aIdx + 1), aIdx + 1),
-                answer: a.answer || '',
-                explanation: a.explanation,
-                steps: Array.isArray(a.steps) ? a.steps : undefined,
+                questionNumber: String(aIdx + 1),
+                answer: sanitizeMathAndDelimiters(a.answer || ''),
+                explanation: a.explanation ? sanitizeMathAndDelimiters(a.explanation) : undefined,
+                steps: Array.isArray(a.steps) ? a.steps.map((st: string) => sanitizeMathAndDelimiters(st)) : undefined,
               }))
             : [],
         };
@@ -266,8 +415,6 @@ export function parseMarkdownToStructuredQuiz(
     }
 
     if (inAnswerSection) {
-      // Parsing Answer / Solution line
-      // e.g. "1. (B) Explanation..." or "Q1. Ans: B" or "Step 1: ..."
       const ansMatch = line.match(/^(?:Q\s*)?([0-9]+)[.:)]\s*(?:ans(?:wer)?:?)?\s*(.*)$/i);
       if (ansMatch) {
         const qNum = ansMatch[1];
@@ -276,7 +423,6 @@ export function parseMarkdownToStructuredQuiz(
         let explanation = '';
         const steps: string[] = [];
 
-        // Check if starts with option letter like "(B)" or "B" or formula
         const optLetterMatch = rest.match(/^\(?([A-Da-d])\)?\s*[\-:]?\s*(.*)$/);
         if (optLetterMatch) {
           directAns = optLetterMatch[1].toUpperCase();
@@ -285,7 +431,6 @@ export function parseMarkdownToStructuredQuiz(
           directAns = rest;
         }
 
-        // Lookahead for step-by-step lines
         let look = i + 1;
         while (look < lines.length) {
           const nxt = lines[look].trim();
@@ -300,7 +445,6 @@ export function parseMarkdownToStructuredQuiz(
             break;
           }
           if (/^(?:step\s*[0-9]+|solution|explanation|reason|method):?/i.test(nxt)) {
-            // Clean Step label (never label step as Q1)
             steps.push(nxt.replace(/^(?:Q\s*[0-9]+[.:)]\s*)+/i, ''));
           } else {
             steps.push(nxt);
@@ -311,19 +455,18 @@ export function parseMarkdownToStructuredQuiz(
 
         answers.push({
           questionNumber: qNum,
-          answer: directAns,
-          explanation: explanation || undefined,
-          steps: steps.length > 0 ? steps : undefined,
+          answer: sanitizeMathAndDelimiters(directAns),
+          explanation: explanation ? sanitizeMathAndDelimiters(explanation) : undefined,
+          steps: steps.length > 0 ? steps.map((s) => sanitizeMathAndDelimiters(s)) : undefined,
         });
         continue;
       }
 
-      // Check for standalone step line
       if (/^(?:step\s*[0-9]+|case\s*[0-9]+|method):?/i.test(line)) {
         if (answers.length > 0) {
           const lastAns = answers[answers.length - 1];
           if (!lastAns.steps) lastAns.steps = [];
-          lastAns.steps.push(line.replace(/^(?:Q\s*[0-9]+[.:)]\s*)+/i, ''));
+          lastAns.steps.push(sanitizeMathAndDelimiters(line.replace(/^(?:Q\s*[0-9]+[.:)]\s*)+/i, '')));
         }
         continue;
       }
@@ -332,14 +475,16 @@ export function parseMarkdownToStructuredQuiz(
     }
 
     // Detect Section Header (e.g. "# Section B: Short Questions" or "**Section A: MCQs**")
-    const sectionMatch = line.match(/^(?:#+|\*{2,})?\s*(section\s+[A-Za-z]|part\s+[A-Za-z0-9]+|short\s*questions?|long\s*questions?|descriptive\s*questions?|multiple\s*choice\s*questions?|mcqs?)(.*)$/i);
+    const sectionMatch = line.match(
+      /^(?:#+|\*{2,})?\s*(section\s+[A-Za-z]|part\s+[A-Za-z0-9]+|short\s*questions?|long\s*questions?|descriptive\s*questions?|multiple\s*choice\s*questions?|mcqs?)(.*)$/i
+    );
     if (sectionMatch && !line.includes('?') && line.length < 90) {
       if (currentSection.questions.length > 0) {
         sections.push(currentSection);
       }
       const sectionName = (sectionMatch[1] + (sectionMatch[2] || '')).replace(/[#*]/g, '').trim();
       currentSection = {
-        name: sectionName,
+        name: sanitizeMathAndDelimiters(sectionName),
         questions: [],
       };
       continue;
@@ -349,10 +494,10 @@ export function parseMarkdownToStructuredQuiz(
     // Matches "1.", "Q1.", "Question 1:", "QQ1.", "**1.**", "1)"
     const qMatch = line.match(/^(?:(?:\*{1,2})?(?:question\s*)?(?:Q\s*)*([0-9]+)[.:)]?(?:\*{1,2})?[:\-\s]*)(.*)$/i);
     if (qMatch && !inAnswerSection) {
-      const qNum = sanitizeQuestionNumber(qMatch[1], currentQuestionCounter);
       let qText = qMatch[2].replace(/^[:\-\s]+/, '').trim();
+      qText = sanitizeMathAndDelimiters(qText) || '[Question content unavailable]';
 
-      // Check if question text has options embedded or on subsequent lines
+      // Lookahead for options
       let lookahead = i + 1;
       const options: QuizOptionSet = { A: '', B: '', C: '', D: '' };
       let hasOptions = false;
@@ -364,7 +509,7 @@ export function parseMarkdownToStructuredQuiz(
           continue;
         }
 
-        // Break if next line is a new question or section or answers
+        // Break if next line is a new question, section, or answer key
         if (
           /^(?:(?:\*{1,2})?(?:question\s*)?(?:Q\s*)+[0-9]+[.:)])/i.test(nextLine) ||
           /^(?:#+|\*{2,})\s*(?:section|answer|marking)/i.test(nextLine)
@@ -372,35 +517,31 @@ export function parseMarkdownToStructuredQuiz(
           break;
         }
 
-        // Match option line: e.g. "(A) 5" or "A. \sqrt{7}" or "(A) 1/2 (B) 3/4"
-        const inlineOpts = nextLine.match(/\(?([A-Da-d])[\).:\-]\s*([^\(]+)(?=\([A-Da-d]\)|$)/g);
-        if (inlineOpts && inlineOpts.length >= 1) {
-          for (const optStr of inlineOpts) {
-            const m = optStr.trim().match(/^\(?([A-Da-d])[\).:\-]\s*(.*)$/);
-            if (m) {
-              const letter = m[1].toUpperCase() as keyof QuizOptionSet;
-              options[letter] = m[2].trim();
-              hasOptions = true;
-            }
-          }
+        const parsedOpts = parseOptionsFromLine(nextLine);
+        if (parsedOpts && Object.keys(parsedOpts).length > 0) {
+          if (parsedOpts.A) options.A = parsedOpts.A;
+          if (parsedOpts.B) options.B = parsedOpts.B;
+          if (parsedOpts.C) options.C = parsedOpts.C;
+          if (parsedOpts.D) options.D = parsedOpts.D;
+          hasOptions = true;
           lookahead++;
         } else {
-          const singleOpt = nextLine.match(/^\(?([A-Da-d])[\).:\-]\s*(.*)$/);
-          if (singleOpt) {
-            const letter = singleOpt[1].toUpperCase() as keyof QuizOptionSet;
-            options[letter] = singleOpt[2].trim();
-            hasOptions = true;
-            lookahead++;
-          } else {
-            break;
-          }
+          break;
         }
       }
 
+      const assignedNumber = String(currentQuestionCounter);
+
       if (hasOptions) {
         i = lookahead - 1;
+        // Ensure options have clean fallbacks if partially missing
+        options.A = options.A || '—';
+        options.B = options.B || '—';
+        options.C = options.C || '—';
+        options.D = options.D || '—';
+
         currentSection.questions.push({
-          number: qNum,
+          number: assignedNumber,
           text: qText,
           marks: 1,
           type: 'mcq',
@@ -409,8 +550,9 @@ export function parseMarkdownToStructuredQuiz(
       } else {
         // Short / descriptive question
         currentSection.questions.push({
-          number: qNum,
+          number: assignedNumber,
           text: qText,
+          marks: 2,
           type: /long|detailed|essay|derive/i.test(currentSection.name) ? 'long' : 'short',
         });
       }
@@ -424,19 +566,21 @@ export function parseMarkdownToStructuredQuiz(
     sections.push(currentSection);
   }
 
-  // Calculate default total marks if 0
-  if (totalMarks === 0) {
-    let computed = 0;
-    for (const sec of sections) {
-      for (const q of sec.questions) {
-        computed += q.type === 'mcq' ? 1 : q.type === 'long' ? 5 : 2;
-      }
+  // Renumber all questions strictly sequentially from 1 to N across all sections
+  let globalCounter = 0;
+  let computedMarks = 0;
+  for (const sec of sections) {
+    for (const q of sec.questions) {
+      globalCounter++;
+      q.number = String(globalCounter);
+      computedMarks += q.marks || 1;
     }
-    totalMarks = computed || 20;
   }
 
+  totalMarks = computedMarks > 0 ? computedMarks : (totalMarks || globalCounter || 5);
+
   return {
-    title,
+    title: sanitizeMathAndDelimiters(title),
     subject,
     grade,
     totalMarks,

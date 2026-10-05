@@ -9,14 +9,16 @@
  * - Dual export: "Student Copy" (Zero answers in data model) vs "Teacher Copy" (With solutions & marking key)
  *
  * Guarantees:
- * - Mathematical notation rendered via KaTeX (fractions, radicals, overlines, sets ℝ, ℤ).
- * - Zero answers in Student Copy (answers array completely purged before rendering).
- * - Automatic page breaks with `break-inside: avoid` preventing cramped or cut questions.
- * - Conversational AI chatter and markdown artifacts stripped.
- * - Lightweight SVG branding watermark (zero lag, fast rendering).
- * - Blob / Object URL output for instant, buttery-smooth mobile preview.
+ * - Official SHS Virtual Academy logo image rendered in header with CORS and decode wait.
+ * - KaTeX CSS imported and all KaTeX fonts preloaded/awaited prior to html2canvas capture.
+ * - Mathematical notation rendered at high resolution (font-size ≥ 12pt, html2canvas scale: 3, #ffffff).
+ * - Complete delimiter and LaTeX sanitization (no broken raw delimiters or malformed options).
+ * - Sequential numbering (1..N) with exact matching Total Marks.
+ * - 2-column option grid with min-width: 0, word-break, and overflow-wrap: anywhere (no clipping).
+ * - Real pagination splitting only at atomic question blocks with "Page X of Y" footer.
  */
 
+import 'katex/dist/katex.min.css';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import katex from 'katex';
@@ -24,6 +26,7 @@ import {
   StructuredQuiz,
   parseQuizJsonOrMarkdown,
   sanitizeQuizForStudent,
+  sanitizeMathAndDelimiters,
 } from './structuredQuizParser';
 import { containsUrdu } from './urduReshaper';
 
@@ -42,6 +45,86 @@ export interface GeneratedPdfResult {
   dataUrl: string;
   filename: string;
   totalPages: number;
+}
+
+export const SHS_OFFICIAL_LOGO_URL =
+  'https://pub-51ccade1f191417389ac7df61830c670.r2.dev/file_00000000c0808211bef4c03788e5a2c5.png';
+export const SHS_LOCAL_LOGO_PATH = '/images/shs-academy-logo.png';
+
+let cachedShsLogoBase64: string | null = null;
+
+/**
+ * Preload the official SHS Virtual Academy logo as a base64 Data URL.
+ * Guarantees CORS-free, synchronous rendering in html2canvas without black boxes or dropped images.
+ */
+export async function loadAcademyLogoDataUrl(): Promise<string> {
+  if (cachedShsLogoBase64) {
+    return cachedShsLogoBase64;
+  }
+
+  const candidateUrls = [
+    SHS_LOCAL_LOGO_PATH,
+    '/logo.png',
+    '/logo.svg',
+    SHS_OFFICIAL_LOGO_URL,
+  ];
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (res.ok) {
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (dataUrl && dataUrl.startsWith('data:image')) {
+          cachedShsLogoBase64 = dataUrl;
+          return dataUrl;
+        }
+      }
+    } catch {
+      // Continue to next candidate
+    }
+  }
+
+  // Fallback: create via Image and canvas
+  for (const url of candidateUrls) {
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 120;
+            canvas.height = img.naturalHeight || 120;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL('image/png'));
+            } else {
+              reject(new Error('Canvas context is null'));
+            }
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+      if (dataUrl && dataUrl.startsWith('data:image')) {
+        cachedShsLogoBase64 = dataUrl;
+        return dataUrl;
+      }
+    } catch {
+      // Continue
+    }
+  }
+
+  return '';
 }
 
 /**
@@ -139,12 +222,12 @@ export function extractAcademicMetadata(text: string, userFullName?: string): Sa
 
 /**
  * Render mathematical expressions using KaTeX and format typography.
- * Handles fractions, square roots, overlines for recurring decimals (e.g. 0.6̄),
- * and sets like ℝ, ℤ seamlessly.
+ * Sanitizes delimiters, wraps raw LaTeX commands, and renders fractions, square roots,
+ * overlines, and sets seamlessly with KaTeX HTML output.
  */
 export function renderMathAndTypography(rawText: string | undefined | null): string {
   if (!rawText) return '';
-  let str = String(rawText);
+  let str = sanitizeMathAndDelimiters(rawText);
 
   // 1. Convert standard LaTeX math delimiters ($...$, $$...$$, \(...\), \[...\])
   str = str.replace(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$(?!\$)[\s\S]*?\$|\\\([\s\S]*?\\\))/g, (match) => {
@@ -170,50 +253,28 @@ export function renderMathAndTypography(rawText: string | undefined | null): str
         strict: false,
       });
     } catch {
-      return match;
+      return formula;
     }
   });
 
-  // 2. Render unwrapped standalone LaTeX math expressions (like \frac{3}{\sqrt{5}-\sqrt{2}}, \mathbb{R}, \mathbb{Z}, 0.\overline{6})
-  if (
-    /\\(?:frac|dfrac|tfrac|sqrt|mathbb|overline|times|pm|cdot|approx|neq|leq|geq|in|to)\b/.test(str) &&
-    !str.includes('class="katex"')
-  ) {
-    str = str.replace(
-      /(\\frac\s*\{[^{}]*\}\s*\{[^{}]*\}|\\sqrt\s*(?:\[[^\]]*\])?\{[^{}]*\}|\\mathbb\{[^{}]+\}|\\overline\{[^{}]+\}|\b\d+\s*\\cdot\s*\d+\b|\\pm|\\neq|\\leq|\\geq|\\times|\\approx)/g,
-      (match) => {
-        try {
-          return katex.renderToString(match, {
-            displayMode: false,
-            throwOnError: false,
-            output: 'html',
-            strict: false,
-          });
-        } catch {
-          return match;
-        }
-      }
-    );
-  }
-
-  // 3. Genetics notations & chemistry subscripts: F_1 -> F₁, H2O -> H₂O, CO2 -> CO₂
+  // 2. Genetics notations & chemistry subscripts: F_1 -> F₁, H2O -> H₂O, CO2 -> CO₂
   str = str.replace(/\bF_?1\b/g, 'F₁');
   str = str.replace(/\bF_?2\b/g, 'F₂');
   str = str.replace(/\bP_?1\b/g, 'P₁');
   str = str.replace(/\bH2O\b/g, 'H₂O');
   str = str.replace(/\bCO2\b/g, 'CO₂');
 
-  // 4. Exponents shorthand: x^2 -> x², x^3 -> x³
+  // 3. Exponents shorthand: x^2 -> x², x^3 -> x³
   str = str.replace(/\^2\b/g, '²');
   str = str.replace(/\^3\b/g, '³');
 
-  // 5. Code backticks
+  // 4. Code backticks
   str = str.replace(
     /`([^`]+)`/g,
-    '<code style="background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 9px; color: #0f172a;">$1</code>'
+    '<code style="background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 11px; color: #0f172a;">$1</code>'
   );
 
-  // 6. Markdown bold & italics
+  // 5. Markdown bold & italics
   str = str.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
   str = str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   str = str.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>');
@@ -221,14 +282,14 @@ export function renderMathAndTypography(rawText: string | undefined | null): str
   str = str.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
   str = str.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
 
-  // 7. Clean rogue markdown headers
+  // 6. Clean rogue markdown headers
   str = str.replace(/^#{1,6}\s*/g, '');
 
   return str;
 }
 
 /**
- * Lightweight SVG Watermark (avoids heavy 800KB base64 images that lag mobile preview)
+ * Lightweight SVG Watermark
  */
 const SVG_WATERMARK_DATA = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 100 100" opacity="0.035"><polygon points="50,5 95,28 95,72 50,95 5,72 5,28" fill="%23111111"/><text x="50" y="58" font-family="sans-serif" font-size="28" font-weight="900" fill="%23F4C430" text-anchor="middle">SHS</text></svg>`;
 
@@ -264,8 +325,59 @@ export async function generateSageContentPdf(
   // Strict enforcement: Student Copy template receives zero answers in data model
   const quizData: StructuredQuiz = mode === 'student' ? sanitizeQuizForStudent(parsedQuiz) : parsedQuiz;
 
+  // Calculate actual total marks matching all rendered questions
+  let calculatedMarks = 0;
+  let totalQuestionCount = 0;
+  for (const s of quizData.sections) {
+    for (const q of s.questions) {
+      totalQuestionCount++;
+      calculatedMarks += q.marks || 1;
+    }
+  }
+  const displayTotalMarks = calculatedMarks > 0 ? calculatedMarks : (quizData.totalMarks || totalQuestionCount || 5);
+
+  // Preload KaTeX CSS into document head if not present
+  if (typeof document !== 'undefined') {
+    if (!document.getElementById('katex-css-bundle')) {
+      const link = document.createElement('link');
+      link.id = 'katex-css-bundle';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    }
+  }
+
+  // Preload Academy Logo base64
+  const logoDataUrl = await loadAcademyLogoDataUrl();
+
+  // Await document.fonts.ready and explicit KaTeX web fonts
+  if (typeof document !== 'undefined' && document.fonts) {
+    try {
+      await document.fonts.ready;
+      const katexFontList = [
+        '1em KaTeX_Main',
+        '1em KaTeX_Math',
+        '1em KaTeX_Size1',
+        '1em KaTeX_Size2',
+        '1em KaTeX_Size3',
+        '1em KaTeX_Size4',
+        '1em KaTeX_AMS',
+        '1em KaTeX_Caligraphic',
+        '1em KaTeX_Fraktur',
+        '1em KaTeX_SansSerif',
+        '1em KaTeX_Script',
+        '1em KaTeX_Typewriter',
+      ];
+      await Promise.allSettled(katexFontList.map((f) => document.fonts.load(f)));
+      await document.fonts.ready;
+    } catch (err) {
+      console.warn('[PDFGenerator] Font loading warning:', err);
+    }
+  }
+
   const PAGE_HEIGHT = 1123;
-  const MAX_CONTENT_BOTTOM_OFFSET = 1040;
+  const MAX_CONTENT_BOTTOM_OFFSET = 1030;
   const standardFontFamily = "'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif";
   const urduFontFamily = "'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif";
 
@@ -299,8 +411,31 @@ export async function generateSageContentPdf(
     pageEl.style.backgroundColor = '#ffffff';
     pageEl.style.color = '#111111';
     pageEl.style.fontFamily = standardFontFamily;
-    pageEl.style.padding = '28px 40px 42px 40px';
+    pageEl.style.padding = '24px 36px 36px 36px';
     pageEl.style.overflow = 'hidden';
+
+    // Inject KaTeX support styles directly on pageEl
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      .katex {
+        font-size: 1.15em !important;
+        line-height: 1.25 !important;
+        text-rendering: auto !important;
+      }
+      .katex-html {
+        display: inline-block !important;
+      }
+      .katex .frac-line {
+        border-bottom-width: 1.5px !important;
+      }
+      .katex .sqrt > .vlist-t {
+        display: inline-table !important;
+      }
+      .katex .sqrt-line {
+        border-top-width: 1.5px !important;
+      }
+    `;
+    pageEl.appendChild(styleEl);
 
     // 1. Lightweight Vector Watermark
     const watermarkEl = document.createElement('div');
@@ -319,25 +454,27 @@ export async function generateSageContentPdf(
     headerEl.style.position = 'relative';
     headerEl.style.zIndex = '10';
 
+    const logoHtml = logoDataUrl
+      ? `<img src="${logoDataUrl}" alt="SHS Virtual Academy" style="width: 48px; height: 48px; object-fit: contain; flex-shrink: 0;" crossOrigin="anonymous" />`
+      : `<div style="width: 48px; height: 48px; background: #111111; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #F4C430; font-weight: 900; font-size: 16px; flex-shrink: 0;">SHS</div>`;
+
     const topBanner = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111111; padding-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 44px; height: 44px; background: #111111; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #F4C430; font-weight: 900; font-size: 16px; flex-shrink: 0;">
-            SHS
-          </div>
+          ${logoHtml}
           <div>
-            <h1 style="margin: 0; font-size: 15px; font-weight: 900; letter-spacing: -0.02em; color: #111111; text-transform: uppercase; line-height: 1.15;">
+            <h1 style="margin: 0; font-size: 16px; font-weight: 900; letter-spacing: -0.02em; color: #111111; text-transform: uppercase; line-height: 1.15;">
               SHS VIRTUAL ACADEMY
             </h1>
-            <p style="margin: 2px 0 0 0; font-size: 9px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em;">
+            <p style="margin: 2px 0 0 0; font-size: 9.5px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em;">
               Scholario Sage v2.0 • Academic Testing & Assessment
             </p>
           </div>
         </div>
         <div style="text-align: right;">
-          <div style="font-size: 13.5px; font-weight: 900; color: #111111; line-height: 1.15;">Scholario</div>
-          <div style="font-size: 9px; font-weight: 700; color: #737373;">scholario.me</div>
-          <div style="font-size: 8.5px; font-weight: 800; color: ${mode === 'student' ? '#059669' : '#d97706'}; text-transform: uppercase; margin-top: 1px;">
+          <div style="font-size: 14px; font-weight: 900; color: #111111; line-height: 1.15;">Scholario</div>
+          <div style="font-size: 9.5px; font-weight: 700; color: #737373;">scholario.me</div>
+          <div style="font-size: 9px; font-weight: 800; color: ${mode === 'student' ? '#059669' : '#d97706'}; text-transform: uppercase; margin-top: 1px;">
             ${mode === 'student' ? 'Student Edition (No Answers)' : 'Faculty & Teacher Copy (With Solutions)'}
           </div>
         </div>
@@ -347,23 +484,23 @@ export async function generateSageContentPdf(
     if (pageNum === 1) {
       headerEl.innerHTML = `
         ${topBanner}
-        <div style="text-align: center; padding: 7px 0; border-bottom: 1px solid #e5e5e5;">
-          <h2 style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; color: #111111; letter-spacing: 0.02em;">
+        <div style="text-align: center; padding: 8px 0; border-bottom: 1px solid #e5e5e5;">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; color: #111111; letter-spacing: 0.02em;">
             ${renderMathAndTypography(quizData.title)}
           </h2>
-          <div style="font-size: 9.5px; font-weight: 600; color: #525252; margin-top: 2px;">
+          <div style="font-size: 10px; font-weight: 600; color: #525252; margin-top: 2px;">
             ${quizData.subject} • ${quizData.grade} • Prepared by ${quizData.instructor}
           </div>
         </div>
-        <div style="margin: 6px 0 8px 0; padding: 6px 12px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 9px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; color: #374151;">
+        <div style="margin: 8px 0 10px 0; padding: 8px 14px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; color: #374151;">
           <div><strong>Subject:</strong> ${quizData.subject}</div>
           <div><strong>Grade:</strong> ${quizData.grade}</div>
-          <div><strong>Total Marks:</strong> ${quizData.totalMarks || 20}</div>
+          <div><strong>Total Marks:</strong> ${displayTotalMarks}</div>
           <div><strong>Time Allowed:</strong> ${quizData.timeAllowed || '45 Mins'}</div>
         </div>
         ${
           mode === 'student'
-            ? `<div style="margin-bottom: 10px; padding: 6px 12px; background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: 6px; font-size: 9.5px; display: flex; justify-content: space-between; color: #1e293b;">
+            ? `<div style="margin-bottom: 12px; padding: 8px 14px; background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: 6px; font-size: 10.5px; display: flex; justify-content: space-between; color: #1e293b;">
                 <div><strong>Student Name:</strong> _____________________________</div>
                 <div><strong>Roll No:</strong> ______________</div>
                 <div><strong>Date:</strong> ______________</div>
@@ -374,10 +511,10 @@ export async function generateSageContentPdf(
     } else {
       headerEl.innerHTML = `
         ${topBanner}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 9px; font-weight: 700; color: #475569; margin-top: 4px; margin-bottom: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 9.5px; font-weight: 700; color: #475569; margin-top: 4px; margin-bottom: 10px;">
           <span>${quizData.subject} • ${quizData.grade}</span>
           <span style="color: #0f172a; font-weight: 800;">${renderMathAndTypography(quizData.title)}</span>
-          <span style="color: #94a3b8; font-size: 8px; font-weight: 700; text-transform: uppercase;">Continued</span>
+          <span style="color: #94a3b8; font-size: 8.5px; font-weight: 700; text-transform: uppercase;">Continued</span>
         </div>
       `;
     }
@@ -396,14 +533,14 @@ export async function generateSageContentPdf(
     const footerEl = document.createElement('div');
     footerEl.style.position = 'absolute';
     footerEl.style.bottom = '16px';
-    footerEl.style.left = '40px';
-    footerEl.style.right = '40px';
+    footerEl.style.left = '36px';
+    footerEl.style.right = '36px';
     footerEl.style.borderTop = '1px solid #d4d4d4';
     footerEl.style.paddingTop = '6px';
     footerEl.style.display = 'flex';
     footerEl.style.justifyContent = 'space-between';
     footerEl.style.alignItems = 'center';
-    footerEl.style.fontSize = '8.5px';
+    footerEl.style.fontSize = '9px';
     footerEl.style.color = '#6b7280';
     footerEl.style.fontWeight = '600';
     footerEl.style.zIndex = '10';
@@ -428,7 +565,7 @@ export async function generateSageContentPdf(
     const blockRect = blockEl.getBoundingClientRect();
     const blockBottomOffset = blockRect.bottom - pageRect.top;
 
-    if (blockBottomOffset > MAX_CONTENT_BOTTOM_OFFSET) {
+    if (blockBottomOffset > MAX_CONTENT_BOTTOM_OFFSET && currentPage.contentEl.children.length > 1) {
       currentPage.contentEl.removeChild(blockEl);
       currentPage = createNewPage(pages.length + 1);
       currentPage.contentEl.appendChild(blockEl);
@@ -436,6 +573,8 @@ export async function generateSageContentPdf(
   }
 
   // ── Render Sections & Questions ──
+  let sequentialQuestionNumber = 0;
+
   for (const section of quizData.sections) {
     if (section.questions.length === 0) continue;
 
@@ -443,27 +582,32 @@ export async function generateSageContentPdf(
     secHeader.style.boxSizing = 'border-box';
     secHeader.style.breakInside = 'avoid';
     secHeader.style.pageBreakInside = 'avoid';
-    secHeader.style.marginTop = '8px';
-    secHeader.style.marginBottom = '6px';
+    secHeader.style.marginTop = '10px';
+    secHeader.style.marginBottom = '8px';
     secHeader.innerHTML = `
-      <div style="font-weight: 800; font-size: 10.5px; text-transform: uppercase; background: #111111; color: #ffffff; padding: 4px 10px; border-radius: 4px; letter-spacing: 0.02em; display: flex; justify-content: space-between;">
+      <div style="font-weight: 800; font-size: 11px; text-transform: uppercase; background: #111111; color: #ffffff; padding: 5px 12px; border-radius: 4px; letter-spacing: 0.02em; display: flex; justify-content: space-between;">
         <span>${renderMathAndTypography(section.name)}</span>
         ${section.marks ? `<span>[${section.marks} Marks]</span>` : ''}
       </div>
     `;
     appendBlock(secHeader);
 
-    for (const q of section.questions) {
+    for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
+      const q = section.questions[qIdx];
+      sequentialQuestionNumber++;
+      const displayNumber = sequentialQuestionNumber; // Sequentially numbered 1, 2, 3, 4, 5...
+
       const qBlock = document.createElement('div');
       qBlock.style.boxSizing = 'border-box';
+      qBlock.style.width = '100%';
       qBlock.style.breakInside = 'avoid';
       qBlock.style.pageBreakInside = 'avoid';
-      qBlock.style.marginBottom = '8px';
-      qBlock.style.padding = '8px 12px';
+      qBlock.style.marginBottom = '10px';
+      qBlock.style.padding = '10px 14px';
       qBlock.style.background = '#ffffff';
       qBlock.style.border = '1px solid #e2e8f0';
       qBlock.style.borderRadius = '6px';
-      qBlock.style.fontSize = '9.5px';
+      qBlock.style.fontSize = '12pt';
 
       const isUrdu = containsUrdu(q.text);
       if (isUrdu) {
@@ -472,31 +616,59 @@ export async function generateSageContentPdf(
         qBlock.style.textAlign = 'right';
       }
 
-      if (q.type === 'mcq' && q.options) {
+      try {
+        const questionText = q.text || '[Question content unavailable]';
+
+        if (q.type === 'mcq' && q.options) {
+          const optA = q.options.A || '—';
+          const optB = q.options.B || '—';
+          const optC = q.options.C || '—';
+          const optD = q.options.D || '—';
+
+          qBlock.innerHTML = `
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px; line-height: 1.5; font-size: 12pt;">
+              <strong>${displayNumber}.</strong> ${renderMathAndTypography(questionText)}
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9; box-sizing: border-box; width: 100%; min-width: 0;">
+              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(A)</span>
+                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optA)}</span>
+              </div>
+              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(B)</span>
+                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optB)}</span>
+              </div>
+              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(C)</span>
+                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optC)}</span>
+              </div>
+              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(D)</span>
+                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optD)}</span>
+              </div>
+            </div>
+          `;
+        } else {
+          // Short / descriptive question
+          qBlock.innerHTML = `
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 6px; line-height: 1.5; font-size: 12pt;">
+              <strong>${displayNumber}.</strong> ${renderMathAndTypography(questionText)}
+            </div>
+            ${
+              mode === 'student'
+                ? `<div style="margin-top: 8px; min-height: 52px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fafafa; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; font-style: italic;">
+                    Student Answer / Working Space
+                  </div>`
+                : ''
+            }
+          `;
+        }
+      } catch (err) {
+        // Show error placeholder instead of dropping question
         qBlock.innerHTML = `
-          <div style="font-weight: 700; color: #0f172a; margin-bottom: 6px; line-height: 1.45;">
-            <strong>${q.number}.</strong> ${renderMathAndTypography(q.text)}
+          <div style="color: #dc2626; font-size: 12pt; font-weight: 600;">
+            <strong>${displayNumber}.</strong> [Question could not be rendered: ${err instanceof Error ? err.message : 'Unknown error'}]
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; padding: 6px 10px; background: #f8fafc; border-radius: 4px; border: 1px solid #f1f5f9;">
-            <div><strong>(A)</strong> ${renderMathAndTypography(q.options.A)}</div>
-            <div><strong>(B)</strong> ${renderMathAndTypography(q.options.B)}</div>
-            <div><strong>(C)</strong> ${renderMathAndTypography(q.options.C)}</div>
-            <div><strong>(D)</strong> ${renderMathAndTypography(q.options.D)}</div>
-          </div>
-        `;
-      } else {
-        // Short / descriptive question
-        qBlock.innerHTML = `
-          <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px; line-height: 1.45;">
-            <strong>${q.number}.</strong> ${renderMathAndTypography(q.text)}
-          </div>
-          ${
-            mode === 'student'
-              ? `<div style="margin-top: 6px; min-height: 48px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fafafa; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #94a3b8; font-style: italic;">
-                  Student Answer / Working Space
-                </div>`
-              : ''
-          }
         `;
       }
 
@@ -510,39 +682,41 @@ export async function generateSageContentPdf(
     ansHeader.style.boxSizing = 'border-box';
     ansHeader.style.breakInside = 'avoid';
     ansHeader.style.pageBreakInside = 'avoid';
-    ansHeader.style.marginTop = '12px';
-    ansHeader.style.marginBottom = '8px';
+    ansHeader.style.marginTop = '14px';
+    ansHeader.style.marginBottom = '10px';
     ansHeader.innerHTML = `
-      <div style="font-weight: 900; font-size: 11px; text-transform: uppercase; background: #111111; color: #F4C430; padding: 6px 12px; border-radius: 4px; letter-spacing: 0.03em;">
+      <div style="font-weight: 900; font-size: 12px; text-transform: uppercase; background: #111111; color: #F4C430; padding: 6px 14px; border-radius: 4px; letter-spacing: 0.03em;">
         OFFICIAL ANSWER KEY & STEP-BY-STEP SOLUTIONS
       </div>
     `;
     appendBlock(ansHeader);
 
-    for (const ans of quizData.answers) {
+    for (let aIdx = 0; aIdx < quizData.answers.length; aIdx++) {
+      const ans = quizData.answers[aIdx];
       const ansBlock = document.createElement('div');
       ansBlock.style.boxSizing = 'border-box';
       ansBlock.style.breakInside = 'avoid';
       ansBlock.style.pageBreakInside = 'avoid';
-      ansBlock.style.marginBottom = '8px';
-      ansBlock.style.padding = '8px 12px';
+      ansBlock.style.marginBottom = '10px';
+      ansBlock.style.padding = '10px 14px';
       ansBlock.style.background = '#f0fdf4';
       ansBlock.style.border = '1px solid #bbf7d0';
       ansBlock.style.borderRadius = '6px';
-      ansBlock.style.fontSize = '9.5px';
+      ansBlock.style.fontSize = '11pt';
 
-      const stepsHtml = ans.steps && ans.steps.length > 0
-        ? `<div style="margin-top: 5px; padding-left: 8px; border-left: 2px solid #86efac; font-size: 9px; color: #166534;">
-            ${ans.steps.map((st, sIdx) => `<div style="margin-bottom: 2px;"><strong>Step ${sIdx + 1}:</strong> ${renderMathAndTypography(st.replace(/^step\s*[0-9]+:?\s*/i, ''))}</div>`).join('')}
-          </div>`
-        : '';
+      const stepsHtml =
+        ans.steps && ans.steps.length > 0
+          ? `<div style="margin-top: 6px; padding-left: 10px; border-left: 2px solid #86efac; font-size: 10.5pt; color: #166534;">
+              ${ans.steps.map((st, sIdx) => `<div style="margin-bottom: 3px;"><strong>Step ${sIdx + 1}:</strong> ${renderMathAndTypography(st.replace(/^step\s*[0-9]+:?\s*/i, ''))}</div>`).join('')}
+            </div>`
+          : '';
 
       ansBlock.innerHTML = `
-        <div style="display: flex; align-items: baseline; gap: 8px; font-weight: 800; color: #15803d; margin-bottom: 3px;">
-          <span>Question ${ans.questionNumber}:</span>
-          <span style="background: #dcfce7; padding: 1px 6px; border-radius: 4px; border: 1px solid #86efac; font-family: monospace;">${renderMathAndTypography(ans.answer)}</span>
+        <div style="display: flex; align-items: baseline; gap: 8px; font-weight: 800; color: #15803d; margin-bottom: 4px;">
+          <span>Question ${aIdx + 1}:</span>
+          <span style="background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1px solid #86efac; font-family: monospace;">${renderMathAndTypography(ans.answer)}</span>
         </div>
-        ${ans.explanation ? `<div style="color: #166534; font-size: 9px; line-height: 1.4;">${renderMathAndTypography(ans.explanation)}</div>` : ''}
+        ${ans.explanation ? `<div style="color: #166534; font-size: 10.5pt; line-height: 1.45;">${renderMathAndTypography(ans.explanation)}</div>` : ''}
         ${stepsHtml}
       `;
 
@@ -559,6 +733,18 @@ export async function generateSageContentPdf(
     }
   });
 
+  // Ensure all images are decoded and loaded prior to html2canvas capture
+  const allImages = renderRoot.querySelectorAll('img');
+  await Promise.all(
+    Array.from(allImages).map((img) => {
+      if (img.complete) return Promise.resolve();
+      return img.decode().catch(() => new Promise((resolve) => {
+        img.onload = () => resolve(null);
+        img.onerror = () => resolve(null);
+      }));
+    })
+  );
+
   try {
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -571,7 +757,7 @@ export async function generateSageContentPdf(
       if (i > 0) pdf.addPage();
       const pageEl = pages[i].pageEl;
       const pageCanvas = await html2canvas(pageEl, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
@@ -582,6 +768,7 @@ export async function generateSageContentPdf(
         windowHeight: PAGE_HEIGHT,
       });
       const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+      // Scale image to full page width (210mm) and height (297mm) without letterboxing
       pdf.addImage(pageImgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
     }
 
