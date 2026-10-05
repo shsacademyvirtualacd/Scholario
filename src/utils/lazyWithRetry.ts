@@ -1,4 +1,5 @@
 import React from 'react';
+import { triggerUpdatePrompt } from '../lib/serviceWorkerRegistration';
 
 export const CHUNK_RELOAD_STORAGE_KEY = 'scholario_chunk_reload_done';
 
@@ -39,13 +40,17 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
         (error?.name === 'TypeError' && msg.includes('fetch')) ||
         (msg.includes('/assets/') && msg.includes('.js'));
 
-      if (isChunkLoadError && !hasRetried) {
-        console.warn(`[lazyWithRetry] Stale chunk detected for ${chunkName} (${msg}). Reloading page once to fetch latest version...`);
-        window.sessionStorage.setItem(chunkStorageKey, 'true');
-        window.sessionStorage.setItem(CHUNK_RELOAD_STORAGE_KEY, 'true');
-        window.location.reload();
-        // Return a pending promise to halt rendering while reload executes
-        return new Promise<{ default: T }>(() => {});
+      if (isChunkLoadError) {
+        triggerUpdatePrompt('chunk-load-error');
+
+        if (!hasRetried) {
+          console.warn(`[lazyWithRetry] Stale chunk detected for ${chunkName} (${msg}). Reloading page once to fetch latest version...`);
+          window.sessionStorage.setItem(chunkStorageKey, 'true');
+          window.sessionStorage.setItem(CHUNK_RELOAD_STORAGE_KEY, 'true');
+          window.location.reload();
+          // Return a pending promise to halt rendering while reload executes
+          return new Promise<{ default: T }>(() => {});
+        }
       }
 
       // If we already retried or it's another error, bubble to ErrorBoundary

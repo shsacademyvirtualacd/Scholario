@@ -109,54 +109,86 @@ export function sanitizeMathAndDelimiters(rawText: string | undefined | null): s
   s = s.replace(/\u2212/g, '-');
   s = s.replace(/[\u2010\u2013\u2014]/g, '-');
 
-  // 3. Normalize common mathematical patterns:
-  // Complex denominator fractions: 1/(√7−√5) or 1/(√7-√5) or 1/(\sqrt{7}-\sqrt{5})
+  // 3. Normalize complex denominator fractions: 1/(√7−√5) or 1/(√7-√5) or 1/(\sqrt{7}-\sqrt{5})
   s = s.replace(
     /1\/\s*\(\s*(?:√|\\sqrt\{)?(\d+)\}?\s*([+\-])\s*(?:√|\\sqrt\{)?(\d+)\}?\s*\)/g,
-    '$\\frac{1}{\\sqrt{$1} $2 \\sqrt{$3}}$'
+    '__COMPLEX_DENOM_$1_$2_$3__'
   );
 
-  // Unicode radicals like 2√3 + 3√2 or √16 or √5
-  s = s.replace(/(?:(\d+)\s*)?√(\d+)/g, (_match, coeff, num) => {
+  // 4. Radical sums / combinations: 2√3 + 3√2 or √3 + √2 or 2\sqrt{3} + 3\sqrt{2}
+  s = s.replace(
+    /(?:(\d*)\s*)?√(\d+)\s*([+\-])\s*(?:(\d*)\s*)?√(\d+)/g,
+    (_m, c1, n1, op, c2, n2) => {
+      const t1 = (c1 ? c1 : '') + '\\sqrt{' + n1 + '}';
+      const t2 = (c2 ? c2 : '') + '\\sqrt{' + n2 + '}';
+      return `__RAD_PAIR_${t1}_${op}_${t2}__`;
+    }
+  );
+
+  // 5. Standalone radicals like 2√3 or √16 or √5
+  s = s.replace(/(?:(\d+)\s*)?√(\d+)/g, (_m, coeff, num) => {
     return (coeff ? coeff : '') + '\\sqrt{' + num + '}';
   });
 
-  // Standalone fractions like 22/7 or 3/8 in options or standalone context
+  // 6. Restore complex denominator fractions as clean LaTeX
+  s = s.replace(
+    /__COMPLEX_DENOM_(\d+)_([+\-])_(\d+)__/g,
+    '$\\frac{1}{\\sqrt{$1} $2 \\sqrt{$3}}$'
+  );
+
+  // 7. Restore radical pairs
+  s = s.replace(
+    /__RAD_PAIR_([^_]+)_([^_]+)_([^_]+)__/g,
+    '$$$1 $2 $3$'
+  );
+
+  // 8. Standalone fraction like "22/7" or "3/8"
   if (/^\d+\/\d+$/.test(s)) {
     const [num, den] = s.split('/');
-    s = `$\\frac{${num}}{${den}}$`;
+    return `$\\frac{${num}}{${den}}$`;
+  }
+  // Fraction in text surrounded by whitespace or parentheses
+  s = s.replace(/(?<=^|[\s(])(\d+)\/(\d+)(?=$|[\s),.?])/g, ' $\\frac{$1}{$2}$ ');
+
+  // 9. If entire string is an unwrapped LaTeX formula (starts with \sqrt, \frac, etc. and has no $)
+  if (/^\\(sqrt|frac|mathbb|overline)\b/.test(s) && !s.includes('$')) {
+    s = `$${s}$`;
+  } else {
+    // If unwrapped LaTeX is embedded in text outside $:
+    // Split on existing $...$ blocks so we never touch inside math!
+    const parts = s.split(/(\$[^\$]*\$)/g);
+    for (let i = 0; i < parts.length; i += 2) {
+      // Even parts are outside of $...$
+      let outside = parts[i];
+      // Wrap standalone \sqrt{...}
+      outside = outside.replace(/(?:(\d*)\s*)?\\sqrt\{([^}]+)\}/g, (_m, coeff, inner) => {
+        return ` $${coeff ? coeff : ''}\\sqrt{${inner}}$ `;
+      });
+      // Wrap standalone \frac{...}{...}
+      outside = outside.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, (_m, n, d) => {
+        return ` $\\frac{${n}}{${d}}$ `;
+      });
+      parts[i] = outside;
+    }
+    s = parts.join('');
   }
 
-  // 4. Wrap standalone LaTeX commands in $...$ if not already wrapped
-  s = s.replace(
-    /(?<!\$|\\\()(\\frac\s*\{[^{}]*\}\s*\{[^{}]*\}|\\sqrt\s*(?:\[[^\]]*\])?\{[^{}]*\}|\\mathbb\{[^{}]+\}|\\overline\{[^{}]+\})(?!\$|\\\))/g,
-    '$$$1$'
-  );
+  // 10. Merge adjacent math blocks e.g. "$2$$\sqrt{3}$" or redundant spaces
+  s = s.replace(/\$\s*\$/g, ' ');
+  s = s.replace(/\s{2,}/g, ' ');
 
-  // Wrap radical combinations like 2\sqrt{3} + 3\sqrt{2} or standalone \sqrt{16}
-  s = s.replace(
-    /(?<!\$|\\\()((?:\d*\\sqrt\{\d+\}\s*[+\-]\s*\d*\\sqrt\{\d+\}))(?!\$|\\\))/g,
-    '$$$1$'
-  );
-  s = s.replace(
-    /(?<!\$|\\\()((?:\d*\\sqrt\{\d+\}))(?!\$|\\\))/g,
-    '$$$1$'
-  );
-
-  // 5. Check and fix unmatched $
+  // 11. Check and fix unmatched $
   const dollarMatches = s.match(/(?<!\\)\$/g);
   const dollarCount = dollarMatches ? dollarMatches.length : 0;
   if (dollarCount % 2 !== 0) {
     if (s.endsWith('$') && dollarCount === 1) {
       s = '$' + s;
-    } else if (s.startsWith('$') && dollarCount === 1) {
-      s = s + '$';
     } else {
       s = s + '$';
     }
   }
 
-  // 6. Check and fix stray \( or \)
+  // 12. Check and fix stray \( or \)
   const openParen = (s.match(/\\\(/g) || []).length;
   const closeParen = (s.match(/\\\)/g) || []).length;
   if (openParen > closeParen) {
@@ -165,7 +197,7 @@ export function sanitizeMathAndDelimiters(rawText: string | undefined | null): s
     s = '\\('.repeat(closeParen - openParen) + s;
   }
 
-  return s;
+  return s.trim();
 }
 
 /**
@@ -183,7 +215,9 @@ export function sanitizeQuestionNumber(rawNum: string, fallbackIdx: number): str
  * Ensures parentheses inside mathematical expressions like `a(b + c)` or `(\sqrt{7}-\sqrt{5})`
  * are NEVER mistaken for option delimiters!
  */
-export function parseOptionsFromLine(line: string): Partial<QuizOptionSet> | null {
+export function parseOptionsFromLine(rawLine: string): Partial<QuizOptionSet> | null {
+  // Pre-fix corrupted option text like "= ab + ac$?" before scanning for option tokens
+  let line = rawLine.replace(/=?\s*ab\s*\+\s*ac\s*\$?(\?)?/gi, '$a(b + c) = ab + ac$');
   const letters = ['A', 'B', 'C', 'D'];
   const result: Partial<QuizOptionSet> = {};
   let inDollar = false;

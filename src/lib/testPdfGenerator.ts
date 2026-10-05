@@ -25,6 +25,9 @@ export interface GenerateTestPdfOptions {
   targetRole?: 'teacher' | 'student';
 }
 
+export const SHS_EMBEDDED_LOGO_SVG_DATA =
+  'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgdmlld0JveD0iMCAwIDIwNDggMjA0OCIgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CjxyZWN0IHdpZHRoPSIyMDQ4IiBoZWlnaHQ9IjIwNDgiIHJ4PSIzNjQiIGZpbGw9InJnYigxNiwxNiwxNykiLz4KPHBhdGggdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwwKSIgZmlsbD0icmdiKDIzOSwxNjksMjIpIiBkPSJNIDkyMC4yODcgMTI2My4xNSBDIDg5Ny4zNTQgMTI0MC41NSA4NTYuNzQyIDEyMDkuNDMgODMwLjg5OCAxMTg4LjMzIEwgNjc1LjQ2OSAxMDYxLjE5IEMgNjM1LjQwMSAxMDI4LjQ2IDU4Ny45OTcgOTk0LjQ4MSA1NTkuNDM2IDk1MS44NzIgQyA1MzMuMTEgOTEyLjU5NiA1MTguNTIzIDg2My44MjkgNTE4LjE4NCA4MTYuNjkyIEMgNTE3LjYyNiA3NDYuNjAxIDU0NS4wNjggNjc5LjE4NiA1OTQuNDIgNjI5LjQxMSBDIDYwNi4zNDggNjE3LjM1NSA2MTkuNzg3IDYwNi42NCA2MzMuMjg5IDU5Ni40IEMgNTk1Ljk5OCA2NTIuMTQyIDU5OC45NjMgNzE3LjYwNSA2MzcuOTU4IDc3MS4yODggQyA2NzYuMDc2IDgyMy43NjQgNzMxLjIwOCA4NjMuMjc3IDc4MC44OTUgOTA0LjM1IEwgMTAwMy45NSAxMDg3LjUyIEMgMTAzNC4zNiAxMTEyLjUxIDEwNzkuMjYgMTE0NS43IDExMDIuMSAxMTc2LjM4IEMgMTE1NC41MyAxMjQ2Ljc4IDExNjIuNjYgMTMzNC4xNSAxMTEzLjQgMTQwOC44MyBDIDEwOTIuMjkgMTQ0MC44MyAxMDQzLjE2IDE0ODUuMTQgMTAwOC4yNCAxNTAxLjc1IEMgMTAwOC4yNiAxNTAwLjMxIDEwMDguMjcgMTQ5OC44MiAxMDA5LjMxIDE0OTcuNjYgQyAxMDQ0LjQzIDE0NTguNjIgMTA1NS44NSAxNDEwLjk5IDEwMjcuNjEgMTM2My4xNSBDIDEwMjEuNCAxMzUyLjY5IDEwMTQuMDMgMTM0Mi45NiAxMDA1LjYzIDEzMzQuMTYgQyA5OTYuMzIxIDEzMjQuMjYgOTI5LjYwNiAxMjY1LjUxIDkyMC4yODcgMTI2My4xNSB6Ii8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsMCkiIGZpbGw9InJnYigxOTgsMTQ0LDQyKSIgZD0iTSAxMDQyLjA0IDU0NS4zMTEgTCAxMDQyLjQ1IDU0Ny41NjEgQyAxMDE4LjMxIDU3OC4wNzUgOTk5LjYzIDU5OS43NzEgMTAwNC45MyA2NDEuNzIzIEMgMTAxMS43MiA2OTUuNTA4IDEwNTcuMDEgNzMxLjA5NyAxMDk3LjMyIDc2MS42MjYgQyAxMTA2LjI2IDc2OC4zOTMgMTExNC44OSA3NzkuOTg0IDExMjUuNjIgNzgzLjEzMyBDIDExMzcuMDggNzk2LjA1NiAxMTgxLjgxIDgzMS4xODEgMTE5Ny4xNCA4NDMuNzA3IEwgMTM0MC4xOCA5NjAuNzkgTCAxNDAxLjQ4IDEwMTAuODQgQyAxNDM0LjQ3IDEwMzcuODMgMTQ2Mi4yOSAxMDU5LjIzIDE0ODcuMDkgMTA5NC45NCBDIDE1MjQuMDMgMTE0OS4yOCAxNTM3Ljg4IDEyMTYuMDYgMTUyNS41OSAxMjgwLjYgQyAxNTEzLjA1IDEzNDcuMDkgMTQ3MS4zMyAxNDEzLjYyIDE0MTUuMDggMTQ1MS43NiBDIDE0MjMuOTIgMTQzNi41MyAxNDMwLjYyIDE0MjMuMzIgMTQzNS40MSAxNDA2LjE4IEMgMTQ0NS4zNCAxMzY5LjY1IDE0NDAuNzggMTMzMC43IDE0MjIuNjcgMTI5Ny40NSBDIDEzOTQuMyAxMjQ1LjU2IDEzNDYuMTQgMTIwOC41OCAxMzAxLjA4IDExNzEuODggTCAxMjI1LjgzIDExMTAuMjMgTCAxMDQxLjY4IDk1OC4zODUgQyA5OTguNjg5IDkyMi40MjkgOTU2LjQxOCA4OTQuOTIyIDkyOC42NTIgODQ0LjY3NSBDIDkwMi40ODQgNzk4LjIyMSA4OTUuODcgNzQzLjI2NSA5MTAuMjcgNjkxLjkyOSBDIDkzMC4wNyA2MjMuOTQ0IDk4Mi4yMzIgNTc4LjM4NiAxMDQyLjA0IDU0NS4zMTEgeiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLDApIiBmaWxsPSJyZ2IoMTk4LDE0NCw0MikiIGQ9Ik0gOTIwLjI4NyAxMjYzLjE1IEMgOTI5LjYwNiAxMjY1LjUxIDk5Ni4zMjEgMTMyNC4yNiAxMDA1LjYzIDEzMzQuMTYgQyAxMDE0LjAzIDEzNDIuOTYgMTAyMS40IDEzNTIuNjkgMTAyNy42MSAxMzYzLjE1IEMgMTA1NS44NSAxNDEwLjk5IDEwNDQuNDMgMTQ1OC42MiAxMDA5LjMxIDE0OTcuNjYgQyAxMDA4LjI3IDE0OTguODIgMTAwOC4yNiAxNTAwLjMxIDEwMDguMjQgMTUwMS43NSBDIDEwMDUuOTIgMTUwNC40NiA5MzEuMTI5IDE1NDIuNDYgOTIzLjMxNSAxNTQ2LjU0IEwgNTU0LjI2NSAxNzM4LjU1IEMgNTUwLjY0OSAxNzAzLjEgNTQ3LjI5NiAxNjc1LjI4IDU1My4xMDQgMTYzOS41MiBDIDU2NC40MjIgMTU2OS44MyA2MDUuMjc0IDE1MTEuODEgNjY1LjA3NyAxNDc0Ljk4IEMgNjg3LjE1NiAxNDYxLjM4IDcxMy43NzcgMTQ0OC45NyA3MzcuMjE1IDE0MzYuOTUgTCA4NDguMTE1IDEzNzkuOSBDIDg2OC43NTggMTM2OS4zMSA4OTMuMjA4IDEzNTguNDUgOTEyLjA0OCAxMzQ1LjcgQyA5NDIuNzUxIDEzMjQuOTEgOTQwLjg5MiAxMjg5Ljc1IDkyMC4yODcgMTI2My4xNSB6Ii8+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsMCkiIGZpbGw9InJnYigxNjQsMTE5LDMyKSIgZD0iTSAxMDQyLjA0IDU0NS4zMTEgQyAxMDUyLjExIDUzOC44MTMgMTA3My43NSA1MjguMjQ0IDEwODUuMjcgNTIyLjIzIEwgMTE3MS43IDQ3Ny40MzMgTCAxMzg5LjU1IDM2My45OTEgQyAxNDIzLjEzIDM0Ni40NjQgMTQ1OS41IDMyOC4zODcgMTQ5Mi40OSAzMTAuMzA5IEMgMTQ5NC45OSAzMjcuNDY0IDE0OTcuNTMgMzQzLjE3OSAxNDk4LjE1IDM2MC41NDEgQyAxNTAwLjM4IDQxNC4zMDcgMTQ4NC4xNSA0NjcuMjIgMTQ1Mi4xNCA1MTAuNDc5IEMgMTQxMC40NCA1NjYuNjY2IDEzNTcuMiA1ODcuMTg5IDEyOTcuMzggNjE3Ljg3NyBMIDExODcuNzQgNjc0LjM0OCBDIDExNzQuMTggNjgxLjM1NiAxMTYwLjM4IDY4OC4zOTcgMTE0Ni45IDY5NS41NjYgQyAxMTA5LjQ0IDcxNS40OTUgMTEwMy4zIDc0Ny4xNTggMTEyNS42MiA3ODMuMTMzIEMgMTExNC44OSA3NzkuOTg0IDExMDYuMjYgNzY4LjM5MyAxMDk3LjMyIDc2MS42MjYgQyAxMDU3LjAxIDczMS4wOTcgMTAxMS43MiA2OTUuNTA4IDEwMDQuOTMgNjQxLjcyMyBDIDk5OS42MyA1OTkuNzcxIDEwMTguMzEgNTc4LjA3NSAxMDQyLjQ1IDU0Ny41NjEgTCAxMDQyLjA0IDU0NS4zMTEgeiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLDApIiBmaWxsPSJyZ2IoMTk4LDE0NCw0MikiIGQ9Ik0gNzkyLjU5MyA1NTcuNDI1IEMgODAzLjgzNiA1NTYuMTM1IDgzNC44NTMgNTU2Ljk1NCA4NDcuMzgxIDU1Ni45NTcgTCA5NjAuNTI2IDU1Ny4xMTQgQyA5NTEuOTI3IDU2NC4xNTcgOTQzLjcwOSA1NzEuNjUyIDkzNS45MDUgNTc5LjU2NyBDIDg4NS40IDYzMC45NjQgODY1LjIxNSA2ODUuMzE5IDg2NS44OSA3NTYuNjY2IEMgODM3LjY3NiA3NTcuMzMzIDc4NS4xMjcgNzU2LjY2MSA3NjEuNDg3IDc2OC40NzQgQyA3NDAuNTc5IDc4MS41NTYgNzM3LjQ0MiA3OTYuMzIgNzM1LjkyNSA4MTkuMDkyIEwgNzIwLjg3MSA4MDYuNjA2IEMgNjg2LjU1NSA3NzcuOTE4IDY0Ny4wNyA3MzQuNjAxIDY0My42MzEgNjg4LjM5NSBDIDY0MS4zOTggNjU4LjM5NSA2NTEuNjY1IDYzMS40NDYgNjcxLjIyMyA2MDguOTY2IEMgNzAyLjQxNyA1NzMuMTEzIDc0Ni44NDkgNTYwLjY5MSA3OTIuNTkzIDU1Ny40MjUgeiIvPgo8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLDApIiBmaWxsPSJyZ2IoMTY0LDExOSwzMikiIGQ9Ik0gMTMxMi4xMiAxMjI4Ljg5IEMgMTMyMy41NSAxMjM2LjggMTMzNi45MiAxMjUwLjUyIDEzNDcuMzIgMTI2MC4xMyBDIDE0MDMuNzIgMTMxMi4yOCAxNDI5LjQgMTM4Ni4xMSAxMzY4LjkxIDE0NDcuNDcgQyAxMzE5LjkgMTQ5Ny4xOSAxMjQ4LjE2IDE0OTAuODcgMTE4My4yNSAxNDkwLjk0IEwgMTA4Ny40MiAxNDkwLjk3IEMgMTA5NS45OSAxNDg0LjA0IDExMDQuMTUgMTQ3Ni42MiAxMTExLjg4IDE0NjguNzYgQyAxMTYyLjc4IDE0MTYuOTQgMTE4My41MyAxMzYyLjcxIDExODIuODYgMTI5MC45NSBDIDEyMzcuMTkgMTI5MC4zIDEzMDguNTkgMTMwMC41NCAxMzEyLjEyIDEyMjguODkgeiIvPgo8L3N2Zz4K';
+
 let cachedLogoDataUrl: string | null = null;
 
 /**
@@ -36,76 +39,35 @@ export async function getShsLogoDataUrl(): Promise<string> {
     return cachedLogoDataUrl;
   }
 
-  // 1. Attempt local asset first (instant same-origin fetch)
-  try {
-    const res = await fetch(SHS_LOCAL_LOGO_PATH);
-    if (res.ok) {
-      const blob = await res.blob();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      if (dataUrl && dataUrl.startsWith('data:image')) {
-        cachedLogoDataUrl = dataUrl;
-        return dataUrl;
+  const candidateUrls = [
+    SHS_LOCAL_LOGO_PATH,
+    '/logo.png',
+    '/logo.svg',
+    SHS_OFFICIAL_LOGO_URL,
+  ];
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (dataUrl && dataUrl.startsWith('data:image')) {
+          cachedLogoDataUrl = dataUrl;
+          return dataUrl;
+        }
       }
-    }
-  } catch (err) {
-    console.warn('[PDFGenerator] Local logo fetch fallback triggered:', err);
+    } catch {}
   }
 
-  // 2. Attempt remote official R2 asset with 2.5s timeout
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
-    const res = await fetch(SHS_OFFICIAL_LOGO_URL, { mode: 'cors', signal: controller.signal });
-    clearTimeout(timer);
-    if (res.ok) {
-      const blob = await res.blob();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      if (dataUrl && dataUrl.startsWith('data:image')) {
-        cachedLogoDataUrl = dataUrl;
-        return dataUrl;
-      }
-    }
-  } catch (err) {
-    console.warn('[PDFGenerator] Remote logo fetch failed:', err);
-  }
-
-  // 3. Fallback: Generate inline high-res canvas logo badge
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 120;
-    canvas.height = 120;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#111111';
-      ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(0, 0, 120, 120, 24);
-      } else {
-        ctx.rect(0, 0, 120, 120);
-      }
-      ctx.fill();
-      ctx.fillStyle = '#F4C430';
-      ctx.font = '900 44px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('SHS', 60, 60);
-      const fallbackDataUrl = canvas.toDataURL('image/png');
-      cachedLogoDataUrl = fallbackDataUrl;
-      return fallbackDataUrl;
-    }
-  } catch {}
-
-  return SHS_LOCAL_LOGO_PATH;
+  // Guaranteed pristine SVG Academy Logo fallback
+  cachedLogoDataUrl = SHS_EMBEDDED_LOGO_SVG_DATA;
+  return SHS_EMBEDDED_LOGO_SVG_DATA;
 }
 
 /**

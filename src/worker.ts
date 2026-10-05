@@ -426,16 +426,34 @@ export default {
 
       const assetResponse = await env.ASSETS.fetch(request);
       
+      // If index.html or root navigation, enforce no-cache header
+      if (url.pathname === '/' || url.pathname === '/index.html') {
+        const headers = new Headers(assetResponse.headers);
+        headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return new Response(assetResponse.body, {
+          status: assetResponse.status,
+          statusText: assetResponse.statusText,
+          headers,
+        });
+      }
+
       // If not-found (status 404 or >= 400) and the request is for a web page (not an API or static file with extension)
       if (
         (assetResponse.status === 404 || assetResponse.status >= 400) && 
         !isApi && 
         !hasFileExt
       ) {
-        // SPA Fallback: serve /index.html for React client-side routing
+        // SPA Fallback: serve /index.html for React client-side routing with no-cache
         const indexUrl = new URL('/index.html', request.url);
         const indexRequest = new Request(indexUrl, request);
-        return env.ASSETS.fetch(indexRequest);
+        const indexResponse = await env.ASSETS.fetch(indexRequest);
+        const headers = new Headers(indexResponse.headers);
+        headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return new Response(indexResponse.body, {
+          status: indexResponse.status,
+          statusText: indexResponse.statusText,
+          headers,
+        });
       }
       
       return assetResponse;

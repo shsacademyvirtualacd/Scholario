@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import tailwindcss from '@tailwindcss/vite';
@@ -10,7 +11,23 @@ const __dirname = path.dirname(__filename);
 // https://vite.dev/config/
 export default defineConfig({
   appType: 'spa', // Explicitly enable Single Page Application history fallback routing
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'versioned-service-worker',
+      apply: 'build',
+      closeBundle() {
+        const swDistPath = path.resolve(__dirname, 'dist', 'sw.js');
+        if (fs.existsSync(swDistPath)) {
+          let swContent = fs.readFileSync(swDistPath, 'utf8');
+          const buildId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+          swContent = swContent.replace(/__BUILD_HASH__/g, buildId);
+          fs.writeFileSync(swDistPath, swContent, 'utf8');
+        }
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

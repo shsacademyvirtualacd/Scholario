@@ -4779,11 +4779,16 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   // ── Explicit Service Worker Handler ─────────────────
   app.get('/sw.js', (_req, res) => {
-    const swPath = path.resolve('public/sw.js');
+    const distSwPath = path.resolve('dist/sw.js');
+    const publicSwPath = path.resolve('public/sw.js');
+    const swPath = fs.existsSync(distSwPath) ? distSwPath : publicSwPath;
+
     if (fs.existsSync(swPath)) {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
       res.setHeader('Service-Worker-Allowed', '/');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       return res.sendFile(swPath);
     }
     return res.status(404).send('Service worker not found');
@@ -5185,6 +5190,13 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     app.use(express.static(distPath, {
       maxAge: '1d',
       index: false,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html') || filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        }
+      },
     }));
 
     // 3. Exclude static asset paths: if a file in /assets/ is requested and not found, return 404
@@ -5199,6 +5211,9 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         return res.status(404).end('Not found');
       }
       if (fs.existsSync(indexPath)) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
         res.sendFile(indexPath);
       } else {
         res.status(500).send('Frontend build index.html not found');
