@@ -186,27 +186,27 @@ export const SchedulePage: React.FC = () => {
 
       {/* Next Class Banner — 4-state smart display */}
       {bannerState.type !== 'end-of-day' && (
-        <div className="bg-[#FFFDF0] border border-[#F4C43033] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm mb-6">
+        <div className="bg-[#FFFDF0] dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700/50 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm mb-6">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
               bannerState.type === 'ongoing' ? 'bg-emerald-500' : 'bg-[#F4C430]'
             }`}>
               {bannerState.type === 'ongoing'
                 ? <Zap size={16} className="text-white" />
-                : <Video size={16} className="text-[#111111]" />}
+                : <Video size={16} className="text-slate-950" />}
             </div>
             <div>
               {bannerState.type === 'ongoing' ? (
                 <>
-                  <h3 className="text-sm font-bold text-[#111111]">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     In Session: {getSlotSubject(bannerState.activeSlot)}
                   </h3>
-                  <p className="text-xs text-emerald-600 mt-0.5 font-bold">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5 font-bold">
                     {Math.floor(bannerState.minsRemaining / 60) > 0
                       ? `${Math.floor(bannerState.minsRemaining / 60)}h ${bannerState.minsRemaining % 60}m remaining`
                       : `${bannerState.minsRemaining}m remaining`}
                     {bannerState.nextSlot && (
-                      <span className="text-[#737373] font-medium ml-2">
+                      <span className="text-slate-600 dark:text-slate-400 font-medium ml-2">
                         · Up next: {getSlotSubject(bannerState.nextSlot)} at {formatTime12h(bannerState.nextSlot.start_time)}
                       </span>
                     )}
@@ -214,10 +214,10 @@ export const SchedulePage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <h3 className="text-sm font-bold text-[#111111]">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     Next Scheduled Class: {getSlotSubject(bannerState.nextSlot)}
                   </h3>
-                  <p className="text-xs text-[#737373] mt-0.5 font-medium">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
                     with {bannerState.nextSlot.offering?.teacher?.full_name || 'Staff'} ·{' '}
                     {(() => {
                       const status = getLinkAvailabilityStatus(bannerState.nextSlot, pktnow, bannerLinkUrl, bannerSessionDate || undefined);
@@ -232,9 +232,9 @@ export const SchedulePage: React.FC = () => {
             </div>
           </div>
           <div className={`flex items-center gap-2 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 w-fit self-end md:self-auto ${
-            bannerState.type === 'ongoing' ? 'bg-emerald-600' : 'bg-[#111111]'
+            bannerState.type === 'ongoing' ? 'bg-emerald-600' : 'bg-slate-900 dark:bg-amber-400 dark:text-slate-950'
           }`}>
-            <Clock size={13} className={bannerState.type === 'ongoing' ? 'text-white' : 'text-[#F4C430]'} />
+            <Clock size={13} className={bannerState.type === 'ongoing' ? 'text-white' : 'text-amber-400 dark:text-slate-950'} />
             {bannerState.type === 'ongoing'
               ? 'Live Now'
               : `Starts ${formatCountdown(bannerState.minsUntil)}`}
@@ -243,17 +243,17 @@ export const SchedulePage: React.FC = () => {
       )}
 
       {/* Weekday Tabs */}
-      <div className={`py-1 bg-white p-2 border border-[#E5E5E5] rounded-xl shadow-sm mb-6 ${
+      <div className={`py-1 bg-white dark:bg-neutral-900 p-2 border border-slate-200 dark:border-neutral-800 rounded-xl shadow-sm mb-6 ${
         isMobile ? 'grid grid-cols-3 gap-2' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'
       }`}>
         {DAYS_OF_WEEK.map(day => (
           <button
             key={day.index}
             onClick={() => setActiveDay(day.index)}
-            className={`flex-1 min-w-[90px] py-2 text-center rounded-lg text-xs font-bold transition-all border ${
+            className={`flex-1 min-w-[90px] py-2 text-center rounded-lg text-xs font-bold transition-all border cursor-pointer ${
               activeDay === day.index
-                ? 'bg-[#111111] text-white border-[#111111] shadow-sm'
-                : 'bg-transparent text-[#737373] border-transparent hover:bg-[#F5F5F5] hover:text-[#111111]'
+                ? 'bg-slate-900 text-white border-slate-900 dark:bg-amber-400 dark:text-slate-950 dark:border-amber-400 shadow-sm'
+                : 'bg-transparent text-slate-700 dark:text-slate-300 border-transparent hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {day.label}

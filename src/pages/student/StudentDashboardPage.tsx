@@ -400,16 +400,16 @@ const NextClassWidget: React.FC<{
     return (
       <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Next Class</span>
           <span className="badge badge-gold text-[10px] font-bold">End of Day</span>
         </div>
         <div>
-          <div className="text-base font-extrabold text-[#111111] truncate">No classes scheduled</div>
-          <div className="text-xs text-[#737373] font-medium mt-0.5">See you next session! 🌙</div>
+          <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">No classes scheduled</div>
+          <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">See you next session! 🌙</div>
         </div>
-        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
-          <Clock size={13} className="text-[#A3A3A3] shrink-0" />
-          <span className="text-xs text-[#A3A3A3] font-semibold">TBA</span>
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-neutral-800">
+          <Clock size={13} className="text-slate-400 dark:text-slate-500 shrink-0" />
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">TBA</span>
         </div>
       </div>
     );
@@ -429,21 +429,21 @@ const NextClassWidget: React.FC<{
     return (
       <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Now In Session</span>
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Now In Session</span>
           <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
         </div>
         <div>
-          <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
-          <div className="text-xs text-emerald-600 font-bold mt-0.5">{remLabel}</div>
+          <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">{subject}</div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">{remLabel}</div>
           {state.nextSlot && (
-            <div className="text-[10px] text-[#A3A3A3] font-medium mt-1 truncate">
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
               Up next: {getSlotSubject(state.nextSlot)} · {formatTime12h(state.nextSlot.start_time)}
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-neutral-800">
           <Zap size={13} className="text-emerald-500 shrink-0" />
-          <span className="text-xs font-bold text-[#111111]">{formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}</span>
+          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}</span>
         </div>
         <StudentLiveLink
           slot={state.activeSlot}
@@ -494,20 +494,20 @@ const NextClassWidget: React.FC<{
   return (
     <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Next Class</span>
         <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
       </div>
       <div>
-        <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
-        <div className="text-xs text-[#737373] font-medium truncate mt-0.5">
+        <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">{subject}</div>
+        <div className="text-xs text-slate-600 dark:text-slate-400 font-medium truncate mt-0.5">
           {nextSlot.offering?.teacher?.full_name || (typeof nextSlot.offering?.teacher === 'string' ? nextSlot.offering.teacher : '') || (nextSlot as any)?.custom_title || 'Assigned Instructor'}
         </div>
       </div>
-      <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+      <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-neutral-800">
         <Clock size={13} className="text-[#F4C430] shrink-0" />
-        <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
-        <span className="text-xs text-[#A3A3A3]">·</span>
-        <span className="text-xs font-semibold text-[#737373]">
+        <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{formatClassTimeLabel(nextSlot)}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">·</span>
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
           {(() => {
             const rawB = nextSlot.offering?.board || nextSlot.offering?.board_id || (nextSlot.offering as any)?.class?.board_id || '';
             const b = String(typeof rawB === 'string' ? rawB : (rawB?.id || rawB?.code || '')).toLowerCase();
@@ -1008,18 +1008,18 @@ const StudentDashboardPage: React.FC = () => {
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="stat-card min-h-[160px] bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
-                  <div className="h-5 bg-gray-200 rounded w-1/2" />
-                  <div className="h-3 bg-gray-200 rounded w-1/3" />
-                  <div className="h-8 bg-gray-200 rounded w-full mt-4" />
+                <div key={n} className="stat-card min-h-[160px] bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 space-y-3">
+                  <div className="h-5 bg-slate-200 dark:bg-neutral-800 rounded w-1/2" />
+                  <div className="h-3 bg-slate-200 dark:bg-neutral-800 rounded w-1/3" />
+                  <div className="h-8 bg-slate-200 dark:bg-neutral-800 rounded w-full mt-4" />
                 </div>
               ))}
             </div>
           ) : todayClasses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-2xl">
-              <CheckCircle2 size={36} className="text-[#D4D4D4] mb-2" />
-              <p className="text-sm text-[#111111] font-bold">No classes scheduled for today.</p>
-              <p className="text-xs text-[#737373] mt-1">Enjoy your study break or prepare for your next sessions!</p>
+            <div className="flex flex-col items-center justify-center py-10 text-center bg-slate-50 dark:bg-neutral-900/60 border border-dashed border-slate-200 dark:border-neutral-800 rounded-2xl">
+              <CheckCircle2 size={36} className="text-slate-400 dark:text-neutral-500 mb-2" />
+              <p className="text-sm text-slate-900 dark:text-slate-100 font-bold">No classes scheduled for today.</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Enjoy your study break or prepare for your next sessions!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

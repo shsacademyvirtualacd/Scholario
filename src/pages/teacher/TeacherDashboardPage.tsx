@@ -800,10 +800,10 @@ export const TeacherDashboardPage: React.FC = () => {
                 ))}
               </div>
             ) : todayClasses.length === 0 ? (
-              <div className="py-8 text-center bg-[#FAFAFA] border border-dashed border-[#E5E5E5] rounded-xl">
-                <CheckCircle2 size={30} className="mx-auto text-[#D4D4D4] mb-2" />
-                <h3 className="font-bold text-[#111111] text-xs">No Lectures Today</h3>
-                <p className="text-[10px] text-[#737373] mt-1">You have no scheduled lectures for this day.</p>
+              <div className="py-8 text-center bg-slate-50 dark:bg-neutral-900/60 border border-dashed border-slate-200 dark:border-neutral-800 rounded-xl">
+                <CheckCircle2 size={30} className="mx-auto text-slate-400 dark:text-neutral-500 mb-2" />
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-xs">No Lectures Today</h3>
+                <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-1">You have no scheduled lectures for this day.</p>
               </div>
             ) : (
               todayClasses.map((cls) => {
@@ -812,26 +812,26 @@ export const TeacherDashboardPage: React.FC = () => {
                 return (
                   <div
                     key={cls.id}
-                    className="flex items-center gap-3.5 p-3 rounded-xl border border-[#F0F0F0] hover:border-[#E5E5E5] transition-all hover:shadow-sm bg-white"
+                    className="flex items-center gap-3.5 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all hover:shadow-sm bg-white dark:bg-neutral-900"
                   >
                     <div className="w-1.5 h-10 rounded-full shrink-0" style={{ background: color }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-[#111111] truncate">
+                        <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
                           {cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class'}
                         </span>
                         {concurrentCount > 1 && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
                             ⚡ {concurrentCount} In Slot
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-[#737373] font-semibold mt-0.5 truncate">
+                      <div className="text-[10px] text-slate-600 dark:text-slate-400 font-semibold mt-0.5 truncate">
                         Class {cls.offering?.grade || (cls.offering as any)?.class?.grade || ''} ({String(cls.offering?.board || (cls.offering as any)?.class?.board?.name || (cls.offering as any)?.class?.board_id || (cls.offering as any)?.board_name || 'Curriculum').toUpperCase()})
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-xs font-black text-[#111111]">{formatClassTime(cls.start_time)}</div>
+                      <div className="text-xs font-black text-slate-900 dark:text-slate-100">{formatClassTime(cls.start_time)}</div>
                       <div className="mt-1">
                         <StatusPill status={cls.is_cancelled ? 'cancelled' : 'upcoming'} />
                       </div>

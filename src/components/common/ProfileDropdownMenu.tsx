@@ -125,7 +125,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
               <p className="text-xs text-[#71717A] truncate">
                 {(profile as any)?.email || profile?.phone || 'Active Member'}
               </p>
-              <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md bg-[#F4C430]/15 text-[#D4A017] text-[10px] font-extrabold tracking-wide uppercase">
+              <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 text-[10px] font-extrabold tracking-wide uppercase border border-amber-200 dark:border-amber-800">
                 <RoleIcon size={11} />
                 <span>{roleLabel}</span>
               </div>

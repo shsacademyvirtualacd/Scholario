@@ -130,21 +130,21 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
       {!isMobile && (
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-[#111111] uppercase tracking-wider">
+            <span className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
               {viewMode === 'grid' ? 'Weekly Timetable Grid' : `${DAYS_NAME[activeDay]} Schedule`}
             </span>
-            <span className="text-[10px] font-bold text-[#737373] bg-gray-100 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-neutral-700">
               {slots.length} {slots.length === 1 ? 'slot' : 'slots'} scheduled
             </span>
           </div>
 
-          <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200">
+          <div className="flex items-center bg-slate-100 dark:bg-neutral-800 p-0.5 rounded-xl border border-slate-200 dark:border-neutral-700">
             <button
               onClick={() => setViewMode('grid')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'grid'
-                  ? 'bg-white text-[#111111] shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
+                  ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <LayoutGrid size={13} />
@@ -154,8 +154,8 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
               onClick={() => setViewMode('day')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'day'
-                  ? 'bg-white text-[#111111] shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
+                  ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <Calendar size={13} />
@@ -177,15 +177,17 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                 onClick={() => setActiveDay(idx)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border cursor-pointer ${
                   isSelected
-                    ? 'bg-[#111111] text-white border-[#111111] shadow-sm'
-                    : 'bg-white text-[#737373] border-[#E5E5E5] hover:bg-gray-50'
+                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-amber-400 dark:text-slate-950 dark:border-amber-400 shadow-sm'
+                    : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-neutral-800 hover:bg-slate-50 dark:hover:bg-neutral-800'
                 }`}
               >
                 <span>{shortName}</span>
                 {countForDay > 0 && (
                   <span
                     className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-700'
+                      isSelected
+                        ? 'bg-white/20 text-white dark:bg-slate-950/20 dark:text-slate-950'
+                        : 'bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     {countForDay}
@@ -199,20 +201,20 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
 
       {/* ── View 1: Daily Schedule View (Mobile & Desktop Day View) ── */}
       {(isMobile || viewMode === 'day') && (
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl p-4 shadow-sm">
-          <div className="flex justify-between items-center mb-4 pb-3 border-b border-[#F5F5F5]">
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm">
+          <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 dark:border-neutral-800">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-[#111111] uppercase tracking-wider">
+              <span className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
                 {DAYS_NAME[activeDay]}
               </span>
-              <span className="text-[10px] font-bold text-[#737373] bg-gray-100 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-neutral-700">
                 {daySlots.length} {daySlots.length === 1 ? 'class' : 'classes'}
               </span>
             </div>
             {onAddSlot && (
               <button
                 onClick={() => onAddSlot(activeDay)}
-                className="flex items-center gap-1 text-xs font-bold text-[#111111] bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer shadow-2xs"
+                className="flex items-center gap-1 text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 px-2.5 py-1.5 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer shadow-2xs"
               >
                 <Plus size={13} />
                 <span>Add Slot</span>
@@ -221,18 +223,18 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
           </div>
 
           {dayTimeGroups.length === 0 ? (
-            <div className="py-12 px-4 text-center rounded-xl border border-dashed border-gray-200 bg-gray-50/50">
-              <Clock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-              <p className="text-xs font-bold text-gray-600">
+            <div className="py-12 px-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-neutral-800 bg-slate-50/50 dark:bg-neutral-950/40">
+              <Clock className="w-8 h-8 mx-auto text-slate-400 dark:text-neutral-500 mb-2" />
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 No classes scheduled for {DAYS_NAME[activeDay]}
               </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 Click below to add a class slot to this day.
               </p>
               {onAddSlot && (
                 <button
                   onClick={() => onAddSlot(activeDay)}
-                  className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111111] text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition-colors shadow-sm cursor-pointer"
+                  className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950 text-xs font-bold rounded-lg hover:bg-slate-800 dark:hover:bg-amber-300 transition-colors shadow-sm cursor-pointer"
                 >
                   <Plus size={13} />
                   <span>Schedule Class</span>
@@ -244,17 +246,17 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
               {dayTimeGroups.map((group, idx) => (
                 <div key={idx} className="flex gap-3 items-stretch">
                   {/* Period Time Column - strictly ordered by actual chronological time */}
-                  <div className="w-28 shrink-0 text-left pt-2 border-r border-gray-100 pr-2.5">
+                  <div className="w-28 shrink-0 text-left pt-2 border-r border-slate-200 dark:border-neutral-800 pr-2.5">
                     <div className="flex items-center gap-1">
-                      <Clock size={10} className="text-[#A3A3A3] shrink-0" />
-                      <span className="text-[10px] font-black text-[#111111] block uppercase tracking-wider">
+                      <Clock size={10} className="text-slate-400 dark:text-neutral-500 shrink-0" />
+                      <span className="text-[10px] font-black text-slate-900 dark:text-slate-100 block uppercase tracking-wider">
                         {getPeriodDisplayLabel(group.startTime, idx)}
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold text-[#525252] block mt-0.5">
+                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mt-0.5">
                       {formatTime12h(group.startTime)}
                     </span>
-                    <span className="text-[9px] font-semibold text-[#8C8C8C] block">
+                    <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 block">
                       to {formatTime12h(group.endTime)}
                     </span>
                   </div>
@@ -282,10 +284,10 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
               ))}
 
               {onAddSlot && (
-                <div className="pt-3 border-t border-gray-100 flex justify-end">
+                <div className="pt-3 border-t border-slate-200 dark:border-neutral-800 flex justify-end">
                   <button
                     onClick={() => onAddSlot(activeDay)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
                   >
                     <Plus size={12} />
                     <span>Add Another Slot for {SHORT_DAYS[activeDay]}</span>
@@ -299,36 +301,36 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
 
       {/* ── View 2: Weekly Table Grid (Desktop) ── */}
       {!isMobile && viewMode === 'grid' && (
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left min-w-[900px]">
               <thead>
-                <tr className="bg-[#FAFAFA] border-b border-[#E5E5E5]">
-                  <th className="p-3 text-[10px] font-black text-[#737373] uppercase tracking-wider w-36 border-r border-[#E5E5E5] sticky left-0 bg-[#FAFAFA] z-10">
+                <tr className="bg-slate-50 dark:bg-neutral-950 border-b border-slate-200 dark:border-neutral-800">
+                  <th className="p-3 text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider w-36 border-r border-slate-200 dark:border-neutral-800 sticky left-0 bg-slate-50 dark:bg-neutral-950 z-10">
                     Period / Time
                   </th>
                   {SHORT_DAYS.map((dayName) => (
                     <th
                       key={dayName}
-                      className="p-3 text-xs font-black text-[#111111] uppercase tracking-wider border-r border-[#E5E5E5] last:border-r-0 text-center w-[15%]"
+                      className="p-3 text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider border-r border-slate-200 dark:border-neutral-800 last:border-r-0 text-center w-[15%]"
                     >
                       {dayName}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F0F0F0]">
+              <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
                 {weeklyPeriods.map((period, pIdx) => (
-                  <tr key={pIdx} className="hover:bg-[#FAFAFA]/40 transition-colors">
+                  <tr key={pIdx} className="hover:bg-slate-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                     {/* Time Row Label */}
-                    <td className="p-3 bg-[#FAFAFA] border-r border-[#E5E5E5] sticky left-0 z-10 align-middle">
+                    <td className="p-3 bg-slate-50 dark:bg-neutral-950 border-r border-slate-200 dark:border-neutral-800 sticky left-0 z-10 align-middle">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <Clock size={11} className="text-[#A3A3A3] shrink-0" />
-                        <span className="text-xs font-black text-[#111111] tracking-tight">
+                        <Clock size={11} className="text-slate-400 dark:text-neutral-500 shrink-0" />
+                        <span className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-tight">
                           {getPeriodDisplayLabel(period.start_time, pIdx)}
                         </span>
                       </div>
-                      <div className="text-[10px] font-semibold text-[#737373]">
+                      <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
                         {formatTime12h(period.start_time)} – {formatTime12h(period.end_time)}
                       </div>
                     </td>
@@ -340,7 +342,7 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                       return (
                         <td
                           key={dayIdx}
-                          className="p-2 border-r border-[#F0F0F0] last:border-r-0 align-top transition-colors relative group/cell min-w-[130px]"
+                          className="p-2 border-r border-slate-100 dark:border-neutral-800/60 last:border-r-0 align-top transition-colors relative group/cell min-w-[130px]"
                         >
                           {matchedSlots.length > 0 ? (
                             <div className="space-y-2">
@@ -364,10 +366,10 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                               onClick={() =>
                                 onAddSlot && onAddSlot(dayIdx, period.start_time, period.end_time)
                               }
-                              className="h-full min-h-[68px] rounded-xl border border-dashed border-transparent hover:border-amber-300 hover:bg-amber-50/40 flex items-center justify-center transition-all cursor-pointer group/btn"
+                              className="h-full min-h-[68px] rounded-xl border border-dashed border-transparent hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 flex items-center justify-center transition-all cursor-pointer group/btn"
                               title={`Click to schedule a class for ${SHORT_DAYS[dayIdx]} (${formatTime12h(period.start_time)})`}
                             >
-                              <div className="w-6 h-6 rounded-full bg-white border border-gray-200 text-gray-400 flex items-center justify-center group-hover/btn:border-amber-400 group-hover/btn:text-amber-600 group-hover/btn:scale-110 transition-all opacity-0 group-hover/cell:opacity-100 shadow-sm">
+                              <div className="w-6 h-6 rounded-full bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-500 dark:text-slate-400 flex items-center justify-center group-hover/btn:border-amber-400 group-hover/btn:text-amber-600 dark:group-hover/btn:text-amber-400 group-hover/btn:scale-110 transition-all opacity-0 group-hover/cell:opacity-100 shadow-sm">
                                 <Plus size={12} />
                               </div>
                             </div>

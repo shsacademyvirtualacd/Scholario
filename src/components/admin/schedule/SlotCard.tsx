@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Edit2, Trash2, X, Video } from 'lucide-react';
 import type { ClassSlot, ClassSessionLink } from '../../../types';
+import { getSubjectCardClasses, SCHEDULE_CARD_CLASSES } from '../../../lib/scheduleCardTheme';
 
 interface SlotCardProps {
   slot: ClassSlot & {
@@ -58,52 +59,25 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   // Core vs Elective distinction: null stream_id means core (shared across streams)
   const isCore = !slot.stream_id && !slot.offering?.stream_id;
-
-  const getSubjectStyle = (sub: string) => {
-    switch (sub.toLowerCase()) {
-      case 'mathematics':
-      case 'math':
-        return { color: '#B48200', bg: '#FFFBF0', border: '#F4C430' };
-      case 'physics':
-        return { color: '#1d4ed8', bg: '#EFF6FF', border: '#3b82f6' };
-      case 'chemistry':
-        return { color: '#047857', bg: '#ECFDF5', border: '#10b981' };
-      case 'biology':
-        return { color: '#be185d', bg: '#FDF2F8', border: '#ec4899' };
-      case 'computer science':
-      case 'computer':
-        return { color: '#6d28d9', bg: '#F5F3FF', border: '#8b5cf6' };
-      case 'english':
-        return { color: '#0e7490', bg: '#ECFEFF', border: '#06b6d4' };
-      case 'urdu':
-        return { color: '#c2410c', bg: '#FFF7ED', border: '#f97316' };
-      case 'islamiat':
-        return { color: '#4338ca', bg: '#EEF2FF', border: '#6366f1' };
-      default:
-        return { color: '#475569', bg: '#F8FAFC', border: '#94a3b8' };
-    }
-  };
-
-  const style = getSubjectStyle(subject);
+  const theme = getSubjectCardClasses(subject);
 
   return (
     <div
       onClick={handleCardClick}
       title={selectionMode ? undefined : `${subject} (${teacherName})`}
-      className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left touch-manipulation select-none ${
+      className={`relative rounded-xl p-2.5 flex flex-col justify-between min-h-[68px] transition-all duration-200 group border text-left touch-manipulation select-none border-l-[3.5px] ${
         selectionMode ? 'cursor-pointer' : 'cursor-pointer hover:shadow-md'
       } ${
         isSelected
-          ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/80 shadow-md'
+          ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/80 dark:bg-blue-950/60 shadow-md'
           : isActive
-            ? 'ring-2 ring-amber-400/80 border-amber-400 bg-amber-50/30 shadow-md'
-            : isCancelled ? 'opacity-50 bg-gray-100/70 border-gray-300' : ''
+            ? 'ring-2 ring-amber-400/80 border-amber-400 bg-amber-50/40 dark:bg-amber-950/40 shadow-md'
+            : isCancelled
+              ? 'opacity-50 bg-gray-100/70 dark:bg-neutral-800/60 border-gray-300 dark:border-neutral-700 border-l-gray-400 dark:border-l-neutral-600'
+              : theme.card
       }`}
       style={{
         touchAction: 'manipulation',
-        backgroundColor: isSelected ? undefined : (isCancelled ? undefined : style.bg),
-        borderColor: isSelected ? undefined : (isCancelled ? undefined : `${style.border}40`),
-        borderLeft: `3.5px solid ${isSelected ? '#2563eb' : (isCancelled ? '#9ca3af' : style.border)}`,
       }}
     >
       {/* Checkbox indicator in Selection Mode */}
@@ -114,7 +88,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             checked={isSelected}
             onChange={() => onToggleSelect && onToggleSelect(slot.id)}
             onClick={(e) => e.stopPropagation()}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+            className="w-4 h-4 text-blue-600 border-gray-300 dark:border-neutral-600 rounded focus:ring-blue-500 cursor-pointer"
           />
         </div>
       )}
@@ -124,17 +98,16 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         <div className="flex items-start justify-between gap-1 pr-16">
           <span
             className={`text-xs font-black tracking-tight leading-snug truncate ${
-              isCancelled ? 'line-through text-gray-500' : ''
+              isCancelled ? 'line-through text-gray-500 dark:text-neutral-500' : theme.title
             }`}
-            style={{ color: isCancelled ? undefined : style.color }}
             title={subject}
           >
             {subject}
           </span>
         </div>
 
-        {/* Teacher Name */}
-        <div className="text-[10px] font-bold text-[#525252] truncate mt-0.5" title={teacherName}>
+        {/* Teacher Name: explicit contrast in both themes */}
+        <div className={`text-[10px] ${SCHEDULE_CARD_CLASSES.teacherName} truncate mt-0.5`} title={teacherName}>
           {teacherName}
         </div>
 
@@ -149,8 +122,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               }}
               className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-md border transition-all cursor-pointer truncate max-w-full shadow-2xs ${
                 isAdminOverride
-                  ? 'bg-amber-100 text-amber-950 border-amber-300 hover:bg-amber-200'
-                  : 'bg-emerald-50 text-emerald-900 border-emerald-300/80 hover:bg-emerald-100'
+                  ? SCHEDULE_CARD_CLASSES.adminLinkPill
+                  : SCHEDULE_CARD_CLASSES.linkReadyPill
               }`}
               title={
                 isAdminOverride
@@ -158,7 +131,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   : `Class link: ${effectiveLink} - Click to edit or substitute`
               }
             >
-              <Video size={10} className={isAdminOverride ? 'text-amber-700 shrink-0' : 'text-emerald-700 shrink-0'} />
+              <Video size={10} className={isAdminOverride ? 'text-amber-700 dark:text-amber-300 shrink-0' : 'text-emerald-700 dark:text-emerald-300 shrink-0'} />
               <span className="truncate">
                 {isAdminOverride
                   ? (substituteName ? `Sub: ${substituteName}` : 'Admin Link')
@@ -172,10 +145,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 e.stopPropagation();
                 onEditLink?.(slot);
               }}
-              className="inline-flex items-center gap-1 text-[9px] font-bold text-gray-500 hover:text-amber-800 bg-white/90 hover:bg-amber-50 border border-dashed border-gray-300 hover:border-amber-400 px-1.5 py-0.5 rounded-md transition-all cursor-pointer shadow-2xs"
+              className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md transition-all cursor-pointer shadow-2xs ${SCHEDULE_CARD_CLASSES.addLinkButton}`}
               title="Add meeting link on behalf of teacher"
             >
-              <Video size={10} className="text-gray-400 shrink-0" />
+              <Video size={10} className="text-slate-400 dark:text-neutral-400 shrink-0" />
               <span>+ Add Link</span>
             </button>
           )}
@@ -183,12 +156,12 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       </div>
 
       {/* Footer: Core/Elective/Stream badge & Cancelled status */}
-      <div className="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-black/5">
+      <div className="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-black/5 dark:border-white/10">
         <span
-          className={`text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded shrink-0 ${
+          className={`text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${
             isCore
-              ? 'bg-slate-200/80 text-slate-700'
-              : 'bg-purple-100 text-purple-800 border border-purple-200/60'
+              ? SCHEDULE_CARD_CLASSES.coreBadge
+              : SCHEDULE_CARD_CLASSES.electiveBadge
           }`}
           title={isCore ? 'Core subject (shared across streams)' : `Stream: ${slot.streamName || 'Elective'}`}
         >
@@ -196,7 +169,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         </span>
 
         {isCancelled && (
-          <span className="text-[8px] font-black uppercase text-red-600 bg-red-100 px-1 rounded">
+          <span className="text-[8px] font-black uppercase text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/60 border border-red-200 dark:border-red-800 px-1 py-0.2 rounded">
             Cancelled
           </span>
         )}
@@ -206,7 +179,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       {!selectionMode && (
         <div 
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-white/95 backdrop-blur-sm border border-gray-200/90 rounded-lg p-0.5 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 z-10"
+          className={`absolute top-1.5 right-1.5 flex items-center gap-0.5 backdrop-blur-sm rounded-lg p-0.5 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150 z-10 ${SCHEDULE_CARD_CLASSES.actionControls}`}
         >
           {/* Edit / Substitute Link (Video Camera) */}
           <button
@@ -218,8 +191,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             title={hasLink ? 'Edit / Substitute class meeting link' : 'Add class meeting link on behalf of teacher'}
             className={`p-1 rounded-md transition-colors cursor-pointer ${
               hasLink
-                ? 'text-amber-700 hover:text-amber-900 hover:bg-amber-100'
-                : 'text-gray-500 hover:text-amber-600 hover:bg-amber-50'
+                ? SCHEDULE_CARD_CLASSES.actionVideo
+                : 'text-slate-700 dark:text-neutral-200 hover:text-amber-800 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40'
             }`}
           >
             <Video size={12} />
@@ -233,7 +206,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               onEdit(slot);
             }}
             title="Edit class slot"
-            className="p-1 rounded-md text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+            className={`p-1 rounded-md transition-colors cursor-pointer ${SCHEDULE_CARD_CLASSES.actionEdit}`}
           >
             <Edit2 size={12} />
           </button>
@@ -246,7 +219,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               onDelete(slot.id);
             }}
             title="Delete class slot"
-            className="p-1 rounded-md text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+            className={`p-1 rounded-md transition-colors cursor-pointer ${SCHEDULE_CARD_CLASSES.actionDelete}`}
           >
             <Trash2 size={12} />
           </button>
@@ -259,7 +232,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               setIsActive(false);
             }}
             title="Deselect / Dismiss"
-            className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            className={`p-1 rounded-md transition-colors cursor-pointer ${SCHEDULE_CARD_CLASSES.actionClose}`}
           >
             <X size={12} />
           </button>

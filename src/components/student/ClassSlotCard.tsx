@@ -6,6 +6,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { markStudentSelfAttendance, getSessionLink } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
+import { getSubjectCardClasses } from '../../lib/scheduleCardTheme';
 import type { Attendance, ClassSlot } from '../../types';
 
 interface ClassSlotCardProps {
@@ -102,17 +103,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
   // Duration computed from raw time strings — no Date objects, no TZ distortion
   const duration = calcDuration(slot.start_time, slot.end_time);
 
-  // Color mappings
-  const getSubjectColor = (sub: string) => {
-    switch (sub.toLowerCase()) {
-      case 'mathematics': return '#F4C430';
-      case 'physics': return '#3b82f6';
-      case 'chemistry': return '#10b981';
-      default: return '#8b5cf6';
-    }
-  };
-
-  const subjectColor = getSubjectColor(subject);
+  // Subject theme styling (authentic light pastel + dark tinted surface with slate-100/300)
+  const theme = getSubjectCardClasses(subject);
 
   // 10-minute timing restriction status
   const linkStatus = getLinkAvailabilityStatus(slot, pktnow, effectiveLink, effectiveSessionDate);
@@ -167,53 +159,54 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
 
   return (
     <div
-      className={`bg-white border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-sm ${
-        isCancelled ? 'opacity-60 bg-gray-50' : ''
+      className={`border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 border-l-[4px] hover:shadow-sm ${
+        isCancelled
+          ? 'opacity-60 bg-gray-50 dark:bg-neutral-900/60 border-gray-200 dark:border-neutral-800 border-l-gray-400 dark:border-l-neutral-600'
+          : theme.card
       }`}
-      style={{ borderLeft: isCancelled ? '4px solid #D4D4D4' : `4px solid ${subjectColor}` }}
     >
       {/* Time & Duration */}
       <div className="flex items-center gap-3 shrink-0">
-        <div className="w-10 h-10 rounded-lg bg-[#F5F5F5] flex items-center justify-center text-[#737373] shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-neutral-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0 border border-slate-200 dark:border-neutral-700">
           <Clock size={16} />
         </div>
         <div>
-          <div className={`text-sm font-extrabold text-[#111111] ${isCancelled ? 'line-through' : ''}`}>
+          <div className={`text-sm font-extrabold text-slate-900 dark:text-slate-100 ${isCancelled ? 'line-through text-slate-500 dark:text-slate-500' : ''}`}>
             {formatTime12h(slot.start_time)} – {formatTime12h(slot.end_time)}
           </div>
           {duration && (
-            <span className="text-[10px] text-[#A3A3A3] font-bold">{duration}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">{duration}</span>
           )}
         </div>
       </div>
 
       {/* Class info */}
-      <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5]">
+      <div className="flex-1 min-w-0 md:pl-4 md:border-l border-slate-200 dark:border-neutral-800">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className={`text-base font-extrabold text-[#111111] leading-tight truncate ${isCancelled ? 'line-through text-[#737373]' : ''}`}>
+          <h3 className={`text-base font-extrabold leading-tight truncate ${isCancelled ? 'line-through text-slate-500 dark:text-slate-500' : theme.title}`}>
             {subject}
           </h3>
           {/* Status badge */}
           {localAttendance && !isCancelled && (
             localAttendance.status === 'pending' ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
-                <Clock size={10} className="animate-spin text-amber-600" /> Awaiting Approval
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700 shrink-0">
+                <Clock size={10} className="animate-spin text-amber-700 dark:text-amber-400" /> Awaiting Approval
               </span>
             ) : localAttendance.status === 'present' || localAttendance.status === 'late' ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700 shrink-0">
                 <Check size={10} strokeWidth={3} /> {localAttendance.status === 'late' ? 'Late' : 'Present'}
               </span>
             ) : localAttendance.status === 'absent' && (localAttendance.marked_by === 'teacher' || localAttendance.marked_by === 'admin') ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 shrink-0">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-900 bg-rose-100 px-2 py-0.5 rounded-md border border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-700 shrink-0">
                 <X size={10} strokeWidth={3} /> Absent
               </span>
             ) : null
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-          <p className="text-xs text-[#737373] font-medium truncate">{teacherName}</p>
+          <p className={`text-xs ${theme.teacher} truncate`}>{teacherName}</p>
           {(fetchedSubstitute || slot.substitute_teacher_name) && (
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+            <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700 px-1.5 py-0.5 rounded-md">
               Sub: {fetchedSubstitute || slot.substitute_teacher_name}
             </span>
           )}
@@ -228,10 +221,10 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
             return (
               <button
                 disabled
-                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 cursor-not-allowed shadow-xs"
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700 cursor-not-allowed shadow-xs"
                 title="Your attendance claim has been submitted and is awaiting teacher approval"
               >
-                <Clock size={13} className="text-amber-600 animate-pulse" />
+                <Clock size={13} className="text-amber-700 dark:text-amber-400 animate-pulse" />
                 <span>Awaiting Teacher Approval</span>
               </button>
             );
@@ -242,8 +235,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
               ? new Date(localAttendance.marked_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
               : '';
             return (
-              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-xs">
-                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700 shadow-xs">
+                <CheckCircle2 size={13} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
                 <span>{timeStr ? `Attendance Confirmed (${timeStr})` : 'Attendance Confirmed'}</span>
               </div>
             );
@@ -251,8 +244,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
 
           if (localAttendance?.status === 'absent' && (localAttendance.marked_by === 'teacher' || localAttendance.marked_by === 'admin')) {
             return (
-              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 shadow-xs">
-                <XCircle size={13} className="text-rose-600 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-100 border border-rose-300 text-rose-900 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-700 shadow-xs">
+                <XCircle size={13} className="text-rose-700 dark:text-rose-400 shrink-0" />
                 <span>Attendance Not Confirmed</span>
               </div>
             );
@@ -265,8 +258,8 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
               disabled={!isOngoing || isMarking}
               className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs ${
                 isOngoing
-                  ? 'bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] cursor-pointer hover:scale-102 active:scale-98'
-                  : 'bg-[#F4C430]/40 text-[#737373] border border-[#E5E5E5] cursor-not-allowed opacity-60'
+                  ? 'bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold cursor-pointer hover:scale-102 active:scale-98 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950'
+                  : 'bg-amber-100 text-slate-500 border border-slate-200 dark:bg-neutral-800 dark:text-slate-400 dark:border-neutral-700 cursor-not-allowed opacity-60'
               }`}
               title={
                 isOngoing
@@ -274,7 +267,7 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
                   : 'Mark My Attendance is enabled only while class is in session'
               }
             >
-              <CheckCircle2 size={13} className={isOngoing ? 'text-[#111111]' : 'text-[#737373]'} />
+              <CheckCircle2 size={13} className={isOngoing ? 'text-slate-950' : 'text-slate-400 dark:text-slate-500'} />
               <span>{isMarking ? 'Submitting...' : 'Mark My Attendance'}</span>
             </button>
           );
@@ -294,23 +287,23 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
             <span>Join Class</span>
           </a>
         ) : linkStatus.status === 'locked' ? (
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border bg-amber-50 border-amber-200 text-amber-700" title="Link opens 10 minutes before class start time">
-            <Lock size={12} className="text-amber-600 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700" title="Link opens 10 minutes before class start time">
+            <Lock size={12} className="text-amber-700 dark:text-amber-400 shrink-0" />
             <span className="truncate max-w-[140px]">{linkStatus.message}</span>
           </div>
         ) : linkStatus.status === 'ended' ? (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-500 dark:text-neutral-400">
-            <Clock size={12} className="text-gray-400 dark:text-neutral-500 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-slate-100 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300">
+            <Clock size={12} className="text-slate-500 dark:text-slate-400 shrink-0" />
             <span>Session Ended</span>
           </div>
         ) : !hasLink ? (
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-dashed border-amber-200 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title="The teacher has not added a live class link for this session yet">
-            <VideoOff size={12} className="text-amber-600 dark:text-amber-400 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-dashed border-amber-300 bg-amber-50/70 text-amber-900 dark:border-amber-700/80 dark:bg-amber-950/40 dark:text-amber-300" title="The teacher has not added a live class link for this session yet">
+            <VideoOff size={12} className="text-amber-700 dark:text-amber-400 shrink-0" />
             <span className="truncate max-w-[150px]">Class link not available yet</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-gray-50 dark:bg-neutral-800/60 border-gray-200 dark:border-neutral-700 text-gray-500 dark:text-neutral-400" title="Link accessible 10 minutes before class">
-            <Lock size={12} className="text-gray-400 dark:text-neutral-500 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg border bg-slate-50 dark:bg-neutral-800/80 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300" title="Link accessible 10 minutes before class">
+            <Lock size={12} className="text-slate-500 dark:text-slate-400 shrink-0" />
             <span>Unlocks 10m before</span>
           </div>
         )}

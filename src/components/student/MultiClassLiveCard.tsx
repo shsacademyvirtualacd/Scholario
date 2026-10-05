@@ -34,6 +34,7 @@ import {
   formatCountdownPrecise,
   getSlotSubject,
 } from '../../lib/scheduleUtils';
+import { getSubjectCardClasses } from '../../lib/scheduleCardTheme';
 import { markStudentSelfAttendance, getSessionLink } from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot, Attendance } from '../../types';
@@ -175,58 +176,40 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
     }
   };
 
-  // Color mapping based on subject
-  const getSubjectBorderColor = (sub: string) => {
-    const s = sub.toLowerCase();
-    if (s.includes('math')) return '#F4C430';
-    if (s.includes('phys')) return '#3B82F6';
-    if (s.includes('chem')) return '#10B981';
-    if (s.includes('bio')) return '#14B8A6';
-    if (s.includes('comp')) return '#8B5CF6';
-    if (s.includes('eng')) return '#EC4899';
-    if (s.includes('urdu')) return '#F97316';
-    if (s.includes('islam')) return '#059669';
-    return '#E5E5E5';
-  };
-
-  const subjectBorder = getSubjectBorderColor(subject);
+  const theme = getSubjectCardClasses(subject);
 
   return (
     <div
-      className={`stat-card relative flex flex-col justify-between p-4.5 rounded-2xl border transition-all duration-200 ${
+      className={`stat-card relative flex flex-col justify-between p-4.5 rounded-2xl border transition-all duration-200 border-l-[5px] ${
         isFinished
-          ? 'bg-[#FAFAFA] border-[#E5E5E5] opacity-75 grayscale-[20%]'
+          ? 'bg-slate-50 dark:bg-neutral-900/60 border-slate-200 dark:border-neutral-800 border-l-slate-400 dark:border-l-neutral-600 opacity-75'
           : isOngoing
-          ? 'bg-white border-emerald-400 ring-2 ring-emerald-400/20 shadow-md'
+          ? 'bg-white dark:bg-emerald-950/20 border-emerald-400 dark:border-emerald-500 border-l-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
           : isNextOrLive
-          ? 'bg-[#FFFEF9] border-[#F4C430] ring-2 ring-[#F4C430]/20 shadow-sm'
-          : 'bg-white border-[#E5E5E5] hover:border-[#D4D4D4] shadow-xs'
+          ? 'bg-[#FFFEF9] dark:bg-amber-950/20 border-amber-400 dark:border-amber-500/60 border-l-amber-500 ring-2 ring-amber-400/20 shadow-sm'
+          : theme.card
       }`}
-      style={{
-        borderLeftWidth: '5px',
-        borderLeftColor: isFinished ? '#A3A3A3' : isOngoing ? '#22C55E' : subjectBorder,
-      }}
     >
       {/* Top Header: Subject + Status Badge */}
       <div>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-extrabold text-base text-[#111111] tracking-tight truncate">
+              <span className={`font-extrabold text-base tracking-tight truncate ${theme.title}`}>
                 {subject}
               </span>
               {gradeLabel && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-[#525252]">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-neutral-700">
                   Gr. {gradeLabel}
                 </span>
               )}
               {boardLabel && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700">
                   {boardLabel}
                 </span>
               )}
             </div>
-            <p className="text-xs text-[#737373] font-medium truncate mt-0.5">
+            <p className={`text-xs ${theme.teacher} mt-0.5 truncate`}>
               {teacherName}
             </p>
           </div>
@@ -234,24 +217,24 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
           {/* Top Badge: Live / Completed / Starting / Countdown */}
           <div className="shrink-0">
             {isOngoing ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full animate-pulse shadow-xs">
+              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-900 bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700 px-2.5 py-0.5 rounded-full animate-pulse shadow-xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping inline-block" />
                 Live Now
               </span>
             ) : isFinished ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md">
-                <Check size={11} className="text-gray-500" /> Finished
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 dark:bg-neutral-800 dark:text-slate-300 dark:border-neutral-700 px-2 py-0.5 rounded-md">
+                <Check size={11} className="text-slate-500 dark:text-slate-400" /> Finished
               </span>
             ) : minsUntilStart <= 10 && minsUntilStart > 0 ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md animate-pulse">
-                <Zap size={11} className="text-amber-600" /> Starting Soon
+              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-900 bg-amber-100 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-md animate-pulse">
+                <Zap size={11} className="text-amber-700 dark:text-amber-400" /> Starting Soon
               </span>
             ) : isNextOrLive ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#111111] bg-[#F4C430]/30 border border-[#F4C430] px-2 py-0.5 rounded-md">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-900 bg-amber-100 border border-amber-400 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-600 px-2 py-0.5 rounded-md">
                 Next Up
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#737373] bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 dark:bg-neutral-800 dark:text-slate-300 dark:border-neutral-700 px-2 py-0.5 rounded-md">
                 Scheduled
               </span>
             )}
@@ -259,17 +242,17 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
         </div>
 
         {/* Timetable Timing */}
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#F5F5F5] text-xs font-semibold text-[#525252]">
-          <Clock size={13} className={isOngoing ? 'text-emerald-500' : 'text-[#A3A3A3]'} />
-          <span className="text-[#111111] font-bold">
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-neutral-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <Clock size={13} className={isOngoing ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'} />
+          <span className="text-slate-900 dark:text-slate-100 font-bold">
             {formatTime12h(slot.start_time)} – {formatTime12h(slot.end_time)}
           </span>
-          <span className="text-[#A3A3A3]">·</span>
-          <span className="text-[11px] text-[#737373]">
+          <span className="text-slate-400 dark:text-slate-500">·</span>
+          <span className="text-[11px] text-slate-600 dark:text-slate-400">
             {calcDuration(slot.start_time, slot.end_time) || '1 hour'}
           </span>
           {isOngoing && (
-            <span className="text-[10px] text-emerald-700 font-bold ml-auto bg-emerald-50 px-2 py-0.5 rounded">
+            <span className="text-[10px] text-emerald-900 bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700 font-bold ml-auto px-2 py-0.5 rounded">
               {minsRemaining}m remaining
             </span>
           )}
@@ -282,12 +265,12 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
         {(() => {
           if (localAttendance?.status === 'pending') {
             return (
-              <div className="flex items-center justify-between text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 py-1.5 px-2.5 rounded-lg shadow-2xs">
+              <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700 py-1.5 px-2.5 rounded-lg shadow-2xs">
                 <span className="flex items-center gap-1.5">
-                  <Clock size={12} className="text-amber-600 animate-spin" />
+                  <Clock size={12} className="text-amber-700 dark:text-amber-400 animate-spin" />
                   Awaiting Teacher Approval
                 </span>
-                <span className="text-[10px] font-medium text-amber-700">Claimed</span>
+                <span className="text-[10px] font-medium text-amber-800 dark:text-amber-300">Claimed</span>
               </div>
             );
           }
@@ -297,21 +280,21 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
               ? new Date(localAttendance.marked_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
               : '';
             return (
-              <div className="flex items-center justify-between text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 py-1.5 px-2.5 rounded-lg shadow-2xs">
+              <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900 bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700 py-1.5 px-2.5 rounded-lg shadow-2xs">
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                  <CheckCircle2 size={12} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
                   <span>{localAttendance.status === 'late' ? 'Marked Late' : 'Present'}</span>
                 </span>
-                {timeStr && <span className="text-[10px] text-emerald-700 font-normal">at {timeStr}</span>}
+                {timeStr && <span className="text-[10px] text-emerald-800 dark:text-emerald-400 font-normal">at {timeStr}</span>}
               </div>
             );
           }
 
           if (localAttendance?.status === 'absent' && (localAttendance.marked_by === 'teacher' || localAttendance.marked_by === 'admin')) {
             return (
-              <div className="flex items-center justify-between text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 py-1.5 px-2.5 rounded-lg shadow-2xs">
+              <div className="flex items-center justify-between text-[11px] font-bold text-rose-900 bg-rose-100 border border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-700 py-1.5 px-2.5 rounded-lg shadow-2xs">
                 <span className="flex items-center gap-1.5">
-                  <XCircle size={12} className="text-rose-600 shrink-0" />
+                  <XCircle size={12} className="text-rose-700 dark:text-rose-400 shrink-0" />
                   <span>Marked Absent</span>
                 </span>
               </div>
@@ -321,12 +304,12 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
           // If session is finished and student was not marked present
           if (isFinished) {
             return (
-              <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 bg-gray-100 border border-gray-200 py-1.5 px-2.5 rounded-lg">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 border border-slate-200 dark:bg-neutral-800 dark:border-neutral-700 py-1.5 px-2.5 rounded-lg">
                 <span className="flex items-center gap-1.5">
-                  <Clock size={12} className="text-gray-400 shrink-0" />
+                  <Clock size={12} className="text-slate-500 dark:text-slate-400 shrink-0" />
                   <span>Not Marked</span>
                 </span>
-                <span className="text-[10px] text-gray-400">Class ended</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">Class ended</span>
               </div>
             );
           }
@@ -338,8 +321,8 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
               disabled={!isOngoing || isMarking}
               className={`flex items-center justify-center gap-1.5 w-full text-xs font-bold py-1.5 px-2.5 rounded-lg transition-all shadow-xs ${
                 isOngoing
-                  ? 'bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] cursor-pointer interactive'
-                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-75'
+                  ? 'bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold cursor-pointer interactive dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200 dark:bg-neutral-800 dark:text-slate-400 dark:border-neutral-700 cursor-not-allowed opacity-75'
               }`}
               title={
                 isOngoing
@@ -347,7 +330,7 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
                   : 'Mark My Attendance is enabled only while this class is ongoing'
               }
             >
-              <CheckCircle2 size={13} className={isOngoing ? 'text-[#111111]' : 'text-gray-400'} />
+              <CheckCircle2 size={13} className={isOngoing ? 'text-slate-950' : 'text-slate-400 dark:text-slate-500'} />
               <span>{isMarking ? 'Submitting...' : 'Mark My Attendance'}</span>
             </button>
           );
@@ -356,8 +339,8 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
         {/* ── State 1: Upcoming (not started) ── */}
         {/* Shows live countdown (e.g. "Starts in 1h 24m 10s") instead of Join button */}
         {isUpcoming && (
-          <div className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-xs font-bold shadow-2xs">
-            <Hourglass size={13} className="text-amber-600 animate-spin" />
+          <div className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 text-amber-950 dark:text-amber-200 text-xs font-bold shadow-2xs">
+            <Hourglass size={13} className="text-amber-700 dark:text-amber-400 animate-spin" />
             <span>Starts in {formatCountdownPrecise(slot.start_time, pktnow)}</span>
           </div>
         )}
@@ -384,10 +367,10 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
         {isOngoing && !hasLink && (
           <button
             disabled
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-gray-100 border border-gray-300 text-gray-500 text-xs font-semibold cursor-not-allowed shadow-2xs"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-300 dark:border-neutral-700 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-not-allowed shadow-2xs"
             title="Class time has arrived, but the teacher has not uploaded the meeting link yet. It will automatically update here as soon as it is posted."
           >
-            <Clock size={13} className="text-gray-400 shrink-0" />
+            <Clock size={13} className="text-slate-500 dark:text-slate-400 shrink-0" />
             <span>Waiting for teacher to add link</span>
           </button>
         )}
@@ -395,8 +378,8 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
         {/* ── State 4: Finished ── */}
         {/* Muted visually, completed state */}
         {isFinished && (
-          <div className="flex items-center justify-center gap-1.5 w-full py-1.5 px-2.5 rounded-lg bg-gray-100 text-gray-400 text-[11px] font-medium border border-gray-200">
-            <Check size={12} className="text-gray-400" />
+          <div className="flex items-center justify-center gap-1.5 w-full py-1.5 px-2.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-slate-400 text-[11px] font-medium border border-slate-200 dark:border-neutral-700">
+            <Check size={12} className="text-slate-500 dark:text-slate-400" />
             <span>Class Completed</span>
           </div>
         )}

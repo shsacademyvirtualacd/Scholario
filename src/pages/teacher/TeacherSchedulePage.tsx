@@ -12,6 +12,7 @@ import {
   getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
   formatTime12h, calcDuration, getClosestDateForDayOfWeek
 } from '../../lib/scheduleUtils';
+import { getSubjectCardClasses } from '../../lib/scheduleCardTheme';
 import { LiveLinkEditor } from './TeacherDashboardPage';
 import { useMobile } from '../../hooks/useMobile';
 import { NotificationPermissionBanner } from '../../components/student/NotificationPermissionBanner';
@@ -115,18 +116,7 @@ export const TeacherSchedulePage: React.FC = () => {
   // PKT-aware next-class banner state
   const bannerState = classWidgetState(scheduleSlots, pktnow);
 
-  // Use formatTime12h from scheduleUtils
-  const formatTime = formatTime12h;
 
-  const getSubjectColor = (sub: string) => {
-    switch (sub.toLowerCase()) {
-      case 'mathematics': return '#F4C430';
-      case 'physics': return '#3b82f6';
-      case 'chemistry': return '#10b981';
-      case 'computer science': return '#8b5cf6';
-      default: return '#ec4899';
-    }
-  };
 
   return (
     <TeacherShell>
@@ -178,27 +168,27 @@ export const TeacherSchedulePage: React.FC = () => {
 
       {/* Next Class Banner — 4-state smart display */}
       {bannerState.type !== 'end-of-day' && (
-        <div className={`bg-[#FFFDF0] border border-[#F4C43033] rounded-2xl p-4 flex ${isMobile ? 'flex-col gap-4' : 'flex-row items-center justify-between gap-4'} shadow-sm mb-6`}>
+        <div className={`bg-[#FFFDF0] dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700/50 rounded-2xl p-4 flex ${isMobile ? 'flex-col gap-4' : 'flex-row items-center justify-between gap-4'} shadow-sm mb-6`}>
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
               bannerState.type === 'ongoing' ? 'bg-emerald-500' : 'bg-[#F4C430]'
             }`}>
               {bannerState.type === 'ongoing'
                 ? <Zap size={16} className="text-white" />
-                : <Video size={16} className="text-[#111111]" />}
+                : <Video size={16} className="text-slate-950" />}
             </div>
             <div>
               {bannerState.type === 'ongoing' ? (
                 <>
-                  <h3 className="text-sm font-bold text-[#111111]">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     In Session: {getSlotSubject(bannerState.activeSlot)}
                   </h3>
-                  <p className="text-xs text-emerald-600 mt-0.5 font-bold">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5 font-bold">
                     {Math.floor(bannerState.minsRemaining / 60) > 0
                       ? `${Math.floor(bannerState.minsRemaining / 60)}h ${bannerState.minsRemaining % 60}m remaining`
                       : `${bannerState.minsRemaining}m remaining`}
                     {bannerState.nextSlot && (
-                      <span className="text-[#737373] font-medium ml-2">
+                      <span className="text-slate-600 dark:text-slate-400 font-medium ml-2">
                         · Up next: {getSlotSubject(bannerState.nextSlot)} at {formatTime12h(bannerState.nextSlot.start_time)}
                       </span>
                     )}
@@ -206,10 +196,10 @@ export const TeacherSchedulePage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <h3 className="text-sm font-bold text-[#111111] dark:text-zinc-100">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     Next Lecture Session: {getSlotSubject(bannerState.nextSlot)}
                   </h3>
-                  <p className="text-xs text-[#737373] dark:text-zinc-400 mt-0.5 font-medium">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
                     Class {bannerState.nextSlot.offering?.grade || (bannerState.nextSlot.offering as any)?.class?.grade || ''} ({String(bannerState.nextSlot.offering?.board || (bannerState.nextSlot.offering as any)?.class?.board?.name || (bannerState.nextSlot.offering as any)?.class?.board_id || (bannerState.nextSlot.offering as any)?.board_name || 'Curriculum').toUpperCase()}) · Scheduled Lecture
                   </p>
                 </>
@@ -217,9 +207,9 @@ export const TeacherSchedulePage: React.FC = () => {
             </div>
           </div>
           <div className={`flex items-center gap-2 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 w-fit self-end md:self-auto ${
-            bannerState.type === 'ongoing' ? 'bg-emerald-600' : 'bg-[#111111]'
+            bannerState.type === 'ongoing' ? 'bg-emerald-600' : 'bg-slate-900 dark:bg-amber-400 dark:text-slate-950'
           }`}>
-            <Clock size={13} className={bannerState.type === 'ongoing' ? 'text-white' : 'text-[#F4C430]'} />
+            <Clock size={13} className={bannerState.type === 'ongoing' ? 'text-white' : 'text-amber-400 dark:text-slate-950'} />
             {bannerState.type === 'ongoing'
               ? 'Live Now'
               : `Starts ${formatCountdown(bannerState.minsUntil)}`}
@@ -228,15 +218,15 @@ export const TeacherSchedulePage: React.FC = () => {
       )}
 
       {/* Day Selector Tabs */}
-      <div className={`${isMobile ? 'grid grid-cols-3 gap-2' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'} py-0.5 bg-white p-2 border border-[#E5E5E5] rounded-xl shadow-sm mb-6`}>
+      <div className={`${isMobile ? 'grid grid-cols-3 gap-2' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'} py-0.5 bg-white dark:bg-neutral-900 p-2 border border-slate-200 dark:border-neutral-800 rounded-xl shadow-sm mb-6`}>
         {DAYS_OF_WEEK.map((day) => (
           <button
             key={day.index}
             onClick={() => setActiveDay(day.index)}
             className={`flex-1 min-w-[90px] py-2.5 rounded-lg text-xs font-bold transition-all ${
               activeDay === day.index
-                ? 'bg-[#111111] text-white shadow-sm'
-                : 'bg-white text-[#525252] hover:bg-[#FAFAFA]'
+                ? 'bg-slate-900 text-white shadow-sm dark:bg-amber-400 dark:text-slate-950'
+                : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-neutral-800 dark:text-slate-300 dark:hover:bg-neutral-700'
             }`}
           >
             {day.label}
@@ -247,47 +237,48 @@ export const TeacherSchedulePage: React.FC = () => {
       {/* Slots List */}
       <div className="space-y-4">
         {filteredSlots.length === 0 ? (
-          <div className="card text-center py-20 bg-white border border-[#E5E5E5] rounded-2xl flex flex-col items-center justify-center interactive">
-            <CheckCircle2 size={32} className="text-[#D4D4D4] mb-2 animate-bounce" />
-            <h3 className="text-sm font-bold text-[#111111]">No classes scheduled</h3>
-            <p className="text-xs text-[#737373] mt-1">You have no scheduled lectures for this day.</p>
+          <div className="card text-center py-20 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl flex flex-col items-center justify-center interactive">
+            <CheckCircle2 size={32} className="text-slate-400 dark:text-neutral-500 mb-2 animate-bounce" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">No classes scheduled</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">You have no scheduled lectures for this day.</p>
           </div>
         ) : (
           filteredSlots.map((slot) => {
             const isCancelled = slot.is_cancelled;
             const subject: string = (slot.custom_title || slot.offering?.subject_name || slot.offering?.subject || 'Class') as string;
-            const subjectColor = getSubjectColor(subject);
+            const theme = getSubjectCardClasses(subject);
 
             return (
               <div
                 key={slot.id}
-                className={`bg-white border rounded-xl p-4 flex flex-col gap-3 transition-all duration-200 border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-sm ${
-                  isCancelled ? 'opacity-60 bg-gray-50' : ''
+                className={`border rounded-xl p-4 flex flex-col gap-3 transition-all duration-200 border-l-[4px] hover:shadow-sm ${
+                  isCancelled
+                    ? 'opacity-60 bg-gray-50 dark:bg-neutral-900/60 border-gray-200 dark:border-neutral-800 border-l-gray-400 dark:border-l-neutral-600'
+                    : theme.card
                 }`}
-                style={{ borderLeft: isCancelled ? '4px solid #D4D4D4' : `4px solid ${subjectColor}` }}
               >
                 <div className={`flex ${isMobile ? 'flex-col items-start gap-4' : 'flex-row items-center justify-between gap-4'}`}>
                   {/* Time & Duration */}
                   <div className="flex items-center gap-3 shrink-0">
-                    <div className="w-10 h-10 rounded-lg bg-[#F5F5F5] flex items-center justify-center text-[#737373] shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-neutral-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0 border border-slate-200 dark:border-neutral-700">
                       <Clock size={16} />
                     </div>
                     <div>
-                      <div className={`text-sm font-extrabold text-[#111111] ${isCancelled ? 'line-through' : ''}`}>
-                        {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                      <div className={`text-sm font-extrabold text-slate-900 dark:text-slate-100 ${isCancelled ? 'line-through text-slate-500 dark:text-slate-500' : ''}`}>
+                        {formatTime12h(slot.start_time)} – {formatTime12h(slot.end_time)}
                       </div>
-                      <span className="text-[10px] text-[#A3A3A3] font-bold">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
                         {calcDuration(slot.start_time, slot.end_time) || '90m'} duration
                       </span>
                     </div>
                   </div>
 
                   {/* Class info */}
-                  <div className="flex-1 min-w-0 md:pl-4 md:border-l border-[#F5F5F5] dark:border-zinc-800">
-                    <h3 className={`text-base font-extrabold text-[#111111] dark:text-zinc-100 leading-tight truncate ${isCancelled ? 'line-through text-[#737373] dark:text-zinc-500' : ''}`}>
+                  <div className="flex-1 min-w-0 md:pl-4 md:border-l border-slate-200 dark:border-neutral-800">
+                    <h3 className={`text-base font-extrabold leading-tight truncate ${isCancelled ? 'line-through text-slate-500 dark:text-slate-500' : theme.title}`}>
                       {subject}
                     </h3>
-                    <p className="text-xs text-[#737373] dark:text-zinc-400 mt-0.5 font-medium truncate">
+                    <p className={`text-xs ${theme.teacher} mt-0.5 truncate`}>
                       Class {slot.offering?.grade || (slot.offering as any)?.class?.grade || ''} ({String(slot.offering?.board || (slot.offering as any)?.class?.board?.name || (slot.offering as any)?.class?.board_id || (slot.offering as any)?.board_name || 'Curriculum').toUpperCase()}) · Session date: {activeSessionDate}
                     </p>
                   </div>
@@ -300,7 +291,7 @@ export const TeacherSchedulePage: React.FC = () => {
 
                 {/* Per-session Live Link Editor */}
                 {!isCancelled && (
-                  <div className="pt-2 border-t border-[#F5F5F5]">
+                  <div className="pt-2 border-t border-slate-200 dark:border-neutral-800">
                     <LiveLinkEditor
                       slot={slot}
                       sessionDate={activeSessionDate}

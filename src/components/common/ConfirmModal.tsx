@@ -88,7 +88,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     >
       <div
         id="confirm-modal-container"
-        className="relative bg-white w-full max-w-full sm:max-w-md rounded-2xl shadow-2xl p-4 sm:p-6 border border-[#E5E5E5] animate-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col overflow-hidden"
+        className="relative bg-white dark:bg-neutral-900 w-full max-w-full sm:max-w-md rounded-2xl shadow-2xl p-4 sm:p-6 border border-slate-200 dark:border-neutral-800 animate-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -96,7 +96,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           id="confirm-modal-close-btn"
           onClick={onClose}
           disabled={isPending}
-          className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#737373] hover:text-[#111111] transition-colors disabled:opacity-40 cursor-pointer z-10"
+          className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors disabled:opacity-40 cursor-pointer z-10"
           aria-label="Close dialog"
         >
           <X size={16} />
@@ -106,25 +106,25 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <div className="flex gap-3 sm:gap-4">
             {/* Destructive / Warning Icon */}
             {danger ? (
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] border border-[#FCA5A5]/60 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 flex items-center justify-center shrink-0">
                 <AlertTriangle size={18} />
               </div>
             ) : (
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F5F5F5] text-[#111111] border border-[#E5E5E5] flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-neutral-700 flex items-center justify-center shrink-0">
                 <AlertTriangle size={18} />
               </div>
             )}
 
             <div className="flex-1 pr-6 sm:pr-4 min-w-0">
-              <h3 id="confirm-modal-title" className="text-sm sm:text-base font-extrabold text-[#111111] break-words">
+              <h3 id="confirm-modal-title" className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 break-words">
                 {title}
               </h3>
-              <p className="text-xs sm:text-sm text-[#737373] mt-1.5 font-normal leading-relaxed break-words">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 font-normal leading-relaxed break-words">
                 {description}
               </p>
 
               {error && (
-                <div className="mt-3 p-2.5 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-xs text-[#991B1B] break-words">
+                <div className="mt-3 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-xs text-red-800 dark:text-red-200 break-words">
                   {error}
                 </div>
               )}
@@ -135,13 +135,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 mt-4 pt-4 border-t border-[#F5F5F5] shrink-0">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-neutral-800 shrink-0">
           <button
             type="button"
             id="confirm-modal-cancel-btn"
             onClick={onClose}
             disabled={isPending}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#525252] hover:bg-[#F5F5F5] transition-colors disabled:opacity-40 cursor-pointer text-center"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-neutral-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-40 cursor-pointer text-center"
           >
             {cancelLabel}
           </button>
@@ -151,10 +151,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             ref={confirmBtnRef}
             disabled={isPending}
             onClick={handleConfirm}
-            className={`w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold text-white transition-all shadow-xs disabled:opacity-40 cursor-pointer text-center ${
+            className={`w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all shadow-xs disabled:opacity-40 cursor-pointer text-center ${
               danger
-                ? 'bg-[#DC2626] hover:bg-[#B91C1C]'
-                : 'bg-[#111111] hover:bg-[#262626]'
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950'
             }`}
           >
             {isPending && <Loader2 size={13} className="animate-spin shrink-0" />}

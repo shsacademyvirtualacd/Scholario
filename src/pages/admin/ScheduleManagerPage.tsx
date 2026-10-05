@@ -737,7 +737,7 @@ export const ScheduleManagerPage: React.FC = () => {
             className={`btn flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all interactive ${
               selectionMode
                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-white text-[#525252] border-[#E5E5E5] hover:bg-[#F5F5F5]'
+                : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-neutral-800 hover:bg-slate-50 dark:hover:bg-neutral-800'
             }`}
           >
             <CheckSquare size={14} />
@@ -746,7 +746,7 @@ export const ScheduleManagerPage: React.FC = () => {
           {filteredSlots.length > 0 && (
             <button
               onClick={() => setClearScheduleModalOpen(true)}
-              className="btn flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold rounded-xl shadow-sm transition-all interactive"
+              className="btn flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-bold rounded-xl shadow-sm transition-all interactive"
               title="Remove all scheduled class slots for the current cohort view"
             >
               <Trash2 size={14} />
@@ -755,7 +755,7 @@ export const ScheduleManagerPage: React.FC = () => {
           )}
           <button
             onClick={() => handleAddTrigger(0)}
-            className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-[#262626] text-white text-xs font-bold rounded-xl shadow-sm interactive"
+            className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950 text-xs font-bold rounded-xl shadow-sm interactive"
           >
             <Plus size={14} />
             Schedule Class
@@ -767,9 +767,9 @@ export const ScheduleManagerPage: React.FC = () => {
 
       {/* Published to News Notification Toast */}
       {showPublishBanner && (
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
-          <Megaphone size={14} className="text-blue-600 shrink-0 animate-bounce" />
-          <span className="text-xs font-bold text-blue-800">
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+          <Megaphone size={14} className="text-blue-600 dark:text-blue-400 shrink-0 animate-bounce" />
+          <span className="text-xs font-bold text-blue-900 dark:text-blue-200">
             Timetable modification has been published to the student news announcements board!
           </span>
         </div>
@@ -778,10 +778,10 @@ export const ScheduleManagerPage: React.FC = () => {
       {/* ── Filter Bar ── */}
       {isMobile ? (
         /* Mobile: stacked compact filter card */
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
           {/* Board row */}
-          <div className="flex items-center gap-3 px-4 pt-3 pb-2 border-b border-[#F0F0F0]">
-            <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Board:</span>
+          <div className="flex items-center gap-3 px-4 pt-3 pb-2 border-b border-slate-100 dark:border-neutral-800">
+            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Board:</span>
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {BOARDS.map((b) => (
                 <button
@@ -789,8 +789,8 @@ export const ScheduleManagerPage: React.FC = () => {
                   onClick={() => handleBoardChange(b.id)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedBoard === b.id
-                      ? 'bg-[#F4C430] border-[#F4C430] text-[#111111]'
-                      : 'bg-[#FAFAFA] border-[#E5E5E5] text-[#737373]'
+                      ? 'bg-amber-400 border-amber-400 text-slate-950'
+                      : 'bg-slate-100 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   {b.label}
@@ -801,16 +801,16 @@ export const ScheduleManagerPage: React.FC = () => {
 
           {/* Grade row */}
           {activeGrades.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-[#F0F0F0] overflow-x-auto no-scrollbar">
-              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Grade:</span>
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 dark:border-neutral-800 overflow-x-auto no-scrollbar">
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Grade:</span>
               {activeGrades.map((g: any) => (
                 <button
                   key={g.id}
                   onClick={() => handleGradeChange(g.id)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedGrade === g.id
-                      ? 'bg-[#111111] border-[#111111] text-white'
-                      : 'bg-white border-[#E5E5E5] text-[#525252]'
+                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
+                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   {g.label}
@@ -821,14 +821,14 @@ export const ScheduleManagerPage: React.FC = () => {
 
           {/* Stream row */}
           {activeStreams.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-[#F0F0F0] overflow-x-auto no-scrollbar bg-[#FAFAFA]">
-              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide shrink-0">Stream:</span>
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 dark:border-neutral-800 overflow-x-auto no-scrollbar bg-slate-50 dark:bg-neutral-950">
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Stream:</span>
               <button
                 onClick={() => setSelectedStream('all')}
                 className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
                   selectedStream === 'all' || !selectedStream
-                    ? 'bg-[#111111] border-[#111111] text-white'
-                    : 'bg-white border-[#E5E5E5] text-[#525252]'
+                    ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
+                    : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300'
                 }`}
               >
                 All Streams
@@ -839,8 +839,8 @@ export const ScheduleManagerPage: React.FC = () => {
                   onClick={() => setSelectedStream(s.id)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
                     selectedStream === s.id
-                      ? 'bg-[#111111] border-[#111111] text-white'
-                      : 'bg-white border-[#E5E5E5] text-[#525252]'
+                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
+                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   {s.name}
@@ -851,12 +851,12 @@ export const ScheduleManagerPage: React.FC = () => {
 
           {/* Instructor + Reset row */}
           <div className="flex items-center gap-2 px-4 py-2.5">
-            <Filter size={11} className="text-[#A3A3A3] shrink-0" />
-            <span className="text-[10px] font-bold text-[#737373] shrink-0">Instructor:</span>
+            <Filter size={11} className="text-slate-400 dark:text-slate-500 shrink-0" />
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 shrink-0">Instructor:</span>
             <select
               value={teacherFilter}
               onChange={(e) => setTeacherFilter(e.target.value)}
-              className="input flex-1 py-1.5 px-2.5 text-[11px] bg-white border-[#E5E5E5] rounded-lg cursor-pointer"
+              className="input flex-1 py-1.5 px-2.5 text-[11px] bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer"
             >
               <option value="all">All Tutors</option>
               {teachers.map((t) => (
@@ -866,7 +866,7 @@ export const ScheduleManagerPage: React.FC = () => {
             {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all') && (
               <button
                 onClick={resetFilters}
-                className="flex items-center gap-0.5 text-[10px] font-black text-amber-600 hover:text-[#111111] shrink-0 interactive"
+                className="flex items-center gap-0.5 text-[10px] font-black text-amber-600 dark:text-amber-400 hover:text-slate-950 dark:hover:text-amber-300 shrink-0 interactive"
               >
                 <RotateCcw size={10} />
                 Reset
@@ -877,7 +877,7 @@ export const ScheduleManagerPage: React.FC = () => {
       ) : (
         /* Desktop: original tab + filter bar layout */
         <>
-          <div className="border-b border-[#E5E5E5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+          <div className="border-b border-slate-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
             <div className="flex overflow-x-auto no-scrollbar gap-6 border-transparent max-w-full">
               {BOARDS.map((b) => (
                 <button
@@ -885,8 +885,8 @@ export const ScheduleManagerPage: React.FC = () => {
                   onClick={() => handleBoardChange(b.id)}
                   className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedBoard === b.id
-                      ? 'border-[#F4C430] text-[#111111]'
-                      : 'border-transparent text-[#737373] hover:text-[#111111]'
+                      ? 'border-amber-400 text-slate-900 dark:text-amber-400'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
                   {b.label}
@@ -895,14 +895,14 @@ export const ScheduleManagerPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3 pb-2 sm:pb-0">
-              <div className="flex items-center gap-1 text-[11px] font-bold text-[#737373]">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-slate-300">
                 <Filter size={12} />
                 <span>Instructor:</span>
               </div>
               <select
                 value={teacherFilter}
                 onChange={(e) => setTeacherFilter(e.target.value)}
-                className="input py-1 px-2.5 text-[10px] bg-white border-[#E5E5E5] rounded-md cursor-pointer"
+                className="input py-1 px-2.5 text-[10px] bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-slate-100 rounded-md cursor-pointer"
               >
                 <option value="all">All Tutors</option>
                 {teachers.map((t) => (
@@ -912,7 +912,7 @@ export const ScheduleManagerPage: React.FC = () => {
               {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all') && (
                 <button
                   onClick={resetFilters}
-                  className="text-[10px] font-black text-amber-600 hover:text-[#111111] flex items-center gap-0.5 interactive"
+                  className="text-[10px] font-black text-amber-600 dark:text-amber-400 hover:text-slate-950 dark:hover:text-amber-300 flex items-center gap-0.5 interactive"
                 >
                   <RotateCcw size={10} />
                   Reset
@@ -922,16 +922,16 @@ export const ScheduleManagerPage: React.FC = () => {
           </div>
 
           {activeGrades.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-[#FAFAFA] px-4 border-b border-[#E5E5E5]">
-              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Cohort Grade:</span>
+            <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-slate-50 dark:bg-neutral-950 px-4 border-b border-slate-200 dark:border-neutral-800">
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mr-2">Cohort Grade:</span>
               {activeGrades.map((g: any) => (
                 <button
                   key={g.id}
                   onClick={() => handleGradeChange(g.id)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                     selectedGrade === g.id
-                      ? 'bg-[#111111] border-[#111111] text-white'
-                      : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
+                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
                   }`}
                 >
                   {g.label}
@@ -941,14 +941,14 @@ export const ScheduleManagerPage: React.FC = () => {
           )}
 
           {activeStreams.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 py-2 bg-[#F9F9F9] px-4 border-b border-[#E5E5E5] transition-all duration-250 animate-in slide-in-from-top-1">
-              <span className="text-[9px] font-black text-[#A3A3A3] uppercase tracking-wide mr-2">Stream:</span>
+            <div className="flex flex-wrap items-center gap-1.5 py-2 bg-slate-100/60 dark:bg-neutral-900 px-4 border-b border-slate-200 dark:border-neutral-800 transition-all duration-250 animate-in slide-in-from-top-1">
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mr-2">Stream:</span>
               <button
                 onClick={() => setSelectedStream('all')}
                 className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                   selectedStream === 'all' || !selectedStream
-                    ? 'bg-[#111111] border-[#111111] text-white'
-                    : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                    ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
+                    : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
                 }`}
               >
                 All Streams
@@ -959,8 +959,8 @@ export const ScheduleManagerPage: React.FC = () => {
                   onClick={() => setSelectedStream(s.id)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
                     selectedStream === s.id
-                      ? 'bg-[#111111] border-[#111111] text-white'
-                      : 'bg-white border-[#E5E5E5] text-[#525252] hover:bg-[#F5F5F5]'
+                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
+                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
                   }`}
                 >
                   {s.name}
