@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '../features/auth/AuthContext';
@@ -13,6 +13,7 @@ import { LiveSessionNotificationListener } from '../components/common/LiveSessio
 import { TeacherLiveReminderListener } from '../components/teacher/TeacherLiveReminderListener';
 import { AdminLiveNotificationListener } from '../components/admin/AdminLiveNotificationListener';
 import { PageContextTracker } from '../components/common/PageContextTracker';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 
 // ─── Public pages (eager loaded — small) ────
 import LoginPage from '../pages/public/LoginPage';
@@ -22,63 +23,63 @@ import PlanComparisonPage from '../pages/public/PlanComparisonPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 
 // ─── Legal Pages (lazy) ────────────────────────
-const NotificationsPage   = lazy(() => import('../pages/common/NotificationsPage'));
-const PrivacyPolicyPage = lazy(() => import('../pages/public/PrivacyPolicyPage'));
-const TermsOfServicePage = lazy(() => import('../pages/public/TermsOfServicePage'));
-const RefundPolicyPage = lazy(() => import('../pages/public/RefundPolicyPage'));
+const NotificationsPage   = lazyWithRetry(() => import('../pages/common/NotificationsPage'), 'NotificationsPage');
+const PrivacyPolicyPage = lazyWithRetry(() => import('../pages/public/PrivacyPolicyPage'), 'PrivacyPolicyPage');
+const TermsOfServicePage = lazyWithRetry(() => import('../pages/public/TermsOfServicePage'), 'TermsOfServicePage');
+const RefundPolicyPage = lazyWithRetry(() => import('../pages/public/RefundPolicyPage'), 'RefundPolicyPage');
 import { CookieConsentBanner } from '../components/common/CookieConsentBanner';
 
 // ─── Marketing page (eager — entry point) ───
 import LandingShell from '../pages/public/LandingShell';
 
 // ─── Dashboards (lazy) ──────────────────────
-const StudentDashboardPage = lazy(() => import('../pages/student/StudentDashboardPage'));
-const AdminDashboardPage   = lazy(() => import('../pages/admin/AdminDashboardPage'));
+const StudentDashboardPage = lazyWithRetry(() => import('../pages/student/StudentDashboardPage'), 'StudentDashboardPage');
+const AdminDashboardPage   = lazyWithRetry(() => import('../pages/admin/AdminDashboardPage'), 'AdminDashboardPage');
 
 // ─── Student sub-pages (lazy) ────────────────
-const NotesPage      = lazy(() => import('../pages/student/NotesPage'));
-const StudentTestsPage = lazy(() => import('../pages/student/TestsPage'));
-const StudentSelfTestingPage = lazy(() => import('../pages/student/SelfTestingPage'));
-const SchedulePage   = lazy(() => import('../pages/student/SchedulePage'));
-const AttendancePage = lazy(() => import('../pages/student/AttendancePage'));
-const ProfilePage    = lazy(() => import('../pages/student/ProfilePage'));
-const StudentAnnouncementsPage = lazy(() => import('../pages/student/StudentAnnouncementsPage'));
-const StudentChatPage = lazy(() => import('../pages/student/StudentChatPage'));
+const NotesPage      = lazyWithRetry(() => import('../pages/student/NotesPage'), 'NotesPage');
+const StudentTestsPage = lazyWithRetry(() => import('../pages/student/TestsPage'), 'StudentTestsPage');
+const StudentSelfTestingPage = lazyWithRetry(() => import('../pages/student/SelfTestingPage'), 'StudentSelfTestingPage');
+const SchedulePage   = lazyWithRetry(() => import('../pages/student/SchedulePage'), 'SchedulePage');
+const AttendancePage = lazyWithRetry(() => import('../pages/student/AttendancePage'), 'AttendancePage');
+const ProfilePage    = lazyWithRetry(() => import('../pages/student/ProfilePage'), 'StudentProfilePage');
+const StudentAnnouncementsPage = lazyWithRetry(() => import('../pages/student/StudentAnnouncementsPage'), 'StudentAnnouncementsPage');
+const StudentChatPage = lazyWithRetry(() => import('../pages/student/StudentChatPage'), 'StudentChatPage');
 
 // ─── Teacher Portal (lazy) ──────────────────
-const TeacherDashboardPage = lazy(() => import('../pages/teacher/TeacherDashboardPage'));
-const TeacherAttendancePage = lazy(() => import('../pages/teacher/TeacherAttendancePage'));
-const StaffAttendancePage = lazy(() => import('../pages/staff/StaffAttendancePage'));
-const TeacherNotesPage = lazy(() => import('../pages/teacher/TeacherNotesPage'));
-const TeacherTestsPage = lazy(() => import('../pages/teacher/TeacherTestsPage'));
-const TeacherSchedulePage = lazy(() => import('../pages/teacher/TeacherSchedulePage'));
-const TeacherAnnouncementsPage = lazy(() => import('../pages/teacher/TeacherAnnouncementsPage'));
-const TeacherProfilePage = lazy(() => import('../pages/teacher/ProfilePage'));
-const TeacherChatPage = lazy(() => import('../pages/teacher/TeacherChatPage'));
+const TeacherDashboardPage = lazyWithRetry(() => import('../pages/teacher/TeacherDashboardPage'), 'TeacherDashboardPage');
+const TeacherAttendancePage = lazyWithRetry(() => import('../pages/teacher/TeacherAttendancePage'), 'TeacherAttendancePage');
+const StaffAttendancePage = lazyWithRetry(() => import('../pages/staff/StaffAttendancePage'), 'StaffAttendancePage');
+const TeacherNotesPage = lazyWithRetry(() => import('../pages/teacher/TeacherNotesPage'), 'TeacherNotesPage');
+const TeacherTestsPage = lazyWithRetry(() => import('../pages/teacher/TeacherTestsPage'), 'TeacherTestsPage');
+const TeacherSchedulePage = lazyWithRetry(() => import('../pages/teacher/TeacherSchedulePage'), 'TeacherSchedulePage');
+const TeacherAnnouncementsPage = lazyWithRetry(() => import('../pages/teacher/TeacherAnnouncementsPage'), 'TeacherAnnouncementsPage');
+const TeacherProfilePage = lazyWithRetry(() => import('../pages/teacher/ProfilePage'), 'TeacherProfilePage');
+const TeacherChatPage = lazyWithRetry(() => import('../pages/teacher/TeacherChatPage'), 'TeacherChatPage');
 
 // ─── Fee Pages (lazy) ───────────────────────
-const StudentCheckoutPage = lazy(() => import('../pages/student/StudentCheckoutPage'));
-const AdminFeesPage = lazy(() => import('../pages/admin/AdminFeesPage'));
+const StudentCheckoutPage = lazyWithRetry(() => import('../pages/student/StudentCheckoutPage'), 'StudentCheckoutPage');
+const AdminFeesPage = lazyWithRetry(() => import('../pages/admin/AdminFeesPage'), 'AdminFeesPage');
 
 // ─── Sage AI Pages (lazy) ───────────────────
-const StudentSagePage = lazy(() => import('../pages/student/StudentSagePage'));
-const TeacherSagePage = lazy(() => import('../pages/teacher/TeacherSagePage'));
-const AdminSagePage   = lazy(() => import('../pages/admin/AdminSagePage'));
+const StudentSagePage = lazyWithRetry(() => import('../pages/student/StudentSagePage'), 'StudentSagePage');
+const TeacherSagePage = lazyWithRetry(() => import('../pages/teacher/TeacherSagePage'), 'TeacherSagePage');
+const AdminSagePage   = lazyWithRetry(() => import('../pages/admin/AdminSagePage'), 'AdminSagePage');
 
 // ─── Admin sub-pages (lazy) ──────────────────
-const ScheduleManagerPage  = lazy(() => import('../pages/admin/ScheduleManagerPage'));
-const TeachersPage         = lazy(() => import('../pages/admin/TeachersPage'));
-const StudentsAdminPage    = lazy(() => import('../pages/admin/StudentsAdminPage'));
-const NotesManagerPage     = lazy(() => import('../pages/admin/NotesManagerPage'));
-const AdminTestsPage       = lazy(() => import('../pages/admin/AdminTestsPage'));
-const AdminQuestionBankPage = lazy(() => import('../pages/admin/AdminQuestionBankPage'));
-const AttendanceAdminPage  = lazy(() => import('../pages/admin/AttendanceAdminPage'));
-const AdminAnnouncementsPage = lazy(() => import('../pages/admin/AdminAnnouncementsPage'));
-const AdminProfilePage     = lazy(() => import('../pages/admin/ProfilePage'));
-const PriceManagerPage     = lazy(() => import('../pages/admin/PriceManagerPage'));
-const RosterManagerPage    = lazy(() => import('../pages/admin/RosterManagerPage'));
-const AdminChatPage        = lazy(() => import('../pages/admin/AdminChatPage'));
-const AdminVisibilityRequestsPage = lazy(() => import('../pages/admin/AdminVisibilityRequestsPage'));
+const ScheduleManagerPage  = lazyWithRetry(() => import('../pages/admin/ScheduleManagerPage'), 'ScheduleManagerPage');
+const TeachersPage         = lazyWithRetry(() => import('../pages/admin/TeachersPage'), 'TeachersPage');
+const StudentsAdminPage    = lazyWithRetry(() => import('../pages/admin/StudentsAdminPage'), 'StudentsAdminPage');
+const NotesManagerPage     = lazyWithRetry(() => import('../pages/admin/NotesManagerPage'), 'NotesManagerPage');
+const AdminTestsPage       = lazyWithRetry(() => import('../pages/admin/AdminTestsPage'), 'AdminTestsPage');
+const AdminQuestionBankPage = lazyWithRetry(() => import('../pages/admin/AdminQuestionBankPage'), 'AdminQuestionBankPage');
+const AttendanceAdminPage  = lazyWithRetry(() => import('../pages/admin/AttendanceAdminPage'), 'AttendanceAdminPage');
+const AdminAnnouncementsPage = lazyWithRetry(() => import('../pages/admin/AdminAnnouncementsPage'), 'AdminAnnouncementsPage');
+const AdminProfilePage     = lazyWithRetry(() => import('../pages/admin/ProfilePage'), 'AdminProfilePage');
+const PriceManagerPage     = lazyWithRetry(() => import('../pages/admin/PriceManagerPage'), 'PriceManagerPage');
+const RosterManagerPage    = lazyWithRetry(() => import('../pages/admin/RosterManagerPage'), 'RosterManagerPage');
+const AdminChatPage        = lazyWithRetry(() => import('../pages/admin/AdminChatPage'), 'AdminChatPage');
+const AdminVisibilityRequestsPage = lazyWithRetry(() => import('../pages/admin/AdminVisibilityRequestsPage'), 'AdminVisibilityRequestsPage');
 
 // ─── Page loader ────────────────────────────
 const PageLoader: React.FC = () => {

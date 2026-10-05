@@ -48,6 +48,7 @@ import {
 import {
   generateSageContentPdf,
   downloadSagePdf,
+  revokeSagePdfUrl,
   hasAcademicContent,
   hasAnswerKeyOrSolutions,
   detectPdfRequest,
@@ -363,10 +364,13 @@ const SagePdfCard: React.FC<{
   subject: string;
   className: string;
   hasAnswers: boolean;
+  role: 'student' | 'teacher' | 'admin';
   onDownload: (mode: 'student' | 'teacher') => void;
   onPreview: (mode: 'student' | 'teacher') => void;
   isGenerating?: boolean;
-}> = ({ title, subject, className, hasAnswers, onDownload, onPreview, isGenerating }) => {
+}> = ({ title, subject, className, hasAnswers, role, onDownload, onPreview, isGenerating }) => {
+  const isStudent = role === 'student';
+
   return (
     <div className="my-3 p-4 bg-gradient-to-br from-amber-50/90 via-white to-zinc-50 border border-amber-200/90 rounded-2xl shadow-xs">
       <div className="flex items-start justify-between gap-3">
@@ -390,13 +394,25 @@ const SagePdfCard: React.FC<{
       </div>
 
       <div className="mt-3 pt-3 border-t border-amber-200/60 flex flex-wrap items-center gap-2">
-        {hasAnswers ? (
+        {/* For Students: Always show ONE clear primary "Download PDF" button (No Answers) */}
+        {isStudent ? (
+          <button
+            type="button"
+            onClick={() => onDownload('student')}
+            disabled={isGenerating}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+            title="Download clean student copy (questions only, zero answers)"
+          >
+            <Download size={14} />
+            <span>Download PDF</span>
+          </button>
+        ) : hasAnswers ? (
           <>
             <button
               type="button"
               onClick={() => onDownload('student')}
               disabled={isGenerating}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-50 text-xs font-semibold text-emerald-800 border border-emerald-300 shadow-2xs hover:border-emerald-400 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-50 text-xs font-semibold text-emerald-800 border border-emerald-300 shadow-2xs hover:border-emerald-400 transition-all disabled:opacity-50 cursor-pointer"
               title="Download clean student test (solutions omitted)"
             >
               <GraduationCap size={14} className="text-emerald-600" />
@@ -406,7 +422,7 @@ const SagePdfCard: React.FC<{
               type="button"
               onClick={() => onDownload('teacher')}
               disabled={isGenerating}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
               title="Download teacher copy with solutions & answer key"
             >
               <Download size={14} />
@@ -418,7 +434,7 @@ const SagePdfCard: React.FC<{
             type="button"
             onClick={() => onDownload('teacher')}
             disabled={isGenerating}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
           >
             <Download size={14} />
             <span>Download PDF</span>
@@ -427,9 +443,9 @@ const SagePdfCard: React.FC<{
 
         <button
           type="button"
-          onClick={() => onPreview(hasAnswers ? 'student' : 'teacher')}
+          onClick={() => onPreview(isStudent ? 'student' : hasAnswers ? 'student' : 'teacher')}
           disabled={isGenerating}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-semibold text-zinc-700 transition-all disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-semibold text-zinc-700 transition-all disabled:opacity-50 cursor-pointer"
         >
           <Eye size={14} />
           <span>Preview</span>
@@ -445,7 +461,7 @@ const SagePdfCard: React.FC<{
   );
 };
 
-// ── PDF Preview Modal ──
+// ── Lightweight, Memoized PDF Preview Modal with Scroll Lock ──
 const PdfPreviewModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -455,9 +471,10 @@ const PdfPreviewModal: React.FC<{
   loading?: boolean;
   mode: 'student' | 'teacher';
   hasAnswers: boolean;
+  role: 'student' | 'teacher' | 'admin';
   onToggleMode: (newMode: 'student' | 'teacher') => void;
   onDownload: () => void;
-}> = ({
+}> = React.memo(({
   isOpen,
   onClose,
   dataUrl,
@@ -466,35 +483,50 @@ const PdfPreviewModal: React.FC<{
   loading = false,
   mode,
   hasAnswers,
+  role,
   onToggleMode,
   onDownload,
 }) => {
+  const isStudent = role === 'student';
+
+  // Lock background scrolling while modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white rounded-3xl border border-zinc-200 shadow-2xl flex flex-col w-full max-w-4xl h-[92vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/75 backdrop-blur-xs animate-in fade-in">
+      <div className="bg-white rounded-3xl border border-zinc-200 shadow-2xl flex flex-col w-full max-w-4xl h-[92vh] max-h-[92vh] overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-3.5 bg-gradient-to-r from-zinc-900 to-zinc-800 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="px-4 sm:px-5 py-3.5 bg-gradient-to-r from-zinc-900 to-zinc-800 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-amber-400 text-black flex items-center justify-center font-black text-xs shrink-0">
               PDF
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold truncate max-w-[280px] sm:max-w-md">{filename}</h3>
-              <p className="text-[11px] text-zinc-400">
+              <h3 className="text-xs sm:text-sm font-bold truncate max-w-[200px] sm:max-w-md">{filename}</h3>
+              <p className="text-[10px] sm:text-[11px] text-zinc-400">
                 Scholario Sage v2.0 • A4 Document ({totalPages} {totalPages === 1 ? 'page' : 'pages'})
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {hasAnswers && (
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Edition Switcher (Visible ONLY to Teachers and Admins) */}
+            {!isStudent && hasAnswers && (
               <div className="hidden sm:flex items-center bg-zinc-800 p-0.5 rounded-xl border border-zinc-700 text-xs">
                 <button
                   type="button"
                   onClick={() => onToggleMode('student')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                     mode === 'student' ? 'bg-emerald-600 text-white shadow-xs' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -503,7 +535,7 @@ const PdfPreviewModal: React.FC<{
                 <button
                   type="button"
                   onClick={() => onToggleMode('teacher')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                     mode === 'teacher' ? 'bg-amber-500 text-black shadow-xs' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -515,7 +547,7 @@ const PdfPreviewModal: React.FC<{
             <button
               type="button"
               onClick={onDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4C430] hover:bg-amber-400 text-black text-xs font-bold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4C430] hover:bg-amber-400 text-black text-xs font-bold transition-colors cursor-pointer"
             >
               <Download size={14} />
               <span>Download</span>
@@ -524,7 +556,7 @@ const PdfPreviewModal: React.FC<{
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-xl hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors cursor-pointer"
               title="Close Preview"
             >
               <X size={18} />
@@ -532,15 +564,15 @@ const PdfPreviewModal: React.FC<{
           </div>
         </div>
 
-        {/* Mode Selector for Mobile */}
-        {hasAnswers && (
+        {/* Mode Selector for Mobile (Visible ONLY to Teachers and Admins) */}
+        {!isStudent && hasAnswers && (
           <div className="sm:hidden px-4 py-2 bg-zinc-100 border-b border-zinc-200 flex items-center justify-between text-xs">
             <span className="font-semibold text-zinc-600">Edition:</span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => onToggleMode('student')}
-                className={`px-2.5 py-1 rounded-lg font-bold ${
+                className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${
                   mode === 'student' ? 'bg-emerald-600 text-white' : 'bg-white text-zinc-700'
                 }`}
               >
@@ -549,7 +581,7 @@ const PdfPreviewModal: React.FC<{
               <button
                 type="button"
                 onClick={() => onToggleMode('teacher')}
-                className={`px-2.5 py-1 rounded-lg font-bold ${
+                className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${
                   mode === 'teacher' ? 'bg-amber-500 text-black' : 'bg-white text-zinc-700'
                 }`}
               >
@@ -559,8 +591,11 @@ const PdfPreviewModal: React.FC<{
           </div>
         )}
 
-        {/* Document Viewer Frame */}
-        <div className="flex-1 bg-zinc-200 overflow-auto flex items-center justify-center p-3 sm:p-6 relative">
+        {/* Document Viewer Frame - Smooth native scrolling on Android/iOS */}
+        <div
+          className="flex-1 bg-zinc-200 overflow-y-auto overflow-x-hidden flex items-center justify-center p-2 sm:p-6 relative"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+        >
           {loading ? (
             <div className="flex flex-col items-center gap-2 text-zinc-600">
               <Loader2 size={32} className="animate-spin text-amber-500" />
@@ -571,6 +606,7 @@ const PdfPreviewModal: React.FC<{
               src={dataUrl}
               title="PDF Preview"
               className="w-full h-full bg-white rounded-xl shadow-lg border border-zinc-300"
+              style={{ minHeight: '380px' }}
             />
           ) : (
             <div className="text-xs text-zinc-500">Preview not available</div>
@@ -579,7 +615,9 @@ const PdfPreviewModal: React.FC<{
       </div>
     </div>
   );
-};
+});
+
+PdfPreviewModal.displayName = 'PdfPreviewModal';
 
 const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: string; text: string; icon: any; tone?: string }>> = {
   student: [
@@ -1076,11 +1114,14 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
   // ── PDF Generation Helpers ──
   const handleDownloadPdf = async (rawContent: string, mode: 'student' | 'teacher' = 'teacher', msgId?: string) => {
+    // Strict role enforcement in code: students can NEVER download teacher copy with solutions
+    const effectiveMode = role === 'student' ? 'student' : mode;
+
     if (msgId) setGeneratingPdfMsgId(msgId);
     try {
       const filename = await downloadSagePdf(rawContent, {
         teacherName: profile?.full_name || 'Faculty Mentor',
-        mode,
+        mode: effectiveMode,
       });
       toast.success(`Downloaded: ${filename}`);
       setPdfMenuMsgId(null);
@@ -1093,16 +1134,23 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   };
 
   const handleOpenPdfPreview = async (rawContent: string, initialMode: 'student' | 'teacher' = 'teacher') => {
-    const hasAnswers = hasAnswerKeyOrSolutions(rawContent);
+    // Strict role enforcement in code: students can NEVER preview teacher copy with solutions
+    const effectiveMode = role === 'student' ? 'student' : initialMode;
+    const hasAnswers = role === 'student' ? false : hasAnswerKeyOrSolutions(rawContent);
     const meta = extractAcademicMetadata(rawContent, profile?.full_name);
-    const filename = `${meta.subject || 'Scholario'}_${meta.className || 'Academic'}_${initialMode === 'student' ? 'Student' : 'Teacher'}.pdf`;
+    const filename = `${meta.subject || 'Scholario'}_${meta.className || 'Academic'}_${effectiveMode === 'student' ? 'Student' : 'Teacher'}.pdf`;
+
+    // Revoke any previous preview Object URL to prevent memory leaks
+    if (pdfPreviewModal.dataUrl) {
+      revokeSagePdfUrl(pdfPreviewModal.dataUrl);
+    }
 
     setPdfPreviewModal({
       isOpen: true,
       rawContent,
       filename,
       totalPages: 1,
-      mode: initialMode,
+      mode: effectiveMode,
       hasAnswers,
       loading: true,
     });
@@ -1110,7 +1158,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     try {
       const result = await generateSageContentPdf(rawContent, {
         teacherName: profile?.full_name || 'Faculty Mentor',
-        mode: initialMode,
+        mode: effectiveMode,
       });
       setPdfPreviewModal((prev) => ({
         ...prev,
@@ -1127,6 +1175,13 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   };
 
   const handleTogglePreviewMode = async (newMode: 'student' | 'teacher') => {
+    // Students can NEVER toggle to teacher mode
+    if (role === 'student') return;
+
+    if (pdfPreviewModal.dataUrl) {
+      revokeSagePdfUrl(pdfPreviewModal.dataUrl);
+    }
+
     setPdfPreviewModal((prev) => ({ ...prev, mode: newMode, loading: true }));
     try {
       const result = await generateSageContentPdf(pdfPreviewModal.rawContent, {
@@ -1606,7 +1661,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                     title={msg.pdfCard.title}
                     subject={msg.pdfCard.subject}
                     className={msg.pdfCard.className}
-                    hasAnswers={msg.pdfCard.hasAnswers}
+                    hasAnswers={role === 'student' ? false : msg.pdfCard.hasAnswers}
+                    role={role}
                     isGenerating={generatingPdfMsgId === msg.id}
                     onDownload={(m) => handleDownloadPdf(msg.content, m, msg.id)}
                     onPreview={(m) => handleOpenPdfPreview(msg.content, m)}
@@ -1629,7 +1685,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       {/* Copy Button */}
                       <button
                         onClick={() => handleCopy(msg.id, msg.content)}
-                        className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1 text-zinc-500 hover:text-zinc-900"
+                        className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1 text-zinc-500 hover:text-zinc-900 cursor-pointer"
                         title="Copy response"
                       >
                         {copiedId === msg.id ? (
@@ -1640,69 +1696,89 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                         <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                       </button>
 
-                      {/* Download PDF Button */}
-                      {isAcademic && (
+                      {/* Download PDF Button (Only shown if inline PDF card is not already displayed, preventing duplicate buttons) */}
+                      {!msg.pdfCard && isAcademic && (
                         <div className="relative inline-block ml-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (hasAnswers) {
-                                setPdfMenuMsgId(pdfMenuMsgId === msg.id ? null : msg.id);
-                              } else {
-                                handleDownloadPdf(msg.content, 'teacher', msg.id);
-                              }
-                            }}
-                            disabled={generatingPdfMsgId === msg.id}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100/70 hover:bg-amber-200/90 text-amber-950 font-semibold text-[11px] border border-amber-300/80 transition-colors disabled:opacity-50"
-                            title="Export this content to a formatted PDF document"
-                          >
-                            {generatingPdfMsgId === msg.id ? (
-                              <Loader2 size={11} className="animate-spin text-amber-700" />
-                            ) : (
-                              <FileDown size={11} className="text-amber-800" />
-                            )}
-                            <span>Download PDF</span>
-                            {hasAnswers && <ChevronDown size={10} />}
-                          </button>
-
-                          {/* Dual Export Dropdown Menu (Student vs Teacher Copy) */}
-                          {pdfMenuMsgId === msg.id && (
-                            <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-zinc-200 p-1.5 z-30 text-left animate-in fade-in slide-in-from-top-1">
-                              <button
-                                type="button"
-                                onClick={() => handleDownloadPdf(msg.content, 'student', msg.id)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-800 hover:bg-emerald-50 transition-colors"
-                              >
-                                <GraduationCap size={14} className="text-emerald-600" />
-                                <div className="text-left">
-                                  <div>Student Copy</div>
-                                  <div className="text-[10px] text-zinc-500 font-normal">Questions only, no answers</div>
-                                </div>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDownloadPdf(msg.content, 'teacher', msg.id)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-900 hover:bg-zinc-100 transition-colors"
-                              >
-                                <Download size={14} className="text-amber-600" />
-                                <div className="text-left">
-                                  <div>Teacher Copy</div>
-                                  <div className="text-[10px] text-zinc-500 font-normal">Full with solutions & marking key</div>
-                                </div>
-                              </button>
-                              <div className="my-1 border-t border-zinc-100" />
+                          {role === 'student' ? (
+                            /* Clean single button for students (No answers, no confusing dropdown) */
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPdf(msg.content, 'student', msg.id)}
+                              disabled={generatingPdfMsgId === msg.id}
+                              className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100/70 hover:bg-amber-200/90 text-amber-950 font-semibold text-[11px] border border-amber-300/80 transition-colors disabled:opacity-50 cursor-pointer"
+                              title="Download clean Student Copy (No Answers)"
+                            >
+                              {generatingPdfMsgId === msg.id ? (
+                                <Loader2 size={11} className="animate-spin text-amber-700" />
+                              ) : (
+                                <FileDown size={11} className="text-amber-800" />
+                              )}
+                              <span>Download PDF</span>
+                            </button>
+                          ) : (
+                            /* Dual export dropdown for teachers and administrators */
+                            <>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setPdfMenuMsgId(null);
-                                  handleOpenPdfPreview(msg.content, 'student');
+                                  if (hasAnswers) {
+                                    setPdfMenuMsgId(pdfMenuMsgId === msg.id ? null : msg.id);
+                                  } else {
+                                    handleDownloadPdf(msg.content, 'teacher', msg.id);
+                                  }
                                 }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-600 hover:bg-zinc-100 transition-colors"
+                                disabled={generatingPdfMsgId === msg.id}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100/70 hover:bg-amber-200/90 text-amber-950 font-semibold text-[11px] border border-amber-300/80 transition-colors disabled:opacity-50 cursor-pointer"
+                                title="Export this content to a formatted PDF document"
                               >
-                                <Eye size={13} />
-                                <span>Preview Document</span>
+                                {generatingPdfMsgId === msg.id ? (
+                                  <Loader2 size={11} className="animate-spin text-amber-700" />
+                                ) : (
+                                  <FileDown size={11} className="text-amber-800" />
+                                )}
+                                <span>Download PDF</span>
+                                {hasAnswers && <ChevronDown size={10} />}
                               </button>
-                            </div>
+
+                              {pdfMenuMsgId === msg.id && (
+                                <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-zinc-200 p-1.5 z-30 text-left animate-in fade-in slide-in-from-top-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadPdf(msg.content, 'student', msg.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-800 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                  >
+                                    <GraduationCap size={14} className="text-emerald-600" />
+                                    <div className="text-left">
+                                      <div>Student Copy</div>
+                                      <div className="text-[10px] text-zinc-500 font-normal">Questions only, zero answers</div>
+                                    </div>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadPdf(msg.content, 'teacher', msg.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+                                  >
+                                    <Download size={14} className="text-amber-600" />
+                                    <div className="text-left">
+                                      <div>Teacher Copy</div>
+                                      <div className="text-[10px] text-zinc-500 font-normal">Full with solutions & marking key</div>
+                                    </div>
+                                  </button>
+                                  <div className="my-1 border-t border-zinc-100" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPdfMenuMsgId(null);
+                                      handleOpenPdfPreview(msg.content, 'teacher');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-600 hover:bg-zinc-100 transition-colors cursor-pointer"
+                                  >
+                                    <Eye size={13} />
+                                    <span>Preview Document</span>
+                                  </button>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
@@ -2046,13 +2122,19 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       {/* ── PDF Preview Modal ── */}
       <PdfPreviewModal
         isOpen={pdfPreviewModal.isOpen}
-        onClose={() => setPdfPreviewModal((prev) => ({ ...prev, isOpen: false }))}
+        onClose={() => {
+          if (pdfPreviewModal.dataUrl) {
+            revokeSagePdfUrl(pdfPreviewModal.dataUrl);
+          }
+          setPdfPreviewModal((prev) => ({ ...prev, isOpen: false, dataUrl: undefined }));
+        }}
         dataUrl={pdfPreviewModal.dataUrl}
         filename={pdfPreviewModal.filename}
         totalPages={pdfPreviewModal.totalPages}
         loading={pdfPreviewModal.loading}
         mode={pdfPreviewModal.mode}
         hasAnswers={pdfPreviewModal.hasAnswers}
+        role={role}
         onToggleMode={handleTogglePreviewMode}
         onDownload={() => handleDownloadPdf(pdfPreviewModal.rawContent, pdfPreviewModal.mode)}
       />

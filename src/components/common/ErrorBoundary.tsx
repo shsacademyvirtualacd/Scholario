@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { CHUNK_RELOAD_STORAGE_KEY } from '../../utils/lazyWithRetry';
 
 interface Props {
   children?: ReactNode;
@@ -8,6 +9,21 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+}
+
+function isChunkLoadError(error: Error | null): boolean {
+  if (!error) return false;
+  const msg = error.message || String(error);
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('dynamically imported module') ||
+    msg.includes('Loading CSS chunk') ||
+    (error.name === 'TypeError' && msg.includes('fetch')) ||
+    (msg.includes('/assets/') && msg.includes('.js'))
+  );
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -22,14 +38,59 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[ErrorBoundary] CRITICAL UNCAUGHT ERROR:', error.message);
-    console.error('[ErrorBoundary] ERROR STACK:', error.stack);
-    console.error('[ErrorBoundary] COMPONENT STACK:', errorInfo?.componentStack);
+    console.error('[ErrorBoundary] Error caught:', error.message);
+    if ((import.meta as any).env?.DEV) {
+      console.error('[ErrorBoundary] Stack:', error.stack);
+      console.error('[ErrorBoundary] Component stack:', errorInfo?.componentStack);
+    }
     this.setState({ errorInfo });
+
+    // Automatic single-reload recovery for chunk load errors
+    if (isChunkLoadError(error)) {
+      const hasRetried = window.sessionStorage.getItem(CHUNK_RELOAD_STORAGE_KEY) === 'true';
+      if (!hasRetried) {
+        console.warn('[ErrorBoundary] Stale build chunk detected. Automatically reloading once...');
+        window.sessionStorage.setItem(CHUNK_RELOAD_STORAGE_KEY, 'true');
+        window.location.reload();
+      }
+    }
   }
 
   public render() {
     if (this.state.hasError) {
+      const isChunk = isChunkLoadError(this.state.error);
+      const isDev = Boolean((import.meta as any).env?.DEV);
+
+      if (isChunk) {
+        return (
+          <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111111] flex items-center justify-center p-4 sm:p-6">
+            <div className="w-full max-w-md bg-white dark:bg-[#18181b] border border-[#E5E5E5] dark:border-[#27272a] rounded-3xl p-6 sm:p-8 shadow-xl text-center">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200/80 dark:border-amber-700/50 flex items-center justify-center mx-auto mb-4 text-[#F4C430]">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+              </div>
+              <h1 className="text-lg sm:text-xl font-black text-[#111111] dark:text-white mb-2">
+                A new version is available
+              </h1>
+              <p className="text-xs sm:text-sm text-[#737373] dark:text-zinc-400 mb-6 leading-relaxed">
+                Scholario has been updated with the latest improvements. Tap below to refresh and load the latest release.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  window.sessionStorage.removeItem('scholario_chunk_reload_done');
+                  window.location.reload();
+                }}
+                className="w-full py-3 px-5 bg-[#111111] hover:bg-black text-[#F4C430] rounded-2xl font-bold text-sm shadow-md transition-all interactive cursor-pointer"
+              >
+                Tap to refresh
+              </button>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111111] flex items-center justify-center p-4 sm:p-6">
           <div className="w-full max-w-xl bg-white dark:bg-[#18181b] border border-[#E5E5E5] dark:border-[#27272a] rounded-2xl p-6 sm:p-8 shadow-lg text-center">
@@ -41,11 +102,11 @@ export class ErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-[#111111] dark:text-white mb-2">Something went wrong</h1>
-            <p className="text-xs sm:text-sm text-[#737373] dark:text-zinc-400 mb-4">
-              A critical error occurred while rendering this page.
+            <p className="text-xs sm:text-sm text-[#737373] dark:text-zinc-400 mb-6">
+              An unexpected error occurred while loading this page. Please try refreshing.
             </p>
 
-            {this.state.error && (
+            {isDev && this.state.error && (
               <div className="text-left mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 overflow-hidden">
                 <div className="text-xs font-bold text-rose-800 dark:text-rose-300 font-mono break-words mb-2">
                   {this.state.error.name}: {this.state.error.message}
@@ -53,11 +114,6 @@ export class ErrorBoundary extends Component<Props, State> {
                 {this.state.error.stack && (
                   <pre className="text-[10px] text-rose-700/80 dark:text-rose-400/80 font-mono overflow-x-auto max-h-40 whitespace-pre-wrap">
                     {this.state.error.stack}
-                  </pre>
-                )}
-                {this.state.errorInfo?.componentStack && (
-                  <pre className="text-[10px] text-zinc-600 dark:text-zinc-400 font-mono overflow-x-auto max-h-32 mt-2 pt-2 border-t border-rose-200 dark:border-rose-900/40 whitespace-pre-wrap">
-                    {this.state.errorInfo.componentStack}
                   </pre>
                 )}
               </div>
@@ -73,7 +129,10 @@ export class ErrorBoundary extends Component<Props, State> {
               </button>
               <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  window.sessionStorage.removeItem('scholario_chunk_reload_done');
+                  window.location.reload();
+                }}
                 className="w-full py-2.5 px-4 bg-[#111111] hover:bg-[#262626] text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
               >
                 Reload Application

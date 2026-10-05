@@ -1,0 +1,6 @@
+# Do not return index.html for missing static hashed assets or API routes (prevents MIME type execution errors)
+/assets/* /assets/:splat 404
+/api/* /api/:splat 404
+
+# SPA Catch-all fallback for client-side routing
+/* /index.html 200

@@ -1,27 +1,30 @@
 /**
- * Scholario Sage AI Document & Content PDF Generator
+ * Scholario Sage AI Document & Assessment PDF Generator
  *
  * Generates publication-ready, beautifully styled academic PDFs client-side (using jsPDF + html2canvas)
  * for:
  * - Quizzes and Multiple Choice Questions (MCQs)
  * - Worksheets & Practice Problems
- * - Lesson Plans
  * - Detailed Chapter Notes & Revision Summaries
- * - Answer Keys & Marking Schemes
+ * - Dual export: "Student Copy" (Zero answers in data model) vs "Teacher Copy" (With solutions & marking key)
  *
- * Supports:
- * - Official Scholario & SHS Academy branding, logo, metadata
- * - Clean typography without raw markdown formatting (**, ###, etc.)
- * - Proper scientific/genetics/math notation (Tt, F₁, %, exponents, formulas, Punnett squares)
- * - Urdu RTL script with appropriate font fallbacks
- * - Automatic page breaks preventing broken questions/sections
- * - Dual export: "Student Copy" (without answers) vs "Teacher Copy" (with answers & explanations)
+ * Guarantees:
+ * - Mathematical notation rendered via KaTeX (fractions, radicals, overlines, sets ℝ, ℤ).
+ * - Zero answers in Student Copy (answers array completely purged before rendering).
+ * - Automatic page breaks with `break-inside: avoid` preventing cramped or cut questions.
+ * - Conversational AI chatter and markdown artifacts stripped.
+ * - Lightweight SVG branding watermark (zero lag, fast rendering).
+ * - Blob / Object URL output for instant, buttery-smooth mobile preview.
  */
 
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { getShsLogoDataUrl } from './testPdfGenerator';
-import { renderLaTeXToText } from './latexRenderer';
+import katex from 'katex';
+import {
+  StructuredQuiz,
+  parseQuizJsonOrMarkdown,
+  sanitizeQuizForStudent,
+} from './structuredQuizParser';
 import { containsUrdu } from './urduReshaper';
 
 export interface SagePdfOptions {
@@ -42,7 +45,7 @@ export interface GeneratedPdfResult {
 }
 
 /**
- * Checks whether content appears to be an academic assessment/quiz/worksheet/lesson plan/notes
+ * Checks whether content appears to be an academic assessment/quiz/worksheet
  */
 export function detectDocumentType(content: string): 'quiz' | 'lesson_plan' | 'worksheet' | 'notes' | 'general' {
   if (!content) return 'general';
@@ -69,7 +72,9 @@ export function hasAcademicContent(content: string): boolean {
   if (!content || content.length < 40) return false;
   const docType = detectDocumentType(content);
   if (docType !== 'general') return true;
-  return /(?:\b[0-9]+[.:)]\s+)|(?:quiz|worksheet|lesson\s*plan|notes|exam|test|mcqs?|marking\s*scheme|chapter|definition|punnett)/i.test(content);
+  return /(?:\b[0-9]+[.:)]\s+)|(?:quiz|worksheet|lesson\s*plan|notes|exam|test|mcqs?|marking\s*scheme|chapter|definition|punnett)/i.test(
+    content
+  );
 }
 
 /**
@@ -85,7 +90,9 @@ export function hasAnswerKeyOrSolutions(content: string): boolean {
  */
 export function detectPdfRequest(prompt: string): boolean {
   if (!prompt) return false;
-  return /\b(make\s*(this)?\s*(a\s*)?pdf|generate\s*(a\s*)?(worksheet\s*)?pdf|export\s*(to\s*)?pdf|download\s*(as\s*)?pdf|create\s*(a\s*)?pdf|pdf\s*format|save\s*(as\s*)?pdf)\b/i.test(prompt);
+  return /\b(make\s*(this)?\s*(a\s*)?pdf|generate\s*(a\s*)?(worksheet\s*)?pdf|export\s*(to\s*)?pdf|download\s*(as\s*)?pdf|create\s*(a\s*)?pdf|pdf\s*format|save\s*(as\s*)?pdf)\b/i.test(
+    prompt
+  );
 }
 
 /**
@@ -96,14 +103,14 @@ export function extractAcademicMetadata(text: string, userFullName?: string): Sa
   if (/\bbiolog(y|ical)\b/i.test(text)) subject = 'Biology';
   else if (/\bphysic(s|al)\b/i.test(text)) subject = 'Physics';
   else if (/\bchemistr(y|ical)\b/i.test(text)) subject = 'Chemistry';
-  else if (/\bmath(ematics)?|calculus|algebra|geometry\b/i.test(text)) subject = 'Mathematics';
+  else if (/\bmath(ematics)?|calculus|algebra|geometry|real\s*numbers\b/i.test(text)) subject = 'Mathematics';
   else if (/\benglish|comprehension|grammar\b/i.test(text)) subject = 'English';
   else if (/\burdu\b/i.test(text)) subject = 'Urdu';
   else if (/\bcomputer|programming|coding|cs\b/i.test(text)) subject = 'Computer Science';
   else if (/\bpakistan\s*studies|pak\s*study\b/i.test(text)) subject = 'Pakistan Studies';
   else if (/\bislamiat|islamic\s*studies\b/i.test(text)) subject = 'Islamiat';
 
-  let className = 'Grade 9';
+  let className = 'Grade 9-10';
   const gradeMatch = text.match(/\b(?:grade|class)\s*(?:9th|10th|11th|12th|9|10|11|12|ix|x|xi|xii|ssc-?i+|hssc-?i+)\b/i);
   if (gradeMatch) {
     className = gradeMatch[0].replace(/\bgrade\b/i, 'Grade ').replace(/\bclass\b/i, 'Class ');
@@ -131,280 +138,99 @@ export function extractAcademicMetadata(text: string, userFullName?: string): Sa
 }
 
 /**
- * Format inline typography:
- * Converts markdown bold, italic, code, math/genetics notation (Tt, F₁, %, exponents)
- * into pristine HTML spans while stripping rogue markdown characters.
+ * Render mathematical expressions using KaTeX and format typography.
+ * Handles fractions, square roots, overlines for recurring decimals (e.g. 0.6̄),
+ * and sets like ℝ, ℤ seamlessly.
  */
-export function formatInlineTypography(text: string): string {
-  if (!text) return '';
+export function renderMathAndTypography(rawText: string | undefined | null): string {
+  if (!rawText) return '';
+  let str = String(rawText);
 
-  let formatted = text;
+  // 1. Convert standard LaTeX math delimiters ($...$, $$...$$, \(...\), \[...\])
+  str = str.replace(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$(?!\$)[\s\S]*?\$|\\\([\s\S]*?\\\))/g, (match) => {
+    let formula = '';
+    let isBlock = false;
+    if (match.startsWith('$$') && match.endsWith('$$')) {
+      formula = match.slice(2, -2).trim();
+      isBlock = true;
+    } else if (match.startsWith('\\[') && match.endsWith('\\]')) {
+      formula = match.slice(2, -2).trim();
+      isBlock = true;
+    } else if (match.startsWith('\\(') && match.endsWith('\\)')) {
+      formula = match.slice(2, -2).trim();
+    } else if (match.startsWith('$') && match.endsWith('$')) {
+      formula = match.slice(1, -1).trim();
+    }
 
-  // 1. Process LaTeX delimiters with renderer
-  formatted = renderLaTeXToText(formatted);
-
-  // 2. Genetics notations: F_1 -> F₁, F_2 -> F₂, P_1 -> P₁
-  formatted = formatted.replace(/\bF_?1\b/g, 'F₁');
-  formatted = formatted.replace(/\bF_?2\b/g, 'F₂');
-  formatted = formatted.replace(/\bP_?1\b/g, 'P₁');
-  formatted = formatted.replace(/\b([TtBbAaPpRr])_([0-9]+)\b/g, '$1<sub>$2</sub>');
-
-  // 3. Mathematical superscripts / subscripts: x^2 -> x², x^3 -> x³, H2O, CO2
-  formatted = formatted.replace(/\^2\b/g, '²');
-  formatted = formatted.replace(/\^3\b/g, '³');
-  formatted = formatted.replace(/\bH2O\b/g, 'H₂O');
-  formatted = formatted.replace(/\bCO2\b/g, 'CO₂');
-
-  // 4. Inline code blocks
-  formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 9px; color: #0f172a;">$1</code>');
-
-  // 5. Bold: **text** or __text__ -> <strong>text</strong>
-  formatted = formatted.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
-  formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  formatted = formatted.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>');
-  formatted = formatted.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-
-  // 6. Italic: *text* or _text_ -> <em>text</em>
-  formatted = formatted.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-  formatted = formatted.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
-
-  // 7. Strip leftover rogue markers
-  formatted = formatted.replace(/^#{1,6}\s*/g, '');
-  formatted = formatted.replace(/\*{2,}/g, '');
-
-  return formatted;
-}
-
-/**
- * Clean plain text (strips markdown symbols completely for plain headings/meta)
- */
-export function cleanMarkdownForPdf(md: string): string {
-  if (!md) return '';
-  return md
-    .replace(/```[a-zA-Z]*\n([\s\S]*?)\n```/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/\*\*\*([^*]+)\*\*\*/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/___([^_]+)___/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^[•*]\s+/gm, '• ')
-    .trim();
-}
-
-/**
- * Parses markdown text into structured sections and question blocks
- */
-export interface ParsedTableData {
-  headers: string[];
-  rows: string[][];
-}
-
-export interface ParsedBlock {
-  type: 'heading' | 'subheading' | 'paragraph' | 'mcq' | 'question' | 'answer_key' | 'table' | 'bullet_list';
-  title?: string;
-  content: string;
-  isUrdu?: boolean;
-  options?: { A: string; B: string; C: string; D: string };
-  answer?: string;
-  explanation?: string;
-  tableData?: ParsedTableData;
-}
-
-export function parseContentForPdf(content: string, mode: 'student' | 'teacher'): ParsedBlock[] {
-  const lines = content.split('\n');
-  const blocks: ParsedBlock[] = [];
-  let currentList: string[] = [];
-
-  const flushList = () => {
-    if (currentList.length > 0) {
-      blocks.push({
-        type: 'bullet_list',
-        content: currentList.join('\n'),
-        isUrdu: containsUrdu(currentList.join(' ')),
+    try {
+      return katex.renderToString(formula, {
+        displayMode: isBlock,
+        throwOnError: false,
+        output: 'html',
+        strict: false,
       });
-      currentList = [];
+    } catch {
+      return match;
     }
-  };
+  });
 
-  let inAnswerKeySection = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i];
-    const line = rawLine.trim();
-
-    if (!line) {
-      flushList();
-      continue;
-    }
-
-    // ── 1. Check for Table Row (starts and ends with '|') ──
-    if (line.startsWith('|') && line.endsWith('|')) {
-      flushList();
-      const tableLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
-        tableLines.push(lines[i].trim());
-        i++;
-      }
-      i--; // adjust loop counter
-
-      if (tableLines.length >= 2) {
-        // First line is header
-        const rawHeaders = tableLines[0].split('|').map((s) => s.trim()).filter((_cell, idx, arr) => idx > 0 && idx < arr.length - 1);
-        // Look for separator
-        let bodyStartIndex = 1;
-        if (tableLines[1].replace(/[\s|\-:]/g, '') === '') {
-          bodyStartIndex = 2;
-        }
-        const rows: string[][] = [];
-        for (let r = bodyStartIndex; r < tableLines.length; r++) {
-          const cells = tableLines[r].split('|').map((s) => s.trim()).filter((_cell, idx, arr) => idx > 0 && idx < arr.length - 1);
-          if (cells.length > 0) {
-            rows.push(cells);
-          }
-        }
-
-        blocks.push({
-          type: 'table',
-          content: 'Table',
-          tableData: {
-            headers: rawHeaders,
-            rows,
-          },
-        });
-        continue;
-      }
-    }
-
-    // ── 2. Check for Answer Key Header ──
-    if (/^(#*\s*)?(answer\s*key|marking\s*scheme|solutions?|answers?):?/i.test(line)) {
-      flushList();
-      inAnswerKeySection = true;
-      if (mode === 'teacher') {
-        blocks.push({
-          type: 'heading',
-          title: 'OFFICIAL ANSWER KEY & MARKING SCHEME',
-          content: 'Verified solutions, pedagogical marking criteria, and grading keys',
-        });
-      }
-      continue;
-    }
-
-    // If student copy and we've reached the answer key, omit entire section
-    if (inAnswerKeySection && mode === 'student') {
-      continue;
-    }
-
-    // ── 3. Check Headings ──
-    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
-    if (headingMatch) {
-      flushList();
-      const level = headingMatch[1].length;
-      const title = cleanMarkdownForPdf(headingMatch[2]);
-      blocks.push({
-        type: level === 1 ? 'heading' : 'subheading',
-        title,
-        content: title,
-        isUrdu: containsUrdu(title),
-      });
-      continue;
-    }
-
-    // ── 4. Check Bullet or Numbered List ──
-    if (/^[-*•]\s+/.test(line)) {
-      const itemText = line.replace(/^[-*•]\s+/, '');
-      currentList.push(itemText);
-      continue;
-    }
-
-    // ── 5. Check for MCQ Question (e.g., "1. What is..." or "Q1. ...") ──
-    const mcqMatch = line.match(/^(\*{0,2}(?:Q\s*)?[0-9]+[.:)]\s*\*{0,2})\s*(.+)$/i);
-    if (mcqMatch && i + 1 < lines.length) {
-      let lookahead = i + 1;
-      const opts: Record<string, string> = {};
-      let inlineAnswer = '';
-      let inlineExplanation = '';
-
-      while (lookahead < lines.length && lookahead <= i + 8) {
-        const nextL = lines[lookahead].trim();
-        const optMatch = nextL.match(/^\(?([A-Da-d])[\).:\-]\s*(.+)$/);
-        const ansMatch = nextL.match(/^(?:correct\s*)?ans(?:wer)?:?\s*(.+)$/i);
-        const expMatch = nextL.match(/^explanation:?\s*(.+)$/i);
-
-        if (optMatch) {
-          opts[optMatch[1].toUpperCase()] = optMatch[2];
-          lookahead++;
-        } else if (ansMatch) {
-          inlineAnswer = ansMatch[1];
-          lookahead++;
-        } else if (expMatch) {
-          inlineExplanation = expMatch[1];
-          lookahead++;
-        } else if (nextL === '') {
-          lookahead++;
-        } else {
-          break;
+  // 2. Render unwrapped standalone LaTeX math expressions (like \frac{3}{\sqrt{5}-\sqrt{2}}, \mathbb{R}, \mathbb{Z}, 0.\overline{6})
+  if (
+    /\\(?:frac|dfrac|tfrac|sqrt|mathbb|overline|times|pm|cdot|approx|neq|leq|geq|in|to)\b/.test(str) &&
+    !str.includes('class="katex"')
+  ) {
+    str = str.replace(
+      /(\\frac\s*\{[^{}]*\}\s*\{[^{}]*\}|\\sqrt\s*(?:\[[^\]]*\])?\{[^{}]*\}|\\mathbb\{[^{}]+\}|\\overline\{[^{}]+\}|\b\d+\s*\\cdot\s*\d+\b|\\pm|\\neq|\\leq|\\geq|\\times|\\approx)/g,
+      (match) => {
+        try {
+          return katex.renderToString(match, {
+            displayMode: false,
+            throwOnError: false,
+            output: 'html',
+            strict: false,
+          });
+        } catch {
+          return match;
         }
       }
-
-      if (Object.keys(opts).length >= 2) {
-        flushList();
-        i = lookahead - 1; // Advance loop
-        const qNum = mcqMatch[1].replace(/[*.:)]/g, '').trim();
-        const qText = mcqMatch[2];
-
-        blocks.push({
-          type: 'mcq',
-          title: `Question ${qNum}`,
-          content: qText,
-          isUrdu: containsUrdu(qText),
-          options: {
-            A: opts.A || '',
-            B: opts.B || '',
-            C: opts.C || '',
-            D: opts.D || '',
-          },
-          answer: mode === 'teacher' ? inlineAnswer : undefined,
-          explanation: mode === 'teacher' ? inlineExplanation : undefined,
-        });
-        continue;
-      }
-    }
-
-    // ── 6. Standard Numbered Question ──
-    if (mcqMatch) {
-      flushList();
-      const qNum = mcqMatch[1].replace(/[*.:)]/g, '').trim();
-      const qText = mcqMatch[2];
-      blocks.push({
-        type: 'question',
-        title: `Q${qNum}.`,
-        content: qText,
-        isUrdu: containsUrdu(qText),
-      });
-      continue;
-    }
-
-    // ── 7. Regular Paragraph ──
-    flushList();
-    if (line) {
-      // In student mode, if an isolated paragraph says "Answer: B", skip it
-      if (mode === 'student' && /^(?:correct\s*)?ans(?:wer)?:/i.test(line)) {
-        continue;
-      }
-      blocks.push({
-        type: inAnswerKeySection ? 'answer_key' : 'paragraph',
-        content: line,
-        isUrdu: containsUrdu(line),
-      });
-    }
+    );
   }
 
-  flushList();
-  return blocks;
+  // 3. Genetics notations & chemistry subscripts: F_1 -> F₁, H2O -> H₂O, CO2 -> CO₂
+  str = str.replace(/\bF_?1\b/g, 'F₁');
+  str = str.replace(/\bF_?2\b/g, 'F₂');
+  str = str.replace(/\bP_?1\b/g, 'P₁');
+  str = str.replace(/\bH2O\b/g, 'H₂O');
+  str = str.replace(/\bCO2\b/g, 'CO₂');
+
+  // 4. Exponents shorthand: x^2 -> x², x^3 -> x³
+  str = str.replace(/\^2\b/g, '²');
+  str = str.replace(/\^3\b/g, '³');
+
+  // 5. Code backticks
+  str = str.replace(
+    /`([^`]+)`/g,
+    '<code style="background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 9px; color: #0f172a;">$1</code>'
+  );
+
+  // 6. Markdown bold & italics
+  str = str.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+  str = str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  str = str.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>');
+  str = str.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  str = str.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  str = str.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
+
+  // 7. Clean rogue markdown headers
+  str = str.replace(/^#{1,6}\s*/g, '');
+
+  return str;
 }
+
+/**
+ * Lightweight SVG Watermark (avoids heavy 800KB base64 images that lag mobile preview)
+ */
+const SVG_WATERMARK_DATA = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 100 100" opacity="0.035"><polygon points="50,5 95,28 95,72 50,95 5,72 5,28" fill="%23111111"/><text x="50" y="58" font-family="sans-serif" font-size="28" font-weight="900" fill="%23F4C430" text-anchor="middle">SHS</text></svg>`;
 
 /**
  * Generate client-side PDF from Sage AI message content
@@ -422,27 +248,35 @@ export async function generateSageContentPdf(
   const topic = options?.topic || autoMeta.topic || 'Academic Assessment';
   const dateStr = options?.date || autoMeta.date || new Date().toISOString().split('T')[0];
 
-  const sanitize = (s: string) => s.replace(/[\/\\?%*:|"<> ]/g, '_').slice(0, 25) || 'Academic';
+  const sanitizeFilename = (s: string) => s.replace(/[\/\\?%*:|"<> ]/g, '_').slice(0, 25) || 'Academic';
   const copyLabel = mode === 'student' ? 'Student_Copy' : 'Teacher_Copy';
-  const filename = `${sanitize(subject)}_${sanitize(className)}_${sanitize(topic)}_${copyLabel}.pdf`;
+  const filename = `${sanitizeFilename(subject)}_${sanitizeFilename(className)}_${sanitizeFilename(topic)}_${copyLabel}.pdf`;
 
-  const logoDataUrl = await getShsLogoDataUrl();
+  // Parse structured assessment data
+  const parsedQuiz = parseQuizJsonOrMarkdown(rawContent, {
+    subject,
+    className,
+    topic,
+    teacherName,
+    date: dateStr,
+  });
+
+  // Strict enforcement: Student Copy template receives zero answers in data model
+  const quizData: StructuredQuiz = mode === 'student' ? sanitizeQuizForStudent(parsedQuiz) : parsedQuiz;
 
   const PAGE_HEIGHT = 1123;
-  const MAX_CONTENT_BOTTOM_OFFSET = 1055;
-  const urduFontFamily = "'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Jameel Noori Nastaleeq', serif";
+  const MAX_CONTENT_BOTTOM_OFFSET = 1040;
   const standardFontFamily = "'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif";
+  const urduFontFamily = "'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif";
 
-  // Create temporary render root in DOM
+  // Create temporary hidden render root in DOM
   const renderRoot = document.createElement('div');
   renderRoot.id = 'sage-pdf-renderer-root';
   renderRoot.style.position = 'fixed';
-  renderRoot.style.left = '0';
+  renderRoot.style.left = '-9999px';
   renderRoot.style.top = '0';
   renderRoot.style.width = '794px';
   renderRoot.style.backgroundColor = '#ffffff';
-  renderRoot.style.opacity = '0.001';
-  renderRoot.style.pointerEvents = 'none';
   renderRoot.style.zIndex = '-9999';
   document.body.appendChild(renderRoot);
 
@@ -465,10 +299,10 @@ export async function generateSageContentPdf(
     pageEl.style.backgroundColor = '#ffffff';
     pageEl.style.color = '#111111';
     pageEl.style.fontFamily = standardFontFamily;
-    pageEl.style.padding = '28px 40px 44px 40px';
+    pageEl.style.padding = '28px 40px 42px 40px';
     pageEl.style.overflow = 'hidden';
 
-    // 1. Watermark
+    // 1. Lightweight Vector Watermark
     const watermarkEl = document.createElement('div');
     watermarkEl.style.position = 'absolute';
     watermarkEl.style.inset = '0';
@@ -476,9 +310,8 @@ export async function generateSageContentPdf(
     watermarkEl.style.alignItems = 'center';
     watermarkEl.style.justifyContent = 'center';
     watermarkEl.style.pointerEvents = 'none';
-    watermarkEl.style.opacity = '0.035';
     watermarkEl.style.zIndex = '1';
-    watermarkEl.innerHTML = `<img src="${logoDataUrl}" alt="" style="width: 440px; height: 440px; object-fit: contain; filter: grayscale(100%); background: transparent;" />`;
+    watermarkEl.innerHTML = `<img src="${SVG_WATERMARK_DATA}" alt="" style="width: 360px; height: 360px; object-fit: contain; pointer-events: none;" />`;
     pageEl.appendChild(watermarkEl);
 
     // 2. Header
@@ -489,15 +322,15 @@ export async function generateSageContentPdf(
     const topBanner = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111111; padding-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <img src="${logoDataUrl}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+          <div style="width: 44px; height: 44px; background: #111111; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #F4C430; font-weight: 900; font-size: 16px; flex-shrink: 0;">
+            SHS
           </div>
           <div>
             <h1 style="margin: 0; font-size: 15px; font-weight: 900; letter-spacing: -0.02em; color: #111111; text-transform: uppercase; line-height: 1.15;">
               SHS VIRTUAL ACADEMY
             </h1>
             <p style="margin: 2px 0 0 0; font-size: 9px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em;">
-              Scholario Sage v2.0 • Academic Resources
+              Scholario Sage v2.0 • Academic Testing & Assessment
             </p>
           </div>
         </div>
@@ -516,26 +349,35 @@ export async function generateSageContentPdf(
         ${topBanner}
         <div style="text-align: center; padding: 7px 0; border-bottom: 1px solid #e5e5e5;">
           <h2 style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; color: #111111; letter-spacing: 0.02em;">
-            ${formatInlineTypography(topic)}
+            ${renderMathAndTypography(quizData.title)}
           </h2>
-          <div style="font-size: 10px; font-weight: 600; color: #525252; margin-top: 2px;">
-            ${subject} • ${className} • Prepared by ${teacherName}
+          <div style="font-size: 9.5px; font-weight: 600; color: #525252; margin-top: 2px;">
+            ${quizData.subject} • ${quizData.grade} • Prepared by ${quizData.instructor}
           </div>
         </div>
-        <div style="margin: 8px 0 10px 0; padding: 6px 12px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 9.5px; display: flex; justify-content: space-between; color: #374151;">
-          <div><strong>Subject:</strong> ${subject}</div>
-          <div><strong>Class / Grade:</strong> ${className}</div>
-          <div><strong>Date:</strong> ${dateStr}</div>
-          <div><strong>Instructor:</strong> ${teacherName}</div>
+        <div style="margin: 6px 0 8px 0; padding: 6px 12px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 9px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; color: #374151;">
+          <div><strong>Subject:</strong> ${quizData.subject}</div>
+          <div><strong>Grade:</strong> ${quizData.grade}</div>
+          <div><strong>Total Marks:</strong> ${quizData.totalMarks || 20}</div>
+          <div><strong>Time Allowed:</strong> ${quizData.timeAllowed || '45 Mins'}</div>
         </div>
+        ${
+          mode === 'student'
+            ? `<div style="margin-bottom: 10px; padding: 6px 12px; background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: 6px; font-size: 9.5px; display: flex; justify-content: space-between; color: #1e293b;">
+                <div><strong>Student Name:</strong> _____________________________</div>
+                <div><strong>Roll No:</strong> ______________</div>
+                <div><strong>Date:</strong> ______________</div>
+              </div>`
+            : ''
+        }
       `;
     } else {
       headerEl.innerHTML = `
         ${topBanner}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 9.5px; font-weight: 700; color: #475569; margin-top: 4px; margin-bottom: 8px;">
-          <span>${subject} • ${className}</span>
-          <span style="color: #0f172a; font-weight: 800;">${formatInlineTypography(topic)}</span>
-          <span style="color: #94a3b8; font-size: 8.5px; font-weight: 700; text-transform: uppercase;">Continued</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 9px; font-weight: 700; color: #475569; margin-top: 4px; margin-bottom: 8px;">
+          <span>${quizData.subject} • ${quizData.grade}</span>
+          <span style="color: #0f172a; font-weight: 800;">${renderMathAndTypography(quizData.title)}</span>
+          <span style="color: #94a3b8; font-size: 8px; font-weight: 700; text-transform: uppercase;">Continued</span>
         </div>
       `;
     }
@@ -593,123 +435,122 @@ export async function generateSageContentPdf(
     }
   }
 
-  // Parse markdown content into atomic DOM elements
-  const blocks = parseContentForPdf(rawContent, mode);
+  // ── Render Sections & Questions ──
+  for (const section of quizData.sections) {
+    if (section.questions.length === 0) continue;
 
-  for (const b of blocks) {
-    const el = document.createElement('div');
-    el.style.boxSizing = 'border-box';
-    el.style.marginBottom = '6px';
+    const secHeader = document.createElement('div');
+    secHeader.style.boxSizing = 'border-box';
+    secHeader.style.breakInside = 'avoid';
+    secHeader.style.pageBreakInside = 'avoid';
+    secHeader.style.marginTop = '8px';
+    secHeader.style.marginBottom = '6px';
+    secHeader.innerHTML = `
+      <div style="font-weight: 800; font-size: 10.5px; text-transform: uppercase; background: #111111; color: #ffffff; padding: 4px 10px; border-radius: 4px; letter-spacing: 0.02em; display: flex; justify-content: space-between;">
+        <span>${renderMathAndTypography(section.name)}</span>
+        ${section.marks ? `<span>[${section.marks} Marks]</span>` : ''}
+      </div>
+    `;
+    appendBlock(secHeader);
 
-    const isUrdu = b.isUrdu || containsUrdu(b.content);
-    if (isUrdu) {
-      el.dir = 'rtl';
-      el.style.fontFamily = urduFontFamily;
-      el.style.textAlign = 'right';
-      el.style.lineHeight = '1.8';
-    } else {
-      el.dir = 'ltr';
-      el.style.fontFamily = standardFontFamily;
-      el.style.textAlign = 'left';
-      el.style.lineHeight = '1.5';
-    }
+    for (const q of section.questions) {
+      const qBlock = document.createElement('div');
+      qBlock.style.boxSizing = 'border-box';
+      qBlock.style.breakInside = 'avoid';
+      qBlock.style.pageBreakInside = 'avoid';
+      qBlock.style.marginBottom = '8px';
+      qBlock.style.padding = '8px 12px';
+      qBlock.style.background = '#ffffff';
+      qBlock.style.border = '1px solid #e2e8f0';
+      qBlock.style.borderRadius = '6px';
+      qBlock.style.fontSize = '9.5px';
 
-    if (b.type === 'heading') {
-      el.style.marginTop = '10px';
-      el.style.marginBottom = '6px';
-      el.innerHTML = `
-        <div style="background: #111111; color: #ffffff; padding: 5px 10px; border-radius: 4px; font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.02em;">
-          ${formatInlineTypography(b.title || '')}
-        </div>
-      `;
-    } else if (b.type === 'subheading') {
-      el.style.marginTop = '8px';
-      el.style.marginBottom = '4px';
-      el.innerHTML = `
-        <div style="font-weight: 800; font-size: 11px; color: #111111; border-bottom: 1.5px solid #d4d4d4; padding-bottom: 2px;">
-          ${formatInlineTypography(b.title || '')}
-        </div>
-      `;
-    } else if (b.type === 'table' && b.tableData) {
-      const { headers, rows } = b.tableData;
-      let tableHtml = `
-        <div style="margin: 6px 0; overflow: hidden; border: 1px solid #cbd5e1; border-radius: 6px;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 9.5px; text-align: left;">
-            <thead style="background: #f1f5f9; border-bottom: 1.5px solid #cbd5e1;">
-              <tr>
-                ${headers.map((h) => `<th style="padding: 5px 8px; font-weight: 800; color: #0f172a; border-right: 1px solid #cbd5e1; last-child: border-right: none;">${formatInlineTypography(h)}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map((row, rIdx) => `
-                <tr style="background: ${rIdx % 2 === 0 ? '#ffffff' : '#f8fafc'}; border-bottom: 1px solid #e2e8f0;">
-                  ${row.map((cell) => `<td style="padding: 4px 8px; color: #334155; border-right: 1px solid #e2e8f0; last-child: border-right: none;">${formatInlineTypography(cell)}</td>`).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-      el.innerHTML = tableHtml;
-    } else if (b.type === 'mcq' && b.options) {
-      const qText = formatInlineTypography(b.content);
-      const optA = formatInlineTypography(b.options.A);
-      const optB = formatInlineTypography(b.options.B);
-      const optC = formatInlineTypography(b.options.C);
-      const optD = formatInlineTypography(b.options.D);
+      const isUrdu = containsUrdu(q.text);
+      if (isUrdu) {
+        qBlock.dir = 'rtl';
+        qBlock.style.fontFamily = urduFontFamily;
+        qBlock.style.textAlign = 'right';
+      }
 
-      let answerHtml = '';
-      if (mode === 'teacher' && b.answer) {
-        answerHtml = `
-          <div style="margin-top: 5px; padding: 4px 8px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; font-size: 9.5px; color: #065f46;">
-            <strong>Correct Answer:</strong> ${formatInlineTypography(b.answer)}
-            ${b.explanation ? `<span style="margin-left: 8px; color: #047857;">• ${formatInlineTypography(b.explanation)}</span>` : ''}
+      if (q.type === 'mcq' && q.options) {
+        qBlock.innerHTML = `
+          <div style="font-weight: 700; color: #0f172a; margin-bottom: 6px; line-height: 1.45;">
+            <strong>${q.number}.</strong> ${renderMathAndTypography(q.text)}
           </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; padding: 6px 10px; background: #f8fafc; border-radius: 4px; border: 1px solid #f1f5f9;">
+            <div><strong>(A)</strong> ${renderMathAndTypography(q.options.A)}</div>
+            <div><strong>(B)</strong> ${renderMathAndTypography(q.options.B)}</div>
+            <div><strong>(C)</strong> ${renderMathAndTypography(q.options.C)}</div>
+            <div><strong>(D)</strong> ${renderMathAndTypography(q.options.D)}</div>
+          </div>
+        `;
+      } else {
+        // Short / descriptive question
+        qBlock.innerHTML = `
+          <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px; line-height: 1.45;">
+            <strong>${q.number}.</strong> ${renderMathAndTypography(q.text)}
+          </div>
+          ${
+            mode === 'student'
+              ? `<div style="margin-top: 6px; min-height: 48px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fafafa; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #94a3b8; font-style: italic;">
+                  Student Answer / Working Space
+                </div>`
+              : ''
+          }
         `;
       }
 
-      el.innerHTML = `
-        <div style="padding: 7px 10px; background: rgba(250, 250, 250, 0.85); border: 1px solid #e5e5e5; border-radius: 4px; font-size: 10px;">
-          <div style="font-weight: 800; color: #111111; margin-bottom: 5px;">
-            ${b.title}: ${qText}
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 9.5px; color: #374151; padding-left: 6px;">
-            <div><strong>(A)</strong> ${optA}</div>
-            <div><strong>(B)</strong> ${optB}</div>
-            <div><strong>(C)</strong> ${optC}</div>
-            <div><strong>(D)</strong> ${optD}</div>
-          </div>
-          ${answerHtml}
-        </div>
-      `;
-    } else if (b.type === 'question') {
-      const qText = formatInlineTypography(b.content);
-      el.innerHTML = `
-        <div style="padding: 6px 10px; background: #ffffff; border-left: 3px solid #111111; border: 1px solid #e5e5e5; border-left-width: 3px; border-radius: 3px; font-size: 10px;">
-          <strong style="color: #111111;">${b.title}</strong> ${qText}
-        </div>
-      `;
-    } else if (b.type === 'bullet_list') {
-      const items = b.content.split('\n');
-      el.innerHTML = `
-        <ul style="margin: 2px 0; padding-left: 18px; font-size: 9.5px; color: #262626; line-height: 1.55;">
-          ${items.map((it) => `<li style="margin-bottom: 2px;">${formatInlineTypography(it)}</li>`).join('')}
-        </ul>
-      `;
-    } else {
-      // Paragraph or note line
-      const cleanLine = formatInlineTypography(b.content);
-      el.innerHTML = `
-        <p style="margin: 0; font-size: 9.5px; color: #262626; line-height: 1.55;">
-          ${cleanLine}
-        </p>
-      `;
+      appendBlock(qBlock);
     }
-
-    appendBlock(el);
   }
 
-  // Update total page numbers
+  // ── Render Solutions (FACULTY / TEACHER COPY ONLY) ──
+  if (mode === 'teacher' && quizData.answers && quizData.answers.length > 0) {
+    const ansHeader = document.createElement('div');
+    ansHeader.style.boxSizing = 'border-box';
+    ansHeader.style.breakInside = 'avoid';
+    ansHeader.style.pageBreakInside = 'avoid';
+    ansHeader.style.marginTop = '12px';
+    ansHeader.style.marginBottom = '8px';
+    ansHeader.innerHTML = `
+      <div style="font-weight: 900; font-size: 11px; text-transform: uppercase; background: #111111; color: #F4C430; padding: 6px 12px; border-radius: 4px; letter-spacing: 0.03em;">
+        OFFICIAL ANSWER KEY & STEP-BY-STEP SOLUTIONS
+      </div>
+    `;
+    appendBlock(ansHeader);
+
+    for (const ans of quizData.answers) {
+      const ansBlock = document.createElement('div');
+      ansBlock.style.boxSizing = 'border-box';
+      ansBlock.style.breakInside = 'avoid';
+      ansBlock.style.pageBreakInside = 'avoid';
+      ansBlock.style.marginBottom = '8px';
+      ansBlock.style.padding = '8px 12px';
+      ansBlock.style.background = '#f0fdf4';
+      ansBlock.style.border = '1px solid #bbf7d0';
+      ansBlock.style.borderRadius = '6px';
+      ansBlock.style.fontSize = '9.5px';
+
+      const stepsHtml = ans.steps && ans.steps.length > 0
+        ? `<div style="margin-top: 5px; padding-left: 8px; border-left: 2px solid #86efac; font-size: 9px; color: #166534;">
+            ${ans.steps.map((st, sIdx) => `<div style="margin-bottom: 2px;"><strong>Step ${sIdx + 1}:</strong> ${renderMathAndTypography(st.replace(/^step\s*[0-9]+:?\s*/i, ''))}</div>`).join('')}
+          </div>`
+        : '';
+
+      ansBlock.innerHTML = `
+        <div style="display: flex; align-items: baseline; gap: 8px; font-weight: 800; color: #15803d; margin-bottom: 3px;">
+          <span>Question ${ans.questionNumber}:</span>
+          <span style="background: #dcfce7; padding: 1px 6px; border-radius: 4px; border: 1px solid #86efac; font-family: monospace;">${renderMathAndTypography(ans.answer)}</span>
+        </div>
+        ${ans.explanation ? `<div style="color: #166534; font-size: 9px; line-height: 1.4;">${renderMathAndTypography(ans.explanation)}</div>` : ''}
+        ${stepsHtml}
+      `;
+
+      appendBlock(ansBlock);
+    }
+  }
+
+  // Update total page numbers across all rendered pages
   const totalPages = pages.length;
   pages.forEach((p, idx) => {
     const indicator = p.pageEl.querySelector('.pdf-page-number-indicator');
@@ -745,7 +586,8 @@ export async function generateSageContentPdf(
     }
 
     const blob = pdf.output('blob');
-    const dataUrl = pdf.output('datauristring');
+    // Use fast native Object URL instead of multi-megabyte base64 string
+    const dataUrl = URL.createObjectURL(blob);
 
     return {
       blob,
@@ -765,13 +607,25 @@ export async function generateSageContentPdf(
  */
 export async function downloadSagePdf(rawContent: string, options?: SagePdfOptions): Promise<string> {
   const result = await generateSageContentPdf(rawContent, options);
-  const downloadUrl = URL.createObjectURL(result.blob);
   const a = document.createElement('a');
-  a.href = downloadUrl;
+  a.href = result.dataUrl;
   a.download = result.filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+  setTimeout(() => URL.revokeObjectURL(result.dataUrl), 10000);
   return result.filename;
+}
+
+/**
+ * Helper to revoke object URL when a preview modal is closed
+ */
+export function revokeSagePdfUrl(url?: string): void {
+  if (url && url.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // ignore
+    }
+  }
 }
