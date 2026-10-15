@@ -1,26 +1,18 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../env';
-import { getAuthenticatedSupabaseClient } from '../../_lib/supabaseAuth';
+import { getAuthenticatedUser } from '../../_lib/supabaseAuth';
 
 export async function onRequestPost(context: EventContext<Env, any, any>): Promise<Response> {
   const { request, env } = context;
-  const auth = getAuthenticatedSupabaseClient(request, env);
+  const auth = await getAuthenticatedUser(request, env);
   if (!auth) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  const { supabase, token } = auth;
-
-  let userId: string;
-  try {
-    const payloadBase64 = token.split('.')[1];
-    const payload = JSON.parse(atob(payloadBase64));
-    userId = payload.sub;
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
-  }
+  const { supabase, user } = auth;
+  const userId = user.id;
 
   let body: any;
   try {

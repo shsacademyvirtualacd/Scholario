@@ -1,12 +1,12 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../../env';
-import { getAuthenticatedSupabaseClient } from '../../../_lib/supabaseAuth';
+import { getAuthenticatedUser } from '../../../_lib/supabaseAuth';
 
 export async function onRequestGet(context: EventContext<Env, any, any>): Promise<Response> {
   const { request, env, params } = context;
 
   // 1. Authenticate request using Supabase JWT / Session (via Authorization: Bearer or ?token=)
-  const auth = getAuthenticatedSupabaseClient(request, env);
+  const auth = await getAuthenticatedUser(request, env);
   if (!auth) {
     return new Response(JSON.stringify({ error: 'Unauthorized: Missing or invalid token' }), {
       status: 401,
@@ -14,19 +14,8 @@ export async function onRequestGet(context: EventContext<Env, any, any>): Promis
     });
   }
 
-  const { supabase, token } = auth;
-  let userId = '';
-  try {
-    const payloadBase64 = token.split('.')[1];
-    const payload = JSON.parse(atob(payloadBase64));
-    userId = payload.sub || '';
-    if (!userId) throw new Error('No user sub claim');
-  } catch {
-    return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token payload' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const { supabase, user } = auth;
+  const userId = user.id;
 
   // 2. Extract R2 object key from params or URL pathname
   let objectKey = '';

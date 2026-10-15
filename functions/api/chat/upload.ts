@@ -1,6 +1,6 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../env';
-import { getAuthenticatedSupabaseClient } from '../../_lib/supabaseAuth';
+import { getAuthenticatedUser } from '../../_lib/supabaseAuth';
 
 // Allowlist definition: image/*, application/pdf, .doc, .docx
 const ALLOWED_MIME_TYPES = new Set([
@@ -39,7 +39,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   const { request, env } = context;
 
   // 1. Authenticate request using Supabase JWT / Session
-  const auth = getAuthenticatedSupabaseClient(request, env);
+  const auth = await getAuthenticatedUser(request, env);
   if (!auth) {
     return new Response(JSON.stringify({ error: 'Unauthorized: Missing or invalid token' }), {
       status: 401,
@@ -47,19 +47,8 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     });
   }
 
-  const { token } = auth;
-  let userId = '';
-  try {
-    const payloadBase64 = token.split('.')[1];
-    const payload = JSON.parse(atob(payloadBase64));
-    userId = payload.sub || '';
-    if (!userId) throw new Error('No user sub claim');
-  } catch {
-    return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token payload' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const { user } = auth;
+  const userId = user.id;
 
   // 2. Parse multipart/form-data
   let formData: any;

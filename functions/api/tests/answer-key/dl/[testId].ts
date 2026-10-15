@@ -1,6 +1,6 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../../../env';
-import { getAuthenticatedSupabaseClient } from '../../../../_lib/supabaseAuth';
+import { getAuthenticatedUser } from '../../../../_lib/supabaseAuth';
 
 export async function onRequestGet(context: EventContext<Env, any, any>): Promise<Response> {
   const { request, env, params } = context;
@@ -9,21 +9,12 @@ export async function onRequestGet(context: EventContext<Env, any, any>): Promis
     return new Response('Test ID missing', { status: 400 });
   }
 
-  const auth = getAuthenticatedSupabaseClient(request, env);
+  const auth = await getAuthenticatedUser(request, env);
   if (!auth) {
     return new Response('Unauthorized: Missing or invalid token', { status: 401 });
   }
-  const { supabase, token } = auth;
-
-  let userId: string;
-  try {
-    const payloadBase64 = token.split('.')[1];
-    const payload = JSON.parse(atob(payloadBase64));
-    userId = payload.sub;
-    if (!userId) throw new Error('No sub claim');
-  } catch {
-    return new Response('Unauthorized: Invalid token payload', { status: 401 });
-  }
+  const { supabase, user } = auth;
+  const userId = user.id;
 
   // Check user role - strictly Teacher, Admin, or Service
   const { data: profile } = await (supabase as any)

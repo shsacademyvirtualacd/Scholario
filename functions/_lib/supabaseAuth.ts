@@ -46,3 +46,22 @@ export function getAuthenticatedSupabaseClient(request: any, env: Env): AuthHelp
 
   return { supabase, token };
 }
+
+/**
+ * Validates the request's JWT token cryptographically via Supabase Auth API
+ * and returns the authenticated user along with the Supabase client.
+ */
+export async function getAuthenticatedUser(request: any, env: Env): Promise<{ supabase: SupabaseClient; user: any; token: string } | null> {
+  const auth = getAuthenticatedSupabaseClient(request, env);
+  if (!auth) return null;
+  const { supabase, token } = auth;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data?.user) {
+      return { supabase, user: data.user, token };
+    }
+  } catch (err) {
+    console.warn('[supabaseAuth] getUser error:', err);
+  }
+  return null;
+}
