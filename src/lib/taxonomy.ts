@@ -750,6 +750,36 @@ export function getEnrolledSubjectsForStudent(profile: any, enrollments?: any[])
   return Array.from(new Set(subjects)).sort();
 }
 
+// WeakMap caches for offerings and enrollments lookup tables across repeated calls
+const offeringsMapCache = new WeakMap<object, Map<string, any>>();
+const enrollmentsByStudentCache = new WeakMap<object, Map<string, any[]>>();
+
+function getOfferingsMap(offerings: Array<any>): Map<string, any> {
+  let map = offeringsMapCache.get(offerings);
+  if (!map) {
+    map = new Map(offerings.map((o) => [o.id, o]));
+    offeringsMapCache.set(offerings, map);
+  }
+  return map;
+}
+
+function getEnrollmentsByStudentMap(enrollments: Array<any>): Map<string, any[]> {
+  let map = enrollmentsByStudentCache.get(enrollments);
+  if (!map) {
+    map = new Map();
+    for (const e of enrollments) {
+      let list = map.get(e.student_id);
+      if (!list) {
+        list = [];
+        map.set(e.student_id, list);
+      }
+      list.push(e);
+    }
+    enrollmentsByStudentCache.set(enrollments, map);
+  }
+  return map;
+}
+
 /** Resolves the human-readable board name for a student (e.g. 'Federal Board (FBISE)' or 'Sindh Board') */
 export function getStudentBoardLabel(
   student: {
@@ -790,24 +820,28 @@ export function getStudentBoardLabel(
 
   // 3. Check enrollments and corresponding class offerings
   if (enrollments && offerings && student.id) {
-    const studentEnrollments = enrollments.filter((e) => e.student_id === student.id);
-    for (const en of studentEnrollments) {
-      const off = offerings.find((o) => o.id === en.offering_id);
-      if (off) {
-        const offBoard =
-          off.board ||
-          off.class?.board_id ||
-          (typeof off.class?.board === 'string' ? off.class.board : (off.class?.board as { id?: string })?.id);
-        if (offBoard) {
-          const offNorm = String(offBoard).trim().toLowerCase();
-          if (offNorm === 'sindh') return 'Sindh Board';
-          if (offNorm === 'fbise') return 'Federal Board (FBISE)';
-          if (offNorm === 'ielts') return 'IELTS Preparation';
-          const bDef = BOARDS.find((b) => b.id.toLowerCase() === offNorm);
-          if (bDef) return bDef.name;
-        }
-        if (off.class?.board && typeof off.class.board === 'object' && off.class.board.name) {
-          return off.class.board.name;
+    const enrMap = getEnrollmentsByStudentMap(enrollments);
+    const studentEnrollments = enrMap.get(student.id);
+    if (studentEnrollments && studentEnrollments.length > 0) {
+      const offeringsMap = getOfferingsMap(offerings);
+      for (const en of studentEnrollments) {
+        const off = offeringsMap.get(en.offering_id);
+        if (off) {
+          const offBoard =
+            off.board ||
+            off.class?.board_id ||
+            (typeof off.class?.board === 'string' ? off.class.board : (off.class?.board as { id?: string })?.id);
+          if (offBoard) {
+            const offNorm = String(offBoard).trim().toLowerCase();
+            if (offNorm === 'sindh') return 'Sindh Board';
+            if (offNorm === 'fbise') return 'Federal Board (FBISE)';
+            if (offNorm === 'ielts') return 'IELTS Preparation';
+            const bDef = BOARDS.find((b) => b.id.toLowerCase() === offNorm);
+            if (bDef) return bDef.name;
+          }
+          if (off.class?.board && typeof off.class.board === 'object' && off.class.board.name) {
+            return off.class.board.name;
+          }
         }
       }
     }
@@ -867,23 +901,27 @@ export function getStudentGradeLabel(
   }
 
   if (enrollments && offerings && student.id) {
-    const studentEnrollments = enrollments.filter((e) => e.student_id === student.id);
-    for (const en of studentEnrollments) {
-      const off = offerings.find((o) => o.id === en.offering_id);
-      if (off) {
-        const offBoard =
-          off.board ||
-          off.class?.board_id ||
-          (typeof off.class?.board === 'string' ? off.class.board : (off.class?.board as { id?: string })?.id);
-        if (offBoard && String(offBoard).trim().toLowerCase() === 'ielts') {
-          return 'IELTS Preparation';
-        }
-        if (off.grade) {
-          if (String(off.grade).trim().toLowerCase() === 'ielts') return 'IELTS Preparation';
-          if (String(off.grade).toLowerCase().startsWith('o') || String(off.grade).toLowerCase().startsWith('a')) {
-            return `Class ${off.grade}`;
+    const enrMap = getEnrollmentsByStudentMap(enrollments);
+    const studentEnrollments = enrMap.get(student.id);
+    if (studentEnrollments && studentEnrollments.length > 0) {
+      const offeringsMap = getOfferingsMap(offerings);
+      for (const en of studentEnrollments) {
+        const off = offeringsMap.get(en.offering_id);
+        if (off) {
+          const offBoard =
+            off.board ||
+            off.class?.board_id ||
+            (typeof off.class?.board === 'string' ? off.class.board : (off.class?.board as { id?: string })?.id);
+          if (offBoard && String(offBoard).trim().toLowerCase() === 'ielts') {
+            return 'IELTS Preparation';
           }
-          return `Grade ${off.grade}`;
+          if (off.grade) {
+            if (String(off.grade).trim().toLowerCase() === 'ielts') return 'IELTS Preparation';
+            if (String(off.grade).toLowerCase().startsWith('o') || String(off.grade).toLowerCase().startsWith('a')) {
+              return `Class ${off.grade}`;
+            }
+            return `Grade ${off.grade}`;
+          }
         }
       }
     }
