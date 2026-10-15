@@ -41,12 +41,12 @@ const VAPID_SUBJECT =
 if (VAPID_PRIVATE_KEY) {
   try {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-    console.log('[ServerPush] WebPush VAPID configured successfully from environment');
+    console.debug('[ServerPush] WebPush VAPID configured successfully from environment');
   } catch (err) {
     console.warn('[ServerPush] Warning configuring VAPID details:', err);
   }
 } else {
-  console.log('[ServerPush] Notice: VAPID_PRIVATE_KEY not set in process.env. Server will rely on Supabase Edge Function send-push for dispatches.');
+  console.debug('[ServerPush] Notice: VAPID_PRIVATE_KEY not set in process.env. Server will rely on Supabase Edge Function send-push for dispatches.');
 }
 
 // ── Persistent Subscription Store (File + Memory Fallback) ───────────────────
@@ -65,7 +65,7 @@ function loadSubscriptionsFromDisk(): void {
             subscriptionsMemory.set(item.endpoint, item);
           }
         }
-        console.log(`[ServerPush] Loaded ${subscriptionsMemory.size} push subscriptions from disk`);
+        console.debug(`[ServerPush] Loaded ${subscriptionsMemory.size} push subscriptions from disk`);
       }
     }
   } catch (err) {
@@ -256,7 +256,7 @@ export async function sendWebPush(
 
     // If subscription is expired, unregistered, or invalid (404 / 410 / 400), delete it
     if (statusCode === 404 || statusCode === 410 || statusCode === 400) {
-      console.log(`[ServerPush] Removing stale/invalid subscription (${statusCode}): ${subscription.endpoint.slice(0, 35)}...`);
+      console.debug(`[ServerPush] Removing stale/invalid subscription (${statusCode}): ${subscription.endpoint.slice(0, 35)}...`);
       await removePushSubscription(subscription.endpoint, supabase);
     }
     return false;
@@ -437,7 +437,7 @@ export async function sendClassLinkPostedPush(
 
   const studentResult = await sendPushToUsers(studentUserIds, studentPayload, supabase);
 
-  console.log(`[ServerPush] Class link push dispatched: ${adminResult.deliveredCount} admins, ${studentResult.deliveredCount} students`);
+  console.debug(`[ServerPush] Class link push dispatched: ${adminResult.deliveredCount} admins, ${studentResult.deliveredCount} students`);
   return { adminsSent: adminResult.deliveredCount, studentsSent: studentResult.deliveredCount };
 }
 
@@ -635,7 +635,7 @@ export async function checkAndSendTeacherPushReminders(
         if (slotSentCount > 0) {
           lastTeacherPushSentAt.set(scheduleId, now);
           remindersSent += slotSentCount;
-          console.log(`[ServerPush] Sent teacher reminder push for ${scheduleId} (${title})`);
+          console.debug(`[ServerPush] Sent teacher reminder push for ${scheduleId} (${title})`);
 
           // Update last_reminder_sent_at in Supabase class_slots table
           try {
@@ -711,7 +711,7 @@ export async function handleNewChatMessage(
 
     // 3. Check if recipient is active in this specific thread right now
     if (isRecipientActiveFn(recipientId, newMsg.thread_id)) {
-      console.log(`[ChatPush] Recipient ${recipientId} is currently active in thread ${newMsg.thread_id}, skipping push`);
+      console.debug(`[ChatPush] Recipient ${recipientId} is currently active in thread ${newMsg.thread_id}, skipping push`);
       return false;
     }
 
@@ -760,7 +760,7 @@ export async function handleNewChatMessage(
     };
 
     const result = await sendPushToUsers([recipientId], payload, supabase);
-    console.log(`[ChatPush] Sent chat push to recipient ${recipientId} (${result.deliveredCount} devices notified)`);
+    console.debug(`[ChatPush] Sent chat push to recipient ${recipientId} (${result.deliveredCount} devices notified)`);
     return result.deliveredCount > 0;
   } catch (err) {
     console.error('[ChatPush] Error handling new chat message push:', err);
