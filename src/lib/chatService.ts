@@ -292,8 +292,6 @@ export async function getOrCreateChatThread(
     participant_two_role: roleB,
   };
 
-  console.log('[chatService] Inserting new chat_thread:', insertPayload);
-
   const { data: created, error: insertError } = await (supabase as any)
     .from('chat_threads')
     .insert(insertPayload)
