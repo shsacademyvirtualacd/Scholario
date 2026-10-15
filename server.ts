@@ -159,6 +159,7 @@ import {
   testTeacherPushReminder,
   type PushPayload,
 } from './src/lib/serverPushService';
+import { sanitizePostgrestFilterValue } from './src/lib/postgrestSanitizer';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -2409,6 +2410,8 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     };
 
     try {
+      const sanitizedId = sanitizePostgrestFilterValue(teacherIdentifier);
+
       // 1. Check teachers table via pgPool or supabaseServer
       const { rows: teacherRows } = await pgPool.query(
         `SELECT id, user_id, email, full_name, subjects_assigned FROM public.teachers
@@ -2421,7 +2424,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         const { data: tData } = await (supabaseServer as any)
           .from('teachers')
           .select('id, user_id, email, full_name, subjects_assigned')
-          .or(`id.eq.${teacherIdentifier},user_id.eq.${teacherIdentifier},email.eq.${teacherIdentifier}`);
+          .or(`id.eq.${sanitizedId},user_id.eq.${sanitizedId},email.eq.${sanitizedId}`);
         if (tData && Array.isArray(tData)) {
           tData.forEach((r: any) => addSubjects(r.subjects_assigned));
         }
@@ -2439,7 +2442,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         const { data: rData } = await (supabaseServer as any)
           .from('roster')
           .select('id, profile_id, email, full_name, subjects, role')
-          .or(`id.eq.${teacherIdentifier},profile_id.eq.${teacherIdentifier},email.eq.${teacherIdentifier}`);
+          .or(`id.eq.${sanitizedId},profile_id.eq.${sanitizedId},email.eq.${sanitizedId}`);
         if (rData && Array.isArray(rData)) {
           rData.filter((r: any) => r.role === 'teacher').forEach((r: any) => addSubjects(r.subjects));
         }
