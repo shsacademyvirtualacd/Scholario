@@ -42,8 +42,8 @@ import {
   clearSelfTestHistory,
   getWeakTopicsForStudent,
 } from '../../lib/selfTestService';
-import { saveStudentMCQAttempt } from '../../lib/db';
-import { BOARDS, getGradesForBoard, getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
+import { saveStudentMCQAttempt, getEnrolledSubjectsForStudent } from '../../lib/db';
+import { BOARDS, getGradesForBoard } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   isGrade9FBISE,
