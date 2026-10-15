@@ -197,7 +197,7 @@ export function useExamIntegrity({
     };
 
     // ──────────────────────────────────────────────────────────────────────────
-    // 5. DEVTOOLS OPENING DETECTION (WINDOW DIMENSIONS & DEBUGGER TIMING)
+    // 5. DEVTOOLS OPENING DETECTION (WINDOW DIMENSIONS)
     // ──────────────────────────────────────────────────────────────────────────
     const checkDevTools = () => {
       if (typeof window === 'undefined') return;
@@ -211,16 +211,6 @@ export function useExamIntegrity({
       // A sudden shift of > 160px while not fullscreened typically indicates docked DevTools
       if (deltaWidth > 170 || deltaHeight > 170) {
         triggerViolation('Auto-submitted: Developer Tools docked window detected via viewport dimension shift');
-        return;
-      }
-
-      // Timing check: debugger statement pause measurement
-      const t0 = performance.now();
-      // eslint-disable-next-line no-debugger
-      debugger;
-      const t1 = performance.now();
-      if (t1 - t0 > 120) {
-        triggerViolation('Auto-submitted: Developer Tools debugger inspection detected');
       }
     };
 
