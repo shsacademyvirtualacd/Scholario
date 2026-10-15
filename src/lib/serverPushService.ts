@@ -175,7 +175,9 @@ export async function getUserSubscriptions(
         .in('user_id', userIds);
 
       if (!error && dbSubs && dbSubs.length > 0) {
-        for (const sub of dbSubs) {
+        const len = dbSubs.length;
+        for (let i = 0; i < len; i++) {
+          const sub = dbSubs[i];
           if (sub.endpoint) {
             subscriptionsMemory.set(sub.endpoint, sub);
           }
@@ -187,7 +189,13 @@ export async function getUserSubscriptions(
   }
 
   // 2. Return all matching from unified in-memory + DB map
-  return Array.from(subscriptionsMemory.values()).filter((s) => set.has(s.user_id));
+  const matching: PushSubscriptionRecord[] = [];
+  for (const s of subscriptionsMemory.values()) {
+    if (set.has(s.user_id)) {
+      matching.push(s);
+    }
+  }
+  return matching;
 }
 
 export async function getSubscriptionsForRole(
@@ -202,7 +210,9 @@ export async function getSubscriptionsForRole(
         .eq('role', role);
 
       if (!error && dbSubs && dbSubs.length > 0) {
-        for (const sub of dbSubs) {
+        const len = dbSubs.length;
+        for (let i = 0; i < len; i++) {
+          const sub = dbSubs[i];
           if (sub.endpoint) {
             subscriptionsMemory.set(sub.endpoint, sub);
           }
@@ -212,12 +222,26 @@ export async function getSubscriptionsForRole(
       console.warn('[ServerPush] Error querying DB push_subscriptions by role:', err);
     }
   }
-  return Array.from(subscriptionsMemory.values()).filter((s) => s.role === role);
+
+  const matching: PushSubscriptionRecord[] = [];
+  for (const s of subscriptionsMemory.values()) {
+    if (s.role === role) {
+      matching.push(s);
+    }
+  }
+  return matching;
 }
 
 export function getSubscriptionsForUsers(userIds: string[]): PushSubscriptionRecord[] {
+  if (!userIds || userIds.length === 0) return [];
   const set = new Set(userIds);
-  return Array.from(subscriptionsMemory.values()).filter((s) => set.has(s.user_id));
+  const matching: PushSubscriptionRecord[] = [];
+  for (const s of subscriptionsMemory.values()) {
+    if (set.has(s.user_id)) {
+      matching.push(s);
+    }
+  }
+  return matching;
 }
 
 // ── Web Push Dispatcher ──────────────────────────────────────────────────────
