@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
@@ -183,6 +184,28 @@ function getGeminiClient(): GoogleGenAI | null {
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Configure CORS protection
+  const defaultOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://scholario.me'];
+  const envOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : [];
+  const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
+
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id'],
+    })
+  );
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
