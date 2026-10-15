@@ -65,6 +65,8 @@ export function normalizeQuestionTemplate(text: string): string {
     .trim();
 }
 
+const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'what', 'which', 'from']);
+
 /**
  * Extracts normalized word tokens for semantic similarity calculation
  */
@@ -72,48 +74,102 @@ function extractTokens(text: string): Set<string> {
   const words = text
     .toLowerCase()
     .replace(/[^\w\s]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length > 2 && !['the', 'and', 'for', 'with', 'that', 'this', 'what', 'which', 'from'].includes(w));
-  return new Set(words);
+    .split(/\s+/);
+
+  const tokenSet = new Set<string>();
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (w.length > 2 && !STOP_WORDS.has(w)) {
+      tokenSet.add(w);
+    }
+  }
+  return tokenSet;
+}
+
+export interface PreparedQuestionMeta {
+  rawText: string;
+  normText: string;
+  skeleton: string;
+  tokens: Set<string>;
+  normOpts: string;
+}
+
+const metaCache = new WeakMap<object, PreparedQuestionMeta>();
+
+/**
+ * Pre-computes normalized strings, skeleton template, token set, and option signature
+ * for fast question duplicate comparisons without repeated parsing.
+ */
+export function prepareQuestionMeta(q: MCQQuestion | string): PreparedQuestionMeta {
+  if (typeof q === 'object' && q !== null) {
+    const cached = metaCache.get(q);
+    if (cached) return cached;
+  }
+
+  const rawText = typeof q === 'string' ? q : (q.question || '');
+  const normText = rawText.trim().toLowerCase();
+  const skeleton = normalizeQuestionTemplate(rawText);
+  const tokens = extractTokens(rawText);
+  const normOpts = typeof q === 'string'
+    ? ''
+    : Object.values(q.options || {}).map((v) => String(v).trim().toLowerCase()).sort().join('|');
+
+  const meta: PreparedQuestionMeta = {
+    rawText,
+    normText,
+    skeleton,
+    tokens,
+    normOpts,
+  };
+
+  if (typeof q === 'object' && q !== null) {
+    metaCache.set(q, meta);
+  }
+
+  return meta;
 }
 
 /**
- * Calculates Jaccard similarity and template equivalence between two questions
+ * Fast similarity calculation using pre-computed question metadata
  */
-export function calculateQuestionSimilarity(q1: string, q2: string): { similarity: number; isTemplateDuplicate: boolean } {
-  const norm1 = q1.trim().toLowerCase();
-  const norm2 = q2.trim().toLowerCase();
-  if (norm1 === norm2) {
+export function calculatePreparedSimilarity(
+  cand: PreparedQuestionMeta,
+  ex: PreparedQuestionMeta
+): { similarity: number; isTemplateDuplicate: boolean } {
+  if (cand.normText === ex.normText) {
     return { similarity: 1.0, isTemplateDuplicate: true };
   }
 
-  const skel1 = normalizeQuestionTemplate(q1);
-  const skel2 = normalizeQuestionTemplate(q2);
-  if (skel1.length > 20 && skel1 === skel2) {
+  if (cand.skeleton.length > 20 && cand.skeleton === ex.skeleton) {
     return { similarity: 0.95, isTemplateDuplicate: true };
   }
 
-  const tokens1 = extractTokens(q1);
-  const tokens2 = extractTokens(q2);
-
-  if (tokens1.size === 0 || tokens2.size === 0) {
+  if (cand.tokens.size === 0 || ex.tokens.size === 0) {
     return { similarity: 0, isTemplateDuplicate: false };
   }
 
   let intersectionCount = 0;
-  for (const t of tokens1) {
-    if (tokens2.has(t)) {
+  const [smaller, larger] = cand.tokens.size < ex.tokens.size ? [cand.tokens, ex.tokens] : [ex.tokens, cand.tokens];
+  for (const t of smaller) {
+    if (larger.has(t)) {
       intersectionCount++;
     }
   }
 
-  const unionCount = new Set([...tokens1, ...tokens2]).size;
+  const unionCount = cand.tokens.size + ex.tokens.size - intersectionCount;
   const jaccard = unionCount > 0 ? intersectionCount / unionCount : 0;
 
   return {
     similarity: jaccard,
     isTemplateDuplicate: jaccard >= 0.75,
   };
+}
+
+/**
+ * Calculates Jaccard similarity and template equivalence between two questions
+ */
+export function calculateQuestionSimilarity(q1: string, q2: string): { similarity: number; isTemplateDuplicate: boolean } {
+  return calculatePreparedSimilarity(prepareQuestionMeta(q1), prepareQuestionMeta(q2));
 }
 
 /**
@@ -125,19 +181,18 @@ export function checkQuestionDuplicate(
   existingList: MCQQuestion[],
   similarityThreshold: number = 0.65
 ): { isDuplicate: boolean; similarity: number; duplicateWith?: string; reason?: string } {
-  const candText = candidate.question || '';
-  const candOpts = Object.values(candidate.options || {}).map((v) => String(v).trim().toLowerCase()).sort().join('|');
+  const candMeta = prepareQuestionMeta(candidate);
 
   for (const existing of existingList) {
-    const exText = existing.question || '';
-    const { similarity, isTemplateDuplicate } = calculateQuestionSimilarity(candText, exText);
+    const exMeta = prepareQuestionMeta(existing);
+    const { similarity, isTemplateDuplicate } = calculatePreparedSimilarity(candMeta, exMeta);
 
     if (isTemplateDuplicate) {
       return {
         isDuplicate: true,
         similarity,
-        duplicateWith: exText,
-        reason: `Template skeleton matches existing question: "${exText.substring(0, 60)}..."`,
+        duplicateWith: exMeta.rawText,
+        reason: `Template skeleton matches existing question: "${exMeta.rawText.substring(0, 60)}..."`,
       };
     }
 
@@ -145,18 +200,17 @@ export function checkQuestionDuplicate(
       return {
         isDuplicate: true,
         similarity,
-        duplicateWith: exText,
-        reason: `Question has ${(similarity * 100).toFixed(0)}% semantic overlap with: "${exText.substring(0, 60)}..."`,
+        duplicateWith: exMeta.rawText,
+        reason: `Question has ${(similarity * 100).toFixed(0)}% semantic overlap with: "${exMeta.rawText.substring(0, 60)}..."`,
       };
     }
 
     // Option set duplicate check
-    const exOpts = Object.values(existing.options || {}).map((v) => String(v).trim().toLowerCase()).sort().join('|');
-    if (candOpts && candOpts === exOpts && similarity > 0.4) {
+    if (candMeta.normOpts && candMeta.normOpts === exMeta.normOpts && similarity > 0.4) {
       return {
         isDuplicate: true,
         similarity: 0.9,
-        duplicateWith: exText,
+        duplicateWith: exMeta.rawText,
         reason: 'Options are identical to an existing question.',
       };
     }
