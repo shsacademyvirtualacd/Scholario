@@ -57,7 +57,7 @@ import {
 } from '../../lib/sagePdfGenerator';
 import { SAGE_MODEL_DISPLAY_NAME } from '../../lib/knowledgeBaseService';
 
-export interface ChatAttachment {
+interface ChatAttachment {
   key?: string;
   filename: string;
   size: number;
