@@ -30,6 +30,14 @@ const FORBIDDEN_META_PHRASES: (string | RegExp)[] = [
   /tested\s+in\s+fbise\s+grade\s+9\s+.*curriculum/i,
 ];
 
+const COMBINED_FORBIDDEN_META_REGEX = new RegExp(
+  FORBIDDEN_META_PHRASES.map((p) => {
+    const src = typeof p === 'string' ? p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : p.source;
+    return `(?:${src})`;
+  }).join('|'),
+  'i'
+);
+
 /**
  * Global out-of-scope topics for Grade 9 & 10 (e.g., Higher Secondary / FSc topics)
  */
@@ -295,14 +303,9 @@ export function validateMCQQuestion(q: any, context?: ValidationContext): { vali
   }
 
   // Check question text for forbidden phrases
-  for (const pattern of FORBIDDEN_META_PHRASES) {
-    if (typeof pattern === 'string') {
-      if (questionText.toLowerCase().includes(pattern.toLowerCase())) {
-        return { valid: false, reason: `Question contains forbidden meta phrase: "${pattern}"` };
-      }
-    } else if (pattern.test(questionText)) {
-      return { valid: false, reason: `Question matches forbidden meta pattern: ${pattern}` };
-    }
+  const qMatch = COMBINED_FORBIDDEN_META_REGEX.exec(questionText);
+  if (qMatch) {
+    return { valid: false, reason: `Question contains forbidden meta phrase: "${qMatch[0]}"` };
   }
 
   // Check options
@@ -324,14 +327,9 @@ export function validateMCQQuestion(q: any, context?: ValidationContext): { vali
 
   // Check options for forbidden filler phrases
   for (const opt of optValues) {
-    for (const pattern of FORBIDDEN_META_PHRASES) {
-      if (typeof pattern === 'string') {
-        if (opt.toLowerCase().includes(pattern.toLowerCase())) {
-          return { valid: false, reason: `Option "${opt}" contains forbidden meta phrase: "${pattern}"` };
-        }
-      } else if (pattern.test(opt)) {
-        return { valid: false, reason: `Option "${opt}" matches forbidden meta pattern: ${pattern}` };
-      }
+    const optMatch = COMBINED_FORBIDDEN_META_REGEX.exec(opt);
+    if (optMatch) {
+      return { valid: false, reason: `Option "${opt}" contains forbidden meta phrase: "${optMatch[0]}"` };
     }
   }
 
