@@ -15,6 +15,14 @@ export interface BoardEntry {
   name: string;
 }
 
+export interface TaxonomyData {
+  boards: BoardEntry[];
+  classes: ClassEntry[];
+  streams: StreamEntry[];
+  subjects: SubjectEntry[];
+  streamSubjects: { stream_id: string; subject_id: string }[];
+}
+
 export interface ClassEntry {
   id: string;
   board_id: string;
