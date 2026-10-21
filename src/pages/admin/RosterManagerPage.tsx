@@ -12,7 +12,8 @@ import ConfirmModal from '../../components/admin/ConfirmModal';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { 
   getAllRoster, addRosterEntry, updateRosterEntry, 
-  deleteRosterEntry, getAllOfferings, toggleRosterAccess, toggleFeeSuspension, updateFeeStatus
+  deleteRosterEntry, getAllOfferings, toggleRosterAccess, toggleFeeSuspension, updateFeeStatus,
+  notifyTeacherOverlappingClasses
 } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
@@ -325,11 +326,61 @@ export const RosterManagerPage: React.FC = () => {
       if (drawerMode === 'edit' && selectedEntry) {
         const studentClass = selectedClass || (offerings.length > 0 ? offerings[0].id : '');
         const classesToSave = selectedEntry.role === 'student' ? [studentClass] : selectedClasses;
-        await updateRosterEntry(selectedEntry.id, classesToSave);
+        const teacherTargetId = selectedEntry.role === 'teacher' ? (selectedEntry.profile_id || selectedEntry.id) : undefined;
         
-        setRoster(prev => prev.map(r => r.id === selectedEntry.id ? { ...r, class_ids: classesToSave } : r));
-        const offeringsData = await getAllOfferings().catch(() => []);
-        setOfferings(offeringsData);
+        await updateRosterEntry(selectedEntry.id, classesToSave, teacherTargetId);
+        
+        // Immediately refetch roster and offerings to guarantee fresh data without stale cache
+        const [freshRoster, freshOfferings] = await Promise.all([
+          getAllRoster().catch(() => []),
+          getAllOfferings().catch(() => [])
+        ]);
+        if (freshRoster && freshRoster.length > 0) setRoster(freshRoster);
+        if (freshOfferings && freshOfferings.length > 0) setOfferings(freshOfferings);
+
+        // Check if teacher has overlapping classes on admin assignment
+        if (selectedEntry.role === 'teacher' && classesToSave.length >= 2 && teacherTargetId) {
+          try {
+            const { data: assignedSlots } = await (supabase as any)
+              .from('class_slots')
+              .select('id, offering_id, start_time, offering:class_offerings(*)')
+              .in('offering_id', classesToSave);
+
+            if (assignedSlots && assignedSlots.length >= 2) {
+              const byTime = new Map<string, any[]>();
+              assignedSlots.forEach((s: any) => {
+                if (s.start_time) {
+                  const arr = byTime.get(s.start_time) || [];
+                  arr.push(s);
+                  byTime.set(s.start_time, arr);
+                }
+              });
+
+              byTime.forEach((group, time) => {
+                if (group.length >= 2) {
+                  const [h, m] = time.split(':').map(Number);
+                  const period = h >= 12 ? 'PM' : 'AM';
+                  const h12 = h % 12 || 12;
+                  const timeFormatted = `${h12}:${String(m).padStart(2, '0')} ${period}`;
+                  const names = group.map((s: any) => {
+                    const subj = s.offering?.subject_name || 'Class';
+                    const gr = s.offering?.grade || '';
+                    return gr ? `${subj} (Gr. ${gr})` : subj;
+                  });
+                  notifyTeacherOverlappingClasses(
+                    teacherTargetId,
+                    names,
+                    timeFormatted,
+                    `assign_${Date.now()}`
+                  );
+                }
+              });
+            }
+          } catch (slotErr) {
+            console.warn('[RosterManagerPage] overlap check warning:', slotErr);
+          }
+        }
+
         toast.success('Roster entry updated successfully.');
         setDrawerOpen(false);
       } else {
@@ -343,13 +394,19 @@ export const RosterManagerPage: React.FC = () => {
         }
 
         const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave, normalizedPhone);
-        setRoster(prev => {
-          const exists = prev.some(r => r.id === newEntry.id || r.email.toLowerCase() === newEntry.email.toLowerCase());
-          if (exists) return prev;
-          return [newEntry, ...prev];
-        });
-        const offeringsData = await getAllOfferings().catch(() => []);
-        setOfferings(offeringsData);
+        
+        // Immediately refetch roster and offerings
+        const [freshRoster, freshOfferings] = await Promise.all([
+          getAllRoster().catch(() => []),
+          getAllOfferings().catch(() => [])
+        ]);
+        if (freshRoster && freshRoster.length > 0) {
+          setRoster(freshRoster);
+        } else {
+          setRoster(prev => [newEntry, ...prev]);
+        }
+        if (freshOfferings && freshOfferings.length > 0) setOfferings(freshOfferings);
+
         toast.success('Teacher added to roster successfully.');
         setDrawerOpen(false);
         await fetchEnrichmentData();
@@ -548,6 +605,18 @@ export const RosterManagerPage: React.FC = () => {
       const bName = bDef?.shortName || bDef?.name || cls.board?.name || cls.board_id?.toUpperCase() || 'Curriculum';
       return `${cls.display_name} (${bName})`;
     }
+
+    // Check teacher assigned offerings from both class_offerings and entry.class_ids
+    const teacherOff = offerings.find(o => {
+      const tId = o.teacher_id || o.teacher?.id;
+      return (tId && (tId === entry.id || tId === entry.profile_id)) || (entry.class_ids && entry.class_ids.includes(o.id));
+    });
+    if (teacherOff) {
+      const rawBoard = String(teacherOff.board_id || teacherOff.board || '').toLowerCase();
+      const bName = rawBoard.includes('punjab') ? 'Punjab' : rawBoard.includes('federal') || rawBoard.includes('fbise') ? 'Federal' : 'General';
+      return `Grade ${teacherOff.grade} (${teacherOff.subject_name} · ${bName})`;
+    }
+
     if (entry.class_ids?.length > 0) {
       if (classesMap[entry.class_ids[0]]) {
         const cls = classesMap[entry.class_ids[0]];
@@ -586,30 +655,51 @@ export const RosterManagerPage: React.FC = () => {
   };
 
   const formatClasses = (entry: RosterEntry) => {
-    if (!entry.class_ids || entry.class_ids.length === 0) {
+    // 1. Gather all class IDs assigned via entry.class_ids AND offerings.teacher_id
+    const assignedOfferingIds = new Set<string>(entry.class_ids || []);
+    offerings.forEach(o => {
+      const tId = o.teacher_id || o.teacher?.id;
+      if (tId && (tId === entry.id || tId === entry.profile_id)) {
+        assignedOfferingIds.add(o.id);
+      }
+    });
+
+    if (assignedOfferingIds.size === 0) {
       return <span className="text-zinc-400 italic text-[11px]">No schedule classes assigned</span>;
     }
+
     const badges: React.ReactNode[] = [];
     let hasIelts = false;
 
-    for (const cid of entry.class_ids) {
+    for (const cid of assignedOfferingIds) {
       const off = offerings.find(o => o.id === cid);
       if (!off) continue;
-      const isIeltsOff = (off.board_id || off.board || off.class?.board_id || '').toLowerCase() === 'ielts' || 
+      const rawBoard = String(off.board_id || off.board || off.class?.board_id || off.class?.board?.name || '').trim();
+      const rawBoardLower = rawBoard.toLowerCase();
+      const isIeltsOff = rawBoardLower === 'ielts' || 
                          (off.subject_name || off.subject || '').toLowerCase().includes('ielts');
+
       if (isIeltsOff) {
         if (!hasIelts) {
           hasIelts = true;
           badges.push(
-            <span key="ielts-unified-badge" className="inline-block bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5">
+            <span key="ielts-unified-badge" className="inline-block bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5 shadow-2xs">
               IELTS Preparation
             </span>
           );
         }
       } else {
+        const boardClean = rawBoardLower.includes('punjab')
+          ? 'Punjab'
+          : rawBoardLower.includes('federal') || rawBoardLower.includes('fbise')
+          ? 'Federal'
+          : rawBoardLower.includes('sindh')
+          ? 'Sindh'
+          : rawBoard || 'General';
+
         badges.push(
-          <span key={cid} className="inline-block bg-[#F5F5F5] border border-[#E5E5E5] text-[#404040] text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5">
-            {off.subject_name} (Gr. {off.grade})
+          <span key={cid} className="inline-block bg-[#F5F5F5] border border-[#E5E5E5] text-[#404040] text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5 shadow-2xs">
+            {off.subject_name || off.subject || 'Class'} (Gr. {off.grade} · {boardClean})
           </span>
         );
       }

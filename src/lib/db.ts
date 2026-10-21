@@ -690,20 +690,73 @@ export async function getSessionLinksForDates(sessionDates: string[]): Promise<C
   }
 }
 
-/** Get a specific session link for a given slot and date */
-export async function getSessionLink(slotId: string, sessionDate: string): Promise<ClassSessionLink | null> {
+/** Get a specific session link for a given slot and date, with offeringId and live_sessions fallback */
+export async function getSessionLink(
+  slotId: string, 
+  sessionDate: string,
+  offeringId?: string | null
+): Promise<ClassSessionLink | null> {
   try {
+    // 1. Direct query on class_session_links by slot_id + session_date
     const { data, error } = await (supabase as any)
       .from('class_session_links')
       .select('*')
       .eq('slot_id', slotId)
       .eq('session_date', sessionDate)
       .maybeSingle();
+
     if (error) {
-      console.warn('[db:getSessionLink] warning:', error.message);
-      return null;
+      console.warn('[db:getSessionLink] slot query error:', error.message);
     }
-    return data as ClassSessionLink | null;
+
+    if (data?.link_url && data.link_url.trim().length > 0) {
+      return data as ClassSessionLink;
+    }
+
+    // 2. Query by offering_id on class_session_links if available
+    if (offeringId) {
+      const { data: offData } = await (supabase as any)
+        .from('class_session_links')
+        .select('*')
+        .eq('offering_id', offeringId)
+        .eq('session_date', sessionDate)
+        .maybeSingle();
+
+      if (offData?.link_url && offData.link_url.trim().length > 0) {
+        return offData as ClassSessionLink;
+      }
+    }
+
+    // 3. Check live_sessions table for active link
+    try {
+      let liveQuery = (supabase as any)
+        .from('live_sessions')
+        .select('*')
+        .eq('session_date', sessionDate);
+
+      if (offeringId) {
+        liveQuery = liveQuery.or(`slot_id.eq.${slotId},offering_id.eq.${offeringId},session_key.eq.${slotId}_${sessionDate}`);
+      } else {
+        liveQuery = liveQuery.or(`slot_id.eq.${slotId},session_key.eq.${slotId}_${sessionDate}`);
+      }
+
+      const { data: liveData } = await liveQuery.maybeSingle();
+      if (liveData?.class_link && liveData.class_link.trim().length > 0) {
+        return {
+          id: liveData.id || `live_${slotId}`,
+          slot_id: slotId,
+          offering_id: offeringId || liveData.offering_id,
+          session_date: sessionDate,
+          link_url: liveData.class_link.trim(),
+          created_at: liveData.created_at || new Date().toISOString(),
+          updated_at: liveData.updated_at || new Date().toISOString(),
+        } as ClassSessionLink;
+      }
+    } catch (liveErr) {
+      console.warn('[db:getSessionLink] live_sessions check warning:', liveErr);
+    }
+
+    return (data as ClassSessionLink) || null;
   } catch (err) {
     console.warn('[db:getSessionLink] catch error:', err);
     return null;
@@ -2900,18 +2953,31 @@ function normalizeCanonicalEmail(email?: string): string {
 }
 
 export async function getAllRoster(): Promise<RosterEntry[]> {
-  const [rosterRes, profilesRes, teachersRes] = await Promise.all([
+  const [rosterRes, profilesRes, teachersRes, offeringsRes] = await Promise.all([
     (supabase as any).from('roster').select('*'),
     supabase.from('profiles').select('*'),
-    supabase.from('teachers').select('*')
+    supabase.from('teachers').select('*'),
+    (supabase as any).from('class_offerings').select('id, teacher_id')
   ]);
 
   if (rosterRes.error) console.warn('roster select error:', rosterRes.error);
   if (profilesRes.error) console.warn('profiles select error:', profilesRes.error);
+  if (offeringsRes.error) console.warn('offerings select error:', offeringsRes.error);
 
   const rosterEntries: RosterEntry[] = rosterRes.data || [];
   const profiles: any[] = profilesRes.data || [];
   const teachers: any[] = teachersRes.data || [];
+  const rawOfferings: Array<{ id: string; teacher_id?: string | null }> = offeringsRes.data || [];
+
+  // Index offerings by teacher_id for fast lookup
+  const teacherOfferingsMap = new Map<string, string[]>();
+  for (const off of rawOfferings) {
+    if (off.teacher_id) {
+      const existing = teacherOfferingsMap.get(off.teacher_id) || [];
+      existing.push(off.id);
+      teacherOfferingsMap.set(off.teacher_id, existing);
+    }
+  }
 
   const entryByEmail = new Map<string, RosterEntry>();
   const entryByProfileId = new Map<string, RosterEntry>();
@@ -2994,6 +3060,16 @@ export async function getAllRoster(): Promise<RosterEntry[]> {
     }
   }
 
+  // 4. Enrich all teacher entries with their active class_offerings
+  for (const entry of mergedList) {
+    if (entry.role === 'teacher') {
+      const fromId = teacherOfferingsMap.get(entry.id) || [];
+      const fromProf = entry.profile_id ? (teacherOfferingsMap.get(entry.profile_id) || []) : [];
+      const combined = Array.from(new Set([...(entry.class_ids || []), ...fromId, ...fromProf]));
+      entry.class_ids = combined;
+    }
+  }
+
   return mergedList;
 }
 
@@ -3025,19 +3101,84 @@ export async function addRosterEntry(
     .single();
     
   if (fetchErr) throw fetchErr;
+
+  // Also sync class_offerings directly if classIds were assigned
+  if (classIds && classIds.length > 0) {
+    try {
+      await (supabase as any)
+        .from('class_offerings')
+        .update({ teacher_id: entry.id })
+        .in('id', classIds);
+    } catch (offErr) {
+      console.warn('[db:addRosterEntry] class_offerings assignment warning:', offErr);
+    }
+  }
+
   return entry as RosterEntry;
 }
 
 export async function updateRosterEntry(
   rosterId: string,
-  classIds: string[]
+  classIds: string[],
+  explicitTeacherId?: string
 ): Promise<void> {
-  const { error } = await (supabase as any).rpc('update_roster_entry', {
-    p_roster_id: rosterId,
-    p_class_ids: classIds
-  });
+  // 1. Try DB RPC first
+  try {
+    const { error } = await (supabase as any).rpc('update_roster_entry', {
+      p_roster_id: rosterId,
+      p_class_ids: classIds
+    });
+    if (error) {
+      console.warn('[db:updateRosterEntry] rpc warning:', error.message);
+    }
+  } catch (rpcErr) {
+    console.warn('[db:updateRosterEntry] rpc error:', rpcErr);
+  }
 
-  if (error) throw error;
+  // 2. Directly update roster table class_ids by id or profile_id
+  try {
+    await (supabase as any)
+      .from('roster')
+      .update({ class_ids: classIds })
+      .or(`id.eq.${rosterId},profile_id.eq.${rosterId}`);
+  } catch (rosterErr) {
+    console.warn('[db:updateRosterEntry] direct roster update warning:', rosterErr);
+  }
+
+  // 3. Directly update class_offerings for teachers so teacher_id is always accurate
+  const effectiveTeacherId = explicitTeacherId || rosterId;
+  if (effectiveTeacherId) {
+    try {
+      // Find offerings currently assigned to this teacher
+      const { data: currentAssigned } = await (supabase as any)
+        .from('class_offerings')
+        .select('id')
+        .eq('teacher_id', effectiveTeacherId);
+
+      if (currentAssigned && currentAssigned.length > 0) {
+        const toUnassign = currentAssigned
+          .map((o: any) => o.id)
+          .filter((id: string) => !classIds.includes(id));
+
+        if (toUnassign.length > 0) {
+          await (supabase as any)
+            .from('class_offerings')
+            .update({ teacher_id: null })
+            .in('id', toUnassign);
+        }
+      }
+
+      // Assign teacher to the selected offerings
+      if (classIds && classIds.length > 0) {
+        await (supabase as any)
+          .from('class_offerings')
+          .update({ teacher_id: effectiveTeacherId })
+          .in('id', classIds);
+      }
+    } catch (offErr) {
+      console.warn('[db:updateRosterEntry] direct class_offerings update error:', offErr);
+    }
+  }
 }
 
 export async function toggleRosterAccess(
@@ -4426,3 +4567,76 @@ export async function deleteNotification(id: string): Promise<void> {
     .eq('id', id);
   if (error) throw error;
 }
+
+export async function createNotification(payload: {
+  userId: string;
+  title: string;
+  message: string;
+  type?: string;
+  severity?: 'normal' | 'crucial';
+  url?: string;
+}): Promise<void> {
+  const row = {
+    recipient_id: payload.userId,
+    user_id: payload.userId,
+    title: payload.title,
+    message: payload.message,
+    body: payload.message,
+    type: payload.type || 'class_reminder',
+    severity: payload.severity || 'normal',
+    url: payload.url || null,
+    is_read: false,
+  };
+  try {
+    await (supabase as any).from('notifications').insert(row);
+  } catch (err) {
+    console.warn('[db:createNotification] insert warning:', err);
+  }
+}
+
+/**
+ * Checks for overlapping classes at the same time and sends the required teacher notification:
+ * "You have 2 classes at 4:00 PM: [Class A] and [Class B]. Add a link for each."
+ */
+export async function notifyTeacherOverlappingClasses(
+  teacherId: string,
+  classNames: string[],
+  timeStr: string,
+  dedupeSuffix: string = ''
+): Promise<void> {
+  if (!teacherId || classNames.length < 2) return;
+  const count = classNames.length;
+  const classesListStr = classNames.join(' and ');
+  const title = `${count} Overlapping Classes at ${timeStr}`;
+  const message = `You have ${count} classes at ${timeStr}: ${classesListStr}. Add a link for each.`;
+
+  // Deduplicate in sessionStorage or notifications table
+  const dedupeKey = `overlap_${teacherId}_${timeStr}_${dedupeSuffix}`;
+  if (typeof window !== 'undefined') {
+    if (sessionStorage.getItem(dedupeKey)) return;
+    sessionStorage.setItem(dedupeKey, 'true');
+  }
+
+  await createNotification({
+    userId: teacherId,
+    title,
+    message,
+    type: 'class_reminder',
+    severity: 'crucial',
+    url: '/teacher',
+  });
+
+  // Also trigger system browser Notification if granted
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(title, {
+        body: message,
+        icon: '/logo.png',
+        tag: dedupeKey,
+      });
+    } catch (e) {
+      console.warn('[notifyTeacherOverlappingClasses] browser notification error:', e);
+    }
+  }
+}
+

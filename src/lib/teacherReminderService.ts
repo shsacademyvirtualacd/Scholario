@@ -363,4 +363,120 @@ export async function syncTeacherClassReminders(
     const isPosted = postedSlotSet.has(slot.id);
     scheduleClassSlotReminder(slot, todayDate, isPosted);
   });
+
+  // ── 10-Minute Pre-Class Checks for Overlapping Classes & Missing Links ─────
+  // Group today's slots by start_time to find concurrent/overlapping classes
+  const slotsByTime = new Map<string, ClassSlot[]>();
+  todaySlots.forEach((slot) => {
+    if (slot.start_time) {
+      const existing = slotsByTime.get(slot.start_time) || [];
+      existing.push(slot);
+      slotsByTime.set(slot.start_time, existing);
+    }
+  });
+
+  slotsByTime.forEach(async (groupSlots, startTime) => {
+    const startMins = timeStrToMins(startTime);
+    const minsUntilStart = startMins - pkt.totalMins;
+
+    // Check if class starts in approximately 10 minutes (between 0 and 11 minutes away)
+    if (minsUntilStart <= 11 && minsUntilStart >= 0) {
+      const timeFormatted = (() => {
+        const [h, m] = startTime.split(':').map(Number);
+        const period = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+      })();
+
+      // 1. If teacher has 2+ classes at the same time:
+      // "You have 2 classes at 4:00 PM: [Class A] and [Class B]. Add a link for each."
+      if (groupSlots.length >= 2) {
+        const classNames = groupSlots.map((s) => {
+          const subj = getSlotSubject(s);
+          const gr = s.offering?.grade || (s.offering as any)?.class?.grade || '';
+          return gr ? `${subj} (Gr. ${gr})` : subj;
+        });
+
+        const overlapDedupeKey = `teacher_overlap_10m_${teacherId}_${startTime}_${todayDate}`;
+        if (typeof window !== 'undefined' && !sessionStorage.getItem(overlapDedupeKey)) {
+          sessionStorage.setItem(overlapDedupeKey, 'true');
+
+          const overlapTitle = `${groupSlots.length} Classes at ${timeFormatted}`;
+          const overlapMessage = `You have ${groupSlots.length} classes at ${timeFormatted}: ${classNames.join(' and ')}. Add a link for each.`;
+
+          // Insert into notifications table
+          try {
+            await (supabase as any).from('notifications').insert({
+              recipient_id: teacherId,
+              user_id: teacherId,
+              title: overlapTitle,
+              message: overlapMessage,
+              body: overlapMessage,
+              type: 'class_reminder',
+              severity: 'crucial',
+              url: '/teacher',
+              is_read: false,
+            });
+          } catch (e) {
+            console.warn('[TeacherReminderService] insert overlap notif error:', e);
+          }
+
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(overlapTitle, {
+                body: overlapMessage,
+                icon: '/logo.png',
+                tag: overlapDedupeKey,
+              });
+            } catch (e) {
+              console.warn('[TeacherReminderService] browser notification error:', e);
+            }
+          }
+        }
+      }
+
+      // 2. Reminder 10 minutes before if any session still has no link:
+      for (const slot of groupSlots) {
+        if (!postedSlotSet.has(slot.id)) {
+          const subj = getSlotSubject(slot);
+          const noLinkDedupeKey = `teacher_nolink_10m_${slot.id}_${todayDate}`;
+
+          if (typeof window !== 'undefined' && !sessionStorage.getItem(noLinkDedupeKey)) {
+            sessionStorage.setItem(noLinkDedupeKey, 'true');
+
+            const noLinkTitle = `${subj} starts in 10 minutes`;
+            const noLinkMessage = `${subj} class link not posted yet. Tap to add link.`;
+
+            try {
+              await (supabase as any).from('notifications').insert({
+                recipient_id: teacherId,
+                user_id: teacherId,
+                title: noLinkTitle,
+                message: noLinkMessage,
+                body: noLinkMessage,
+                type: 'teacher_reminder',
+                severity: 'crucial',
+                url: `/teacher#live-link-editor-${slot.id}`,
+                is_read: false,
+              });
+            } catch (e) {
+              console.warn('[TeacherReminderService] insert no-link notif error:', e);
+            }
+
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              try {
+                new Notification(noLinkTitle, {
+                  body: noLinkMessage,
+                  icon: '/logo.png',
+                  tag: noLinkDedupeKey,
+                });
+              } catch (e) {
+                console.warn('[TeacherReminderService] browser notification error:', e);
+              }
+            }
+          }
+        }
+      }
+    }
+  });
 }

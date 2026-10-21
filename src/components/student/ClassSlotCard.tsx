@@ -41,7 +41,7 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
     if (propSessionLinkUrl !== undefined) return;
     if (!slot?.id || !effectiveSessionDate) return;
     try {
-      const rec = await getSessionLink(slot.id, effectiveSessionDate);
+      const rec = await getSessionLink(slot.id, effectiveSessionDate, slot.offering_id);
       setFetchedLink(rec?.link_url || null);
       setFetchedSubstitute(rec?.substitute_teacher_name || slot.substitute_teacher_name || null);
     } catch (err) {
@@ -51,11 +51,19 @@ export const ClassSlotCard: React.FC<ClassSlotCardProps> = ({
 
   useEffect(() => {
     fetchLink();
-  }, [slot?.id, effectiveSessionDate, propSessionLinkUrl]);
+    const pollInterval = setInterval(fetchLink, 15_000);
+    return () => clearInterval(pollInterval);
+  }, [slot?.id, slot?.offering_id, effectiveSessionDate, propSessionLinkUrl]);
 
   useRealtimeTable({
     table: 'class_session_links',
-    debounceMs: 1000,
+    debounceMs: 500,
+    onAny: fetchLink,
+  });
+
+  useRealtimeTable({
+    table: 'live_sessions',
+    debounceMs: 500,
     onAny: fetchLink,
   });
 

@@ -80,7 +80,7 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
       return;
     }
     try {
-      const rec = await getSessionLink(slot.id, sessionDate);
+      const rec = await getSessionLink(slot.id, sessionDate, slot.offering_id);
       setSessionLinkUrl(rec?.link_url || null);
     } catch (err) {
       console.warn('[MultiClassLiveCard] Link fetch error:', err);
@@ -89,13 +89,21 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
 
   useEffect(() => {
     fetchLink();
-  }, [slot?.id, sessionDate]);
+    // 15s polling fallback as required by BUG 1 specification
+    const pollInterval = setInterval(fetchLink, 15_000);
+    return () => clearInterval(pollInterval);
+  }, [slot?.id, slot?.offering_id, sessionDate]);
 
-  // Realtime updates if teacher adds or updates link for this specific slot
+  // Realtime updates if teacher adds or updates link for this slot or offering
   useRealtimeTable({
     table: 'class_session_links',
-    filter: slot?.id ? `slot_id=eq.${slot.id}` : undefined,
-    debounceMs: 1500,
+    debounceMs: 500,
+    onAny: fetchLink,
+  });
+
+  useRealtimeTable({
+    table: 'live_sessions',
+    debounceMs: 500,
     onAny: fetchLink,
   });
 
@@ -336,51 +344,50 @@ export const MultiClassLiveCard: React.FC<MultiClassLiveCardProps> = ({
           );
         })()}
 
-        {/* ── State 1: Upcoming (not started) ── */}
-        {/* Shows live countdown (e.g. "Starts in 1h 24m 10s") instead of Join button */}
-        {isUpcoming && (
-          <div className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 text-amber-950 dark:text-amber-200 text-xs font-bold shadow-2xs">
-            <Hourglass size={13} className="text-amber-700 dark:text-amber-400 animate-spin" />
-            <span>Starts in {formatCountdownPrecise(slot.start_time, pktnow)}</span>
-          </div>
-        )}
-
-        {/* ── State 2: Time reached, link available ── */}
-        {/* Join Now button is green and clickable */}
-        {isOngoing && hasLink && (
-          <a
-            href={targetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleJoinClick}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-extrabold shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer interactive"
-            title={`Join Live Class on Zoom/Meet: ${targetUrl}`}
-          >
-            <Video size={14} className="shrink-0" />
-            <span>Join Now</span>
-            <ExternalLink size={12} className="opacity-70 ml-0.5" />
-          </a>
-        )}
-
-        {/* ── State 3: Time reached, no link ── */}
-        {/* Button is gray and disabled with "Waiting for teacher to add link" */}
-        {isOngoing && !hasLink && (
-          <button
-            disabled
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-300 dark:border-neutral-700 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-not-allowed shadow-2xs"
-            title="Class time has arrived, but the teacher has not uploaded the meeting link yet. It will automatically update here as soon as it is posted."
-          >
-            <Clock size={13} className="text-slate-500 dark:text-slate-400 shrink-0" />
-            <span>Waiting for teacher to add link</span>
-          </button>
-        )}
-
-        {/* ── State 4: Finished ── */}
-        {/* Muted visually, completed state */}
-        {isFinished && (
+        {/* ── State 1: Finished ── */}
+        {isFinished ? (
           <div className="flex items-center justify-center gap-1.5 w-full py-1.5 px-2.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-slate-400 text-[11px] font-medium border border-slate-200 dark:border-neutral-700">
             <Check size={12} className="text-slate-500 dark:text-slate-400" />
             <span>Class Completed</span>
+          </div>
+        ) : hasLink ? (
+          /* ── State 2: Link is available -> Student can join ── */
+          <div className="space-y-1.5">
+            <a
+              href={targetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleJoinClick}
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-extrabold shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer interactive"
+              title={`Join Live Class on Zoom/Meet: ${targetUrl}`}
+            >
+              <Video size={14} className="shrink-0" />
+              <span>Join Now</span>
+              <ExternalLink size={12} className="opacity-70 ml-0.5" />
+            </a>
+            {isUpcoming && minsUntilStart > 0 && (
+              <p className="text-[10px] text-center text-emerald-700 dark:text-emerald-400 font-bold">
+                Teacher posted link · Class starts in {formatCountdownPrecise(slot.start_time, pktnow)}
+              </p>
+            )}
+          </div>
+        ) : (
+          /* ── State 3: Link is null or empty -> Waiting for teacher to add link ── */
+          <div className="space-y-1.5">
+            <button
+              disabled
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-300 dark:border-neutral-700 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-not-allowed shadow-2xs"
+              title="Waiting for teacher to add link. Updates automatically in real time without reloading."
+            >
+              <Clock size={13} className="text-slate-500 dark:text-slate-400 shrink-0" />
+              <span>Waiting for teacher to add link</span>
+            </button>
+            {isUpcoming && minsUntilStart > 0 && (
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-amber-800 dark:text-amber-300 font-semibold">
+                <Hourglass size={11} className="text-amber-600 dark:text-amber-400 animate-spin" />
+                <span>Starts in {formatCountdownPrecise(slot.start_time, pktnow)}</span>
+              </div>
+            )}
           </div>
         )}
       </div>

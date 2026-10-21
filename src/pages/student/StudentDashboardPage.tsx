@@ -184,7 +184,7 @@ const StudentLiveLink: React.FC<{
       return;
     }
     try {
-      const rec = await getSessionLink(slot.id, effectiveSessionDate);
+      const rec = await getSessionLink(slot.id, effectiveSessionDate, slot.offering_id);
       setSessionLinkUrl(rec?.link_url || null);
     } catch (err) {
       console.warn('[StudentLiveLink] fetch link err:', err);
@@ -201,13 +201,20 @@ const StudentLiveLink: React.FC<{
   useEffect(() => {
     setIsLoadingLink(true);
     fetchSessionLink();
-  }, [slot?.id, effectiveSessionDate]);
+    const pollInterval = setInterval(fetchSessionLink, 15_000);
+    return () => clearInterval(pollInterval);
+  }, [slot?.id, slot?.offering_id, effectiveSessionDate]);
 
   // Realtime updates for session links
   useRealtimeTable({
     table: 'class_session_links',
-    filter: slot?.id ? `slot_id=eq.${slot.id}` : undefined,
-    debounceMs: 1500,
+    debounceMs: 500,
+    onAny: fetchSessionLink,
+  });
+
+  useRealtimeTable({
+    table: 'live_sessions',
+    debounceMs: 500,
     onAny: fetchSessionLink,
   });
 
