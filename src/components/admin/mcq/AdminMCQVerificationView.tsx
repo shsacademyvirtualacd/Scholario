@@ -131,7 +131,6 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
 
   useModalScrollLock(isDrawerOpen);
   useModalScrollLock(mobileChapterSheetOpen);
-  useModalScrollLock(mobileFilterSheetOpen);
 
   // Close top action menu on click outside
   useEffect(() => {
@@ -1185,7 +1184,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                     )}
 
                     {/* Collapsible Explanation Toggle */}
-                    {q.explanation && (
+                    {'explanation' in q && Boolean((q as any).explanation) && (
                       <div>
                         <button
                           type="button"
@@ -1204,7 +1203,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                         {isExplanationOpen && (
                           <div className="mt-1.5 text-xs bg-zinc-50 dark:bg-neutral-800/80 p-3 rounded-xl border border-zinc-200 dark:border-neutral-700 text-zinc-700 dark:text-neutral-300 animate-in fade-in duration-150">
                             <strong className="text-zinc-900 dark:text-neutral-100 block mb-0.5">Explanation:</strong>
-                            <MathText text={q.explanation} />
+                            <MathText text={(q as any).explanation} />
                           </div>
                         )}
                       </div>

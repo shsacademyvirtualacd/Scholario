@@ -132,6 +132,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       } catch {}
       return next;
     });
+  };
+
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [pendingVisibilityCount, setPendingVisibilityCount] = useState(0);
 
