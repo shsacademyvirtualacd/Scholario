@@ -515,6 +515,91 @@ export async function clockOutStaff(payload: ClockOutPayload): Promise<StaffAtte
 }
 
 /**
+ * Admin action: Close an open / stale session with specific clock-out time and administrative note.
+ */
+export async function adminCloseStaffSession(payload: {
+  log_id: string;
+  clock_out_at: string;
+  notes: string;
+  admin_name?: string;
+}): Promise<StaffAttendanceLog> {
+  const clockOutIso = payload.clock_out_at || new Date().toISOString();
+  const noteSuffix = `[Admin closed${payload.admin_name ? ` by ${payload.admin_name}` : ''}: ${payload.notes}]`;
+
+  // 1. Try Supabase update
+  try {
+    const { data: existing } = await (supabase as any)
+      .from('staff_attendance_logs')
+      .select('clock_in_at, notes')
+      .eq('id', payload.log_id)
+      .single();
+
+    let durationSeconds = 0;
+    if (existing?.clock_in_at) {
+      durationSeconds = Math.max(
+        0,
+        Math.floor((new Date(clockOutIso).getTime() - new Date(existing.clock_in_at).getTime()) / 1000)
+      );
+    }
+
+    const updatedNotes = existing?.notes
+      ? `${existing.notes} | ${noteSuffix}`
+      : noteSuffix;
+
+    const { data, error } = await (supabase as any)
+      .from('staff_attendance_logs')
+      .update({
+        clock_out_at: clockOutIso,
+        total_active_seconds: durationSeconds,
+        notes: updatedNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', payload.log_id)
+      .select()
+      .single();
+
+    // Log to audit table if available
+    try {
+      await (supabase as any).from('admin_audit_logs').insert({
+        action: 'close_teacher_session',
+        target_id: payload.log_id,
+        details: { clock_out_at: clockOutIso, notes: payload.notes, durationSeconds },
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      // Non-fatal if audit table does not exist
+    }
+
+    if (!error && data) {
+      return data as StaffAttendanceLog;
+    }
+  } catch (err) {
+    console.warn('[StaffAttendanceService] adminCloseStaffSession DB warning:', err);
+  }
+
+  // 2. Fallback in local storage
+  const logs = getLocalFallbackLogs();
+  const idx = logs.findIndex((l) => l.id === payload.log_id);
+  if (idx >= 0) {
+    const log = logs[idx];
+    const duration = Math.max(
+      0,
+      Math.floor((new Date(clockOutIso).getTime() - new Date(log.clock_in_at).getTime()) / 1000)
+    );
+    log.clock_out_at = clockOutIso;
+    log.total_active_seconds = duration;
+    log.notes = log.notes ? `${log.notes} | ${noteSuffix}` : noteSuffix;
+    log.updated_at = new Date().toISOString();
+    logs[idx] = log;
+    saveLocalFallbackLogs(logs);
+    return log;
+  }
+
+  throw new Error('Attendance session record not found');
+}
+
+
+/**
  * Send activity heartbeat to keep session verified and update idle status
  */
 export async function sendStaffHeartbeat(payload: HeartbeatPayload): Promise<boolean> {
