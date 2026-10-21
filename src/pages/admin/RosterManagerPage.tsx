@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  Search, Users, Shield, Trash2, Edit, 
+  Search, Shield, Trash2, Edit, 
   Clock, X, UserCheck, Lock, Unlock, Phone, GraduationCap, 
   BookOpen, Copy, Check, UserPlus, Save, ShieldAlert, DollarSign,
-  CheckCircle2, AlertCircle, XCircle
+  CheckCircle2, XCircle, MoreVertical, Eye, AlertTriangle
 } from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
-import ConfirmModal from '../../components/admin/ConfirmModal';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 import { 
   getAllRoster, addRosterEntry, updateRosterEntry, 
@@ -49,22 +48,21 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   size = 'md',
 }) => {
   const isTeacher = role === 'teacher' || !showPayment;
-  const iconSize = size === 'sm' ? 10 : 11;
-  const paddingClass = size === 'sm' ? 'px-2 py-0.5 text-[9px]' : 'px-2.5 py-1 text-[10px]';
+  const iconSize = size === 'sm' ? 11 : 12;
+  const paddingClass = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-[11px]';
 
   // For teachers: badge depends ONLY on account status (active vs suspended).
-  // Teachers never pay fees, so no payment/paid/unpaid text appears anywhere.
   if (isTeacher) {
     if (isSuspended) {
       return (
-        <span className={`inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0 ${paddingClass}`}>
-          <Lock size={iconSize} /> SUSPENDED
+        <span className={`inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-full tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+          <Lock size={iconSize} /> Suspended
         </span>
       );
     }
     return (
-      <span className={`inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0 ${paddingClass}`}>
-        <UserCheck size={iconSize} /> ACTIVE
+      <span className={`inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-full tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <UserCheck size={iconSize} /> Active
       </span>
     );
   }
@@ -72,39 +70,39 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   // Student & Admin status badge behavior
   if (isSuspended) {
     return (
-      <span className={`inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+      <span className={`inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-full tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
         <Lock size={iconSize} /> Suspended
       </span>
     );
   }
 
-  if (isActive) {
+  if (isActive && feeStatusVal === 'paid') {
     return (
-      <span className={`inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
-        <UserCheck size={iconSize} /> Active · Paid
+      <span className={`inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-full tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <CheckCircle2 size={iconSize} /> Active · Paid
       </span>
     );
   }
 
   if (feeStatusVal === 'pending') {
     return (
-      <span className={`inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
-        <Clock size={iconSize} /> {size === 'sm' ? 'Verifying' : 'Awaiting Verification'}
+      <span className={`inline-flex items-center gap-1 font-bold text-purple-700 bg-purple-50 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-full tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <Clock size={iconSize} /> Awaiting Review
       </span>
     );
   }
 
-  if (isPendingPayment) {
+  if (isPendingPayment || feeStatusVal === 'unpaid') {
     return (
-      <span className={`inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
-        <DollarSign size={iconSize} /> {size === 'sm' ? 'Unpaid' : 'Pending Payment (Unpaid)'}
+      <span className={`inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-full tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+        <DollarSign size={iconSize} /> Unpaid
       </span>
     );
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-full uppercase tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
-      <Clock size={iconSize} /> {size === 'sm' ? 'Pending' : 'Pending Registration'}
+    <span className={`inline-flex items-center gap-1 font-bold text-sky-700 bg-sky-50 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-full tracking-wide whitespace-nowrap shrink-0 ${paddingClass}`}>
+      <Clock size={iconSize} /> Pending
     </span>
   );
 };
@@ -121,13 +119,20 @@ export const RosterManagerPage: React.FC = () => {
   const [streamsList, setStreamsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Tab section
-  const [activeSection, setActiveSection] = useState<'admins' | 'students' | 'teachers'>('admins');
+  // Tab section: merged segmented tabs
+  const [activeSection, setActiveSection] = useState<'admins' | 'students' | 'teachers'>('students');
 
   // Filters/Search
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'pending_account' | 'pending_payment'>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Row Dropdown menu state
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Detail Drawer state (opens when clicking a row or selecting 'View Details')
+  const [detailEntry, setDetailEntry] = useState<RosterEntry | null>(null);
 
   // Form Drawer states (Add/Edit Teacher)
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -158,13 +163,32 @@ export const RosterManagerPage: React.FC = () => {
   const [editStudentError, setEditStudentError] = useState<string | null>(null);
   const [editStudentSaving, setEditStudentSaving] = useState(false);
 
-  // Delete Modal States
+  // Delete Modal States with typed-name confirmation
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<RosterEntry | null>(null);
+  const [deleteConfirmNameInput, setDeleteConfirmNameInput] = useState('');
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
-  // Scroll locking hooks for modals and drawers to prevent background page jumping
+  // Scroll locking hooks
   useModalScrollLock(editStudentModalOpen);
   useModalScrollLock(drawerOpen);
+  useModalScrollLock(Boolean(detailEntry));
+  useModalScrollLock(deleteModalOpen);
+
+  // Close row menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuId(null);
+      }
+    };
+    if (activeMenuId) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [activeMenuId]);
 
   const fetchEnrichmentData = async () => {
     try {
@@ -240,14 +264,12 @@ export const RosterManagerPage: React.FC = () => {
     onAny: async () => { await fetchEnrichmentData(); },
   });
 
-  // Keep feeMap live: re-fetch enrichment data whenever any student's fee status changes
   useRealtimeTable({
     table: 'fee_statuses',
     onInsert: async () => { await fetchEnrichmentData(); },
     onUpdate: async () => { await fetchEnrichmentData(); },
   });
 
-  // Keep offerings live: re-fetch when class_offerings change
   useRealtimeTable({
     table: 'class_offerings',
     onAny: async () => {
@@ -277,7 +299,6 @@ export const RosterManagerPage: React.FC = () => {
     if (entry.role === 'student') {
       setSelectedClass(entry.class_ids[0] || '');
     } else {
-      // Collect all offering IDs currently assigned to this teacher
       const assignedFromOfferings = offerings
         .filter(o => {
           const tId = o.teacher_id || o.teacher?.id;
@@ -308,8 +329,6 @@ export const RosterManagerPage: React.FC = () => {
       return;
     }
 
-
-
     let normalizedPhone: string | undefined = undefined;
     if (phoneTrim) {
       const phoneValidation = validatePakistaniPhoneNumber(phoneTrim, false);
@@ -330,7 +349,6 @@ export const RosterManagerPage: React.FC = () => {
         
         await updateRosterEntry(selectedEntry.id, classesToSave, teacherTargetId);
         
-        // Immediately refetch roster and offerings to guarantee fresh data without stale cache
         const [freshRoster, freshOfferings] = await Promise.all([
           getAllRoster().catch(() => []),
           getAllOfferings().catch(() => [])
@@ -338,7 +356,6 @@ export const RosterManagerPage: React.FC = () => {
         if (freshRoster && freshRoster.length > 0) setRoster(freshRoster);
         if (freshOfferings && freshOfferings.length > 0) setOfferings(freshOfferings);
 
-        // Check if teacher has overlapping classes on admin assignment
         if (selectedEntry.role === 'teacher' && classesToSave.length >= 2 && teacherTargetId) {
           try {
             const { data: assignedSlots } = await (supabase as any)
@@ -395,7 +412,6 @@ export const RosterManagerPage: React.FC = () => {
 
         const newEntry = await addRosterEntry(emailTrim, nameTrim, role, classesToSave, normalizedPhone);
         
-        // Immediately refetch roster and offerings
         const [freshRoster, freshOfferings] = await Promise.all([
           getAllRoster().catch(() => []),
           getAllOfferings().catch(() => [])
@@ -425,10 +441,12 @@ export const RosterManagerPage: React.FC = () => {
       const nextSuspendedState = !entry.suspended;
       await toggleRosterAccess(entry.id, nextSuspendedState);
       setRoster(prev => prev.map(r => r.id === entry.id ? { ...r, suspended: nextSuspendedState } : r));
+      if (detailEntry?.id === entry.id) {
+        setDetailEntry(prev => prev ? { ...prev, suspended: nextSuspendedState } : null);
+      }
       toast.success(nextSuspendedState ? 'Roster access suspended.' : 'Roster access restored.');
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed to update access status.');
       toast.error(err.message || 'Failed to update roster access.');
     } finally {
       setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
@@ -445,10 +463,12 @@ export const RosterManagerPage: React.FC = () => {
         fee_suspended: nextFeeSuspendedState,
         awaiting_termination: nextFeeSuspendedState ? r.awaiting_termination : false
       } : r));
+      if (detailEntry?.id === entry.id) {
+        setDetailEntry(prev => prev ? { ...prev, fee_suspended: nextFeeSuspendedState } : null);
+      }
       toast.success(nextFeeSuspendedState ? 'Billing lock applied.' : 'Billing lock removed.');
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed to update billing access status.');
       toast.error(err.message || 'Failed to update billing access.');
     } finally {
       setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
@@ -468,7 +488,6 @@ export const RosterManagerPage: React.FC = () => {
 
       const studentProfileId = matchedProfile?.id || entry.profile_id || entry.id;
 
-      // Ensure profile row exists in profiles table so foreign key constraint in fee_statuses is satisfied
       if (!matchedProfile && !profilesMap[studentProfileId]) {
         const { data: existingProf } = await (supabase as any)
           .from('profiles')
@@ -488,20 +507,18 @@ export const RosterManagerPage: React.FC = () => {
         }
       }
 
-      const note = customNote || `Admin manual override: Status set to ${newStatus.toUpperCase()} from Roster Manager.`;
+      const note = customNote || `Admin override: Set to ${newStatus.toUpperCase()} from Roster Manager.`;
       await updateFeeStatus(studentProfileId, newStatus, note);
 
-      // If granting paid status, also automatically clear fee_suspended and termination request if set
       if (newStatus === 'paid' && (entry.fee_suspended || entry.awaiting_termination)) {
         await toggleFeeSuspension(entry.id, false);
         setRoster(prev => prev.map(r => r.id === entry.id ? { ...r, fee_suspended: false, awaiting_termination: false } : r));
       }
 
       await fetchEnrichmentData();
-      toast.success(`Access status for ${entry.full_name} updated to ${newStatus.toUpperCase()}.`);
+      toast.success(`Access for ${entry.full_name} set to ${newStatus.toUpperCase()}.`);
     } catch (err: any) {
       console.error('handleSetStudentFeeStatus error:', err);
-      alert(err.message || 'Failed to update student access status.');
       toast.error(err.message || 'Failed to update access status.');
     } finally {
       setProcessingIds(prev => ({ ...prev, [entry.id]: false }));
@@ -516,7 +533,6 @@ export const RosterManagerPage: React.FC = () => {
       toast.success('Payment approved successfully.');
     } catch (err: any) {
       console.error('Approve payment error:', err);
-      alert(err.message || 'Failed to approve payment.');
       toast.error(err.message || 'Failed to approve payment.');
     } finally {
       setProcessingIds(prev => ({ ...prev, [entryId]: false }));
@@ -525,30 +541,45 @@ export const RosterManagerPage: React.FC = () => {
 
   const triggerDelete = (entry: RosterEntry) => {
     if (entry.role === 'admin') {
-      alert('Access denied: Protected administrator accounts cannot be deleted.');
+      toast.error('Protected administrator accounts cannot be deleted.');
       return;
     }
     setEntryToDelete(entry);
+    setDeleteConfirmNameInput('');
     setDeleteModalOpen(true);
+    setActiveMenuId(null);
   };
 
   const confirmDelete = async () => {
-    if (entryToDelete) {
-      try {
-        await deleteRosterEntry(entryToDelete.id);
-        setRoster(prev => prev.filter(r => r.id !== entryToDelete.id && r.profile_id !== entryToDelete.id));
-        
-        // Re-fetch class offerings so that any classes previously assigned to the deleted teacher show as 'Unassigned' in the UI
-        const offeringsData = await getAllOfferings().catch(() => []);
-        setOfferings(offeringsData);
+    if (!entryToDelete) return;
+    const requiredName = (entryToDelete.full_name || '').trim().toLowerCase();
+    const enteredName = deleteConfirmNameInput.trim().toLowerCase();
+    if (enteredName !== requiredName) {
+      toast.error('The entered name does not match. Deletion cancelled.');
+      return;
+    }
 
-        toast.success('Roster entry deleted successfully.');
-      } catch (err: any) {
-        console.error(err);
-        alert(err.message || 'Failed to remove account from system.');
-        toast.error(err.message || 'Failed to delete roster entry.');
-        throw err;
+    setDeleteSubmitting(true);
+    try {
+      await deleteRosterEntry(entryToDelete.id);
+      setRoster(prev => prev.filter(r => r.id !== entryToDelete.id && r.profile_id !== entryToDelete.id));
+      
+      const offeringsData = await getAllOfferings().catch(() => []);
+      setOfferings(offeringsData);
+
+      if (detailEntry?.id === entryToDelete.id) {
+        setDetailEntry(null);
       }
+
+      toast.success(`${entryToDelete.full_name} was completely removed.`);
+      setDeleteModalOpen(false);
+      setEntryToDelete(null);
+      setDeleteConfirmNameInput('');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to delete roster entry.');
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -569,15 +600,12 @@ export const RosterManagerPage: React.FC = () => {
     if (entry.role === 'teacher') return '—';
     if ((entry as any)?.phone) return (entry as any).phone;
 
-    // 1. Direct match by roster.id or roster.profile_id
     let p = profilesMap[entry.id] || (entry.profile_id ? profilesMap[entry.profile_id] : null);
 
-    // 2. Search profiles by profile_id
     if (!p && entry.profile_id) {
       p = Object.values(profilesMap).find((prof: any) => prof.id === entry.profile_id);
     }
 
-    // 3. Search profiles by email
     if (!p && entry.email) {
       const emailLower = entry.email.trim().toLowerCase();
       p = Object.values(profilesMap).find((prof: any) => 
@@ -586,7 +614,6 @@ export const RosterManagerPage: React.FC = () => {
       );
     }
 
-    // 4. Fallback match by exact full_name
     if (!p && entry.full_name) {
       const nameLower = entry.full_name.trim().toLowerCase();
       p = Object.values(profilesMap).find((prof: any) => 
@@ -606,7 +633,6 @@ export const RosterManagerPage: React.FC = () => {
       return `${cls.display_name} (${bName})`;
     }
 
-    // Check teacher assigned offerings from both class_offerings and entry.class_ids
     const teacherOff = offerings.find(o => {
       const tId = o.teacher_id || o.teacher?.id;
       return (tId && (tId === entry.id || tId === entry.profile_id)) || (entry.class_ids && entry.class_ids.includes(o.id));
@@ -654,8 +680,8 @@ export const RosterManagerPage: React.FC = () => {
     return 'General Stream';
   };
 
-  const formatClasses = (entry: RosterEntry) => {
-    // 1. Gather all class IDs assigned via entry.class_ids AND offerings.teacher_id
+  // Get assigned offering list for a teacher
+  const getTeacherAssignedOfferings = (entry: RosterEntry) => {
     const assignedOfferingIds = new Set<string>(entry.class_ids || []);
     offerings.forEach(o => {
       const tId = o.teacher_id || o.teacher?.id;
@@ -664,51 +690,58 @@ export const RosterManagerPage: React.FC = () => {
       }
     });
 
-    if (assignedOfferingIds.size === 0) {
-      return <span className="text-zinc-400 italic text-[11px]">No schedule classes assigned</span>;
+    return Array.from(assignedOfferingIds)
+      .map(id => offerings.find(o => o.id === id))
+      .filter((o): o is ClassOffering => Boolean(o));
+  };
+
+  // Render teacher class chips with clean truncation (first 2 + '+N more')
+  const renderTeacherClasses = (entry: RosterEntry, inDrawer = false) => {
+    const teacherOfferings = getTeacherAssignedOfferings(entry);
+
+    if (teacherOfferings.length === 0) {
+      return <span className="text-zinc-400 italic text-[11px]">No classes assigned</span>;
     }
 
-    const badges: React.ReactNode[] = [];
-    let hasIelts = false;
+    const maxShown = inDrawer ? 100 : 2;
+    const shown = teacherOfferings.slice(0, maxShown);
+    const remainingCount = teacherOfferings.length - maxShown;
 
-    for (const cid of assignedOfferingIds) {
-      const off = offerings.find(o => o.id === cid);
-      if (!off) continue;
-      const rawBoard = String(off.board_id || off.board || off.class?.board_id || off.class?.board?.name || '').trim();
-      const rawBoardLower = rawBoard.toLowerCase();
-      const isIeltsOff = rawBoardLower === 'ielts' || 
-                         (off.subject_name || off.subject || '').toLowerCase().includes('ielts');
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {shown.map(off => {
+          const rawBoard = String(off.board_id || off.board || off.class?.board_id || '').toLowerCase();
+          const isIelts = rawBoard === 'ielts' || (off.subject_name || '').toLowerCase().includes('ielts');
+          const boardName = isIelts ? 'IELTS' : rawBoard.includes('punjab') ? 'Punjab' : rawBoard.includes('sindh') ? 'Sindh' : 'FBISE';
 
-      if (isIeltsOff) {
-        if (!hasIelts) {
-          hasIelts = true;
-          badges.push(
-            <span key="ielts-unified-badge" className="inline-block bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5 shadow-2xs">
-              IELTS Preparation
+          return (
+            <span 
+              key={off.id}
+              className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md border whitespace-nowrap shadow-2xs ${
+                isIelts 
+                  ? 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' 
+                  : 'bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700'
+              }`}
+            >
+              {off.subject_name || 'Class'} {off.grade ? `(Gr. ${off.grade} · ${boardName})` : `(${boardName})`}
             </span>
           );
-        }
-      } else {
-        const boardClean = rawBoardLower.includes('punjab')
-          ? 'Punjab'
-          : rawBoardLower.includes('federal') || rawBoardLower.includes('fbise')
-          ? 'Federal'
-          : rawBoardLower.includes('sindh')
-          ? 'Sindh'
-          : rawBoard || 'General';
-
-        badges.push(
-          <span key={cid} className="inline-block bg-[#F5F5F5] border border-[#E5E5E5] text-[#404040] text-[10px] font-bold px-2.5 py-1 rounded-lg mr-1.5 mb-1.5 shadow-2xs">
-            {off.subject_name || off.subject || 'Class'} (Gr. {off.grade} · {boardClean})
-          </span>
-        );
-      }
-    }
-
-    if (badges.length === 0) {
-      return <span className="text-zinc-400 italic text-[11px]">No schedule classes assigned</span>;
-    }
-    return badges;
+        })}
+        {!inDrawer && remainingCount > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDetailEntry(entry);
+            }}
+            className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 transition-colors"
+            title="Click to view all assigned classes in detail drawer"
+          >
+            +{remainingCount} more
+          </button>
+        )}
+      </div>
+    );
   };
 
   // Student Edit and Access Actions
@@ -740,12 +773,10 @@ export const RosterManagerPage: React.FC = () => {
     }
     setEditStudentStreamId(streamId);
 
-    // Initial fee status from feeMap
     const profileIdForFee = p?.id || entry.profile_id || entry.id;
     const currentFeeStatus = (profileIdForFee && feeMap[profileIdForFee]?.status) || 'unpaid';
     setEditStudentFeeStatus(currentFeeStatus as 'unpaid' | 'pending' | 'paid');
 
-    // Subject plan initialization
     const plan = getStudentSubjectPlanSync(profileIdForFee);
     if (plan && plan.plan_type === 'custom' && plan.subjects.length > 0) {
       setEditStudentEnrollmentMode('custom');
@@ -840,13 +871,11 @@ export const RosterManagerPage: React.FC = () => {
       const finalSubjects = isCustomPlan ? editStudentSubjects : null;
       const finalPlanType = isCustomPlan ? 'custom' : 'all';
 
-      // Persist subject enrollment plan locally and in cache
       saveStudentSubjectPlan(studentProfileId, {
         subjects: finalSubjects || [],
         plan_type: finalPlanType
       });
 
-      // 1. Update/Upsert Profile in profiles table
       const profilePayload: any = {
         full_name: nameTrim,
         board_id: editStudentBoard,
@@ -872,7 +901,6 @@ export const RosterManagerPage: React.FC = () => {
         if (profInsErr) throw profInsErr;
       }
 
-      // 2. Update roster table entry
       await (supabase as any)
         .from('roster')
         .update({
@@ -885,7 +913,6 @@ export const RosterManagerPage: React.FC = () => {
         })
         .or(`id.eq.${editStudentEntry.id},profile_id.eq.${studentProfileId},email.eq.${editStudentEntry.email.toLowerCase()}`);
 
-      // 3. Clear existing enrollments & re-enroll in the matching offerings
       try {
         await (supabase as any).from('enrollments').delete().eq('student_id', studentProfileId);
 
@@ -930,10 +957,9 @@ export const RosterManagerPage: React.FC = () => {
           await (supabase as any).from('enrollments').insert(enrollInserts);
         }
       } catch (enrErr) {
-        console.warn('Enrollment re-sync error (non-fatal):', enrErr);
+        console.warn('Enrollment re-sync warning:', enrErr);
       }
 
-      // 4. Update/Upsert fee_statuses with the selected fee status
       try {
         await updateFeeStatus(
           studentProfileId,
@@ -949,154 +975,125 @@ export const RosterManagerPage: React.FC = () => {
 
       toast.success(`Profile for ${nameTrim} updated successfully.`);
       setEditStudentModalOpen(false);
-      await Promise.all([loadData(), fetchEnrichmentData()]);
+      await loadData();
     } catch (err: any) {
-      console.error('Save student profile error:', err);
+      console.error('handleSaveStudentProfile error:', err);
       setEditStudentError(err.message || 'Failed to update student profile.');
-      toast.error(err.message || 'Failed to update student profile.');
+      toast.error(err.message || 'Failed to save student profile.');
     } finally {
       setEditStudentSaving(false);
     }
   };
 
-  // Filter & Section breakdown
+  // Section counts
+  const adminCount = useMemo(() => roster.filter(r => r.role === 'admin').length, [roster]);
+  const studentCount = useMemo(() => roster.filter(r => r.role === 'student').length, [roster]);
+  const teacherCount = useMemo(() => roster.filter(r => r.role === 'teacher').length, [roster]);
+
+  // Filtered Roster
   const filteredRoster = useMemo(() => {
     return roster.filter(entry => {
-      const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) || 
-        profilesMap[entry.id] || 
+      // Role match
+      if (activeSection === 'admins' && entry.role !== 'admin') return false;
+      if (activeSection === 'students' && entry.role !== 'student') return false;
+      if (activeSection === 'teachers' && entry.role !== 'teacher') return false;
+
+      const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
+        profilesMap[entry.id] ||
         (entry.email ? Object.values(profilesMap).find((p: any) => (p.email || '').toLowerCase() === (entry.email || '').toLowerCase()) : null);
-
-      const effectiveRole = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase();
-      if (effectiveRole !== activeSection.slice(0, -1)) return false;
-
-      const q = searchTerm.toLowerCase();
-      const phoneVal = getPhone(entry).toLowerCase();
-      const matchesSearch = !q || 
-        (entry.full_name || '').toLowerCase().includes(q) ||
-        (entry.email || '').toLowerCase().includes(q) ||
-        (entry.id || '').toLowerCase().includes(q) ||
-        (entry.profile_id || '').toLowerCase().includes(q) ||
-        (phoneVal !== '—' && phoneVal.includes(q));
-
-      if (!matchesSearch) return false;
-
       const hasProfile = Boolean(matchedProfile || entry.profile_id);
       const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
       const isSuspended = entry.suspended === true;
-      
-      const isStudent = effectiveRole === 'student';
 
-      // Teachers never pay fees; fee tracking is only evaluated for students
-      const profileIdForFee = isStudent ? (matchedProfile?.id || entry.profile_id) : undefined;
-      const feeStatusObj = profileIdForFee ? feeMap[profileIdForFee] : null;
-      const feeStatus = isStudent ? (feeStatusObj?.status || 'unpaid') : undefined;
-      
-      const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
-      const isPendingPayment = isStudent ? (!isPendingAccount && feeStatus !== 'paid') : false;
-      const isActive = isStudent ? (!isPendingAccount && !isPendingPayment && !isSuspended) : !isSuspended;
+      // Status Filter logic
+      if (statusFilter !== 'all') {
+        if (activeSection === 'teachers') {
+          if (statusFilter === 'active' && isSuspended) return false;
+          if (statusFilter === 'suspended' && !isSuspended) return false;
+          if (statusFilter === 'not_signed_in' && (hasProfile && isOnboardingComplete)) return false;
+          if (statusFilter === 'no_classes') {
+            const assigned = getTeacherAssignedOfferings(entry);
+            if (assigned.length > 0) return false;
+          }
+        } else if (activeSection === 'students') {
+          const profileIdForFee = matchedProfile?.id || entry.profile_id || entry.id;
+          const feeStatusVal = profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : 'unpaid';
+          
+          if (statusFilter === 'active' && (isSuspended || feeStatusVal !== 'paid')) return false;
+          if (statusFilter === 'suspended' && !isSuspended) return false;
+          if (statusFilter === 'pending_review' && feeStatusVal !== 'pending') return false;
+          if (statusFilter === 'pending_payment' && feeStatusVal !== 'unpaid') return false;
+          if (statusFilter === 'not_signed_in' && (hasProfile && isOnboardingComplete)) return false;
+        } else if (activeSection === 'admins') {
+          if (statusFilter === 'active' && isSuspended) return false;
+          if (statusFilter === 'suspended' && !isSuspended) return false;
+        }
+      }
 
-      if (statusFilter === 'active' && !isActive) return false;
-      if (statusFilter === 'suspended' && !isSuspended) return false;
-      if (statusFilter === 'pending_account' && !isPendingAccount) return false;
-      if (statusFilter === 'pending_payment' && !isPendingPayment) return false;
+      // Search matching
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const nameMatch = (entry.full_name || '').toLowerCase().includes(q);
+        const emailMatch = (entry.email || '').toLowerCase().includes(q);
+        const phoneMatch = getPhone(entry).toLowerCase().includes(q);
+        const idMatch = (entry.id || '').toLowerCase().includes(q) || formatStudentId(entry.id).toLowerCase().includes(q);
+        return nameMatch || emailMatch || phoneMatch || idMatch;
+      }
 
       return true;
     });
-  }, [roster, activeSection, searchTerm, statusFilter, profilesMap, feeMap]);
+  }, [roster, activeSection, statusFilter, searchTerm, profilesMap, feeMap, offerings]);
 
-  const adminCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'admin').length, [roster, profilesMap]);
-  const studentCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'student').length, [roster, profilesMap]);
-  const teacherCount = useMemo(() => roster.filter(r => ((r.profile_id && profilesMap[r.profile_id]?.role) || profilesMap[r.id]?.role || r.role || '').trim().toLowerCase() === 'teacher').length, [roster, profilesMap]);
-
-  const regularBoards = useMemo(() => BOARDS.filter(b => b.id !== 'ielts'), []);
+  // Board offerings for teacher provisioning
+  const regularBoards = useMemo(() => {
+    return BOARDS.filter(b => b.id !== 'ielts');
+  }, []);
 
   const boardOfferingsMap = useMemo(() => {
     const map: Record<string, ClassOffering[]> = {};
     regularBoards.forEach(b => {
-      map[b.id] = offerings
-        .filter(o => (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase() === b.id)
-        .sort((a, bOff) => {
-          const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
-          const bGrade = parseInt(String(bOff.grade || bOff.class?.grade || '99'), 10);
-          if (aGrade !== bGrade) return aGrade - bGrade;
-          return (a.subject_name || '').localeCompare(bOff.subject_name || '');
-        });
+      map[b.id] = offerings.filter(o => {
+        const rawBoard = String(o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+        return rawBoard === b.id || rawBoard.includes(b.id);
+      });
     });
     return map;
-  }, [offerings, regularBoards]);
+  }, [regularBoards, offerings]);
 
   const ieltsOfferings = useMemo(() => {
-    const allIelts = offerings.filter(o => {
-      const b = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
-      return b === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts');
+    return offerings.filter(o => {
+      const rawBoard = String(o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      return rawBoard === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts');
     });
-    if (allIelts.length === 0) return [];
-    
-    // Return a single unified IELTS Preparation offering
-    const exact = allIelts.find(o => (o.subject_name || o.subject || '').toLowerCase() === 'ielts preparation');
-    if (exact) return [exact];
-    return [{
-      ...allIelts[0],
-      subject_name: 'IELTS Preparation',
-      subject: 'IELTS Preparation',
-    }];
   }, [offerings]);
 
   const otherOfferings = useMemo(() => {
-    const knownBoardIds = BOARDS.map(b => b.id as string);
-    return offerings
-      .filter(o => {
-        const bId = (o.board_id || o.board || o.class?.board_id || o.class?.board?.id || '').toLowerCase();
-        return !knownBoardIds.includes(bId) && !(o.subject_name || '').toLowerCase().includes('ielts');
-      })
-      .sort((a, b) => {
-        const aGrade = parseInt(String(a.grade || a.class?.grade || '99'), 10);
-        const bGrade = parseInt(String(b.grade || b.class?.grade || '99'), 10);
-        if (aGrade !== bGrade) return aGrade - bGrade;
-        return (a.subject_name || '').localeCompare(b.subject_name || '');
-      });
+    return offerings.filter(o => {
+      const rawBoard = String(o.board_id || o.board || o.class?.board_id || '').toLowerCase();
+      const isKnown = BOARDS.some(b => rawBoard === b.id || rawBoard.includes(b.id)) || (o.subject_name || '').toLowerCase().includes('ielts');
+      return !isKnown;
+    });
   }, [offerings]);
 
-  const availableClassesForEdit = useMemo(() => {
-    return classesList
-      .filter(c => (c.board_id || '').toLowerCase() === editStudentBoard)
-      .sort((a, b) => parseInt(a.grade || '0', 10) - parseInt(b.grade || '0', 10));
-  }, [classesList, editStudentBoard]);
-
-  const availableStreamsForEdit = useMemo(() => {
-    if (!editStudentClass) return [];
-    return streamsList.filter(s => s.class_id === editStudentClass);
-  }, [streamsList, editStudentClass]);
-
-  const availableSubjectsForEdit = useMemo(() => {
-    const cls = classesList.find(c => c.id === editStudentClass);
-    const grade = cls?.grade || '10';
-    let streamName = '';
+  // Available subjects for selected class in student edit modal
+  const availableModalSubjects = useMemo(() => {
     if (editStudentBoard === 'ielts') {
-      const isGt =
-        editStudentStreamId === 'general-training' ||
-        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general');
-      streamName = isGt ? 'General Training' : 'Academic';
-    } else {
-      const st = streamsList.find(s => s.id === editStudentStreamId);
-      streamName = st?.name || '';
+      return ['Listening', 'Reading', 'Writing', 'Speaking'];
     }
-    return getSubjectsForStream(grade, streamName, editStudentBoard);
+    const currentClassObj = classesList.find(c => c.id === editStudentClass);
+    const grade = currentClassObj?.grade || '9';
+    const currentStreamObj = streamsList.find(s => s.id === editStudentStreamId);
+    const streamName = currentStreamObj?.name || 'Science';
+    return getSubjectsForStream(grade, editStudentBoard, streamName);
   }, [classesList, streamsList, editStudentClass, editStudentStreamId, editStudentBoard]);
 
+  // Admin calculated fee
   const adminCalculatedSubjectFee = useMemo(() => {
-    const cls = classesList.find(c => c.id === editStudentClass);
-    const grade = cls?.grade || '10';
-    let streamName = '';
-    if (editStudentBoard === 'ielts') {
-      const isGt =
-        editStudentStreamId === 'general-training' ||
-        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general');
-      streamName = isGt ? 'General Training' : 'Academic';
-    } else {
-      const st = streamsList.find(s => s.id === editStudentStreamId);
-      streamName = st?.name || '';
-    }
+    if (editStudentEnrollmentMode !== 'custom' || editStudentBoard === 'ielts') return null;
+    const currentClassObj = classesList.find(c => c.id === editStudentClass);
+    const grade = currentClassObj?.grade || '9';
+    const currentStreamObj = streamsList.find(s => s.id === editStudentStreamId);
+    const streamName = currentStreamObj?.name || 'General';
     const defaultStreamPrice = getDefaultPrice(grade, editStudentBoard, streamName);
     return calculateSubjectEnrollmentFee({
       grade,
@@ -1111,152 +1108,133 @@ export const RosterManagerPage: React.FC = () => {
   return (
     <AdminShell>
       <SectionHeader
-        title="Platform Roster Management"
-        description="Manage user accounts cleanly separated into three sections: Admins, Students, and Teachers. Suspend or remove accounts with safe cascading cleanup."
+        title="Roster Manager"
+        description="Directory of platform administrators, enrolled students, and faculty members. Tap any row to inspect details or manage access."
       />
 
-      {/* ── Statistics Overview Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div 
-          onClick={() => { setActiveSection('admins'); setStatusFilter('all'); }}
-          className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'admins' ? 'border-red-500 bg-red-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-red-300'}`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
-              <Shield size={16} />
-            </div>
-            <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Protected</span>
-          </div>
-          <div className="stat-value text-red-600 text-2xl font-black">{adminCount}</div>
-          <div className="stat-label font-bold text-xs">Administrators</div>
-        </div>
-
-        <div 
-          onClick={() => { setActiveSection('students'); setStatusFilter('all'); }}
-          className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'students' ? 'border-indigo-500 bg-indigo-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-indigo-300'}`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-              <GraduationCap size={16} />
-            </div>
-            <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Enrolled</span>
-          </div>
-          <div className="stat-value text-indigo-600 text-2xl font-black">{studentCount}</div>
-          <div className="stat-label font-bold text-xs">Students</div>
-        </div>
-
-        <div 
-          onClick={() => { setActiveSection('teachers'); setStatusFilter('all'); }}
-          className={`stat-card cursor-pointer transition-all border-2 p-4 flex flex-col justify-between ${activeSection === 'teachers' ? 'border-purple-500 bg-purple-50/20 shadow-md' : 'border-[#E5E5E5] bg-white hover:border-purple-300'}`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
-              <BookOpen size={16} />
-            </div>
-            <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Faculty</span>
-          </div>
-          <div className="stat-value text-purple-600 text-2xl font-black">{teacherCount}</div>
-          <div className="stat-label font-bold text-xs">Teachers</div>
-        </div>
-
-        <div className="stat-card bg-white border border-[#E5E5E5] p-4 flex flex-col justify-between interactive">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-              <Users size={16} />
-            </div>
-            <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-wider">Platform</span>
-          </div>
-          <div className="stat-value text-emerald-600 text-2xl font-black">{roster.length}</div>
-          <div className="stat-label font-bold text-xs">Total Roster</div>
-        </div>
-      </div>
-
-      {/* ── Section Navigation Tabs ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E5E5E5] pb-4 mb-6">
-        <div className="flex items-center gap-2 bg-[#FAFAFA] p-1 rounded-2xl border border-[#E5E5E5] max-w-full overflow-x-auto no-scrollbar whitespace-nowrap">
+      {/* ── UNIFIED SEGMENTED TAB BAR WITH COUNTS ── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-5">
+        <div className="inline-flex items-center p-1 bg-zinc-100 dark:bg-neutral-800 rounded-2xl border border-zinc-200 dark:border-neutral-700 max-w-full overflow-x-auto no-scrollbar">
           <button
-            onClick={() => { setActiveSection('admins'); setStatusFilter('all'); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-              activeSection === 'admins'
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'text-[#737373] hover:text-[#111111] hover:bg-white'
-            }`}
-          >
-            <Shield size={14} /> Admins ({adminCount})
-          </button>
-          <button
+            type="button"
             onClick={() => { setActiveSection('students'); setStatusFilter('all'); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
               activeSection === 'students'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-[#737373] hover:text-[#111111] hover:bg-white'
+                ? 'bg-white dark:bg-neutral-900 text-indigo-700 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-neutral-700'
+                : 'text-zinc-600 dark:text-neutral-400 hover:text-zinc-900 dark:hover:text-neutral-100'
             }`}
           >
-            <GraduationCap size={14} /> Students ({studentCount})
+            <GraduationCap size={15} />
+            <span>Students</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+              activeSection === 'students' 
+                ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300' 
+                : 'bg-zinc-200 dark:bg-neutral-700 text-zinc-700 dark:text-neutral-300'
+            }`}>
+              {studentCount}
+            </span>
           </button>
+
           <button
+            type="button"
             onClick={() => { setActiveSection('teachers'); setStatusFilter('all'); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
               activeSection === 'teachers'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-[#737373] hover:text-[#111111] hover:bg-white'
+                ? 'bg-white dark:bg-neutral-900 text-purple-700 dark:text-purple-400 shadow-sm border border-zinc-200/80 dark:border-neutral-700'
+                : 'text-zinc-600 dark:text-neutral-400 hover:text-zinc-900 dark:hover:text-neutral-100'
             }`}
           >
-            <BookOpen size={14} /> Teachers ({teacherCount})
+            <BookOpen size={15} />
+            <span>Teachers</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+              activeSection === 'teachers' 
+                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300' 
+                : 'bg-zinc-200 dark:bg-neutral-700 text-zinc-700 dark:text-neutral-300'
+            }`}>
+              {teacherCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveSection('admins'); setStatusFilter('all'); }}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              activeSection === 'admins'
+                ? 'bg-white dark:bg-neutral-900 text-red-700 dark:text-red-400 shadow-sm border border-zinc-200/80 dark:border-neutral-700'
+                : 'text-zinc-600 dark:text-neutral-400 hover:text-zinc-900 dark:hover:text-neutral-100'
+            }`}
+          >
+            <Shield size={15} />
+            <span>Admins</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+              activeSection === 'admins' 
+                ? 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300' 
+                : 'bg-zinc-200 dark:bg-neutral-700 text-zinc-700 dark:text-neutral-300'
+            }`}>
+              {adminCount}
+            </span>
           </button>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        {/* Action Button & Platform Count */}
+        <div className="flex items-center justify-between sm:justify-end gap-3">
+          <span className="text-xs font-semibold text-zinc-500 dark:text-neutral-400">
+            Total Roster: <strong className="text-zinc-900 dark:text-neutral-100">{roster.length}</strong> accounts
+          </span>
+
           {activeSection === 'teachers' && (
             <button
               onClick={openAddTeacher}
-              className="btn bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all w-full sm:w-auto interactive"
+              className="min-h-[44px] px-4 py-2 bg-[#F4C430] hover:bg-[#E5B520] text-zinc-950 font-bold text-xs rounded-xl inline-flex items-center gap-1.5 shadow-sm transition-all shrink-0 cursor-pointer"
             >
-              <UserPlus size={14} /> Provision Teacher
+              <UserPlus size={15} /> Provision Teacher
             </button>
           )}
         </div>
       </div>
 
-      {/* ── Search & Filters Bar ── */}
-      <div className="card bg-white border border-[#E5E5E5] p-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6 rounded-2xl shadow-sm interactive">
+      {/* ── SEARCH & FILTER CONTROLS ── */}
+      <div className="bg-white dark:bg-neutral-900 border border-zinc-200 dark:border-neutral-800 p-3.5 sm:p-4 rounded-2xl shadow-xs mb-5 flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="relative w-full md:w-80">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
-            placeholder={`Search ${activeSection} by name, email, or ID...`}
+            placeholder={`Search ${activeSection} by name, email, phone, or ID...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-10 py-2.5 text-xs w-full bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium focus:bg-white"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-medium focus:bg-white dark:focus:bg-neutral-900 text-zinc-900 dark:text-neutral-100 min-h-[44px]"
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#F5F5F5] pt-3 md:pt-0">
-          <span className="text-xs font-bold text-[#737373] uppercase tracking-wider">Status:</span>
+        <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
+          <label htmlFor="roster-status-filter" className="text-xs font-bold text-zinc-500 dark:text-neutral-400 uppercase tracking-wider shrink-0">Filter:</label>
           <select
+            id="roster-status-filter"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="input py-2 px-3 text-xs bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-semibold text-[#111111] cursor-pointer flex-1 md:flex-none"
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="min-h-[44px] py-2 px-3 text-xs bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-semibold text-zinc-900 dark:text-neutral-100 cursor-pointer flex-1 md:flex-none"
           >
             {activeSection === 'teachers' ? (
               <>
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="suspended">Suspended</option>
+                <option value="all">All Teachers</option>
+                <option value="active">Active Only</option>
+                <option value="suspended">Suspended Accounts</option>
+                <option value="not_signed_in">Not Yet Signed In</option>
+                <option value="no_classes">No Classes Assigned</option>
               </>
             ) : activeSection === 'students' ? (
               <>
-                <option value="all">All Statuses</option>
-                <option value="active">Active (Paid & Verified)</option>
+                <option value="all">All Students</option>
+                <option value="active">Active · Paid</option>
+                <option value="pending_review">Awaiting Review</option>
+                <option value="pending_payment">Unpaid</option>
                 <option value="suspended">Suspended Accounts</option>
-                <option value="pending_account">Pending Registration</option>
-                <option value="pending_payment">Pending Payment</option>
+                <option value="not_signed_in">Not Yet Signed In</option>
               </>
             ) : (
               <>
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
+                <option value="all">All Admins</option>
+                <option value="active">Active Only</option>
                 <option value="suspended">Suspended Accounts</option>
               </>
             )}
@@ -1264,18 +1242,19 @@ export const RosterManagerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Table Section Display ── */}
-      <div className={isMobile ? "" : "card bg-white border border-[#E5E5E5] rounded-2xl overflow-hidden shadow-sm"}>
+      {/* ── TABLE / CARD DIRECTORY ── */}
+      <div className="bg-white dark:bg-neutral-900 border border-zinc-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-xs">
         {loading ? (
-          <div className="flex items-center justify-center p-16 text-[#737373] text-xs font-bold">
-            <Clock size={16} className="animate-spin mr-2 text-[#111111]" /> Syncing {activeSection} directory...
+          <div className="flex items-center justify-center p-16 text-zinc-500 text-xs font-bold gap-2">
+            <Clock size={16} className="animate-spin text-zinc-900 dark:text-neutral-100" /> Syncing {activeSection} directory...
           </div>
         ) : filteredRoster.length === 0 ? (
-          <div className="text-center p-16 text-[#737373] text-xs font-medium">
-            No {activeSection} found matching current filter or search parameters.
+          <div className="text-center p-16 text-zinc-500 dark:text-neutral-400 text-xs font-medium">
+            No {activeSection} found matching current filter or search criteria.
           </div>
         ) : isMobile ? (
-          <div className="space-y-4 p-1 bg-transparent">
+          /* Mobile Card Directory */
+          <div className="divide-y divide-zinc-100 dark:divide-neutral-800">
             {filteredRoster.map((entry) => {
               const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
                 profilesMap[entry.id] ||
@@ -1283,10 +1262,9 @@ export const RosterManagerPage: React.FC = () => {
               const hasProfile = Boolean(matchedProfile || entry.profile_id);
               const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
               const isSuspended = entry.suspended === true;
-              const isTeacher = (matchedProfile?.role || entry.role || '').trim().toLowerCase() === 'teacher' || activeSection === 'teachers';
-              const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student' && !isTeacher;
+              const isTeacher = entry.role === 'teacher';
+              const isStudent = entry.role === 'student';
 
-              // Only students have fee tracking; remove fee/payment lookups and logic for teachers
               const profileIdForFee = isStudent ? (matchedProfile?.id || entry.profile_id || entry.id) : undefined;
               const feeStatusVal = isStudent && profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : undefined;
               const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
@@ -1295,209 +1273,218 @@ export const RosterManagerPage: React.FC = () => {
               const idShort = formatStudentId(entry.id || entry.profile_id || '');
 
               return (
-                <div key={entry.id} className="bg-white rounded-2xl border border-[#E5E5E5] p-3 shadow-sm flex flex-col gap-3">
+                <div 
+                  key={entry.id} 
+                  onClick={() => setDetailEntry(entry)}
+                  className="p-4 hover:bg-zinc-50 dark:hover:bg-neutral-800/60 transition-colors cursor-pointer flex flex-col gap-2.5"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="font-extrabold text-[#111111] text-sm flex items-center gap-1.5 flex-wrap">
+                      <div className="font-extrabold text-zinc-900 dark:text-neutral-100 text-sm flex items-center gap-1.5 flex-wrap">
                         <span className="truncate">{entry.full_name}</span>
                         {entry.role === 'admin' && (
-                          <span className="bg-red-100 text-red-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-red-200 shrink-0">
+                          <span className="bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800 shrink-0">
                             Admin
                           </span>
                         )}
+                        {isStudent && (
+                          <span className="text-[10px] font-mono text-zinc-500 font-bold">#{idShort}</span>
+                        )}
                       </div>
-                      <div className="text-[#737373] text-[11px] font-medium mt-0.5 truncate">{entry.email}</div>
-                      {activeSection === 'students' && getPhone(entry) !== '—' && (
-                        <div className="flex items-center gap-1.5 text-xs text-[#374151] font-bold mt-1">
-                          <Phone size={12} className="text-[#F4C430] shrink-0" />
-                          <span>{getPhone(entry)}</span>
-                        </div>
-                      )}
+                      <div className="text-zinc-500 dark:text-neutral-400 text-xs font-medium truncate mt-0.5">{entry.email}</div>
                     </div>
-                    {/* Access Status Badge */}
-                    <div className="shrink-0">
-                      <StatusBadge
-                        role={isTeacher ? 'teacher' : isStudent ? 'student' : 'admin'}
-                        showPayment={!isTeacher}
-                        isSuspended={isSuspended}
-                        isActive={isActive}
-                        feeStatusVal={feeStatusVal}
-                        isPendingPayment={isPendingPayment}
-                        size="sm"
-                      />
-                    </div>
+
+                    <StatusBadge
+                      role={isTeacher ? 'teacher' : isStudent ? 'student' : 'admin'}
+                      showPayment={!isTeacher}
+                      isSuspended={isSuspended}
+                      isActive={isActive}
+                      feeStatusVal={feeStatusVal}
+                      isPendingPayment={isPendingPayment}
+                      size="sm"
+                    />
                   </div>
 
-                  {activeSection === 'students' && (
-                    <div className="grid grid-cols-2 gap-3 text-xs bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
-                      <div>
-                        <div className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider mb-0.5">Phone</div>
-                        <div className="font-bold text-[#111111] flex items-center gap-1.5 whitespace-nowrap">
-                          <Phone size={12} className="text-[#A3A3A3] shrink-0" />
-                          <span>{getPhone(entry)}</span>
-                        </div>
+                  {/* Metadata Row */}
+                  {isStudent && (
+                    <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-neutral-300 bg-zinc-50 dark:bg-neutral-800/70 px-3 py-2 rounded-xl">
+                      <div className="font-semibold truncate max-w-[200px]" title={getClassGrade(entry)}>
+                        {getShortClassGrade(entry)} · {getStream(entry)}
                       </div>
-                      <div>
-                        <div className="text-[10px] text-[#A3A3A3] dark:text-[#A1A1AA] font-bold uppercase tracking-wider mb-0.5">Class</div>
-                        <div className="font-semibold text-[#111111] dark:text-[#F4F4F5] truncate max-w-[150px]" title={getClassGrade(entry)}>
-                          {getShortClassGrade(entry)}
+                      {getPhone(entry) !== '—' && (
+                        <div className="flex items-center gap-1 font-mono text-[11px] text-zinc-500">
+                          <Phone size={11} /> {getPhone(entry)}
                         </div>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-between mt-1 pt-2 border-t border-[#EAEAEA] dark:border-[#27272A]">
-                        <div className="min-w-0 flex-1 pr-2">
-                          <div className="text-[10px] text-[#A3A3A3] dark:text-[#A1A1AA] font-bold uppercase tracking-wider mb-0.5">Stream</div>
-                          <div className="font-semibold text-[#404040] dark:text-[#D4D4D8] truncate" title={getStream(entry)}>
-                            {getStream(entry)}
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-[10px] text-[#A3A3A3] dark:text-[#A1A1AA] font-bold uppercase tracking-wider mb-0.5">ID</div>
-                          <div className="font-mono font-bold text-[#525252] dark:text-[#D4D4D8] flex items-center gap-1">
-                            #{idShort}
-                            <button onClick={() => copyToClipboard(entry.id)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-                              {copiedId === entry.id ? <Check size={10} className="text-emerald-600" /> : <Copy size={10} />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
-                  {activeSection === 'teachers' && (
-                    <div className="text-xs text-[#525252] bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0]">
-                      {formatClasses(entry)}
+                  {isTeacher && (
+                    <div className="pt-1">
+                      {renderTeacherClasses(entry, false)}
                     </div>
                   )}
 
-                  {activeSection !== 'admins' && (
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-[#F0F0F0]">
-                      {activeSection === 'students' && (
-                        <>
+                  <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-neutral-800 text-xs">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDetailEntry(entry);
+                      }}
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline min-h-[44px] inline-flex items-center gap-1"
+                    >
+                      <Eye size={13} /> View Details
+                    </button>
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === entry.id ? null : entry.id);
+                        }}
+                        className="min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                        aria-label="Actions"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+
+                      {activeMenuId === entry.id && (
+                        <div 
+                          ref={menuRef}
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 bottom-full mb-1 w-48 bg-white dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl shadow-xl z-30 py-1"
+                        >
                           <button
-                            onClick={() => openEditStudent(entry)}
-                            className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap"
-                            title="Edit student profile & fee status"
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              setDetailEntry(entry);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-700 flex items-center gap-2"
                           >
-                            <Edit size={12} /> Edit
+                            <Eye size={13} /> View Full Profile
                           </button>
 
-                          {feeStatusVal === 'pending' && (
+                          {isStudent && (
                             <button
-                              onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
-                              disabled={processingIds[entry.id]}
-                              className="px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
-                              title="Approve pending payment proof"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                openEditStudent(entry);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-700 flex items-center gap-2"
                             >
-                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <Check size={12} />}
-                              <span>Approve</span>
+                              <Edit size={13} /> Edit Profile & Plan
                             </button>
                           )}
 
-                          {feeStatusVal !== 'paid' ? (
+                          {isTeacher && (
                             <button
-                              onClick={() => handleSetStudentFeeStatus(entry, 'paid')}
-                              disabled={processingIds[entry.id]}
-                              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 font-bold text-xs inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
-                              title="Direct Admin Override: Verify & Grant Paid Access"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                openEdit(entry);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-700 flex items-center gap-2"
                             >
-                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
-                              <span>Grant Paid</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleSetStudentFeeStatus(entry, 'unpaid')}
-                              disabled={processingIds[entry.id]}
-                              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-700 font-bold text-xs inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
-                              title="Direct Admin Override: Revoke Paid Access"
-                            >
-                              {processingIds[entry.id] ? <Clock size={12} className="animate-spin" /> : <XCircle size={12} />}
-                              <span>Revoke Paid</span>
+                              <Edit size={13} /> Edit Class Assignments
                             </button>
                           )}
-                        </>
+
+                          {entry.role !== 'admin' && (
+                            <button
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                handleToggleAccess(entry);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                            >
+                              {isSuspended ? <Unlock size={13} /> : <Lock size={13} />}
+                              {isSuspended ? 'Restore Access' : 'Suspend Account'}
+                            </button>
+                          )}
+
+                          {isStudent && (
+                            <>
+                              {feeStatusVal === 'pending' && profileIdForFee && (
+                                <button
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    handleApprovePayment(profileIdForFee, entry.id);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-semibold text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 flex items-center gap-2"
+                                >
+                                  <Check size={13} /> Approve Payment
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  handleSetStudentFeeStatus(entry, feeStatusVal === 'paid' ? 'unpaid' : 'paid');
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                              >
+                                {feeStatusVal === 'paid' ? <XCircle size={13} /> : <CheckCircle2 size={13} />}
+                                {feeStatusVal === 'paid' ? 'Revoke Paid Access' : 'Grant Paid Access'}
+                              </button>
+                            </>
+                          )}
+
+                          {entry.role !== 'admin' && (
+                            <div className="border-t border-zinc-100 dark:border-neutral-700 my-1 pt-1">
+                              <button
+                                onClick={() => triggerDelete(entry)}
+                                className="w-full text-left px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2"
+                              >
+                                <Trash2 size={13} /> Delete Account...
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
-
-                      <button
-                        disabled={processingIds[entry.id]}
-                        onClick={() => handleToggleAccess(entry)}
-                        className={`flex-1 min-w-[90px] py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all whitespace-nowrap ${
-                          isSuspended 
-                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                            : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
-                        } disabled:opacity-50`}
-                      >
-                        {processingIds[entry.id] ? (
-                          <Clock size={12} className="animate-spin" />
-                        ) : isSuspended ? (
-                          <><Unlock size={12} /> Restore</>
-                        ) : (
-                          <><Lock size={12} /> Suspend</>
-                        )}
-                      </button>
-
-                      {activeSection === 'students' && (
-                        <button
-                          disabled={processingIds[entry.id]}
-                          onClick={() => handleToggleFeeAccess(entry)}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1 transition-all whitespace-nowrap ${
-                            entry.fee_suspended
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                          } disabled:opacity-50`}
-                          title={entry.fee_suspended ? "Unlock Billing" : "Lock Billing"}
-                        >
-                          {entry.fee_suspended ? <Unlock size={12} /> : <DollarSign size={12} />}
-                        </button>
-                      )}
-
-                      {activeSection === 'teachers' && (
-                        <button
-                          onClick={() => openEdit(entry)}
-                          className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-xl text-zinc-700 font-bold inline-flex items-center justify-center"
-                        >
-                          <Edit size={12} />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => triggerDelete(entry)}
-                        className="px-3 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 font-bold text-xs inline-flex items-center justify-center whitespace-nowrap"
-                      >
-                        <Trash2 size={12} />
-                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-left border-collapse">
+          /* Desktop & Tablet Table (Fits without horizontal scroll at 1366px) */
+          <div className="w-full">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA]">
+                <tr className="border-b border-zinc-200 dark:border-neutral-800 bg-zinc-50/80 dark:bg-neutral-800/50">
                   {activeSection === 'students' && (
-                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider hidden md:table-cell whitespace-nowrap w-24">ID</th>
+                    <th className="p-3.5 text-xs font-black text-zinc-500 dark:text-neutral-400 uppercase tracking-wider w-28 whitespace-nowrap">
+                      Student ID
+                    </th>
                   )}
-                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap min-w-[180px]">Name & Email</th>
+                  <th className="p-3.5 text-xs font-black text-zinc-500 dark:text-neutral-400 uppercase tracking-wider min-w-[200px]">
+                    User Details
+                  </th>
                   {activeSection === 'students' && (
-                    <>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap w-36">Phone</th>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap w-36">Class (Grade)</th>
-                      <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap w-40">Stream</th>
-                    </>
+                    <th className="p-3.5 text-xs font-black text-zinc-500 dark:text-neutral-400 uppercase tracking-wider w-64">
+                      Class & Stream
+                    </th>
                   )}
                   {activeSection === 'teachers' && (
-                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap">Assigned Classes / Schedule Offerings</th>
+                    <th className="p-3.5 text-xs font-black text-zinc-500 dark:text-neutral-400 uppercase tracking-wider">
+                      Assigned Offerings
+                    </th>
                   )}
                   {activeSection === 'admins' && (
-                    <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap">Role & Privileges</th>
+                    <th className="p-3.5 text-xs font-black text-zinc-500 dark:text-neutral-400 uppercase tracking-wider">
+                      Role & Privileges
+                    </th>
                   )}
-                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider whitespace-nowrap min-w-[200px]">Access Status</th>
-                  <th className="p-4 text-xs font-black text-[#737373] uppercase tracking-wider text-right whitespace-nowrap min-w-[260px]">Actions</th>
+                  <th className="p-3.5 text-xs font-black text-zinc-500 dark:text-neutral-400 uppercase tracking-wider w-44">
+                    Status
+                  </th>
+                  <th className="p-3.5 text-xs font-black text-zinc-500 dark:text-neutral-400 uppercase tracking-wider text-right w-28">
+                    Actions
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F0F0F0]">
+              <tbody className="divide-y divide-zinc-100 dark:divide-neutral-800">
                 {filteredRoster.map((entry) => {
                   const matchedProfile = (entry.profile_id && profilesMap[entry.profile_id]) ||
                     profilesMap[entry.id] ||
@@ -1505,10 +1492,9 @@ export const RosterManagerPage: React.FC = () => {
                   const hasProfile = Boolean(matchedProfile || entry.profile_id);
                   const isOnboardingComplete = Boolean(matchedProfile?.onboarding_complete);
                   const isSuspended = entry.suspended === true;
-                  const isTeacher = (matchedProfile?.role || entry.role || '').trim().toLowerCase() === 'teacher' || activeSection === 'teachers';
-                  const isStudent = (matchedProfile?.role || entry.role || 'student').trim().toLowerCase() === 'student' && !isTeacher;
+                  const isTeacher = entry.role === 'teacher';
+                  const isStudent = entry.role === 'student';
 
-                  // Only students have fee tracking; remove fee/payment lookups and logic for teachers
                   const profileIdForFee = isStudent ? (matchedProfile?.id || entry.profile_id || entry.id) : undefined;
                   const feeStatusVal = isStudent && profileIdForFee ? (feeMap[profileIdForFee]?.status || 'unpaid') : undefined;
                   const isPendingAccount = isStudent ? (!hasProfile || !isOnboardingComplete) : false;
@@ -1517,91 +1503,90 @@ export const RosterManagerPage: React.FC = () => {
                   const idShort = formatStudentId(entry.id || entry.profile_id || '');
 
                   return (
-                    <tr key={entry.id} className="hover:bg-[#FAFAFA]/70 transition-colors">
+                    <tr 
+                      key={entry.id} 
+                      onClick={() => setDetailEntry(entry)}
+                      className="hover:bg-zinc-50/70 dark:hover:bg-neutral-800/40 transition-colors cursor-pointer group"
+                    >
                       {activeSection === 'students' && (
-                        <td className="p-4 text-xs font-mono font-bold text-[#525252] hidden md:table-cell whitespace-nowrap">
-                          <div className="flex items-center gap-1.5 group">
+                        <td className="p-3.5 text-xs font-mono font-bold text-zinc-600 dark:text-neutral-400 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
                             <span>#{idShort}</span>
                             <button
-                              onClick={() => copyToClipboard(entry.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-700"
-                              title="Copy Full ID"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(entry.id);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-200 dark:hover:bg-neutral-700 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-neutral-200 cursor-pointer"
+                              title="Copy Student UUID"
                             >
-                              {copiedId === entry.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                              {copiedId === entry.id ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
                             </button>
                           </div>
                         </td>
                       )}
 
-                      <td className="p-4 text-xs whitespace-nowrap">
-                        <div className="font-bold text-[#111111] text-sm flex items-center gap-2 whitespace-nowrap">
-                          {entry.full_name}
+                      <td className="p-3.5 text-xs">
+                        <div className="font-bold text-zinc-900 dark:text-neutral-100 text-sm flex items-center gap-1.5 truncate">
+                          <span className="truncate">{entry.full_name}</span>
                           {entry.role === 'admin' && (
-                            <span className="bg-red-100 text-red-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border border-red-200 shrink-0">
+                            <span className="bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800 shrink-0">
                               Admin
                             </span>
                           )}
                         </div>
-                        <div className="text-[#737373] text-[11px] font-medium mt-0.5 whitespace-nowrap">{entry.email}</div>
+                        <div className="text-zinc-500 dark:text-neutral-400 text-xs font-medium truncate mt-0.5">{entry.email}</div>
                         {activeSection === 'students' && getPhone(entry) !== '—' && (
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#525252] mt-1 whitespace-nowrap">
-                            <Phone size={11} className="text-[#A3A3A3] shrink-0" />
+                          <div className="flex items-center gap-1 text-[11px] font-mono text-zinc-500 dark:text-neutral-400 mt-0.5">
+                            <Phone size={10} className="text-zinc-400" />
                             <span>{getPhone(entry)}</span>
                           </div>
                         )}
                       </td>
 
                       {activeSection === 'students' && (
-                        <>
-                          <td className="p-4 text-xs font-semibold text-[#404040] whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                              <Phone size={13} className="text-[#A3A3A3] shrink-0" />
-                              <span>{getPhone(entry)}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-xs font-bold text-[#111111] whitespace-nowrap max-w-[180px]">
+                        <td className="p-3.5 text-xs">
+                          <div className="flex flex-col gap-0.5 max-w-full">
                             <span 
-                              className="inline-flex items-center whitespace-nowrap bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 border border-indigo-100 px-2.5 py-1 rounded-lg text-[11px] font-semibold truncate max-w-full"
+                              className="font-bold text-zinc-900 dark:text-neutral-100 truncate text-xs"
                               title={getClassGrade(entry)}
                             >
                               {getShortClassGrade(entry)}
                             </span>
-                          </td>
-                          <td className="p-4 text-xs font-bold text-[#404040] whitespace-nowrap max-w-[180px]">
                             <span 
-                              className="inline-flex items-center whitespace-nowrap bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold truncate max-w-full"
+                              className="text-[11px] text-zinc-500 dark:text-neutral-400 truncate"
                               title={getStream(entry)}
                             >
                               {getStream(entry)}
                             </span>
-                          </td>
-                        </>
+                          </div>
+                        </td>
                       )}
 
                       {activeSection === 'teachers' && (
-                        <td className="p-4 text-xs max-w-md">
-                          {formatClasses(entry)}
+                        <td className="p-3.5 text-xs">
+                          {renderTeacherClasses(entry, false)}
                         </td>
                       )}
 
                       {activeSection === 'admins' && (
-                        <td className="p-4 text-xs whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap">
-                            <Shield size={13} /> System Administrator
+                        <td className="p-3.5 text-xs">
+                          <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-xl text-xs font-bold">
+                            <Shield size={12} /> System Administrator
                           </span>
                         </td>
                       )}
 
-                      <td className="p-4 text-xs whitespace-nowrap">
-                        <div className="flex flex-col gap-1.5 items-start">
+                      <td className="p-3.5 text-xs whitespace-nowrap">
+                        <div className="flex flex-col gap-1 items-start">
                           {entry.awaiting_termination && (
-                            <span className="inline-flex items-center gap-1.5 font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
-                              <ShieldAlert size={11} /> Termination Requested
+                            <span className="inline-flex items-center gap-1 font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wide">
+                              <ShieldAlert size={10} /> Term Requested
                             </span>
                           )}
                           {isStudent && entry.fee_suspended && (
-                            <span className="inline-flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide whitespace-nowrap shrink-0">
-                              <DollarSign size={11} /> Billing Locked
+                            <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wide">
+                              <DollarSign size={10} /> Billing Locked
                             </span>
                           )}
                           <StatusBadge
@@ -1613,146 +1598,127 @@ export const RosterManagerPage: React.FC = () => {
                             isPendingPayment={isPendingPayment}
                             size="md"
                           />
-
-                          {/* Instant Access Selector (Direct Admin Override) */}
-                          {activeSection === 'students' && (
-                            <div className="flex items-center gap-1.5 pt-0.5">
-                              <span className="text-[10px] text-[#737373] font-bold uppercase tracking-wider">Access:</span>
-                              <select
-                                value={feeStatusVal || 'unpaid'}
-                                disabled={processingIds[entry.id]}
-                                onChange={(e) => handleSetStudentFeeStatus(entry, e.target.value as 'unpaid' | 'pending' | 'paid')}
-                                className="text-[11px] font-bold bg-white border border-[#E5E5E5] rounded-lg px-2 py-0.5 text-[#111111] focus:ring-1 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
-                                title="Direct Admin Override: Change billing/access status immediately"
-                              >
-                                <option value="unpaid">Unpaid (Gated)</option>
-                                <option value="pending">Pending Verification</option>
-                                <option value="paid">Paid & Verified (Full Access)</option>
-                              </select>
-                            </div>
-                          )}
                         </div>
                       </td>
 
-                      <td className="p-4 text-xs text-right whitespace-nowrap">
-                        <div className="inline-flex items-center justify-end gap-1.5 flex-nowrap">
-                          {activeSection === 'admins' ? (
-                            <span className="text-[11px] font-bold text-[#A3A3A3] italic inline-flex items-center gap-1 bg-[#F5F5F5] px-2.5 py-1 rounded-lg border border-[#E5E5E5] whitespace-nowrap">
-                              <Lock size={11} /> Protected Admin
+                      <td className="p-3.5 text-xs text-right whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => setDetailEntry(entry)}
+                            className="min-h-[44px] min-w-[44px] p-2 hover:bg-zinc-100 dark:hover:bg-neutral-800 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-neutral-100 inline-flex items-center justify-center transition-colors cursor-pointer"
+                            title="View user details"
+                          >
+                            <Eye size={15} />
+                          </button>
+
+                          {entry.role === 'admin' ? (
+                            <span className="text-[10px] font-bold text-zinc-400 italic px-2 py-1 bg-zinc-100 dark:bg-neutral-800 rounded-lg">
+                              Protected
                             </span>
                           ) : (
-                            <>
-                              {activeSection === 'teachers' && (
-                                <button
-                                  onClick={() => openEdit(entry)}
-                                  className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-500 hover:text-[#111111] inline-flex items-center justify-center transition-colors whitespace-nowrap"
-                                  title="Edit assigned schedule offerings"
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setActiveMenuId(activeMenuId === entry.id ? null : entry.id)}
+                                className="min-h-[44px] min-w-[44px] p-2 hover:bg-zinc-100 dark:hover:bg-neutral-800 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-neutral-100 inline-flex items-center justify-center transition-colors cursor-pointer"
+                                aria-label="More actions"
+                              >
+                                <MoreVertical size={15} />
+                              </button>
+
+                              {activeMenuId === entry.id && (
+                                <div 
+                                  ref={menuRef}
+                                  className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-neutral-900 border border-zinc-200 dark:border-neutral-800 rounded-xl shadow-xl z-30 py-1"
                                 >
-                                  <Edit size={14} />
-                                </button>
-                              )}
-
-                              {activeSection === 'students' && (
-                                <>
-                                  <button
-                                    onClick={() => openEditStudent(entry)}
-                                    className="px-2.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 hover:text-zinc-900 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap"
-                                    title="Edit student profile & fee status"
-                                  >
-                                    <Edit size={13} /> Edit
-                                  </button>
-
-                                  {feeStatusVal === 'pending' && (
+                                  {isStudent && (
                                     <button
-                                      onClick={() => handleApprovePayment(profileIdForFee, entry.id)}
-                                      disabled={processingIds[entry.id]}
-                                      className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl text-purple-700 hover:text-purple-800 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
-                                      title="Approve pending payment proof"
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        openEditStudent(entry);
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-800 flex items-center gap-2 cursor-pointer"
                                     >
-                                      {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <Check size={13} />}
-                                      <span>Approve</span>
+                                      <Edit size={13} /> Edit Profile & Plan
                                     </button>
                                   )}
 
-                                  {/* Direct Admin Override Button: Grant Paid / Revoke Paid */}
-                                  {feeStatusVal !== 'paid' ? (
+                                  {isTeacher && (
                                     <button
-                                      onClick={() => handleSetStudentFeeStatus(entry, 'paid')}
-                                      disabled={processingIds[entry.id]}
-                                      className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-emerald-700 hover:text-emerald-800 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
-                                      title="Direct Admin Override: Verify student and grant immediate paid access (no proof submission required)"
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        openEdit(entry);
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-800 flex items-center gap-2 cursor-pointer"
                                     >
-                                      {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                                      <span>Grant Paid</span>
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleSetStudentFeeStatus(entry, 'unpaid')}
-                                      disabled={processingIds[entry.id]}
-                                      className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-700 hover:text-amber-800 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap disabled:opacity-50"
-                                      title="Direct Admin Override: Revoke paid access and mark as Unpaid"
-                                    >
-                                      {processingIds[entry.id] ? <Clock size={13} className="animate-spin" /> : <XCircle size={13} />}
-                                      <span>Revoke Paid</span>
+                                      <Edit size={13} /> Edit Class Offerings
                                     </button>
                                   )}
 
                                   <button
-                                    onClick={() => handleToggleFeeAccess(entry)}
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      handleToggleAccess(entry);
+                                    }}
                                     disabled={processingIds[entry.id]}
-                                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1 transition-all whitespace-nowrap ${
-                                      entry.fee_suspended 
-                                        ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                                        : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                    } disabled:opacity-50`}
-                                    title={entry.fee_suspended ? "Remove Billing Lock" : "Apply Billing Lock"}
+                                    className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-800 flex items-center gap-2 cursor-pointer"
                                   >
-                                    {processingIds[entry.id] ? (
-                                      <Clock size={13} className="animate-spin" />
-                                    ) : entry.fee_suspended ? (
-                                      <>
-                                        <Unlock size={13} /> Unlock
-                                      </>
-                                    ) : (
-                                      <>
-                                        <DollarSign size={13} /> Lock
-                                      </>
-                                    )}
+                                    {isSuspended ? <Unlock size={13} /> : <Lock size={13} />}
+                                    {isSuspended ? 'Restore Access' : 'Suspend Account'}
                                   </button>
-                                </>
+
+                                  {isStudent && (
+                                    <>
+                                      {feeStatusVal === 'pending' && profileIdForFee && (
+                                        <button
+                                          onClick={() => {
+                                            setActiveMenuId(null);
+                                            handleApprovePayment(profileIdForFee, entry.id);
+                                          }}
+                                          disabled={processingIds[entry.id]}
+                                          className="w-full text-left px-3 py-2 text-xs font-semibold text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 flex items-center gap-2 cursor-pointer"
+                                        >
+                                          <Check size={13} /> Approve Payment
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => {
+                                          setActiveMenuId(null);
+                                          handleSetStudentFeeStatus(entry, feeStatusVal === 'paid' ? 'unpaid' : 'paid');
+                                        }}
+                                        disabled={processingIds[entry.id]}
+                                        className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-800 flex items-center gap-2 cursor-pointer"
+                                      >
+                                        {feeStatusVal === 'paid' ? <XCircle size={13} /> : <CheckCircle2 size={13} />}
+                                        {feeStatusVal === 'paid' ? 'Revoke Paid Access' : 'Grant Paid Access'}
+                                      </button>
+
+                                      <button
+                                        onClick={() => {
+                                          setActiveMenuId(null);
+                                          handleToggleFeeAccess(entry);
+                                        }}
+                                        disabled={processingIds[entry.id]}
+                                        className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-neutral-200 hover:bg-zinc-50 dark:hover:bg-neutral-800 flex items-center gap-2 cursor-pointer"
+                                      >
+                                        <DollarSign size={13} />
+                                        {entry.fee_suspended ? 'Unlock Billing' : 'Lock Billing'}
+                                      </button>
+                                    </>
+                                  )}
+
+                                  <div className="border-t border-zinc-100 dark:border-neutral-800 my-1 pt-1">
+                                    <button
+                                      onClick={() => triggerDelete(entry)}
+                                      className="w-full text-left px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 size={13} /> Delete Account...
+                                    </button>
+                                  </div>
+                                </div>
                               )}
-
-                              <button
-                                onClick={() => handleToggleAccess(entry)}
-                                disabled={processingIds[entry.id]}
-                                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1 transition-all whitespace-nowrap ${
-                                  isSuspended 
-                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
-                                } disabled:opacity-50`}
-                                title={isSuspended ? "Restore access (Reversible)" : "Suspend access (Reversible — blocks access while preserving records)"}
-                              >
-                                {processingIds[entry.id] ? (
-                                  <Clock size={13} className="animate-spin" />
-                                ) : isSuspended ? (
-                                  <>
-                                    <Unlock size={13} /> Restore
-                                  </>
-                                ) : (
-                                  <>
-                                    <Lock size={13} /> Suspend
-                                  </>
-                                )}
-                              </button>
-
-                              <button
-                                onClick={() => triggerDelete(entry)}
-                                className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 hover:text-red-700 font-bold text-xs inline-flex items-center gap-1 transition-all whitespace-nowrap"
-                                title="Delete account completely without leaving orphaned records"
-                              >
-                                <Trash2 size={13} /> Delete
-                              </button>
-                            </>
+                            </div>
                           )}
                         </div>
                       </td>
@@ -1765,7 +1731,193 @@ export const RosterManagerPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── DRAWER FORM (Add/Edit Student or Teacher) ── */}
+      {/* ── DETAIL DRAWER (Side sheet on desktop/tablet, bottom sheet on mobile) ── */}
+      {detailEntry && createPortal(
+        <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" 
+            onClick={() => setDetailEntry(null)}
+          />
+
+          <div className="relative w-full max-w-full sm:max-w-md md:max-w-lg bg-white dark:bg-neutral-900 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+            {/* Drawer Header */}
+            <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-neutral-800 flex items-center justify-between bg-zinc-50 dark:bg-neutral-800/60 shrink-0">
+              <div className="min-w-0 pr-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-black text-zinc-900 dark:text-neutral-100 truncate">
+                    {detailEntry.full_name}
+                  </h3>
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
+                    detailEntry.role === 'admin' 
+                      ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800' 
+                      : detailEntry.role === 'teacher'
+                      ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800'
+                      : 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800'
+                  }`}>
+                    {detailEntry.role}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-neutral-400 mt-0.5 truncate">{detailEntry.email}</p>
+              </div>
+
+              <button 
+                onClick={() => setDetailEntry(null)}
+                className="min-h-[44px] min-w-[44px] p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-neutral-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-neutral-800 shrink-0 flex items-center justify-center cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-5">
+              {/* Profile Card */}
+              <div className="p-4 bg-zinc-50 dark:bg-neutral-800/50 rounded-2xl border border-zinc-200/80 dark:border-neutral-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-500 dark:text-neutral-400 uppercase tracking-wider">Account Status</span>
+                  <StatusBadge
+                    role={detailEntry.role}
+                    showPayment={detailEntry.role === 'student'}
+                    isSuspended={detailEntry.suspended === true}
+                    isActive={!detailEntry.suspended}
+                    feeStatusVal={feeMap[detailEntry.profile_id || detailEntry.id]?.status}
+                    isPendingPayment={feeMap[detailEntry.profile_id || detailEntry.id]?.status === 'unpaid'}
+                    size="md"
+                  />
+                </div>
+
+                {detailEntry.role === 'student' && (
+                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-200/60 dark:border-neutral-700">
+                    <div>
+                      <span className="text-[10px] text-zinc-400 uppercase font-bold block">Student ID</span>
+                      <span className="text-xs font-mono font-bold text-zinc-800 dark:text-neutral-200">
+                        #{formatStudentId(detailEntry.id || detailEntry.profile_id || '')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-zinc-400 uppercase font-bold block">Phone</span>
+                      <span className="text-xs font-mono font-bold text-zinc-800 dark:text-neutral-200">
+                        {getPhone(detailEntry)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Specific Section Info */}
+              {detailEntry.role === 'student' && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-zinc-900 dark:text-neutral-100 uppercase tracking-wider">
+                    Academic Enrollment
+                  </h4>
+                  <div className="p-4 border border-zinc-200 dark:border-neutral-800 rounded-2xl bg-white dark:bg-neutral-800 space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500">Curriculum & Grade:</span>
+                      <span className="font-bold text-zinc-900 dark:text-neutral-100">{getClassGrade(detailEntry)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500">Stream:</span>
+                      <span className="font-bold text-zinc-900 dark:text-neutral-100">{getStream(detailEntry)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500">Fee Status:</span>
+                      <span className="font-bold uppercase text-purple-700 dark:text-purple-400">
+                        {feeMap[detailEntry.profile_id || detailEntry.id]?.status || 'unpaid'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      openEditStudent(detailEntry);
+                      setDetailEntry(null);
+                    }}
+                    className="w-full min-h-[44px] py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950/60 font-bold text-xs rounded-xl flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                  >
+                    <Edit size={14} /> Edit Student Profile & Curriculum
+                  </button>
+                </div>
+              )}
+
+              {detailEntry.role === 'teacher' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-neutral-100 uppercase tracking-wider">
+                      Assigned Class Offerings
+                    </h4>
+                    <span className="text-xs font-bold text-purple-700 dark:text-purple-400">
+                      {getTeacherAssignedOfferings(detailEntry).length} total
+                    </span>
+                  </div>
+
+                  <div className="p-4 border border-zinc-200 dark:border-neutral-800 rounded-2xl bg-white dark:bg-neutral-800">
+                    {renderTeacherClasses(detailEntry, true)}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      openEdit(detailEntry);
+                      setDetailEntry(null);
+                    }}
+                    className="w-full min-h-[44px] py-2.5 px-4 bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-950/60 font-bold text-xs rounded-xl flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800 transition-colors cursor-pointer"
+                  >
+                    <Edit size={14} /> Edit Assigned Schedule Offerings
+                  </button>
+                </div>
+              )}
+
+              {detailEntry.role === 'admin' && (
+                <div className="p-4 bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-xs mb-1">
+                    <Shield size={14} /> Protected Administrator
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-neutral-400">
+                    This account possesses system-wide root administrative privileges across Scholario LMS. Protected administrator accounts cannot be deleted or suspended.
+                  </p>
+                </div>
+              )}
+
+              {/* Direct Actions */}
+              {detailEntry.role !== 'admin' && (
+                <div className="space-y-2 pt-2 border-t border-zinc-200 dark:border-neutral-800">
+                  <h4 className="text-xs font-black text-zinc-500 uppercase tracking-wider mb-2">Account Controls</h4>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleToggleAccess(detailEntry)}
+                      disabled={processingIds[detailEntry.id]}
+                      className="min-h-[44px] p-2.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 hover:bg-zinc-100 text-zinc-800 dark:text-neutral-200"
+                    >
+                      {detailEntry.suspended ? <Unlock size={14} /> : <Lock size={14} />}
+                      {detailEntry.suspended ? 'Restore Access' : 'Suspend Account'}
+                    </button>
+
+                    {detailEntry.role === 'student' && (
+                      <button
+                        onClick={() => handleToggleFeeAccess(detailEntry)}
+                        disabled={processingIds[detailEntry.id]}
+                        className="min-h-[44px] p-2.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 hover:bg-zinc-100 text-zinc-800 dark:text-neutral-200"
+                      >
+                        <DollarSign size={14} />
+                        {detailEntry.fee_suspended ? 'Unlock Billing' : 'Lock Billing'}
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => triggerDelete(detailEntry)}
+                    className="w-full min-h-[44px] p-2.5 mt-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/60 border border-red-200 dark:border-red-800 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={14} /> Permanently Delete Account...
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── TEACHER DRAWER FORM (Add/Edit Teacher) ── */}
       {drawerOpen && createPortal(
         <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
           <div 
@@ -1773,20 +1925,20 @@ export const RosterManagerPage: React.FC = () => {
             onClick={() => setDrawerOpen(false)}
           />
 
-          <div className="relative w-full max-w-full sm:max-w-lg md:max-w-xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-[#E5E5E5] flex items-center justify-between bg-[#FAFAFA] shrink-0">
+          <div className="relative w-full max-w-full sm:max-w-lg md:max-w-xl bg-white dark:bg-neutral-900 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200 overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-neutral-800 flex items-center justify-between bg-zinc-50 dark:bg-neutral-800/60 shrink-0">
               <div className="min-w-0 pr-2">
-                <h3 className="text-base font-black text-[#111111] truncate">
+                <h3 className="text-base font-black text-zinc-900 dark:text-neutral-100 truncate">
                   {drawerMode === 'add_teacher' && 'Provision New Teacher'}
                   {drawerMode === 'edit' && `Edit Classes — ${selectedEntry?.full_name}`}
                 </h3>
-                <p className="text-xs text-[#737373] mt-0.5 break-words">
-                  {drawerMode !== 'edit' ? 'Create a pre-provisioned account by email and name.' : 'Update assigned schedule offerings across Federal and Sindh boards.'}
+                <p className="text-xs text-zinc-500 dark:text-neutral-400 mt-0.5 break-words">
+                  {drawerMode !== 'edit' ? 'Create a pre-provisioned teacher account by email and name.' : 'Update assigned schedule offerings across all boards.'}
                 </p>
               </div>
               <button 
                 onClick={() => setDrawerOpen(false)}
-                className="p-2 text-zinc-400 hover:text-zinc-700 rounded-lg hover:bg-zinc-100 shrink-0"
+                className="min-h-[44px] min-w-[44px] p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-neutral-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-neutral-800 shrink-0 flex items-center justify-center cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1794,110 +1946,93 @@ export const RosterManagerPage: React.FC = () => {
 
             <form onSubmit={handleSave} className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <div className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0 space-y-6 overscroll-contain">
-              {formError && (
-                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
-                  <span className="shrink-0 mt-0.5">⚠️</span>
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              {drawerMode !== 'edit' && (
-                <div className="space-y-4 pb-2 border-b border-[#E5E5E5]">
-                  <div>
-                    <label className="label text-xs font-bold text-[#404040] mb-1.5 block uppercase tracking-wider">
-                      Email Address <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="e.g. teacher@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
-                    />
-                    <span className="text-[10px] text-[#737373] font-medium block mt-1">
-                      Must match exact email user selects during Google Sign-In.
-                    </span>
+                {formError && (
+                  <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">⚠️</span>
+                    <span>{formError}</span>
                   </div>
+                )}
 
-                  <div>
-                    <label className="label text-xs font-bold text-[#404040] mb-1.5 block uppercase tracking-wider">
-                      Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Mr. Ahmed Khan"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="label text-xs font-bold text-[#404040] block uppercase tracking-wider">
-                        Phone Number (Optional)
+                {drawerMode !== 'edit' && (
+                  <div className="space-y-4 pb-2 border-b border-zinc-200 dark:border-neutral-800">
+                    <div>
+                      <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-1.5 block uppercase tracking-wider">
+                        Email Address <span className="text-red-500">*</span>
                       </label>
-                      <span className="text-[10px] text-[#737373] font-medium">🇵🇰 +92 3XXXXXXXXX</span>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. teacher@scholario.me"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full min-h-[44px] text-xs px-3 py-2 bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-medium text-zinc-900 dark:text-neutral-100"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      placeholder="+92 3058969050"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="input w-full text-xs py-3 sm:py-2.5 bg-[#FAFAFA] border-[#E5E5E5] rounded-xl font-medium"
-                    />
-                    <span className="text-[10px] text-[#737373] font-medium block mt-1">
-                      If provided, must be a valid Pakistani mobile number (+92 3XXXXXXXXX).
-                    </span>
-                  </div>
-                </div>
-              )}
 
-              {drawerMode === 'add_teacher' || (drawerMode === 'edit' && selectedEntry?.role === 'teacher') ? (
+                    <div>
+                      <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-1.5 block uppercase tracking-wider">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Mr. Tariq Mahmood"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full min-h-[44px] text-xs px-3 py-2 bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-medium text-zinc-900 dark:text-neutral-100"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 block uppercase tracking-wider">
+                          Phone Number (Optional)
+                        </label>
+                        <span className="text-[10px] text-zinc-500 font-medium">🇵🇰 +92 3XXXXXXXXX</span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="+92 3058969050"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full min-h-[44px] text-xs px-3 py-2 bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-medium text-zinc-900 dark:text-neutral-100"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-6">
-                  {/* Summary Bar */}
-                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-50/80 border border-purple-200/70 text-purple-900 text-xs font-semibold">
+                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-900 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 text-xs font-semibold">
                     <span className="flex items-center gap-1.5 font-bold">
-                      <BookOpen size={15} className="text-purple-600 shrink-0" />
+                      <BookOpen size={15} className="text-purple-600 dark:text-purple-400 shrink-0" />
                       Assigned Offerings Selected:
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-700 text-white font-black text-xs shadow-sm">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-700 text-white font-black text-xs shadow-xs">
                       {selectedClasses.length} total
                     </span>
                   </div>
 
-                  {/* ── REGULAR BOARDS: FBISE, Sindh, KPK, O Levels, A Levels ── */}
-                  {regularBoards.map((b, idx) => {
+                  {/* Regular Boards */}
+                  {regularBoards.map((b) => {
                     const bOffers = boardOfferingsMap[b.id] || [];
                     const bIds = bOffers.map(o => o.id);
                     const selectedCount = selectedClasses.filter(id => bIds.includes(id)).length;
                     const allSelected = bIds.length > 0 && bIds.every(id => selectedClasses.includes(id));
-                    const dotColors = [
-                      'bg-emerald-500 ring-emerald-100',
-                      'bg-blue-500 ring-blue-100',
-                      'bg-teal-500 ring-teal-100',
-                      'bg-indigo-500 ring-indigo-100',
-                      'bg-purple-500 ring-purple-100',
-                    ];
-                    const dotClass = dotColors[idx % dotColors.length];
 
                     return (
                       <div key={b.id} className="space-y-2.5 pt-2">
                         <div className="flex items-center justify-between pb-1">
                           <div className="flex items-center gap-2">
-                            <span className={`w-2.5 h-2.5 rounded-full ${dotClass} ring-4 shrink-0`} />
-                            <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                            <h4 className="text-xs font-black text-zinc-900 dark:text-neutral-100 uppercase tracking-wider">
                               {b.name}
                             </h4>
-                            <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
+                            <span className="text-[10px] font-bold text-zinc-600 bg-zinc-100 dark:bg-neutral-800 px-2 py-0.5 rounded-md">
                               {bOffers.length}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
                             {selectedCount > 0 && (
-                              <span className="text-[10px] font-bold text-purple-700 bg-purple-100/90 px-2 py-0.5 rounded-md">
+                              <span className="text-[10px] font-bold text-purple-700 bg-purple-100 dark:bg-purple-950/40 px-2 py-0.5 rounded-md">
                                 {selectedCount} selected
                               </span>
                             )}
@@ -1911,7 +2046,7 @@ export const RosterManagerPage: React.FC = () => {
                                     setSelectedClasses(prev => Array.from(new Set([...prev, ...bIds])));
                                   }
                                 }}
-                                className="text-[11px] font-bold text-zinc-600 hover:text-zinc-900 underline transition-colors"
+                                className="text-[11px] font-bold text-zinc-600 dark:text-neutral-400 hover:text-zinc-900 dark:hover:text-neutral-100 underline transition-colors cursor-pointer"
                               >
                                 {allSelected ? 'Deselect All' : 'Select All'}
                               </button>
@@ -1919,48 +2054,35 @@ export const RosterManagerPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="border border-[#E5E5E5] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
+                        <div className="border border-zinc-200 dark:border-neutral-800 rounded-2xl max-h-56 overflow-y-auto divide-y divide-zinc-100 dark:divide-neutral-800 bg-zinc-50/50 dark:bg-neutral-900/50">
                           {bOffers.length === 0 ? (
-                            <div className="p-4 text-xs text-[#737373] text-center">No {b.shortName} offerings found.</div>
+                            <div className="p-4 text-xs text-zinc-500 text-center">No {b.shortName} offerings found.</div>
                           ) : (
                             bOffers.map(off => {
                               const isChecked = selectedClasses.includes(off.id);
-                              const isAssignedToThisTeacher = selectedEntry && (
-                                off.teacher_id === selectedEntry.id || 
-                                off.teacher_id === selectedEntry.profile_id || 
-                                off.teacher?.id === selectedEntry.id || 
-                                off.teacher?.id === selectedEntry.profile_id
-                              );
                               return (
                                 <label 
                                   key={off.id}
-                                  className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
+                                  className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white dark:hover:bg-neutral-800 transition-colors ${isChecked ? 'bg-purple-50/70 dark:bg-purple-950/30 font-semibold' : ''}`}
                                 >
                                   <div className="pr-3">
-                                    <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
+                                    <div className="text-xs font-bold text-zinc-900 dark:text-neutral-100 flex items-center gap-1.5 flex-wrap">
                                       <span>{off.subject_name} — {formatGradeDisplay(off.grade || '', b.id)}</span>
                                       {off.stream && (
-                                        <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 px-1.5 py-0.5 rounded">
+                                        <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-200/70 dark:bg-neutral-700 px-1.5 py-0.5 rounded">
                                           {off.stream}
                                         </span>
                                       )}
                                     </div>
-                                    <div className="text-[11px] mt-0.5">
-                                      {off.teacher ? (
-                                        <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
-                                          Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
-                                          {isAssignedToThisTeacher && ' (Assigned)'}
-                                        </span>
-                                      ) : (
-                                        <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
-                                      )}
+                                    <div className="text-[11px] mt-0.5 text-zinc-500">
+                                      Teacher: <span className="font-semibold">{off.teacher?.full_name || 'Unassigned'}</span>
                                     </div>
                                   </div>
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => toggleClassSelect(off.id)}
-                                    className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
+                                    className="rounded border-zinc-300 text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
                                   />
                                 </label>
                               );
@@ -1971,155 +2093,82 @@ export const RosterManagerPage: React.FC = () => {
                     );
                   })}
 
-                  {/* ── SECTION 3: IELTS (Unified Single Subject) ── */}
+                  {/* IELTS */}
                   <div className="space-y-2.5 pt-2">
                     <div className="flex items-center justify-between pb-1">
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-amber-100 shrink-0" />
-                        <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                          IELTS Preparation
+                        <h4 className="text-xs font-black text-zinc-900 dark:text-neutral-100 uppercase tracking-wider">
+                          IELTS Track
                         </h4>
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
-                          1 Subject
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 rounded-md">
+                          Unified
                         </span>
                       </div>
-                      {selectedClasses.some(id => ieltsOfferings.some(o => o.id === id) || offerings.filter(o => (o.board_id || o.board || '').toLowerCase() === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts')).some(o => o.id === id)) && (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md">
-                          Assigned
-                        </span>
-                      )}
                     </div>
 
-                    <div className="border border-[#E5E5E5] rounded-2xl bg-[#FAFAFA]/50 shadow-inner p-1">
-                      {ieltsOfferings.length === 0 ? (
-                        <div className="p-4 text-xs text-[#737373] text-center">No IELTS offerings found.</div>
-                      ) : (
-                        ieltsOfferings.map(off => {
-                          // Check if checked directly or if any IELTS offering was selected
-                          const allIeltsOfferingIds = offerings
-                            .filter(o => (o.board_id || o.board || '').toLowerCase() === 'ielts' || (o.subject_name || '').toLowerCase().includes('ielts'))
-                            .map(o => o.id);
-                          const isChecked = selectedClasses.includes(off.id) || allIeltsOfferingIds.some(id => selectedClasses.includes(id));
-                          
-                          const isAssignedToThisTeacher = selectedEntry && (
-                            off.teacher_id === selectedEntry.id || 
-                            off.teacher_id === selectedEntry.profile_id || 
-                            off.teacher?.id === selectedEntry.id || 
-                            off.teacher?.id === selectedEntry.profile_id
-                          );
-
-                          const handleToggleIelts = () => {
-                            if (isChecked) {
-                              // Uncheck all IELTS IDs
-                              setSelectedClasses(prev => prev.filter(id => id !== off.id && !allIeltsOfferingIds.includes(id)));
-                            } else {
-                              // Assign unified IELTS offering
-                              setSelectedClasses(prev => Array.from(new Set([...prev.filter(id => !allIeltsOfferingIds.includes(id)), off.id])));
-                            }
-                          };
-
-                          return (
-                            <label 
-                              key={off.id}
-                              className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer hover:bg-white transition-all ${isChecked ? 'bg-amber-50/80 font-semibold border border-amber-200/80 shadow-xs' : ''}`}
-                            >
-                              <div className="pr-3">
-                                <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-sm font-extrabold text-zinc-900">IELTS Preparation</span>
-                                  <span className="text-[9px] font-bold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                    Unified Track
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-zinc-500 mt-1 font-normal leading-relaxed">
-                                  Responsible for the complete IELTS course program (Listening, Reading, Writing, Speaking & Grammar) across Academic & General Training tracks.
-                                </p>
-                                <div className="text-[11px] mt-1.5 font-medium">
-                                  {off.teacher ? (
-                                    <span className={isAssignedToThisTeacher ? 'text-emerald-700 font-bold' : 'text-zinc-600'}>
-                                      Current Teacher: <span className="font-bold text-zinc-800">{off.teacher.full_name}</span>
-                                      {isAssignedToThisTeacher && ' (Assigned to this faculty)'}
-                                    </span>
-                                  ) : (
-                                    <span className="text-zinc-400">Current Teacher: <span className="italic text-zinc-500 font-medium">Unassigned</span></span>
-                                  )}
-                                </div>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={handleToggleIelts}
-                                className="rounded border-[#D4D4D4] text-amber-600 focus:ring-amber-500 w-5 h-5 cursor-pointer shrink-0"
-                              />
-                            </label>
-                          );
-                        })
-                      )}
+                    <div className="border border-zinc-200 dark:border-neutral-800 rounded-2xl bg-zinc-50/50 dark:bg-neutral-900/50 p-1">
+                      {ieltsOfferings.map(off => {
+                        const isChecked = selectedClasses.includes(off.id);
+                        return (
+                          <label 
+                            key={off.id}
+                            className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer hover:bg-white dark:hover:bg-neutral-800 transition-all ${isChecked ? 'bg-amber-50/80 dark:bg-amber-950/30 font-semibold border border-amber-200' : ''}`}
+                          >
+                            <div className="pr-3">
+                              <span className="text-xs font-bold text-zinc-900 dark:text-neutral-100">IELTS Preparation</span>
+                              <p className="text-[11px] text-zinc-500 mt-0.5">Unified Listening, Reading, Writing, Speaking.</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleClassSelect(off.id)}
+                              className="rounded border-zinc-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer shrink-0"
+                            />
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* Optional Fallback for any other boards */}
                   {otherOfferings.length > 0 && (
                     <div className="space-y-2.5 pt-2">
-                      <div className="flex items-center justify-between pb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-zinc-400 ring-4 ring-zinc-100 shrink-0" />
-                          <h4 className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                            Other Board Offerings
-                          </h4>
-                          <span className="text-[10px] font-bold text-[#737373] bg-[#EBEBEB] px-2 py-0.5 rounded-md">
-                            {otherOfferings.length}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="border border-[#E5E5E5] rounded-2xl max-h-48 overflow-y-auto divide-y divide-[#F0F0F0] bg-[#FAFAFA]/50 shadow-inner">
-                        {otherOfferings.map(off => {
-                          const isChecked = selectedClasses.includes(off.id);
-                          return (
-                            <label 
-                              key={off.id}
-                              className={`flex items-center justify-between p-3.5 cursor-pointer hover:bg-white transition-colors ${isChecked ? 'bg-purple-50/70 font-semibold' : ''}`}
-                            >
-                              <div className="pr-3">
-                                <div className="text-xs font-bold text-[#111111]">
-                                  {off.subject_name} — Gr. {off.grade}
-                                </div>
-                                <div className="text-[11px] text-[#737373] mt-0.5">
-                                  Current Teacher: {off.teacher?.full_name || 'Unassigned'}
-                                </div>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleClassSelect(off.id)}
-                                className="rounded border-[#D4D4D4] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer shrink-0"
-                              />
-                            </label>
-                          );
-                        })}
+                      <h4 className="text-xs font-black text-zinc-900 dark:text-neutral-100 uppercase tracking-wider">
+                        Other Offerings
+                      </h4>
+                      <div className="border border-zinc-200 dark:border-neutral-800 rounded-2xl max-h-48 overflow-y-auto divide-y divide-zinc-100 dark:divide-neutral-800 bg-zinc-50/50">
+                        {otherOfferings.map(off => (
+                          <label key={off.id} className="flex items-center justify-between p-3.5 cursor-pointer">
+                            <span className="text-xs font-bold text-zinc-900">{off.subject_name} — Gr. {off.grade}</span>
+                            <input
+                              type="checkbox"
+                              checked={selectedClasses.includes(off.id)}
+                              onChange={() => toggleClassSelect(off.id)}
+                              className="rounded border-zinc-300 text-purple-600 w-4 h-4"
+                            />
+                          </label>
+                        ))}
                       </div>
                     </div>
                   )}
                 </div>
-              ) : null}
-
               </div>
 
-              <div className="p-4 sm:px-6 border-t border-[#E5E5E5] flex gap-3 bg-[#FAFAFA] shrink-0">
+              {/* Form Footer */}
+              <div className="p-4 sm:px-6 sm:py-4 border-t border-zinc-200 dark:border-neutral-800 flex gap-3 bg-zinc-50/80 dark:bg-neutral-800/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="btn flex-1 py-3 sm:py-2.5 border border-[#E5E5E5] text-[#404040] font-bold text-xs rounded-xl hover:bg-white interactive"
+                  className="min-h-[44px] flex-1 py-2.5 border border-zinc-200 dark:border-neutral-700 text-zinc-700 dark:text-neutral-300 font-bold text-xs rounded-xl hover:bg-white dark:hover:bg-neutral-700 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSaving}
-                  className="btn flex-1 py-3 sm:py-2.5 bg-[#111111] hover:bg-[#262626] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 interactive"
+                  className="min-h-[44px] flex-1 py-2.5 bg-[#F4C430] hover:bg-[#E5B520] text-zinc-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {formSaving ? <Clock size={14} className="animate-spin" /> : <Save size={14} />}
-                  {drawerMode === 'edit' ? 'Save Assignments' : 'Provision Account'}
+                  {drawerMode === 'add_teacher' ? 'Provision Teacher' : 'Save Assignments'}
                 </button>
               </div>
             </form>
@@ -2130,462 +2179,220 @@ export const RosterManagerPage: React.FC = () => {
 
       {/* ── EDIT STUDENT PROFILE MODAL ── */}
       {editStudentModalOpen && editStudentEntry && createPortal(
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !editStudentSaving) {
-              setEditStudentModalOpen(false);
-            }
-          }}
-        >
-          <div 
-            className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[85vh] animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="p-4 sm:px-6 sm:py-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/80 shrink-0">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-2">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
-                  <GraduationCap size={18} />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm sm:text-base font-bold text-zinc-900 truncate">Edit Student Profile</h3>
-                  <p className="text-[11px] sm:text-xs text-zinc-500 mt-0.5 line-clamp-1 sm:line-clamp-none">Update profile information, board, class grade, and stream</p>
-                </div>
+        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative bg-white dark:bg-neutral-900 w-full max-w-full sm:max-w-lg md:max-w-xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-neutral-800 flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-neutral-800 flex items-center justify-between bg-zinc-50 dark:bg-neutral-800/50 shrink-0">
+              <div className="min-w-0 pr-2">
+                <h3 className="text-base font-black text-zinc-900 dark:text-neutral-100 truncate">
+                  Edit Student Profile & Plan
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-neutral-400 mt-0.5 truncate">
+                  {editStudentEntry.full_name} ({editStudentEntry.email})
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditStudentModalOpen(false)}
-                className="p-1.5 sm:p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-xl transition-colors shrink-0"
+                className="min-h-[44px] min-w-[44px] p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-neutral-200 rounded-lg shrink-0 flex items-center justify-center cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSaveStudentProfile} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto min-h-0 overscroll-contain">
+              <div className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-4">
                 {editStudentError && (
-                  <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-center gap-2">
-                    <AlertCircle size={15} className="shrink-0" />
-                    <span>{editStudentError}</span>
+                  <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs font-semibold border border-red-200">
+                    ⚠️ {editStudentError}
                   </div>
                 )}
 
-              {/* Full Name */}
-              <div>
-                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editStudentName}
-                  onChange={(e) => setEditStudentName(e.target.value)}
-                  className="input w-full py-2.5 px-3.5 text-xs bg-zinc-50 border-zinc-200 rounded-xl font-medium focus:bg-white focus:border-purple-500"
-                  placeholder="e.g. Ayesha Khan"
-                />
-              </div>
-
-              {/* Email (Read-Only / Auth Account Identifier) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider">
-                    Email Address
-                  </label>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md border border-zinc-200">
-                    <Lock size={11} className="text-zinc-500" />
-                    <span>Locked (Login ID)</span>
-                  </span>
-                </div>
-                <div className="w-full py-2.5 px-3.5 text-xs bg-zinc-100/90 border border-zinc-200 rounded-xl font-medium text-zinc-700 flex items-center justify-between cursor-not-allowed select-text gap-2">
-                  <span className="font-mono truncate min-w-0">{editStudentEmail || editStudentEntry.email || 'No email associated'}</span>
-                  <Lock size={13} className="text-zinc-400 shrink-0" />
-                </div>
-                <p className="text-[11px] text-zinc-500 mt-1.5 flex items-center gap-1">
-                  <span>Tied to student Google Sign-In auth account and cannot be modified.</span>
-                </p>
-              </div>
-
-              {/* Board Selection */}
-              <div>
-                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                  Academic Board <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
-                  {BOARDS.map(b => {
-                    const isSelected = editStudentBoard === b.id;
-                    const isIelts = b.id === 'ielts';
-                    const activeRing = isIelts
-                      ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
-                      : 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20';
-                    const checkColor = isIelts ? 'text-amber-600' : 'text-purple-600';
-
-                    return (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => handleBoardChangeInModal(b.id)}
-                        className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                          isSelected
-                            ? activeRing
-                            : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-zinc-900">{b.shortName}</span>
-                          {isSelected && (
-                            <CheckCircle2 size={14} className={`${checkColor} shrink-0`} />
-                          )}
-                        </div>
-                        <span className="text-[11px] text-zinc-500 block mt-0.5 line-clamp-1">{b.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Class / Grade & Stream Selection */}
-              {editStudentBoard === 'ielts' ? (
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                    IELTS Stream <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const academicStream =
-                          streamsList.find(s => s.class_id === editStudentClass && s.name.toLowerCase().includes('academic')) ||
-                          streamsList.find(s => s.name.toLowerCase().includes('academic'));
-                        setEditStudentStreamId(academicStream ? academicStream.id : 'academic');
-                      }}
-                      className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                        !editStudentStreamId ||
-                        editStudentStreamId === 'academic' ||
-                        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('academic') ||
-                        (!streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') &&
-                         !streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt') &&
-                         editStudentStreamId !== 'general-training')
-                          ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
-                          : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-zinc-900">Academic</span>
-                        {(!editStudentStreamId ||
-                          editStudentStreamId === 'academic' ||
-                          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('academic') ||
-                          (!streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') &&
-                           !streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt') &&
-                           editStudentStreamId !== 'general-training')) && (
-                          <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
-                        )}
-                      </div>
-                      <span className="text-[11px] text-zinc-500 block mt-0.5">
-                        Academic Reading & Writing + Listening & Speaking
-                      </span>
-                    </button>
+                  <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-1 block uppercase">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editStudentName}
+                    onChange={(e) => setEditStudentName(e.target.value)}
+                    className="w-full min-h-[44px] text-xs px-3 py-2 bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-medium text-zinc-900 dark:text-neutral-100"
+                  />
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const gtStream =
-                          streamsList.find(s => s.class_id === editStudentClass && (s.name.toLowerCase().includes('general') || s.name.toLowerCase().includes('gt'))) ||
-                          streamsList.find(s => s.name.toLowerCase().includes('general') || s.name.toLowerCase().includes('gt'));
-                        setEditStudentStreamId(gtStream ? gtStream.id : 'general-training');
-                      }}
-                      className={`p-3.5 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                        editStudentStreamId === 'general-training' ||
-                        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') ||
-                        streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt')
-                          ? 'border-amber-600 bg-amber-50/60 ring-2 ring-amber-600/20'
-                          : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50'
-                      }`}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-1 block uppercase">Board / System</label>
+                    <select
+                      value={editStudentBoard}
+                      onChange={(e) => handleBoardChangeInModal(e.target.value as BoardId)}
+                      className="w-full min-h-[44px] text-xs px-3 py-2 bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-semibold text-zinc-900 dark:text-neutral-100"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-zinc-900">General Training</span>
-                        {(editStudentStreamId === 'general-training' ||
-                          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('general') ||
-                          streamsList.find(s => s.id === editStudentStreamId)?.name?.toLowerCase().includes('gt')) && (
-                          <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
-                        )}
-                      </div>
-                      <span className="text-[11px] text-zinc-500 block mt-0.5">
-                        General Training + Academic Modules (Superset)
-                      </span>
-                    </button>
+                      {BOARDS.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-1 block uppercase">Grade / Level</label>
+                    <select
+                      value={editStudentClass}
+                      onChange={(e) => handleClassChangeInModal(e.target.value)}
+                      className="w-full min-h-[44px] text-xs px-3 py-2 bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-semibold text-zinc-900 dark:text-neutral-100"
+                    >
+                      {classesList
+                        .filter(c => (c.board_id || '').toLowerCase() === editStudentBoard)
+                        .map(c => (
+                          <option key={c.id} value={c.id}>{c.display_name || c.name || `Grade ${c.grade}`}</option>
+                        ))}
+                    </select>
                   </div>
                 </div>
-              ) : (
-                <>
-                  {/* Class / Grade Selection */}
+
+                {editStudentBoard !== 'ielts' && (
                   <div>
-                    <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                      Class / Grade Level <span className="text-red-500">*</span>
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {availableClassesForEdit.map((c) => {
-                        const isSelected = editStudentClass === c.id;
-                        return (
-                          <button
-                            type="button"
-                            key={c.id}
-                            onClick={() => handleClassChangeInModal(c.id)}
-                            className={`p-2.5 rounded-xl border text-center transition-all ${
-                              isSelected
-                                ? 'border-purple-600 bg-purple-600 text-white font-bold shadow-sm'
-                                : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 font-semibold'
-                            }`}
-                          >
-                            <div className="text-xs truncate">{c.display_name}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-1 block uppercase">Stream</label>
+                    <select
+                      value={editStudentStreamId}
+                      onChange={(e) => setEditStudentStreamId(e.target.value)}
+                      className="w-full min-h-[44px] text-xs px-3 py-2 bg-zinc-50 dark:bg-neutral-800 border border-zinc-200 dark:border-neutral-700 rounded-xl font-semibold text-zinc-900 dark:text-neutral-100"
+                    >
+                      {streamsList
+                        .filter(s => s.class_id === editStudentClass)
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Enrollment Plan: All vs Custom */}
+                <div className="pt-2 border-t border-zinc-100 dark:border-neutral-800">
+                  <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-2 block uppercase">Subject Plan</label>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditStudentEnrollmentMode('all');
+                        setEditStudentSubjects([]);
+                      }}
+                      className={`min-h-[44px] p-2.5 rounded-xl text-xs font-bold border text-center transition-all cursor-pointer ${
+                        editStudentEnrollmentMode === 'all'
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300'
+                          : 'border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 text-zinc-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      All Stream Subjects
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditStudentEnrollmentMode('custom')}
+                      className={`min-h-[44px] p-2.5 rounded-xl text-xs font-bold border text-center transition-all cursor-pointer ${
+                        editStudentEnrollmentMode === 'custom'
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300'
+                          : 'border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 text-zinc-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      Custom Subject Plan
+                    </button>
                   </div>
 
-                  {/* Stream Selection */}
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                      Academic Stream <span className="text-red-500">*</span>
-                    </label>
-                    {availableStreamsForEdit.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {availableStreamsForEdit.map((s) => {
-                          const isSelected = editStudentStreamId === s.id;
+                  {editStudentEnrollmentMode === 'custom' && (
+                    <div className="p-3 bg-zinc-50 dark:bg-neutral-800/60 rounded-xl border border-zinc-200 dark:border-neutral-700 space-y-2">
+                      <span className="text-[11px] font-bold text-zinc-600 dark:text-neutral-300 block">Select Enrolled Subjects:</span>
+                      <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto">
+                        {availableModalSubjects.map(subj => {
+                          const isChecked = editStudentSubjects.includes(subj);
                           return (
-                            <button
-                              type="button"
-                              key={s.id}
-                              onClick={() => setEditStudentStreamId(s.id)}
-                              className={`p-2.5 rounded-xl border text-left transition-all w-full whitespace-normal break-words ${
-                                isSelected
-                                  ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold ring-1 ring-purple-600/30'
-                                  : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-medium'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs">{s.name}</span>
-                                {isSelected && <Check size={12} className="text-purple-600 shrink-0" />}
-                              </div>
-                            </button>
+                            <label key={subj} className="flex items-center gap-2 p-1.5 text-xs text-zinc-800 dark:text-neutral-200 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  if (isChecked) {
+                                    setEditStudentSubjects(prev => prev.filter(s => s !== subj));
+                                  } else {
+                                    setEditStudentSubjects(prev => [...prev, subj]);
+                                  }
+                                }}
+                                className="rounded border-zinc-300 text-indigo-600"
+                              />
+                              <span className="truncate">{subj}</span>
+                            </label>
                           );
                         })}
                       </div>
-                    ) : (
-                      <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs text-zinc-500">
-                        General Stream (Core curriculum subjects assigned automatically)
-                      </div>
-                    )}
+
+                      {adminCalculatedSubjectFee && (
+                        <div className="pt-2 border-t border-zinc-200 dark:border-neutral-700 flex justify-between text-xs font-bold text-purple-700 dark:text-purple-400">
+                          <span>Calculated Tuition ({adminCalculatedSubjectFee.subjectCount} subjects):</span>
+                          <span>PKR {adminCalculatedSubjectFee.finalFee.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Institutional Fee & Access Status */}
+                <div className="pt-2 border-t border-zinc-100 dark:border-neutral-800">
+                  <label className="text-xs font-bold text-zinc-700 dark:text-neutral-300 mb-2 block uppercase">Institutional Access Status</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditStudentFeeStatus('unpaid')}
+                      className={`min-h-[44px] p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                        editStudentFeeStatus === 'unpaid'
+                          ? 'border-amber-500 bg-amber-50 text-amber-900 font-bold'
+                          : 'border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 text-zinc-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className="text-xs block font-bold">Unpaid</span>
+                      <span className="text-[9px] text-zinc-500 block">Gated</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditStudentFeeStatus('pending')}
+                      className={`min-h-[44px] p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                        editStudentFeeStatus === 'pending'
+                          ? 'border-purple-600 bg-purple-50 text-purple-900 font-bold'
+                          : 'border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 text-zinc-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className="text-xs block font-bold">Reviewing</span>
+                      <span className="text-[9px] text-zinc-500 block">Pending</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditStudentFeeStatus('paid')}
+                      className={`min-h-[44px] p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                        editStudentFeeStatus === 'paid'
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-bold'
+                          : 'border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 text-zinc-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className="text-xs block font-bold">Paid</span>
+                      <span className="text-[9px] text-zinc-500 block">Full Access</span>
+                    </button>
                   </div>
-                </>
-              )}
-
-              {/* Subject Selection (All Subjects vs Specific Custom Subjects) */}
-              <div className="pt-2 border-t border-zinc-100 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider">
-                    Subject Enrollment Model <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[10px] text-zinc-500 font-semibold">
-                    {editStudentEnrollmentMode === 'all' 
-                      ? 'Full Stream Package' 
-                      : `${editStudentSubjects.length} subject(s) selected`}
-                  </span>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditStudentEnrollmentMode('all');
-                      setEditStudentSubjects([]);
-                    }}
-                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentEnrollmentMode === 'all'
-                        ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">All Subjects</span>
-                      {editStudentEnrollmentMode === 'all' && <Check size={14} className="text-purple-600 shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-zinc-500 block mt-0.5">Standard stream curriculum access</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditStudentEnrollmentMode('custom');
-                      if (editStudentSubjects.length === 0 && availableSubjectsForEdit.length > 0) {
-                        setEditStudentSubjects([availableSubjectsForEdit[0]]);
-                      }
-                    }}
-                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentEnrollmentMode === 'custom'
-                        ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">Specific Subjects</span>
-                      {editStudentEnrollmentMode === 'custom' && <Check size={14} className="text-purple-600 shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-zinc-500 block mt-0.5">Select 1, 2, 3, or more subjects</span>
-                  </button>
-                </div>
-
-                {editStudentEnrollmentMode === 'custom' && (
-                  <div className="p-3 bg-zinc-50 rounded-2xl border border-zinc-200 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-zinc-700">
-                        Choose Active Subjects for Student:
-                      </span>
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <button
-                          type="button"
-                          onClick={() => setEditStudentSubjects([...availableSubjectsForEdit])}
-                          className="text-purple-600 font-bold hover:underline cursor-pointer"
-                        >
-                          Select All
-                        </button>
-                        <span className="text-zinc-300">|</span>
-                        <button
-                          type="button"
-                          onClick={() => setEditStudentSubjects([])}
-                          className="text-zinc-500 font-bold hover:underline cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                      {availableSubjectsForEdit.map((subj) => {
-                        const isSelected = editStudentSubjects.includes(subj);
-                        return (
-                          <button
-                            type="button"
-                            key={subj}
-                            onClick={() => {
-                              if (isSelected) {
-                                setEditStudentSubjects(editStudentSubjects.filter(s => s !== subj));
-                              } else {
-                                setEditStudentSubjects([...editStudentSubjects, subj]);
-                              }
-                            }}
-                            className={`p-2 rounded-xl border text-left flex items-center justify-between transition-all w-full whitespace-normal break-words ${
-                              isSelected
-                                ? 'bg-purple-600 border-purple-600 text-white font-bold shadow-sm'
-                                : 'bg-white border-zinc-200 hover:border-zinc-300 text-zinc-700 font-medium'
-                            }`}
-                          >
-                            <span className="text-xs">{subj}</span>
-                            {isSelected && <Check size={12} className="text-white shrink-0 ml-1" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {editStudentSubjects.length === 0 ? (
-                      <p className="text-[11px] text-amber-600 font-semibold">
-                        ⚠️ Please select at least one subject.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-zinc-200 text-xs gap-1">
-                        <span className="text-zinc-600 font-medium">
-                          Calculated Tuition ({adminCalculatedSubjectFee.subjectCount} subjects):
-                        </span>
-                        <span className="font-mono font-bold text-purple-700">
-                          PKR {adminCalculatedSubjectFee.finalFee.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
-              {/* Fee & Access Status (Direct Admin Override) */}
-              <div className="pt-2 border-t border-zinc-100">
-                <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-2">
-                  Institutional Fee & Access Status
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setEditStudentFeeStatus('unpaid')}
-                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentFeeStatus === 'unpaid'
-                        ? 'border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-500/20 font-bold'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">Unpaid</span>
-                      {editStudentFeeStatus === 'unpaid' && <Check size={14} className="text-amber-600 shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-zinc-500 block mt-0.5">Billing Gated</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setEditStudentFeeStatus('pending')}
-                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentFeeStatus === 'pending'
-                        ? 'border-purple-600 bg-purple-50 text-purple-900 ring-2 ring-purple-600/20 font-bold'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">Pending</span>
-                      {editStudentFeeStatus === 'pending' && <Check size={14} className="text-purple-600 shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-zinc-500 block mt-0.5">Awaiting Review</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setEditStudentFeeStatus('paid')}
-                    className={`p-3 rounded-2xl border text-left transition-all w-full whitespace-normal break-words ${
-                      editStudentFeeStatus === 'paid'
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-600/20 font-bold'
-                        : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/50 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">Paid & Verified</span>
-                      {editStudentFeeStatus === 'paid' && <Check size={14} className="text-emerald-600 shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-zinc-500 block mt-0.5">Full LMS Access</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-zinc-500 mt-1.5 break-words">
-                  Direct override: Changes access immediately without requiring student payment proof submission.
-                </p>
-              </div>
-
-              </div>
-
-              {/* Modal Actions Footer (Pinned at bottom, never clipped or hidden) */}
-              <div className="p-3.5 sm:px-6 sm:py-4 border-t border-zinc-100 flex gap-2.5 sm:gap-3 bg-zinc-50/80 shrink-0">
+              <div className="p-4 border-t border-zinc-200 dark:border-neutral-800 flex gap-3 bg-zinc-50 dark:bg-neutral-800/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditStudentModalOpen(false)}
-                  className="btn flex-1 py-2.5 border border-zinc-200 text-zinc-700 font-bold text-xs rounded-xl hover:bg-white transition-colors"
+                  className="min-h-[44px] flex-1 py-2.5 border border-zinc-200 dark:border-neutral-700 text-zinc-700 dark:text-neutral-300 font-bold text-xs rounded-xl hover:bg-white dark:hover:bg-neutral-700 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={editStudentSaving}
-                  className="btn flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 transition-all"
+                  className="min-h-[44px] flex-1 py-2.5 bg-[#F4C430] hover:bg-[#E5B520] text-zinc-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {editStudentSaving ? <Clock size={14} className="animate-spin" /> : <Save size={14} />}
-                  Save Changes
+                  Save Student
                 </button>
               </div>
             </form>
@@ -2594,19 +2401,70 @@ export const RosterManagerPage: React.FC = () => {
         document.body
       )}
 
-      <ConfirmModal
-        open={deleteModalOpen}
-        title={`Permanently Delete ${entryToDelete?.role === 'teacher' ? 'Teacher' : 'Student'} Account?`}
-        description={`Are you sure you want to delete ${entryToDelete?.full_name} (${entryToDelete?.email})? This action will permanently purge their profile, registration records, fee status, attendance logs, and class assignments. All linked records will be cleanly removed without leaving orphaned data.`}
-        confirmLabel="Yes, Permanently Delete"
-        cancelLabel="Cancel"
-        danger
-        onConfirm={confirmDelete}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          setEntryToDelete(null);
-        }}
-      />
+      {/* ── PERMANENT DELETE CONFIRMATION WITH TYPED FULL NAME ── */}
+      {deleteModalOpen && entryToDelete && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative bg-white dark:bg-neutral-900 w-full max-w-full sm:max-w-md rounded-2xl shadow-2xl p-5 border border-red-200 dark:border-red-900/60 flex flex-col space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-zinc-900 dark:text-neutral-100">
+                  Delete {entryToDelete.role === 'teacher' ? 'Faculty' : 'Student'} Account
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-neutral-400">
+                  Permanent cascading removal
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600 dark:text-neutral-300 leading-relaxed">
+              This action will permanently delete <strong>{entryToDelete.full_name}</strong> ({entryToDelete.email}). All profile data, institutional fee records, attendance logs, and scheduled assignments will be completely cleaned up without leaving orphaned data.
+            </p>
+
+            <div className="p-3 bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl space-y-2">
+              <label className="text-[11px] font-bold text-red-900 dark:text-red-300 block">
+                Type <span className="font-mono underline select-all">{entryToDelete.full_name}</span> to confirm:
+              </label>
+              <input
+                type="text"
+                placeholder={entryToDelete.full_name}
+                value={deleteConfirmNameInput}
+                onChange={(e) => setDeleteConfirmNameInput(e.target.value)}
+                className="w-full min-h-[44px] text-xs px-3 py-2 bg-white dark:bg-neutral-800 border border-red-300 dark:border-red-800 rounded-lg text-zinc-900 dark:text-neutral-100 font-bold focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setEntryToDelete(null);
+                  setDeleteConfirmNameInput('');
+                }}
+                className="min-h-[44px] flex-1 py-2.5 border border-zinc-200 dark:border-neutral-700 text-zinc-700 dark:text-neutral-300 font-bold text-xs rounded-xl hover:bg-zinc-50 dark:hover:bg-neutral-800 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  deleteSubmitting || 
+                  deleteConfirmNameInput.trim().toLowerCase() !== (entryToDelete.full_name || '').trim().toLowerCase()
+                }
+                onClick={confirmDelete}
+                className="min-h-[44px] flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {deleteSubmitting ? <Clock size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </AdminShell>
   );
 };
