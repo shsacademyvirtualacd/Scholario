@@ -75,6 +75,7 @@ const AdminTestsPage       = lazyWithRetry(() => import('../pages/admin/AdminTes
 const AdminQuestionBankPage = lazyWithRetry(() => import('../pages/admin/AdminQuestionBankPage'), 'AdminQuestionBankPage');
 const AttendanceAdminPage  = lazyWithRetry(() => import('../pages/admin/AttendanceAdminPage'), 'AttendanceAdminPage');
 const AdminAnnouncementsPage = lazyWithRetry(() => import('../pages/admin/AdminAnnouncementsPage'), 'AdminAnnouncementsPage');
+const SiteAnnouncementsPage = lazyWithRetry(() => import('../pages/admin/SiteAnnouncementsPage'), 'SiteAnnouncementsPage');
 const AdminProfilePage     = lazyWithRetry(() => import('../pages/admin/ProfilePage'), 'AdminProfilePage');
 const PriceManagerPage     = lazyWithRetry(() => import('../pages/admin/PriceManagerPage'), 'PriceManagerPage');
 const RosterManagerPage    = lazyWithRetry(() => import('../pages/admin/RosterManagerPage'), 'RosterManagerPage');
@@ -250,6 +251,14 @@ const AppRouter: React.FC = () => (
           />
           <Route
             path="/admin/announcements"
+            element={<ProtectedRoute requiredRole="admin"><SiteAnnouncementsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/modal-announcements"
+            element={<ProtectedRoute requiredRole="admin"><AdminAnnouncementsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/notices"
             element={<ProtectedRoute requiredRole="admin"><AdminAnnouncementsPage /></ProtectedRoute>}
           />
           <Route

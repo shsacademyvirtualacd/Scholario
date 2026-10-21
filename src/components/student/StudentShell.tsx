@@ -19,6 +19,7 @@ import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { NotificationBell } from '../common/NotificationBell';
 import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
 import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
+import { AnnouncementBanner } from '../common/AnnouncementBanner';
 
 interface StudentShellProps {
   children: React.ReactNode;
@@ -123,6 +124,9 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
       {/* ── Main content ── */}
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden">
+        {/* Site Announcement Banner */}
+        <AnnouncementBanner />
+
         {/* Top bar */}
         <header className="sticky top-0 z-50 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
           <div className="flex items-center gap-3 min-w-0">

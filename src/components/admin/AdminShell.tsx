@@ -8,7 +8,6 @@ import {
   Users,
   BookMarked,
   FileCheck2,
-  Bell,
   Menu,
   X,
   DollarSign,
@@ -17,7 +16,8 @@ import {
   Sparkles,
   ClipboardCheck,
   ShieldAlert,
-  Database
+  Database,
+  Megaphone,
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -26,6 +26,7 @@ import { supabase } from '../../lib/supabase';
 import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
 import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 import { NotificationBell } from '../common/NotificationBell';
+import { AnnouncementBanner } from '../common/AnnouncementBanner';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -50,7 +51,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: BookMarked,      label: 'Notes',      path: '/admin/notes' },
   { icon: FileCheck2,      label: 'Testing Center', path: '/admin/tests' },
   { icon: Database,        label: 'Question Bank', path: '/admin/question-bank' },
-  { icon: Bell,            label: 'Announcements', path: '/admin/announcements' },
+  { icon: Megaphone,       label: 'Announcements', path: '/admin/announcements' },
   { icon: Sparkles,        label: 'Sage',       path: '/admin/sage' },
   { icon: DollarSign,      label: 'Prices',     path: '/admin/prices' },
   { icon: Coins,           label: 'Fees',       path: '/admin/fees' },
@@ -180,6 +181,9 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
 
       {/* Main container */}
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden">
+        {/* Site Announcement Banner */}
+        <AnnouncementBanner />
+
         {/* Top bar */}
         <header className="sticky top-0 z-50 h-16 bg-white dark:bg-[#141416] border-b border-[#E5E5E5] dark:border-[#27272A] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
           <div className="flex items-center gap-3 min-w-0">

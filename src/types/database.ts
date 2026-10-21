@@ -331,6 +331,25 @@ export interface AnnouncementDismissal {
   dismissed_at: string;
 }
 
+// ─── site_announcements (top banner) ────────
+export type SiteAnnouncementType = 'info' | 'success' | 'warning' | 'urgent';
+export type SiteAnnouncementAudience = 'student' | 'teacher' | 'admin';
+
+export interface SiteAnnouncement {
+  id: string;
+  title?: string | null;
+  message: string;
+  type: SiteAnnouncementType;
+  audience: ('student' | 'teacher' | 'admin')[];
+  start_at: string;
+  end_at?: string | null;
+  is_active: boolean;
+  is_dismissible: boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── chat_threads & chat_messages ───────────
 export type ChatThreadType = 'admin' | 'teacher' | 'staff';
 export type ChatMessageType = 'text' | 'voice' | 'image' | 'file';

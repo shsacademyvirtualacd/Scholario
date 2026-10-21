@@ -16,6 +16,7 @@ import type {
   BoardEntry, ClassEntry, StreamEntry, SubjectEntry, Announcement,
   TeacherAttendanceRating, TeacherAttendanceRatingVote,
   TestPaper, TestSubmission, StudentMCQAttempt, NoteFileType,
+  SiteAnnouncement, SiteAnnouncementType,
 } from '../types';
 import { triggerLiveSession, endLiveSession } from './liveSessionService';
 export * from './liveSessionService';
@@ -4378,15 +4379,10 @@ export async function getAnnouncements(options?: { type?: 'public' | 'dashboard'
   return rows as unknown as Announcement[];
 }
 
-export async function createAnnouncement(payload: {
-  title: string;
-  body: string;
-  severity?: 'normal' | 'crucial';
-  scope?: 'system' | 'class';
-  class_id?: string | null;
-  stream_id?: string | null;
-  created_by?: string | null;
-}): Promise<Announcement> {
+export async function createAnnouncement(payload: any): Promise<any> {
+  if (payload && 'message' in payload && !('body' in payload)) {
+    return createSiteAnnouncement(payload);
+  }
   const { data, error } = await (supabase as any)
     .from('announcements')
     .insert([{
@@ -4495,12 +4491,191 @@ export async function createAnnouncement(payload: {
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {
+  try {
+    const { data } = await (supabase as any).from('site_announcements').select('id').eq('id', id).maybeSingle();
+    if (data?.id) {
+      await deleteSiteAnnouncement(id);
+      return;
+    }
+  } catch {}
+
   const { error } = await supabase
     .from('announcements')
     .delete()
     .eq('id', id);
   if (error) throw error;
 }
+
+// =============================================================================
+// SITE ANNOUNCEMENTS (Top Banner System)
+// =============================================================================
+
+export const DEFAULT_SITE_ANNOUNCEMENT: SiteAnnouncement = {
+  id: '00000000-0000-4000-a000-000000000099',
+  title: 'Issues resolved!',
+  message: 'Please check every part of your dashboard. If you find any issue, contact +923222314436.',
+  type: 'success',
+  audience: ['student', 'teacher', 'admin'],
+  start_at: '2026-01-01T00:00:00.000Z',
+  end_at: null,
+  is_active: true,
+  is_dismissible: true,
+  created_by: null,
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+};
+
+/**
+ * Fetch active site-wide banner announcements matching the current user role and current time.
+ */
+export async function getActiveSiteAnnouncements(userRole?: string): Promise<SiteAnnouncement[]> {
+  try {
+    const nowIso = new Date().toISOString();
+    const query = (supabase as any)
+      .from('site_announcements')
+      .select('*')
+      .eq('is_active', true)
+      .lte('start_at', nowIso)
+      .order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn('[db:getActiveSiteAnnouncements] Query warning (table may be freshly created):', error.message);
+      const defValid = DEFAULT_SITE_ANNOUNCEMENT.is_active &&
+        (!userRole || DEFAULT_SITE_ANNOUNCEMENT.audience.includes(userRole as any));
+      return defValid ? [DEFAULT_SITE_ANNOUNCEMENT] : [];
+    }
+
+    const rows: SiteAnnouncement[] = (data || []).filter((item: SiteAnnouncement) => {
+      if (!item.is_active) return false;
+      const nowTime = Date.now();
+      if (item.start_at && new Date(item.start_at).getTime() > nowTime) return false;
+      if (item.end_at && new Date(item.end_at).getTime() < nowTime) return false;
+      if (userRole && Array.isArray(item.audience) && !item.audience.includes(userRole as any)) {
+        return false;
+      }
+      return true;
+    });
+
+    if (rows.length === 0 && (!data || data.length === 0)) {
+      const defValid = !userRole || DEFAULT_SITE_ANNOUNCEMENT.audience.includes(userRole as any);
+      if (defValid) return [DEFAULT_SITE_ANNOUNCEMENT];
+    }
+
+    return rows;
+  } catch (err) {
+    console.warn('[db:getActiveSiteAnnouncements] Failed to fetch site announcements:', err);
+    return [DEFAULT_SITE_ANNOUNCEMENT];
+  }
+}
+
+/**
+ * Admin: List all site banner announcements (active, inactive, future scheduled, expired)
+ */
+export async function listAllSiteAnnouncements(): Promise<SiteAnnouncement[]> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('site_announcements')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[db:listAllSiteAnnouncements] Supabase select notice:', error.message);
+      return [DEFAULT_SITE_ANNOUNCEMENT];
+    }
+    if (!data || data.length === 0) {
+      return [DEFAULT_SITE_ANNOUNCEMENT];
+    }
+    return data as SiteAnnouncement[];
+  } catch (err) {
+    console.warn('[db:listAllSiteAnnouncements] Error:', err);
+    return [DEFAULT_SITE_ANNOUNCEMENT];
+  }
+}
+
+/**
+ * Admin: Create a new site banner announcement
+ */
+export async function createSiteAnnouncement(payload: {
+  title?: string | null;
+  message: string;
+  type?: SiteAnnouncementType;
+  audience?: ('student' | 'teacher' | 'admin')[];
+  start_at?: string;
+  end_at?: string | null;
+  is_active?: boolean;
+  is_dismissible?: boolean;
+  created_by?: string | null;
+}): Promise<SiteAnnouncement> {
+  const row = {
+    title: payload.title?.trim() || null,
+    message: payload.message.trim(),
+    type: payload.type || 'success',
+    audience: payload.audience && payload.audience.length > 0 ? payload.audience : ['student', 'teacher', 'admin'],
+    start_at: payload.start_at || new Date().toISOString(),
+    end_at: payload.end_at || null,
+    is_active: payload.is_active ?? true,
+    is_dismissible: payload.is_dismissible ?? true,
+    created_by: payload.created_by || null,
+  };
+
+  const { data, error } = await (supabase as any)
+    .from('site_announcements')
+    .insert([row])
+    .select('*')
+    .single();
+
+  if (error) {
+    throw new Error(`[db:createSiteAnnouncement] ${error.message}`);
+  }
+  return data as SiteAnnouncement;
+}
+
+/**
+ * Admin: Update an existing site banner announcement
+ */
+export async function updateSiteAnnouncement(
+  id: string,
+  payload: Partial<SiteAnnouncement>
+): Promise<SiteAnnouncement> {
+  const updates: any = {
+    ...payload,
+    updated_at: new Date().toISOString(),
+  };
+  delete updates.id;
+  delete updates.created_at;
+
+  const { data, error } = await (supabase as any)
+    .from('site_announcements')
+    .update(updates)
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw new Error(`[db:updateSiteAnnouncement] ${error.message}`);
+  }
+  return data as SiteAnnouncement;
+}
+
+/**
+ * Admin: Delete a site banner announcement
+ */
+export async function deleteSiteAnnouncement(id: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('site_announcements')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(`[db:deleteSiteAnnouncement] ${error.message}`);
+  }
+}
+
+// Aliases matching prompt specifications
+export const getActiveAnnouncements = getActiveSiteAnnouncements;
+export const listAllAnnouncements = listAllSiteAnnouncements;
+export const updateAnnouncement = updateSiteAnnouncement;
 
 export interface NotificationRow {
   id: string;
