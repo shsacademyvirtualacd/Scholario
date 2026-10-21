@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Calendar, LayoutGrid } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Clock, Calendar, ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
 import SlotCard from './SlotCard';
 import { useMobile } from '../../../hooks/useMobile';
-import { formatTime12h, timeStrToMins } from '../../../lib/scheduleUtils';
+import { formatTime12h, timeStrToMins, getPKTNow } from '../../../lib/scheduleUtils';
 
 interface WeeklyGridProps {
   slots: any[];
   sessionLinks?: Record<string, any>;
+  conflictSlotIds?: Set<string>;
   onAddSlot?: (dayIndex: number, startTime?: string, endTime?: string) => void;
-  onEdit: (slot: any) => void;
-  onDelete: (slotId: string) => void;
-  onEditLink?: (slot: any) => void;
-  onToggleCancel: (slotId: string, currentStatus: boolean) => void;
+  onSelectSlot: (slot: any) => void;
   selectionMode?: boolean;
   selectedSlotIds?: string[];
   onToggleSelectSlot?: (slotId: string) => void;
 }
 
-const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const SHORT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAYS_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const SHORT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Canonical period schedule (reference presets & fallback when schedule has no slots yet)
 export const CANONICAL_PERIODS = [
   { start_time: '16:30:00', end_time: '17:00:00', label: 'Period 0' },
   { start_time: '17:00:00', end_time: '17:30:00', label: 'Period 1' },
@@ -29,41 +26,40 @@ export const CANONICAL_PERIODS = [
   { start_time: '18:30:00', end_time: '19:00:00', label: 'Period 4' },
 ];
 
-export const getPeriodDisplayLabel = (startTime: string, fallbackIdx: number): string => {
-  const mins = timeStrToMins(startTime);
-  if (mins >= 16 * 60 + 20 && mins <= 16 * 60 + 40) return 'Period 0'; // 16:30 (4:30 PM)
-  if (mins >= 16 * 60 + 50 && mins <= 17 * 60 + 10) return 'Period 1'; // 17:00 (5:00 PM)
-  if (mins >= 17 * 60 + 20 && mins <= 17 * 60 + 40) return 'Period 2'; // 17:30 (5:30 PM)
-  if (mins >= 17 * 60 + 50 && mins <= 18 * 60 + 10) return 'Period 3'; // 18:00 (6:00 PM)
-  if (mins >= 18 * 60 + 20 && mins <= 18 * 60 + 40) return 'Period 4'; // 18:30 (6:30 PM)
-  return `Period ${fallbackIdx + 1}`;
-};
-
 export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
   slots,
-  sessionLinks,
+  sessionLinks = {},
+  conflictSlotIds = new Set(),
   onAddSlot,
-  onEdit,
-  onDelete,
-  onEditLink,
-  onToggleCancel,
+  onSelectSlot,
   selectionMode = false,
   selectedSlotIds = [],
   onToggleSelectSlot,
 }) => {
   const isMobile = useMobile();
-  const [activeDay, setActiveDay] = useState(0);
-  const [viewMode, setViewMode] = useState<'grid' | 'day'>(isMobile ? 'day' : 'grid');
+  const pktnow = useMemo(() => getPKTNow(), []);
+  // Today's day index in Mon-first: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat
+  const todayDayIndex = pktnow.dayIndex < 6 ? pktnow.dayIndex : 0;
+
+  // Active day on mobile / day-view
+  const [activeMobileDay, setActiveMobileDay] = useState(todayDayIndex);
+  // Tablet 3-day window offset (0 = Mon-Wed, 3 = Thu-Sat)
+  const [tabletWindowOffset, setTabletWindowOffset] = useState(() => (todayDayIndex >= 3 ? 3 : 0));
+  // Mobile week overview toggle
+  const [showMobileWeekMiniGrid, setShowMobileWeekMiniGrid] = useState(false);
+
+  // Time ticker (updates live/next up class every 30s)
+  const [currentMins, setCurrentMins] = useState(pktnow.totalMins);
 
   useEffect(() => {
-    if (isMobile) {
-      setViewMode('day');
-    }
-  }, [isMobile]);
+    const timer = setInterval(() => {
+      setCurrentMins(getPKTNow().totalMins);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
-  // Derive unique active time periods across all current slots, sorted strictly chronologically.
-  // Unused preset periods are NOT added, preventing phantom empty rows/dead space.
-  const getWeeklyPeriods = () => {
+  // Derive unique active time periods across all current slots sorted chronologically
+  const periods = useMemo(() => {
     if (slots.length === 0) {
       return CANONICAL_PERIODS.map((p) => ({
         start_time: p.start_time,
@@ -72,7 +68,6 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
     }
 
     const timeMap = new Map<number, { start_time: string; end_time: string }>();
-
     slots.forEach((s) => {
       if (s.start_time) {
         const startMins = timeStrToMins(s.start_time);
@@ -85,309 +80,340 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
       }
     });
 
-    // Chronological order by start time in minutes
     return Array.from(timeMap.values()).sort(
       (a, b) => timeStrToMins(a.start_time) - timeStrToMins(b.start_time)
     );
-  };
+  }, [slots]);
 
-  const weeklyPeriods = getWeeklyPeriods();
+  // Map of day index -> count of classes missing link
+  const dayMissingLinkCounts = useMemo(() => {
+    const counts: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    slots.forEach((s) => {
+      const link = (sessionLinks[s.id]?.link_url || s.room_or_link || '').trim();
+      if (!link && !s.is_cancelled && s.day_of_week >= 0 && s.day_of_week < 6) {
+        counts[s.day_of_week] = (counts[s.day_of_week] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [slots, sessionLinks]);
 
-  // Return all matching slots for a specific start time & day index
-  const getSlotsForPeriodAndDay = (startTime: string, dayIndex: number) => {
-    const targetMins = timeStrToMins(startTime);
-    return slots.filter(
-      (s) => s.day_of_week === dayIndex && timeStrToMins(s.start_time || '') === targetMins
-    );
-  };
-
-  // Slots for the currently selected day in day view, sorted strictly chronologically
-  const daySlots = slots
-    .filter((s) => s.day_of_week === activeDay)
-    .sort((a, b) => timeStrToMins(a.start_time || '00:00') - timeStrToMins(b.start_time || '00:00'));
-
-  // Group active day's slots by unique start time for clean chronological display
-  const dayTimeGroups: { startTime: string; endTime: string; slots: any[] }[] = [];
-  const dayTimeMap = new Map<number, { startTime: string; endTime: string; slots: any[] }>();
-
-  daySlots.forEach((slot) => {
-    const startMins = timeStrToMins(slot.start_time || '00:00');
-    if (!dayTimeMap.has(startMins)) {
-      const entry = {
-        startTime: slot.start_time || '00:00:00',
-        endTime: slot.end_time || slot.start_time || '00:00:00',
-        slots: [],
-      };
-      dayTimeMap.set(startMins, entry);
-      dayTimeGroups.push(entry);
+  // Helper to evaluate live now / starts soon for a slot
+  const getSlotTimingStatus = (slot: any) => {
+    if (slot.day_of_week !== todayDayIndex || slot.is_cancelled) {
+      return { isLiveNow: false, startsSoonMins: undefined };
     }
-    dayTimeMap.get(startMins)!.slots.push(slot);
-  });
+    const startMins = timeStrToMins(slot.start_time);
+    const endMins = timeStrToMins(slot.end_time || slot.start_time);
 
-  return (
-    <div className="flex flex-col gap-3">
-      {/* Top Bar with View Mode Toggle on Desktop */}
-      {!isMobile && (
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-              {viewMode === 'grid' ? 'Weekly Timetable Grid' : `${DAYS_NAME[activeDay]} Schedule`}
-            </span>
-            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-neutral-700">
-              {slots.length} {slots.length === 1 ? 'slot' : 'slots'} scheduled
-            </span>
-          </div>
+    if (currentMins >= startMins && currentMins <= endMins) {
+      return { isLiveNow: true, startsSoonMins: undefined };
+    }
+    if (currentMins < startMins && startMins - currentMins <= 45) {
+      return { isLiveNow: false, startsSoonMins: startMins - currentMins };
+    }
+    return { isLiveNow: false, startsSoonMins: undefined };
+  };
 
-          <div className="flex items-center bg-slate-100 dark:bg-neutral-800 p-0.5 rounded-xl border border-slate-200 dark:border-neutral-700">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-slate-100 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <LayoutGrid size={13} />
-              <span>Weekly Grid</span>
-            </button>
-            <button
-              onClick={() => setViewMode('day')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'day'
-                  ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-slate-100 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <Calendar size={13} />
-              <span>Daily View</span>
-            </button>
-          </div>
-        </div>
-      )}
+  // ─────────────────────────────────────────────────────────────────────────────
+  // MOBILE VIEW (< 640px)
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (isMobile && !showMobileWeekMiniGrid) {
+    const mobileDaySlots = slots
+      .filter((s) => s.day_of_week === activeMobileDay)
+      .sort((a, b) => timeStrToMins(a.start_time) - timeStrToMins(b.start_time));
 
-      {/* Day Switcher Tabs (Always visible on mobile, or on desktop when in Daily View) */}
-      {(isMobile || viewMode === 'day') && (
-        <div className="flex overflow-x-auto gap-2 pb-1 no-scrollbar">
-          {SHORT_DAYS.map((shortName, idx) => {
-            const countForDay = slots.filter((s) => s.day_of_week === idx).length;
-            const isSelected = activeDay === idx;
+    return (
+      <div className="space-y-4">
+        {/* Horizontal Day Selector Strip */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-1.5 shadow-xs flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+          {SHORT_DAYS.map((dayShort, idx) => {
+            const isToday = idx === todayDayIndex;
+            const isSelected = idx === activeMobileDay;
+            const missingLinks = dayMissingLinkCounts[idx] || 0;
+
             return (
               <button
-                key={idx}
-                onClick={() => setActiveDay(idx)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border cursor-pointer ${
+                key={dayShort}
+                type="button"
+                onClick={() => setActiveMobileDay(idx)}
+                className={`relative flex-1 py-2 px-1 rounded-xl text-center transition-all ${
                   isSelected
-                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-amber-400 dark:text-slate-950 dark:border-amber-400 shadow-sm'
-                    : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-neutral-800 hover:bg-slate-50 dark:hover:bg-neutral-800'
+                    ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 font-bold shadow-xs'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                 }`}
               >
-                <span>{shortName}</span>
-                {countForDay > 0 && (
-                  <span
-                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
-                      isSelected
-                        ? 'bg-white/20 text-white dark:bg-slate-950/20 dark:text-slate-950'
-                        : 'bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-slate-300'
+                <div className="text-[11px] uppercase tracking-wide font-bold">{dayShort}</div>
+                {isToday && (
+                  <div
+                    className={`text-[9px] font-extrabold ${
+                      isSelected ? 'text-amber-300 dark:text-neutral-900' : 'text-amber-600 dark:text-amber-400'
                     }`}
                   >
-                    {countForDay}
-                  </span>
+                    Today
+                  </div>
+                )}
+
+                {/* Dot for days that have classes missing links */}
+                {missingLinks > 0 && (
+                  <span
+                    className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+                    title={`${missingLinks} classes missing meeting link`}
+                  />
                 )}
               </button>
             );
           })}
         </div>
-      )}
 
-      {/* ── View 1: Daily Schedule View (Mobile & Desktop Day View) ── */}
-      {(isMobile || viewMode === 'day') && (
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm">
-          <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 dark:border-neutral-800">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                {DAYS_NAME[activeDay]}
-              </span>
-              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-neutral-700">
-                {daySlots.length} {daySlots.length === 1 ? 'class' : 'classes'}
-              </span>
-            </div>
-            {onAddSlot && (
-              <button
-                onClick={() => onAddSlot(activeDay)}
-                className="flex items-center gap-1 text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 px-2.5 py-1.5 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer shadow-2xs"
-              >
-                <Plus size={13} />
-                <span>Add Slot</span>
-              </button>
-            )}
-          </div>
+        {/* View Switcher toggle: Day vs Week Overview */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+            {DAYS_NAME[activeMobileDay]} ({mobileDaySlots.length} {mobileDaySlots.length === 1 ? 'class' : 'classes'})
+          </span>
 
-          {dayTimeGroups.length === 0 ? (
-            <div className="py-12 px-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-neutral-800 bg-slate-50/50 dark:bg-neutral-950/40">
-              <Clock className="w-8 h-8 mx-auto text-slate-400 dark:text-neutral-500 mb-2" />
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                No classes scheduled for {DAYS_NAME[activeDay]}
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Click below to add a class slot to this day.
+          <button
+            type="button"
+            onClick={() => setShowMobileWeekMiniGrid(true)}
+            className="text-xs font-semibold text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white flex items-center gap-1"
+          >
+            <LayoutGrid size={13} />
+            <span>Week overview</span>
+          </button>
+        </div>
+
+        {/* Vertical Timeline List of Classes */}
+        <div className="space-y-2.5">
+          {mobileDaySlots.length === 0 ? (
+            <div className="py-12 text-center text-neutral-400 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-2">
+              <Calendar size={28} className="mx-auto text-neutral-300 dark:text-neutral-600" />
+              <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                No classes scheduled for {DAYS_NAME[activeMobileDay]}.
               </p>
               {onAddSlot && (
                 <button
-                  onClick={() => onAddSlot(activeDay)}
-                  className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950 text-xs font-bold rounded-lg hover:bg-slate-800 dark:hover:bg-amber-300 transition-colors shadow-sm cursor-pointer"
+                  type="button"
+                  onClick={() => onAddSlot(activeMobileDay)}
+                  className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
                 >
-                  <Plus size={13} />
-                  <span>Schedule Class</span>
+                  + Add class for {DAYS_NAME[activeMobileDay]}
                 </button>
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {dayTimeGroups.map((group, idx) => (
-                <div key={idx} className="flex gap-3 items-stretch">
-                  {/* Period Time Column - strictly ordered by actual chronological time */}
-                  <div className="w-28 shrink-0 text-left pt-2 border-r border-slate-200 dark:border-neutral-800 pr-2.5">
-                    <div className="flex items-center gap-1">
-                      <Clock size={10} className="text-slate-400 dark:text-neutral-500 shrink-0" />
-                      <span className="text-[10px] font-black text-slate-900 dark:text-slate-100 block uppercase tracking-wider">
-                        {getPeriodDisplayLabel(group.startTime, idx)}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mt-0.5">
-                      {formatTime12h(group.startTime)}
-                    </span>
-                    <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 block">
-                      to {formatTime12h(group.endTime)}
-                    </span>
-                  </div>
-
-                  {/* Slot Cards Column */}
-                  <div className="flex-1 min-w-0">
-                    <div className="space-y-2">
-                      {group.slots.map((slot) => (
-                        <SlotCard
-                          key={slot.id}
-                          slot={slot}
-                          sessionLink={sessionLinks?.[slot.id]}
-                          onEdit={onEdit}
-                          onDelete={onDelete}
-                          onEditLink={onEditLink}
-                          onToggleCancel={onToggleCancel}
-                          selectionMode={selectionMode}
-                          isSelected={selectedSlotIds.includes(slot.id)}
-                          onToggleSelect={onToggleSelectSlot}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {onAddSlot && (
-                <div className="pt-3 border-t border-slate-200 dark:border-neutral-800 flex justify-end">
-                  <button
-                    onClick={() => onAddSlot(activeDay)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
-                  >
-                    <Plus size={12} />
-                    <span>Add Another Slot for {SHORT_DAYS[activeDay]}</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            mobileDaySlots.map((slot) => {
+              const timing = getSlotTimingStatus(slot);
+              return (
+                <SlotCard
+                  key={slot.id}
+                  slot={slot}
+                  sessionLink={sessionLinks[slot.id]}
+                  onClick={onSelectSlot}
+                  hasConflict={conflictSlotIds.has(slot.id)}
+                  isLiveNow={timing.isLiveNow}
+                  startsSoonMins={timing.startsSoonMins}
+                  selectionMode={selectionMode}
+                  isSelected={selectedSlotIds.includes(slot.id)}
+                  onToggleSelect={onToggleSelectSlot}
+                />
+              );
+            })
           )}
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* ── View 2: Weekly Table Grid (Desktop) ── */}
-      {!isMobile && viewMode === 'grid' && (
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left min-w-[900px]">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-neutral-950 border-b border-slate-200 dark:border-neutral-800">
-                  <th className="p-3 text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-wider w-36 border-r border-slate-200 dark:border-neutral-800 sticky left-0 bg-slate-50 dark:bg-neutral-950 z-10">
-                    Period / Time
-                  </th>
-                  {SHORT_DAYS.map((dayName) => (
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TABLET VIEW (640px to 1023px): 3-day swipeable window with sticky time column
+  // ─────────────────────────────────────────────────────────────────────────────
+  const isTablet = typeof window !== 'undefined' && window.innerWidth >= 640 && window.innerWidth < 1024;
+  const visibleDayIndices = isTablet
+    ? [tabletWindowOffset, tabletWindowOffset + 1, tabletWindowOffset + 2]
+    : [0, 1, 2, 3, 4, 5]; // Desktop shows all 6 days
+
+  return (
+    <div className="space-y-3">
+      {/* Tablet 3-Day Window Controls & Mobile Mini-Grid Switcher */}
+      <div className="flex items-center justify-between px-1">
+        {isTablet ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+              Showing: {SHORT_DAYS[visibleDayIndices[0]]} – {SHORT_DAYS[visibleDayIndices[2]]}
+            </span>
+            <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5 border border-neutral-200 dark:border-neutral-700">
+              <button
+                type="button"
+                onClick={() => setTabletWindowOffset(0)}
+                disabled={tabletWindowOffset === 0}
+                className="p-1 rounded text-neutral-600 dark:text-neutral-300 disabled:opacity-30 hover:bg-white dark:hover:bg-neutral-700"
+                title="Mon - Wed"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabletWindowOffset(3)}
+                disabled={tabletWindowOffset === 3}
+                className="p-1 rounded text-neutral-600 dark:text-neutral-300 disabled:opacity-30 hover:bg-white dark:hover:bg-neutral-700"
+                title="Thu - Sat"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        ) : showMobileWeekMiniGrid ? (
+          <button
+            type="button"
+            onClick={() => setShowMobileWeekMiniGrid(false)}
+            className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 flex items-center gap-1 hover:underline"
+          >
+            <ChevronLeft size={14} />
+            <span>Back to day view</span>
+          </button>
+        ) : (
+          <div />
+        )}
+
+        <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+          Click any class card to view or edit join links, teachers, and timings.
+        </div>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          DESKTOP & TABLET TIMETABLE GRID
+          Designed to fit Mon-Sat in one viewport at 1366x768 without horizontal scroll
+      ──────────────────────────────────────────────────────────────────────── */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xs overflow-hidden">
+        <div className="overflow-x-auto max-w-full">
+          <table className="w-full border-collapse table-fixed text-xs">
+            {/* Sticky Day Header Row */}
+            <thead>
+              <tr className="bg-neutral-100/80 dark:bg-neutral-800/80 border-b border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 font-bold">
+                {/* Sticky Time Column Header */}
+                <th className="w-20 sm:w-24 p-2.5 text-center text-[10px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-r border-neutral-200/80 dark:border-neutral-700/80">
+                  <div className="flex items-center justify-center gap-1">
+                    <Clock size={12} />
+                    <span>Time</span>
+                  </div>
+                </th>
+
+                {/* Day Columns */}
+                {visibleDayIndices.map((dayIdx) => {
+                  const isToday = dayIdx === todayDayIndex;
+                  const missingLinks = dayMissingLinkCounts[dayIdx] || 0;
+
+                  return (
                     <th
-                      key={dayName}
-                      className="p-3 text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider border-r border-slate-200 dark:border-neutral-800 last:border-r-0 text-center w-[15%]"
+                      key={dayIdx}
+                      className={`p-2.5 text-center transition-colors border-r last:border-r-0 border-neutral-200/80 dark:border-neutral-700/80 ${
+                        isToday
+                          ? 'bg-amber-400/15 dark:bg-amber-400/10 text-neutral-900 dark:text-amber-300'
+                          : 'text-neutral-700 dark:text-neutral-300'
+                      }`}
                     >
-                      {dayName}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
-                {weeklyPeriods.map((period, pIdx) => (
-                  <tr key={pIdx} className="hover:bg-slate-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                    {/* Time Row Label */}
-                    <td className="p-3 bg-slate-50 dark:bg-neutral-950 border-r border-slate-200 dark:border-neutral-800 sticky left-0 z-10 align-middle">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <Clock size={11} className="text-slate-400 dark:text-neutral-500 shrink-0" />
-                        <span className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                          {getPeriodDisplayLabel(period.start_time, pIdx)}
-                        </span>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="text-xs font-bold">{DAYS_NAME[dayIdx]}</span>
+                        {isToday && (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-400 text-neutral-950 uppercase tracking-wider">
+                            Today
+                          </span>
+                        )}
+                        {missingLinks > 0 && (
+                          <span
+                            className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+                            title={`${missingLinks} classes missing join link on ${DAYS_NAME[dayIdx]}`}
+                          />
+                        )}
                       </div>
-                      <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-                        {formatTime12h(period.start_time)} – {formatTime12h(period.end_time)}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+
+            {/* Grid Body */}
+            <tbody className="divide-y divide-neutral-200/80 dark:divide-neutral-800">
+              {periods.map((period, _periodIdx) => {
+                const startTimeStr = formatTime12h(period.start_time);
+                const endTimeStr = period.end_time ? formatTime12h(period.end_time) : '';
+
+                return (
+                  <tr key={period.start_time} className="hover:bg-neutral-50/40 dark:hover:bg-neutral-800/20">
+                    {/* Sticky Period/Time Cell */}
+                    <td className="w-20 sm:w-24 p-2 text-center bg-neutral-50/70 dark:bg-neutral-900/90 border-r border-neutral-200/80 dark:border-neutral-700/80 text-neutral-600 dark:text-neutral-400 tabular-nums select-none">
+                      <div className="font-bold text-neutral-800 dark:text-neutral-200 text-[11px]">
+                        {startTimeStr}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                        {endTimeStr}
                       </div>
                     </td>
 
-                    {/* Day Columns for this period */}
-                    {SHORT_DAYS.map((_, dayIdx) => {
-                      const matchedSlots = getSlotsForPeriodAndDay(period.start_time, dayIdx);
+                    {/* Day Cells */}
+                    {visibleDayIndices.map((dayIdx) => {
+                      const isToday = dayIdx === todayDayIndex;
+                      // Find matching slots for this day and time period
+                      const cellSlots = slots.filter(
+                        (s) =>
+                          s.day_of_week === dayIdx &&
+                          timeStrToMins(s.start_time) === timeStrToMins(period.start_time)
+                      );
 
                       return (
                         <td
                           key={dayIdx}
-                          className="p-2 border-r border-slate-100 dark:border-neutral-800/60 last:border-r-0 align-top transition-colors relative group/cell min-w-[130px]"
+                          className={`p-1.5 align-top border-r last:border-r-0 border-neutral-200/80 dark:border-neutral-700/80 transition-colors ${
+                            isToday ? 'bg-amber-400/[0.03] dark:bg-amber-400/[0.02]' : ''
+                          }`}
                         >
-                          {matchedSlots.length > 0 ? (
-                            <div className="space-y-2">
-                              {matchedSlots.map((slot) => (
-                                <SlotCard
-                                  key={slot.id}
-                                  slot={slot}
-                                  sessionLink={sessionLinks?.[slot.id]}
-                                  onEdit={onEdit}
-                                  onDelete={onDelete}
-                                  onEditLink={onEditLink}
-                                  onToggleCancel={onToggleCancel}
-                                  selectionMode={selectionMode}
-                                  isSelected={selectedSlotIds.includes(slot.id)}
-                                  onToggleSelect={onToggleSelectSlot}
-                                />
-                              ))}
+                          {cellSlots.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {cellSlots.map((slot) => {
+                                const timing = getSlotTimingStatus(slot);
+                                return (
+                                  <SlotCard
+                                    key={slot.id}
+                                    slot={slot}
+                                    sessionLink={sessionLinks[slot.id]}
+                                    onClick={onSelectSlot}
+                                    hasConflict={conflictSlotIds.has(slot.id)}
+                                    isLiveNow={timing.isLiveNow}
+                                    startsSoonMins={timing.startsSoonMins}
+                                    selectionMode={selectionMode}
+                                    isSelected={selectedSlotIds.includes(slot.id)}
+                                    onToggleSelect={onToggleSelectSlot}
+                                  />
+                                );
+                              })}
                             </div>
                           ) : (
-                            <div
-                              onClick={() =>
-                                onAddSlot && onAddSlot(dayIdx, period.start_time, period.end_time)
-                              }
-                              className="h-full min-h-[68px] rounded-xl border border-dashed border-transparent hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 flex items-center justify-center transition-all cursor-pointer group/btn"
-                              title={`Click to schedule a class for ${SHORT_DAYS[dayIdx]} (${formatTime12h(period.start_time)})`}
-                            >
-                              <div className="w-6 h-6 rounded-full bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-500 dark:text-slate-400 flex items-center justify-center group-hover/btn:border-amber-400 group-hover/btn:text-amber-600 dark:group-hover/btn:text-amber-400 group-hover/btn:scale-110 transition-all opacity-0 group-hover/cell:opacity-100 shadow-sm">
-                                <Plus size={12} />
-                              </div>
-                            </div>
+                            /* Empty Period Cell: subtle hover + Add button */
+                            onAddSlot && !selectionMode && (
+                              <button
+                                type="button"
+                                onClick={() => onAddSlot(dayIdx, period.start_time, period.end_time)}
+                                className="w-full h-full min-h-[52px] rounded-lg border border-dashed border-transparent hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 flex items-center justify-center transition-all group"
+                                title={`Schedule class on ${DAYS_NAME[dayIdx]} at ${startTimeStr}`}
+                              >
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-bold flex items-center gap-1">
+                                  <Plus size={12} />
+                                  <span>Add</span>
+                                </span>
+                              </button>
+                            )
                           )}
                         </td>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
 export default WeeklyGrid;
-
-

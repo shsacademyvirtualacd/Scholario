@@ -1,15 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Filter, RotateCcw, Megaphone, Trash2, CheckSquare } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import {
+  Plus,
+  Filter,
+  RotateCcw,
+  Megaphone,
+  Trash2,
+  CheckSquare,
+  MoreVertical,
+  AlertCircle,
+  CheckCircle2,
+  X,
+} from 'lucide-react';
 import AdminShell from '../../components/admin/AdminShell';
-import SectionHeader from '../../components/ui/SectionHeader';
 import WeeklyGrid from '../../components/admin/schedule/WeeklyGrid';
 import AdminDrawer from '../../components/admin/AdminDrawer';
 import SlotForm from '../../components/admin/schedule/SlotForm';
+import SlotDetailDrawer from '../../components/admin/schedule/SlotDetailDrawer';
+import ClearScheduleDialog from '../../components/admin/schedule/ClearScheduleDialog';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import ScheduleConflictModal, { ConflictDetails } from '../../components/admin/schedule/ScheduleConflictModal';
 import AdminClassLinkModal from '../../components/admin/schedule/AdminClassLinkModal';
-import { getAllSlots, getAllOfferings, getAllTeachers, upsertSlot, deleteSlot, deleteSlots, getTaxonomy, createAnnouncement, getSessionLinksForDates } from '../../lib/db';
-import { getSubjectsForStream } from '../../lib/db';
+import {
+  getAllSlots,
+  getAllOfferings,
+  getAllTeachers,
+  upsertSlot,
+  deleteSlot,
+  deleteSlots,
+  getTaxonomy,
+  createAnnouncement,
+  getSessionLinksForDates,
+  getSubjectsForStream,
+} from '../../lib/db';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import { DAYS_OF_WEEK_FULL, formatTime12h, getPKTNow } from '../../lib/scheduleUtils';
 import { toast } from 'sonner';
@@ -35,9 +57,15 @@ export const ScheduleManagerPage: React.FC = () => {
   const [taxonomy, setTaxonomy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Detail & Edit Drawers
+  const [activeSlotForDetail, setActiveSlotForDetail] = useState<any | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<ClassSlot | null>(null);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
+  const [sourceDuplicateSlot, setSourceDuplicateSlot] = useState<ClassSlot | null>(null);
+
+  // Modals
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -50,22 +78,39 @@ export const ScheduleManagerPage: React.FC = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
-  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
-  const [sourceDuplicateSlot, setSourceDuplicateSlot] = useState<ClassSlot | null>(null);
 
-  // Link Override & Teacher Substitution Modal States
+  // Meeting Link Modal
   const [sessionLinksMap, setSessionLinksMap] = useState<Record<string, ClassSessionLink>>({});
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [slotForLinkModal, setSlotForLinkModal] = useState<any>(null);
 
-  // Filters - default to Grade 10 class-wise view with 'all' streams selected for full institutional visibility
+  // Filters
   const [selectedBoard, setSelectedBoard] = useState<string>('fbise');
   const [selectedGrade, setSelectedGrade] = useState<string>('10');
   const [selectedStream, setSelectedStream] = useState<string>('all');
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
+  const [onlyMissingLinks, setOnlyMissingLinks] = useState(false);
   const [showPublishBanner, setShowPublishBanner] = useState(false);
+  const [showMobileFilterSheet, setShowMobileFilterSheet] = useState(false);
 
-  const fetchSessionLinks = async () => {
+  // Overflow Menu State
+  const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close overflow menu on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) {
+        setOverflowMenuOpen(false);
+      }
+    };
+    if (overflowMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [overflowMenuOpen]);
+
+  const fetchSessionLinks = useCallback(async () => {
     try {
       const pktnow = getPKTNow();
       const dates: string[] = [];
@@ -88,16 +133,16 @@ export const ScheduleManagerPage: React.FC = () => {
     } catch (err) {
       console.warn('[ScheduleManagerPage] error fetching session links:', err);
     }
-  };
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [s, o, t, tax] = await Promise.all([
         getAllSlots(),
         getAllOfferings(),
         getAllTeachers(),
-        getTaxonomy()
+        getTaxonomy(),
       ]);
       setSlots(s);
       setOfferings(o);
@@ -109,13 +154,13 @@ export const ScheduleManagerPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchSessionLinks]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
-  // Default to 'all' streams whenever taxonomy loads or grade changes so no class slot is hidden from admins
+  // Default to 'all' streams whenever taxonomy loads or grade changes
   useEffect(() => {
     if (!taxonomy) return;
     setSelectedStream('all');
@@ -126,7 +171,7 @@ export const ScheduleManagerPage: React.FC = () => {
     onAny: async () => {
       const s = await getAllSlots();
       setSlots(s);
-    }
+    },
   });
 
   useRealtimeTable({
@@ -134,82 +179,196 @@ export const ScheduleManagerPage: React.FC = () => {
     onAny: fetchSessionLinks,
   });
 
-  // Enrich raw slots with offering and teacher details for rendering
-  const enrichedSlots = slots.map((slot) => {
-    const offering = offerings.find((o) => o.id === slot.offering_id);
-    const teacher = offering ? teachers.find((t) => t.id === offering.teacher_id) : undefined;
-    const streamId = slot.stream_id || offering?.stream_id;
-    const streamObj = streamId ? taxonomy?.streams?.find((s: any) => s.id === streamId) : undefined;
-    return {
-      ...slot,
-      offering: offering ? { ...offering, teacher } : undefined,
-      streamName: streamObj?.name || (offering as any)?.stream || undefined,
-    };
-  });
+  // Enrich raw slots with offering, teacher, and stream names
+  const enrichedSlots = useMemo(() => {
+    return slots.map((slot) => {
+      const offering = offerings.find((o) => o.id === slot.offering_id);
+      const teacher = offering ? teachers.find((t) => t.id === offering.teacher_id) : undefined;
+      const streamId = slot.stream_id || offering?.stream_id;
+      const streamObj = streamId ? taxonomy?.streams?.find((s: any) => s.id === streamId) : undefined;
+      return {
+        ...slot,
+        offering: offering ? { ...offering, teacher } : undefined,
+        streamName: streamObj?.name || (offering as any)?.stream || undefined,
+      };
+    });
+  }, [slots, offerings, teachers, taxonomy]);
 
-  const activeClass = taxonomy?.classes?.find((c: any) => c.grade === selectedGrade && c.board_id === selectedBoard);
-  const activeStreams = activeClass
-    ? taxonomy.streams.filter((s: any) => s.class_id === activeClass.id)
-    : (selectedGrade !== 'all' && taxonomy?.classes
-        ? taxonomy.streams.filter((s: any) => {
-            const cls = taxonomy.classes.find((c: any) => c.id === s.class_id);
-            return cls && String(cls.grade) === String(selectedGrade);
-          })
-        : []);
+  const activeClass = useMemo(() => {
+    return taxonomy?.classes?.find((c: any) => c.grade === selectedGrade && c.board_id === selectedBoard);
+  }, [taxonomy, selectedGrade, selectedBoard]);
 
-  // Apply active class-wise, stream-wise and teacher filters
-  const filteredSlots = enrichedSlots.filter((slot) => {
-    const slotClass = taxonomy?.classes?.find((c: any) => c.id === slot.class_id || c.id === slot.offering?.class_id || c.id === (slot.offering as any)?.class?.id);
-    
-    // 1. Grade match
-    const slotGrade = slot.offering?.grade || slotClass?.grade || (slot.offering as any)?.class?.grade;
-    const gradeMatch = selectedGrade === 'all' || String(slotGrade) === String(selectedGrade);
+  const activeStreams = useMemo(() => {
+    if (activeClass) {
+      return taxonomy?.streams?.filter((s: any) => s.class_id === activeClass.id) || [];
+    }
+    if (selectedGrade !== 'all' && taxonomy?.classes) {
+      return (
+        taxonomy?.streams?.filter((s: any) => {
+          const cls = taxonomy.classes.find((c: any) => c.id === s.class_id);
+          return cls && String(cls.grade) === String(selectedGrade);
+        }) || []
+      );
+    }
+    return [];
+  }, [activeClass, selectedGrade, taxonomy]);
 
-    // 2. Board match
-    const slotBoard = slot.offering?.board || slotClass?.board_id || (slot.offering as any)?.class?.board?.id;
-    const boardMatch = selectedBoard === 'all' || !slotBoard || slotBoard === selectedBoard;
+  // Filter slots based on active cohort, teacher, and missing link toggle
+  const filteredSlots = useMemo(() => {
+    return enrichedSlots.filter((slot) => {
+      const slotClass = taxonomy?.classes?.find(
+        (c: any) =>
+          c.id === slot.class_id ||
+          c.id === slot.offering?.class_id ||
+          c.id === (slot.offering as any)?.class?.id
+      );
 
-    // 3. Teacher match
-    const slotTeacherId = slot.offering?.teacher_id;
-    const teacherMatch = teacherFilter === 'all' || slotTeacherId === teacherFilter;
+      // Grade match
+      const slotGrade = slot.offering?.grade || slotClass?.grade || (slot.offering as any)?.class?.grade;
+      const gradeMatch = selectedGrade === 'all' || String(slotGrade) === String(selectedGrade);
 
-    // 4. Stream match:
-    // When 'all' or empty, display all slots for this cohort.
-    // When a specific stream is chosen, match if slot or offering is explicitly tagged to that stream,
-    // or if untagged offering belongs to that stream's subject list.
-    let streamMatch = true;
-    if (selectedStream && selectedStream !== 'all' && selectedStream !== '') {
-      const explicitSlotStream = slot.stream_id;
-      const explicitOfferingStream = slot.offering?.stream_id || (slot.offering as any)?.stream?.id;
-      const slotStreamId = explicitSlotStream || explicitOfferingStream;
+      // Board match
+      const slotBoard = slot.offering?.board || slotClass?.board_id || (slot.offering as any)?.class?.board?.id;
+      const boardMatch = selectedBoard === 'all' || !slotBoard || slotBoard === selectedBoard;
 
-      if (slotStreamId) {
-        streamMatch = slotStreamId === selectedStream || slotStreamId === 'all';
-      } else {
-        const activeStreamName = activeStreams.find((s: any) => s.id === selectedStream)?.name || taxonomy?.streams?.find((s: any) => s.id === selectedStream)?.name;
-        if (activeStreamName && slotGrade) {
-          const streamSubjects = getSubjectsForStream(String(slotGrade), activeStreamName);
-          const offeringSubject = slot.custom_title || slot.offering?.subject_name || slot.offering?.subject?.name || slot.offering?.subject;
-          if (streamSubjects && streamSubjects.length > 0 && offeringSubject) {
-            streamMatch = streamSubjects.some((s: string) => s.toLowerCase() === String(offeringSubject).toLowerCase());
-          } else {
-            // Common/Untagged subject visible across streams
-            streamMatch = true;
-          }
+      // Teacher match
+      const slotTeacherId = slot.offering?.teacher_id;
+      const teacherMatch = teacherFilter === 'all' || slotTeacherId === teacherFilter;
+
+      // Stream match
+      let streamMatch = true;
+      if (selectedStream && selectedStream !== 'all' && selectedStream !== '') {
+        const explicitSlotStream = slot.stream_id;
+        const explicitOfferingStream = slot.offering?.stream_id || (slot.offering as any)?.stream?.id;
+        const slotStreamId = explicitSlotStream || explicitOfferingStream;
+
+        if (slotStreamId) {
+          streamMatch = slotStreamId === selectedStream || slotStreamId === 'all';
         } else {
-          streamMatch = true;
+          const activeStreamName =
+            activeStreams.find((s: any) => s.id === selectedStream)?.name ||
+            taxonomy?.streams?.find((s: any) => s.id === selectedStream)?.name;
+          if (activeStreamName && slotGrade) {
+            const streamSubjects = getSubjectsForStream(String(slotGrade), activeStreamName);
+            const offeringSubject =
+              slot.custom_title ||
+              slot.offering?.subject_name ||
+              slot.offering?.subject?.name ||
+              slot.offering?.subject;
+            if (streamSubjects && streamSubjects.length > 0 && offeringSubject) {
+              streamMatch = streamSubjects.some(
+                (s: string) => s.toLowerCase() === String(offeringSubject).toLowerCase()
+              );
+            }
+          }
+        }
+      }
+
+      // Missing links only filter
+      if (onlyMissingLinks) {
+        const link = (sessionLinksMap[slot.id]?.link_url || slot.room_or_link || '').trim();
+        if (link || slot.is_cancelled) return false;
+      }
+
+      return boardMatch && gradeMatch && teacherMatch && streamMatch;
+    });
+  }, [
+    enrichedSlots,
+    taxonomy,
+    selectedGrade,
+    selectedBoard,
+    teacherFilter,
+    selectedStream,
+    activeStreams,
+    onlyMissingLinks,
+    sessionLinksMap,
+  ]);
+
+  // Conflict Detection across timetable
+  const conflictSlotIds = useMemo(() => {
+    const conflicts = new Set<string>();
+    const timeToMins = (t: string) => {
+      if (!t) return 0;
+      const [h = 0, m = 0] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    for (let i = 0; i < enrichedSlots.length; i++) {
+      const a = enrichedSlots[i];
+      if (a.is_cancelled) continue;
+      const aStart = timeToMins(a.start_time);
+      const aEnd = timeToMins(a.end_time || a.start_time);
+      const aTeacherId = a.offering?.teacher_id;
+
+      for (let j = i + 1; j < enrichedSlots.length; j++) {
+        const b = enrichedSlots[j];
+        if (b.is_cancelled) continue;
+        if (a.day_of_week !== b.day_of_week) continue;
+
+        const bStart = timeToMins(b.start_time);
+        const bEnd = timeToMins(b.end_time || b.start_time);
+        const isOverlap = Math.max(aStart, bStart) < Math.min(aEnd, bEnd);
+        if (!isOverlap) continue;
+
+        // Conflict 1: Teacher double-booked
+        if (aTeacherId && b.offering?.teacher_id && aTeacherId === b.offering.teacher_id) {
+          conflicts.add(a.id);
+          conflicts.add(b.id);
+        }
+
+        // Conflict 2: Same cohort slot collision
+        const aClass = taxonomy?.classes?.find((c: any) => c.id === a.class_id || c.id === a.offering?.class_id);
+        const bClass = taxonomy?.classes?.find((c: any) => c.id === b.class_id || c.id === b.offering?.class_id);
+        const aBoard = aClass?.board_id || a.offering?.board;
+        const bBoard = bClass?.board_id || b.offering?.board;
+        const aGrade = aClass?.grade || a.offering?.grade;
+        const bGrade = bClass?.grade || b.offering?.grade;
+
+        if (aBoard && bBoard && aBoard === bBoard && String(aGrade) === String(bGrade)) {
+          const aStream = a.stream_id || a.offering?.stream_id;
+          const bStream = b.stream_id || b.offering?.stream_id;
+          if (!aStream || !bStream || aStream === 'all' || bStream === 'all' || aStream === bStream) {
+            conflicts.add(a.id);
+            conflicts.add(b.id);
+          }
         }
       }
     }
+    return conflicts;
+  }, [enrichedSlots, taxonomy]);
 
-    return boardMatch && gradeMatch && teacherMatch && streamMatch;
-  });
+  // Meeting Link Status Summary
+  const linkSummary = useMemo(() => {
+    const activeCohortSlots = enrichedSlots.filter((slot) => {
+      const slotClass = taxonomy?.classes?.find(
+        (c: any) => c.id === slot.class_id || c.id === slot.offering?.class_id
+      );
+      const slotGrade = slot.offering?.grade || slotClass?.grade;
+      const slotBoard = slot.offering?.board || slotClass?.board_id;
+      const gradeMatch = selectedGrade === 'all' || String(slotGrade) === String(selectedGrade);
+      const boardMatch = selectedBoard === 'all' || !slotBoard || slotBoard === selectedBoard;
+      return gradeMatch && boardMatch && !slot.is_cancelled;
+    });
 
-  // Duplicate and Double-booking conflict detector
-  const checkSlotConflict = (
-    formData: any,
-    targetSlotId: string | null
-  ): ConflictDetails | null => {
+    const total = activeCohortSlots.length;
+    const withLink = activeCohortSlots.filter((s) => {
+      const link = (sessionLinksMap[s.id]?.link_url || s.room_or_link || '').trim();
+      return Boolean(link);
+    }).length;
+    const missing = total - withLink;
+    return { total, withLink, missing };
+  }, [enrichedSlots, selectedGrade, selectedBoard, sessionLinksMap, taxonomy]);
+
+  // Cohort display label for clear confirmation
+  const activeBoardLabel = BOARDS.find((b) => b.id === selectedBoard)?.label || selectedBoard.toUpperCase();
+  const cohortDisplayName = `${activeBoardLabel} Grade ${selectedGrade}${
+    selectedStream && selectedStream !== 'all'
+      ? ` (${activeStreams.find((s: any) => s.id === selectedStream)?.name || selectedStream})`
+      : ''
+  }`;
+
+  // Conflict checker on save
+  const checkSlotConflict = (formData: any, targetSlotId: string | null): ConflictDetails | null => {
     const formOffering = offerings.find((o) => o.id === formData.offering_id);
     const formSubject =
       formData.custom_title ||
@@ -219,17 +378,13 @@ export const ScheduleManagerPage: React.FC = () => {
     const formTeacherId = formOffering?.teacher_id;
     const formTeacher = teachers.find((t) => t.id === formTeacherId);
 
-    // Resolve form cohort with strict board and grade awareness
     const formClassId =
       formData.class_id ||
       formOffering?.class_id ||
-      (formOffering as any)?.class?.id ||
       taxonomy?.classes?.find((c: any) => c.board_id === selectedBoard && String(c.grade) === String(selectedGrade))?.id;
-    const formClass = taxonomy?.classes?.find((c: any) => c.id === formClassId) ||
-      taxonomy?.classes?.find((c: any) => c.board_id === selectedBoard && String(c.grade) === String(selectedGrade));
+    const formClass = taxonomy?.classes?.find((c: any) => c.id === formClassId);
     const formBoard = formClass?.board_id || selectedBoard;
     const formGrade = formClass?.grade || selectedGrade;
-
     const formStreamId = formData.stream_id || formOffering?.stream_id || null;
     const formStreamObj = taxonomy?.streams?.find((s: any) => s.id === formStreamId);
 
@@ -244,15 +399,11 @@ export const ScheduleManagerPage: React.FC = () => {
 
     for (const s of slots) {
       if (s.id === targetSlotId || s.is_cancelled) continue;
-
-      // Check same day of week
       if (s.day_of_week !== formData.day_of_week) continue;
 
-      // Check time overlap
       const sStart = timeToMins(s.start_time);
       const sEnd = timeToMins(s.end_time || s.start_time);
       const isOverlap = Math.max(sStart, formStart) < Math.min(sEnd, formEnd);
-
       if (!isOverlap) continue;
 
       const sOffering = offerings.find((o) => o.id === s.offering_id);
@@ -260,19 +411,15 @@ export const ScheduleManagerPage: React.FC = () => {
         s.custom_title || sOffering?.subject_name || sOffering?.subject?.name || 'Class';
       const sTeacherId = sOffering?.teacher_id;
       const sTeacher = teachers.find((t) => t.id === sTeacherId);
-      const sClassId = s.class_id || sOffering?.class_id || (sOffering as any)?.class?.id;
+      const sClassId = s.class_id || sOffering?.class_id;
       const sClass = taxonomy?.classes?.find((c: any) => c.id === sClassId);
-      const sBoard = sClass?.board_id || sOffering?.board || (sOffering as any)?.class?.board_id || (sOffering as any)?.class?.board?.id;
-      const sGrade = sClass?.grade || sOffering?.grade || (sOffering as any)?.class?.grade;
+      const sBoard = sClass?.board_id || sOffering?.board;
+      const sGrade = sClass?.grade || sOffering?.grade;
       const sStreamId = s.stream_id || sOffering?.stream_id || null;
 
-      // Strict same-class check:
-      // Slots belong to the same cohort only if explicit class IDs match,
-      // or if BOTH board and grade match. Cross-board cohorts (e.g. FBISE vs Punjab) never clash.
       const isSameClass =
         (formClassId && sClassId && formClassId === sClassId) ||
         (formBoard && sBoard && formBoard === sBoard && String(formGrade) === String(sGrade));
-
       const isSameStream =
         !formStreamId ||
         !sStreamId ||
@@ -283,12 +430,12 @@ export const ScheduleManagerPage: React.FC = () => {
         (formData.offering_id && s.offering_id && formData.offering_id === s.offering_id) ||
         formSubject.trim().toLowerCase() === sSubject.trim().toLowerCase();
 
-      // Check 1: Duplicate Class
+      // Duplicate Class
       if (isSameClass && isSameStream && isSameSubject) {
         return {
           type: 'duplicate_class',
           title: `${formSubject} already exists`,
-          message: `${formSubject} already exists on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for ${formBoard ? formBoard.toUpperCase() + ' ' : ''}Grade ${formGrade}${formStreamObj ? ` (${formStreamObj.name})` : ''}. Do you want to keep it here as well, or move it?`,
+          message: `${formSubject} already exists on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for Grade ${formGrade}.`,
           subjectName: formSubject,
           teacherName: formTeacher?.full_name || 'Instructor',
           dayIndex: formData.day_of_week,
@@ -302,12 +449,12 @@ export const ScheduleManagerPage: React.FC = () => {
         };
       }
 
-      // Check 2: Instructor double-booking (same teacher, same day, overlapping time across any class/board)
+      // Teacher double-booking
       if (formTeacherId && sTeacherId && formTeacherId === sTeacherId) {
         return {
           type: 'teacher_double_booking',
           title: `Instructor Double-Booking Conflict`,
-          message: `Instructor ${formTeacher?.full_name || 'Teacher'} is already scheduled to teach ${sSubject} on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)}${sGrade ? ` (${sBoard ? sBoard.toUpperCase() + ' ' : ''}Grade ${sGrade})` : ''}.`,
+          message: `Instructor ${formTeacher?.full_name || 'Teacher'} is already scheduled to teach ${sSubject} on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)}.`,
           subjectName: formSubject,
           teacherName: formTeacher?.full_name || 'Instructor',
           dayIndex: formData.day_of_week,
@@ -321,12 +468,12 @@ export const ScheduleManagerPage: React.FC = () => {
         };
       }
 
-      // Check 3: Cohort Time Slot Collision (same board & grade, same stream, but different subject)
+      // Class slot collision
       if (isSameClass && isSameStream && !isSameSubject) {
         return {
           type: 'cohort_clash',
           title: `Class Slot Already Occupied`,
-          message: `${sSubject} (${sTeacher?.full_name || 'Instructor'}) is already scheduled on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for ${formBoard ? formBoard.toUpperCase() + ' ' : ''}Grade ${formGrade}.`,
+          message: `${sSubject} (${sTeacher?.full_name || 'Instructor'}) is already scheduled on ${DAYS_OF_WEEK_FULL[formData.day_of_week]} at ${formatTime12h(s.start_time)} for Grade ${formGrade}.`,
           subjectName: formSubject,
           teacherName: formTeacher?.full_name || 'Instructor',
           dayIndex: formData.day_of_week,
@@ -340,34 +487,18 @@ export const ScheduleManagerPage: React.FC = () => {
         };
       }
     }
-
     return null;
   };
 
-  // Handle drawer save (Add / Edit / Duplicate)
-  const handleSaveSlot = async (formData: {
-    offering_id: string | null;
-    custom_title?: string | null;
-    class_id?: string | null;
-    stream_id?: string | null;
-    day_of_week: number;
-    start_time: string;
-    end_time: string;
-    publish_to_news: boolean;
-    notify_affected?: boolean;
-    days_of_week?: number[];
-  }) => {
+  // Drawer Save handler
+  const handleSaveSlot = async (formData: any) => {
     const isEditMode = !isDuplicateMode && !!editingSlotId;
 
-    // Check for duplicate / instructor conflict first
     if (formData.days_of_week && formData.days_of_week.length > 0) {
       for (const d of formData.days_of_week) {
         const conflict = checkSlotConflict({ ...formData, day_of_week: d }, null);
         if (conflict) {
-          setConflictData({
-            ...conflict,
-            pendingFormData: { ...formData, day_of_week: d },
-          });
+          setConflictData({ ...conflict, pendingFormData: { ...formData, day_of_week: d } });
           return;
         }
       }
@@ -379,11 +510,9 @@ export const ScheduleManagerPage: React.FC = () => {
       }
     }
 
-    // Intercept move (when day or start time changes on an existing slot) with a confirmation modal
     if (isEditMode && selectedSlot) {
       const dayChanged = selectedSlot.day_of_week !== formData.day_of_week;
       const timeChanged = selectedSlot.start_time !== formData.start_time;
-
       if ((dayChanged || timeChanged) && !pendingMoveData) {
         setPendingMoveData(formData);
         setMoveModalOpen(true);
@@ -394,28 +523,15 @@ export const ScheduleManagerPage: React.FC = () => {
     await executeSaveSlot(formData);
   };
 
-  const handleConflictResolved = async (updatedFormData: any) => {
-    setConflictData(null);
-    await executeSaveSlot(updatedFormData);
-  };
-
-  const handleConflictConfirmAnyway = async (updatedFormData: any) => {
-    setConflictData(null);
-    await executeSaveSlot(updatedFormData);
-  };
-
-  const handleConflictCancel = () => {
-    setConflictData(null);
-  };
-
   const executeSaveSlot = async (formData: any) => {
     const isEditMode = !isDuplicateMode && !!editingSlotId;
     const targetSlotId = isEditMode ? editingSlotId : undefined;
-    
+
     try {
-      const targetDays: number[] = (formData.days_of_week && formData.days_of_week.length > 0)
-        ? formData.days_of_week
-        : [formData.day_of_week];
+      const targetDays: number[] =
+        formData.days_of_week && formData.days_of_week.length > 0
+          ? formData.days_of_week
+          : [formData.day_of_week];
 
       if (targetDays.length > 1 || isDuplicateMode) {
         for (const d of targetDays) {
@@ -442,52 +558,25 @@ export const ScheduleManagerPage: React.FC = () => {
           day_of_week: formData.day_of_week as any,
           start_time: formData.start_time,
           end_time: formData.end_time,
-          room_or_link: formData.room_or_link !== undefined ? formData.room_or_link : (selectedSlot?.room_or_link || null),
+          room_or_link:
+            formData.room_or_link !== undefined
+              ? formData.room_or_link
+              : selectedSlot?.room_or_link || null,
           is_cancelled: formData.is_cancelled !== undefined ? formData.is_cancelled : false,
         });
       }
 
-      // Reload slots
       await loadData();
-
-      // Notify affected students if checked by admin alongside save
-      if (formData.publish_to_news || formData.notify_affected) {
-        const offering = offerings.find((o) => o.id === formData.offering_id);
-        const subject = formData.custom_title || (offering ? (offering.subject_name || offering.subject?.name || 'Class') : 'Class');
-        const dayNames = targetDays.map(d => DAYS_OF_WEEK_FULL[d] || 'Day').join(', ');
-        const timeStr = formatTime12h(formData.start_time);
-
-        const targetClassId = formData.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => c.board_id === selectedBoard && String(c.grade) === String(selectedGrade))?.id;
-        const targetStreamId = formData.stream_id && formData.stream_id !== 'all' ? formData.stream_id : (offering?.stream_id || null);
-
-        await createAnnouncement({
-          title: 'Schedule Update',
-          body: `${subject} at ${timeStr} has been ${isEditMode ? 'rescheduled' : `scheduled for ${dayNames}`}.`,
-          severity: 'crucial',
-          scope: 'class',
-          class_id: targetClassId || null,
-          stream_id: targetStreamId || null,
-        });
-        setShowPublishBanner(true);
-        setTimeout(() => setShowPublishBanner(false), 4000);
-      }
-      if (targetDays.length > 1 || isDuplicateMode) {
-        toast.success(`Class slot duplicated to ${targetDays.length} days successfully.`);
-      } else {
-        toast.success(isEditMode ? 'Class slot rescheduled.' : 'Class slot scheduled successfully.');
-      }
+      setDrawerOpen(false);
+      setSelectedSlot(null);
+      setEditingSlotId(null);
+      setIsDuplicateMode(false);
+      setSourceDuplicateSlot(null);
+      toast.success(isEditMode ? 'Class slot updated.' : 'Class scheduled successfully.');
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Failed to save class slot.');
+      toast.error('Failed to save class slot.');
     }
-
-    setDrawerOpen(false);
-    setSelectedSlot(null);
-    setEditingSlotId(null);
-    setIsDuplicateMode(false);
-    setSourceDuplicateSlot(null);
-    setPendingMoveData(null);
-    setMoveModalOpen(false);
   };
 
   const handleToggleCancel = async (slotId: string, currentStatus: boolean) => {
@@ -502,10 +591,7 @@ export const ScheduleManagerPage: React.FC = () => {
     if (!slot) return;
 
     try {
-      await upsertSlot({
-        ...slot,
-        is_cancelled: false,
-      });
+      await upsertSlot({ ...slot, is_cancelled: false });
       await loadData();
       toast.success('Class slot restored.');
     } catch (err: any) {
@@ -525,20 +611,20 @@ export const ScheduleManagerPage: React.FC = () => {
 
       if (notifyCancel) {
         const offering = offerings.find((o) => o.id === slot.offering_id);
-        const subject = slot.custom_title || (offering ? (offering.subject_name || offering.subject?.name || 'Class') : 'Class');
+        const subject =
+          slot.custom_title ||
+          (offering ? offering.subject_name || offering.subject?.name || 'Class' : 'Class');
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayName = dayNames[slot.day_of_week];
         const timeStr = slot.start_time.slice(0, 5);
-
-        const targetClassId = slot.class_id || offering?.class_id || (offering as any)?.class?.id || taxonomy?.classes?.find((c: any) => String(c.grade) === String(selectedGrade))?.id;
 
         await createAnnouncement({
           title: 'Class Cancellation',
           body: `${subject} on ${dayName} at ${timeStr} has been cancelled.`,
           severity: 'crucial',
           scope: 'class',
-          class_id: targetClassId || null,
-          stream_id: slot.stream_id && slot.stream_id !== 'all' ? slot.stream_id : (offering?.stream_id || null),
+          class_id: slot.class_id || offering?.class_id || null,
+          stream_id: slot.stream_id && slot.stream_id !== 'all' ? slot.stream_id : offering?.stream_id || null,
         });
         setShowPublishBanner(true);
         setTimeout(() => setShowPublishBanner(false), 4000);
@@ -547,13 +633,11 @@ export const ScheduleManagerPage: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to cancel class slot.');
-      throw err;
     } finally {
       setSlotToCancel(null);
     }
   };
 
-  // Delete flow triggers modal
   const handleDeleteTrigger = (slotId: string) => {
     setSlotToDelete(slotId);
     setDeleteModalOpen(true);
@@ -568,14 +652,13 @@ export const ScheduleManagerPage: React.FC = () => {
       } catch (err: any) {
         console.error(err);
         toast.error('Failed to delete class slot.');
-        throw err;
       } finally {
         setSlotToDelete(null);
       }
     }
   };
 
-  // Clear entire week's schedule for currently filtered cohort
+  // Clear entire cohort schedule
   const handleConfirmClearSchedule = async () => {
     const targetIds = filteredSlots.map((s) => s.id);
     if (targetIds.length === 0) return;
@@ -583,30 +666,16 @@ export const ScheduleManagerPage: React.FC = () => {
     try {
       await deleteSlots(targetIds);
       await loadData();
-      toast.success(`Cleared ${targetIds.length} class slots from the schedule.`);
+      toast.success(`Cleared ${targetIds.length} class slots for ${cohortDisplayName}.`);
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to clear schedule.');
-      throw err;
     } finally {
       setClearScheduleModalOpen(false);
     }
   };
 
-  // Toggle individual slot selection
-  const handleToggleSelectSlot = (slotId: string) => {
-    setSelectedSlotIds((prev) =>
-      prev.includes(slotId) ? prev.filter((id) => id !== slotId) : [...prev, slotId]
-    );
-  };
-
-  // Select all currently filtered slots
-  const handleSelectAll = () => {
-    const allIds = filteredSlots.map((s) => s.id);
-    setSelectedSlotIds(allIds);
-  };
-
-  // Bulk delete selected slots
+  // Bulk Delete
   const handleConfirmBulkDelete = async () => {
     if (selectedSlotIds.length === 0) return;
     try {
@@ -616,7 +685,6 @@ export const ScheduleManagerPage: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to delete selected slots.');
-      throw err;
     } finally {
       setSelectedSlotIds([]);
       setBulkDeleteModalOpen(false);
@@ -640,7 +708,12 @@ export const ScheduleManagerPage: React.FC = () => {
     setSelectedSlot(newSlotTemplate as any);
   };
 
-  const handleEditTrigger = (slot: ClassSlot) => {
+  const handleSelectSlotForDetail = (slot: any) => {
+    setActiveSlotForDetail(slot);
+  };
+
+  const handleEditFullSlotFromDetail = (slot: ClassSlot) => {
+    setActiveSlotForDetail(null);
     setEditingSlotId(slot.id);
     setSelectedSlot(slot);
     setIsDuplicateMode(false);
@@ -648,73 +721,28 @@ export const ScheduleManagerPage: React.FC = () => {
     setDrawerOpen(true);
   };
 
-  const handleDuplicateTrigger = () => {
-    if (!selectedSlot) return;
-    setIsDuplicateMode(true);
-    setSourceDuplicateSlot(selectedSlot);
-    setEditingSlotId(null);
-    const dupTemplate: Partial<ClassSlot> = {
-      ...selectedSlot,
-      id: undefined,
-    };
-    setSelectedSlot(dupTemplate as any);
-    toast.info('Switched to Duplicate mode. Pick days to copy this class schedule.');
-  };
-
-  const handleCancelDuplicate = () => {
-    if (sourceDuplicateSlot) {
-      setSelectedSlot(sourceDuplicateSlot);
-      setEditingSlotId(sourceDuplicateSlot.id);
-      setIsDuplicateMode(false);
-      setSourceDuplicateSlot(null);
-    } else {
-      setIsDuplicateMode(false);
-      setDrawerOpen(false);
-      setSelectedSlot(null);
-      setEditingSlotId(null);
-    }
-  };
-
-  const handleCloseDrawer = () => {
-    setDrawerOpen(false);
-    setSelectedSlot(null);
-    setEditingSlotId(null);
-    setIsDuplicateMode(false);
-    setSourceDuplicateSlot(null);
-  };
-
   const resetFilters = () => {
     setSelectedBoard('fbise');
     setSelectedGrade('10');
     setSelectedStream('all');
     setTeacherFilter('all');
+    setOnlyMissingLinks(false);
   };
 
-  const handleBoardChange = (boardId: string) => {
-    setSelectedBoard(boardId);
-    setSelectedGrade('10');
-    setSelectedStream('all');
-  };
-
-  const handleGradeChange = (gradeId: string) => {
-    setSelectedGrade(gradeId);
-    setSelectedStream('all');
-  };
-
-  const activeGrades = taxonomy
-    ? taxonomy.classes
-        .filter((c: any) => c.board_id === selectedBoard)
-        .map((c: any) => ({ id: c.grade, label: c.display_name }))
-    : [];
-
-
+  const activeGrades = useMemo(() => {
+    return taxonomy
+      ? taxonomy.classes
+          .filter((c: any) => c.board_id === selectedBoard)
+          .map((c: any) => ({ id: c.grade, label: c.display_name }))
+      : [];
+  }, [taxonomy, selectedBoard]);
 
   if (loading) {
     return (
       <AdminShell>
-        <div className="py-24 text-center">
-          <span className="w-8 h-8 border-4 border-[#111111]/10 border-t-[#111111] rounded-full animate-spin inline-block mb-3" />
-          <p className="text-xs text-[#737373] font-bold">Loading timetable slots...</p>
+        <div className="py-24 text-center space-y-3">
+          <span className="w-8 h-8 border-4 border-amber-400/20 border-t-amber-400 rounded-full animate-spin inline-block" />
+          <p className="text-xs text-neutral-500 font-bold">Loading timetable schedules...</p>
         </div>
       </AdminShell>
     );
@@ -722,468 +750,625 @@ export const ScheduleManagerPage: React.FC = () => {
 
   return (
     <AdminShell>
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <SectionHeader
-          title="Schedule Manager"
-          description="Build and manage class timetables, adjust timing slots, or cancel specific lectures."
-        />
-        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center flex-wrap">
-          <button
-            onClick={() => {
-              setSelectionMode(!selectionMode);
-              if (selectionMode) setSelectedSlotIds([]);
-            }}
-            className={`btn flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all interactive ${
-              selectionMode
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-neutral-800 hover:bg-slate-50 dark:hover:bg-neutral-800'
-            }`}
-          >
-            <CheckSquare size={14} />
-            <span>{selectionMode ? 'Exit Select' : 'Select'}</span>
-          </button>
-          {filteredSlots.length > 0 && (
-            <button
-              onClick={() => setClearScheduleModalOpen(true)}
-              className="btn flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-bold rounded-xl shadow-sm transition-all interactive"
-              title="Remove all scheduled class slots for the current cohort view"
-            >
-              <Trash2 size={14} />
-              <span>Clear Schedule ({filteredSlots.length})</span>
-            </button>
-          )}
-          <button
-            onClick={() => handleAddTrigger(0)}
-            className="btn flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950 text-xs font-bold rounded-xl shadow-sm interactive"
-          >
-            <Plus size={14} />
-            Schedule Class
-          </button>
-        </div>
-      </div>
-
-      <NotificationPermissionBanner role="admin" />
-
-      {/* Published to News Notification Toast */}
-      {showPublishBanner && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
-          <Megaphone size={14} className="text-blue-600 dark:text-blue-400 shrink-0 animate-bounce" />
-          <span className="text-xs font-bold text-blue-900 dark:text-blue-200">
-            Timetable modification has been published to the student news announcements board!
-          </span>
-        </div>
-      )}
-
-      {/* ── Filter Bar ── */}
-      {isMobile ? (
-        /* Mobile: stacked compact filter card */
-        <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
-          {/* Board row */}
-          <div className="flex items-center gap-3 px-4 pt-3 pb-2 border-b border-slate-100 dark:border-neutral-800">
-            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Board:</span>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
-              {BOARDS.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => handleBoardChange(b.id)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                    selectedBoard === b.id
-                      ? 'bg-amber-400 border-amber-400 text-slate-950'
-                      : 'bg-slate-100 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {b.label}
-                </button>
-              ))}
-            </div>
+      <div className="space-y-4">
+        {/* ── Page Header & Link Summary ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+              Schedule Manager
+            </h1>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Live class timetable for {cohortDisplayName}
+            </p>
           </div>
 
-          {/* Grade row */}
-          {activeGrades.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 dark:border-neutral-800 overflow-x-auto no-scrollbar">
-              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Grade:</span>
-              {activeGrades.map((g: any) => (
-                <button
-                  key={g.id}
-                  onClick={() => handleGradeChange(g.id)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                    selectedGrade === g.id
-                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
-                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {g.label}
-                </button>
-              ))}
+          {/* Link Status Pill Summary */}
+          <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
+            <div
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                linkSummary.missing > 0
+                  ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30'
+                  : 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30'
+              }`}
+            >
+              {linkSummary.missing > 0 ? (
+                <AlertCircle size={14} className="text-amber-600 dark:text-amber-400" />
+              ) : (
+                <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+              )}
+              <span>
+                {linkSummary.withLink} of {linkSummary.total} classes have links
+              </span>
             </div>
-          )}
 
-          {/* Stream row */}
-          {activeStreams.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 dark:border-neutral-800 overflow-x-auto no-scrollbar bg-slate-50 dark:bg-neutral-950">
-              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">Stream:</span>
+            {/* One-click "Fix missing links" filter toggle */}
+            {linkSummary.missing > 0 && (
               <button
-                onClick={() => setSelectedStream('all')}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
-                  selectedStream === 'all' || !selectedStream
-                    ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
-                    : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300'
+                type="button"
+                onClick={() => setOnlyMissingLinks(!onlyMissingLinks)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-2xs ${
+                  onlyMissingLinks
+                    ? 'bg-amber-500 text-neutral-950 shadow-sm'
+                    : 'bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-950/60 dark:hover:bg-amber-900 dark:text-amber-300'
                 }`}
               >
-                All Streams
+                <span>{onlyMissingLinks ? 'Showing missing links' : `Fix ${linkSummary.missing} missing links`}</span>
+                {onlyMissingLinks && <X size={12} />}
               </button>
-              {activeStreams.map((s: any) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedStream(s.id)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all shrink-0 ${
-                    selectedStream === s.id
-                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
-                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
+            )}
+          </div>
+        </div>
 
-          {/* Instructor + Reset row */}
-          <div className="flex items-center gap-2 px-4 py-2.5">
-            <Filter size={11} className="text-slate-400 dark:text-slate-500 shrink-0" />
-            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 shrink-0">Instructor:</span>
+        <NotificationPermissionBanner role="admin" />
+
+        {/* Cancellation news broadcast banner */}
+        {showPublishBanner && (
+          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-center gap-2 text-xs font-semibold text-blue-900 dark:text-blue-200">
+            <Megaphone size={14} className="text-blue-600 dark:text-blue-400 shrink-0 animate-bounce" />
+            <span>Class cancellation notice published to student announcements.</span>
+          </div>
+        )}
+
+        {/* ── Compact Consolidated Toolbar ── */}
+        <div className="bg-white dark:bg-[#18181B] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-2.5 sm:p-3 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
+          {/* Mobile / Tablet Filter Button */}
+          <div className="lg:hidden flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setShowMobileFilterSheet(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700"
+            >
+              <Filter size={13} />
+              <span>Filters ({activeBoardLabel}, Gr. {selectedGrade})</span>
+            </button>
+          </div>
+
+          {/* Desktop Single-Row Filter Strip (Hidden on mobile/tablet) */}
+          <div className="hidden lg:flex items-center gap-2 flex-wrap">
+            {/* Board Dropdown */}
+            <select
+              value={selectedBoard}
+              onChange={(e) => {
+                setSelectedBoard(e.target.value);
+                setSelectedGrade('10');
+                setSelectedStream('all');
+              }}
+              className="text-xs font-bold px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
+            >
+              {BOARDS.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Grade Segmented Control */}
+            {activeGrades.length > 0 && (
+              <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                {activeGrades.map((g: any) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedGrade(g.id);
+                      setSelectedStream('all');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      selectedGrade === g.id
+                        ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
+                    }`}
+                  >
+                    {g.id === 'ielts' ? 'IELTS' : `Gr. ${g.id}`}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Stream Selector (if applicable) */}
+            {activeStreams.length > 0 && (
+              <select
+                value={selectedStream}
+                onChange={(e) => setSelectedStream(e.target.value)}
+                className="text-xs font-medium px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
+              >
+                <option value="all">All Streams</option>
+                {activeStreams.map((s: any) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Instructor Selector */}
             <select
               value={teacherFilter}
               onChange={(e) => setTeacherFilter(e.target.value)}
-              className="input flex-1 py-1.5 px-2.5 text-[11px] bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer"
+              className="text-xs font-medium px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
             >
-              <option value="all">All Tutors</option>
+              <option value="all">All Teachers</option>
               {teachers.map((t) => (
-                <option key={t.id} value={t.id}>{t.full_name}</option>
+                <option key={t.id} value={t.id}>
+                  {t.full_name}
+                </option>
               ))}
             </select>
-            {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all') && (
+
+            {/* Reset Button */}
+            {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all' || selectedStream !== 'all' || onlyMissingLinks) && (
               <button
+                type="button"
                 onClick={resetFilters}
-                className="flex items-center gap-0.5 text-[10px] font-black text-amber-600 dark:text-amber-400 hover:text-slate-950 dark:hover:text-amber-300 shrink-0 interactive"
+                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-lg"
+                title="Reset filters"
               >
-                <RotateCcw size={10} />
-                Reset
+                <RotateCcw size={13} />
               </button>
             )}
           </div>
-        </div>
-      ) : (
-        /* Desktop: original tab + filter bar layout */
-        <>
-          <div className="border-b border-slate-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-            <div className="flex overflow-x-auto no-scrollbar gap-6 border-transparent max-w-full">
-              {BOARDS.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => handleBoardChange(b.id)}
-                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                    selectedBoard === b.id
-                      ? 'border-amber-400 text-slate-900 dark:text-amber-400'
-                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                  }`}
-                >
-                  {b.label}
-                </button>
-              ))}
-            </div>
 
-            <div className="flex items-center gap-3 pb-2 sm:pb-0">
-              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                <Filter size={12} />
-                <span>Instructor:</span>
-              </div>
-              <select
-                value={teacherFilter}
-                onChange={(e) => setTeacherFilter(e.target.value)}
-                className="input py-1 px-2.5 text-[10px] bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-slate-100 rounded-md cursor-pointer"
+          {/* Right Action Controls */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Select Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectionMode(!selectionMode);
+                if (selectionMode) setSelectedSlotIds([]);
+              }}
+              className={`p-2 sm:px-3 sm:py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 ${
+                selectionMode
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+              }`}
+            >
+              <CheckSquare size={14} />
+              <span className="hidden sm:inline">{selectionMode ? 'Exit Select' : 'Select'}</span>
+            </button>
+
+            {/* Primary Action: Schedule Class */}
+            <button
+              type="button"
+              onClick={() => handleAddTrigger(0)}
+              className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-neutral-950 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+            >
+              <Plus size={15} />
+              <span>Schedule Class</span>
+            </button>
+
+            {/* Overflow (...) Menu */}
+            <div className="relative" ref={overflowMenuRef}>
+              <button
+                type="button"
+                onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
+                className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 transition-colors"
+                title="More actions"
+                aria-label="More actions"
               >
-                <option value="all">All Tutors</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>{t.full_name}</option>
-                ))}
-              </select>
-              {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all') && (
-                <button
-                  onClick={resetFilters}
-                  className="text-[10px] font-black text-amber-600 dark:text-amber-400 hover:text-slate-950 dark:hover:text-amber-300 flex items-center gap-0.5 interactive"
-                >
-                  <RotateCcw size={10} />
-                  Reset
-                </button>
+                <MoreVertical size={16} />
+              </button>
+
+              {overflowMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 z-40 w-52 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl py-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      setClearScheduleModalOpen(true);
+                    }}
+                    disabled={filteredSlots.length === 0}
+                    className="w-full text-left px-3.5 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2 font-medium disabled:opacity-40"
+                  >
+                    <Trash2 size={13} />
+                    <span>Clear Schedule ({filteredSlots.length})</span>
+                  </button>
+
+                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      setOnlyMissingLinks(!onlyMissingLinks);
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2"
+                  >
+                    <AlertCircle size={13} />
+                    <span>{onlyMissingLinks ? 'Show all classes' : 'Filter missing links'}</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
-
-          {activeGrades.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 py-2.5 bg-slate-50 dark:bg-neutral-950 px-4 border-b border-slate-200 dark:border-neutral-800">
-              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mr-2">Cohort Grade:</span>
-              {activeGrades.map((g: any) => (
-                <button
-                  key={g.id}
-                  onClick={() => handleGradeChange(g.id)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                    selectedGrade === g.id
-                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
-                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
-                  }`}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {activeStreams.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 py-2 bg-slate-100/60 dark:bg-neutral-900 px-4 border-b border-slate-200 dark:border-neutral-800 transition-all duration-250 animate-in slide-in-from-top-1">
-              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mr-2">Stream:</span>
-              <button
-                onClick={() => setSelectedStream('all')}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                  selectedStream === 'all' || !selectedStream
-                    ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
-                    : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
-                }`}
-              >
-                All Streams
-              </button>
-              {activeStreams.map((s: any) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedStream(s.id)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                    selectedStream === s.id
-                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-slate-950'
-                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
-                  }`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Selection Action Bar */}
-      {selectionMode && (
-        <div className="p-3.5 bg-blue-50/90 border border-blue-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-black text-blue-950 uppercase tracking-wider">
-              Selected: {selectedSlotIds.length} / {filteredSlots.length}
-            </span>
-            <button
-              onClick={handleSelectAll}
-              className="text-xs font-bold text-blue-700 hover:text-blue-900 underline interactive"
-            >
-              Select All
-            </button>
-            {selectedSlotIds.length > 0 && (
-              <button
-                onClick={() => setSelectedSlotIds([])}
-                className="text-xs font-bold text-gray-600 hover:text-gray-900 underline interactive"
-              >
-                Deselect All
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedSlotIds.length > 0 && (
-              <button
-                onClick={() => setBulkDeleteModalOpen(true)}
-                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 transition-all interactive"
-              >
-                <Trash2 size={13} />
-                <span>Delete Selected ({selectedSlotIds.length})</span>
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setSelectionMode(false);
-                setSelectedSlotIds([]);
-              }}
-              className="px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl interactive"
-            >
-              Done
-            </button>
-          </div>
         </div>
-      )}
 
-      {/* Timetable Weekly Columns */}
-      <WeeklyGrid
-        slots={filteredSlots}
-        sessionLinks={sessionLinksMap}
-        onAddSlot={handleAddTrigger}
-        onEdit={handleEditTrigger}
-        onDelete={handleDeleteTrigger}
-        onEditLink={(slot) => {
-          setSlotForLinkModal(slot);
-          setLinkModalOpen(true);
-        }}
-        onToggleCancel={handleToggleCancel}
-        selectionMode={selectionMode}
-        selectedSlotIds={selectedSlotIds}
-        onToggleSelectSlot={handleToggleSelectSlot}
-      />
+        {/* Selection Action Bar (when in multi-select mode) */}
+        {selectionMode && (
+          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-blue-900 dark:text-blue-200">
+                Selected: {selectedSlotIds.length} / {filteredSlots.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedSlotIds(filteredSlots.map((s) => s.id))}
+                className="font-semibold text-blue-700 dark:text-blue-400 underline"
+              >
+                Select All
+              </button>
+              {selectedSlotIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedSlotIds([])}
+                  className="font-semibold text-neutral-500 hover:text-neutral-700 underline"
+                >
+                  Deselect
+                </button>
+              )}
+            </div>
 
-      {/* Add / Edit / Duplicate Drawer */}
-      <AdminDrawer
-        open={drawerOpen}
-        onClose={handleCloseDrawer}
-        title={
-          isDuplicateMode
-            ? 'Duplicate Class Slot to Multiple Days'
-            : editingSlotId
-            ? 'Edit Class Slot'
-            : 'Schedule New Class'
-        }
-      >
-        <SlotForm
-          key={isDuplicateMode ? `dup-${sourceDuplicateSlot?.id || 'active'}` : (editingSlotId || 'new')}
-          slot={selectedSlot}
-          offerings={offerings}
-          taxonomy={taxonomy}
-          existingSlots={slots}
-          defaultClassId={activeClass?.id || ''}
-          defaultStreamId={selectedStream || ''}
-          isDuplicateMode={isDuplicateMode}
-          onSave={handleSaveSlot}
-          onDuplicate={handleDuplicateTrigger}
-          onCancelDuplicate={handleCancelDuplicate}
-          onCancel={handleCloseDrawer}
+            <div className="flex items-center gap-2">
+              {selectedSlotIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setBulkDeleteModalOpen(true)}
+                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Trash2 size={12} />
+                  <span>Delete Selected ({selectedSlotIds.length})</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionMode(false);
+                  setSelectedSlotIds([]);
+                }}
+                className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-300 font-semibold"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Main Timetable Weekly Grid (Desktop / Tablet / Mobile) ── */}
+        <WeeklyGrid
+          slots={filteredSlots}
+          sessionLinks={sessionLinksMap}
+          conflictSlotIds={conflictSlotIds}
+          onAddSlot={handleAddTrigger}
+          onSelectSlot={handleSelectSlotForDetail}
+          selectionMode={selectionMode}
+          selectedSlotIds={selectedSlotIds}
+          onToggleSelectSlot={(slotId) => {
+            setSelectedSlotIds((prev) =>
+              prev.includes(slotId) ? prev.filter((id) => id !== slotId) : [...prev, slotId]
+            );
+          }}
         />
-      </AdminDrawer>
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        open={deleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          setSlotToDelete(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        title="Delete Class Slot?"
-        description="This will permanently delete this class slot from the timetable. All student schedules and attendance records linked to this specific slot might be affected."
-        confirmLabel="Delete Slot"
-        danger
-      />
+        {/* ── Mobile Floating Action Button (FAB) for Scheduling ── */}
+        {isMobile && !selectionMode && (
+          <button
+            type="button"
+            onClick={() => handleAddTrigger(0)}
+            className="fixed bottom-6 right-5 z-40 px-4 py-3 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-neutral-950 text-xs font-bold rounded-full shadow-xl flex items-center gap-2"
+          >
+            <Plus size={16} />
+            <span>Schedule</span>
+          </button>
+        )}
 
-      {/* Cancel Confirmation Modal */}
-      <ConfirmModal
-        open={cancelModalOpen}
-        onClose={() => {
-          setCancelModalOpen(false);
-          setSlotToCancel(null);
-        }}
-        onConfirm={handleConfirmCancel}
-        title="Cancel Class Session?"
-        description="Are you sure you want to cancel this class session? It will appear as cancelled on student timetables."
-        confirmLabel="Cancel Class"
-        danger
-      >
-        <div className="flex items-center gap-2.5 mt-2">
-          <input
-            type="checkbox"
-            id="notifyCancelCheck"
-            checked={notifyCancel}
-            onChange={(e) => setNotifyCancel(e.target.checked)}
-            className="w-4.5 h-4.5 text-[#ef4444] border-gray-300 rounded focus:ring-[#ef4444] cursor-pointer"
-          />
-          <label htmlFor="notifyCancelCheck" className="text-xs font-bold text-[#111111] cursor-pointer selection:bg-transparent">
-            Notify affected students via announcement
-          </label>
-        </div>
-      </ConfirmModal>
+        {/* ── Mobile / Tablet Filter Bottom Sheet ── */}
+        {showMobileFilterSheet && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div className="w-full sm:max-w-md bg-white dark:bg-neutral-900 border-t sm:border border-neutral-200 dark:border-neutral-800 rounded-t-2xl sm:rounded-2xl p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-2 border-b border-neutral-100 dark:border-neutral-800">
+                <h3 className="font-bold text-base text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                  <Filter size={16} />
+                  <span>Filter Timetable</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilterSheet(false)}
+                  className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-      {/* Move Confirmation Modal */}
-      <ConfirmModal
-        open={moveModalOpen}
-        onClose={() => {
-          setMoveModalOpen(false);
-          setPendingMoveData(null);
-        }}
-        onConfirm={async () => {
-          if (pendingMoveData) {
-            await executeSaveSlot(pendingMoveData);
-          }
-        }}
-        title="Move Class Session?"
-        description={
-          selectedSlot && pendingMoveData
-            ? `This will move this class from ${DAYS_OF_WEEK_FULL[selectedSlot.day_of_week]} to ${DAYS_OF_WEEK_FULL[pendingMoveData.day_of_week]}. The session on ${DAYS_OF_WEEK_FULL[selectedSlot.day_of_week]} will be relocated. Continue?`
-            : 'Are you sure you want to move this class session?'
-        }
-        confirmLabel="Move Class Slot"
-      />
+              {/* Board Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Board</label>
+                <select
+                  value={selectedBoard}
+                  onChange={(e) => {
+                    setSelectedBoard(e.target.value);
+                    setSelectedGrade('10');
+                    setSelectedStream('all');
+                  }}
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                >
+                  {BOARDS.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Schedule Conflict / Duplicate Warning Modal */}
-      <ScheduleConflictModal
-        conflict={conflictData}
-        allSlots={slots}
-        onResolve={handleConflictResolved}
-        onConfirmAnyway={handleConflictConfirmAnyway}
-        onCancel={handleConflictCancel}
-      />
-
-      {/* Clear Cohort Schedule Confirmation Modal */}
-      <ConfirmModal
-        open={clearScheduleModalOpen}
-        onClose={() => setClearScheduleModalOpen(false)}
-        onConfirm={handleConfirmClearSchedule}
-        title={`Clear Schedule for Grade ${selectedGrade}${activeStreams.find((s: any) => s.id === selectedStream) ? ` (${activeStreams.find((s: any) => s.id === selectedStream)?.name})` : ''}?`}
-        description={`This will permanently delete all ${filteredSlots.length} scheduled class slots for this cohort view from the timetable. All student schedules and attendance records linked to these slots will be affected.`}
-        confirmLabel={`Delete ${filteredSlots.length} Class Slots`}
-        danger
-      />
-
-      {/* Multi-Select Bulk Delete Confirmation Modal */}
-      <ConfirmModal
-        open={bulkDeleteModalOpen}
-        onClose={() => setBulkDeleteModalOpen(false)}
-        onConfirm={handleConfirmBulkDelete}
-        title={`Delete ${selectedSlotIds.length} Selected Class Slots?`}
-        description={`You are about to permanently delete the following ${selectedSlotIds.length} scheduled slots from the timetable:`}
-        confirmLabel={`Delete ${selectedSlotIds.length} Slots`}
-        danger
-      >
-        <div className="max-h-48 overflow-y-auto space-y-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium mt-2">
-          {filteredSlots
-            .filter((s) => selectedSlotIds.includes(s.id))
-            .map((s) => {
-              const subject = s.custom_title || s.offering?.subject_name || s.offering?.subject || 'Class';
-              const dayName = DAYS_OF_WEEK_FULL[s.day_of_week] || 'Day';
-              const timeStr = s.start_time ? s.start_time.slice(0, 5) : '16:00';
-              return (
-                <div key={s.id} className="flex justify-between items-center py-1 border-b border-gray-200/60 last:border-0 text-gray-800">
-                  <span className="font-bold text-gray-900">{subject}</span>
-                  <span className="text-gray-600 font-semibold">{dayName} ({timeStr})</span>
+              {/* Grade Selector */}
+              {activeGrades.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Grade</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {activeGrades.map((g: any) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedGrade(g.id);
+                          setSelectedStream('all');
+                        }}
+                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${
+                          selectedGrade === g.id
+                            ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950'
+                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                        }`}
+                      >
+                        {g.id === 'ielts' ? 'IELTS' : `Gr. ${g.id}`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              );
-            })}
-        </div>
-      </ConfirmModal>
+              )}
 
-      {/* Admin Class Link & Teacher Substitution Modal */}
-      <AdminClassLinkModal
-        open={linkModalOpen}
-        onClose={() => {
-          setLinkModalOpen(false);
-          setSlotForLinkModal(null);
-        }}
-        slot={slotForLinkModal}
-        teachers={teachers}
-        onLinkUpdated={async () => {
-          await Promise.all([loadData(), fetchSessionLinks()]);
-        }}
-      />
+              {/* Stream Selector */}
+              {activeStreams.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Stream</label>
+                  <select
+                    value={selectedStream}
+                    onChange={(e) => setSelectedStream(e.target.value)}
+                    className="w-full text-xs px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                  >
+                    <option value="all">All Streams</option>
+                    {activeStreams.map((s: any) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Instructor Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Instructor</label>
+                <select
+                  value={teacherFilter}
+                  onChange={(e) => setTeacherFilter(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                >
+                  <option value="all">All Teachers</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Bottom Sheet Actions */}
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetFilters();
+                    setShowMobileFilterSheet(false);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:underline"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilterSheet(false)}
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Slot Detail & Quick-Action Drawer ── */}
+        <SlotDetailDrawer
+          open={!!activeSlotForDetail}
+          onClose={() => setActiveSlotForDetail(null)}
+          slot={activeSlotForDetail}
+          sessionLink={activeSlotForDetail ? sessionLinksMap[activeSlotForDetail.id] : null}
+          teachers={teachers}
+          onEditFullSlot={handleEditFullSlotFromDetail}
+          onOpenLinkModal={(slot) => {
+            setSlotForLinkModal(slot);
+            setLinkModalOpen(true);
+          }}
+          onToggleCancel={handleToggleCancel}
+          onDeleteSlot={handleDeleteTrigger}
+          onRefreshData={async () => {
+            await Promise.all([loadData(), fetchSessionLinks()]);
+          }}
+        />
+
+        {/* ── Full Add / Edit / Duplicate Drawer (SlotForm) ── */}
+        <AdminDrawer
+          open={drawerOpen}
+          onClose={() => {
+            setDrawerOpen(false);
+            setSelectedSlot(null);
+            setEditingSlotId(null);
+            setIsDuplicateMode(false);
+            setSourceDuplicateSlot(null);
+          }}
+          title={
+            isDuplicateMode
+              ? 'Duplicate Class to Multiple Days'
+              : editingSlotId
+              ? 'Edit Class Slot'
+              : 'Schedule New Class'
+          }
+        >
+          <SlotForm
+            key={isDuplicateMode ? `dup-${sourceDuplicateSlot?.id || 'active'}` : editingSlotId || 'new'}
+            slot={selectedSlot}
+            offerings={offerings}
+            taxonomy={taxonomy}
+            existingSlots={slots}
+            defaultClassId={activeClass?.id || ''}
+            defaultStreamId={selectedStream || ''}
+            isDuplicateMode={isDuplicateMode}
+            onSave={handleSaveSlot}
+            onDuplicate={() => {
+              if (!selectedSlot) return;
+              setIsDuplicateMode(true);
+              setSourceDuplicateSlot(selectedSlot);
+              setEditingSlotId(null);
+              setSelectedSlot({ ...selectedSlot, id: undefined } as any);
+              toast.info('Duplicate mode active: select target days.');
+            }}
+            onCancelDuplicate={() => {
+              if (sourceDuplicateSlot) {
+                setSelectedSlot(sourceDuplicateSlot);
+                setEditingSlotId(sourceDuplicateSlot.id);
+                setIsDuplicateMode(false);
+                setSourceDuplicateSlot(null);
+              } else {
+                setDrawerOpen(false);
+              }
+            }}
+            onCancel={() => setDrawerOpen(false)}
+          />
+        </AdminDrawer>
+
+        {/* ── Safe Clear Cohort Schedule Dialog (Requires Typed Cohort Name) ── */}
+        <ClearScheduleDialog
+          open={clearScheduleModalOpen}
+          onClose={() => setClearScheduleModalOpen(false)}
+          onConfirm={handleConfirmClearSchedule}
+          cohortName={cohortDisplayName}
+          slotCount={filteredSlots.length}
+        />
+
+        {/* ── Delete Confirmation Modal ── */}
+        <ConfirmModal
+          open={deleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setSlotToDelete(null);
+          }}
+          onConfirm={handleConfirmDelete}
+          title="Delete Class Slot?"
+          description="This will permanently delete this class slot from the timetable."
+          confirmLabel="Delete Slot"
+          danger
+        />
+
+        {/* ── Cancel Class Lecture Confirmation Modal ── */}
+        <ConfirmModal
+          open={cancelModalOpen}
+          onClose={() => {
+            setCancelModalOpen(false);
+            setSlotToCancel(null);
+          }}
+          onConfirm={handleConfirmCancel}
+          title="Cancel Class Lecture?"
+          description="Are you sure you want to cancel this class session? It will appear as cancelled on student timetables."
+          confirmLabel="Cancel Lecture"
+          danger
+        >
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="notifyCancelCheck"
+              checked={notifyCancel}
+              onChange={(e) => setNotifyCancel(e.target.checked)}
+              className="w-4 h-4 text-red-600 rounded focus:ring-red-500 cursor-pointer"
+            />
+            <label htmlFor="notifyCancelCheck" className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 cursor-pointer">
+              Notify enrolled students via announcement
+            </label>
+          </div>
+        </ConfirmModal>
+
+        {/* ── Move Class Slot Confirmation Modal ── */}
+        <ConfirmModal
+          open={moveModalOpen}
+          onClose={() => {
+            setMoveModalOpen(false);
+            setPendingMoveData(null);
+          }}
+          onConfirm={async () => {
+            if (pendingMoveData) {
+              await executeSaveSlot(pendingMoveData);
+            }
+          }}
+          title="Move Class Session?"
+          description={
+            selectedSlot && pendingMoveData
+              ? `Move class from ${DAYS_OF_WEEK_FULL[selectedSlot.day_of_week]} to ${DAYS_OF_WEEK_FULL[pendingMoveData.day_of_week]}?`
+              : 'Move this class session?'
+          }
+          confirmLabel="Move Class"
+        />
+
+        {/* ── Schedule Conflict Warning Modal ── */}
+        <ScheduleConflictModal
+          conflict={conflictData}
+          allSlots={slots}
+          onResolve={async (data) => {
+            setConflictData(null);
+            await executeSaveSlot(data);
+          }}
+          onConfirmAnyway={async (data) => {
+            setConflictData(null);
+            await executeSaveSlot(data);
+          }}
+          onCancel={() => setConflictData(null)}
+        />
+
+        {/* ── Bulk Delete Confirmation Modal ── */}
+        <ConfirmModal
+          open={bulkDeleteModalOpen}
+          onClose={() => setBulkDeleteModalOpen(false)}
+          onConfirm={handleConfirmBulkDelete}
+          title={`Delete ${selectedSlotIds.length} Selected Slots?`}
+          description="Are you sure you want to permanently delete these selected slots?"
+          confirmLabel={`Delete ${selectedSlotIds.length} Slots`}
+          danger
+        />
+
+        {/* ── Advanced Class Link & Substitute Teacher Modal ── */}
+        <AdminClassLinkModal
+          open={linkModalOpen}
+          onClose={() => {
+            setLinkModalOpen(false);
+            setSlotForLinkModal(null);
+          }}
+          slot={slotForLinkModal}
+          teachers={teachers}
+          onLinkUpdated={async () => {
+            await Promise.all([loadData(), fetchSessionLinks()]);
+          }}
+        />
+      </div>
     </AdminShell>
   );
 };
