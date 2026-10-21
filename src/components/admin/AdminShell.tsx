@@ -20,6 +20,8 @@ import {
   Megaphone,
   PanelLeftClose,
   PanelLeft,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -103,8 +105,24 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       return false;
     }
   });
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [pendingVisibilityCount, setPendingVisibilityCount] = useState(0);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('scholario_admin_collapsed_groups');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleGroup = (title: string) => {
+    setCollapsedGroups((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      try {
+        localStorage.setItem('scholario_admin_collapsed_groups', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const toggleRailCollapse = () => {
     setIsRailCollapsed((prev) => {
@@ -114,7 +132,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       } catch {}
       return next;
     });
-  };
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [pendingVisibilityCount, setPendingVisibilityCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -231,17 +250,27 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
 
         {/* ── Independent Scrolling Navigation (Sage, Prices, Fees always reachable) ── */}
         <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 min-h-0 custom-scrollbar">
-          {NAV_GROUPS.map((group, groupIdx) => (
-            <div key={groupIdx} className="space-y-1">
-              {/* Group Heading (only in expanded mode) */}
-              {!isRailCollapsed && (
-                <div className="px-3 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                  {group.title}
-                </div>
-              )}
+          {NAV_GROUPS.map((group, groupIdx) => {
+            const hasActiveChild = group.items.some((item) => !item.disabled && isPathActive(item.path));
+            const isCollapsed = !hasActiveChild && Boolean(collapsedGroups[group.title]);
 
-              {/* Group Nav Items */}
-              <div className="space-y-0.5">
+            return (
+              <div key={groupIdx} className="space-y-1">
+                {/* Group Heading (only in expanded mode) */}
+                {!isRailCollapsed && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.title)}
+                    className="w-full flex items-center justify-between px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
+                  >
+                    <span>{group.title}</span>
+                    {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                )}
+
+                {/* Group Nav Items */}
+                {!isCollapsed && (
+                  <div className="space-y-0.5">
                 {group.items.map(({ icon: Icon, label, path, disabled }) => {
                   const isActive = !disabled && isPathActive(path);
                   const isChat = path === '/admin/chat';
@@ -300,8 +329,10 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                   );
                 })}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
+        );
+      })}
         </nav>
       </aside>
 
