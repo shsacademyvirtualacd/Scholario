@@ -75,6 +75,7 @@ export const StudentCheckoutPage: React.FC = () => {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Activity accordion toggle
   const [activityOpen, setActivityOpen] = useState(false);
@@ -167,16 +168,138 @@ export const StudentCheckoutPage: React.FC = () => {
     onDelete: fetchFeeDetails,
   });
 
-  // Handle Receipt File Selection
-  const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setReceiptFile(file);
+  // Compress image if larger than 1MB
+  const compressReceiptImage = async (file: File): Promise<File> => {
+    if (!file.type.startsWith('image/')) return file;
+    if (file.size < 1024 * 1024) return file;
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setReceiptPreview(reader.result as string);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_DIM = 1920;
+          let width = img.width;
+          let height = img.height;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressed);
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target?.result as string;
       };
+      reader.onerror = () => resolve(file);
       reader.readAsDataURL(file);
+    });
+  };
+
+  // Upload receipt with progress tracking
+  const uploadReceiptWithProgress = (file: File, studentId: string): Promise<{ url: string; filename: string; file_type: string; uploaded_at: string }> => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('student_id', studentId);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/fees/receipt/upload');
+      xhr.timeout = 45000;
+
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          const pct = Math.round((ev.loaded / ev.total) * 100);
+          setUploadProgress(pct);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            resolve({
+              url: data.url,
+              filename: data.filename || file.name,
+              file_type: data.file_type || file.type,
+              uploaded_at: data.uploaded_at || new Date().toISOString(),
+            });
+          } catch {
+            reject(new Error('Invalid response from server.'));
+          }
+        } else {
+          let msg = 'Failed to upload receipt.';
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            if (parsed.error) msg = parsed.error;
+          } catch {}
+          reject(new Error(msg));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error during receipt upload.'));
+      xhr.ontimeout = () => reject(new Error('Upload timed out after 45 seconds.'));
+      xhr.send(formData);
+    });
+  };
+
+  // Handle Receipt File Selection
+  const handleReceiptFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'application/pdf'];
+    if (!allowed.includes(file.type.toLowerCase())) {
+      toast.error('Unsupported file format. Please upload PNG, JPG, or PDF.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Receipt exceeds 5 MB limit. Please select a smaller file.');
+      return;
+    }
+
+    try {
+      const processed = file.type.startsWith('image/') ? await compressReceiptImage(file) : file;
+      setReceiptFile(processed);
+
+      if (processed.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setReceiptPreview(reader.result as string);
+        };
+        reader.readAsDataURL(processed);
+      } else {
+        setReceiptPreview(null);
+      }
+    } catch {
+      setReceiptFile(file);
     }
   };
 
@@ -207,14 +330,19 @@ export const StudentCheckoutPage: React.FC = () => {
       setUpdating(true);
       setError(null);
 
-      let uploadedReceiptUrl = '';
+      let uploadedReceiptData: { url: string; filename: string; file_type: string; uploaded_at: string } | null = null;
       if (receiptFile) {
         setUploadingReceipt(true);
+        setUploadProgress(10);
         try {
-          const uploadRes = await uploadScholarshipProofFile(receiptFile);
-          uploadedReceiptUrl = uploadRes.url;
-        } catch (uploadErr) {
+          uploadedReceiptData = await uploadReceiptWithProgress(receiptFile, profile.id);
+          setUploadProgress(100);
+        } catch (uploadErr: any) {
           console.warn('[Checkout] In-app receipt upload warning:', uploadErr);
+          toast.error(uploadErr?.message || 'Failed to upload receipt. Please check connection.');
+          setUploadingReceipt(false);
+          setUpdating(false);
+          return;
         } finally {
           setUploadingReceipt(false);
         }
@@ -230,10 +358,16 @@ export const StudentCheckoutPage: React.FC = () => {
         ? 'IELTS Complete Preparation Program'
         : `${boardDef.name} Grade ${formatGradeDisplay(studentGrade, studentBoardId)}${subSummary}`;
 
-      const receiptNote = uploadedReceiptUrl ? ` Receipt URL: ${uploadedReceiptUrl}` : '';
+      const receiptNote = uploadedReceiptData ? ` Receipt URL: ${uploadedReceiptData.url}` : '';
       const note = `Student submitted payment proof for PKR ${(feeConfig?.amount || 0).toLocaleString()} for ${planName}.${receiptNote}`;
 
-      await updateFeeStatus(profile.id, 'pending', note);
+      await updateFeeStatus(profile.id, 'pending', note, uploadedReceiptData ? {
+        proof_url: uploadedReceiptData.url,
+        proof_filename: uploadedReceiptData.filename,
+        proof_file_type: uploadedReceiptData.file_type,
+        proof_uploaded_at: uploadedReceiptData.uploaded_at,
+      } : undefined);
+
       toast.success('Proof received! Our verification desk will review and authorize your account shortly.');
       await fetchFeeDetails();
     } catch (err: any) {
@@ -441,11 +575,11 @@ export const StudentCheckoutPage: React.FC = () => {
               </div>
             )}
 
-            {/* REJECTED STATE */}
-            {currentStatus === 'rejected' && (
-              <div className="bg-red-50/70 dark:bg-red-950/30 border border-red-300 dark:border-red-900 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* REJECTED STATE or UNPAID with REJECTION REASON */}
+            {(currentStatus === 'rejected' || (currentStatus === 'unpaid' && (feeStatus?.rejection_reason || auditLogs.some(l => l.notes?.toLowerCase().includes('rejected'))))) && (
+              <div className="bg-red-50/80 dark:bg-red-950/40 border border-red-300 dark:border-red-900 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-11 h-11 rounded-2xl bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 flex items-center justify-center shrink-0 mt-0.5">
                     <X size={24} className="text-red-600" />
                   </div>
                   <div className="space-y-1">
@@ -453,7 +587,7 @@ export const StudentCheckoutPage: React.FC = () => {
                       Payment Verification Unsuccessful
                     </h3>
                     <p className="text-xs text-red-900/80 dark:text-red-300/80 max-w-xl leading-relaxed">
-                      The administration could not verify the submitted receipt. Reason: {feeStatus?.notes || 'Receipt invalid or amount mismatch'}. Please resubmit a clear transaction screenshot.
+                      Reason: <strong>{feeStatus?.rejection_reason || auditLogs.find(l => l.notes?.toLowerCase().includes('rejected'))?.notes || 'Receipt invalid or amount mismatch'}</strong>. Please upload a clear receipt screenshot or valid PDF proof.
                     </p>
                   </div>
                 </div>
@@ -461,10 +595,10 @@ export const StudentCheckoutPage: React.FC = () => {
                   type="button"
                   disabled={updating}
                   onClick={handleResubmitProof}
-                  className="px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  className="px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
                 >
                   <RotateCcw size={14} />
-                  <span>Resubmit Proof</span>
+                  <span>Update Proof</span>
                 </button>
               </div>
             )}
@@ -673,8 +807,46 @@ export const StudentCheckoutPage: React.FC = () => {
                           <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
                             {receiptFile ? receiptFile.name : 'Choose receipt image'}
                           </span>
-                          <span className="text-[9px] text-slate-400">PNG, JPG, or PDF</span>
+                          <span className="text-[9px] text-slate-400">PNG, JPG, or PDF (Max 5 MB)</span>
                         </label>
+
+                        {/* Upload Progress Bar */}
+                        {uploadingReceipt && (
+                          <div className="space-y-1.5 py-1">
+                            <div className="flex justify-between text-[10px] text-slate-600 dark:text-slate-400 font-bold">
+                              <span>Uploading & securing proof...</span>
+                              <span className="font-mono text-[#E6A900]">{uploadProgress}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-[#E6A900] h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PDF File Card */}
+                        {receiptFile && receiptFile.type === 'application/pdf' && (
+                          <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
+                            <div className="flex items-center gap-2 truncate">
+                              <FileText size={18} className="text-red-500 shrink-0" />
+                              <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{receiptFile.name}</span>
+                              <span className="text-[10px] text-slate-400 shrink-0">({(receiptFile.size / 1024).toFixed(0)} KB)</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReceiptFile(null);
+                                setReceiptPreview(null);
+                              }}
+                              className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+                              title="Remove"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
 
                         {/* Image Preview */}
                         {receiptPreview && (

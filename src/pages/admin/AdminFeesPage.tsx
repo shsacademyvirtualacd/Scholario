@@ -9,7 +9,7 @@ import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import { 
   getUniversalFeeConfig, saveUniversalFeeConfig, 
-  getPendingFeeStatuses, updateFeeStatus,
+  getPendingFeeStatuses, updateFeeStatus, adminRejectPayment,
   getClassesWithFeeConfigs, syncPricingToFeeConfigs,
   ClassWithFeeConfig
 } from '../../lib/db';
@@ -33,6 +33,9 @@ import {
 import { ScholarshipApplication, ScholarshipTier } from '../../types/scholarship';
 import { toast } from 'sonner';
 import { MarksheetInspectorModal, MarksheetInspectorData } from '../../components/admin/MarksheetInspectorModal';
+import { isRedesignEnabled } from '../../lib/featureFlags';
+import { AdminPendingCard } from '../../components/admin/fees/AdminPendingCard';
+import { ReceiptViewerModal, ReceiptViewerData } from '../../components/admin/ReceiptViewerModal';
 
 export const AdminFeesPage: React.FC = () => {
   const isMobile = useMobile();
@@ -54,6 +57,7 @@ export const AdminFeesPage: React.FC = () => {
   const [savingTiers, setSavingTiers] = useState<boolean>(false);
   const [inspectModalData, setInspectModalData] = useState<MarksheetInspectorData | null>(null);
   const [isInspectModalOpen, setIsInspectModalOpen] = useState<boolean>(false);
+  const [receiptModalData, setReceiptModalData] = useState<ReceiptViewerData | null>(null);
 
   // Loaders & Errors
   const [loading, setLoading] = useState(true);
@@ -484,6 +488,20 @@ export const AdminFeesPage: React.FC = () => {
     }
   };
 
+  const handleRejectPayment = async (studentId: string, reason: string) => {
+    try {
+      setError(null);
+      await adminRejectPayment(studentId, reason);
+      showNotification('Payment proof rejected. Student returned to unpaid status.');
+      toast.success('Payment proof rejected. Student notified.');
+      setPendingList(prev => prev.filter(item => item.student_id !== studentId));
+      await loadData();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to reject payment');
+      toast.error('Rejection failed: ' + (err?.message || 'Unknown error'));
+    }
+  };
+
   const handleAuditNoteChange = (studentId: string, val: string) => {
     setAuditNotes(prev => ({
       ...prev,
@@ -673,6 +691,22 @@ export const AdminFeesPage: React.FC = () => {
                     <ShieldCheck size={32} className="mx-auto text-emerald-500 mb-3" />
                     <h3 className="text-sm font-bold text-[#111111]">All caught up!</h3>
                     <p className="text-xs text-[#737373] mt-1">There are no student fee payments awaiting verification.</p>
+                  </div>
+                ) : isRedesignEnabled() ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    {filteredPending.map((item) => (
+                      <AdminPendingCard
+                        key={item.student_id}
+                        item={item}
+                        onApprove={async (sId, note) => {
+                          if (note) handleAuditNoteChange(sId, note);
+                          await handleApprovePayment(sId);
+                        }}
+                        onReject={handleRejectPayment}
+                        onOpenReceiptViewer={(data) => setReceiptModalData(data)}
+                        isApproving={approvingIds[item.student_id]}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
@@ -1815,6 +1849,12 @@ export const AdminFeesPage: React.FC = () => {
             setInspectModalData(null);
           }}
           data={inspectModalData}
+        />
+
+        {/* Fullscreen Payment Receipt Viewer Modal */}
+        <ReceiptViewerModal
+          data={receiptModalData}
+          onClose={() => setReceiptModalData(null)}
         />
       </div>
     </AdminShell>

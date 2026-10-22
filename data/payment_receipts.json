@@ -1,0 +1,18 @@
+{
+  "rcpt_1792652839781_qgk9sh": {
+    "receiptId": "rcpt_1792652839781_qgk9sh",
+    "studentId": "test-student-id-12345",
+    "filename": "test_receipt.png",
+    "file_type": "image/png",
+    "size": 70,
+    "uploaded_at": "2026-10-22T07:07:19.781Z"
+  },
+  "rcpt_1792652902567_jha5ok": {
+    "receiptId": "rcpt_1792652902567_jha5ok",
+    "studentId": "test-student-456",
+    "filename": "test_receipt.png",
+    "file_type": "image/png",
+    "size": 70,
+    "uploaded_at": "2026-10-22T07:08:22.567Z"
+  }
+}

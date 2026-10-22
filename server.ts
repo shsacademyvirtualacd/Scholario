@@ -3656,7 +3656,304 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       } catch {}
     }
 
-    return res.status(404).json({ error: 'Scholarship document not found' });
+    return res.status(404).send('Document not found');
+  });
+
+  // ── Student Fee Payment Proof Upload & Secure Viewing ──────────
+  const cryptoModule = await import('crypto');
+  const RECEIPT_SIGN_SECRET = process.env.SUPABASE_ANON_KEY || 'scholario-receipt-secret-salt-2026';
+
+  function generateReceiptToken(receiptId: string, studentId: string): string {
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days valid
+    const payload = `${receiptId}:${studentId}:${expiresAt}`;
+    const sig = cryptoModule.createHmac('sha256', RECEIPT_SIGN_SECRET).update(payload).digest('hex').substring(0, 16);
+    return Buffer.from(`${payload}:${sig}`).toString('base64url');
+  }
+
+  function verifyReceiptToken(token: string, receiptId: string): boolean {
+    try {
+      const decoded = Buffer.from(token, 'base64url').toString('utf-8');
+      const [rId, sId, expStr, sig] = decoded.split(':');
+      if (rId !== receiptId) return false;
+      if (Number(expStr) < Date.now()) return false;
+      const expected = cryptoModule.createHmac('sha256', RECEIPT_SIGN_SECRET).update(`${rId}:${sId}:${expStr}`).digest('hex').substring(0, 16);
+      return sig === expected;
+    } catch {
+      return false;
+    }
+  }
+
+  const RECEIPTS_FILE = path.join(process.cwd(), 'data', 'payment_receipts.json');
+  function getStoredReceiptMeta(receiptId: string) {
+    if (fs.existsSync(RECEIPTS_FILE)) {
+      try {
+        const raw = fs.readFileSync(RECEIPTS_FILE, 'utf-8');
+        const map = JSON.parse(raw);
+        return map[receiptId] || null;
+      } catch {}
+    }
+    return null;
+  }
+  function saveStoredReceiptMeta(receiptId: string, meta: any) {
+    try {
+      const dir = path.dirname(RECEIPTS_FILE);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      let map: Record<string, any> = {};
+      if (fs.existsSync(RECEIPTS_FILE)) {
+        try { map = JSON.parse(fs.readFileSync(RECEIPTS_FILE, 'utf-8')); } catch {}
+      }
+      map[receiptId] = meta;
+      fs.writeFileSync(RECEIPTS_FILE, JSON.stringify(map, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('[server.ts] saveStoredReceiptMeta error:', err);
+    }
+  }
+
+  app.post('/api/fees/receipt/upload', upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const studentId = (req.body?.student_id as string) || 'student';
+      if (!file) {
+        return res.status(400).json({ error: 'Please select a valid image (PNG/JPG) or PDF file.' });
+      }
+
+      const MAX_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        return res.status(400).json({ error: 'File size exceeds 5 MB. Please upload a smaller receipt.' });
+      }
+
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'application/pdf'];
+      const mime = (file.mimetype || 'image/jpeg').toLowerCase();
+      if (!allowedTypes.includes(mime)) {
+        return res.status(400).json({ error: 'Unsupported file type. Please upload PNG, JPG, or PDF.' });
+      }
+
+      const receiptId = `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const token = generateReceiptToken(receiptId, studentId);
+
+      fileStorage.set(receiptId, {
+        buffer: file.buffer,
+        mimeType: mime,
+        filename: file.originalname || 'payment_receipt',
+      });
+
+      const meta = {
+        receiptId,
+        studentId,
+        filename: file.originalname || 'receipt.png',
+        file_type: mime,
+        size: file.size,
+        uploaded_at: new Date().toISOString(),
+      };
+      saveStoredReceiptMeta(receiptId, meta);
+
+      const s3Client = getR2Client();
+      if (s3Client) {
+        try {
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: R2_EXAM_BUCKET,
+              Key: `receipts/${receiptId}`,
+              Body: file.buffer,
+              ContentType: mime,
+              Metadata: {
+                studentId,
+                originalname: encodeURIComponent(file.originalname || 'receipt.png'),
+              },
+            })
+          );
+        } catch (r2Err: any) {
+          console.warn('[server.ts] R2 receipt upload warning:', r2Err?.message);
+        }
+      }
+
+      const viewUrl = `/api/fees/receipt/view/${receiptId}?token=${token}`;
+      const dlUrl = `/api/fees/receipt/dl/${receiptId}?token=${token}`;
+
+      return res.json({
+        success: true,
+        receipt_id: receiptId,
+        url: viewUrl,
+        download_url: dlUrl,
+        filename: file.originalname || 'receipt.png',
+        file_type: mime,
+        size: file.size,
+        uploaded_at: meta.uploaded_at,
+        token,
+      });
+    } catch (err: any) {
+      console.error('[server.ts Receipt Upload Error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to upload receipt proof' });
+    }
+  });
+
+  app.get('/api/fees/receipt/view/:receiptId', async (req, res) => {
+    const { receiptId } = req.params;
+    const token = (req.query.token as string) || '';
+    const authHeader = req.headers.authorization;
+    let isAuthorized = false;
+
+    // 1. Check signed HMAC token
+    if (token && verifyReceiptToken(token, receiptId)) {
+      isAuthorized = true;
+    }
+
+    // 2. Check Bearer token (Admin or Owning Student)
+    if (!isAuthorized && authHeader?.startsWith('Bearer ')) {
+      try {
+        const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
+        const userId = payload?.sub || '';
+        const role = payload?.user_metadata?.role || payload?.role || '';
+        const meta = getStoredReceiptMeta(receiptId);
+        if (role === 'admin' || role === 'super_admin' || (meta?.student_id && meta.student_id === userId)) {
+          isAuthorized = true;
+        }
+      } catch {}
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Forbidden: Private receipt proof. Valid token or admin credentials required.' });
+    }
+
+    const stored = fileStorage.get(receiptId);
+    if (stored) {
+      res.setHeader('Content-Type', stored.mimeType || 'image/jpeg');
+      res.setHeader('Content-Disposition', `inline; filename="${stored.filename}"`);
+      return res.send(stored.buffer);
+    }
+
+    const s3Client = getR2Client();
+    if (s3Client) {
+      try {
+        const getRes = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: R2_EXAM_BUCKET,
+            Key: `receipts/${receiptId}`,
+          })
+        );
+        if (getRes.Body) {
+          const stream = getRes.Body as any;
+          if (getRes.ContentType) res.setHeader('Content-Type', getRes.ContentType);
+          res.setHeader('Content-Disposition', 'inline');
+          return stream.pipe(res);
+        }
+      } catch {}
+    }
+
+    return res.status(404).json({ error: 'Receipt file not found' });
+  });
+
+  app.get('/api/fees/receipt/dl/:receiptId', async (req, res) => {
+    const { receiptId } = req.params;
+    const token = (req.query.token as string) || '';
+    const authHeader = req.headers.authorization;
+    let isAuthorized = false;
+
+    if (token && verifyReceiptToken(token, receiptId)) {
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized && authHeader?.startsWith('Bearer ')) {
+      try {
+        const payload = JSON.parse(Buffer.from(authHeader.slice(7).split('.')[1], 'base64').toString());
+        const userId = payload?.sub || '';
+        const role = payload?.user_metadata?.role || payload?.role || '';
+        const meta = getStoredReceiptMeta(receiptId);
+        if (role === 'admin' || role === 'super_admin' || (meta?.student_id && meta.student_id === userId)) {
+          isAuthorized = true;
+        }
+      } catch {}
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Forbidden: Private receipt proof. Valid token or admin credentials required.' });
+    }
+
+    const stored = fileStorage.get(receiptId);
+    if (stored) {
+      res.setHeader('Content-Type', stored.mimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${stored.filename}"`);
+      return res.send(stored.buffer);
+    }
+
+    const s3Client = getR2Client();
+    if (s3Client) {
+      try {
+        const getRes = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: R2_EXAM_BUCKET,
+            Key: `receipts/${receiptId}`,
+          })
+        );
+        if (getRes.Body) {
+          const stream = getRes.Body as any;
+          if (getRes.ContentType) res.setHeader('Content-Type', getRes.ContentType);
+          const meta = getStoredReceiptMeta(receiptId);
+          res.setHeader('Content-Disposition', `attachment; filename="${meta?.filename || 'receipt.png'}"`);
+          return stream.pipe(res);
+        }
+      } catch {}
+    }
+
+    return res.status(404).json({ error: 'Receipt file not found' });
+  });
+
+  app.post('/api/fees/reject', express.json(), async (req, res) => {
+    try {
+      const student_id = req.body?.student_id;
+      const rejection_reason = req.body?.rejection_reason || req.body?.reason;
+      const admin_notes = req.body?.admin_notes;
+      if (!student_id || !rejection_reason) {
+        return res.status(400).json({ error: 'student_id and rejection_reason are required' });
+      }
+
+      const reason = String(rejection_reason).trim();
+      const now = new Date().toISOString();
+
+      try {
+        await (supabaseServer as any)
+          .from('fee_statuses')
+          .update({
+            status: 'unpaid',
+            rejection_reason: reason,
+            updated_at: now,
+          })
+          .eq('student_id', student_id);
+      } catch (dbErr: any) {
+        console.warn('[server.ts /api/fees/reject] DB update warning:', dbErr?.message);
+      }
+
+      try {
+        await (supabaseServer as any)
+          .from('fee_audit_trail')
+          .insert({
+            student_id,
+            status_from: 'pending',
+            status_to: 'unpaid',
+            notes: `Payment proof rejected: ${reason}${admin_notes ? ` (Admin notes: ${admin_notes})` : ''}`,
+            changed_at: now,
+          });
+      } catch {}
+
+      try {
+        await (supabaseServer as any)
+          .from('notifications')
+          .insert({
+            recipient_id: student_id,
+            type: 'announcement',
+            title: 'Payment Verification Update: Proof Rejected',
+            message: `Your submitted fee proof was not approved: "${reason}". Please review your receipt and resubmit via the checkout screen.`,
+            severity: 'warning',
+            is_read: false,
+            created_at: now,
+          });
+      } catch {}
+
+      return res.json({ success: true, message: 'Payment rejected and student returned to unpaid status.' });
+    } catch (err: any) {
+      console.error('[server.ts /api/fees/reject error]:', err);
+      return res.status(500).json({ error: err?.message || 'Failed to reject payment' });
+    }
   });
 
   // ── Fee and Scholarship Calculation & Management ───────────

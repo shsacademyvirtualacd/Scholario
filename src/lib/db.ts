@@ -3732,7 +3732,14 @@ export async function getFeeStatus(studentId: string): Promise<any | null> {
 export async function updateFeeStatus(
   studentId: string,
   status: 'unpaid' | 'pending' | 'paid',
-  notes?: string
+  notes?: string,
+  proofData?: {
+    proof_url?: string;
+    proof_filename?: string;
+    proof_file_type?: string;
+    proof_uploaded_at?: string;
+    rejection_reason?: string | null;
+  }
 ): Promise<void> {
   // Backend flow: updates fee_statuses.
   const { data: existing } = await (supabase as any)
@@ -3741,17 +3748,37 @@ export async function updateFeeStatus(
     .eq('student_id', studentId)
     .maybeSingle();
 
+  const updatePayload: Record<string, any> = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (proofData?.proof_url !== undefined) updatePayload.proof_url = proofData.proof_url;
+  if (proofData?.proof_filename !== undefined) updatePayload.proof_filename = proofData.proof_filename;
+  if (proofData?.proof_file_type !== undefined) updatePayload.proof_file_type = proofData.proof_file_type;
+  if (proofData?.proof_uploaded_at !== undefined) updatePayload.proof_uploaded_at = proofData.proof_uploaded_at;
+  if (proofData?.rejection_reason !== undefined) updatePayload.rejection_reason = proofData.rejection_reason;
+
   if (!existing) {
     const { error: insErr } = await (supabase as any)
       .from('fee_statuses')
-      .insert({ student_id: studentId, status });
-    if (insErr) throw insErr;
+      .insert({ student_id: studentId, ...updatePayload });
+    if (insErr) {
+      console.warn('[db:updateFeeStatus] Insert warning with proof columns, trying basic:', insErr.message);
+      await (supabase as any).from('fee_statuses').insert({ student_id: studentId, status });
+    }
   } else {
     const { error: updErr } = await (supabase as any)
       .from('fee_statuses')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('student_id', studentId);
-    if (updErr) throw updErr;
+    if (updErr) {
+      console.warn('[db:updateFeeStatus] Update warning with proof columns, trying basic:', updErr.message);
+      await (supabase as any)
+        .from('fee_statuses')
+        .update({ status, updated_at: updatePayload.updated_at })
+        .eq('student_id', studentId);
+    }
   }
 
   // Also record in fee_audit_trail if notes are provided
@@ -3770,6 +3797,32 @@ export async function updateFeeStatus(
   }
 }
 
+export async function adminRejectPayment(
+  studentId: string,
+  rejectionReason: string,
+  adminNotes?: string
+): Promise<void> {
+  const reason = rejectionReason.trim();
+  try {
+    const res = await fetch('/api/fees/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_id: studentId,
+        rejection_reason: reason,
+        admin_notes: adminNotes || '',
+      }),
+    });
+    if (res.ok) return;
+  } catch (err) {
+    console.warn('[db:adminRejectPayment] Server route error, using direct DB update:', err);
+  }
+
+  await updateFeeStatus(studentId, 'unpaid', `Payment proof rejected: ${reason}`, {
+    rejection_reason: reason,
+  });
+}
+
 export async function getPendingFeeStatuses(): Promise<any[]> {
   let rawData: any[] = [];
   try {
@@ -3785,6 +3838,11 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
         discount_percent,
         discount_status,
         payable_amount,
+        proof_url,
+        proof_filename,
+        proof_file_type,
+        proof_uploaded_at,
+        rejection_reason,
         updated_at,
         profiles!inner (
           id,
@@ -3995,14 +4053,34 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       discount_status: (schStatus === 'verified' ? 'verified' : schStatus === 'pending' ? 'pending' : 'none') as any,
     });
 
-    // Human-readable class name display
+    // Human-readable class name display (Clean: "Grade 9" not "Gr. Grade 9")
+    const formattedGrade = formatGradeDisplay(grade, rawBoard);
+    const gradeClean = formattedGrade.toLowerCase().startsWith('grade') ? formattedGrade : `Grade ${formattedGrade}`;
     let className = 'No Class';
     if (rawBoard === 'ielts') {
-      className = `IELTS (${formatGradeDisplay(grade, rawBoard)})`;
+      className = `IELTS (${formattedGrade})`;
     } else if (planType === 'custom' && activeSubjects.length > 0) {
-      className = `${boardDef.shortName} Gr. ${formatGradeDisplay(grade, rawBoard)} (${activeSubjects.length} ${activeSubjects.length === 1 ? 'Subject' : 'Subjects'})`;
+      className = `${boardDef.shortName} ${gradeClean} (${activeSubjects.length} ${activeSubjects.length === 1 ? 'Subject' : 'Subjects'})`;
     } else if (grade) {
-      className = `${boardDef.shortName} Gr. ${formatGradeDisplay(grade, rawBoard)} (All Subjects)`;
+      className = `${boardDef.shortName} ${gradeClean} (All Subjects)`;
+    }
+
+    let proofUrl = row.proof_url || null;
+    let proofFilename = row.proof_filename || null;
+    let proofFileType = row.proof_file_type || null;
+    let proofUploadedAt = row.proof_uploaded_at || null;
+
+    // Fallback: check if audit note contains receipt URL
+    const latestNote = latestAuditNotes.get(studentId) || null;
+    if (!proofUrl && latestNote) {
+      const match = latestNote.match(/Receipt URL:\s*([^\s]+)/i) || latestNote.match(/(https?:\/\/[^\s]+|\/api\/fees\/[^\s]+)/i);
+      if (match) {
+        proofUrl = match[1];
+        if (proofUrl.toLowerCase().includes('.pdf')) proofFileType = 'application/pdf';
+        else proofFileType = 'image/jpeg';
+        proofFilename = proofFilename || 'receipt';
+        proofUploadedAt = proofUploadedAt || row.updated_at;
+      }
     }
 
     return {
@@ -4017,6 +4095,11 @@ export async function getPendingFeeStatuses(): Promise<any[]> {
       claimed_marks: claimedMarks || null,
       verified_marks: schApp?.verified_marks_percentage || null,
       proof_document_url: schApp?.proof_document_url || null,
+      proof_url: proofUrl,
+      proof_filename: proofFilename,
+      proof_file_type: proofFileType,
+      proof_uploaded_at: proofUploadedAt,
+      rejection_reason: row.rejection_reason || null,
       updated_at: row.updated_at,
       class_name: className,
       subjects: activeSubjects,

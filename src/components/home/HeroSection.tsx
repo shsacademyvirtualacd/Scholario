@@ -1,20 +1,37 @@
 import React from 'react';
-import { ArrowRight, Sparkles, Shield, Zap, MessageCircle } from 'lucide-react';
+import { ArrowRight, LogIn, Video, BookOpen, ClipboardCheck, UserCheck, Shield, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DashboardPreview from './DashboardPreview';
+import { isRedesignEnabled } from '../../lib/featureFlags';
+import { HeroSectionOld } from './HeroSectionOld';
 
 interface HeroSectionProps {
   onNavigate: (page: string) => void;
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
+  if (!isRedesignEnabled()) {
+    return <HeroSectionOld onNavigate={onNavigate} />;
+  }
+
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    navigate('/register');
+  };
+
+  const handleSignIn = () => {
+    navigate('/login');
+  };
+
   return (
-    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-white">
+    <section className="relative pt-24 sm:pt-28 lg:pt-32 pb-16 overflow-hidden bg-white dark:bg-[#0D0D0D] transition-colors">
       {/* Background dot pattern */}
       <div
-        className="absolute inset-0 bg-dot-pattern opacity-50 pointer-events-none"
+        className="absolute inset-0 bg-dot-pattern opacity-40 dark:opacity-20 pointer-events-none"
         style={{
-          maskImage: 'radial-gradient(ellipse 90% 80% at 50% 30%, black 50%, transparent 100%)',
-          WebkitMaskImage: 'radial-gradient(ellipse 90% 80% at 50% 30%, black 50%, transparent 100%)',
+          maskImage: 'radial-gradient(ellipse 90% 80% at 50% 25%, black 40%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 90% 80% at 50% 25%, black 40%, transparent 100%)',
         }}
       />
 
@@ -22,58 +39,43 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
       <div
         className="absolute pointer-events-none"
         style={{
-          top: '-5%',
+          top: '-8%',
           left: '50%',
           transform: 'translateX(-50%)',
-          width: '800px',
-          height: '400px',
-          background: 'radial-gradient(ellipse, rgba(244,196,48,0.06) 0%, transparent 70%)',
+          width: '900px',
+          height: '450px',
+          background: 'radial-gradient(ellipse, rgba(244,196,48,0.08) 0%, transparent 70%)',
         }}
       />
 
-      {/* Left gold accent */}
-      <div
-        className="absolute left-0 top-1/4 pointer-events-none hidden lg:block"
-        style={{
-          width: '320px',
-          height: '320px',
-          background: 'radial-gradient(ellipse, rgba(244,196,48,0.04) 0%, transparent 70%)',
-        }}
-      />
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20">
-        {/* Announcement Banner */}
-        <div className="flex justify-center mb-10 animate-fade-up" style={{ animationDelay: '0ms' }}>
-          <div
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full border border-[#E5E5E5] bg-white shadow-sm"
-          >
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Kicker badge */}
+        <div className="flex justify-center mb-6 sm:mb-8 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#E5E5E5] dark:border-[#262626] bg-[#FAFAFA] dark:bg-[#1A1A1A] shadow-xs">
             <span
-              className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0"
-              style={{ background: '#F4C430', color: '#111111' }}
+              className="flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold shrink-0 bg-[#F4C430] text-[#111111]"
             >
-              <Sparkles size={10} />
+              <Sparkles size={9} />
             </span>
-            <span className="text-sm font-medium text-[#525252]">
-              Built for SHS Virtual Academy
+            <span className="text-xs font-semibold text-[#525252] dark:text-[#D4D4D4] tracking-tight">
+              Official Virtual Portal for SHS Virtual Academy
             </span>
           </div>
         </div>
 
         {/* Headline */}
-        <div
-          className="text-center mb-8 max-w-5xl mx-auto animate-fade-up"
-          style={{ animationDelay: '80ms' }}
-        >
-          <h1 className="text-5xl md:text-6xl lg:text-[72px] font-extrabold tracking-tight text-[#111111] leading-[1.03] mb-6">
+        <div className="text-center mb-8 max-w-4xl mx-auto animate-fade-up">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-black tracking-tight text-[#111111] dark:text-white leading-[1.08] mb-5">
             The Official Virtual Academy Portal for{' '}
-            <span className="relative inline-block">
-              <span style={{ color: '#F4C430' }}>SHS Virtual Academy</span>
+            <span className="relative inline-block whitespace-nowrap">
+              <span className="text-[#D4A017] dark:text-[#F4C430]">SHS Virtual Academy</span>
               <svg
                 className="absolute w-full"
-                style={{ bottom: '-6px', left: 0 }}
+                style={{ bottom: '-5px', left: 0 }}
                 height="8"
                 viewBox="0 0 200 8"
                 preserveAspectRatio="none"
+                aria-hidden="true"
               >
                 <path
                   d="M0 6 Q50 1 100 5 Q150 9 200 4"
@@ -81,86 +83,75 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   strokeWidth="2.5"
                   fill="none"
                   strokeLinecap="round"
-                  opacity="0.7"
+                  opacity="0.8"
                 />
               </svg>
             </span>
           </h1>
-          <p className="text-xl md:text-2xl text-[#737373] font-normal leading-relaxed max-w-3xl mx-auto">
-            Built exclusively for SHS Virtual Academy students — live Federal Board (FBISE), Punjab Board, Sindh Board & IELTS preparation courses, subject note vaults, and daily timetables in one unified learning hub.
+          <p className="text-base sm:text-lg md:text-xl text-[#737373] dark:text-[#A3A3A3] font-normal leading-relaxed max-w-2xl mx-auto">
+            Built exclusively for enrolled students — live Federal Board (FBISE), Punjab Board, Cambridge O/A Levels, and IELTS preparation with structured subject note vaults and daily timetables.
           </p>
         </div>
 
-        {/* CTA Buttons */}
-        <div
-          className="flex flex-col sm:flex-row gap-3 justify-center mb-7 animate-fade-up"
-          style={{ animationDelay: '160ms' }}
-        >
-          <button onClick={() => onNavigate('login')} className="btn btn-primary btn-lg group interactive">
-            Get Started
-            <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform duration-200" />
-          </button>
-          <a
-            href="https://chat.whatsapp.com/L3EYfjDXFNOGTzZjAjRuvg"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-outline btn-lg group interactive inline-flex items-center justify-center gap-2.5"
+        {/* CTA Buttons: Primary "Get Started" + Secondary "Sign in" */}
+        <div className="flex flex-col sm:flex-row gap-3.5 justify-center items-center mb-10 animate-fade-up">
+          <button
+            id="hero-get-started-btn"
+            type="button"
+            onClick={handleGetStarted}
+            className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-2xl bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] font-extrabold text-sm shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
           >
-            <MessageCircle size={18} className="text-[#25D366] group-hover:text-white transition-colors" />
-            <span>Join SHS Community</span>
-          </a>
+            <span>Get Started</span>
+            <ArrowRight size={16} />
+          </button>
+
+          <button
+            id="hero-signin-btn"
+            type="button"
+            onClick={handleSignIn}
+            className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-2xl border border-[#D4D4D4] dark:border-[#333333] bg-white dark:bg-[#1A1A1A] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-[#111111] dark:text-white font-bold text-sm shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
+          >
+            <LogIn size={15} />
+            <span>Sign in</span>
+          </button>
         </div>
 
-        {/* Trust indicators */}
-        <div
-          className="flex flex-wrap items-center justify-center gap-5 mb-16 animate-fade-up"
-          style={{ animationDelay: '220ms' }}
-        >
-          {[
-            { icon: Shield, text: 'Enterprise Security' },
-            { icon: Zap, text: '99.9% Uptime SLA' },
-            { icon: Sparkles, text: 'AI-Powered' },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-2 text-sm text-[#737373]">
-              <Icon size={14} style={{ color: '#F4C430' }} />
-              {text}
-            </div>
-          ))}
+        {/* Short Trust Row: Live classes, notes vault, tests, attendance */}
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-12 sm:mb-14 text-xs font-semibold text-[#525252] dark:text-[#A3A3A3] animate-fade-up">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FAFAFA] dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#262626]">
+            <Video size={14} className="text-[#D4A017]" />
+            <span>Live Classes</span>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FAFAFA] dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#262626]">
+            <BookOpen size={14} className="text-[#D4A017]" />
+            <span>Notes Vault</span>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FAFAFA] dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#262626]">
+            <ClipboardCheck size={14} className="text-[#D4A017]" />
+            <span>Test Assessments</span>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FAFAFA] dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#262626]">
+            <UserCheck size={14} className="text-[#D4A017]" />
+            <span>Real-time Attendance</span>
+          </div>
         </div>
 
-
-
-        {/* Dashboard Preview */}
-        <div
-          className="relative max-w-6xl mx-auto animate-fade-up"
-          style={{ animationDelay: '360ms' }}
-        >
-          {/* Subtle shadow beneath */}
-          <div
-            className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[80%] h-24 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse, rgba(0,0,0,0.08) 0%, transparent 70%)',
-              filter: 'blur(12px)',
-            }}
-          />
-          {/* Gold glow beneath */}
-          <div
-            className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[60%] h-16 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse, rgba(244,196,48,0.12) 0%, transparent 70%)',
-            }}
-          />
+        {/* Single Clean Interactive Dashboard Preview Mockup */}
+        <div className="relative max-w-6xl mx-auto animate-fade-up">
           <DashboardPreview />
         </div>
 
-        {/* Scroll hint */}
-        <div className="flex justify-center mt-14">
-          <div className="flex flex-col items-center gap-1.5 text-[#D4D4D4]">
-            <div className="text-xs font-medium tracking-widest uppercase">Scroll to explore</div>
-            <div className="w-5 h-8 border border-[#E5E5E5] rounded-full flex items-start justify-center pt-1.5">
+        {/* Scroll hint with generous non-overlapping margin */}
+        <div className="flex justify-center mt-12 sm:mt-16 mb-4">
+          <div className="flex flex-col items-center gap-1.5 text-[#A3A3A3] dark:text-[#737373]">
+            <span className="text-[10px] font-bold tracking-widest uppercase">Scroll to explore</span>
+            <div className="w-5 h-8 border border-[#D4D4D4] dark:border-[#333333] rounded-full flex items-start justify-center pt-1.5">
               <div
                 className="w-1 h-2 bg-[#F4C430] rounded-full"
-                style={{ animation: 'scrollHint 1.5s ease-in-out infinite' }}
+                style={{ animation: 'scrollHint 1.6s ease-in-out infinite' }}
               />
             </div>
           </div>
@@ -170,7 +161,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
       <style>{`
         @keyframes scrollHint {
           0%, 100% { transform: translateY(0); opacity: 1; }
-          60% { transform: translateY(8px); opacity: 0.3; }
+          50% { transform: translateY(7px); opacity: 0.25; }
         }
       `}</style>
     </section>
