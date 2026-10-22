@@ -26,12 +26,32 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
 
   return (
     <section className="relative pt-[94px] sm:pt-[104px] pb-8 sm:pb-12 overflow-hidden bg-white dark:bg-[#0E0E0E] transition-colors">
-      {/* ── Soft gold radial glow in top-right corner (blurred, ~40% opacity in light mode, dimmer in dark mode) ── */}
+      {/* ── Soft gold radial glow in top-right corner in light mode ── */}
       <div
         aria-hidden="true"
-        className="absolute -top-24 -right-24 w-[360px] sm:w-[500px] md:w-[650px] h-[360px] sm:h-[500px] md:h-[650px] rounded-full pointer-events-none opacity-40 dark:opacity-20 blur-3xl"
+        className="dark:hidden absolute -top-24 -right-24 w-[360px] sm:w-[500px] md:w-[650px] h-[360px] sm:h-[500px] md:h-[650px] rounded-full pointer-events-none opacity-40 blur-3xl"
         style={{
           background: 'radial-gradient(circle, rgba(242,194,48,0.55) 0%, rgba(242,194,48,0.15) 50%, transparent 70%)',
+        }}
+      />
+
+      {/* ── Dark Mode Ambient Glows Behind Navbar/Top Area (radial gradient rgba(242,194,48,0.22), ~380px, blur 80px top-right & softer left) ── */}
+      <div
+        aria-hidden="true"
+        className="hidden dark:block absolute -top-12 right-0 sm:right-6 lg:right-16 w-[380px] h-[360px] rounded-full pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle, rgba(242,194,48,0.22) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+          WebkitFilter: 'blur(80px)',
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="hidden dark:block absolute -top-14 left-0 sm:left-4 lg:left-12 w-[340px] h-[320px] rounded-full pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle, rgba(242,194,48,0.15) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+          WebkitFilter: 'blur(80px)',
         }}
       />
 

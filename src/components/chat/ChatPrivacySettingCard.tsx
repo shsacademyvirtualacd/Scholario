@@ -187,8 +187,6 @@ export const ChatPrivacySettingCard: React.FC<ChatPrivacySettingCardProps> = ({
                 <Loader2 size={10} className="animate-spin text-[#111111]" />
               ) : pendingRequest ? (
                 <Clock size={10} className="text-[#F59E0B]" />
-              ) : isEnabled ? (
-                <Check size={10} className="text-[#111111]" />
               ) : null}
             </span>
           </button>
@@ -278,8 +276,6 @@ export const ChatPrivacySettingCard: React.FC<ChatPrivacySettingCardProps> = ({
               <Loader2 size={10} className="animate-spin text-[#111111]" />
             ) : pendingRequest ? (
               <Clock size={11} className="text-[#F59E0B]" />
-            ) : isEnabled ? (
-              <Check size={11} className="text-[#111111]" />
             ) : null}
           </span>
         </button>

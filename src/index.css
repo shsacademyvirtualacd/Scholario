@@ -939,7 +939,7 @@ html.dark {
   --color-text-secondary: #E4E4E7;   /* 13.9:1 against #18181B */
   --color-text-muted: #CBD5E1;       /* 12.0:1 against #18181B, 8.7:1 against #27272A */
   --color-text-subtle: #94A3B8;      /* 5.2:1 against #18181B, 4.5:1 against #27272A */
-  --color-bg-canvas: #0E0E10;
+  --color-bg-canvas: #0E0E0E;
   --color-bg-card: #18181B;
   --color-bg-card-subtle: #141416;
   --color-border: #27272A;
@@ -947,7 +947,7 @@ html.dark {
 }
 
 html.dark body {
-  background-color: #0E0E10 !important;
+  background-color: #0E0E0E !important;
   color: #F4F4F5 !important;
 }
 
@@ -1005,7 +1005,8 @@ html.dark .bg-white\/80 {
 
 html.dark .bg-white\/75,
 html.dark .bg-white\/70,
-html.dark .bg-white\/60,
+html.dark .bg-white\/60:not(#main-navbar-pill),
+html.dark .bg-white\/55:not(#mobile-nav-card),
 html.dark .bg-white\/50 {
   background-color: rgba(24, 24, 27, 0.78) !important;
 }
@@ -1481,10 +1482,37 @@ html.dark .progress-bar {
 /* Modals & Dialog overlays (including createPortal components) */
 html.dark .modal-content,
 html.dark .modal-container,
-html.dark [role="dialog"]:not(.fixed):not([class*="fixed"]):not([id*="backdrop"]) {
+html.dark [role="dialog"]:not(.fixed):not([class*="fixed"]):not([id*="backdrop"]):not(#mobile-nav-card) {
   background-color: #18181B !important;
   border-color: #27272A !important;
   color: #F4F4F5 !important;
+}
+
+/* ==========================================================================
+   Scholario Navbar & Mobile Menu Card Dark-Mode Glassmorphism
+   Matches light-mode frosted glass with high translucency, saturation and glow
+   ========================================================================== */
+html.dark #main-navbar-pill,
+[data-theme="dark"] #main-navbar-pill,
+html.dark #mobile-nav-card,
+[data-theme="dark"] #mobile-nav-card {
+  background: rgba(255, 255, 255, 0.07) !important;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
+  backdrop-filter: blur(28px) saturate(170%) brightness(1.1) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(170%) brightness(1.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Fallback for browsers without backdrop-filter in dark mode only */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html.dark #main-navbar-pill,
+  [data-theme="dark"] #main-navbar-pill,
+  html.dark #mobile-nav-card,
+  [data-theme="dark"] #mobile-nav-card {
+    background: rgba(34, 34, 34, 0.92) !important;
+    background-image: none !important;
+  }
 }
 
 /* Modal fixed backdrop overlays MUST retain their translucent dark veil */

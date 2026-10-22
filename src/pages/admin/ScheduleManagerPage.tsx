@@ -750,7 +750,7 @@ export const ScheduleManagerPage: React.FC = () => {
 
   return (
     <AdminShell>
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24 sm:pb-0">
         {/* ── Page Header & Link Summary ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -762,8 +762,45 @@ export const ScheduleManagerPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Link Status Pill Summary */}
-          <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
+          {/* Mobile Merged Alert Row (<640px) */}
+          <div className="sm:hidden w-full">
+            <div
+              className={`p-2.5 rounded-xl text-xs font-semibold border flex items-center justify-between gap-2 ${
+                linkSummary.missing > 0
+                  ? 'bg-amber-500/10 text-amber-900 dark:text-amber-200 border-amber-500/30'
+                  : 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 border-emerald-500/30'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {linkSummary.missing > 0 ? (
+                  <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                ) : (
+                  <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                )}
+                <span className="truncate">
+                  {linkSummary.missing > 0
+                    ? `${linkSummary.missing} classes missing link`
+                    : `All ${linkSummary.total} classes have links`}
+                </span>
+              </div>
+              {linkSummary.missing > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOnlyMissingLinks(!onlyMissingLinks)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors ${
+                    onlyMissingLinks
+                      ? 'bg-amber-500 text-neutral-950'
+                      : 'bg-amber-200/80 dark:bg-amber-900/60 text-amber-950 dark:text-amber-200'
+                  }`}
+                >
+                  {onlyMissingLinks ? 'Show All' : 'Fix Links'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tablet & Desktop Link Status Pill Summary (>= 640px) */}
+          <div className="hidden sm:flex items-center gap-2 self-start sm:self-center flex-wrap">
             <div
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                 linkSummary.missing > 0
@@ -811,134 +848,37 @@ export const ScheduleManagerPage: React.FC = () => {
 
         {/* ── Compact Consolidated Toolbar ── */}
         <div className="bg-white dark:bg-[#18181B] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-2.5 sm:p-3 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
-          {/* Mobile / Tablet Filter Button */}
-          <div className="lg:hidden flex items-center gap-2 w-full sm:w-auto">
+          {/* Mobile Single-Row Bar (<640px) */}
+          <div className="sm:hidden flex items-center gap-2 w-full">
             <button
               type="button"
               onClick={() => setShowMobileFilterSheet(true)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700"
+              className="flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700"
             >
-              <Filter size={13} />
-              <span>Filters ({activeBoardLabel}, Gr. {selectedGrade})</span>
+              <Filter size={13} className="shrink-0" />
+              <span className="truncate">Filters ({activeBoardLabel}, Gr. {selectedGrade})</span>
             </button>
-          </div>
 
-          {/* Desktop Single-Row Filter Strip (Hidden on mobile/tablet) */}
-          <div className="hidden lg:flex items-center gap-2 flex-wrap">
-            {/* Board Dropdown */}
-            <select
-              value={selectedBoard}
-              onChange={(e) => {
-                setSelectedBoard(e.target.value);
-                setSelectedGrade('10');
-                setSelectedStream('all');
-              }}
-              className="text-xs font-bold px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
-            >
-              {BOARDS.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
-
-            {/* Grade Segmented Control */}
-            {activeGrades.length > 0 && (
-              <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                {activeGrades.map((g: any) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedGrade(g.id);
-                      setSelectedStream('all');
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedGrade === g.id
-                        ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
-                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
-                    }`}
-                  >
-                    {g.id === 'ielts' ? 'IELTS' : `Gr. ${g.id}`}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Stream Selector (if applicable) */}
-            {activeStreams.length > 0 && (
-              <select
-                value={selectedStream}
-                onChange={(e) => setSelectedStream(e.target.value)}
-                className="text-xs font-medium px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
-              >
-                <option value="all">All Streams</option>
-                {activeStreams.map((s: any) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Instructor Selector */}
-            <select
-              value={teacherFilter}
-              onChange={(e) => setTeacherFilter(e.target.value)}
-              className="text-xs font-medium px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
-            >
-              <option value="all">All Teachers</option>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.full_name}
-                </option>
-              ))}
-            </select>
-
-            {/* Reset Button */}
-            {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all' || selectedStream !== 'all' || onlyMissingLinks) && (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-lg"
-                title="Reset filters"
-              >
-                <RotateCcw size={13} />
-              </button>
-            )}
-          </div>
-
-          {/* Right Action Controls */}
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Select Mode Toggle */}
+            {/* Mobile Select Mode Toggle */}
             <button
               type="button"
               onClick={() => {
                 setSelectionMode(!selectionMode);
                 if (selectionMode) setSelectedSlotIds([]);
               }}
-              className={`p-2 sm:px-3 sm:py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 ${
+              className={`p-2 text-xs font-bold rounded-xl border transition-all shrink-0 ${
                 selectionMode
                   ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                  : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700'
               }`}
+              title={selectionMode ? 'Exit Select' : 'Select'}
+              aria-label="Select mode"
             >
-              <CheckSquare size={14} />
-              <span className="hidden sm:inline">{selectionMode ? 'Exit Select' : 'Select'}</span>
+              <CheckSquare size={16} />
             </button>
 
-            {/* Primary Action: Schedule Class */}
-            <button
-              type="button"
-              onClick={() => handleAddTrigger(0)}
-              className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-neutral-950 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
-            >
-              <Plus size={15} />
-              <span>Schedule Class</span>
-            </button>
-
-            {/* Overflow (...) Menu */}
-            <div className="relative" ref={overflowMenuRef}>
+            {/* Mobile Overflow Menu */}
+            <div className="relative shrink-0" ref={overflowMenuRef}>
               <button
                 type="button"
                 onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
@@ -979,6 +919,179 @@ export const ScheduleManagerPage: React.FC = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Tablet & Desktop Toolbar (>= 640px) */}
+          <div className="hidden sm:flex flex-wrap items-center justify-between gap-2.5 w-full">
+            <div className="lg:hidden flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterSheet(true)}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700"
+              >
+                <Filter size={13} />
+                <span>Filters ({activeBoardLabel}, Gr. {selectedGrade})</span>
+              </button>
+            </div>
+
+            {/* Desktop Single-Row Filter Strip (Hidden on mobile/tablet) */}
+            <div className="hidden lg:flex items-center gap-2 flex-wrap">
+              {/* Board Dropdown */}
+              <select
+                value={selectedBoard}
+                onChange={(e) => {
+                  setSelectedBoard(e.target.value);
+                  setSelectedGrade('10');
+                  setSelectedStream('all');
+                }}
+                className="text-xs font-bold px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
+              >
+                {BOARDS.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Grade Segmented Control */}
+              {activeGrades.length > 0 && (
+                <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                  {activeGrades.map((g: any) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedGrade(g.id);
+                        setSelectedStream('all');
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        selectedGrade === g.id
+                          ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
+                          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
+                      }`}
+                    >
+                      {g.id === 'ielts' ? 'IELTS' : `Gr. ${g.id}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Stream Selector (if applicable) */}
+              {activeStreams.length > 0 && (
+                <select
+                  value={selectedStream}
+                  onChange={(e) => setSelectedStream(e.target.value)}
+                  className="text-xs font-medium px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
+                >
+                  <option value="all">All Streams</option>
+                  {activeStreams.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Instructor Selector */}
+              <select
+                value={teacherFilter}
+                onChange={(e) => setTeacherFilter(e.target.value)}
+                className="text-xs font-medium px-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
+              >
+                <option value="all">All Teachers</option>
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.full_name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Reset Button */}
+              {(selectedBoard !== 'fbise' || selectedGrade !== '10' || teacherFilter !== 'all' || selectedStream !== 'all' || onlyMissingLinks) && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-lg"
+                  title="Reset filters"
+                >
+                  <RotateCcw size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Right Action Controls for Tablet & Desktop */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Select Mode Toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionMode(!selectionMode);
+                  if (selectionMode) setSelectedSlotIds([]);
+                }}
+                className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 ${
+                  selectionMode
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                }`}
+              >
+                <CheckSquare size={14} />
+                <span>{selectionMode ? 'Exit Select' : 'Select'}</span>
+              </button>
+
+              {/* Primary Action: Schedule Class (Hidden on mobile toolbar, kept here for >=640px) */}
+              <button
+                type="button"
+                onClick={() => handleAddTrigger(0)}
+                className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-[#F2C230] dark:hover:bg-amber-300 dark:text-neutral-950 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Plus size={15} />
+                <span>Schedule Class</span>
+              </button>
+
+              {/* Overflow (...) Menu for Desktop/Tablet */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOverflowMenuOpen(!overflowMenuOpen)}
+                  className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 transition-colors"
+                  title="More actions"
+                  aria-label="More actions"
+                >
+                  <MoreVertical size={16} />
+                </button>
+
+                {overflowMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 z-40 w-52 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl py-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOverflowMenuOpen(false);
+                        setClearScheduleModalOpen(true);
+                      }}
+                      disabled={filteredSlots.length === 0}
+                      className="w-full text-left px-3.5 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2 font-medium disabled:opacity-40"
+                    >
+                      <Trash2 size={13} />
+                      <span>Clear Schedule ({filteredSlots.length})</span>
+                    </button>
+
+                    <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOverflowMenuOpen(false);
+                        setOnlyMissingLinks(!onlyMissingLinks);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2"
+                    >
+                      <AlertCircle size={13} />
+                      <span>{onlyMissingLinks ? 'Show all classes' : 'Filter missing links'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1049,14 +1162,15 @@ export const ScheduleManagerPage: React.FC = () => {
           }}
         />
 
-        {/* ── Mobile Floating Action Button (FAB) for Scheduling ── */}
+        {/* ── Mobile Floating Action Button (FAB) for Scheduling (52px, safe-area aware) ── */}
         {isMobile && !selectionMode && (
           <button
             type="button"
             onClick={() => handleAddTrigger(0)}
-            className="fixed bottom-6 right-5 z-40 px-4 py-3 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-neutral-950 text-xs font-bold rounded-full shadow-xl flex items-center gap-2"
+            className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] right-5 z-40 h-[52px] px-5 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-[#F2C230] dark:hover:bg-amber-300 dark:text-neutral-950 text-xs font-bold rounded-full shadow-2xl flex items-center gap-2 active:scale-95 transition-all"
+            aria-label="Schedule a class"
           >
-            <Plus size={16} />
+            <Plus size={18} />
             <span>Schedule</span>
           </button>
         )}

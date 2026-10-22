@@ -152,27 +152,53 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
 
   return (
     <>
-      {/* ── Dim Backdrop: light dim rgba(0,0,0,0.25) + 6px blur so glass card blurs page content ── */}
+      {/* ── Soft Blurred Gold Glows behind Navbar (Dark mode only) ── */}
       <div
         aria-hidden="true"
+        className="hidden dark:block fixed top-0 inset-x-0 h-56 pointer-events-none z-30 overflow-hidden"
+      >
+        {/* Top-right gold glow: radial gradient rgba(242,194,48,0.22), ~380px wide, blur 80px */}
+        <div
+          className="absolute -top-16 right-0 sm:right-8 lg:right-24 w-[380px] h-[340px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle, rgba(242,194,48,0.22) 0%, transparent 70%)',
+            filter: 'blur(80px)',
+            WebkitFilter: 'blur(80px)',
+          }}
+        />
+        {/* Softer gold glow on the left behind navbar area */}
+        <div
+          className="absolute -top-16 left-0 sm:left-4 lg:left-16 w-[320px] h-[300px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle, rgba(242,194,48,0.15) 0%, transparent 70%)',
+            filter: 'blur(80px)',
+            WebkitFilter: 'blur(80px)',
+          }}
+        />
+      </div>
+
+      {/* ── Dim Backdrop: light dim rgba(0,0,0,0.25) + 6px blur in light, rgba(0,0,0,0.30) with NO blur in dark ── */}
+      <div
+        id="nav-backdrop"
+        aria-hidden="true"
         onClick={() => setMenuOpen(false)}
-        style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
-        className={`fixed inset-0 z-40 bg-black/25 backdrop-blur-[6px] transition-all duration-300 ease-out ${
+        className={`fixed inset-0 z-40 transition-all duration-300 ease-out nav-backdrop ${
           menuOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
         }`}
       />
 
       {/* ── Floating Header & Dropdown Container ── */}
       <header className="fixed top-3.5 sm:top-4 inset-x-4 sm:inset-x-6 lg:inset-x-8 z-50 mx-auto w-auto max-w-full sm:max-w-[720px] lg:max-w-[1200px] pointer-events-none flex flex-col items-center">
-        {/* Floating Pill Navbar: Glassmorphic rgba(255,255,255,0.6) / rgba(22,22,22,0.6) */}
+        {/* Floating Pill Navbar */}
         <nav
           ref={navContainerRef}
+          id="main-navbar-pill"
           aria-label="Main Navigation"
           style={{
             backdropFilter: 'blur(20px) saturate(180%)',
             WebkitBackdropFilter: 'blur(20px) saturate(180%)',
           }}
-          className="pointer-events-auto w-full transition-all duration-300 ease-out bg-white/[0.60] dark:bg-[#161616]/[0.60] text-[#111111] dark:text-white rounded-[28px] sm:rounded-[32px] border border-white/60 dark:border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.15)]"
+          className="pointer-events-auto w-full transition-all duration-300 ease-out bg-white/[0.60] text-[#111111] dark:text-white rounded-[28px] sm:rounded-[32px] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)]"
         >
           <div className="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6">
             {/* Left: Scholario logo & wordmark */}
@@ -343,7 +369,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
             backdropFilter: 'blur(24px) saturate(180%)',
             WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           }}
-          className={`pointer-events-auto mt-2 w-full sm:self-end sm:max-w-[420px] lg:hidden bg-white/[0.55] dark:bg-[#161616]/[0.55] text-[#111111] dark:text-white rounded-[28px] border border-white/60 dark:border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.15)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
+          className={`pointer-events-auto mt-2 w-full sm:self-end sm:max-w-[420px] lg:hidden bg-white/[0.55] text-[#111111] dark:text-white rounded-[28px] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.5)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
             menuOpen
               ? 'opacity-100 translate-y-0 visible scale-100'
               : 'opacity-0 -translate-y-2 pointer-events-none invisible scale-[0.98]'
@@ -361,18 +387,18 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 <Link
                   to="/"
                   onClick={handleHomeClick}
-                  className={`w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight group active:scale-[0.98] transition-colors ${
+                  className={`w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight group active:scale-[0.98] transition-colors nav-card-link-item ${
                     location.pathname === '/'
-                      ? 'text-[#D4A017] dark:text-[#F2C230]'
-                      : 'text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230]'
+                      ? 'text-[#D4A017] dark:text-[#F2C230] is-active'
+                      : 'text-[#111111] dark:text-white/95 hover:text-[#D4A017] dark:hover:text-[#F2C230]'
                   }`}
                 >
                   <span>Home</span>
                   <span
-                    className={`text-xl sm:text-2xl group-hover:translate-x-1 transition-all ${
+                    className={`text-xl sm:text-2xl group-hover:translate-x-1 transition-all nav-card-arrow ${
                       location.pathname === '/'
-                        ? 'text-[#D4A017] dark:text-[#F2C230]'
-                        : 'text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230]'
+                        ? 'text-[#D4A017] dark:text-[#F2C230] is-active'
+                        : 'text-[#A3A3A3] dark:text-white/60 group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230]'
                     }`}
                   >
                     →
@@ -389,10 +415,10 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 <button
                   type="button"
                   onClick={handleOpenAbout}
-                  className="w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] group active:scale-[0.98] transition-colors cursor-pointer"
+                  className="w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white/95 hover:text-[#D4A017] dark:hover:text-[#F2C230] group active:scale-[0.98] transition-colors cursor-pointer nav-card-link-item"
                 >
                   <span>About Us</span>
-                  <span className="text-xl sm:text-2xl text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230] group-hover:translate-x-1 transition-all">
+                  <span className="text-xl sm:text-2xl text-[#A3A3A3] dark:text-white/60 group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230] group-hover:translate-x-1 transition-all nav-card-arrow">
                     →
                   </span>
                 </button>
@@ -408,18 +434,18 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                   id="nav-leadership-link"
                   to="/leadership"
                   onClick={() => setMenuOpen(false)}
-                  className={`w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight group active:scale-[0.98] transition-colors ${
+                  className={`w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight group active:scale-[0.98] transition-colors nav-card-link-item ${
                     location.pathname === '/leadership'
-                      ? 'text-[#D4A017] dark:text-[#F2C230]'
-                      : 'text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230]'
+                      ? 'text-[#D4A017] dark:text-[#F2C230] is-active'
+                      : 'text-[#111111] dark:text-white/95 hover:text-[#D4A017] dark:hover:text-[#F2C230]'
                   }`}
                 >
                   <span>Leadership</span>
                   <span
-                    className={`text-xl sm:text-2xl group-hover:translate-x-1 transition-all ${
+                    className={`text-xl sm:text-2xl group-hover:translate-x-1 transition-all nav-card-arrow ${
                       location.pathname === '/leadership'
-                        ? 'text-[#D4A017] dark:text-[#F2C230]'
-                        : 'text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230]'
+                        ? 'text-[#D4A017] dark:text-[#F2C230] is-active'
+                        : 'text-[#A3A3A3] dark:text-white/60 group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230]'
                     }`}
                   >
                     →
@@ -436,19 +462,19 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 <button
                   type="button"
                   onClick={handleOpenContact}
-                  className="w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] group active:scale-[0.98] transition-colors cursor-pointer"
+                  className="w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white/95 hover:text-[#D4A017] dark:hover:text-[#F2C230] group active:scale-[0.98] transition-colors cursor-pointer nav-card-link-item"
                 >
                   <span>Contact</span>
-                  <span className="text-xl sm:text-2xl text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230] group-hover:translate-x-1 transition-all">
+                  <span className="text-xl sm:text-2xl text-[#A3A3A3] dark:text-white/60 group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230] group-hover:translate-x-1 transition-all nav-card-arrow">
                     →
                   </span>
                 </button>
               </div>
             </nav>
 
-            {/* 2. Thin divider line: rgba(0,0,0,0.08) in light, rgba(255,255,255,0.1) in dark */}
+            {/* 2. Thin divider line: rgba(0,0,0,0.08) in light, rgba(255,255,255,0.14) in dark */}
             <div
-              className={`border-t border-black/[0.08] dark:border-white/[0.10] my-4 transition-all duration-300 ease-out ${
+              className={`border-t border-black/[0.08] dark:border-[rgba(255,255,255,0.14)] my-4 transition-all duration-300 ease-out nav-card-divider ${
                 menuOpen ? 'opacity-100 delay-[180ms]' : 'opacity-0'
               }`}
             />
@@ -459,49 +485,53 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 menuOpen ? 'opacity-100 translate-y-0 delay-200' : 'opacity-0 translate-y-2'
               }`}
             >
-              {/* Sign in button: transparent background with 1px translucent border */}
+              {/* Sign in button: transparent background with 1px border rgba(255,255,255,0.30) in dark */}
               <button
+                id="nav-signin-btn"
                 type="button"
                 onClick={handleAuthAction}
-                className="w-full h-12 min-h-[48px] rounded-full bg-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.08] border border-black/[0.15] dark:border-white/[0.20] text-[#111111] dark:text-white font-bold text-base active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+                className="w-full h-12 min-h-[48px] rounded-full bg-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.08] border border-black/[0.15] dark:border-[rgba(255,255,255,0.30)] text-[#111111] dark:text-white font-bold text-base active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
               >
-                <LogIn size={18} />
+                <LogIn size={18} className="text-[#111111] dark:text-white" />
                 <span>{session ? 'Go to Dashboard' : 'Sign in'}</span>
               </button>
 
-              {/* Register & Apply button: solid gold (#F2C230) with soft gold glow shadow */}
+              {/* Register & Apply button: solid gold (#F2C230) with DARK text and icon (#111111) */}
               <Link
+                id="nav-register-btn"
                 to="/register"
                 onClick={() => setMenuOpen(false)}
                 className="w-full h-12 min-h-[48px] rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-base shadow-[0_4px_16px_rgba(242,194,48,0.35)] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
               >
-                <UserPlus size={18} />
-                <span>Register &amp; Apply</span>
+                <UserPlus size={18} className="text-[#111111]" />
+                <span className="text-[#111111]">Register &amp; Apply</span>
               </Link>
 
-              {/* WhatsApp Admissions link (green text, external link icon) */}
+              {/* WhatsApp Admissions link (green text stays ~90% in dark mode) */}
               <a
+                id="nav-whatsapp-link"
                 href="https://wa.me/9230586969050?text=Hi%2C%20I%20have%20an%20inquiry%20regarding%20SHS%20Virtual%20Academy%20admissions."
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setMenuOpen(false)}
-                className="min-h-[40px] pt-1 text-center text-[13px] sm:text-sm font-semibold text-[#128C7E] dark:text-[#25D366] hover:underline flex items-center justify-center gap-1.5 transition-colors"
+                className="min-h-[40px] pt-1 text-center text-[13px] sm:text-sm font-semibold text-[#128C7E] dark:text-[#25D366]/90 hover:underline flex items-center justify-center gap-1.5 transition-colors"
               >
                 <span>WhatsApp Admissions: +92 305 86969050</span>
                 <ExternalLink size={14} className="shrink-0" />
               </a>
             </div>
 
-            {/* 4. Theme switcher (Light | Dark | System): translucent glass pill */}
+            {/* 4. Theme switcher (Light | Dark | System): container rgba(255,255,255,0.08) with 1px border rgba(255,255,255,0.14) in dark */}
             <div
               className={`mt-5 flex justify-center transition-all duration-300 ease-out ${
                 menuOpen ? 'opacity-100 translate-y-0 delay-[240ms]' : 'opacity-0 translate-y-2'
               }`}
             >
               <div
+                id="nav-theme-switcher"
                 role="radiogroup"
                 aria-label="Theme mode"
-                className="inline-flex items-center h-10 p-1 rounded-full bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.12] shadow-2xs"
+                className="inline-flex items-center h-10 p-1 rounded-full bg-black/[0.05] dark:bg-[rgba(255,255,255,0.08)] border border-black/[0.08] dark:border-[rgba(255,255,255,0.14)] shadow-2xs"
               >
                 {themeOptions.map(({ mode, label }) => {
                   const isActive = themeMode === mode;
@@ -514,7 +544,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                       onClick={() => setThemeMode(mode)}
                       className={`h-8 px-3.5 sm:px-4 rounded-full text-[13px] sm:text-sm font-bold transition-all cursor-pointer select-none flex items-center justify-center ${
                         isActive
-                          ? 'bg-[#F2C230] text-[#111111] shadow-xs'
+                          ? 'bg-[#F2C230] text-[#111111] shadow-xs nav-theme-active-btn'
                           : 'text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white'
                       }`}
                     >
@@ -531,6 +561,114 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
       {/* Global Modals */}
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
+
+      {/* ── Dark-Mode-Only Glassmorphism & Contrast Overrides ── */}
+      <style>{`
+        /* Dark mode glassmorphism: Navbar Pill & Hamburger Menu Card */
+        .dark #main-navbar-pill,
+        [data-theme="dark"] #main-navbar-pill,
+        .dark #mobile-nav-card,
+        [data-theme="dark"] #mobile-nav-card {
+          background: rgba(255, 255, 255, 0.07) !important;
+          background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
+          backdrop-filter: blur(28px) saturate(170%) brightness(1.1) !important;
+          -webkit-backdrop-filter: blur(28px) saturate(170%) brightness(1.1) !important;
+          border: 1px solid rgba(255, 255, 255, 0.18) !important;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
+        }
+
+        /* Fallback for browsers without backdrop-filter in dark mode only */
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+          .dark #main-navbar-pill,
+          [data-theme="dark"] #main-navbar-pill,
+          .dark #mobile-nav-card,
+          [data-theme="dark"] #mobile-nav-card {
+            background: rgba(34, 34, 34, 0.92) !important;
+            background-image: none !important;
+          }
+        }
+
+        /* Backdrop behind open menu: rgba(0,0,0,0.30) with NO blur on backdrop itself in dark mode */
+        .nav-backdrop {
+          background-color: rgba(0, 0, 0, 0.25);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+        }
+        .dark #nav-backdrop,
+        [data-theme="dark"] #nav-backdrop,
+        .dark .nav-backdrop,
+        [data-theme="dark"] .nav-backdrop {
+          background-color: rgba(0, 0, 0, 0.30) !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+        /* Text and controls inside card in dark mode */
+        .dark #mobile-nav-card .nav-card-link-item,
+        [data-theme="dark"] #mobile-nav-card .nav-card-link-item {
+          color: rgba(255, 255, 255, 0.95);
+        }
+        .dark #mobile-nav-card .nav-card-link-item.is-active,
+        [data-theme="dark"] #mobile-nav-card .nav-card-link-item.is-active {
+          color: #F2C230 !important;
+        }
+
+        .dark #mobile-nav-card .nav-card-arrow,
+        [data-theme="dark"] #mobile-nav-card .nav-card-arrow {
+          color: rgba(255, 255, 255, 0.60) !important;
+        }
+        .dark #mobile-nav-card .nav-card-arrow.is-active,
+        [data-theme="dark"] #mobile-nav-card .nav-card-arrow.is-active {
+          color: #F2C230 !important;
+        }
+
+        .dark #mobile-nav-card .nav-card-divider,
+        [data-theme="dark"] #mobile-nav-card .nav-card-divider {
+          border-color: rgba(255, 255, 255, 0.14) !important;
+        }
+
+        .dark #mobile-nav-card #nav-signin-btn,
+        [data-theme="dark"] #mobile-nav-card #nav-signin-btn {
+          background-color: transparent !important;
+          border: 1px solid rgba(255, 255, 255, 0.30) !important;
+          color: #ffffff !important;
+        }
+        .dark #mobile-nav-card #nav-signin-btn svg,
+        [data-theme="dark"] #mobile-nav-card #nav-signin-btn svg {
+          color: #ffffff !important;
+        }
+
+        .dark #mobile-nav-card #nav-register-btn,
+        [data-theme="dark"] #mobile-nav-card #nav-register-btn {
+          background-color: #F2C230 !important;
+          color: #111111 !important;
+        }
+        .dark #mobile-nav-card #nav-register-btn *,
+        [data-theme="dark"] #mobile-nav-card #nav-register-btn * {
+          color: #111111 !important;
+        }
+
+        .dark #mobile-nav-card #nav-theme-switcher,
+        [data-theme="dark"] #mobile-nav-card #nav-theme-switcher {
+          background-color: rgba(255, 255, 255, 0.08) !important;
+          border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        }
+
+        .dark #mobile-nav-card .nav-theme-active-btn,
+        [data-theme="dark"] #mobile-nav-card .nav-theme-active-btn {
+          background-color: #F2C230 !important;
+          color: #111111 !important;
+        }
+
+        .dark #mobile-nav-card #nav-whatsapp-link,
+        [data-theme="dark"] #mobile-nav-card #nav-whatsapp-link {
+          color: rgba(37, 211, 102, 0.90) !important;
+        }
+        .dark #mobile-nav-card #nav-whatsapp-link svg,
+        [data-theme="dark"] #mobile-nav-card #nav-whatsapp-link svg {
+          color: rgba(37, 211, 102, 0.90) !important;
+        }
+      `}</style>
     </>
   );
 };

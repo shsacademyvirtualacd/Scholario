@@ -124,8 +124,8 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
 
     return (
       <div className="space-y-4">
-        {/* Horizontal Day Selector Strip */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-1.5 shadow-xs flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+        {/* Horizontal Day Selector Scroll-Snap Strip */}
+        <div className="bg-white dark:bg-[#18181B] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-1.5 shadow-xs flex items-center justify-between gap-1.5 overflow-x-auto snap-x snap-mandatory no-scrollbar">
           {SHORT_DAYS.map((dayShort, idx) => {
             const isToday = idx === todayDayIndex;
             const isSelected = idx === activeMobileDay;
@@ -136,9 +136,9 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                 key={dayShort}
                 type="button"
                 onClick={() => setActiveMobileDay(idx)}
-                className={`relative flex-1 py-2 px-1 rounded-xl text-center transition-all ${
+                className={`snap-center relative flex-1 min-w-[50px] py-2 px-1 rounded-xl text-center transition-all ${
                   isSelected
-                    ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 font-bold shadow-xs'
+                    ? 'bg-neutral-900 text-white dark:bg-[#F2C230] dark:text-neutral-950 font-bold shadow-xs'
                     : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                 }`}
               >
@@ -146,7 +146,7 @@ export const WeeklyGrid: React.FC<WeeklyGridProps> = ({
                 {isToday && (
                   <div
                     className={`text-[9px] font-extrabold ${
-                      isSelected ? 'text-amber-300 dark:text-neutral-900' : 'text-amber-600 dark:text-amber-400'
+                      isSelected ? 'text-[#F2C230] dark:text-neutral-900' : 'text-amber-600 dark:text-amber-400'
                     }`}
                   >
                     Today

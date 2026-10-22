@@ -192,12 +192,31 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
     return activeNav.startsWith(path);
   };
 
+  const getPageTitle = (pathname: string) => {
+    if (pathname.startsWith('/admin/schedule')) return 'Schedule Manager';
+    if (pathname.startsWith('/admin/attendance')) return 'Attendance';
+    if (pathname.startsWith('/admin/roster')) return 'Roster Manager';
+    if (pathname.startsWith('/admin/teachers')) return 'Teachers';
+    if (pathname.startsWith('/admin/students')) return 'Students';
+    if (pathname.startsWith('/admin/notes')) return 'Notes';
+    if (pathname.startsWith('/admin/tests')) return 'Testing Center';
+    if (pathname.startsWith('/admin/question-bank')) return 'Question Bank';
+    if (pathname.startsWith('/admin/announcements')) return 'Announcements';
+    if (pathname.startsWith('/admin/chat')) return 'Chat';
+    if (pathname.startsWith('/admin/visibility-requests')) return 'Visibility Requests';
+    if (pathname.startsWith('/admin/sage')) return 'Sage';
+    if (pathname.startsWith('/admin/prices')) return 'Prices';
+    if (pathname.startsWith('/admin/fees')) return 'Fees';
+    if (pathname.startsWith('/admin/profile')) return 'Admin Profile';
+    return 'Admin Portal';
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0E0E10] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
       {/* Mobile drawer backdrop overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden animate-in fade-in duration-150"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -209,7 +228,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         } ${sidebarOpen ? 'w-64' : 'sm:w-16'} ${isRailCollapsed ? 'lg:w-16' : 'lg:w-64'}`}
       >
         {/* Top Header: Logo + Collapse Toggle */}
-        <div className="h-16 flex items-center justify-between px-3.5 border-b border-neutral-800/80 shrink-0">
+        <div className="h-14 sm:h-16 flex items-center justify-between px-3.5 border-b border-neutral-800/80 shrink-0">
           <div className={`${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center gap-2 overflow-hidden`}>
             <Logo size="sm" variant="full" darkMode />
           </div>
@@ -232,7 +251,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="sm:hidden p-1.5 rounded-lg text-neutral-400 hover:text-white"
+            className="sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/80"
+            aria-label="Close navigation drawer"
           >
             <X size={18} />
           </button>
@@ -282,7 +302,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                             sidebarOpen ? 'justify-between px-3 py-2.5' : isRailCollapsed ? 'justify-center p-2.5' : 'justify-center sm:p-2.5 lg:justify-between lg:px-3 lg:py-2.5'
                           } ${
                             isActive
-                              ? 'bg-neutral-800 text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-amber-400 before:rounded-r'
+                              ? 'bg-neutral-800 text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-[#F2C230] before:rounded-r'
                               : 'text-neutral-300 hover:text-white hover:bg-neutral-800/70'
                           }`}
                         >
@@ -291,7 +311,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                             <Icon
                               size={20}
                               className={`shrink-0 transition-colors ${
-                                isActive ? 'text-amber-400' : 'text-neutral-400 group-hover:text-white'
+                                isActive ? 'text-[#F2C230]' : 'text-neutral-400 group-hover:text-white'
                               }`}
                             />
                             <span className={`truncate tracking-tight ${sidebarOpen ? 'inline' : isRailCollapsed ? 'hidden' : 'hidden lg:inline'}`}>{label}</span>
@@ -300,7 +320,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                           {/* Right Badges: unread counts or "Soon" tag */}
                           <div className={`items-center gap-1.5 shrink-0 ml-2 ${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
                             {isChat && unreadCount > 0 && !disabled && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-400 text-neutral-900 leading-none">
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#F2C230] text-neutral-900 leading-none">
                                 {unreadCount > 99 ? '99+' : unreadCount}
                               </span>
                             )}
@@ -337,30 +357,40 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         {/* Site Announcement Banner */}
         <AnnouncementBanner />
 
-        {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 h-16 bg-white dark:bg-[#141416] border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Hamburger for mobile */}
+        {/* Top Header Bar: 56px sticky glass on mobile, 64px on tablet/desktop */}
+        <header className="sticky top-0 z-30 h-14 sm:h-16 backdrop-blur-md bg-white/85 dark:bg-[#141416]/85 border-b border-neutral-200/80 dark:border-neutral-800/80 flex items-center justify-between px-3 sm:px-6 shrink-0 max-w-full">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Hamburger for mobile with >= 44px touch target */}
             <button
               type="button"
-              className="sm:hidden p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 transition-colors"
+              className="sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 transition-colors"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label="Toggle navigation menu"
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
+            {/* Mobile Header Title */}
+            <span className="sm:hidden font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate">
+              {getPageTitle(location.pathname)}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            <NotificationBell />
-            <ThemeToggleSwitch variant="compact" />
-            <ProfileDropdownMenu
-              profile={profile}
-              role="admin"
-              onSignOut={handleSignOut}
-              isSigningOut={isSigningOut}
-              avatarSize="md"
-            />
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <NotificationBell />
+            </div>
+            <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <ThemeToggleSwitch variant="compact" />
+            </div>
+            <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <ProfileDropdownMenu
+                profile={profile}
+                role="admin"
+                onSignOut={handleSignOut}
+                isSigningOut={isSigningOut}
+                avatarSize="md"
+              />
+            </div>
           </div>
         </header>
 
