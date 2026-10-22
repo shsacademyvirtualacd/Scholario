@@ -8,8 +8,6 @@ import {
   Users,
   BookMarked,
   FileCheck2,
-  Menu,
-  X,
   DollarSign,
   UserCheck,
   Coins,
@@ -26,10 +24,8 @@ import {
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
+import { useSidebarNav } from '../../hooks/useSidebarNav';
 import { supabase } from '../../lib/supabase';
-import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
-import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
-import { NotificationBell } from '../common/NotificationBell';
 import { AnnouncementBanner } from '../common/AnnouncementBanner';
 import { APP_VERSION } from '../../utils/version';
 import PortalHeader from '../common/PortalHeader';
@@ -101,14 +97,15 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isRailCollapsed, setIsRailCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem('scholario_admin_rail_collapsed') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  // Unified single source of truth for sidebar state
+  const {
+    isRailCollapsed,
+    drawerOpen,
+    setDrawerOpen,
+    toggleSidebar,
+    isExpandedOrOpen,
+  } = useSidebarNav('admin');
+
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('scholario_admin_collapsed_groups');
@@ -123,16 +120,6 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       const next = { ...prev, [title]: !prev[title] };
       try {
         localStorage.setItem('scholario_admin_collapsed_groups', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
-  const toggleRailCollapse = () => {
-    setIsRailCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('scholario_admin_rail_collapsed', String(next));
       } catch {}
       return next;
     });
@@ -208,7 +195,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
   const activeNav = location.pathname;
 
   const handleNav = (path: string) => {
-    setSidebarOpen(false);
+    setDrawerOpen(false);
     navigate(path);
   };
 
@@ -222,31 +209,12 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
     return activeNav.startsWith(path);
   };
 
-  const getPageTitle = (pathname: string) => {
-    if (pathname.startsWith('/admin/schedule')) return 'Schedule Manager';
-    if (pathname.startsWith('/admin/attendance')) return 'Attendance';
-    if (pathname.startsWith('/admin/roster')) return 'Roster Manager';
-    if (pathname.startsWith('/admin/teachers')) return 'Teachers';
-    if (pathname.startsWith('/admin/students')) return 'Students';
-    if (pathname.startsWith('/admin/notes')) return 'Notes';
-    if (pathname.startsWith('/admin/tests')) return 'Testing Center';
-    if (pathname.startsWith('/admin/question-bank')) return 'Question Bank';
-    if (pathname.startsWith('/admin/announcements')) return 'Announcements';
-    if (pathname.startsWith('/admin/chat')) return 'Chat';
-    if (pathname.startsWith('/admin/visibility-requests')) return 'Visibility Requests';
-    if (pathname.startsWith('/admin/sage')) return 'Sage';
-    if (pathname.startsWith('/admin/prices')) return 'Prices';
-    if (pathname.startsWith('/admin/fees')) return 'Fees';
-    if (pathname.startsWith('/admin/profile')) return 'Admin Profile';
-    return 'Admin Portal';
-  };
-
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0E0E10] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-      {/* ── Mobile Navigation Drawer ── */}
+      {/* ── Overlay Navigation Drawer (Phone & Tablet, hidden on Desktop lg:) ── */}
       <PortalDrawer
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
         role="admin"
         profile={profile}
         navGroups={drawerNavGroups}
@@ -255,26 +223,28 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         isSigningOut={isSigningOut}
       />
 
-      {/* ── Tablet Icon Rail (640-1023px) & Desktop Sidebar (>=1024px) ── */}
+      {/* ── Desktop Persistent Sidebar (>=1024px, 72px rail when collapsed, 256px when expanded) ── */}
       <aside
-        className={`hidden sm:flex fixed inset-y-0 left-0 z-40 bg-white dark:bg-[#111111] border-r border-[var(--admin-card-border)] dark:border-neutral-800 flex-col transition-all duration-300 ${
-          isRailCollapsed ? 'sm:w-16 lg:w-16' : 'sm:w-16 lg:w-64'
+        className={`hidden lg:flex fixed inset-y-0 left-0 z-40 bg-white dark:bg-[#111111] border-r border-[var(--admin-card-border)] dark:border-neutral-800 flex-col transition-all duration-300 ${
+          isRailCollapsed ? 'w-[72px]' : 'w-64'
         }`}
       >
         {/* Top Header: Logo + Collapse Toggle */}
         <div className="h-14 sm:h-16 flex items-center justify-between px-3.5 border-b border-[var(--admin-card-border)] dark:border-neutral-800/80 shrink-0">
-          <div className={`${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center gap-2 overflow-hidden`}>
+          <div className={`${isRailCollapsed ? 'hidden' : 'flex'} items-center gap-2 overflow-hidden`}>
             <Logo size="sm" variant="full" />
           </div>
-          <div className={`${isRailCollapsed ? 'flex' : 'flex lg:hidden'} mx-auto`}>
+          <div className={`${isRailCollapsed ? 'flex' : 'hidden'} mx-auto`}>
             <Logo size="sm" variant="icon" />
           </div>
 
           {/* Desktop Rail Collapse Toggle */}
           <button
             type="button"
-            onClick={toggleRailCollapse}
-            className="hidden lg:flex p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            onClick={toggleSidebar}
+            className={`p-1.5 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
+              isRailCollapsed ? 'hidden' : 'flex'
+            }`}
             title={isRailCollapsed ? 'Expand sidebar' : 'Collapse to icon rail'}
             aria-label={isRailCollapsed ? 'Expand sidebar' : 'Collapse to icon rail'}
           >
@@ -283,14 +253,14 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         </div>
 
         {/* Small Admin Panel Badge */}
-        <div className={`px-4 py-2.5 border-b border-[var(--admin-card-border)] dark:border-neutral-800/60 ${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between`}>
+        <div className={`px-4 py-2.5 border-b border-[var(--admin-card-border)] dark:border-neutral-800/60 ${isRailCollapsed ? 'hidden' : 'flex'} items-center justify-between`}>
           <span className="text-xs font-semibold text-[#8A6A00] dark:text-[#F2C230] bg-[rgba(242,194,48,0.16)] px-2.5 py-0.5 rounded-md">
             Admin Panel
           </span>
           <span className="text-xs text-[var(--admin-muted)] dark:text-neutral-400 font-medium">{APP_VERSION}</span>
         </div>
 
-        {/* Scrolling Navigation */}
+        {/* Scrolling Navigation (Independent scroll) */}
         <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 min-h-0 hide-scrollbar">
           {NAV_GROUPS.map((group, groupIdx) => {
             const hasActiveChild = group.items.some((item) => !item.disabled && isPathActive(item.path));
@@ -302,7 +272,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.title)}
-                  className={`w-full ${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between px-3 pt-1.5 pb-1 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)] dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer`}
+                  className={`w-full ${isRailCollapsed ? 'hidden' : 'flex'} items-center justify-between px-3 pt-1.5 pb-1 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)] dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer`}
                 >
                   <span>{group.title}</span>
                   <div className={`transition-transform duration-200 ${isCollapsed ? '' : 'rotate-0'}`}>
@@ -324,28 +294,29 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                           onClick={() => !disabled && handleNav(path)}
                           disabled={disabled}
                           title={label}
-                          className={`w-full flex items-center rounded-xl font-semibold transition-all relative group cursor-pointer ${
+                          aria-label={label}
+                          className={`w-full flex items-center rounded-xl font-semibold transition-all relative group cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
                             isRailCollapsed
                               ? 'min-h-[44px] justify-center p-2.5 text-xs'
-                              : 'min-h-[44px] justify-center sm:p-2.5 lg:h-auto lg:min-h-[44px] lg:justify-between lg:px-3 lg:py-2.5 text-xs'
+                              : 'min-h-[44px] justify-between px-3 py-2.5 text-xs'
                           } ${
                             isActive
                               ? 'bg-[rgba(242,194,48,0.14)] text-neutral-900 dark:text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#F2C230] before:rounded-r'
                               : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800/70'
                           }`}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className={`flex items-center gap-3 min-w-0 ${isRailCollapsed ? 'justify-center' : ''}`}>
                             <Icon
                               size={20}
                               className={`shrink-0 transition-colors ${
                                 isActive ? 'text-[#8A6A00] dark:text-[#F2C230]' : 'text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white'
                               }`}
                             />
-                            <span className={`truncate tracking-tight ${isRailCollapsed ? 'hidden' : 'hidden lg:inline'}`}>{label}</span>
+                            <span className={`truncate tracking-tight ${isRailCollapsed ? 'hidden' : 'inline'}`}>{label}</span>
                           </div>
 
                           {/* Right Badges */}
-                          <div className={`items-center gap-1.5 shrink-0 ml-2 ${isRailCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
+                          <div className={`items-center gap-1.5 shrink-0 ml-2 ${isRailCollapsed ? 'hidden' : 'flex'}`}>
                             {isChat && unreadCount > 0 && !disabled && (
                               <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#F2C230] text-neutral-900 leading-none">
                                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -375,10 +346,10 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         </nav>
       </aside>
 
-      {/* ── Main Layout Container ── */}
+      {/* ── Main Layout Container (Desktop adapts smoothly: 72px rail vs 256px expanded; Tablet & Mobile ml-0) ── */}
       <div
-        className={`flex-1 flex flex-col min-h-screen max-w-full overflow-x-hidden transition-all duration-300 sm:ml-16 ${
-          isRailCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+        className={`flex-1 flex flex-col min-h-screen max-w-full overflow-x-hidden transition-all duration-300 ml-0 ${
+          isRailCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'
         }`}
       >
         {/* Site Announcement Banner */}
@@ -387,8 +358,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         {/* ── Shared Unified Portal Header ── */}
         <PortalHeader
           role="admin"
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          sidebarOpen={isExpandedOrOpen}
+          onToggleSidebar={toggleSidebar}
           onOpenSearch={() => setSearchOpen(true)}
           profile={profile}
           onSignOut={handleSignOut}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import NotificationBell from './NotificationBell';
@@ -65,50 +65,13 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
 }) => {
   const location = useLocation();
 
-  // Scroll direction detection: hide on scroll down, reappear on scroll up (120ms transition)
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollYRef = useRef(0);
+  // Single source of truth for active header dropdown: mutual exclusivity
+  const [activeDropdown, setActiveDropdown] = useState<'notifications' | 'profile' | null>(null);
 
+  // Close dropdowns on route change
   useEffect(() => {
-    const handleScroll = () => {
-      // Apply auto-hide only on mobile (<640px)
-      if (window.innerWidth >= 640) {
-        setIsVisible(true);
-        return;
-      }
-
-      // Keep visible if sidebar is open
-      if (sidebarOpen) {
-        setIsVisible(true);
-        return;
-      }
-
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop;
-
-      // Always show at top of screen
-      if (currentScrollY <= 40) {
-        setIsVisible(true);
-        lastScrollYRef.current = currentScrollY;
-        return;
-      }
-
-      const diff = currentScrollY - lastScrollYRef.current;
-
-      // Scrolled down by > 10px -> hide
-      if (diff > 10 && currentScrollY > 60) {
-        setIsVisible(false);
-      }
-      // Scrolled up by > 6px -> show
-      else if (diff < -6) {
-        setIsVisible(true);
-      }
-
-      lastScrollYRef.current = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [sidebarOpen]);
+    setActiveDropdown(null);
+  }, [location.pathname]);
 
   // Global keyboard shortcuts (Ctrl+K, Cmd+K, or /)
   useEffect(() => {
@@ -202,9 +165,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
 
   return (
     <header
-      className={`sticky top-0 z-30 h-[60px] sm:h-16 w-full backdrop-blur-md bg-white/85 dark:bg-[#111111]/85 border-b border-black/[0.08] dark:border-white/[0.12] flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top)] shrink-0 transition-transform duration-120 ease-out ${
-        isVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'
-      } ${className}`}
+      className={`sticky top-0 z-30 h-[60px] sm:h-16 w-full backdrop-blur-md bg-white/85 dark:bg-[#111111]/85 border-b border-black/[0.08] dark:border-white/[0.12] flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top)] shrink-0 ${className}`}
       style={{
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -212,13 +173,14 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
     >
       {/* ── Left Section: Hamburger + Route Title & Role label ── */}
       <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1 max-w-[50%] sm:max-w-none">
-        {/* Animated Hamburger (visible on mobile <640px, and tablet/desktop if used as sidebar toggle) */}
+        {/* Animated Hamburger (visible on all breakpoints: toggles drawer on mobile/tablet, collapses/expands rail on desktop) */}
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-800 dark:text-neutral-200 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0 lg:hidden"
-          aria-label={sidebarOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
+          className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-800 dark:text-neutral-200 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] transition-colors cursor-pointer shrink-0"
+          aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
           aria-expanded={sidebarOpen}
+          aria-controls="portal-sidebar-nav"
         >
           <AnimatedHamburgerIcon isOpen={sidebarOpen} />
         </button>
@@ -239,7 +201,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="w-full sm:w-[220px] lg:max-w-[480px] lg:w-full h-10 lg:h-11 px-3.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.10] hover:border-[#F2C230]/60 dark:hover:border-[#F2C230]/60 flex items-center justify-between text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 hover:bg-black/[0.06] dark:hover:bg-white/[0.09] transition-all cursor-pointer group shadow-2xs"
+          className="w-full sm:w-[220px] lg:max-w-[480px] lg:w-full h-10 lg:h-11 px-3.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.10] hover:border-[#F2C230]/60 dark:hover:border-[#F2C230]/60 flex items-center justify-between text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 hover:bg-black/[0.06] dark:hover:bg-white/[0.09] transition-all cursor-pointer group shadow-2xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230]"
           title={`Search Scholario (${shortcutHint} or /)`}
         >
           <div className="flex items-center gap-2.5 min-w-0">
@@ -268,7 +230,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="sm:hidden w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:bg-black/[0.08] dark:hover:bg-white/[0.10] active:scale-95 transition-all cursor-pointer"
+          className="sm:hidden w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:bg-black/[0.08] dark:hover:bg-white/[0.10] active:scale-95 transition-all cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230]"
           aria-label="Open search dialog"
         >
           <Search size={19} />
@@ -276,7 +238,14 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
 
         {/* Notification Bell (44px target) */}
         <div className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center">
-          <NotificationBell />
+          <NotificationBell
+            isOpen={activeDropdown === 'notifications'}
+            onToggle={() =>
+              setActiveDropdown((prev) => (prev === 'notifications' ? null : 'notifications'))
+            }
+            onClose={() => setActiveDropdown(null)}
+            role={role}
+          />
         </div>
 
         {/* Theme Toggle (Visible only on Tablet and Desktop; on mobile it resides in drawer footer & PFP menu) */}
@@ -292,6 +261,11 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
             onSignOut={onSignOut}
             isSigningOut={isSigningOut}
             avatarSize="md"
+            isOpen={activeDropdown === 'profile'}
+            onToggle={() =>
+              setActiveDropdown((prev) => (prev === 'profile' ? null : 'profile'))
+            }
+            onClose={() => setActiveDropdown(null)}
           />
         </div>
       </div>

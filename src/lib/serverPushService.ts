@@ -38,15 +38,23 @@ const VAPID_SUBJECT =
   process.env.VAPID_SUBJECT ||
   'mailto:admin@scholario.app';
 
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+const isVapidPlaceholder =
+  !VAPID_PUBLIC_KEY ||
+  !VAPID_PRIVATE_KEY ||
+  VAPID_PUBLIC_KEY.includes('your_vapid') ||
+  VAPID_PUBLIC_KEY.includes('[') ||
+  VAPID_PRIVATE_KEY.includes('your_vapid') ||
+  VAPID_PRIVATE_KEY.includes('[');
+
+if (!isVapidPlaceholder) {
   try {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
     console.log('[ServerPush] WebPush VAPID configured successfully from environment');
-  } catch (err) {
-    console.warn('[ServerPush] Warning configuring VAPID details:', err);
+  } catch (err: any) {
+    console.warn('[ServerPush] Warning configuring VAPID details:', err?.message || err);
   }
 } else {
-  console.log('[ServerPush] Notice: VAPID keys not fully set in process.env. Push notifications via direct web-push will be skipped.');
+  console.log('[ServerPush] Notice: Valid VAPID keys not configured in process.env. Push notifications via direct web-push will be skipped.');
 }
 
 // ── Persistent Subscription Store (File + Memory Fallback) ───────────────────

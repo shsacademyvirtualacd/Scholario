@@ -16,12 +16,13 @@ import pg from 'pg';
 import { searchFallbackKnowledgeBase, chunkDocumentText } from './src/lib/knowledgeBaseService';
 const { Pool } = pg;
 
-const DB_URL = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+const rawDbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+const isPlaceholderDb = !rawDbUrl || rawDbUrl.includes('[') || rawDbUrl.includes('YOUR_') || rawDbUrl.includes('placeholder');
 let realPool: pg.Pool | null = null;
-if (DB_URL) {
+if (!isPlaceholderDb && rawDbUrl) {
   try {
     realPool = new Pool({
-      connectionString: DB_URL,
+      connectionString: rawDbUrl,
       ssl: { rejectUnauthorized: false },
       connectionTimeoutMillis: 3000,
     });
@@ -60,17 +61,35 @@ const pgPool = {
   },
 };
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn('[Scholario Server] Warning: SUPABASE_URL or SUPABASE_ANON_KEY is not configured in process.env.');
+function sanitizeSupabaseUrl(rawUrl?: string): string {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  const trimmed = rawUrl.trim();
+  if (trimmed.includes('[') || trimmed.includes(']') || trimmed.includes('YOUR_PROJECT_REF') || trimmed.includes('<')) {
+    return '';
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return trimmed;
+    }
+  } catch {}
+  return '';
 }
 
-const supabaseServer = createClient(
-  SUPABASE_URL || 'https://placeholder.supabase.co',
-  SUPABASE_ANON_KEY || 'placeholder-key'
-);
+const rawSupabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const rawSupabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+
+const isPlaceholderKey = !rawSupabaseKey || rawSupabaseKey.includes('your_') || rawSupabaseKey.includes('placeholder') || rawSupabaseKey.includes('[');
+const validSupabaseUrl = sanitizeSupabaseUrl(rawSupabaseUrl);
+
+const SUPABASE_URL = validSupabaseUrl || 'https://placeholder-domain.supabase.co';
+const SUPABASE_ANON_KEY = isPlaceholderKey ? 'placeholder-anon-key' : rawSupabaseKey;
+
+if (!validSupabaseUrl) {
+  console.warn('[Scholario Server] Notice: Valid SUPABASE_URL not provided. Using offline safe client.');
+}
+
+const supabaseServer = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const upload = multer({
   storage: multer.memoryStorage(),

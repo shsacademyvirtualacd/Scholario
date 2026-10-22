@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -7,26 +7,20 @@ import {
   BookMarked,
   FileCheck2,
   Bell,
-  Menu,
   CreditCard,
   Sparkles,
   ClipboardCheck,
   Target,
-  X,
   PanelLeftClose,
   PanelLeft,
   HelpCircle,
   LogOut,
-  ChevronRight,
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
-import { NotificationBell } from '../common/NotificationBell';
-import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
-import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
+import { useSidebarNav } from '../../hooks/useSidebarNav';
 import { AnnouncementBanner } from '../common/AnnouncementBanner';
-import { APP_VERSION } from '../../utils/version';
 import { formatProperName, formatBoardLabel } from '../../utils/studentFormatting';
 import QuickStartModal from './QuickStartModal';
 import PortalHeader from '../common/PortalHeader';
@@ -56,26 +50,24 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Unified single source of truth for sidebar state
+  const {
+    isRailCollapsed,
+    drawerOpen,
+    setDrawerOpen,
+    toggleSidebar,
+    isExpandedOrOpen,
+  } = useSidebarNav('student');
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickStartOpen, setQuickStartOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-
-  // Desktop rail collapsed preference
-  const [isRailCollapsed, setIsRailCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem('scholario_student_rail_collapsed') === 'true';
-    } catch {
-      return false;
-    }
-  });
 
   // Check if first-time user should see quick start guide
   useEffect(() => {
     try {
       const dismissed = localStorage.getItem('scholario_quickstart_dismissed');
       if (!dismissed) {
-        // Auto-show for fresh visits once profile loads
         const shownSession = sessionStorage.getItem('scholario_quickstart_session_shown');
         if (!shownSession && profile?.role === 'student') {
           sessionStorage.setItem('scholario_quickstart_session_shown', 'true');
@@ -84,46 +76,6 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
       }
     } catch {}
   }, [profile?.role]);
-
-  // Close mobile drawer on route change
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sidebarOpen) {
-        setSidebarOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarOpen]);
-
-  // Touch swipe-left to close on mobile
-  const touchStartXRef = useRef<number | null>(null);
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0].clientX;
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartXRef.current === null) return;
-    const diff = touchStartXRef.current - e.touches[0].clientX;
-    if (diff > 60) {
-      setSidebarOpen(false);
-      touchStartXRef.current = null;
-    }
-  };
-
-  const toggleRailCollapse = () => {
-    setIsRailCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('scholario_student_rail_collapsed', String(next));
-      } catch {}
-      return next;
-    });
-  };
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -144,7 +96,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   };
 
   const handleNav = (path: string) => {
-    setSidebarOpen(false);
+    setDrawerOpen(false);
     navigate(path);
   };
 
@@ -156,8 +108,8 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   const studentBoard = formatBoardLabel(rawBoard);
   const studentAcademicLabel = `Grade ${cleanGrade} · ${studentBoard} Board`;
 
-  // Navigation Groups strictly matching specification
-  const NAV_GROUPS: NavGroup[] = [
+  // Navigation Groups
+  const NAV_GROUPS: NavGroup[] = React.useMemo(() => [
     {
       title: 'OVERVIEW',
       items: [
@@ -193,7 +145,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         { icon: CreditCard, label: 'Tuition & Fees', path: '/student/checkout' },
       ],
     },
-  ];
+  ], [unreadCount]);
 
   const drawerNavGroups = React.useMemo(() => {
     return NAV_GROUPS.map((group) => ({
@@ -213,10 +165,10 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0E0E10] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-      {/* ── Mobile Navigation Drawer ── */}
+      {/* ── Overlay Navigation Drawer (Phone & Tablet, hidden on Desktop lg:) ── */}
       <PortalDrawer
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
         role="student"
         profile={profile}
         navGroups={drawerNavGroups}
@@ -227,7 +179,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           <button
             type="button"
             onClick={() => {
-              setSidebarOpen(false);
+              setDrawerOpen(false);
               setQuickStartOpen(true);
             }}
             className="min-h-[44px] min-w-[44px] w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:text-[#8A6A00] dark:hover:text-[#F2C230] hover:bg-neutral-100 dark:hover:bg-neutral-800/60 rounded-xl transition-colors cursor-pointer"
@@ -238,26 +190,28 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         }
       />
 
-      {/* ── Tablet Icon Rail (640-1023px) & Desktop Sidebar (>=1024px) ── */}
+      {/* ── Desktop Persistent Sidebar (>=1024px, 72px rail when collapsed, 256px when expanded) ── */}
       <aside
-        className={`hidden sm:flex fixed inset-y-0 left-0 z-40 bg-[#111111] border-r border-neutral-800 flex-col transition-all duration-300 ${
-          isRailCollapsed ? 'sm:w-16 lg:w-16' : 'sm:w-16 lg:w-64'
+        className={`hidden lg:flex fixed inset-y-0 left-0 z-40 bg-[#111111] border-r border-neutral-800 flex-col transition-all duration-300 ${
+          isRailCollapsed ? 'w-[72px]' : 'w-64'
         }`}
       >
-        {/* Top Header: Logo + Brand Tagline + Close / Collapse Toggle */}
+        {/* Top Header: Logo + Collapse Toggle */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-neutral-800/80 shrink-0">
-          <div className={`${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} flex-col overflow-hidden`}>
+          <div className={`${isRailCollapsed ? 'hidden' : 'flex'} flex-col overflow-hidden`}>
             <Logo size="sm" variant="full" darkMode />
           </div>
-          <div className={`${isRailCollapsed ? 'flex' : 'flex lg:hidden'} mx-auto`}>
+          <div className={`${isRailCollapsed ? 'flex' : 'hidden'} mx-auto`}>
             <Logo size="sm" variant="icon" darkMode />
           </div>
 
           {/* Desktop Rail Collapse Toggle */}
           <button
             type="button"
-            onClick={toggleRailCollapse}
-            className="hidden lg:flex p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            onClick={toggleSidebar}
+            className={`p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
+              isRailCollapsed ? 'hidden' : 'flex'
+            }`}
             title={isRailCollapsed ? 'Expand sidebar' : 'Collapse to icon rail'}
             aria-label={isRailCollapsed ? 'Expand sidebar' : 'Collapse to icon rail'}
           >
@@ -265,82 +219,67 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           </button>
         </div>
 
-        {/* Student Portal Pill + Version Label */}
-        <div
-          className={`px-4 py-2.5 border-b border-neutral-800/60 ${
-            isRailCollapsed ? 'hidden' : 'hidden lg:flex'
-          } items-center justify-between shrink-0`}
-        >
-          <span className="text-[11px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
-            Student Portal
-          </span>
-          <span className="text-[10px] text-neutral-400 font-medium">{APP_VERSION}</span>
-        </div>
-
-        {/* ── Navigation Groups ── */}
-        <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 custom-scrollbar min-h-0">
+        {/* Navigation (Independent scrolling) */}
+        <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 min-h-0 custom-scrollbar">
           {NAV_GROUPS.map((group, groupIdx) => (
             <div key={groupIdx} className="space-y-1">
-              {/* Group Title (hidden in collapsed/tablet mode) */}
-              <div
-                className={`px-3 pt-2 pb-1 text-[10px] font-bold tracking-wider text-neutral-400 uppercase ${
-                  sidebarOpen ? 'block' : isRailCollapsed ? 'hidden' : 'hidden lg:block'
-                }`}
-              >
+              <span className={`px-3 text-[10px] font-bold text-neutral-400 tracking-wider uppercase block ${isRailCollapsed ? 'hidden' : 'block'}`}>
                 {group.title}
-              </div>
+              </span>
 
-              {/* Group Nav Items */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {group.items.map(({ icon: Icon, label, path, badge, disabled }) => {
+                  const isActive = isPathActive(path);
                   const isBlocked = feeStatus !== 'paid' && path !== '/student/checkout';
-                  const active = !disabled && !isBlocked && isPathActive(path);
+                  const isDisabled = disabled || isBlocked;
 
                   return (
                     <button
                       key={path}
                       type="button"
-                      onClick={() => !disabled && !isBlocked && handleNav(path)}
-                      disabled={disabled || isBlocked}
-                      title={
-                        isBlocked
-                          ? 'Unlocks after fee payment verification'
-                          : isRailCollapsed
-                          ? label
-                          : undefined
-                      }
-                      className={`min-h-[48px] w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer relative ${
-                        active
-                          ? 'bg-amber-400/15 text-white font-bold border-l-4 border-amber-400'
-                          : disabled || isBlocked
-                          ? 'text-neutral-500 opacity-40 cursor-not-allowed'
-                          : 'text-neutral-300 hover:text-white hover:bg-neutral-800/70'
+                      onClick={() => !isDisabled && handleNav(path)}
+                      disabled={isDisabled}
+                      title={label}
+                      aria-label={label}
+                      className={`w-full flex items-center rounded-xl font-semibold transition-all relative group cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
+                        isRailCollapsed
+                          ? 'min-h-[44px] justify-center p-2.5 text-xs'
+                          : 'min-h-[44px] justify-between px-3 py-2.5 text-xs'
+                      } ${
+                        isActive
+                          ? 'bg-[rgba(242,194,48,0.14)] text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#F2C230] before:rounded-r'
+                          : isDisabled
+                          ? 'text-neutral-600 opacity-40 cursor-not-allowed'
+                          : 'text-neutral-400 hover:text-white hover:bg-neutral-800/70'
                       }`}
                     >
-                      <Icon
-                        size={18}
-                        className={`shrink-0 ${
-                          active ? 'text-amber-400' : 'text-neutral-400 group-hover:text-white'
-                        }`}
-                      />
-
-                      <span
-                        className={`truncate text-left flex-1 ${
-                          isRailCollapsed ? 'hidden' : 'hidden lg:block'
-                        }`}
-                      >
-                        {label}
-                      </span>
-
-                      {badge && (
-                        <span
-                          className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-400 text-neutral-950 shadow-xs ${
-                            isRailCollapsed ? 'hidden' : 'hidden lg:block'
+                      <div className={`flex items-center gap-3 min-w-0 ${isRailCollapsed ? 'justify-center' : ''}`}>
+                        <Icon
+                          size={19}
+                          className={`shrink-0 transition-colors ${
+                            isActive
+                              ? 'text-[#F4C430]'
+                              : 'text-neutral-400 group-hover:text-white'
                           }`}
-                        >
-                          {badge}
+                        />
+                        <span className={`truncate tracking-tight ${isRailCollapsed ? 'hidden' : 'inline'}`}>
+                          {label}
                         </span>
-                      )}
+                      </div>
+
+                      {/* Badges */}
+                      <div className={`items-center gap-1.5 shrink-0 ml-2 ${isRailCollapsed ? 'hidden' : 'flex'}`}>
+                        {badge !== undefined && badge !== null && !isDisabled && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#F4C430] text-neutral-900 leading-none">
+                            {badge}
+                          </span>
+                        )}
+                        {isBlocked && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-950/60 text-rose-300 border border-rose-800/40">
+                            Locked
+                          </span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -349,18 +288,13 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           ))}
         </nav>
 
-        {/* ── Footer: User Profile Card, Quick Start Help, and Logout ── */}
-        <div className="p-3 border-t border-neutral-800/80 bg-neutral-950/60 shrink-0 space-y-2">
-          {/* User Card */}
-          <div
-            className={`p-2.5 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center gap-3 ${
-              isRailCollapsed ? 'hidden' : 'hidden lg:flex'
-            }`}
-          >
+        {/* User Card & Footer in Sidebar */}
+        <div className="p-3 border-t border-neutral-800/80 bg-neutral-900/40 space-y-2 shrink-0">
+          <div className={`flex items-center gap-3 p-1.5 ${isRailCollapsed ? 'justify-center' : ''}`}>
             <div className="w-9 h-9 rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/30 flex items-center justify-center font-black text-sm shrink-0">
               {studentName.charAt(0) || 'S'}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${isRailCollapsed ? 'hidden' : 'block'}`}>
               <p className="text-xs font-bold text-white truncate">{studentName}</p>
               <p className="text-[11px] text-neutral-400 truncate mt-0.5">
                 {studentAcademicLabel}
@@ -372,11 +306,14 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           <button
             type="button"
             onClick={() => setQuickStartOpen(true)}
-            className="min-h-[44px] min-w-[44px] w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-neutral-400 hover:text-amber-400 hover:bg-neutral-900 rounded-xl transition-colors cursor-pointer"
-            title="Help & Quick Start Walkthrough"
+            className={`min-h-[44px] min-w-[44px] w-full flex items-center gap-2 p-2 text-xs font-medium text-neutral-400 hover:text-amber-400 hover:bg-neutral-800 rounded-xl transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
+              isRailCollapsed ? 'justify-center' : 'px-3'
+            }`}
+            title="Quick Start Guide"
+            aria-label="Quick Start Guide"
           >
             <HelpCircle size={16} className="shrink-0 text-amber-400" />
-            <span className={`${isRailCollapsed ? 'hidden' : 'hidden lg:block'} truncate`}>
+            <span className={`${isRailCollapsed ? 'hidden' : 'inline'} truncate`}>
               Quick Start Guide
             </span>
           </button>
@@ -386,21 +323,24 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
             type="button"
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className="min-h-[44px] min-w-[44px] w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-neutral-400 hover:text-rose-400 hover:bg-neutral-900 rounded-xl transition-colors cursor-pointer"
+            className={`min-h-[44px] min-w-[44px] w-full flex items-center gap-2 p-2 text-xs font-medium text-neutral-400 hover:text-rose-400 hover:bg-neutral-800 rounded-xl transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
+              isRailCollapsed ? 'justify-center' : 'px-3'
+            }`}
             title="Log out"
+            aria-label="Log out"
           >
             <LogOut size={16} className="shrink-0" />
-            <span className={`${isRailCollapsed ? 'hidden' : 'hidden lg:block'} truncate`}>
+            <span className={`${isRailCollapsed ? 'hidden' : 'inline'} truncate`}>
               {isSigningOut ? 'Signing out...' : 'Log out'}
             </span>
           </button>
         </div>
       </aside>
 
-      {/* ── Main Content Area ── */}
+      {/* ── Main Content Area (Desktop adapts smoothly: 72px rail vs 256px expanded; Tablet & Mobile ml-0) ── */}
       <div
-        className={`flex-1 flex flex-col min-h-screen max-w-full overflow-x-hidden transition-all duration-300 ${
-          isRailCollapsed ? 'sm:ml-16 lg:ml-16' : 'sm:ml-16 lg:ml-64'
+        className={`flex-1 flex flex-col min-h-screen max-w-full overflow-x-hidden transition-all duration-300 ml-0 ${
+          isRailCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'
         }`}
       >
         {/* Global Site Announcement Banner */}
@@ -409,8 +349,8 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         {/* ── Shared Unified Portal Header ── */}
         <PortalHeader
           role="student"
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          sidebarOpen={isExpandedOrOpen}
+          onToggleSidebar={toggleSidebar}
           onOpenSearch={() => setSearchOpen(true)}
           profile={profile}
           onSignOut={handleSignOut}

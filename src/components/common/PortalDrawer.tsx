@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import ProfileAvatar from './ProfileAvatar';
-import { useTheme, type ThemeMode } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import type { Profile } from '../../types';
 
 export interface PortalNavItem {
@@ -61,6 +61,9 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
 
   const currentPath = activePath || location.pathname;
 
+  const drawerRef = useRef<HTMLElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
   // Swipe left detection
   const touchStartXRef = useRef<number | null>(null);
 
@@ -94,13 +97,60 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Lock body scroll when drawer is open
+  // Close on phone Back button (popstate)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePopState = () => {
+      onClose();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isOpen, onClose]);
+
+  // Lock body scroll and handle focus trapping when overlay drawer is open
   useEffect(() => {
     if (isOpen) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
+
+      // Focus first focusable element inside drawer
+      const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements && focusableElements.length > 0) {
+        focusableElements[0].focus();
+      }
+
+      const handleTrapTab = (e: KeyboardEvent) => {
+        if (e.key !== 'Tab' || !drawerRef.current) return;
+        const focusables = drawerRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables || focusables.length === 0) return;
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            last.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === last) {
+            first.focus();
+            e.preventDefault();
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleTrapTab);
+
       return () => {
         document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleTrapTab);
+        previousActiveElementRef.current?.focus();
       };
     }
   }, [isOpen]);
@@ -138,9 +188,6 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
     return currentPath.startsWith(path);
   };
 
-  const roleLabel =
-    role === 'admin' ? 'Admin' : role === 'teacher' ? 'Faculty' : 'Student';
-
   const roleBadgeText =
     role === 'admin'
       ? 'Administrator'
@@ -150,9 +197,9 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
 
   return (
     <>
-      {/* ── Backdrop Overlay ── */}
+      {/* ── Backdrop Overlay (Visible on phones & tablets, hidden on desktop lg:) ── */}
       <div
-        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity duration-280 sm:hidden ${
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity duration-280 lg:hidden ${
           isOpen
             ? 'opacity-100 pointer-events-auto visible'
             : 'opacity-0 pointer-events-none invisible'
@@ -161,15 +208,17 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
         aria-hidden="true"
       />
 
-      {/* ── Slide-in Navigation Drawer ── */}
+      {/* ── Slide-in Navigation Overlay Drawer (Phone: 85vw up to 320px, Tablet: 280px wide, Hidden on desktop lg:) ── */}
       <aside
+        ref={drawerRef}
+        id="portal-sidebar-nav"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         aria-hidden={!isOpen}
         role="dialog"
         aria-modal="true"
         aria-label="Navigation drawer"
-        className={`fixed inset-y-0 left-0 z-50 w-[min(86vw,320px)] bg-white dark:bg-[#111111] border-r border-black/[0.08] dark:border-white/[0.12] rounded-r-[28px] shadow-2xl flex flex-col transition-transform duration-280 ease-[cubic-bezier(0.32,0.72,0,1)] sm:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-[min(85vw,320px)] md:w-[280px] bg-white dark:bg-[#111111] border-r border-black/[0.08] dark:border-white/[0.12] rounded-r-[28px] shadow-2xl flex flex-col transition-transform duration-280 ease-[cubic-bezier(0.32,0.72,0,1)] lg:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{
@@ -186,7 +235,7 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] transition-colors cursor-pointer"
             aria-label="Close navigation drawer"
           >
             <X size={20} />
@@ -221,7 +270,7 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
               onClose();
               onOpenSearch();
             }}
-            className="w-full h-12 mt-3 px-3.5 rounded-xl bg-neutral-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.10] flex items-center justify-between text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-white/[0.10] active:scale-[0.99] transition-all cursor-pointer"
+            className="w-full h-12 mt-3 px-3.5 rounded-xl bg-neutral-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.10] flex items-center justify-between text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-white/[0.10] active:scale-[0.99] transition-all cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230]"
           >
             <div className="flex items-center gap-2.5">
               <Search size={16} className="text-neutral-400" />
@@ -233,7 +282,7 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
           </button>
         </div>
 
-        {/* ── Navigation Links (52px Touch Height, 22px Icons, 3px Gold Left Active Bar) ── */}
+        {/* ── Navigation Links (Independent Scrolling, 52px Touch Height, 22px Icons, 3px Gold Left Active Bar) ── */}
         <nav className="flex-1 overflow-y-auto p-2.5 space-y-3 custom-scrollbar min-h-0">
           {navGroups.map((group, groupIdx) => {
             const hasActiveChild = group.items.some(
@@ -267,7 +316,7 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
                           type="button"
                           onClick={() => !disabled && handleNav(path)}
                           disabled={disabled}
-                          className={`w-full h-[52px] min-h-[52px] flex items-center justify-between px-3.5 rounded-xl font-semibold transition-all relative cursor-pointer ${
+                          className={`w-full h-[52px] min-h-[52px] flex items-center justify-between px-3.5 rounded-xl font-semibold transition-all relative cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
                             isActive
                               ? 'bg-[rgba(242,194,48,0.14)] dark:bg-[rgba(242,194,48,0.16)] text-neutral-900 dark:text-white font-bold before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-[3px] before:bg-[#F2C230] before:rounded-r'
                               : disabled
