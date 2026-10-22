@@ -37,6 +37,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmModal from '../admin/ConfirmModal';
 import { useAuth } from '../../features/auth/AuthContext';
 import { SageAvatar } from './SageAvatar';
 import { SageEmotion, SAGE_EMOTIONS, detectSageEmotion } from './sageEmotion';
@@ -100,32 +101,32 @@ interface SageChatViewProps {
 
 const SageMarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
   return (
-    <div className="sage-markdown-body text-[14px] leading-relaxed text-[#262626] break-words">
+    <div className="sage-markdown-body text-[14px] leading-relaxed text-[#262626] dark:text-[#E4E4E7] break-words">
       <Markdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={{
           h1: ({ children }) => (
-            <h1 className="text-lg font-extrabold text-[#111111] mt-3 mb-1.5 pb-1 border-b border-[#E5E5E5]">
+            <h1 className="text-lg font-extrabold text-[#111111] dark:text-white mt-3 mb-1.5 pb-1 border-b border-[#E5E5E5] dark:border-[#2E2E36]">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-base font-bold text-[#111111] mt-2.5 mb-1 pb-0.5 border-b border-[#F0F0F0]">
+            <h2 className="text-base font-bold text-[#111111] dark:text-white mt-2.5 mb-1 pb-0.5 border-b border-[#F0F0F0] dark:border-[#2E2E36]">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-[15px] font-bold text-[#111111] mt-2 mb-1">{children}</h3>
+            <h3 className="text-[15px] font-bold text-[#111111] dark:text-white mt-2 mb-1">{children}</h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-[14px] font-bold text-[#111111] mt-1.5 mb-0.5">{children}</h4>
+            <h4 className="text-[14px] font-bold text-[#111111] dark:text-white mt-1.5 mb-0.5">{children}</h4>
           ),
           h5: ({ children }) => (
-            <h5 className="text-[13px] font-bold text-[#111111] mt-1 mb-0.5">{children}</h5>
+            <h5 className="text-[13px] font-bold text-[#111111] dark:text-white mt-1 mb-0.5">{children}</h5>
           ),
           h6: ({ children }) => (
-            <h6 className="text-[12px] font-bold text-[#111111] mt-1 mb-0.5">{children}</h6>
+            <h6 className="text-[12px] font-bold text-[#111111] dark:text-white mt-1 mb-0.5">{children}</h6>
           ),
           p: ({ children }) => <p className="text-[14px] leading-relaxed my-1.5">{children}</p>,
           ul: ({ children }) => (
@@ -134,35 +135,35 @@ const SageMarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal pl-5 my-1.5 space-y-1 text-[14px] marker:font-bold marker:text-[#111111]">
+            <ol className="list-decimal pl-5 my-1.5 space-y-1 text-[14px] marker:font-bold marker:text-[#111111] dark:marker:text-white">
               {children}
             </ol>
           ),
           li: ({ children }) => <li className="leading-relaxed pl-0.5">{children}</li>,
-          strong: ({ children }) => <strong className="font-bold text-[#111111]">{children}</strong>,
-          em: ({ children }) => <em className="italic text-[#333333]">{children}</em>,
+          strong: ({ children }) => <strong className="font-bold text-[#111111] dark:text-white">{children}</strong>,
+          em: ({ children }) => <em className="italic text-[#333333] dark:text-[#D4D4D8]">{children}</em>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-3 border-[#F4C430] bg-[#FAFAFA] pl-3.5 py-1.5 my-2 italic text-[#525252] rounded-r-lg">
+            <blockquote className="border-l-3 border-[#F4C430] bg-[#FAFAFA] dark:bg-[#1A1A1E] pl-3.5 py-1.5 my-2 italic text-[#525252] dark:text-[#A1A1AA] rounded-r-lg">
               {children}
             </blockquote>
           ),
           table: ({ children }) => (
-            <div className="my-2.5 overflow-x-auto rounded-lg border border-[#E5E5E5] shadow-xs">
+            <div className="my-2.5 overflow-x-auto rounded-lg border border-[#E5E5E5] dark:border-[#2E2E36] shadow-xs">
               <table className="w-full text-xs text-left border-collapse">{children}</table>
             </div>
           ),
           thead: ({ children }) => (
-            <thead className="bg-[#F5F5F5] text-[#111111] font-semibold border-b border-[#E5E5E5]">
+            <thead className="bg-[#F5F5F5] dark:bg-[#1E1E24] text-[#111111] dark:text-white font-semibold border-b border-[#E5E5E5] dark:border-[#2E2E36]">
               {children}
             </thead>
           ),
           th: ({ children }) => (
-            <th className="px-3 py-2 border-r border-[#E5E5E5] last:border-r-0 font-semibold">
+            <th className="px-3 py-2 border-r border-[#E5E5E5] dark:border-[#2E2E36] last:border-r-0 font-semibold">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-2 border-t border-[#E5E5E5] border-r border-[#E5E5E5] last:border-r-0">
+            <td className="px-3 py-2 border-t border-[#E5E5E5] dark:border-[#2E2E36] border-r border-[#E5E5E5] dark:border-[#2E2E36] last:border-r-0">
               {children}
             </td>
           ),
@@ -745,6 +746,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     isUploading?: boolean;
   } | null>(null);
   const [isSyncingNotes, setIsSyncingNotes] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   // ── Voice Recording State ──
   const [isRecording, setIsRecording] = useState(false);
@@ -1398,8 +1400,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     <div
       className={
         embedded
-          ? 'flex flex-col h-full w-full bg-white overflow-hidden'
-          : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white rounded-3xl border border-[#E5E5E5] shadow-xs overflow-hidden'
+          ? 'flex flex-col h-full w-full bg-white dark:bg-[#121215] overflow-hidden'
+          : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white dark:bg-[#121215] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
       }
     >
       {/* ── Top Header ── */}
@@ -1409,7 +1411,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             <button
               type="button"
               onClick={onBack}
-              className="p-1.5 -ml-1 rounded-lg hover:bg-white/10 text-white shrink-0 transition-colors"
+              className="min-h-[44px] min-w-[44px] p-2 -ml-1 rounded-lg hover:bg-white/10 text-white shrink-0 transition-colors flex items-center justify-center cursor-pointer"
               title="Back to conversations"
               aria-label="Back to conversations"
             >
@@ -1494,7 +1496,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               id="sync-note-vault-btn"
               onClick={handleSyncNotes}
               disabled={isSyncingNotes}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors border border-[#3D3D3D] disabled:opacity-50 interactive"
+              className="min-h-[44px] sm:min-h-[36px] hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors border border-[#3D3D3D] disabled:opacity-50 interactive cursor-pointer"
               title="Index Subject Note Vault documents into vector knowledge base"
             >
               <Sparkles size={13} className={isSyncingNotes ? 'animate-spin text-amber-400' : 'text-amber-400'} />
@@ -1502,14 +1504,16 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             </button>
           )}
 
+          {/* Reset / Clear Chat Action with Safe Modal Confirmation */}
           <button
+            type="button"
             id="clear-chat-btn"
-            onClick={handleClear}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-[#D4D4D4] hover:text-white transition-colors border border-[#333333] interactive"
-            title="Clear Chat History"
+            onClick={() => setConfirmClearOpen(true)}
+            className="min-h-[44px] sm:min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-[#D4D4D4] hover:text-white transition-colors border border-[#333333] interactive cursor-pointer"
+            title="Reset Chat Session"
           >
-            <Trash2 size={13} />
-            <span className="hidden sm:inline">Clear Chat</span>
+            <RotateCcw size={13} />
+            <span className="hidden sm:inline">Reset Session</span>
           </button>
         </div>
       </div>
@@ -1543,7 +1547,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       )}
 
       {/* ── Chat Messages Stream ── */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
           const isCurrentStreaming = msg.id === streamingId;
@@ -1562,7 +1566,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             >
               {/* Avatar */}
               {isUser ? (
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold bg-[#111111] text-white shadow-xs">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold bg-[#111111] dark:bg-[#27272A] text-white shadow-xs">
                   <User size={16} />
                 </div>
               ) : (
@@ -1579,8 +1583,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                 <div
                   className={`p-4 rounded-2xl shadow-xs transition-all ${
                     isUser
-                      ? 'bg-[#111111] text-white rounded-tr-xs'
-                      : 'bg-white text-[#262626] border border-[#E5E5E5] rounded-tl-xs'
+                      ? 'bg-[#111111] dark:bg-[#202026] text-white rounded-tr-xs'
+                      : 'bg-white dark:bg-[#18181D] text-[#262626] dark:text-[#E4E4E7] border border-[#E5E5E5] dark:border-[#2A2A32] rounded-tl-xs'
                   }`}
                 >
                   {/* File Attachment preview */}
@@ -1589,7 +1593,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       className={`mb-2.5 p-2 rounded-xl border flex items-center gap-2.5 text-left ${
                         isUser
                           ? 'bg-white/10 border-white/20 text-white'
-                          : 'bg-[#F4F4F5] border-[#E4E4E7] text-[#18181B]'
+                          : 'bg-[#F4F4F5] dark:bg-[#222228] border-[#E4E4E7] dark:border-[#2F2F38] text-[#18181B] dark:text-[#E4E4E7]'
                       }`}
                     >
                       {msg.attachment.mime_type.startsWith('image/') &&
@@ -1820,12 +1824,12 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
       {/* ── Starter Prompts (if chat is fresh) ── */}
       {messages.length <= 2 && !isLoading && (
-        <div className="px-4 sm:px-6 py-3 bg-white border-t border-[#F0F0F0] overflow-x-auto">
+        <div className="px-4 sm:px-6 py-3 bg-white dark:bg-[#141418] border-t border-[#F0F0F0] dark:border-[#27272A] overflow-x-auto">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[11px] font-bold text-[#737373] uppercase tracking-wider flex items-center gap-1.5">
+            <div className="text-[11px] font-bold text-[#737373] dark:text-[#A1A1AA] uppercase tracking-wider flex items-center gap-1.5">
               <Lightbulb size={12} className="text-[#F4C430]" /> Suggested Questions & Interactions
             </div>
-            <span className="text-[10px] text-[#A3A3A3] hidden sm:inline">
+            <span className="text-[10px] text-[#A3A3A3] dark:text-[#71717A] hidden sm:inline">
               Try voice recording or PDF export directly from these prompts
             </span>
           </div>
@@ -1837,21 +1841,21 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                   key={idx}
                   id={`starter-chip-${idx}`}
                   onClick={() => handleSend(item.text)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs text-[#525252] hover:text-[#111111] transition-all text-left group interactive shadow-2xs ${
+                  className={`min-h-[44px] sm:min-h-[36px] flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs text-[#525252] dark:text-[#D4D4D8] hover:text-[#111111] dark:hover:text-white transition-all text-left group interactive shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F4C430] ${
                     item.tone === 'positive'
-                      ? 'border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-400'
+                      ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:border-emerald-400'
                       : item.tone === 'concerned'
-                      ? 'border-red-200 bg-red-50/40 hover:bg-red-50 hover:border-red-400'
-                      : 'border-[#E5E5E5] bg-[#FAFAFA] hover:bg-[#FFFBF0] hover:border-[#F4C430]'
+                      ? 'border-red-200 dark:border-red-900/60 bg-red-50/40 dark:bg-red-950/30 hover:bg-red-50 dark:hover:bg-red-950/50 hover:border-red-400'
+                      : 'border-[#E5E5E5] dark:border-[#2E2E36] bg-[#FAFAFA] dark:bg-[#1A1A1F] hover:bg-[#FFFBF0] dark:hover:bg-[#24242C] hover:border-[#F4C430]'
                   }`}
                 >
                   <Icon
-                    size={13}
+                    size={14}
                     className={`shrink-0 group-hover:scale-110 transition-transform ${
                       item.tone === 'positive'
-                        ? 'text-emerald-600'
+                        ? 'text-emerald-600 dark:text-emerald-400'
                         : item.tone === 'concerned'
-                        ? 'text-red-500'
+                        ? 'text-red-500 dark:text-red-400'
                         : 'text-[#F4C430]'
                     }`}
                   />
@@ -2040,7 +2044,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               e.preventDefault();
               handleSend();
             }}
-            className="relative flex items-end gap-2 bg-[#F9F9F9] border border-[#E5E5E5] focus-within:border-[#111111] focus-within:bg-white rounded-2xl p-2 transition-all shadow-inner"
+            className="relative flex items-end gap-2 bg-[#F9F9F9] dark:bg-[#1A1A1E] border border-[#E5E5E5] dark:border-[#2E2E36] focus-within:border-[#111111] dark:focus-within:border-[#F4C430] focus-within:bg-white dark:focus-within:bg-[#202026] rounded-2xl p-2 transition-all shadow-inner"
           >
             {/* File input and attach button */}
             <input
@@ -2055,8 +2059,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               type="button"
               id="sage-attach-btn"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2.5 rounded-xl text-[#737373] hover:text-[#111111] hover:bg-[#EAEAEA] transition-colors shrink-0 interactive"
+              className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white hover:bg-[#EAEAEA] dark:hover:bg-[#2E2E36] transition-colors shrink-0 flex items-center justify-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F4C430]"
               title="Attach image or document (diagrams, exam papers, textbook problems)"
+              aria-label="Attach file"
             >
               <Paperclip size={18} />
             </button>
@@ -2076,7 +2081,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               }
               rows={1}
               disabled={isLoading}
-              className="w-full resize-none bg-transparent px-1.5 py-2 text-sm text-[#111111] placeholder:text-[#A3A3A3] focus:outline-none max-h-36 font-normal leading-relaxed"
+              className="w-full resize-none bg-transparent px-1.5 py-2.5 text-sm text-[#111111] dark:text-white placeholder:text-[#A3A3A3] dark:placeholder:text-[#71717A] focus:outline-none max-h-36 font-normal leading-relaxed"
             />
 
             {isLoading ? (
@@ -2084,8 +2089,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                 type="button"
                 id="sage-chat-stop-btn"
                 onClick={handleStop}
-                className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-md hover:scale-105 interactive transition-all"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-md hover:scale-105 interactive transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-400"
                 title="Stop Generating"
+                aria-label="Stop Generating"
               >
                 <Square size={16} className="fill-current" />
               </button>
@@ -2095,28 +2101,30 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                 type="button"
                 id="sage-chat-mic-btn"
                 onClick={startVoiceRecording}
-                className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive transition-all cursor-pointer"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F4C430]"
                 title="Record voice message (WhatsApp style - tap to record)"
+                aria-label="Record voice message"
               >
-                <Mic size={17} />
+                <Mic size={18} />
               </button>
             ) : (
               /* When typing or attached, show Send button */
               <button
                 type="submit"
                 id="sage-chat-send-btn"
-                className="p-3 rounded-xl flex items-center justify-center shrink-0 bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive transition-all cursor-pointer"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl flex items-center justify-center shrink-0 bg-[#111111] hover:bg-black text-[#F4C430] shadow-md hover:scale-105 interactive transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F4C430]"
                 title="Send Message"
+                aria-label="Send Message"
               >
-                <Send size={16} />
+                <Send size={18} />
               </button>
             )}
           </form>
         )}
 
-        <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3]">
+        <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3] dark:text-[#71717A]">
           <span>Shift + Enter for new line • Enter to send • Mic for voice note</span>
-          <span className="text-[#737373] font-medium">Scholario Sage v2.0 • {SAGE_MODEL_DISPLAY_NAME} (AI Assistant + RAG)</span>
+          <span className="text-[#737373] dark:text-[#A1A1AA] font-medium">Scholario Sage v2.0 • {SAGE_MODEL_DISPLAY_NAME} (AI Assistant + RAG)</span>
         </div>
       </div>
 
@@ -2138,6 +2146,21 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         role={role}
         onToggleMode={handleTogglePreviewMode}
         onDownload={() => handleDownloadPdf(pdfPreviewModal.rawContent, pdfPreviewModal.mode)}
+      />
+
+      {/* ── Reset / Clear Chat Confirmation Modal ── */}
+      <ConfirmModal
+        open={confirmClearOpen}
+        onClose={() => setConfirmClearOpen(false)}
+        onConfirm={() => {
+          handleClear();
+          setConfirmClearOpen(false);
+        }}
+        title="Reset Chat Session?"
+        description="This will clear your active conversation history with Sage and start a clean session with welcoming prompts. This action cannot be undone."
+        confirmLabel="Reset Session"
+        cancelLabel="Keep Conversation"
+        danger
       />
     </div>
   );
