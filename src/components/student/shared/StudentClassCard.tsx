@@ -316,7 +316,7 @@ export const StudentClassCard: React.FC<StudentClassCardProps> = ({
               <button
                 type="button"
                 onClick={handleMarkAttendance}
-                disabled={isMarking || (localAttendance && localAttendance.status !== 'absent')}
+                disabled={isMarking || Boolean(localAttendance && localAttendance.status !== 'absent')}
                 className={`min-h-[44px] min-w-[44px] w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs ${
                   localAttendance?.status === 'present' || localAttendance?.status === 'late'
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'

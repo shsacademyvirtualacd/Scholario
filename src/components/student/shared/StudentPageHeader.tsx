@@ -3,6 +3,7 @@ import React from 'react';
 interface StudentPageHeaderProps {
   title: string;
   description?: string;
+  badge?: React.ReactNode;
   action?: React.ReactNode;
   breadcrumbs?: Array<{ label: string; href?: string; onClick?: () => void }>;
 }
@@ -10,6 +11,7 @@ interface StudentPageHeaderProps {
 export const StudentPageHeader: React.FC<StudentPageHeaderProps> = ({
   title,
   description,
+  badge,
   action,
   breadcrumbs,
 }) => {
@@ -43,9 +45,15 @@ export const StudentPageHeader: React.FC<StudentPageHeaderProps> = ({
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
             {title}
           </h1>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-400/15 text-amber-600 dark:text-amber-400 border border-amber-400/30">
-            UI v2
-          </span>
+          {badge ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-400/15 text-amber-600 dark:text-amber-400 border border-amber-400/30">
+              {badge}
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-400/15 text-amber-600 dark:text-amber-400 border border-amber-400/30">
+              UI v2
+            </span>
+          )}
         </div>
 
         {description && (

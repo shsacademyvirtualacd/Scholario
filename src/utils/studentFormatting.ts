@@ -81,6 +81,8 @@ export function formatStandardDateTime(dateInput?: string | number | Date | null
   }
 }
 
+export const formatPKTDateTime = formatStandardDateTime;
+
 /**
  * Format standard PKT 12-hour time: "6:00 PM"
  */

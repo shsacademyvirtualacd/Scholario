@@ -287,7 +287,7 @@ export const StudentDashboardPage: React.FC = () => {
 
   // Course term quota explanation: 48 sessions planned in term syllabus
   const termClassesTotal =
-    offerings.reduce((acc, curr) => acc + (curr?.total_classes || 0), 0) ||
+    offerings.reduce((acc, curr) => acc + ((curr as any)?.total_classes || 0), 0) ||
     (totalClassesHeld > 0 ? Math.max(totalClassesHeld, 48) : 48);
   const classesLeftInTerm = Math.max(0, termClassesTotal - totalClassesAttended);
 

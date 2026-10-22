@@ -146,7 +146,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
   // Student academic summary
   const studentName = formatProperName(profile?.full_name);
-  const studentGradeRaw = profile?.class?.grade || profile?.grade || '10';
+  const studentGradeRaw = profile?.class?.grade || (profile as any)?.grade || '10';
   const cleanGrade = studentGradeRaw.replace(/^grade\s+/i, '').trim();
   const rawBoard = profile?.board_id || (typeof profile?.board === 'string' ? profile.board : profile?.board?.id) || profile?.class?.board_id || 'Sindh';
   const studentBoard = formatBoardLabel(rawBoard);

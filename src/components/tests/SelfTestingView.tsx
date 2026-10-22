@@ -1691,7 +1691,6 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Sticky Bottom Bar with summary and Start Practice Quiz button */}
           <div className="sticky bottom-0 z-20 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">

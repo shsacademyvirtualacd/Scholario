@@ -239,7 +239,7 @@ export const StudentAnnouncementsPage: React.FC = () => {
             </div>
           ) : announcements.length === 0 ? (
             <StudentEmptyState
-              icon={Bell}
+              icon={<Bell size={24} />}
               title="No announcements right now"
               description="Check back before your next class for new updates, test notifications, and schedules."
             />

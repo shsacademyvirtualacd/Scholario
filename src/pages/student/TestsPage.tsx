@@ -565,29 +565,35 @@ export const TestsPage: React.FC = () => {
 
       {/* Proctored Exam Modals */}
       <ProctoredMCQAccessModal
+        isOpen={Boolean(accessModalTest)}
         test={accessModalTest}
-        studentId={studentId}
+        defaultStudentId={studentId}
+        defaultStudentName={profile?.full_name || 'Student'}
         onClose={() => setAccessModalTest(null)}
-        onVerified={(verifiedTest, verifiedId, verifiedName) => {
-          setAccessModalTest(null);
+        onVerified={(verifiedId, verifiedName) => {
           setExamVerifiedStudentId(verifiedId);
           setExamVerifiedStudentName(verifiedName);
-          setActiveExamTest(verifiedTest);
+          setActiveExamTest(accessModalTest);
+          setAccessModalTest(null);
         }}
       />
 
       {activeExamTest && (
         <ProctoredMCQExamModal
+          isOpen={Boolean(activeExamTest)}
           test={activeExamTest}
           studentId={studentId}
-          studentRollNumber={examVerifiedStudentId}
-          studentName={examVerifiedStudentName}
+          studentName={examVerifiedStudentName || profile?.full_name || 'Student'}
           onClose={() => setActiveExamTest(null)}
-          onSubmitSuccess={handleSubmissionSuccess as any}
+          onSubmitted={() => {
+            setActiveExamTest(null);
+            fetchData();
+          }}
         />
       )}
 
       <ProctoredMCQResultModal
+        isOpen={Boolean(viewingGradedMCQSub)}
         submission={viewingGradedMCQSub}
         onClose={() => setViewingGradedMCQSub(null)}
       />
@@ -595,6 +601,7 @@ export const TestsPage: React.FC = () => {
       {/* Written Exam Modal */}
       {activeWrittenExamTest && (
         <WrittenTestExamModal
+          isOpen={Boolean(activeWrittenExamTest)}
           test={activeWrittenExamTest}
           studentId={studentId}
           studentName={profile?.full_name || 'Student'}
