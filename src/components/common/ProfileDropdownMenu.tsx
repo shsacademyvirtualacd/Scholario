@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, ChevronRight, Loader2, ShieldCheck, GraduationCap, Briefcase } from 'lucide-react';
+import { User, LogOut, ChevronRight, Loader2, ShieldCheck, GraduationCap, Briefcase, HelpCircle } from 'lucide-react';
 import ProfileAvatar from './ProfileAvatar';
 import { useTheme } from '../../context/ThemeContext';
 import type { Profile } from '../../types';
@@ -132,8 +132,8 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Account Navigation */}
-          <div className="p-1.5">
+          {/* Section 2: Account Navigation & Help */}
+          <div className="p-1.5 space-y-0.5">
             <button
               type="button"
               role="menuitem"
@@ -159,6 +159,34 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
               </div>
               <ChevronRight size={14} className="text-[#71717A]" />
             </button>
+
+            {role === 'student' && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setIsOpen(false);
+                  window.dispatchEvent(new CustomEvent('open-student-guide'));
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  isDark
+                    ? 'hover:bg-[#27272A] text-[#E4E4E7]'
+                    : 'hover:bg-[#F5F5F5] text-[#262626]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      isDark ? 'bg-[#27272A] text-[#F4C430]' : 'bg-[#FFF9E6] text-[#B45309]'
+                    }`}
+                  >
+                    <HelpCircle size={16} />
+                  </div>
+                  <span>Student Quick Start Guide</span>
+                </div>
+                <ChevronRight size={14} className="text-[#71717A]" />
+              </button>
+            )}
           </div>
 
           {/* Section 3: Sign Out */}

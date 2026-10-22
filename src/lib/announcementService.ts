@@ -36,7 +36,7 @@ export const DEFAULT_STUDENT_ONBOARDING_ANNOUNCEMENT: Announcement = {
 
 Welcome to your learning dashboard! Here is how to navigate your daily academic workflow:
 
-1. **Live Timetable & Join Button**: Check your active schedule on the dashboard. When a class is scheduled, click the **Join Live Class** button to enter the live session with your teacher.
+1. **Live Timetable & Join Button**: Check your active schedule on the dashboard. When a class is scheduled, click the **Join Now** button to enter the live session with your teacher.
 2. **Subject Note Vault**: Visit the Notes section to download curated chapter slides, formula cheat sheets, and board revision notes.
 3. **Testing Center**: Practice with timed online quizzes, past-paper assessments, and generate custom AI practice sets.
 4. **Sage AI Academic Companion**: Have a question about a tricky numerical or syllabus concept? Chat with Sage 24/7 for instant explanations grounded in your curriculum.
