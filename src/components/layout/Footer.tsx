@@ -119,6 +119,15 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
                     </button>
                   </li>
                   <li>
+                    <Link
+                      id="footer-leadership-link"
+                      to="/leadership"
+                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
+                    >
+                      Leadership
+                    </Link>
+                  </li>
+                  <li>
                     <button
                       type="button"
                       onClick={handleOpenContact}

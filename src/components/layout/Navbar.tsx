@@ -225,7 +225,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
           }`}
         >
           <div className="p-5 flex flex-col">
-            {/* 1. Navigation Links: Home, About Us, Contact */}
+            {/* 1. Navigation Links: Home, About Us, Leadership, Contact */}
             <nav aria-label="Overlay links" className="flex flex-col space-y-3 sm:space-y-3.5">
               {/* Home */}
               <div
@@ -236,9 +236,22 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 <Link
                   to="/"
                   onClick={handleHomeClick}
-                  className="min-h-[48px] py-1 flex items-center text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] active:scale-[0.98] transition-colors"
+                  className={`w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight group active:scale-[0.98] transition-colors ${
+                    location.pathname === '/'
+                      ? 'text-[#D4A017] dark:text-[#F2C230]'
+                      : 'text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230]'
+                  }`}
                 >
-                  Home
+                  <span>Home</span>
+                  <span
+                    className={`text-xl sm:text-2xl group-hover:translate-x-1 transition-all ${
+                      location.pathname === '/'
+                        ? 'text-[#D4A017] dark:text-[#F2C230]'
+                        : 'text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230]'
+                    }`}
+                  >
+                    →
+                  </span>
                 </Link>
               </div>
 
@@ -251,10 +264,42 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 <button
                   type="button"
                   onClick={handleOpenAbout}
-                  className="w-full min-h-[48px] py-1 flex items-center text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] active:scale-[0.98] transition-colors cursor-pointer"
+                  className="w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] group active:scale-[0.98] transition-colors cursor-pointer"
                 >
-                  About Us
+                  <span>About Us</span>
+                  <span className="text-xl sm:text-2xl text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230] group-hover:translate-x-1 transition-all">
+                    →
+                  </span>
                 </button>
+              </div>
+
+              {/* Leadership */}
+              <div
+                className={`transition-all duration-300 ease-out ${
+                  menuOpen ? 'opacity-100 translate-y-0 delay-[125ms]' : 'opacity-0 translate-y-2'
+                }`}
+              >
+                <Link
+                  id="nav-leadership-link"
+                  to="/leadership"
+                  onClick={() => setMenuOpen(false)}
+                  className={`w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight group active:scale-[0.98] transition-colors ${
+                    location.pathname === '/leadership'
+                      ? 'text-[#D4A017] dark:text-[#F2C230]'
+                      : 'text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230]'
+                  }`}
+                >
+                  <span>Leadership</span>
+                  <span
+                    className={`text-xl sm:text-2xl group-hover:translate-x-1 transition-all ${
+                      location.pathname === '/leadership'
+                        ? 'text-[#D4A017] dark:text-[#F2C230]'
+                        : 'text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230]'
+                    }`}
+                  >
+                    →
+                  </span>
+                </Link>
               </div>
 
               {/* Contact */}
@@ -266,9 +311,12 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 <button
                   type="button"
                   onClick={handleOpenContact}
-                  className="w-full min-h-[48px] py-1 flex items-center text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] active:scale-[0.98] transition-colors cursor-pointer"
+                  className="w-full min-h-[48px] py-1 flex items-center justify-between text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] group active:scale-[0.98] transition-colors cursor-pointer"
                 >
-                  Contact
+                  <span>Contact</span>
+                  <span className="text-xl sm:text-2xl text-[#A3A3A3] group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230] group-hover:translate-x-1 transition-all">
+                    →
+                  </span>
                 </button>
               </div>
             </nav>

@@ -146,6 +146,15 @@ export const NavbarOld: React.FC<NavbarProps> = ({ onNavigate: _onNavigate }) =>
             <div className="border-t border-[#E5E5E5] dark:border-[#262626] pt-3">
               <div className="flex flex-col space-y-1">
                 <Link
+                  id="mobile-leadership-link"
+                  to="/leadership"
+                  onClick={() => setMobileOpen(false)}
+                  className="px-3 py-2 text-sm font-medium text-[#525252] dark:text-[#D4D4D4] hover:text-[#111111] dark:hover:text-white rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center justify-between"
+                >
+                  <span>Leadership</span>
+                  <span className="text-xs text-[#A3A3A3]">→</span>
+                </Link>
+                <Link
                   id="mobile-privacy-policy-link"
                   to="/privacy"
                   onClick={() => setMobileOpen(false)}

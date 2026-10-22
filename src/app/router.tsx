@@ -27,6 +27,7 @@ const NotificationsPage   = lazyWithRetry(() => import('../pages/common/Notifica
 const PrivacyPolicyPage = lazyWithRetry(() => import('../pages/public/PrivacyPolicyPage'), 'PrivacyPolicyPage');
 const TermsOfServicePage = lazyWithRetry(() => import('../pages/public/TermsOfServicePage'), 'TermsOfServicePage');
 const RefundPolicyPage = lazyWithRetry(() => import('../pages/public/RefundPolicyPage'), 'RefundPolicyPage');
+const LeadershipPage = lazyWithRetry(() => import('../pages/public/LeadershipPage'), 'LeadershipPage');
 import { CookieConsentBanner } from '../components/common/CookieConsentBanner';
 
 // ─── Marketing page (eager — entry point) ───
@@ -147,6 +148,7 @@ const AppRouter: React.FC = () => (
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
           <Route path="/refund" element={<RefundPolicyPage />} />
           <Route path="/refund-policy" element={<RefundPolicyPage />} />
+          <Route path="/leadership" element={<LeadershipPage />} />
           <Route path="/cookies" element={<Navigate to="/privacy" replace />} />
           <Route path="/cookie-policy" element={<Navigate to="/privacy" replace />} />
 
