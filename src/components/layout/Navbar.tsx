@@ -1,36 +1,69 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, Loader2, LogIn, UserPlus, MessageCircle, ExternalLink, ShieldCheck } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import Logo from '../ui/Logo';
-import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
+import { Menu, X, LogIn, UserPlus, ExternalLink } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useTheme, ThemeMode } from '../../context/ThemeContext';
 import { isRedesignEnabled } from '../../lib/featureFlags';
 import { NavbarOld } from './NavbarOld';
+import { AboutModal } from '../ui/AboutModal';
+import { ContactModal } from '../ui/ContactModal';
 
 interface NavbarProps {
   onNavigate?: (page: string) => void;
+  onOpenAbout?: () => void;
+  onOpenContact?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact }) => {
   if (!isRedesignEnabled()) {
     return <NavbarOld onNavigate={onNavigate} />;
   }
 
-  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [signingIn, setSigningIn] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const navContainerRef = useRef<HTMLDivElement>(null);
+  const menuCardRef = useRef<HTMLDivElement>(null);
 
-  const { signInWithGoogle, session, profile, loading: authLoading } = useAuth();
+  const { session, profile } = useAuth();
+  const { themeMode, setThemeMode } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Lock body scroll while menu is open
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 12);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    if (menuOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [menuOpen]);
 
-  // Close sheet on Esc key
+  // Close menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (
+        menuOpen &&
+        navContainerRef.current &&
+        !navContainerRef.current.contains(e.target as Node) &&
+        menuCardRef.current &&
+        !menuCardRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, [menuOpen]);
+
+  // Close menu on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && menuOpen) {
@@ -41,254 +74,284 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [menuOpen]);
 
-  // Lock body scroll when mobile sheet is open
+  // Close menu on route change
   useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [menuOpen]);
+    setMenuOpen(false);
+  }, [location.pathname]);
 
-  const handleAuthAction = async () => {
+  const handleAuthAction = () => {
+    setMenuOpen(false);
     if (session) {
       if (profile?.role === 'admin') navigate('/admin');
       else if (profile?.role === 'teacher') navigate('/teacher');
       else navigate('/student');
       return;
     }
-    navigate('/login');
-  };
-
-  const handleDirectGoogle = async () => {
-    try {
-      setSigningIn(true);
-      await signInWithGoogle();
-    } catch (err) {
-      console.error('Google sign-in error:', err);
-      setSigningIn(false);
+    if (onNavigate) {
+      onNavigate('login');
+    } else {
+      navigate('/login');
     }
   };
 
+  const handleOpenAbout = () => {
+    setMenuOpen(false);
+    if (onOpenAbout) {
+      onOpenAbout();
+    } else {
+      setAboutOpen(true);
+    }
+  };
+
+  const handleOpenContact = () => {
+    setMenuOpen(false);
+    if (onOpenContact) {
+      onOpenContact();
+    } else {
+      setContactOpen(true);
+    }
+  };
+
+  const handleHomeClick = (e: React.MouseEvent) => {
+    setMenuOpen(false);
+    if (location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const themeOptions: { mode: ThemeMode; label: string }[] = [
+    { mode: 'light', label: 'Light' },
+    { mode: 'dark', label: 'Dark' },
+    { mode: 'system', label: 'System' },
+  ];
+
   return (
     <>
-      <nav
-        aria-label="Main Navigation"
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          scrolled
-            ? 'bg-white/95 dark:bg-[#0D0D0D]/95 backdrop-blur-md border-b border-[#E5E5E5] dark:border-[#262626] shadow-xs'
-            : 'bg-white/80 dark:bg-[#0D0D0D]/80 backdrop-blur-sm'
+      {/* ── Dim Backdrop: light dim rgba(0,0,0,0.25) + 6px blur so glass card blurs page content ── */}
+      <div
+        aria-hidden="true"
+        onClick={() => setMenuOpen(false)}
+        style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+        className={`fixed inset-0 z-40 bg-black/25 backdrop-blur-[6px] transition-all duration-300 ease-out ${
+          menuOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
         }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20 gap-3">
-            {/* ── Left Zone: Brand Logo ── */}
+      />
+
+      {/* ── Floating Header & Dropdown Container ── */}
+      <header className="fixed top-3.5 sm:top-4 inset-x-3.5 sm:inset-x-6 z-50 mx-auto max-w-5xl pointer-events-none flex flex-col items-center">
+        {/* Floating Pill Navbar: Glassmorphic rgba(255,255,255,0.6) / rgba(22,22,22,0.6) */}
+        <nav
+          ref={navContainerRef}
+          aria-label="Main Navigation"
+          style={{
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          }}
+          className="pointer-events-auto w-full transition-all duration-300 ease-out bg-white/[0.60] dark:bg-[#161616]/[0.60] text-[#111111] dark:text-white rounded-[28px] sm:rounded-[32px] border border-white/60 dark:border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.15)]"
+        >
+          <div className="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6">
+            {/* Left: Scholario logo & wordmark */}
             <Link
               to="/"
-              className="flex items-center gap-2 shrink-0 rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430] active:scale-95 transition-transform"
+              onClick={handleHomeClick}
+              className="flex items-center gap-2.5 shrink-0 rounded-2xl p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230] active:scale-95 transition-transform"
               aria-label="Scholario — Home"
             >
-              <Logo size="md" variant="full" className="sm:hidden" />
-              <Logo size="lg" variant="full" className="hidden sm:flex" />
+              {/* Gold "S" icon tile */}
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] overflow-hidden shrink-0 shadow-xs flex items-center justify-center bg-[#F2C230]">
+                <img
+                  src="/logo.svg"
+                  alt="Scholario"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/favicon.svg';
+                  }}
+                />
+              </div>
+
+              {/* Wordmark & Tagline */}
+              <div className="flex flex-col leading-tight">
+                <span className="font-extrabold tracking-tight text-base sm:text-lg text-[#111111] dark:text-white">
+                  Scholario
+                </span>
+                <span className="hidden md:inline-block text-[8px] font-bold tracking-[0.16em] uppercase text-[#737373] dark:text-[#A3A3A3]">
+                  LEARN · GROW · ACHIEVE
+                </span>
+              </div>
             </Link>
 
-            {/* ── Right Zone: Desktop Actions (768px+) ── */}
-            <div className="hidden md:flex items-center gap-3">
-              <ThemeToggleSwitch variant="compact" />
-
-              {!session ? (
-                <>
-                  <Link
-                    to="/register"
-                    className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold text-[#111111] dark:text-white hover:bg-[#F5F5F5] dark:hover:bg-[#1F1F1F] border border-transparent hover:border-[#E5E5E5] dark:hover:border-[#333333] transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
-                  >
-                    <UserPlus size={14} className="text-[#D4A017]" />
-                    <span>Register & Apply</span>
-                  </Link>
-
-                  <button
-                    id="desktop-signin-btn"
-                    type="button"
-                    onClick={handleAuthAction}
-                    disabled={signingIn || authLoading}
-                    className="min-h-[44px] px-4 py-2 rounded-xl bg-[#111111] hover:bg-[#262626] dark:bg-white dark:hover:bg-[#F0F0F0] text-white dark:text-[#111111] text-xs font-extrabold shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
-                  >
-                    {signingIn ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
-                    <span>Sign in</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleAuthAction}
-                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] text-xs font-black shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <span>Go to Dashboard</span>
-                </button>
-              )}
-            </div>
-
-            {/* ── Right Zone: Mobile Controls (360px - 767px) ── */}
-            <div className="flex md:hidden items-center gap-2">
-              <ThemeToggleSwitch variant="compact" />
-
-              {/* Requirement: "Sign in" button VISIBLE ON MOBILE! */}
-              <button
-                id="mobile-header-signin-btn"
-                type="button"
-                onClick={handleAuthAction}
-                aria-label="Sign in"
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#111111] hover:bg-[#262626] dark:bg-white dark:hover:bg-[#F0F0F0] text-white dark:text-[#111111] text-xs font-extrabold shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
-              >
-                <LogIn size={13} />
-                <span>{session ? 'Portal' : 'Sign in'}</span>
-              </button>
-
-              {/* Menu Sheet Toggle */}
+            {/* Right: Hamburger / X button ONLY */}
+            <div className="flex items-center">
               <button
                 id="mobile-menu-toggle"
                 type="button"
                 aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={menuOpen}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#1F1F1F] text-[#111111] dark:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
-                onClick={() => setMenuOpen(!menuOpen)}
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-[#111111] dark:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.08] active:scale-90 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
               >
-                {menuOpen ? <X size={22} /> : <Menu size={22} />}
+                {menuOpen ? (
+                  <X size={22} className="stroke-[2.5]" />
+                ) : (
+                  <Menu size={22} className="stroke-[2.5]" />
+                )}
               </button>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      {/* ── Mobile Menu Sheet / Drawer (Close on outside tap & Esc) ── */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex justify-end animate-fade-in">
-          {/* Backdrop (Outside tap closes menu) */}
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity cursor-pointer"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden="true"
-          />
+        {/* ── Compact Floating Dropdown Card: Frosted glass rgba(255,255,255,0.55) / rgba(22,22,22,0.55) ── */}
+        <div
+          ref={menuCardRef}
+          id="mobile-nav-card"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation Menu"
+          style={{
+            backdropFilter: 'blur(24px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          }}
+          className={`pointer-events-auto mt-2 w-full sm:max-w-xl bg-white/[0.55] dark:bg-[#161616]/[0.55] text-[#111111] dark:text-white rounded-[28px] border border-white/60 dark:border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.15)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
+            menuOpen
+              ? 'opacity-100 translate-y-0 visible scale-100'
+              : 'opacity-0 -translate-y-2 pointer-events-none invisible scale-[0.98]'
+          }`}
+        >
+          <div className="p-5 flex flex-col">
+            {/* 1. Navigation Links: Home, About Us, Contact */}
+            <nav aria-label="Overlay links" className="flex flex-col space-y-3 sm:space-y-3.5">
+              {/* Home */}
+              <div
+                className={`transition-all duration-300 ease-out ${
+                  menuOpen ? 'opacity-100 translate-y-0 delay-75' : 'opacity-0 translate-y-2'
+                }`}
+              >
+                <Link
+                  to="/"
+                  onClick={handleHomeClick}
+                  className="min-h-[48px] py-1 flex items-center text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] active:scale-[0.98] transition-colors"
+                >
+                  Home
+                </Link>
+              </div>
 
-          {/* Drawer Sheet */}
-          <div
-            ref={sheetRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Site navigation"
-            className="relative w-full max-w-sm bg-white dark:bg-[#141414] text-[#111111] dark:text-white h-full shadow-2xl flex flex-col justify-between p-6 z-10 overflow-y-auto animate-in slide-in-from-right duration-200"
-          >
-            {/* Top Sheet Header */}
-            <div>
-              <div className="flex items-center justify-between pb-5 border-b border-[#E5E5E5] dark:border-[#262626]">
-                <Logo size="md" variant="full" />
+              {/* About Us */}
+              <div
+                className={`transition-all duration-300 ease-out ${
+                  menuOpen ? 'opacity-100 translate-y-0 delay-100' : 'opacity-0 translate-y-2'
+                }`}
+              >
                 <button
                   type="button"
-                  aria-label="Close menu"
-                  onClick={() => setMenuOpen(false)}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl p-2 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors cursor-pointer"
+                  onClick={handleOpenAbout}
+                  className="w-full min-h-[48px] py-1 flex items-center text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] active:scale-[0.98] transition-colors cursor-pointer"
                 >
-                  <X size={20} />
+                  About Us
                 </button>
               </div>
 
-              {/* Requirement: "Sign in" and "Register & Apply" as two clear buttons */}
-              <div className="mt-6 space-y-3">
+              {/* Contact */}
+              <div
+                className={`transition-all duration-300 ease-out ${
+                  menuOpen ? 'opacity-100 translate-y-0 delay-150' : 'opacity-0 translate-y-2'
+                }`}
+              >
                 <button
-                  id="sheet-signin-btn"
                   type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    handleAuthAction();
-                  }}
-                  className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-[#111111] hover:bg-[#262626] dark:bg-white dark:hover:bg-[#F0F0F0] text-white dark:text-[#111111] font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-[0.99]"
+                  onClick={handleOpenContact}
+                  className="w-full min-h-[48px] py-1 flex items-center text-left text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#111111] dark:text-white hover:text-[#D4A017] dark:hover:text-[#F2C230] active:scale-[0.98] transition-colors cursor-pointer"
                 >
-                  <LogIn size={16} />
-                  <span>{session ? 'Go to Dashboard' : 'Sign in'}</span>
+                  Contact
                 </button>
-
-                <Link
-                  id="sheet-register-btn"
-                  to="/register"
-                  onClick={() => setMenuOpen(false)}
-                  className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99]"
-                >
-                  <UserPlus size={16} />
-                  <span>Register & Apply</span>
-                </Link>
-
-                {/* Requirement: Consistent unified messaging (no mismatch) */}
-                <p className="text-center text-[11px] text-[#737373] dark:text-[#A3A3A3] pt-1">
-                  Existing members sign in · New students register and apply
-                </p>
               </div>
+            </nav>
 
-              {/* Navigation Links */}
-              <div className="mt-6 pt-5 border-t border-[#E5E5E5] dark:border-[#262626] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#A3A3A3] dark:text-[#737373] px-3 mb-2 block">
-                  Institutional Information
-                </span>
+            {/* 2. Thin divider line: rgba(0,0,0,0.08) in light, rgba(255,255,255,0.1) in dark */}
+            <div
+              className={`border-t border-black/[0.08] dark:border-white/[0.10] my-4 transition-all duration-300 ease-out ${
+                menuOpen ? 'opacity-100 delay-[180ms]' : 'opacity-0'
+              }`}
+            />
 
-                <Link
-                  to="/privacy"
-                  onClick={() => setMenuOpen(false)}
-                  className="min-h-[44px] px-3 py-2.5 text-sm font-semibold text-[#525252] dark:text-[#D4D4D4] hover:text-[#111111] dark:hover:text-white rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center justify-between"
-                >
-                  <span>Privacy Policy</span>
-                  <span className="text-xs text-[#A3A3A3]">→</span>
-                </Link>
+            {/* 3. Action buttons (Sign in, Register & Apply, WhatsApp Admissions) */}
+            <div
+              className={`flex flex-col gap-2.5 transition-all duration-300 ease-out ${
+                menuOpen ? 'opacity-100 translate-y-0 delay-200' : 'opacity-0 translate-y-2'
+              }`}
+            >
+              {/* Sign in button: transparent background with 1px translucent border */}
+              <button
+                type="button"
+                onClick={handleAuthAction}
+                className="w-full h-12 min-h-[48px] rounded-full bg-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.08] border border-black/[0.15] dark:border-white/[0.20] text-[#111111] dark:text-white font-bold text-base active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+              >
+                <LogIn size={18} />
+                <span>{session ? 'Go to Dashboard' : 'Sign in'}</span>
+              </button>
 
-                <Link
-                  to="/terms"
-                  onClick={() => setMenuOpen(false)}
-                  className="min-h-[44px] px-3 py-2.5 text-sm font-semibold text-[#525252] dark:text-[#D4D4D4] hover:text-[#111111] dark:hover:text-white rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center justify-between"
-                >
-                  <span>Terms of Service</span>
-                  <span className="text-xs text-[#A3A3A3]">→</span>
-                </Link>
+              {/* Register & Apply button: solid gold (#F2C230) with soft gold glow shadow */}
+              <Link
+                to="/register"
+                onClick={() => setMenuOpen(false)}
+                className="w-full h-12 min-h-[48px] rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-base shadow-[0_4px_16px_rgba(242,194,48,0.35)] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+              >
+                <UserPlus size={18} />
+                <span>Register &amp; Apply</span>
+              </Link>
 
-                <Link
-                  to="/refund"
-                  onClick={() => setMenuOpen(false)}
-                  className="min-h-[44px] px-3 py-2.5 text-sm font-semibold text-[#525252] dark:text-[#D4D4D4] hover:text-[#111111] dark:hover:text-white rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center justify-between"
-                >
-                  <span>Refund Policy</span>
-                  <span className="text-xs text-[#A3A3A3]">→</span>
-                </Link>
-
-                {/* Requirement: WhatsApp admissions link */}
-                <a
-                  href="https://wa.me/9230586969050?text=Hi%2C%20I%20have%20an%20inquiry%20regarding%20SHS%20Virtual%20Academy%20admissions."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setMenuOpen(false)}
-                  className="min-h-[44px] px-3 py-2.5 text-sm font-semibold text-[#128C7E] dark:text-[#25D366] rounded-xl hover:bg-[#25D366]/10 transition-colors flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <MessageCircle size={16} />
-                    <span>WhatsApp Admissions</span>
-                  </span>
-                  <ExternalLink size={14} className="text-[#25D366]" />
-                </a>
-              </div>
+              {/* WhatsApp Admissions link (green text, external link icon) */}
+              <a
+                href="https://wa.me/9230586969050?text=Hi%2C%20I%20have%20an%20inquiry%20regarding%20SHS%20Virtual%20Academy%20admissions."
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMenuOpen(false)}
+                className="min-h-[40px] pt-1 text-center text-[13px] sm:text-sm font-semibold text-[#128C7E] dark:text-[#25D366] hover:underline flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <span>WhatsApp Admissions: +92 305 86969050</span>
+                <ExternalLink size={14} className="shrink-0" />
+              </a>
             </div>
 
-            {/* Bottom Institutional Info */}
-            <div className="pt-6 border-t border-[#E5E5E5] dark:border-[#262626]">
-              <div className="flex items-center gap-2 text-[11px] text-[#737373] dark:text-[#A3A3A3] mb-1">
-                <ShieldCheck size={14} className="text-[#F4C430]" />
-                <span>SHS Virtual Academy · Rawalpindi, Pakistan</span>
+            {/* 4. Theme switcher (Light | Dark | System): translucent glass pill */}
+            <div
+              className={`mt-5 flex justify-center transition-all duration-300 ease-out ${
+                menuOpen ? 'opacity-100 translate-y-0 delay-[240ms]' : 'opacity-0 translate-y-2'
+              }`}
+            >
+              <div
+                role="radiogroup"
+                aria-label="Theme mode"
+                className="inline-flex items-center h-10 p-1 rounded-full bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.12] shadow-2xs"
+              >
+                {themeOptions.map(({ mode, label }) => {
+                  const isActive = themeMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      onClick={() => setThemeMode(mode)}
+                      className={`h-8 px-3.5 sm:px-4 rounded-full text-[13px] sm:text-sm font-bold transition-all cursor-pointer select-none flex items-center justify-center ${
+                        isActive
+                          ? 'bg-[#F2C230] text-[#111111] shadow-xs'
+                          : 'text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-[10px] text-[#A3A3A3] dark:text-[#525252]">
-                © {new Date().getFullYear()} Scholario. All rights reserved.
-              </p>
             </div>
           </div>
         </div>
-      )}
+      </header>
+
+      {/* Global Modals */}
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </>
   );
 };
