@@ -65,18 +65,18 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
   // ── State B: end-of-day with no next class scheduled at all ────────
   if (state.type === 'end-of-day' && !state.nextSlot) {
     return (
-      <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+      <div className="teacher-card border-l-4 border-l-[#F4C430] p-4 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
-          <span className="badge badge-gold text-[10px] font-bold">End of Day</span>
+          <span className="text-xs font-bold text-[var(--teacher-muted)] uppercase tracking-wide">Next Class</span>
+          <span className="badge badge-gold text-[10px] font-black">End of Day</span>
         </div>
-        <div>
-          <div className="text-base font-extrabold text-[#111111] truncate">No classes scheduled</div>
-          <div className="text-xs text-[#737373] font-medium mt-0.5">Enjoy your break! 🌙</div>
+        <div className="my-2">
+          <div className="text-[18px] font-extrabold text-[var(--teacher-text)] truncate">No classes scheduled</div>
+          <div className="text-[13px] text-[var(--teacher-muted)] font-medium mt-0.5">Enjoy your break! 🌙</div>
         </div>
-        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
-          <Clock size={13} className="text-[#A3A3A3] shrink-0" />
-          <span className="text-xs text-[#A3A3A3] font-semibold">TBA</span>
+        <div className="flex items-center gap-2 pt-2 border-t border-[var(--teacher-card-border)]">
+          <Clock size={13} className="text-[var(--teacher-muted)] shrink-0" />
+          <span className="text-xs text-[var(--teacher-muted)] font-semibold">TBA</span>
         </div>
       </div>
     );
@@ -99,23 +99,23 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
     const remLabel = remH > 0 ? `${remH}h ${remM}m remaining` : `${remM}m remaining`;
 
     return (
-      <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+      <div className="teacher-card border-l-4 border-l-[#F4C430] p-4 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Now In Session</span>
+          <span className="text-xs font-bold text-[var(--teacher-muted)] uppercase tracking-wide">Now In Session</span>
           <div className="flex items-center gap-1">
             {isMulti && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded status-pill-warning">
                 {concurrentSlots.length} Concurrent
               </span>
             )}
-            <span className="badge badge-gold text-[10px] font-bold animate-pulse">● Live</span>
+            <span className="badge badge-gold text-[10px] font-black animate-pulse">● Live</span>
           </div>
         </div>
-        <div>
-          <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
-          <div className="text-xs text-emerald-600 font-bold mt-0.5">{remLabel}</div>
+        <div className="my-2">
+          <div className="text-[18px] font-extrabold text-[var(--teacher-text)] truncate">{subject}</div>
+          <div className="text-[13px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">{remLabel}</div>
           {isMulti ? (
-            <div className="text-[10px] text-[#737373] font-medium mt-1 truncate">
+            <div className="text-[11px] text-[var(--teacher-muted)] font-medium mt-1 truncate">
               {concurrentSlots.map(s => {
                 const gr = s.offering?.grade || (s.offering as any)?.class?.grade;
                 const bd = s.offering?.board || (s.offering as any)?.class?.board?.name;
@@ -124,19 +124,19 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
             </div>
           ) : (
             state.nextSlot && (
-              <div className="text-[10px] text-[#A3A3A3] font-medium mt-1 truncate">
+              <div className="text-[11px] text-[var(--teacher-muted)] font-medium mt-1 truncate">
                 Up next: {getSlotSubject(state.nextSlot)} · {formatTime12h(state.nextSlot.start_time)}
               </div>
             )
           )}
         </div>
-        <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
+        <div className="flex items-center gap-2 pt-2 border-t border-[var(--teacher-card-border)]">
           <Zap size={13} className="text-emerald-500 shrink-0" />
-          <span className="text-xs font-bold text-[#111111]">
+          <span className="text-xs font-bold text-[var(--teacher-text)]">
             {formatTime12h(state.activeSlot.start_time)} – {formatTime12h(state.activeSlot.end_time)}
           </span>
           {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time) && (
-            <span className="text-[10px] text-[#A3A3A3]">
+            <span className="text-[11px] text-[var(--teacher-muted)]">
               · {calcDuration(state.activeSlot.start_time, state.activeSlot.end_time)}
             </span>
           )}
@@ -192,29 +192,31 @@ const TeacherNextClassWidget: React.FC<{ slots: ClassSlot[]; teacherId?: string 
   };
 
   return (
-    <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+    <div className="teacher-card border-l-4 border-l-[#F4C430] p-4 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Next Class</span>
+        <span className="text-xs font-bold text-[var(--teacher-muted)] uppercase tracking-wide">Next Class</span>
         <div className="flex items-center gap-1">
           {isMulti && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded status-pill-warning">
               {concurrentSlots.length} Concurrent
             </span>
           )}
-          <span className={`badge badge-gold text-[10px] font-bold ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
+          <span className={`badge badge-gold text-[10px] font-black ${isPulsing ? 'animate-pulse' : ''}`}>{badgeLabel}</span>
         </div>
       </div>
-      <div>
-        <div className="text-base font-extrabold text-[#111111] truncate">{subject}</div>
-        <div className="text-xs text-[#737373] font-medium truncate mt-0.5">
+      <div className="my-2">
+        <div className="text-[18px] font-extrabold text-[var(--teacher-text)] truncate">{subject}</div>
+        <div className="text-[13px] text-[var(--teacher-muted)] font-medium truncate mt-0.5">
           {isMulti
             ? `${concurrentSlots.length} sections scheduled simultaneously`
             : `${nextSlot.offering?.grade ? `Class ${nextSlot.offering.grade} · ` : ''}${String(nextSlot.offering?.board || 'Curriculum').toUpperCase()}`}
         </div>
       </div>
-      <div className="flex items-center gap-2 pt-2 border-t border-[#F5F5F5]">
-        <Clock size={13} className="text-[#F4C430] shrink-0" />
-        <span className="text-xs font-bold text-[#111111]">{formatClassTimeLabel(nextSlot)}</span>
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--teacher-card-border)]">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--teacher-text)]">
+          <Clock size={13} className="text-[#F4C430] shrink-0" />
+          <span>{formatClassTimeLabel(nextSlot)}</span>
+        </div>
       </div>
       <ConcurrentLiveLinkEditor
         slots={concurrentSlots}
@@ -691,10 +693,10 @@ export const TeacherDashboardPage: React.FC = () => {
       {/* ── Welcome Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--teacher-text)] tracking-tight">
             Welcome back, {profile?.full_name?.split(' ')[0] ?? 'Teacher'} 🎓
           </h1>
-          <p className="text-sm text-[#737373] mt-1 font-medium">
+          <p className="text-sm text-[var(--teacher-muted)] mt-1 font-medium line-clamp-2 max-w-2xl">
             Manage your classroom rosters, upload syllabus notes, and view your teaching schedule.
           </p>
         </div>
@@ -703,68 +705,113 @@ export const TeacherDashboardPage: React.FC = () => {
       {/* ── Browser Notification Permission Banner for Class Reminders ── */}
       <NotificationPermissionBanner role="teacher" />
 
-      {/* ── Metrics Strip (3 Quick Overview Stat Cards) ── */}
-      <div className={isMobile ? 'flex flex-col gap-4' : 'grid grid-cols-1 md:grid-cols-3 gap-4'}>
-        {loading ? (
-          [1, 2, 3].map((n) => (
-            <div key={n} className="stat-card flex flex-col justify-between min-h-[140px] animate-pulse">
+      {/* ── Metrics Strip: Compact row on mobile (<640px), 3-col grid on tablet/desktop (>=640px) ── */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 animate-pulse">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="teacher-card p-4 rounded-2xl flex flex-col justify-between min-h-[140px]">
               <div className="flex items-center justify-between">
-                <div className="h-3 bg-gray-100 rounded w-24" />
-                <div className="w-7 h-7 rounded-lg bg-gray-100" />
+                <div className="h-3 bg-black/10 dark:bg-white/10 rounded w-24" />
+                <div className="w-7 h-7 rounded-lg bg-black/10 dark:bg-white/10" />
               </div>
               <div className="space-y-2">
-                <div className="h-7 bg-gray-100 rounded w-12" />
-                <div className="h-3 bg-gray-100 rounded w-36" />
+                <div className="h-7 bg-black/10 dark:bg-white/10 rounded w-12" />
+                <div className="h-3 bg-black/10 dark:bg-white/10 rounded w-36" />
               </div>
-              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between">
-                <div className="h-2.5 bg-gray-100 rounded w-24" />
-                <div className="h-2.5 bg-gray-100 rounded w-10" />
+              <div className="pt-2 border-t border-[var(--teacher-card-border)] flex items-center justify-between">
+                <div className="h-2.5 bg-black/10 dark:bg-white/10 rounded w-24" />
+                <div className="h-2.5 bg-black/10 dark:bg-white/10 rounded w-10" />
               </div>
             </div>
-          ))
-        ) : (
-          <>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Mobile view (<640px): 2 half-width tiles + full-width Next Class */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Assigned Classes */}
+              <div className="teacher-card p-3.5 rounded-2xl flex flex-col justify-between min-h-[120px]">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-[var(--teacher-muted)] uppercase tracking-wide">Assigned</span>
+                  <div className="w-7 h-7 rounded-lg bg-[#F4C430]/15 text-[#8A6A00] dark:text-[#F4C430] flex items-center justify-center">
+                    <BookOpen size={14} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[28px] font-extrabold text-[var(--teacher-text)] leading-tight">{offerings.length}</div>
+                  <div className="text-[12px] text-[var(--teacher-muted)] font-medium mt-0.5">Classes assigned</div>
+                </div>
+                <div className="text-[12px] text-[var(--teacher-muted)] font-semibold mt-2 pt-1.5 border-t border-[var(--teacher-card-border)]">
+                  Active roster
+                </div>
+              </div>
+
+              {/* Classes Today */}
+              <div className="teacher-card p-3.5 rounded-2xl flex flex-col justify-between min-h-[120px]">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-[var(--teacher-muted)] uppercase tracking-wide">Today</span>
+                  <div className="w-7 h-7 rounded-lg bg-[#F4C430]/15 text-[#8A6A00] dark:text-[#F4C430] flex items-center justify-center">
+                    <Calendar size={14} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[28px] font-extrabold text-[var(--teacher-text)] leading-tight">{todayClasses.length}</div>
+                  <div className="text-[12px] text-[var(--teacher-muted)] font-medium mt-0.5">Lectures today</div>
+                </div>
+                <div className="text-[12px] text-[var(--teacher-muted)] font-semibold mt-2 pt-1.5 border-t border-[var(--teacher-card-border)]">
+                  Daily timetable
+                </div>
+              </div>
+            </div>
+
+            {/* Next Class - Full-width card on mobile */}
+            <TeacherNextClassWidget slots={allSlots} teacherId={teacherId} />
+          </div>
+
+          {/* Tablet & Desktop view (>=640px): 3-column grid */}
+          <div className="hidden sm:grid sm:grid-cols-3 sm:gap-4">
             {/* Classes Assigned */}
-            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+            <div className="teacher-card p-4 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Assigned Classes</span>
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <span className="text-xs font-bold text-[var(--teacher-muted)] uppercase tracking-wide">Assigned Classes</span>
+                <div className="w-7 h-7 rounded-lg bg-[#F4C430]/15 text-[#8A6A00] dark:text-[#F4C430] flex items-center justify-center">
                   <BookOpen size={14} />
                 </div>
               </div>
-              <div>
-                <div className="stat-value">{offerings.length}</div>
-                <div className="stat-label">Subject groups assigned</div>
+              <div className="my-2">
+                <div className="text-2xl font-extrabold text-[var(--teacher-text)]">{offerings.length}</div>
+                <div className="text-xs text-[var(--teacher-muted)] font-medium mt-0.5">Subject groups assigned</div>
               </div>
-              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
+              <div className="pt-2 border-t border-[var(--teacher-card-border)] flex items-center justify-between text-[11px] text-[var(--teacher-muted)] font-bold">
                 <span>Scoped to Teacher Roster</span>
-                <span className="text-[#111111]">Active</span>
+                <span className="text-[var(--teacher-text)]">Active</span>
               </div>
             </div>
 
-            {/* Next ClassCountdown Widget */}
+            {/* Next Class Countdown Widget */}
             <TeacherNextClassWidget slots={allSlots} teacherId={teacherId} />
 
             {/* Classes Today */}
-            <div className="stat-card flex flex-col justify-between min-h-[140px] interactive">
+            <div className="teacher-card p-4 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Classes Today</span>
-                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center animate-pulse">
+                <span className="text-xs font-bold text-[var(--teacher-muted)] uppercase tracking-wide">Classes Today</span>
+                <div className="w-7 h-7 rounded-lg bg-[#F4C430]/15 text-[#8A6A00] dark:text-[#F4C430] flex items-center justify-center">
                   <Calendar size={14} />
                 </div>
               </div>
-              <div>
-                <div className="stat-value">{todayClasses.length}</div>
-                <div className="stat-label">Lectures scheduled today</div>
+              <div className="my-2">
+                <div className="text-2xl font-extrabold text-[var(--teacher-text)]">{todayClasses.length}</div>
+                <div className="text-xs text-[var(--teacher-muted)] font-medium mt-0.5">Lectures scheduled today</div>
               </div>
-              <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between text-[10px] text-[#A3A3A3] font-bold">
+              <div className="pt-2 border-t border-[var(--teacher-card-border)] flex items-center justify-between text-[11px] text-[var(--teacher-muted)] font-bold">
                 <span>Mon - Sat timetable</span>
-                <span className="text-[#111111]">Daily</span>
+                <span className="text-[var(--teacher-text)]">Daily</span>
               </div>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
       {/* ── Staff Attendance & Timecard (Direct Punch, Timer & Recent Logs) ── */}
       <div id="teacher-timecard-dashboard-widget" className="w-full">
@@ -775,35 +822,35 @@ export const TeacherDashboardPage: React.FC = () => {
       <div className={isMobile ? 'flex flex-col gap-6' : 'grid grid-cols-3 gap-6'}>
         
         {/* Today's Lectures */}
-        <div className="card card-elevated lg:col-span-1 interactive">
-          <div className="flex items-center justify-between mb-4 border-b border-[#F5F5F5] pb-2">
-            <h2 className="text-sm font-bold text-[#111111]">Today's Schedule</h2>
+        <div className="teacher-card p-4 sm:p-5 rounded-2xl lg:col-span-1">
+          <div className="flex items-center justify-between mb-4 border-b border-[var(--teacher-card-border)] pb-2">
+            <h2 className="text-sm font-bold text-[var(--teacher-text)]">Today's Schedule</h2>
             <button
               onClick={() => navigate('/teacher/schedule')}
-              className="text-xs text-[#737373] hover:text-[#111111] flex items-center gap-1 transition-colors font-semibold"
+              className="h-11 inline-flex items-center text-xs text-[var(--teacher-muted)] hover:text-[var(--teacher-text)] gap-1 transition-colors font-semibold"
             >
               Full schedule <ChevronRight size={12} />
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {loading ? (
               <div className="space-y-3 animate-pulse">
                 {[1, 2].map((n) => (
-                  <div key={n} className="flex items-center gap-3 p-3 rounded-xl border border-[#F0F0F0] bg-white">
-                    <div className="w-1.5 h-10 bg-gray-100 rounded-full shrink-0" />
+                  <div key={n} className="h-[72px] flex items-center gap-3 p-3 rounded-xl border border-[var(--teacher-card-border)] bg-[var(--teacher-card-bg)]">
+                    <div className="w-1.5 h-10 bg-neutral-200 dark:bg-neutral-800 rounded-full shrink-0" />
                     <div className="flex-1 min-w-0 space-y-2">
-                      <div className="h-4 bg-gray-100 rounded w-20" />
-                      <div className="h-3 bg-gray-100 rounded w-28" />
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded w-20" />
+                      <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-28" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : todayClasses.length === 0 ? (
-              <div className="py-8 text-center bg-slate-50 dark:bg-neutral-900/60 border border-dashed border-slate-200 dark:border-neutral-800 rounded-xl">
-                <CheckCircle2 size={30} className="mx-auto text-slate-400 dark:text-neutral-500 mb-2" />
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-xs">No Lectures Today</h3>
-                <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-1">You have no scheduled lectures for this day.</p>
+              <div className="py-8 text-center border border-dashed border-[var(--teacher-card-border)] rounded-xl">
+                <CheckCircle2 size={30} className="mx-auto text-[var(--teacher-muted)] mb-2" />
+                <h3 className="font-bold text-[var(--teacher-text)] text-xs">No Lectures Today</h3>
+                <p className="text-[10px] text-[var(--teacher-muted)] mt-1">You have no scheduled lectures for this day.</p>
               </div>
             ) : (
               todayClasses.map((cls) => {
@@ -812,26 +859,25 @@ export const TeacherDashboardPage: React.FC = () => {
                 return (
                   <div
                     key={cls.id}
-                    className="flex items-center gap-3.5 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all hover:shadow-sm bg-white dark:bg-neutral-900"
+                    className="h-[72px] flex items-center gap-3 p-3 rounded-xl border border-[var(--teacher-card-border)] border-l-4 border-l-[#F4C430] bg-[var(--teacher-card-bg)] hover:border-[var(--teacher-muted)]/40 transition-all"
                   >
-                    <div className="w-1.5 h-10 rounded-full shrink-0" style={{ background: color }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                        <span className="font-bold text-sm text-[var(--teacher-text)] truncate">
                           {cls.custom_title || cls.offering?.subject_name || cls.offering?.subject || 'Class'}
                         </span>
                         {concurrentCount > 1 && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded status-pill-warning shrink-0">
                             ⚡ {concurrentCount} In Slot
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-slate-600 dark:text-slate-400 font-semibold mt-0.5 truncate">
+                      <div className="text-[11px] text-[var(--teacher-muted)] font-semibold mt-0.5 truncate">
                         Class {cls.offering?.grade || (cls.offering as any)?.class?.grade || ''} ({String(cls.offering?.board || (cls.offering as any)?.class?.board?.name || (cls.offering as any)?.class?.board_id || (cls.offering as any)?.board_name || 'Curriculum').toUpperCase()})
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-xs font-black text-slate-900 dark:text-slate-100">{formatClassTime(cls.start_time)}</div>
+                      <div className="text-[13px] font-black text-[var(--teacher-text)]">{formatClassTime(cls.start_time)}</div>
                       <div className="mt-1">
                         <StatusPill status={cls.is_cancelled ? 'cancelled' : 'upcoming'} />
                       </div>
@@ -844,37 +890,37 @@ export const TeacherDashboardPage: React.FC = () => {
         </div>
 
         {/* Class Rosters & Session Attendance — Auto-Driven Live/Next Class Only */}
-        <div className={`card card-elevated ${isMobile ? '' : 'col-span-2'}`}>
+        <div className={`teacher-card p-4 sm:p-5 rounded-2xl ${isMobile ? '' : 'col-span-2'}`}>
           {loading ? (
             <div className="space-y-4 p-2 animate-pulse">
-              <div className="h-6 bg-gray-100 rounded w-1/3" />
-              <div className="h-4 bg-gray-100 rounded w-1/2" />
-              <div className="h-40 bg-gray-50 rounded-xl" />
+              <div className="h-6 bg-neutral-200 dark:bg-neutral-800 rounded w-1/3" />
+              <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded w-1/2" />
+              <div className="h-40 bg-neutral-200 dark:bg-neutral-800 rounded-xl" />
             </div>
           ) : !activeTodaySlot ? (
             <div className="py-14 flex flex-col items-center justify-center text-center">
-              <div className="w-12 h-12 rounded-full bg-[#F5F5F5] flex items-center justify-center text-[#A3A3A3] mb-3">
-                <Calendar size={22} className="text-[#737373]" />
+              <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-[var(--teacher-muted)] mb-3">
+                <Calendar size={22} className="text-[var(--teacher-muted)]" />
               </div>
-              <h3 className="font-extrabold text-[#111111] text-sm">No Class Scheduled Today</h3>
-              <p className="text-xs text-[#737373] max-w-xs mt-1">
+              <h3 className="font-extrabold text-[var(--teacher-text)] text-sm">No Class Scheduled Today</h3>
+              <p className="text-xs text-[var(--teacher-muted)] max-w-xs mt-1">
                 You have no active lecture sessions on today's timetable ({todayFormattedDate}). Enjoy your break!
               </p>
             </div>
           ) : (
             <div>
-              <div className="flex flex-col gap-3 mb-4 pb-3 border-b border-[#F5F5F5]">
+              <div className="flex flex-col gap-3 mb-4 pb-3 border-b border-[var(--teacher-card-border)]">
                 {/* Concurrent Classes Alert Banner */}
                 {activeConcurrentSlots.length > 1 && (
-                  <div className="flex items-center gap-2.5 p-3 bg-gradient-to-r from-amber-50 to-[#FFFDF5] border border-amber-300 rounded-xl text-amber-900 shadow-2xs">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                  <div className="flex items-center gap-2.5 p-3 status-pill-warning rounded-xl shadow-2xs">
+                    <div className="w-8 h-8 rounded-lg bg-amber-200/50 dark:bg-amber-900/50 flex items-center justify-center text-[#7A5200] dark:text-[#FFD866] shrink-0">
                       <Layers size={16} />
                     </div>
                     <div>
-                      <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                      <div className="text-xs font-black flex items-center gap-1.5">
                         <span>⚡ Concurrent Session Slot ({activeConcurrentSlots.length} Classes Running Simultaneously)</span>
                       </div>
-                      <div className="text-[10px] text-amber-800 mt-0.5">
+                      <div className="text-[10px] opacity-90 mt-0.5">
                         Set the meeting link once below to distribute it immediately to all {activeConcurrentSlots.length} classes. Use the section tabs below to filter the student roster.
                       </div>
                     </div>
@@ -885,40 +931,40 @@ export const TeacherDashboardPage: React.FC = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm font-extrabold text-[#111111]">
+                      <h2 className="text-base font-extrabold text-[var(--teacher-text)]">
                         {activeConcurrentSlots.length > 1
                           ? `${getSlotSubject(activeTodaySlot)} (${activeConcurrentSlots.length} Sections)`
                           : (activeTodaySlot.custom_title || activeOffering?.subject_name || activeOffering?.subject || 'Class Session')}
                       </h2>
                       {activeConcurrentSlots.length === 1 && (
-                        <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
+                        <span className="text-[10px] status-pill-warning font-bold px-2 py-0.5 rounded-md">
                           Class {activeOffering?.grade || (activeOffering as any)?.class?.grade || ''} · {String(activeOffering?.board || (activeOffering as any)?.class?.board?.name || (activeOffering as any)?.class?.board_id || (activeOffering as any)?.board_name || 'Curriculum').toUpperCase()}
                         </span>
                       )}
                       {activeOffering?.stream && (
-                        <span className="text-[10px] bg-[#F5F5F5] text-[#525252] font-bold px-2 py-0.5 rounded">
+                        <span className="text-[10px] status-pill-neutral font-bold px-2 py-0.5 rounded-md">
                           {typeof activeOffering.stream === 'string' ? activeOffering.stream : (activeOffering.stream as any).name}
                         </span>
                       )}
                     </div>
 
                     {/* Static Date & Exact Time Slot */}
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#525252] mt-1 flex-wrap">
-                      <span className="text-[#111111] font-bold flex items-center gap-1">
+                    <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--teacher-muted)] mt-1 flex-wrap">
+                      <span className="text-[var(--teacher-text)] font-bold flex items-center gap-1">
                         <Calendar size={13} className="text-[#F4C430]" />
                         {todayFormattedDate}
                       </span>
-                      <span className="text-[#D4D4D4]">·</span>
-                      <span className="flex items-center gap-1 text-[#111111]">
-                        <Clock size={13} className="text-[#A3A3A3]" />
+                      <span className="text-[var(--teacher-muted)] opacity-50">·</span>
+                      <span className="flex items-center gap-1 text-[var(--teacher-text)]">
+                        <Clock size={13} className="text-[var(--teacher-muted)]" />
                         {formatTime12h(activeTodaySlot.start_time)} – {formatTime12h(activeTodaySlot.end_time)}
                       </span>
                       {isClassOngoing ? (
-                        <span className="badge badge-gold text-[9px] font-extrabold animate-pulse">
+                        <span className="badge badge-gold text-[10px] font-extrabold animate-pulse">
                           ● Now in Session
                         </span>
                       ) : (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md status-pill-neutral">
                           Scheduled Today
                         </span>
                       )}
@@ -926,14 +972,14 @@ export const TeacherDashboardPage: React.FC = () => {
                   </div>
 
                   {/* Mark All Present Action */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <button
                       onClick={handleMarkAllPresent}
                       disabled={displayedStudents.length === 0}
-                      className="text-[11px] font-bold bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] px-3 py-1.5 rounded-lg shadow-xs transition-all flex items-center gap-1.5 interactive disabled:opacity-50 cursor-pointer"
+                      className="w-full sm:w-auto h-12 px-4 rounded-xl font-black text-xs bg-[#F4C430] hover:bg-[#E5B520] active:scale-[0.98] text-[#111111] shadow-xs transition-all flex items-center justify-center gap-2 interactive disabled:opacity-50 cursor-pointer"
                       title="Mark all currently displayed students as Present"
                     >
-                      <CheckCircle2 size={13} />
+                      <CheckCircle2 size={16} />
                       <span>
                         Mark All Present ({displayedStudents.length})
                       </span>
@@ -952,14 +998,14 @@ export const TeacherDashboardPage: React.FC = () => {
 
                 {/* Section Filter Tabs for Concurrent Slots */}
                 {activeConcurrentSlots.length > 1 && (
-                  <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-1 border-t border-[#F5F5F5] no-scrollbar">
-                    <span className="text-[11px] font-bold text-[#737373] mr-1 shrink-0">Filter Roster:</span>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-1 border-t border-[var(--teacher-card-border)] no-scrollbar">
+                    <span className="text-[11px] font-bold text-[var(--teacher-muted)] mr-1 shrink-0">Filter Roster:</span>
                     <button
                       onClick={() => setSelectedSectionSlotId('all')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
                         selectedSectionSlotId === 'all'
-                          ? 'bg-[#111111] text-white shadow-xs'
-                          : 'bg-gray-100 text-[#525252] hover:bg-gray-200'
+                          ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
+                          : 'status-pill-neutral hover:opacity-80'
                       }`}
                     >
                       All Concurrent Sections ({allConcurrentStudents.length})
@@ -974,10 +1020,10 @@ export const TeacherDashboardPage: React.FC = () => {
                         <button
                           key={s.id}
                           onClick={() => setSelectedSectionSlotId(s.id)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
                             selectedSectionSlotId === s.id
-                              ? 'bg-[#111111] text-white shadow-xs'
-                              : 'bg-gray-100 text-[#525252] hover:bg-gray-200'
+                              ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
+                              : 'status-pill-neutral hover:opacity-80'
                           }`}
                         >
                           {subj} {gr ? `Gr.${gr}` : ''} {bd ? `· ${bd}` : ''} ({count})
@@ -995,23 +1041,23 @@ export const TeacherDashboardPage: React.FC = () => {
                       const pendingStudents = displayedStudents.filter(st => getStudentStatus(st.id, st._slotId).status === 'pending');
                       if (pendingStudents.length === 0) return null;
                       return (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-amber-900 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 status-pill-warning rounded-xl shadow-xs">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
-                              <Clock size={16} className="animate-spin text-amber-600" />
+                            <div className="w-8 h-8 rounded-lg bg-amber-200/50 dark:bg-amber-900/50 flex items-center justify-center text-[#7A5200] dark:text-[#FFD866] shrink-0">
+                              <Clock size={16} className="animate-spin" />
                             </div>
                             <div>
-                              <div className="text-xs font-extrabold text-amber-900">
+                              <div className="text-xs font-extrabold">
                                 {pendingStudents.length} Pending Attendance Claim{pendingStudents.length > 1 ? 's' : ''}
                               </div>
-                              <div className="text-[10px] text-amber-700 font-medium">
+                              <div className="text-[10px] opacity-80 font-medium">
                                 {pendingStudents.length === 1 ? 'A student has' : `${pendingStudents.length} students have`} claimed attendance for this session and {pendingStudents.length === 1 ? 'is' : 'are'} awaiting approval.
                               </div>
                             </div>
                           </div>
                           <button
                             onClick={handleApproveAllPending}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-all cursor-pointer interactive shrink-0"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-all cursor-pointer interactive shrink-0"
                             title="Approve all pending student attendance claims"
                           >
                             <Check size={13} strokeWidth={3} />
@@ -1021,8 +1067,8 @@ export const TeacherDashboardPage: React.FC = () => {
                       );
                     })()}
 
-                    {/* Status Pill Counters */}
-                    <div className="flex items-center gap-2.5 text-[11px] font-bold text-[#737373] overflow-x-auto flex-wrap">
+                    {/* Status Pill Counters: 2x2 grid on mobile, flex on desktop */}
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 text-[11px] font-bold">
                       {(() => {
                         let pres = 0, late = 0, abs = 0, un = 0, pend = 0;
                         displayedStudents.forEach(st => {
@@ -1036,25 +1082,25 @@ export const TeacherDashboardPage: React.FC = () => {
                         return (
                           <>
                             {pend > 0 && (
-                              <span className="text-amber-800 bg-amber-100/80 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 font-extrabold animate-pulse">
+                              <span className="status-pill-warning px-2.5 py-1 rounded-lg flex items-center justify-center sm:justify-start gap-1 font-extrabold animate-pulse">
                                 <Clock size={11} className="animate-spin text-amber-600" /> Pending: {pend}
                               </span>
                             )}
-                            <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            <span className="status-pill-success px-2.5 py-1 rounded-lg flex items-center justify-center sm:justify-start gap-1">
                               ● Present: {pres}
                             </span>
-                            <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                            <span className="status-pill-warning px-2.5 py-1 rounded-lg flex items-center justify-center sm:justify-start gap-1">
                               ● Late: {late}
                             </span>
-                            <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                            <span className="status-pill-danger px-2.5 py-1 rounded-lg flex items-center justify-center sm:justify-start gap-1">
                               ● Absent: {abs}
                             </span>
                             {un > 0 && (
-                              <span className="text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md">
+                              <span className="status-pill-neutral px-2.5 py-1 rounded-lg flex items-center justify-center sm:justify-start gap-1">
                                 ○ Unmarked: {un}
                               </span>
                             )}
-                            <span className="text-[#111111] ml-auto font-extrabold">
+                            <span className="col-span-2 sm:col-span-1 sm:ml-auto text-[var(--teacher-text)] font-extrabold text-xs text-right sm:text-left self-center">
                               {displayedStudents.length} {displayedStudents.length === 1 ? 'Student' : 'Students'}
                             </span>
                           </>
@@ -1067,201 +1113,344 @@ export const TeacherDashboardPage: React.FC = () => {
 
               {displayedStudents.length === 0 ? (
                 <div className="py-14 flex flex-col items-center justify-center text-center">
-                  <div className="w-12 h-12 rounded-full bg-[#F5F5F5] flex items-center justify-center text-[#A3A3A3] mb-3">
+                  <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-[var(--teacher-muted)] mb-3">
                     <UserPlus size={20} />
                   </div>
-                  <h3 className="font-bold text-[#111111] text-xs">No Students Enrolled</h3>
-                  <p className="text-[10px] text-[#737373] max-w-xs mt-1">
+                  <h3 className="font-bold text-[var(--teacher-text)] text-xs">No Students Enrolled</h3>
+                  <p className="text-[10px] text-[var(--teacher-muted)] max-w-xs mt-1">
                     There are currently no students enrolled in this section.
                   </p>
                 </div>
               ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#F0F0F0] dark:border-zinc-800">
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Student</th>
-                    {activeConcurrentSlots.length > 1 && (
-                      <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Class / Section</th>
-                    )}
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Stream</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider">Status & Auto-Join Log</th>
-                    <th className="py-2.5 text-[10px] font-black text-[#A3A3A3] dark:text-zinc-500 uppercase tracking-wider text-right">Toggle Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#FAFAFA] dark:divide-zinc-800/60">
-                  {displayedStudents.map((st) => {
-                    const { status: stStatus, markedAt, markedBy } = getStudentStatus(st.id, st._slotId);
-                    const isSaving = savingAttendanceId === st.id;
-                    const joinTime = markedAt ? new Date(markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+                <>
+                  {/* MOBILE (<640px) STUDENT CARDS */}
+                  <div className="block sm:hidden space-y-3">
+                    {displayedStudents.map((st) => {
+                      const { status: stStatus, markedAt, markedBy } = getStudentStatus(st.id, st._slotId);
+                      const isSaving = savingAttendanceId === st.id;
+                      const joinTime = markedAt ? new Date(markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
 
-                    return (
-                      <tr key={`${st.id}_${st._slotId}`} className="hover:bg-[#FAFAFA]/50 dark:hover:bg-zinc-800/40 transition-colors">
-                        <td className="py-3 pr-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-[#FAFAFA] dark:bg-zinc-800 border border-[#F0F0F0] dark:border-zinc-700 flex items-center justify-center text-[10px] font-bold text-[#525252] dark:text-zinc-300 shrink-0">
+                      return (
+                        <div
+                          key={`mobile_${st.id}_${st._slotId}`}
+                          className="p-3.5 rounded-xl border border-[var(--teacher-card-border)] bg-[var(--teacher-card-bg)] shadow-xs"
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* 40px Avatar initials */}
+                            <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-[var(--teacher-card-border)] flex items-center justify-center text-xs font-bold text-[var(--teacher-text)] shrink-0">
                               {st.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                             </div>
-                            <div className="min-w-0">
-                              <span className="text-xs font-bold text-[#111111] dark:text-zinc-100 block leading-tight truncate">{st.full_name}</span>
-                              <span className="text-[9px] text-[#737373] dark:text-zinc-400 font-medium leading-tight truncate block">
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-base font-bold text-[var(--teacher-text)] block leading-snug line-clamp-2">
+                                  {st.full_name}
+                                </span>
+                              </div>
+                              <span className="text-xs text-[var(--teacher-muted)] font-medium leading-tight truncate block mt-0.5">
                                 {(st as any).email || `ID: ${st.id.slice(0, 8)}`}
                               </span>
+
+                              {/* Class & Stream Pills */}
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                {activeConcurrentSlots.length > 1 && (
+                                  <span className="text-[10px] status-pill-warning font-bold px-2 py-0.5 rounded">
+                                    {st._sectionName} {st._grade ? `Gr.${st._grade}` : ''}
+                                  </span>
+                                )}
+                                <span className="text-[10px] status-pill-neutral font-bold px-2 py-0.5 rounded capitalize">
+                                  {st.stream || 'General'}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </td>
 
-                        {activeConcurrentSlots.length > 1 && (
-                          <td className="py-3 text-xs whitespace-nowrap">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
-                              {st._sectionName} {st._grade ? `Gr.${st._grade}` : ''}
-                            </span>
-                          </td>
-                        )}
-
-                        <td className="py-3 text-xs font-semibold text-[#525252] dark:text-zinc-300 capitalize whitespace-nowrap">
-                          {st.stream || 'General'}
-                        </td>
-
-                        <td className="py-3">
-                          <div className="flex flex-col gap-0.5">
-                            {stStatus === 'pending' ? (
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800">
-                                  <Clock size={10} className="animate-spin text-amber-600 dark:text-amber-400" /> Pending Approval
+                          {/* Status and Join Badge */}
+                          <div className="mt-2.5 pt-2 border-t border-[var(--teacher-card-border)] flex items-center justify-between text-xs">
+                            <span className="text-[11px] text-[var(--teacher-muted)] font-medium">Recorded Status:</span>
+                            <div>
+                              {stStatus === 'pending' ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold status-pill-warning px-2.5 py-0.5 rounded-full">
+                                  <Clock size={11} className="animate-spin" /> Pending Claim {joinTime ? `(${joinTime})` : ''}
                                 </span>
-                                {joinTime && (
-                                  <span className="text-[9px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-50/70 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
-                                    Claimed {joinTime}
-                                  </span>
-                                )}
-                              </div>
-                            ) : stStatus === 'present' ? (
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800" title="Locked: Status is recorded. Click another status to request change.">
-                                  ✓ Present <Lock size={9} className="text-emerald-600/70 dark:text-emerald-400/70 ml-0.5" />
+                              ) : stStatus === 'present' ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold status-pill-success px-2.5 py-0.5 rounded-full">
+                                  ✓ Present <Lock size={9} className="opacity-70 ml-0.5" />
+                                  {joinTime && <span className="font-semibold opacity-90">· {joinTime}</span>}
                                 </span>
-                                {markedBy === 'self' || markedBy === 'student' || joinTime ? (
-                                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50/50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                                    ⚡ Joined {joinTime || ''}
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] text-[#737373] dark:text-zinc-400 font-medium">
-                                    (Teacher marked)
-                                  </span>
-                                )}
-                              </div>
-                            ) : stStatus === 'late' ? (
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800" title="Locked: Status is recorded. Click another status to request change.">
-                                  ⏱ Late <Lock size={9} className="text-amber-600/70 dark:text-amber-400/70 ml-0.5" />
+                              ) : stStatus === 'late' ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold status-pill-warning px-2.5 py-0.5 rounded-full">
+                                  ⏱ Late <Lock size={9} className="opacity-70 ml-0.5" />
+                                  {joinTime && <span className="font-semibold opacity-90">· {joinTime}</span>}
                                 </span>
-                                {joinTime && (
-                                  <span className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold">
-                                    at {joinTime}
-                                  </span>
-                                )}
-                              </div>
-                            ) : stStatus === 'absent' ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800" title="Locked: Status is recorded. Click another status to request change.">
-                                ✕ Absent <Lock size={9} className="text-rose-600/70 dark:text-rose-400/70 ml-0.5" />
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-zinc-700">
-                                ○ Unmarked
-                              </span>
-                            )}
+                              ) : stStatus === 'absent' ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold status-pill-danger px-2.5 py-0.5 rounded-full">
+                                  ✕ Absent <Lock size={9} className="opacity-70 ml-0.5" />
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold status-pill-neutral px-2.5 py-0.5 rounded-full">
+                                  ○ Unmarked
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </td>
 
-                        <td className="py-3 text-right">
+                          {/* 44px P | L | A Segmented Action Buttons */}
                           {stStatus === 'pending' ? (
-                            <div className="inline-flex items-center gap-1.5 justify-end">
+                            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--teacher-card-border)]">
                               <button
                                 onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'present')}
                                 disabled={isSaving}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer interactive"
-                                title="Approve attendance claim (Mark Present)"
+                                className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                               >
-                                <Check size={11} strokeWidth={3} />
+                                <Check size={14} strokeWidth={3} />
                                 <span>Approve</span>
                               </button>
                               <button
                                 onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'absent')}
                                 disabled={isSaving}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer interactive"
-                                title="Reject attendance claim (Mark Absent)"
+                                className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                               >
-                                <X size={11} strokeWidth={3} />
+                                <X size={14} strokeWidth={3} />
                                 <span>Reject</span>
                               </button>
                             </div>
                           ) : (
-                            <div className="inline-flex items-center bg-[#F5F5F5] dark:bg-zinc-800 p-0.5 rounded-lg border border-[#E5E5E5] dark:border-zinc-700">
+                            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--teacher-card-border)]">
                               <button
                                 onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'present')}
                                 disabled={isSaving}
-                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                className={`flex-1 h-11 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
                                   stStatus === 'present'
-                                    ? 'bg-emerald-600 text-white shadow-xs'
-                                    : 'text-[#737373] dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-700'
+                                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/30'
+                                    : 'status-pill-neutral hover:bg-emerald-500/10 hover:text-emerald-600 active:scale-[0.98]'
                                 }`}
-                                title={
-                                  stStatus === 'present'
-                                    ? 'Status is recorded as Present (Locked)'
-                                    : stStatus !== 'unmarked'
-                                    ? 'Change status to Present (Requires confirmation)'
-                                    : 'Mark Present'
-                                }
+                                title={stStatus === 'present' ? 'Present (Locked)' : 'Mark Present'}
                               >
-                                P
+                                <span>P</span>
+                                {stStatus === 'present' && <Check size={14} strokeWidth={3} />}
                               </button>
                               <button
                                 onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'late')}
                                 disabled={isSaving}
-                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                className={`flex-1 h-11 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
                                   stStatus === 'late'
-                                    ? 'bg-amber-500 text-white shadow-xs'
-                                    : 'text-[#737373] dark:text-zinc-400 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-white dark:hover:bg-zinc-700'
+                                    ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-500/30'
+                                    : 'status-pill-neutral hover:bg-amber-500/10 hover:text-amber-600 active:scale-[0.98]'
                                 }`}
-                                title={
-                                  stStatus === 'late'
-                                    ? 'Status is recorded as Late (Locked)'
-                                    : stStatus !== 'unmarked'
-                                    ? 'Change status to Late (Requires confirmation)'
-                                    : 'Mark Late'
-                                }
+                                title={stStatus === 'late' ? 'Late (Locked)' : 'Mark Late'}
                               >
-                                L
+                                <span>L</span>
+                                {stStatus === 'late' && <Clock size={13} strokeWidth={2.5} />}
                               </button>
                               <button
                                 onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'absent')}
                                 disabled={isSaving}
-                                className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                className={`flex-1 h-11 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
                                   stStatus === 'absent'
-                                    ? 'bg-rose-600 text-white shadow-xs'
-                                    : 'text-[#737373] dark:text-zinc-400 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-zinc-700'
+                                    ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500/30'
+                                    : 'status-pill-neutral hover:bg-rose-500/10 hover:text-rose-600 active:scale-[0.98]'
                                 }`}
-                                title={
-                                  stStatus === 'absent'
-                                    ? 'Status is recorded as Absent (Locked)'
-                                    : stStatus !== 'unmarked'
-                                    ? 'Change status to Absent (Requires confirmation)'
-                                    : 'Mark Absent'
-                                }
+                                title={stStatus === 'absent' ? 'Absent (Locked)' : 'Mark Absent'}
                               >
-                                A
+                                <span>A</span>
+                                {stStatus === 'absent' && <X size={14} strokeWidth={3} />}
                               </button>
                             </div>
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* DESKTOP & TABLET (>=640px) PRESERVED TABLE */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--teacher-card-border)]">
+                          <th className="py-2.5 text-[10px] font-black text-[var(--teacher-muted)] uppercase tracking-wider">Student</th>
+                          {activeConcurrentSlots.length > 1 && (
+                            <th className="py-2.5 text-[10px] font-black text-[var(--teacher-muted)] uppercase tracking-wider">Class / Section</th>
+                          )}
+                          <th className="py-2.5 text-[10px] font-black text-[var(--teacher-muted)] uppercase tracking-wider">Stream</th>
+                          <th className="py-2.5 text-[10px] font-black text-[var(--teacher-muted)] uppercase tracking-wider">Status & Auto-Join Log</th>
+                          <th className="py-2.5 text-[10px] font-black text-[var(--teacher-muted)] uppercase tracking-wider text-right">Toggle Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--teacher-card-border)]">
+                        {displayedStudents.map((st) => {
+                          const { status: stStatus, markedAt, markedBy } = getStudentStatus(st.id, st._slotId);
+                          const isSaving = savingAttendanceId === st.id;
+                          const joinTime = markedAt ? new Date(markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+
+                          return (
+                            <tr key={`${st.id}_${st._slotId}`} className="hover:bg-[var(--teacher-card-bg)]/80 transition-colors">
+                              <td className="py-3 pr-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-[var(--teacher-card-border)] flex items-center justify-center text-[10px] font-bold text-[var(--teacher-text)] shrink-0">
+                                    {st.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="text-xs font-bold text-[var(--teacher-text)] block leading-tight truncate">{st.full_name}</span>
+                                    <span className="text-[9px] text-[var(--teacher-muted)] font-medium leading-tight truncate block">
+                                      {(st as any).email || `ID: ${st.id.slice(0, 8)}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {activeConcurrentSlots.length > 1 && (
+                                <td className="py-3 text-xs whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold status-pill-warning">
+                                    {st._sectionName} {st._grade ? `Gr.${st._grade}` : ''}
+                                  </span>
+                                </td>
+                              )}
+
+                              <td className="py-3 text-xs font-semibold text-[var(--teacher-text)] capitalize whitespace-nowrap">
+                                {st.stream || 'General'}
+                              </td>
+
+                              <td className="py-3">
+                                <div className="flex flex-col gap-0.5">
+                                  {stStatus === 'pending' ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold status-pill-warning px-2 py-0.5 rounded-full">
+                                        <Clock size={10} className="animate-spin text-amber-600" /> Pending Approval
+                                      </span>
+                                      {joinTime && (
+                                        <span className="text-[9px] status-pill-warning font-semibold px-1.5 py-0.5 rounded">
+                                          Claimed {joinTime}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : stStatus === 'present' ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold status-pill-success px-2 py-0.5 rounded-full" title="Locked: Status is recorded. Click another status to request change.">
+                                        ✓ Present <Lock size={9} className="opacity-70 ml-0.5" />
+                                      </span>
+                                      {markedBy === 'self' || markedBy === 'student' || joinTime ? (
+                                        <span className="text-[9px] status-pill-success font-semibold px-1.5 py-0.5 rounded">
+                                          ⚡ Joined {joinTime || ''}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] text-[var(--teacher-muted)] font-medium">
+                                          (Teacher marked)
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : stStatus === 'late' ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold status-pill-warning px-2 py-0.5 rounded-full" title="Locked: Status is recorded. Click another status to request change.">
+                                        ⏱ Late <Lock size={9} className="opacity-70 ml-0.5" />
+                                      </span>
+                                      {joinTime && (
+                                        <span className="text-[9px] status-pill-warning font-semibold px-1.5 py-0.5 rounded">
+                                          at {joinTime}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : stStatus === 'absent' ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-extrabold status-pill-danger px-2 py-0.5 rounded-full" title="Locked: Status is recorded. Click another status to request change.">
+                                      ✕ Absent <Lock size={9} className="opacity-70 ml-0.5" />
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold status-pill-neutral px-2 py-0.5 rounded-full">
+                                      ○ Unmarked
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td className="py-3 text-right">
+                                {stStatus === 'pending' ? (
+                                  <div className="inline-flex items-center gap-1.5 justify-end">
+                                    <button
+                                      onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'present')}
+                                      disabled={isSaving}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer interactive"
+                                      title="Approve attendance claim (Mark Present)"
+                                    >
+                                      <Check size={11} strokeWidth={3} />
+                                      <span>Approve</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'absent')}
+                                      disabled={isSaving}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer interactive"
+                                      title="Reject attendance claim (Mark Absent)"
+                                    >
+                                      <X size={11} strokeWidth={3} />
+                                      <span>Reject</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg border border-[var(--teacher-card-border)]">
+                                    <button
+                                      onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'present')}
+                                      disabled={isSaving}
+                                      className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                        stStatus === 'present'
+                                          ? 'bg-emerald-600 text-white shadow-xs'
+                                          : 'text-[var(--teacher-muted)] hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-neutral-700'
+                                      }`}
+                                      title={
+                                        stStatus === 'present'
+                                          ? 'Status is recorded as Present (Locked)'
+                                          : stStatus !== 'unmarked'
+                                          ? 'Change status to Present (Requires confirmation)'
+                                          : 'Mark Present'
+                                      }
+                                    >
+                                      P
+                                    </button>
+                                    <button
+                                      onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'late')}
+                                      disabled={isSaving}
+                                      className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                        stStatus === 'late'
+                                          ? 'bg-amber-500 text-white shadow-xs'
+                                          : 'text-[var(--teacher-muted)] hover:text-amber-700 dark:hover:text-amber-400 hover:bg-white dark:hover:bg-neutral-700'
+                                      }`}
+                                      title={
+                                        stStatus === 'late'
+                                          ? 'Status is recorded as Late (Locked)'
+                                          : stStatus !== 'unmarked'
+                                          ? 'Change status to Late (Requires confirmation)'
+                                          : 'Mark Late'
+                                      }
+                                    >
+                                      L
+                                    </button>
+                                    <button
+                                      onClick={() => handleTeacherClickAttendance(st.id, st.full_name, st._slotId, stStatus, 'absent')}
+                                      disabled={isSaving}
+                                      className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                        stStatus === 'absent'
+                                          ? 'bg-rose-600 text-white shadow-xs'
+                                          : 'text-[var(--teacher-muted)] hover:text-rose-700 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-neutral-700'
+                                      }`}
+                                      title={
+                                        stStatus === 'absent'
+                                          ? 'Status is recorded as Absent (Locked)'
+                                          : stStatus !== 'unmarked'
+                                          ? 'Change status to Absent (Requires confirmation)'
+                                          : 'Mark Absent'
+                                      }
+                                    >
+                                      A
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -1295,24 +1484,24 @@ export const TeacherDashboardPage: React.FC = () => {
         danger={pendingChange?.newStatus === 'absent'}
       >
         {pendingChange && (
-          <div className="bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-3.5 flex items-center justify-between text-xs">
+          <div className="bg-[var(--teacher-card-bg)] border border-[var(--teacher-card-border)] rounded-xl p-3.5 flex items-center justify-between text-xs">
             <div>
-              <div className="font-bold text-[#111111]">{pendingChange.studentName}</div>
-              <div className="text-[10px] text-[#737373] mt-0.5">
+              <div className="font-bold text-[var(--teacher-text)]">{pendingChange.studentName}</div>
+              <div className="text-[10px] text-[var(--teacher-muted)] mt-0.5">
                 Today's Session: {todayFormattedDate}
               </div>
             </div>
             <div className="flex items-center gap-2 font-bold">
               <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold ${
                 pendingChange.currentStatus === 'present'
-                  ? 'bg-emerald-100 text-emerald-800'
+                  ? 'status-pill-success'
                   : pendingChange.currentStatus === 'late'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-rose-100 text-rose-800'
+                  ? 'status-pill-warning'
+                  : 'status-pill-danger'
               }`}>
                 {pendingChange.currentStatus}
               </span>
-              <span className="text-[#A3A3A3]">→</span>
+              <span className="text-[var(--teacher-muted)]">→</span>
               <span className={`px-2.5 py-0.5 rounded-md text-[10px] uppercase font-black ${
                 pendingChange.newStatus === 'present'
                   ? 'bg-emerald-600 text-white'

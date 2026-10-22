@@ -243,8 +243,8 @@ export const ConcurrentLiveLinkEditor: React.FC<ConcurrentLiveLinkEditorProps> =
               id={`live-link-editor-${slot.id}`}
               className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between shadow-xs ${
                 currentLink
-                  ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-700/80'
-                  : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800'
+                  ? 'status-pill-success !bg-opacity-20 border-emerald-400 dark:border-emerald-700/80'
+                  : 'teacher-card'
               }`}
             >
               {/* Card Header: Subject, Grade, Board, Timing */}
@@ -252,35 +252,35 @@ export const ConcurrentLiveLinkEditor: React.FC<ConcurrentLiveLinkEditorProps> =
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
+                      <span className="text-xs font-black text-[var(--teacher-text)] truncate">
                         {subj}
                       </span>
                       {gr && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-slate-300 rounded border border-slate-200 dark:border-neutral-700">
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 status-pill-neutral rounded">
                           Gr. {gr}
                         </span>
                       )}
                       {boardName && (
-                        <span className="text-[10px] font-extrabold px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 rounded border border-amber-300 dark:border-amber-700">
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.2 status-pill-warning rounded">
                           {boardName}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--teacher-muted)] mt-0.5">
                       <Clock size={11} />
                       <span>{formatTime12h(slot.start_time)} – {formatTime12h(slot.end_time)}</span>
                     </div>
                   </div>
 
-                  {/* Status Indicator */}
+                  {/* Status Indicator: Warning when no link, Success when link added */}
                   <div className="shrink-0">
                     {currentLink ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800 bg-emerald-100 dark:bg-emerald-900/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 px-2 py-0.5 rounded-md">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold status-pill-success px-2 py-0.5 rounded-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping inline-block" />
-                        Live Link Active
+                        Link added
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-md">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold status-pill-warning px-2 py-0.5 rounded-md">
                         No Link Added
                       </span>
                     )}
@@ -289,7 +289,7 @@ export const ConcurrentLiveLinkEditor: React.FC<ConcurrentLiveLinkEditorProps> =
 
                 {/* Active Link Preview if posted */}
                 {currentLink && (
-                  <div className="mt-2.5 p-2 bg-white dark:bg-neutral-800/80 rounded-lg border border-slate-200 dark:border-neutral-700 flex items-center justify-between gap-2">
+                  <div className="mt-2.5 p-2 bg-white/80 dark:bg-zinc-800/80 rounded-lg border border-[var(--teacher-card-border)] flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
                       <LinkIcon size={12} className="text-emerald-600 shrink-0" />
                       <a
@@ -301,26 +301,27 @@ export const ConcurrentLiveLinkEditor: React.FC<ConcurrentLiveLinkEditorProps> =
                       >
                         {currentLink}
                       </a>
-                      <ExternalLink size={10} className="text-slate-400 shrink-0" />
+                      <ExternalLink size={10} className="text-[var(--teacher-muted)] shrink-0" />
                     </div>
                     <button
                       onClick={() => handleRemoveSlotLink(slot)}
                       disabled={isSlotSaving}
-                      className="p-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded transition-colors cursor-pointer shrink-0"
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer shrink-0"
                       title={`Remove link for ${subj}`}
+                      aria-label={`Remove link for ${subj}`}
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Input Form & Independent Save Button */}
-              <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-neutral-800">
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              {/* Input Form & Independent Save Button (48px input, gold button) */}
+              <div className="mt-2.5 pt-2.5 border-t border-[var(--teacher-card-border)]">
+                <label className="block text-[10px] font-bold text-[var(--teacher-text)] mb-1">
                   {currentLink ? 'Update Meeting Link' : 'Meeting Link (Zoom / Meet / Teams)'}
                 </label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-col min-[400px]:flex-row min-[400px]:items-center gap-2">
                   <input
                     type="text"
                     placeholder={`Paste link for ${subj}...`}
@@ -329,22 +330,22 @@ export const ConcurrentLiveLinkEditor: React.FC<ConcurrentLiveLinkEditorProps> =
                       setInputs((prev) => ({ ...prev, [slot.id]: e.target.value }))
                     }
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveSlotLink(slot)}
-                    className="flex-1 text-xs px-2.5 py-1.5 bg-white dark:bg-neutral-800 border border-slate-300 dark:border-neutral-700 rounded-lg focus:outline-none focus:border-amber-400 dark:text-slate-100 shadow-2xs font-medium"
+                    className="flex-1 h-12 text-xs sm:text-sm px-3 bg-white dark:bg-zinc-800 border border-[var(--teacher-card-border)] rounded-xl focus:outline-none focus:border-[#F4C430] text-[var(--teacher-text)] placeholder:text-[var(--teacher-muted)] font-medium"
                   />
                   <button
                     onClick={() => handleSaveSlotLink(slot)}
                     disabled={isSlotSaving}
-                    className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 text-xs font-black rounded-lg transition-all shadow-xs cursor-pointer interactive disabled:opacity-50 shrink-0 flex items-center gap-1"
+                    className="w-full min-[400px]:w-auto h-12 px-4 bg-[#F4C430] hover:bg-[#E5B520] active:scale-[0.98] text-[#111111] text-xs font-black rounded-xl transition-all shadow-xs cursor-pointer interactive disabled:opacity-50 shrink-0 flex items-center justify-center gap-1.5"
                     title={`Save link for ${subj}`}
                   >
                     {isSlotSaving ? (
                       <>
-                        <Loader2 size={12} className="animate-spin" />
+                        <Loader2 size={13} className="animate-spin" />
                         <span>Saving...</span>
                       </>
                     ) : (
                       <>
-                        <Check size={12} strokeWidth={3} />
+                        <Check size={13} strokeWidth={3} />
                         <span>Save Link</span>
                       </>
                     )}

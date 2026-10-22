@@ -9,36 +9,36 @@ interface StatusPillProps {
 export const StatusPill: React.FC<StatusPillProps> = ({ status }) => {
   const normalized = status.toLowerCase();
 
-  let styles = 'bg-[#F5F5F5] text-[#737373] border-[#E5E5E5]';
+  let styles = 'status-pill-neutral';
   let label = status;
 
   switch (normalized) {
     case 'present':
-      styles = 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]';
+      styles = 'status-pill-success';
       label = 'Present';
       break;
     case 'absent':
-      styles = 'bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]';
+      styles = 'status-pill-danger';
       label = 'Absent';
       break;
     case 'late':
-      styles = 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]';
+      styles = 'status-pill-warning';
       label = 'Late';
       break;
     case 'upcoming':
-      styles = 'bg-[#FEF9C3] text-[#854D0E] border-[#FEF08A]';
+      styles = 'status-pill-warning';
       label = 'Upcoming';
       break;
     case 'cancelled':
-      styles = 'bg-[#F5F5F5] text-[#737373] border-[#D4D4D4] line-through';
+      styles = 'status-pill-neutral line-through';
       label = 'Cancelled';
       break;
     case 'active':
-      styles = 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]';
+      styles = 'status-pill-success';
       label = 'Active';
       break;
     case 'inactive':
-      styles = 'bg-[#F5F5F5] text-[#737373] border-[#D4D4D4]';
+      styles = 'status-pill-neutral';
       label = 'Inactive';
       break;
   }

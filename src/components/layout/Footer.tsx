@@ -54,6 +54,9 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
       */}
       <footer
         className="w-full bg-[#F2C230] text-[#111111] rounded-t-[48px] sm:rounded-t-[64px] overflow-hidden pt-12 sm:pt-16 pb-0 relative shadow-[0_-12px_48px_rgba(242,194,48,0.22)]"
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
       >
         <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-12">
           {/* ── Top Section & Columns (4 columns on lg, 2 columns on tablet/mobile) ── */}
@@ -321,14 +324,27 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
         {/* ── Giant Full-Width "Scholario" Wordmark at bottom ── */}
         <div className="w-full overflow-hidden select-none pointer-events-none mt-6 sm:mt-10 -mb-2 sm:-mb-5 md:-mb-8 text-center leading-none">
           <span
-            className="inline-block text-[15.5vw] font-black tracking-[-0.04em] leading-[0.74] text-black/95 uppercase whitespace-nowrap"
+            className="inline-block text-[15.5vw] font-black tracking-[-0.04em] leading-[0.74] text-black/95 uppercase whitespace-nowrap wordmark-bottom-fade"
             style={{
               fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+              maskImage: 'linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%)',
             }}
           >
             SCHOLARIO
           </span>
         </div>
+
+        {/* ── Progressive blur & fade overlay strip at bottom edge ── */}
+        <div
+          aria-hidden="true"
+          className="absolute left-0 right-0 bottom-0 h-[56px] lg:h-[80px] pointer-events-none z-[2] footer-bottom-blur-strip"
+          style={{
+            background: 'linear-gradient(to top, rgba(242, 194, 48, 0.85) 0%, rgba(242, 194, 48, 0) 100%)',
+            maskImage: 'linear-gradient(to top, #000 0%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to top, #000 0%, transparent 100%)',
+          }}
+        />
       </footer>
 
       {/* Global Modals for About & Contact */}

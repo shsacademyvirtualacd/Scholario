@@ -67,7 +67,7 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+    <div className="min-h-screen teacher-page flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -124,32 +124,38 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         <AnnouncementBanner />
 
         {/* Top bar */}
-        <header className="sticky top-0 z-50 h-16 bg-white border-b border-[#E5E5E5] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-50 h-14 sm:h-16 teacher-card border-b border-[var(--teacher-card-border)] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
+          <div className="flex items-center gap-2">
             <button
-              className="lg:hidden p-2 rounded-lg hover:bg-[#F5F5F5] transition-colors text-[#111111] interactive"
+              className="lg:hidden w-11 h-11 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-[var(--teacher-text)] interactive"
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Toggle navigation menu"
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
-
           </div>
 
-          <div className="flex items-center gap-2">
-            <ThemeToggleSwitch variant="compact" />
-            <NotificationBell />
-            <ProfileDropdownMenu
-              profile={profile}
-              role="teacher"
-              onSignOut={handleSignOut}
-              isSigningOut={isSigningOut}
-              avatarSize="md"
-            />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <div className="w-11 h-11 flex items-center justify-center">
+              <ThemeToggleSwitch variant="compact" />
+            </div>
+            <div className="w-11 h-11 flex items-center justify-center">
+              <NotificationBell />
+            </div>
+            <div className="w-11 h-11 flex items-center justify-center">
+              <ProfileDropdownMenu
+                profile={profile}
+                role="teacher"
+                onSignOut={handleSignOut}
+                isSigningOut={isSigningOut}
+                avatarSize="md"
+              />
+            </div>
           </div>
         </header>
 
         {/* Page body */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden page-transition">
+        <main className="flex-1 p-4 sm:p-6 space-y-3 sm:space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden page-transition pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {children}
         </main>
       </div>

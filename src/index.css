@@ -1600,3 +1600,159 @@ html.dark [data-chat-view] p.modal-contact-name {
   display: none !important;
 }
 
+/* ==========================================================================
+   Scholario Footer Bottom Wordmark Fade & Progressive Blur Strip
+   - Vertical gradient mask on wordmark: 100% solid down to 55%, fading to transparent at 100%
+   - Progressive blur strip overlay pinned to bottom edge with backdrop-filter: blur(6px)
+   - Fallback when backdrop-filter is not supported: keeps only the gold gradient
+   - Light and dark mode: stays gold (#F2C230) in both modes
+   ========================================================================== */
+.wordmark-bottom-fade {
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
+
+.footer-bottom-blur-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(to top, rgba(242, 194, 48, 0.85) 0%, rgba(242, 194, 48, 0) 100%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .footer-bottom-blur-strip {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ==========================================================================
+   Teacher Dashboard Theme Tokens (WCAG AA Compliant)
+   - Light: page #FAFAF9, card rgba(255,255,255,0.85) border rgba(0,0,0,0.08), text #111, muted #5B5B5B
+   - Dark: page #0E0E0E, card rgba(255,255,255,0.06) border rgba(255,255,255,0.14), text #F5F5F5, muted rgba(255,255,255,0.65)
+   - Status:
+     - Success: light #E6F6EC / #0F6B35, dark rgba(34,197,94,0.16) / #6EE7A0
+     - Warning: light #FFF4D6 / #7A5200, dark rgba(242,194,48,0.16) / #FFD866
+     - Danger: light #FDE8E8 / #9B1C1C, dark rgba(239,68,68,0.16) / #FCA5A5
+     - Neutral: light #F0F0F0 / #444444, dark rgba(255,255,255,0.08) / rgba(255,255,255,0.75)
+   ========================================================================== */
+:root {
+  --teacher-page-bg: #FAFAF9;
+  --teacher-card-bg: rgba(255, 255, 255, 0.85);
+  --teacher-card-border: rgba(0, 0, 0, 0.08);
+  --teacher-text: #111111;
+  --teacher-muted: #5B5B5B;
+  --teacher-gold-text: #8A6A00;
+
+  --status-success-bg: #E6F6EC;
+  --status-success-text: #0F6B35;
+  --status-warning-bg: #FFF4D6;
+  --status-warning-text: #7A5200;
+  --status-danger-bg: #FDE8E8;
+  --status-danger-text: #9B1C1C;
+  --status-neutral-bg: #F0F0F0;
+  --status-neutral-text: #444444;
+}
+
+html.dark {
+  --teacher-page-bg: #0E0E0E;
+  --teacher-card-bg: rgba(255, 255, 255, 0.06);
+  --teacher-card-border: rgba(255, 255, 255, 0.14);
+  --teacher-text: #F5F5F5;
+  --teacher-muted: rgba(255, 255, 255, 0.65);
+  --teacher-gold-text: #F4C430;
+
+  --status-success-bg: rgba(34, 197, 94, 0.16);
+  --status-success-text: #6EE7A0;
+  --status-warning-bg: rgba(242, 194, 48, 0.16);
+  --status-warning-text: #FFD866;
+  --status-danger-bg: rgba(239, 68, 68, 0.16);
+  --status-danger-text: #FCA5A5;
+  --status-neutral-bg: rgba(255, 255, 255, 0.08);
+  --status-neutral-text: rgba(255, 255, 255, 0.75);
+}
+
+.teacher-page {
+  background-color: var(--teacher-page-bg);
+  color: var(--teacher-text);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.teacher-card {
+  background-color: var(--teacher-card-bg);
+  border: 1px solid var(--teacher-card-border);
+  color: var(--teacher-text);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+
+.teacher-text {
+  color: var(--teacher-text);
+}
+
+.teacher-muted {
+  color: var(--teacher-muted);
+}
+
+.status-pill-success {
+  background-color: var(--status-success-bg) !important;
+  color: var(--status-success-text) !important;
+  border-color: transparent !important;
+}
+
+.status-pill-warning {
+  background-color: var(--status-warning-bg) !important;
+  color: var(--status-warning-text) !important;
+  border-color: transparent !important;
+}
+
+.status-pill-danger {
+  background-color: var(--status-danger-bg) !important;
+  color: var(--status-danger-text) !important;
+  border-color: transparent !important;
+}
+
+.status-pill-neutral {
+  background-color: var(--status-neutral-bg) !important;
+  color: var(--status-neutral-text) !important;
+  border-color: transparent !important;
+}
+
+/* Ensure Gold Buttons and Pills always use Dark Text (#111) in both themes */
+.badge-gold,
+.btn-gold,
+button.bg-\[\#F4C430\],
+button.bg-amber-400,
+.bg-gold-btn {
+  color: #111111 !important;
+}
+
+/* Animation stagger for cards */
+@media (prefers-reduced-motion: no-preference) {
+  .teacher-stagger-1 { animation: teacherFadeUp 300ms ease-out 0ms both; }
+  .teacher-stagger-2 { animation: teacherFadeUp 300ms ease-out 50ms both; }
+  .teacher-stagger-3 { animation: teacherFadeUp 300ms ease-out 100ms both; }
+  .teacher-stagger-4 { animation: teacherFadeUp 300ms ease-out 150ms both; }
+}
+
+@keyframes teacherFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+

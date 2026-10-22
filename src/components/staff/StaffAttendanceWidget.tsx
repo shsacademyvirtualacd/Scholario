@@ -191,32 +191,26 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
   return (
     <div className="space-y-6">
       {/* ── Main Punch & Shift Card ── */}
-      <div className="bg-white border border-[#E5E5E5] rounded-2xl shadow-xs overflow-hidden">
+      <div className="teacher-card rounded-2xl shadow-xs overflow-hidden">
         {/* Card Header Strip */}
-        <div className="px-6 py-4 bg-[#FAFAFA] border-b border-[#E5E5E5] flex flex-wrap items-center justify-between gap-3">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--teacher-card-border)] flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-bold shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-[#111111] text-[#F4C430] flex items-center justify-center font-bold shadow-xs shrink-0">
               <Clock size={20} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-[#111111]">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-[18px] font-extrabold text-[var(--teacher-text)]">
                   {activeShift?.shift_name || 'Staff Attendance & Timecard'}
                 </h3>
                 {activeShift && (
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                      activeShift.shift_type === 'broken' || activeShift.shift_type === 'split'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md status-pill-neutral">
                     {activeShift.shift_type} shift
                     {activeSegment && ` (${activeSegment.start_time} - ${activeSegment.end_time})`}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[#737373] mt-0.5">
+              <p className="text-[13px] text-[var(--teacher-muted)] line-clamp-2 mt-0.5">
                 Login & session-based attendance • Remote Pakistan faculty & staff
               </p>
             </div>
@@ -226,51 +220,52 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
             type="button"
             onClick={loadData}
             disabled={loading}
-            className="btn btn-secondary text-xs flex items-center gap-1.5 py-1.5 px-3"
+            className="h-11 px-3.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl border border-[var(--teacher-card-border)] bg-[var(--teacher-card-bg)] text-[var(--teacher-text)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             title="Refresh timecard"
+            aria-label="Refresh timecard"
           >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
         </div>
 
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center">
             {/* Left: Punch Button & Live Ticker */}
-            <div className="lg:col-span-6 flex flex-col items-center justify-center text-center p-6 bg-[#FAFAFA] rounded-2xl border border-[#EBEBEB]">
+            <div className="lg:col-span-6 flex flex-col items-center justify-center text-center p-5 sm:p-6 rounded-2xl border border-[var(--teacher-card-border)] bg-black/[0.02] dark:bg-white/[0.03]">
               {/* Presence Pill */}
               <div className="mb-4">
                 {isClockedIn ? (
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                  <div className="status-pill-neutral text-[13px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block"></span>
                     <span>ONLINE • CURRENTLY CLOCKED IN</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-200 text-neutral-700 text-xs font-semibold">
+                  <div className="status-pill-neutral text-[13px] font-semibold px-3 py-1 rounded-full inline-flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-neutral-400"></span>
                     <span>OFF DUTY • CLOCKED OUT</span>
                   </div>
                 )}
               </div>
 
-              {/* Timer */}
-              <div className="mb-6">
-                <div className="text-4xl sm:text-5xl font-mono font-black tracking-tight text-[#111111]">
+              {/* Timer (40px tabular numbers) */}
+              <div className="mb-5 sm:mb-6">
+                <div className="text-[40px] font-mono font-extrabold tracking-tight tabular-nums text-[var(--teacher-text)]">
                   {isClockedIn ? formatDurationTimer(elapsedSeconds) : '00:00:00'}
                 </div>
-                <p className="text-xs text-[#737373] font-medium mt-1">
+                <p className="text-[14px] text-[var(--teacher-muted)] font-medium mt-1">
                   {isClockedIn ? 'Active shift duration in progress' : 'Clock in to start your work session'}
                 </p>
               </div>
 
-              {/* Action Button */}
+              {/* Action Button: 56px solid GOLD with dark text */}
               {isClockedIn ? (
                 <button
                   type="button"
                   id="staff-clock-out-btn"
                   onClick={handleClockOut}
                   disabled={punchLoading}
-                  className="w-full max-w-xs py-3.5 px-6 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+                  className="w-full max-w-sm h-14 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
                 >
                   <Square size={16} fill="currentColor" />
                   <span>{punchLoading ? 'Processing...' : 'Clock Out Now'}</span>
@@ -281,21 +276,21 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                   id="staff-clock-in-btn"
                   onClick={handleClockIn}
                   disabled={punchLoading}
-                  className="w-full max-w-xs py-3.5 px-6 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] font-bold text-sm shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+                  className="w-full max-w-sm h-14 rounded-xl bg-[#F4C430] hover:bg-[#E5B520] text-[#111111] font-black text-sm shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
                 >
-                  <Play size={16} fill="currentColor" />
+                  <Play size={18} fill="#111111" />
                   <span>{punchLoading ? 'Processing...' : 'Clock In Now'}</span>
                 </button>
               )}
 
-              {/* Notes Input */}
-              <div className="w-full max-w-xs mt-4">
+              {/* Notes Input: 48px tall */}
+              <div className="w-full max-w-sm mt-3.5">
                 <input
                   type="text"
                   value={punchNote}
                   onChange={(e) => setPunchNote(e.target.value)}
                   placeholder="Optional note for this punch..."
-                  className="w-full text-xs px-3 py-2 bg-white border border-[#E5E5E5] rounded-lg text-[#111111] placeholder:text-[#A3A3A3] focus:outline-hidden focus:border-[#111111]"
+                  className="w-full h-12 text-xs sm:text-sm px-3.5 bg-white dark:bg-zinc-800 border border-[var(--teacher-card-border)] rounded-xl text-[var(--teacher-text)] placeholder:text-[var(--teacher-muted)] focus:outline-hidden focus:border-[#F4C430]"
                 />
               </div>
 
@@ -303,12 +298,12 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
               {isClockedIn && (
                 <div className="mt-4 flex items-center gap-2 text-xs">
                   {isIdle ? (
-                    <span className="flex items-center gap-1.5 text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                    <span className="flex items-center gap-1.5 status-pill-warning px-2.5 py-1 rounded-md font-bold">
                       <AlertTriangle size={13} />
                       <span>Idle session warning ({idleMinutes}m inactive)</span>
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1.5 text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                    <span className="flex items-center gap-1.5 status-pill-success px-2.5 py-1 rounded-md font-semibold">
                       <CheckCircle2 size={13} />
                       <span>Session Active & Verified {isTabVisible ? '• In Focus' : '• Tab in Background'}</span>
                     </span>
@@ -318,16 +313,16 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
             </div>
 
             {/* Right: Broken / Split Shift Segments & Daily Summary */}
-            <div className="lg:col-span-6 space-y-5">
+            <div className="lg:col-span-6 space-y-4 sm:space-y-5">
               {/* Broken / Split Shift Segments */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-[#737373] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-[12px] font-black uppercase tracking-wider text-[var(--teacher-muted)] flex items-center gap-1.5">
                     <Layers size={13} />
                     <span>Scheduled Shift Segments</span>
                   </span>
                   {activeShift?.grace_period_minutes && (
-                    <span className="text-[11px] text-[#737373]">
+                    <span className="text-[11px] text-[var(--teacher-muted)] font-semibold">
                       Grace: {activeShift.grace_period_minutes}m
                     </span>
                   )}
@@ -347,10 +342,10 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                           onClick={() => !isClockedIn && setSelectedSegmentIndex(seg.segment_index)}
                           className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                             isCurrentPunch
-                              ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                              ? 'status-pill-success border-emerald-400'
                               : isSelected && !isClockedIn
-                              ? 'bg-amber-50/80 border-amber-300 text-amber-950 cursor-pointer'
-                              : 'bg-white border-[#E5E5E5] text-[#111111] hover:border-[#D4D4D8] cursor-pointer'
+                              ? 'status-pill-warning border-amber-400 cursor-pointer'
+                              : 'teacher-card hover:border-[var(--teacher-muted)] cursor-pointer'
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -360,7 +355,7 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                                   ? 'bg-emerald-600 text-white'
                                   : isCompleted
                                   ? 'bg-[#111111] text-[#F4C430]'
-                                  : 'bg-[#F4F4F5] text-[#71717A]'
+                                  : 'bg-black/5 dark:bg-white/10 text-[var(--teacher-muted)]'
                               }`}
                             >
                               {seg.segment_index + 1}
@@ -374,7 +369,7 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-[#737373]">
+                              <div className="text-[11px] text-[var(--teacher-muted)]">
                                 {seg.start_time} – {seg.end_time}
                               </div>
                             </div>
@@ -383,7 +378,7 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                           <div className="text-right">
                             {segLogs.length > 0 ? (
                               <div>
-                                <span className="text-xs font-bold text-[#111111]">
+                                <span className="text-xs font-bold text-[var(--teacher-text)]">
                                   {formatDurationHuman(
                                     segLogs.reduce((acc, curr) => {
                                       if (curr.clock_out_at) {
@@ -400,12 +395,12 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                                     }, 0)
                                   )}
                                 </span>
-                                <div className="text-[10px] text-emerald-700 font-semibold">
+                                <div className="text-[10px] text-emerald-600 font-semibold">
                                   {segLogs.some((l) => l.status === 'late') ? 'Late' : 'Logged'}
                                 </div>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-[#A3A3A3]">Unclocked</span>
+                              <span className="text-[11px] text-[var(--teacher-muted)]">Unclocked</span>
                             )}
                           </div>
                         </div>
@@ -413,38 +408,41 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                     })}
                   </div>
                 ) : (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
-                    <p className="font-semibold">No custom shift assigned today.</p>
-                    <p className="text-[11px] text-amber-800/80 mt-0.5">
-                      Default regular shift (09:00 – 17:00) applies automatically.
-                    </p>
+                  <div className="p-3.5 status-pill-warning rounded-xl text-[14px] flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">No custom shift assigned today.</p>
+                      <p className="text-xs opacity-90 mt-0.5">
+                        Default regular shift (09:00 – 17:00) applies automatically.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Day's Cumulative Hours Strip */}
-              <div className="p-4 bg-[#F8F9FA] border border-[#E9EBEF] rounded-xl flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-[#737373] font-semibold">Total Hours Worked Today</div>
-                  <div className="text-xl font-black text-[#111111]">
+              {/* Day's Cumulative Hours Strip: Equal tiles side-by-side with 24px bold values and 13px muted labels */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="teacher-card p-3.5 sm:p-4 rounded-xl">
+                  <div className="text-[13px] text-[var(--teacher-muted)] font-semibold">Total Hours Worked Today</div>
+                  <div className="text-[24px] font-extrabold text-[var(--teacher-text)] mt-0.5">
                     {formatDurationHuman(todayTotalSeconds)}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs text-[#737373] font-semibold">Today's Punches</div>
-                  <div className="text-sm font-black text-[#111111]">
-                    {todayLogs.length} segment {todayLogs.length === 1 ? 'cycle' : 'cycles'}
+                <div className="teacher-card p-3.5 sm:p-4 rounded-xl">
+                  <div className="text-[13px] text-[var(--teacher-muted)] font-semibold">Today's Punches</div>
+                  <div className="text-[24px] font-extrabold text-[var(--teacher-text)] mt-0.5">
+                    {todayLogs.length} <span className="text-sm font-semibold text-[var(--teacher-muted)]">{todayLogs.length === 1 ? 'cycle' : 'cycles'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Session Audit Meta (IP & Device) */}
-              <div className="text-[11px] text-[#737373] flex flex-wrap items-center gap-x-4 gap-y-1 p-2 bg-[#FAFAFA] rounded-lg border border-[#F0F0F0]">
-                <span className="flex items-center gap-1">
+              {/* Session Audit Meta: Two status pills in a wrapping row */}
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <span className="status-pill-neutral text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
                   <Globe size={12} className="text-[#38BDF8]" />
-                  <span>Remote Location: Verified via login session</span>
+                  <span>Remote Location: Verified</span>
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="status-pill-neutral text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
                   <Laptop size={12} className="text-[#A3A3A3]" />
                   <span>Browser Focus: {isWindowFocused ? 'Active' : 'Unfocused'}</span>
                 </span>
@@ -456,18 +454,96 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
 
       {/* ── Personal Attendance History ── */}
       {standalone && (
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl shadow-xs overflow-hidden">
-          <div className="px-6 py-4 bg-[#FAFAFA] border-b border-[#E5E5E5] flex items-center justify-between">
-            <h4 className="text-sm font-black text-[#111111] flex items-center gap-2">
+        <div className="teacher-card rounded-2xl shadow-xs overflow-hidden">
+          <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--teacher-card-border)] flex items-center justify-between">
+            <h4 className="text-sm font-black text-[var(--teacher-text)] flex items-center gap-2">
               <Calendar size={15} />
               <span>My Recent Timecard & Attendance Logs</span>
             </h4>
-            <span className="text-xs text-[#737373]">Showing last {recentLogs.length} records</span>
+            <span className="text-xs text-[var(--teacher-muted)] font-medium">Showing last {recentLogs.length} records</span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Stacked Cards (<640px) */}
+          <div className="block sm:hidden divide-y divide-[var(--teacher-card-border)]">
+            {recentLogs.length === 0 ? (
+              <div className="text-center py-8 text-[var(--teacher-muted)] text-xs">
+                No attendance punches recorded yet.
+              </div>
+            ) : (
+              recentLogs.map((log) => {
+                const inDate = new Date(log.clock_in_at);
+                const durationSec = log.clock_out_at
+                  ? Math.floor((new Date(log.clock_out_at).getTime() - inDate.getTime()) / 1000)
+                  : null;
+
+                const dateStr = inDate.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                });
+                const inTimeStr = inDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const outTimeStr = log.clock_out_at
+                  ? new Date(log.clock_out_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                  : 'In Progress...';
+
+                const hasNote = log.notes && log.notes.trim() !== '' && log.notes.trim() !== '—';
+
+                return (
+                  <div key={log.id} className="p-3.5 space-y-2">
+                    {/* Row 1: Date & Status */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-sm text-[var(--teacher-text)]">{dateStr}</span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                          log.status === 'present'
+                            ? 'status-pill-success'
+                            : log.status === 'late'
+                            ? 'status-pill-warning'
+                            : log.status === 'auto_clocked_out'
+                            ? 'status-pill-danger'
+                            : 'status-pill-neutral'
+                        }`}
+                      >
+                        {log.status === 'auto_clocked_out' ? 'Auto Clocked Out' : log.status}
+                      </span>
+                    </div>
+
+                    {/* Row 2: Segment X muted */}
+                    <div className="text-xs text-[var(--teacher-muted)] font-medium">
+                      Segment {log.segment_index + 1}
+                    </div>
+
+                    {/* Row 3: Clock in -> Clock out & duration */}
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-medium text-[var(--teacher-text)] flex items-center gap-1.5">
+                        <span>Clock in {inTimeStr}</span>
+                        <span className="text-[var(--teacher-muted)]">→</span>
+                        <span className={log.clock_out_at ? '' : 'text-emerald-600 font-bold animate-pulse'}>Clock out {outTimeStr}</span>
+                      </span>
+                      <span className="font-extrabold text-[var(--teacher-gold-text)]">
+                        {durationSec !== null ? formatDurationHuman(durationSec) : '—'}
+                      </span>
+                    </div>
+
+                    {/* Row 4: Notes (tap to expand, 2 lines max) */}
+                    {hasNote && (
+                      <div
+                        className="text-[13px] text-[var(--teacher-muted)] bg-black/[0.03] dark:bg-white/[0.04] p-2 rounded-lg line-clamp-2 hover:line-clamp-none cursor-pointer transition-all"
+                        title="Tap to toggle full note"
+                      >
+                        {log.notes}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop & Tablet Table (>=640px) */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#F8F8F8] border-b border-[#E5E5E5] text-[#737373] font-bold uppercase text-[10px] tracking-wider">
+              <thead className="bg-black/[0.02] dark:bg-white/[0.03] border-b border-[var(--teacher-card-border)] text-[var(--teacher-muted)] font-bold uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Segment</th>
@@ -478,10 +554,10 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                   <th className="py-3 px-4">Session Notes</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F0F0F0]">
+              <tbody className="divide-y divide-[var(--teacher-card-border)]">
                 {recentLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-[#A3A3A3]">
+                    <td colSpan={7} className="text-center py-8 text-[var(--teacher-muted)]">
                       No attendance punches recorded yet.
                     </td>
                   </tr>
@@ -495,21 +571,21 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                       : null;
 
                     return (
-                      <tr key={log.id} className="hover:bg-[#FAFAFA] transition-colors">
-                        <td className="py-3 px-4 font-semibold text-[#111111]">
+                      <tr key={log.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3 px-4 font-semibold text-[var(--teacher-text)]">
                           {inDate.toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
                           })}
                         </td>
-                        <td className="py-3 px-4 text-[#52525B]">
+                        <td className="py-3 px-4 text-[var(--teacher-muted)] font-medium">
                           Segment {log.segment_index + 1}
                         </td>
-                        <td className="py-3 px-4 font-mono font-medium text-[#111111]">
+                        <td className="py-3 px-4 font-mono font-medium text-[var(--teacher-text)]">
                           {inDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </td>
-                        <td className="py-3 px-4 font-mono font-medium text-[#111111]">
+                        <td className="py-3 px-4 font-mono font-medium text-[var(--teacher-text)]">
                           {log.clock_out_at ? (
                             new Date(log.clock_out_at).toLocaleTimeString('en-US', {
                               hour: '2-digit',
@@ -519,33 +595,33 @@ export const StaffAttendanceWidget: React.FC<StaffAttendanceWidgetProps> = ({
                             <span className="text-emerald-600 font-bold animate-pulse">In Progress...</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 font-semibold text-[#111111]">
+                        <td className="py-3 px-4 font-semibold text-[var(--teacher-text)]">
                           {durationSec !== null ? formatDurationHuman(durationSec) : '—'}
                         </td>
                         <td className="py-3 px-4">
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                               log.status === 'present'
-                                ? 'bg-emerald-100 text-emerald-800'
+                                ? 'status-pill-success'
                                 : log.status === 'late'
-                                ? 'bg-amber-100 text-amber-800'
+                                ? 'status-pill-warning'
                                 : log.status === 'auto_clocked_out'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-gray-100 text-gray-800'
+                                ? 'status-pill-danger'
+                                : 'status-pill-neutral'
                             }`}
                           >
                             {log.status === 'auto_clocked_out' ? 'Auto Clocked Out' : log.status}
                           </span>
                           {log.idle_flagged && (
                             <span
-                              className="ml-1.5 inline-flex items-center text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
+                              className="ml-1.5 inline-flex items-center text-[10px] font-bold status-pill-warning px-1.5 py-0.5 rounded"
                               title="Session had prolonged idle time"
                             >
                               Idle Flagged
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-[#737373] truncate max-w-xs">
+                        <td className="py-3 px-4 text-[var(--teacher-muted)] truncate max-w-xs">
                           {log.notes || '—'}
                         </td>
                       </tr>
