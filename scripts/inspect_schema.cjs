@@ -1,6 +1,10 @@
 const { Client } = require('pg');
 
-const dbUrl = process.env.SUPABASE_DB_URL || 'postgresql://postgres:Marcelmmm23155%40@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres';
+const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("Missing SUPABASE_DB_URL or DATABASE_URL in environment.");
+  process.exit(1);
+}
 
 async function run() {
   const client = new Client({ connectionString: dbUrl });

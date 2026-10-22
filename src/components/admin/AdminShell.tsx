@@ -32,6 +32,9 @@ import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 import { NotificationBell } from '../common/NotificationBell';
 import { AnnouncementBanner } from '../common/AnnouncementBanner';
 import { APP_VERSION } from '../../utils/version';
+import PortalHeader from '../common/PortalHeader';
+import PortalDrawer from '../common/PortalDrawer';
+import GlobalSearchModal from '../common/GlobalSearchModal';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -137,6 +140,33 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
 
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [pendingVisibilityCount, setPendingVisibilityCount] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const drawerNavGroups = React.useMemo(() => {
+    return NAV_GROUPS.map((group) => ({
+      title: group.title,
+      items: group.items.map((item) => ({
+        icon: item.icon,
+        label: item.label,
+        path: item.path,
+        disabled: item.disabled,
+        badge:
+          item.path === '/admin/chat' && unreadCount > 0
+            ? unreadCount > 99
+              ? '99+'
+              : unreadCount
+            : item.path === '/admin/visibility-requests' && pendingVisibilityCount > 0
+            ? pendingVisibilityCount > 99
+              ? '99+'
+              : pendingVisibilityCount
+            : undefined,
+        badgeColor:
+          item.path === '/admin/visibility-requests'
+            ? ('amber' as const)
+            : ('gold' as const),
+      })),
+    }));
+  }, [unreadCount, pendingVisibilityCount]);
 
   useEffect(() => {
     let isMounted = true;
@@ -213,26 +243,30 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0E0E10] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-      {/* Mobile drawer backdrop overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/45 backdrop-blur-xs z-40 sm:hidden animate-in fade-in duration-200"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* ── Mobile Navigation Drawer ── */}
+      <PortalDrawer
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        role="admin"
+        profile={profile}
+        navGroups={drawerNavGroups}
+        onOpenSearch={() => setSearchOpen(true)}
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+      />
 
-      {/* ── Sidebar (Icon rail on tablet 640-1023px, slide-in drawer on mobile <640px, full collapsible on desktop) ── */}
+      {/* ── Tablet Icon Rail (640-1023px) & Desktop Sidebar (>=1024px) ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-white dark:bg-[#111111] border-r border-[var(--admin-card-border)] dark:border-neutral-800 flex flex-col transition-all duration-250 ease-out sm:transition-all sm:duration-300 rounded-r-[28px] sm:rounded-none shadow-2xl sm:shadow-none ${
-          sidebarOpen ? 'translate-x-0 visible pointer-events-auto w-[min(86vw,320px)]' : '-translate-x-full invisible sm:visible sm:translate-x-0 pointer-events-none sm:pointer-events-auto sm:w-16'
-        } ${isRailCollapsed ? 'lg:w-16' : 'lg:w-64'}`}
+        className={`hidden sm:flex fixed inset-y-0 left-0 z-40 bg-white dark:bg-[#111111] border-r border-[var(--admin-card-border)] dark:border-neutral-800 flex-col transition-all duration-300 ${
+          isRailCollapsed ? 'sm:w-16 lg:w-16' : 'sm:w-16 lg:w-64'
+        }`}
       >
         {/* Top Header: Logo + Collapse Toggle */}
         <div className="h-14 sm:h-16 flex items-center justify-between px-3.5 border-b border-[var(--admin-card-border)] dark:border-neutral-800/80 shrink-0">
-          <div className={`${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center gap-2 overflow-hidden`}>
+          <div className={`${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center gap-2 overflow-hidden`}>
             <Logo size="sm" variant="full" />
           </div>
-          <div className={`${sidebarOpen ? 'hidden' : isRailCollapsed ? 'flex' : 'flex lg:hidden'} mx-auto`}>
+          <div className={`${isRailCollapsed ? 'flex' : 'flex lg:hidden'} mx-auto`}>
             <Logo size="sm" variant="icon" />
           </div>
 
@@ -240,33 +274,23 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           <button
             type="button"
             onClick={toggleRailCollapse}
-            className="hidden lg:flex p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+            className="hidden lg:flex p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
             title={isRailCollapsed ? 'Expand sidebar' : 'Collapse to icon rail'}
             aria-label={isRailCollapsed ? 'Expand sidebar' : 'Collapse to icon rail'}
           >
             {isRailCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
           </button>
-
-          {/* Mobile Close Button */}
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(false)}
-            className="sm:hidden w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800/80 transition-colors cursor-pointer"
-            aria-label="Close navigation drawer"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* Small Admin Panel Badge */}
-        <div className={`px-4 py-2.5 border-b border-[var(--admin-card-border)] dark:border-neutral-800/60 ${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between`}>
+        <div className={`px-4 py-2.5 border-b border-[var(--admin-card-border)] dark:border-neutral-800/60 ${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between`}>
           <span className="text-xs font-semibold text-[#8A6A00] dark:text-[#F2C230] bg-[rgba(242,194,48,0.16)] px-2.5 py-0.5 rounded-md">
             Admin Panel
           </span>
           <span className="text-xs text-[var(--admin-muted)] dark:text-neutral-400 font-medium">{APP_VERSION}</span>
         </div>
 
-        {/* ── Independent Scrolling Navigation (Sage, Prices, Fees always reachable) ── */}
+        {/* Scrolling Navigation */}
         <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 min-h-0 hide-scrollbar">
           {NAV_GROUPS.map((group, groupIdx) => {
             const hasActiveChild = group.items.some((item) => !item.disabled && isPathActive(item.path));
@@ -274,11 +298,11 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
 
             return (
               <div key={groupIdx} className="space-y-1">
-                {/* Group Heading (only in expanded mode) */}
+                {/* Group Heading (only in expanded desktop mode) */}
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.title)}
-                  className={`w-full ${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between px-3 pt-1.5 pb-1 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)] dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer`}
+                  className={`w-full ${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between px-3 pt-1.5 pb-1 text-xs font-bold uppercase tracking-wider text-[var(--admin-muted)] dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors cursor-pointer`}
                 >
                   <span>{group.title}</span>
                   <div className={`transition-transform duration-200 ${isCollapsed ? '' : 'rotate-0'}`}>
@@ -287,7 +311,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                 </button>
 
                 {/* Group Nav Items */}
-                {(!isCollapsed || sidebarOpen) && (
+                {!isCollapsed && (
                   <div className="space-y-0.5">
                     {group.items.map(({ icon: Icon, label, path, disabled }) => {
                       const isActive = !disabled && isPathActive(path);
@@ -301,10 +325,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                           disabled={disabled}
                           title={label}
                           className={`w-full flex items-center rounded-xl font-semibold transition-all relative group cursor-pointer ${
-                            sidebarOpen 
-                              ? 'h-[52px] min-h-[52px] justify-between px-3 text-[15px]' 
-                              : isRailCollapsed 
-                              ? 'min-h-[44px] justify-center p-2.5 text-xs' 
+                            isRailCollapsed
+                              ? 'min-h-[44px] justify-center p-2.5 text-xs'
                               : 'min-h-[44px] justify-center sm:p-2.5 lg:h-auto lg:min-h-[44px] lg:justify-between lg:px-3 lg:py-2.5 text-xs'
                           } ${
                             isActive
@@ -314,16 +336,16 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <Icon
-                              size={sidebarOpen ? 22 : 20}
+                              size={20}
                               className={`shrink-0 transition-colors ${
                                 isActive ? 'text-[#8A6A00] dark:text-[#F2C230]' : 'text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white'
                               }`}
                             />
-                            <span className={`truncate tracking-tight ${sidebarOpen ? 'inline font-semibold' : isRailCollapsed ? 'hidden' : 'hidden lg:inline'}`}>{label}</span>
+                            <span className={`truncate tracking-tight ${isRailCollapsed ? 'hidden' : 'hidden lg:inline'}`}>{label}</span>
                           </div>
 
-                          {/* Right Badges: unread counts or "Soon" tag */}
-                          <div className={`items-center gap-1.5 shrink-0 ml-2 ${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
+                          {/* Right Badges */}
+                          <div className={`items-center gap-1.5 shrink-0 ml-2 ${isRailCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
                             {isChat && unreadCount > 0 && !disabled && (
                               <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#F2C230] text-neutral-900 leading-none">
                                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -351,18 +373,6 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
             );
           })}
         </nav>
-
-        {/* Pinned Sign Out inside Drawer on Mobile */}
-        <div className="p-3 border-t border-[var(--admin-card-border)] dark:border-neutral-800/80 shrink-0 sm:hidden">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className="w-full h-[52px] flex items-center justify-center gap-2 rounded-xl text-[15px] font-bold status-pill-danger transition-colors cursor-pointer"
-          >
-            <span>{isSigningOut ? 'Signing out...' : 'Sign Out'}</span>
-          </button>
-        </div>
       </aside>
 
       {/* ── Main Layout Container ── */}
@@ -374,48 +384,30 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
         {/* Site Announcement Banner */}
         <AnnouncementBanner />
 
-        {/* Top Header Bar: 56px sticky glass on mobile, 64px on tablet/desktop */}
-        <header className="sticky top-0 z-30 h-14 sm:h-16 backdrop-blur-md bg-white/85 dark:bg-[#111111]/85 border-b border-[var(--admin-card-border)] dark:border-neutral-800/80 flex items-center justify-between px-3 sm:px-6 py-1.5 sm:py-2 pt-[calc(0.375rem+env(safe-area-inset-top))] sm:pt-2 shrink-0 max-w-full overflow-visible">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            {/* Hamburger for mobile with >= 44px touch target */}
-            <button
-              type="button"
-              className="sm:hidden w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label="Toggle navigation menu"
-            >
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-            {/* Mobile Header Title */}
-            <span className="sm:hidden font-bold text-[17px] text-neutral-900 dark:text-neutral-100 truncate">
-              {getPageTitle(location.pathname)}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center">
-              <NotificationBell />
-            </div>
-            <div className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center">
-              <ThemeToggleSwitch variant="compact" />
-            </div>
-            <div className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center">
-              <ProfileDropdownMenu
-                profile={profile}
-                role="admin"
-                onSignOut={handleSignOut}
-                isSigningOut={isSigningOut}
-                avatarSize="md"
-              />
-            </div>
-          </div>
-        </header>
+        {/* ── Shared Unified Portal Header ── */}
+        <PortalHeader
+          role="admin"
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          onOpenSearch={() => setSearchOpen(true)}
+          profile={profile}
+          onSignOut={handleSignOut}
+          isSigningOut={isSigningOut}
+        />
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] space-y-6 overflow-y-auto overflow-x-hidden admin-page max-w-full">
           {children}
         </main>
       </div>
+
+      {/* ── Global Search Modal ── */}
+      <GlobalSearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        role="admin"
+        onSignOut={handleSignOut}
+      />
     </div>
   );
 };

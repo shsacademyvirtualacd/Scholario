@@ -1,7 +1,11 @@
 import pg from 'pg';
 const { Client } = pg;
 
-const DB_URL = 'postgresql://postgres:Marcelmmm23155@@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres';
+const DB_URL = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!DB_URL) {
+  console.error("Missing SUPABASE_DB_URL or DATABASE_URL in environment.");
+  process.exit(1);
+}
 
 const client = new Client({
   connectionString: DB_URL,

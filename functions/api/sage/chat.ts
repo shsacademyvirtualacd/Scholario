@@ -36,7 +36,7 @@ const CORS_HEADERS = {
 };
 
 const DEFAULT_SUPABASE_URL = 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Z3J4amx5cmZ6b2p2aXJraGRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNTc3OTksImV4cCI6MjA5ODkzMzc5OX0.ggAT2JiBTg6VG5tbZNnjkig7F73JE0ZzPl_145yuow4';
+const DEFAULT_SUPABASE_KEY = 'placeholder-anon-key';
 
 export async function onRequestOptions(): Promise<Response> {
   return new Response(null, {

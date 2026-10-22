@@ -1,6 +1,10 @@
 import pg from 'pg';
 
-const DB_URL = 'postgresql://postgres.rxgrxjlyrfzojvirkhdc:Marcelmmm23155@@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres';
+const DB_URL = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!DB_URL) {
+  console.error("Missing SUPABASE_DB_URL or DATABASE_URL in environment.");
+  process.exit(1);
+}
 
 const client = new pg.Client({
   connectionString: DB_URL,

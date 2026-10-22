@@ -1,6 +1,10 @@
 import { Client } from 'pg';
 
-const connectionString = 'postgresql://postgres:Marcelmmm23155@@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres';
+const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("Missing SUPABASE_DB_URL or DATABASE_URL in environment.");
+  process.exit(1);
+}
 
 async function migrate() {
   const client = new Client({

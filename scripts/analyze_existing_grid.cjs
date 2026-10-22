@@ -1,8 +1,12 @@
 const { Client } = require('pg');
 
-const client = new Client({
-  connectionString: 'postgresql://postgres:Marcelmmm23155%40@db.rxgrxjlyrfzojvirkhdc.supabase.co:5432/postgres'
-});
+const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("Missing SUPABASE_DB_URL or DATABASE_URL in environment.");
+  process.exit(1);
+}
+
+const client = new Client({ connectionString });
 
 async function analyze() {
   await client.connect();

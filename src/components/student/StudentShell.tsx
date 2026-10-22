@@ -29,6 +29,9 @@ import { AnnouncementBanner } from '../common/AnnouncementBanner';
 import { APP_VERSION } from '../../utils/version';
 import { formatProperName, formatBoardLabel } from '../../utils/studentFormatting';
 import QuickStartModal from './QuickStartModal';
+import PortalHeader from '../common/PortalHeader';
+import PortalDrawer from '../common/PortalDrawer';
+import GlobalSearchModal from '../common/GlobalSearchModal';
 
 interface StudentShellProps {
   children: React.ReactNode;
@@ -54,6 +57,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
   const location = useLocation();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [quickStartOpen, setQuickStartOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -191,31 +195,61 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
     },
   ];
 
+  const drawerNavGroups = React.useMemo(() => {
+    return NAV_GROUPS.map((group) => ({
+      title: group.title,
+      items: group.items.map((item) => {
+        const isBlocked = feeStatus !== 'paid' && item.path !== '/student/checkout';
+        return {
+          icon: item.icon,
+          label: item.label,
+          path: item.path,
+          badge: item.badge,
+          disabled: item.disabled || isBlocked,
+        };
+      }),
+    }));
+  }, [NAV_GROUPS, feeStatus]);
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0E0E10] flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-      {/* ── Mobile Drawer Backdrop ── */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* ── Mobile Navigation Drawer ── */}
+      <PortalDrawer
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        role="student"
+        profile={profile}
+        navGroups={drawerNavGroups}
+        onOpenSearch={() => setSearchOpen(true)}
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+        extraFooterAction={
+          <button
+            type="button"
+            onClick={() => {
+              setSidebarOpen(false);
+              setQuickStartOpen(true);
+            }}
+            className="min-h-[44px] min-w-[44px] w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:text-[#8A6A00] dark:hover:text-[#F2C230] hover:bg-neutral-100 dark:hover:bg-neutral-800/60 rounded-xl transition-colors cursor-pointer"
+          >
+            <HelpCircle size={16} className="text-[#8A6A00] dark:text-[#F2C230]" />
+            <span>Quick Start Guide</span>
+          </button>
+        }
+      />
 
-      {/* ── Sidebar (Drawer on mobile <640px, Icon rail on tablet 640-1023px, Collapsible on desktop >=1024px) ── */}
+      {/* ── Tablet Icon Rail (640-1023px) & Desktop Sidebar (>=1024px) ── */}
       <aside
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        className={`fixed inset-y-0 left-0 z-50 bg-[#111111] border-r border-neutral-800 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full sm:translate-x-0'
-        } ${sidebarOpen ? 'w-72' : 'sm:w-16'} ${isRailCollapsed ? 'lg:w-16' : 'lg:w-64'}`}
+        className={`hidden sm:flex fixed inset-y-0 left-0 z-40 bg-[#111111] border-r border-neutral-800 flex-col transition-all duration-300 ${
+          isRailCollapsed ? 'sm:w-16 lg:w-16' : 'sm:w-16 lg:w-64'
+        }`}
       >
         {/* Top Header: Logo + Brand Tagline + Close / Collapse Toggle */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-neutral-800/80 shrink-0">
-          <div className={`${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} flex-col overflow-hidden`}>
+          <div className={`${isRailCollapsed ? 'hidden' : 'hidden lg:flex'} flex-col overflow-hidden`}>
             <Logo size="sm" variant="full" darkMode />
           </div>
-          <div className={`${sidebarOpen ? 'hidden' : isRailCollapsed ? 'flex' : 'flex lg:hidden'} mx-auto`}>
+          <div className={`${isRailCollapsed ? 'flex' : 'flex lg:hidden'} mx-auto`}>
             <Logo size="sm" variant="icon" darkMode />
           </div>
 
@@ -229,22 +263,12 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           >
             {isRailCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
           </button>
-
-          {/* Mobile Close Button */}
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(false)}
-            className="sm:hidden p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
-            aria-label="Close menu"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Student Portal Pill + Version Label (Identical style to Admin Panel) */}
+        {/* Student Portal Pill + Version Label */}
         <div
           className={`px-4 py-2.5 border-b border-neutral-800/60 ${
-            sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'
+            isRailCollapsed ? 'hidden' : 'hidden lg:flex'
           } items-center justify-between shrink-0`}
         >
           <span className="text-[11px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
@@ -302,7 +326,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
                       <span
                         className={`truncate text-left flex-1 ${
-                          sidebarOpen ? 'block' : isRailCollapsed ? 'hidden' : 'hidden lg:block'
+                          isRailCollapsed ? 'hidden' : 'hidden lg:block'
                         }`}
                       >
                         {label}
@@ -311,7 +335,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
                       {badge && (
                         <span
                           className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-400 text-neutral-950 shadow-xs ${
-                            sidebarOpen ? 'block' : isRailCollapsed ? 'hidden' : 'hidden lg:block'
+                            isRailCollapsed ? 'hidden' : 'hidden lg:block'
                           }`}
                         >
                           {badge}
@@ -330,7 +354,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           {/* User Card */}
           <div
             className={`p-2.5 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center gap-3 ${
-              sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'
+              isRailCollapsed ? 'hidden' : 'hidden lg:flex'
             }`}
           >
             <div className="w-9 h-9 rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/30 flex items-center justify-center font-black text-sm shrink-0">
@@ -347,15 +371,12 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
           {/* Quick Start Guide Button */}
           <button
             type="button"
-            onClick={() => {
-              setSidebarOpen(false);
-              setQuickStartOpen(true);
-            }}
+            onClick={() => setQuickStartOpen(true)}
             className="min-h-[44px] min-w-[44px] w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-neutral-400 hover:text-amber-400 hover:bg-neutral-900 rounded-xl transition-colors cursor-pointer"
             title="Help & Quick Start Walkthrough"
           >
             <HelpCircle size={16} className="shrink-0 text-amber-400" />
-            <span className={`${sidebarOpen ? 'block' : isRailCollapsed ? 'hidden' : 'hidden lg:block'} truncate`}>
+            <span className={`${isRailCollapsed ? 'hidden' : 'hidden lg:block'} truncate`}>
               Quick Start Guide
             </span>
           </button>
@@ -369,7 +390,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
             title="Log out"
           >
             <LogOut size={16} className="shrink-0" />
-            <span className={`${sidebarOpen ? 'block' : isRailCollapsed ? 'hidden' : 'hidden lg:block'} truncate`}>
+            <span className={`${isRailCollapsed ? 'hidden' : 'hidden lg:block'} truncate`}>
               {isSigningOut ? 'Signing out...' : 'Log out'}
             </span>
           </button>
@@ -385,41 +406,16 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         {/* Global Site Announcement Banner */}
         <AnnouncementBanner />
 
-        {/* Top bar (Sticky) */}
-        <header className="sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#111111]/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Hamburger Button (Mobile <640px) */}
-            <button
-              type="button"
-              className="sm:hidden min-h-[44px] min-w-[44px] p-2 rounded-xl text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors flex items-center justify-center cursor-pointer"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open navigation menu"
-            >
-              <Menu size={22} />
-            </button>
-
-            {/* Mobile Branding */}
-            <div className="sm:hidden flex items-center gap-1.5">
-              <span className="font-extrabold text-sm text-neutral-900 dark:text-white">Scholario</span>
-              <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded">
-                UI v2
-              </span>
-            </div>
-          </div>
-
-          {/* Right Header Utilities */}
-          <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggleSwitch variant="compact" />
-            <NotificationBell />
-            <ProfileDropdownMenu
-              profile={profile}
-              role="student"
-              onSignOut={handleSignOut}
-              isSigningOut={isSigningOut}
-              avatarSize="md"
-            />
-          </div>
-        </header>
+        {/* ── Shared Unified Portal Header ── */}
+        <PortalHeader
+          role="student"
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          onOpenSearch={() => setSearchOpen(true)}
+          profile={profile}
+          onSignOut={handleSignOut}
+          isSigningOut={isSigningOut}
+        />
 
         {/* Main Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 bg-neutral-50 dark:bg-[#0E0E10] max-w-full">
@@ -429,6 +425,14 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
 
       {/* Quick Start Walkthrough Modal */}
       <QuickStartModal isOpen={quickStartOpen} onClose={() => setQuickStartOpen(false)} />
+
+      {/* ── Global Search Modal ── */}
+      <GlobalSearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        role="student"
+        onSignOut={handleSignOut}
+      />
     </div>
   );
 };

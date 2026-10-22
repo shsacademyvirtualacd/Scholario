@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -8,17 +8,15 @@ import {
   BookMarked,
   FileCheck2,
   Bell,
-  Menu,
-  X,
   Sparkles
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
-import { NotificationBell } from '../common/NotificationBell';
-import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
-import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 import { AnnouncementBanner } from '../common/AnnouncementBanner';
+import PortalHeader from '../common/PortalHeader';
+import PortalDrawer from '../common/PortalDrawer';
+import GlobalSearchModal from '../common/GlobalSearchModal';
 
 interface TeacherShellProps {
   children: React.ReactNode;
@@ -41,7 +39,20 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const drawerNavGroups = useMemo(() => [
+    {
+      title: 'ACADEMICS & TEACHING',
+      items: NAV_ITEMS.map((item) => ({
+        icon: item.icon,
+        label: item.label,
+        path: item.path,
+        badge: item.path === '/teacher/chat' && unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+      })),
+    },
+  ], [unreadCount]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -68,20 +79,20 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen teacher-page flex" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* ── Mobile Navigation Drawer ── */}
+      <PortalDrawer
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        role="teacher"
+        profile={profile}
+        navGroups={drawerNavGroups}
+        onOpenSearch={() => setSearchOpen(true)}
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+      />
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#111111] flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
-      >
+      {/* ── Desktop Persistent Sidebar (>= 1024px) ── */}
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 bg-[#111111] flex-col border-r border-[#1F1F1F]">
         {/* Logo */}
         <div className="h-16 flex items-center px-5 border-b border-[#1F1F1F] shrink-0">
           <Logo size="sm" variant="full" darkMode />
@@ -93,7 +104,7 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 custom-scrollbar min-h-0">
           {NAV_ITEMS.map(({ icon: Icon, label, path }) => {
             const isActive = isPathActive(path);
             const isChat = path === '/teacher/chat';
@@ -118,41 +129,21 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         </nav>
       </aside>
 
-      {/* Main container */}
+      {/* ── Main Container ── */}
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden">
         {/* Site Announcement Banner */}
         <AnnouncementBanner />
 
-        {/* Top bar */}
-        <header className="sticky top-0 z-50 h-14 sm:h-16 teacher-card border-b border-[var(--teacher-card-border)] flex items-center justify-between px-4 sm:px-6 shrink-0 max-w-full">
-          <div className="flex items-center gap-2">
-            <button
-              className="lg:hidden w-11 h-11 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-[var(--teacher-text)] interactive"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label="Toggle navigation menu"
-            >
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1 sm:gap-2">
-            <div className="w-11 h-11 flex items-center justify-center">
-              <ThemeToggleSwitch variant="compact" />
-            </div>
-            <div className="w-11 h-11 flex items-center justify-center">
-              <NotificationBell />
-            </div>
-            <div className="w-11 h-11 flex items-center justify-center">
-              <ProfileDropdownMenu
-                profile={profile}
-                role="teacher"
-                onSignOut={handleSignOut}
-                isSigningOut={isSigningOut}
-                avatarSize="md"
-              />
-            </div>
-          </div>
-        </header>
+        {/* ── Shared Unified Portal Header ── */}
+        <PortalHeader
+          role="teacher"
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          onOpenSearch={() => setSearchOpen(true)}
+          profile={profile}
+          onSignOut={handleSignOut}
+          isSigningOut={isSigningOut}
+        />
 
         {/* Page body */}
         <main className="flex-1 p-4 sm:p-6 space-y-3 sm:space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden page-transition pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
@@ -160,8 +151,13 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
         </main>
       </div>
 
-
-
+      {/* ── Global Search Modal ── */}
+      <GlobalSearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        role="teacher"
+        onSignOut={handleSignOut}
+      />
     </div>
   );
 };
