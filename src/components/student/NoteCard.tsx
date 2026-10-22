@@ -3,6 +3,7 @@ import { FileText, Image as ImageIcon, Eye, Download, Loader2 } from 'lucide-rea
 import type { Note } from '../../types';
 import { downloadNoteBlob } from '../../lib/db';
 import { MathText } from '../common/MathText';
+import { formatStandardDate, formatProperName } from '../../utils/studentFormatting';
 
 interface NoteCardProps {
   note: Note;
@@ -12,10 +13,24 @@ interface NoteCardProps {
 export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const subject = note.offering?.subject || 'General';
-  const fileType = note.file_type || 'pdf';
-  const isImage = ['image', 'png', 'jpg', 'jpeg', 'webp', 'gif'].includes(fileType.toLowerCase());
+
+  const rawSubj =
+    note.offering?.subject_name ||
+    (typeof note.offering?.subject === 'string'
+      ? note.offering.subject
+      : note.offering?.subject?.name) ||
+    'General';
+  const subject = typeof rawSubj === 'string' ? rawSubj : 'General';
+  const fileType = (note.file_type || 'pdf').toLowerCase();
+  const isImage = ['image', 'png', 'jpg', 'jpeg', 'webp', 'gif'].includes(fileType);
   const isPdf = fileType === 'pdf';
+
+  const rawTeacher =
+    note.offering?.teacher?.full_name ||
+    (note as any).teacher_name ||
+    (note as any).author?.full_name ||
+    'Faculty Teacher';
+  const teacherName = formatProperName(rawTeacher);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -27,29 +42,24 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
       await downloadNoteBlob(note, (p) => setProgress(p));
     } catch (err) {
       console.error('Download failed:', err);
-      alert('Failed to download note file.');
     } finally {
       setDownloading(false);
       setProgress(0);
     }
   };
 
-  // Format date nicely
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  // Color mappings
   const getSubjectColor = (sub: string) => {
     switch (sub.toLowerCase()) {
-      case 'mathematics': return '#F4C430'; // Gold
-      case 'physics': return '#3b82f6'; // Blue
-      case 'chemistry': return '#10b981'; // Green
-      default: return '#8b5cf6'; // Purple
+      case 'mathematics':
+        return '#F4C430';
+      case 'physics':
+        return '#3b82f6';
+      case 'chemistry':
+        return '#10b981';
+      case 'biology':
+        return '#06b6d4';
+      default:
+        return '#8b5cf6';
     }
   };
 
@@ -57,56 +67,86 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onView }) => {
 
   return (
     <div
-      className="bg-white border border-[#E5E5E5] rounded-xl p-4 flex flex-col justify-between hover:border-[#D4D4D4] hover:shadow-md transition-all duration-200"
+      className="bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-amber-400/50 dark:hover:border-amber-400/40 hover:shadow-md transition-all duration-200 shadow-2xs group"
       style={{ borderLeft: `4px solid ${subjectColor}` }}
     >
-      <div>
-        <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="space-y-2.5">
+        {/* Top Badges: Subject & Format */}
+        <div className="flex items-start justify-between gap-2">
           <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase"
+            className="text-[11px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wide"
             style={{ backgroundColor: `${subjectColor}15`, color: subjectColor }}
           >
             {subject}
           </span>
-          <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
-            isImage ? 'bg-blue-50 text-blue-700' : isPdf ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
-          }`}>
-            {isImage ? <ImageIcon size={10} /> : <FileText size={10} />}
-            {fileType.toUpperCase()}
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              isImage
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                : isPdf
+                ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+            }`}
+          >
+            {isImage ? <ImageIcon size={11} /> : <FileText size={11} />}
+            <span>{fileType.toUpperCase()}</span>
           </span>
         </div>
-        
-        <h3 className="text-sm font-bold text-[#111111] line-clamp-1">
-          <MathText text={note.chapter_name} />
-        </h3>
-        <p className="text-xs text-[#737373] mt-1 font-medium line-clamp-2">
-          <MathText text={note.title} />
+
+        {/* Note Title & Chapter */}
+        <div>
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-white line-clamp-1">
+            <MathText text={note.chapter_name || note.title || 'Study Material'} />
+          </h3>
+          {note.chapter_name && note.title && note.title !== note.chapter_name && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2 leading-relaxed">
+              <MathText text={note.title} />
+            </p>
+          )}
+        </div>
+
+        {/* Teacher Info */}
+        <p className="text-xs text-neutral-600 dark:text-neutral-400 font-medium truncate">
+          Uploaded by: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{teacherName}</span>
         </p>
       </div>
 
-      <div className="flex items-center justify-between pt-3 mt-4 border-t border-[#F5F5F5]">
-        <span className="text-[10px] text-[#A3A3A3] font-semibold">{formatDate(note.created_at)}</span>
+      {/* Footer: Date & Preview / Download Buttons */}
+      <div className="flex items-center justify-between pt-3 mt-4 border-t border-neutral-100 dark:border-neutral-800 gap-2">
+        <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
+          {formatStandardDate(note.created_at)}
+        </span>
+
         <div className="flex items-center gap-1.5">
           <button
+            type="button"
             onClick={() => onView(note)}
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] transition-colors"
-            title="View inline"
+            className="min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1 text-xs font-semibold cursor-pointer"
+            title="Preview note"
+            aria-label="Preview note"
           >
-            <Eye size={14} />
+            <Eye size={15} />
+            <span className="hidden sm:inline">Preview</span>
           </button>
+
           <button
+            type="button"
             onClick={handleDownload}
             disabled={downloading}
-            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#525252] hover:text-[#111111] disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1 interactive"
+            className="min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white transition-colors flex items-center justify-center gap-1 text-xs font-bold cursor-pointer disabled:opacity-50"
             title="Download file"
+            aria-label="Download file"
           >
             {downloading ? (
               <>
-                <Loader2 size={14} className="animate-spin" />
-                {progress > 0 && <span className="text-[10px] font-bold">{progress}%</span>}
+                <Loader2 size={14} className="animate-spin text-amber-500" />
+                <span>{progress}%</span>
               </>
             ) : (
-              <Download size={14} />
+              <>
+                <Download size={14} />
+                <span className="hidden sm:inline">Download</span>
+              </>
             )}
           </button>
         </div>

@@ -10,11 +10,18 @@ import {
   AlertCircle,
   ChevronRight,
   Loader2,
-  FileCheck2
+  FileCheck2,
+  AlertTriangle,
 } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
 import { downloadTestBlob } from '../../lib/db';
 import { MathText } from '../common/MathText';
+import {
+  formatProperName,
+  formatTitleCase,
+  formatStandardDate,
+} from '../../utils/studentFormatting';
+import { StudentStatusBadge } from './shared/StudentStatusBadge';
 
 interface StudentTestCardProps {
   test: TestPaper;
@@ -33,16 +40,25 @@ export const StudentTestCard: React.FC<StudentTestCardProps> = ({
 }) => {
   const [downloading, setDownloading] = useState(false);
 
-  // Due date status calculation
+  // Due date arithmetic
   const now = new Date();
-  const due = new Date(test.due_date);
-  // Set due date to end of day for comparison
-  due.setHours(23, 59, 59, 999);
-  const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const dueDate = new Date(test.due_date);
+  dueDate.setHours(23, 59, 59, 999);
+  const diffTime = dueDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   const isOverdue = diffDays < 0;
   const isDueToday = diffDays === 0;
   const isDueSoon = diffDays > 0 && diffDays <= 2;
+
+  const isSubmitted = Boolean(submission);
+  const isGraded = submission?.status === 'graded';
+
+  // Check late submission
+  const isSubmittedLate =
+    isSubmitted &&
+    submission?.submitted_at &&
+    new Date(submission.submitted_at).getTime() > dueDate.getTime();
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -67,128 +83,113 @@ export const StudentTestCard: React.FC<StudentTestCardProps> = ({
     onView(test);
   };
 
+  const titleClean = formatTitleCase(test.title);
+  const teacherName = formatProperName(test.teacher_name || 'Faculty Teacher');
+
+  // Due label
+  let dueLabel = '';
+  if (isSubmitted) {
+    dueLabel = `Submitted ${formatStandardDate(submission?.submitted_at)}`;
+  } else if (isOverdue) {
+    const absDays = Math.abs(diffDays);
+    dueLabel = `Overdue by ${absDays} ${absDays === 1 ? 'day' : 'days'}`;
+  } else if (isDueToday) {
+    dueLabel = 'Due today';
+  } else {
+    dueLabel = `Due in ${diffDays} ${diffDays === 1 ? 'day' : 'days'}`;
+  }
+
   return (
     <div
-      id={`test-card-${test.id}`}
       onClick={() => onSelect(test)}
-      className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer text-left relative flex flex-col justify-between ${
+      className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between gap-3 shadow-2xs ${
         isSelected
-          ? 'bg-white border-[#111111] ring-2 ring-[#111111]/10 shadow-sm'
-          : 'bg-white border-[#E5E5E5] hover:border-[#CCCCCC] hover:shadow-2xs'
+          ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/20'
+          : 'bg-white dark:bg-neutral-900 border-neutral-200/90 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
       }`}
     >
-      {/* Top Header Row */}
-      <div>
-        <div className="flex items-start justify-between gap-2 mb-1.5">
+      <div className="space-y-2">
+        {/* Top Header: Subject Badge + Status Badge */}
+        <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Subject Tag */}
-            <span className="px-2 py-0.5 rounded-md text-xs font-extrabold bg-[#111111] text-white whitespace-nowrap">
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900">
               {test.subject}
             </span>
-            {/* Grade & Stream */}
-            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5] whitespace-nowrap">
-              Grade {test.grade} {test.stream && test.stream !== 'all' ? `• ${test.stream}` : ''}
+            <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+              Grade {test.grade}
             </span>
           </div>
 
-          {/* Submission Status Badge */}
-          {submission ? (
-            submission.status === 'graded' ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC] whitespace-nowrap">
-                <CheckCircle2 size={12} className="shrink-0" />
-                {submission.marks_obtained !== null && submission.marks_obtained !== undefined
-                  ? `${submission.marks_obtained}/${test.total_marks}`
-                  : 'Graded'}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] whitespace-nowrap">
-                <FileCheck2 size={12} className="shrink-0" />
-                Submitted
-              </span>
-            )
+          {/* Single Status Badge strictly matching requirement */}
+          {isGraded ? (
+            <StudentStatusBadge
+              status="graded"
+              label={`Graded (${submission?.marks_obtained ?? '—'}/${test.total_marks})`}
+              size="sm"
+            />
+          ) : isSubmittedLate ? (
+            <StudentStatusBadge status="submitted_late" label="Submitted late" size="sm" />
+          ) : isSubmitted ? (
+            <StudentStatusBadge status="submitted" label="Submitted" size="sm" />
           ) : isOverdue ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA] whitespace-nowrap">
-              <AlertCircle size={12} className="shrink-0" />
-              Overdue
-            </span>
+            <StudentStatusBadge status="overdue" label="Overdue" size="sm" />
+          ) : isDueSoon || isDueToday ? (
+            <StudentStatusBadge status="due_soon" label={isDueToday ? 'Due today' : 'Due soon'} size="sm" />
           ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] whitespace-nowrap">
-              <Clock size={12} className="shrink-0" />
-              Pending
-            </span>
+            <StudentStatusBadge status="todo" label="To do" size="sm" />
           )}
         </div>
 
-        {/* Test Title */}
-        <h4 className="text-xs sm:text-sm font-extrabold text-[#111111] line-clamp-1 mb-1">
-          <MathText text={test.title} />
+        {/* Title in clean Title Case */}
+        <h4 className="text-sm font-bold text-neutral-900 dark:text-white line-clamp-2 leading-snug">
+          {titleClean}
         </h4>
 
         {/* Teacher & Total Marks */}
-        <div className="flex items-center gap-2.5 text-xs text-[#737373] mb-2.5 flex-wrap">
-          <span className="flex items-center gap-1 whitespace-nowrap">
-            <User size={12} className="text-[#A3A3A3] shrink-0" />
-            <span className="truncate max-w-[120px]">{test.teacher_name || 'Faculty'}</span>
+        <div className="flex items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400 flex-wrap">
+          <span className="flex items-center gap-1">
+            <User size={13} className="text-neutral-400" />
+            <span className="truncate max-w-[130px] font-medium">{teacherName}</span>
           </span>
-          <span className="flex items-center gap-1 font-semibold text-[#111111] whitespace-nowrap">
-            <Award size={12} className="text-[#A3A3A3] shrink-0" />
+          <span>•</span>
+          <span className="flex items-center gap-1 font-bold text-neutral-800 dark:text-neutral-200">
+            <Award size={13} className="text-amber-500" />
             {test.total_marks} Marks
           </span>
         </div>
-
-        {/* Instructions preview */}
-        {test.instructions && (
-          <div className="text-[11px] text-[#737373] line-clamp-2 mb-2 bg-[#FAFAFA] p-2 rounded-lg border border-[#F0F0F0]">
-            <MathText text={test.instructions} />
-          </div>
-        )}
       </div>
 
-      {/* Card Footer: Due Date & Action Buttons */}
-      <div className="pt-2 border-t border-[#F5F5F5] flex items-center justify-between gap-2 mt-auto">
-        <div className="flex items-center gap-1 text-[11px] text-[#737373] whitespace-nowrap">
-          <Calendar size={12} className="text-[#A3A3A3] shrink-0" />
-          <span className="whitespace-nowrap">
-            Due:{' '}
-            <strong
-              className={`font-semibold ${
-                isOverdue
-                  ? 'text-[#DC2626]'
-                  : isDueToday
-                  ? 'text-[#D97706]'
-                  : isDueSoon
-                  ? 'text-[#B45309]'
-                  : 'text-[#111111]'
-              }`}
-            >
-              {new Date(test.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              {isDueToday ? ' (Today)' : isDueSoon ? ` (${diffDays}d left)` : ''}
-            </strong>
-          </span>
-        </div>
+      {/* Footer: Due Timing & Quick View Button */}
+      <div className="pt-2.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-2 mt-auto text-xs">
+        <span
+          className={`font-semibold ${
+            !isSubmitted && isOverdue
+              ? 'text-rose-600 dark:text-rose-400 font-bold'
+              : !isSubmitted && (isDueSoon || isDueToday)
+              ? 'text-amber-600 dark:text-amber-400 font-bold'
+              : 'text-neutral-500 dark:text-neutral-400'
+          }`}
+        >
+          {dueLabel}
+        </span>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1">
           <button
-            id={`view-test-btn-${test.id}`}
+            type="button"
             onClick={handleView}
-            title="Preview Question Paper"
-            className="p-1.5 rounded-md bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] text-xs font-bold transition-colors border border-[#E5E5E5] inline-flex items-center gap-1 whitespace-nowrap cursor-pointer"
+            className="min-h-[44px] min-w-[44px] px-2.5 py-1 text-xs font-semibold rounded-lg text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-1 transition-colors cursor-pointer"
+            title="Preview paper"
           >
             <Eye size={13} />
-            <span className="hidden sm:inline text-[11px]">View</span>
+            <span>Paper</span>
           </button>
-          <button
-            id={`download-test-btn-${test.id}`}
-            onClick={handleDownload}
-            disabled={downloading}
-            title="Download Question Paper"
-            className="p-1.5 rounded-md bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] transition-colors border border-[#E5E5E5] disabled:opacity-40 cursor-pointer"
-          >
-            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-          </button>
-          <div className="text-[#A3A3A3] pl-0.5">
-            <ChevronRight size={15} className={isSelected ? 'text-[#111111]' : ''} />
-          </div>
+
+          <ChevronRight
+            size={16}
+            className={`transition-transform ${
+              isSelected ? 'text-amber-500 translate-x-0.5' : 'text-neutral-400'
+            }`}
+          />
         </div>
       </div>
     </div>

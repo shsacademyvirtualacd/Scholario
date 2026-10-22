@@ -1,164 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Calendar, Video, Clock, Zap } from 'lucide-react';
+import { Calendar, Video, Clock, Zap, RotateCcw } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
-import SectionHeader from '../../components/ui/SectionHeader';
-import ClassSlotCard from '../../components/student/ClassSlotCard';
-import EmptyState from '../../components/ui/EmptyState';
+import { StudentPageHeader } from '../../components/student/shared/StudentPageHeader';
+import { StudentClassCard } from '../../components/student/shared/StudentClassCard';
+import { StudentEmptyState } from '../../components/student/shared/StudentEmptyState';
+import { StudentClassCardSkeleton } from '../../components/student/shared/StudentSkeleton';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getSlotsForStudent, getAttendanceForStudent, getSessionLink } from '../../lib/db';
 import { pageCache } from '../../lib/pageCache';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { ClassSlot, Attendance } from '../../types';
 import {
-  getPKTNow, classWidgetState, formatCountdown, getSlotSubject,
-  formatTime12h, getLinkAvailabilityStatus, getClosestDateForDayOfWeek
+  getPKTNow,
+  classWidgetState,
+  formatCountdown,
+  getSlotSubject,
+  formatTime12h,
+  getLinkAvailabilityStatus,
+  getClosestDateForDayOfWeek,
 } from '../../lib/scheduleUtils';
-import { useMobile } from '../../hooks/useMobile';
+import { formatStandardDate } from '../../utils/studentFormatting';
 
 const DAYS_OF_WEEK = [
-  { label: 'Monday', index: 0 },
-  { label: 'Tuesday', index: 1 },
-  { label: 'Wednesday', index: 2 },
-  { label: 'Thursday', index: 3 },
-  { label: 'Friday', index: 4 },
-  { label: 'Saturday', index: 5 },
-  { label: 'Sunday', index: 6 }
+  { short: 'Mon', full: 'Monday', index: 0 },
+  { short: 'Tue', full: 'Tuesday', index: 1 },
+  { short: 'Wed', full: 'Wednesday', index: 2 },
+  { short: 'Thu', full: 'Thursday', index: 3 },
+  { short: 'Fri', full: 'Friday', index: 4 },
+  { short: 'Sat', full: 'Saturday', index: 5 },
+  { short: 'Sun', full: 'Sunday', index: 6 },
 ];
 
 export const SchedulePage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useAuth();
-  const isMobile = useMobile();
-  const studentId = profile?.id;
-  
-  const cachedSlots = studentId ? pageCache.get<ClassSlot[]>('schedule_slots', studentId) : null;
-  const cachedAtt = studentId ? pageCache.get<Attendance[]>('student_attendance', studentId) : null;
-  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>(cachedSlots || []);
-  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(cachedAtt || []);
-  const [loading, setLoading] = useState<boolean>(!cachedSlots);
+  const studentId = profile?.id || '';
 
-  const fetchAttendance = async () => {
-    if (!studentId) return;
-    try {
-      const records = await getAttendanceForStudent(studentId);
-      setAttendanceRecords(records);
-      pageCache.set('student_attendance', records, studentId);
-    } catch (err) {
-      console.warn('[SchedulePage] fetchAttendance error:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (!studentId) return;
-    let mounted = true;
-
-    // If cache becomes available on studentId ready and we don't have slots yet
-    const initialCache = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
-    if (initialCache && scheduleSlots.length === 0 && mounted) {
-      setScheduleSlots(initialCache);
-      setLoading(false);
-    }
-
-    getSlotsForStudent(studentId)
-      .then((freshSlots) => {
-        if (!mounted) return;
-        const currentCached = pageCache.get<ClassSlot[]>('schedule_slots', studentId);
-        const differs = !currentCached || JSON.stringify(currentCached) !== JSON.stringify(freshSlots);
-        if (differs) {
-          setScheduleSlots(freshSlots);
-          pageCache.set('schedule_slots', freshSlots, studentId);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        if (mounted) setLoading(false);
-      });
-
-    fetchAttendance();
-
-    return () => {
-      mounted = false;
-    };
-  }, [studentId]);
-
-  useRealtimeTable({
-    table: 'class_slots',
-    debounceMs: 2000,
-    onAny: async () => {
-      if (!studentId) return;
-      const freshSlots = await getSlotsForStudent(studentId);
-      setScheduleSlots(freshSlots);
-      pageCache.set('schedule_slots', freshSlots, studentId);
-    }
-  });
-
-  useRealtimeTable({
-    table: 'attendance',
-    debounceMs: 500,
-    onAny: () => {
-      fetchAttendance();
-    }
-  });
-
-  // PKT-aware next-class banner state (re-ticks every 60s)
+  const [scheduleSlots, setScheduleSlots] = useState<ClassSlot[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
+  const [loading, setLoading] = useState(true);
   const [pktnow, setPktnow] = useState(getPKTNow);
-  const [bannerLinkUrl, setBannerLinkUrl] = useState<string | null>(null);
 
+  // Sync clock every 30s
   useEffect(() => {
-    const id = setInterval(() => setPktnow(getPKTNow()), 60_000);
-    return () => clearInterval(id);
+    const timer = setInterval(() => setPktnow(getPKTNow()), 30_000);
+    return () => clearInterval(timer);
   }, []);
 
-  const bannerState = classWidgetState(scheduleSlots, pktnow);
-
-  const bannerSlot = bannerState.type === 'ongoing' ? bannerState.activeSlot : (bannerState.nextSlot || null);
-  const bannerSessionDate = bannerSlot ? (
-    bannerSlot.day_of_week === pktnow.dayIndex
-      ? pktnow.dateString
-      : getClosestDateForDayOfWeek(bannerSlot.day_of_week ?? 0, pktnow)
-  ) : null;
-
-  const fetchBannerLink = async () => {
-    if (!bannerSlot?.id || !bannerSessionDate) {
-      setBannerLinkUrl(null);
-      return;
-    }
-    try {
-      const rec = await getSessionLink(bannerSlot.id, bannerSessionDate);
-      setBannerLinkUrl(rec?.link_url || null);
-    } catch {
-      setBannerLinkUrl(null);
-    }
-  };
-
-  useEffect(() => {
-    fetchBannerLink();
-  }, [bannerSlot?.id, bannerSessionDate]);
-
-  useRealtimeTable({
-    table: 'class_session_links',
-    debounceMs: 1000,
-    onAny: fetchBannerLink,
-  });
-
-  // Active tab defaults to today in PKT
+  // Initial day selection
   const getInitialDay = () => {
     const urlDay = searchParams.get('day');
     if (urlDay !== null) {
       const parsed = parseInt(urlDay, 10);
       if (!isNaN(parsed) && parsed >= 0 && parsed <= 6) return parsed;
     }
-    // Default to today's PKT day (Mon-Sun)
-    const todayIdx = pktnow.dayIndex;
-    return todayIdx <= 6 ? todayIdx : 0;
+    return pktnow.dayIndex <= 6 ? pktnow.dayIndex : 0;
   };
 
-  const [activeDay, setActiveDay] = useState<number>(getInitialDay());
+  const [activeDay, setActiveDay] = useState<number>(getInitialDay);
 
-
-  // Synchronize day focus if URL query parameters change
+  // Sync day if query param changes
   useEffect(() => {
     const urlDay = searchParams.get('day');
     if (urlDay !== null) {
@@ -169,159 +71,212 @@ export const SchedulePage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Filter slots for the selected day
-  const filteredSlots = scheduleSlots
-    .filter(slot => slot.day_of_week === activeDay)
-    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+  const fetchSlots = async () => {
+    if (!studentId) return;
+    try {
+      setLoading(true);
+      const [slots, att] = await Promise.all([
+        getSlotsForStudent(studentId),
+        getAttendanceForStudent(studentId),
+      ]);
+      setScheduleSlots(slots || []);
+      setAttendanceRecords(att || []);
+    } catch (err) {
+      console.warn('[SchedulePage] Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchSlots();
+  }, [studentId]);
 
+  useRealtimeTable({
+    table: 'class_slots',
+    debounceMs: 1500,
+    onAny: fetchSlots,
+  });
+
+  useRealtimeTable({
+    table: 'attendance',
+    debounceMs: 500,
+    onAny: async () => {
+      if (studentId) {
+        const att = await getAttendanceForStudent(studentId);
+        setAttendanceRecords(att || []);
+      }
+    },
+  });
+
+  const handleSelectDay = (dayIndex: number) => {
+    setActiveDay(dayIndex);
+    setSearchParams({ day: String(dayIndex) });
+  };
+
+  // Compute dates for the 7 days of current week based on PKT date
+  const weekDayData = useMemo(() => {
+    const currentDayIdx = pktnow.dayIndex;
+    const todayDateParts = (pktnow.dateString || new Date().toISOString().slice(0, 10))
+      .split('-')
+      .map(Number);
+    const todayYear = todayDateParts[0];
+    const todayMonth = todayDateParts[1];
+    const todayDay = todayDateParts[2];
+
+    return DAYS_OF_WEEK.map((d) => {
+      const dayOffset = d.index - currentDayIdx;
+      const targetDate = new Date(Date.UTC(todayYear, todayMonth - 1, todayDay + dayOffset));
+      const dateNum = targetDate.getUTCDate();
+      const dateStr = targetDate.toISOString().slice(0, 10);
+      const hasClasses = scheduleSlots.some(
+        (s) => !s.is_cancelled && s.day_of_week === d.index
+      );
+      return {
+        ...d,
+        dateNumber: dateNum,
+        dateString: dateStr,
+        hasClasses,
+        isToday: d.index === pktnow.dayIndex,
+      };
+    });
+  }, [pktnow, scheduleSlots]);
+
+  // Active day session date
+  const activeDayDateStr = useMemo(() => {
+    const found = weekDayData.find((d) => d.index === activeDay);
+    return found ? found.dateString : pktnow.dateString;
+  }, [weekDayData, activeDay, pktnow.dateString]);
+
+  // Filter slots for selected day
+  const activeSlots = useMemo(() => {
+    return scheduleSlots
+      .filter((s) => !s.is_cancelled && s.day_of_week === activeDay)
+      .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+  }, [scheduleSlots, activeDay]);
+
+  const activeDayName = DAYS_OF_WEEK.find((d) => d.index === activeDay)?.full || 'Today';
 
   return (
     <StudentShell>
-      {/* Page Header */}
-      <SectionHeader
-        title="My Timetable"
-        description="View your weekly scheduled class lectures, timings, and rooms."
-      />
+      <div className="space-y-6 max-w-5xl mx-auto">
+        {/* Header */}
+        <StudentPageHeader
+          title="Weekly Schedule"
+          description="View your full weekly lecture timetable, room links, and class timings in Pakistan Standard Time (PKT)."
+          action={
+            <button
+              type="button"
+              onClick={() => handleSelectDay(pktnow.dayIndex)}
+              className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-400 hover:bg-amber-300 text-neutral-950 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+            >
+              <span>Today</span>
+            </button>
+          }
+        />
 
-      {/* Next Class Banner — 4-state smart display */}
-      {bannerState.type !== 'end-of-day' && (
-        <div className="bg-[#FFFDF0] dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700/50 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm mb-6">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-              bannerState.type === 'ongoing' ? 'bg-emerald-500' : 'bg-[#F4C430]'
-            }`}>
-              {bannerState.type === 'ongoing'
-                ? <Zap size={16} className="text-white" />
-                : <Video size={16} className="text-slate-950" />}
-            </div>
-            <div>
-              {bannerState.type === 'ongoing' ? (
-                <>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    In Session: {getSlotSubject(bannerState.activeSlot)}
-                  </h3>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5 font-bold">
-                    {Math.floor(bannerState.minsRemaining / 60) > 0
-                      ? `${Math.floor(bannerState.minsRemaining / 60)}h ${bannerState.minsRemaining % 60}m remaining`
-                      : `${bannerState.minsRemaining}m remaining`}
-                    {bannerState.nextSlot && (
-                      <span className="text-slate-600 dark:text-slate-400 font-medium ml-2">
-                        · Up next: {getSlotSubject(bannerState.nextSlot)} at {formatTime12h(bannerState.nextSlot.start_time)}
-                      </span>
-                    )}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    Next Scheduled Class: {getSlotSubject(bannerState.nextSlot)}
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
-                    with {bannerState.nextSlot.offering?.teacher?.full_name || 'Staff'} ·{' '}
-                    {(() => {
-                      const status = getLinkAvailabilityStatus(bannerState.nextSlot, pktnow, bannerLinkUrl, bannerSessionDate || undefined);
-                      if (status.isAvailable) return 'Online Link Active';
-                      if (status.status === 'locked') return 'Link Unlocks 10m Before Class';
-                      if (bannerLinkUrl) return 'Online Link Scheduled';
-                      return 'No link yet';
-                    })()}
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-          <div className={`flex items-center gap-2 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 w-fit self-end md:self-auto ${
-            bannerState.type === 'ongoing' ? 'bg-emerald-600' : 'bg-slate-900 dark:bg-amber-400 dark:text-slate-950'
-          }`}>
-            <Clock size={13} className={bannerState.type === 'ongoing' ? 'text-white' : 'text-amber-400 dark:text-slate-950'} />
-            {bannerState.type === 'ongoing'
-              ? 'Live Now'
-              : `Starts ${formatCountdown(bannerState.minsUntil)}`}
+        {/* ── Sticky Single-Row Swipeable Day Strip ── */}
+        <div className="sticky top-16 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-2 bg-neutral-50/95 dark:bg-[#0E0E10]/95 backdrop-blur-md">
+          <div className="p-1.5 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
+            {weekDayData.map((d) => {
+              const isSelected = activeDay === d.index;
+              return (
+                <button
+                  key={d.index}
+                  type="button"
+                  onClick={() => handleSelectDay(d.index)}
+                  className={`min-h-[52px] min-w-[56px] flex-1 py-2 px-2 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer relative shrink-0 sm:shrink ${
+                    isSelected
+                      ? 'bg-neutral-950 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs font-bold'
+                      : d.isToday
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300/50'
+                      : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                  }`}
+                >
+                  <span className="text-[11px] font-semibold tracking-wide uppercase">
+                    {d.short}
+                  </span>
+                  <span className="text-sm font-black mt-0.5">
+                    {d.dateNumber}
+                  </span>
+
+                  {/* Indicator dot on days that have classes */}
+                  {d.hasClasses && (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
+                        isSelected
+                          ? 'bg-amber-400 dark:bg-neutral-950'
+                          : 'bg-amber-500 dark:bg-amber-400'
+                      }`}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* Weekday Tabs */}
-      <div className={`py-1 bg-white dark:bg-neutral-900 p-2 border border-slate-200 dark:border-neutral-800 rounded-xl shadow-sm mb-6 ${
-        isMobile ? 'grid grid-cols-3 gap-2' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'
-      }`}>
-        {DAYS_OF_WEEK.map(day => (
-          <button
-            key={day.index}
-            onClick={() => setActiveDay(day.index)}
-            className={`flex-1 min-w-[90px] py-2 text-center rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-              activeDay === day.index
-                ? 'bg-slate-900 text-white border-slate-900 dark:bg-amber-400 dark:text-slate-950 dark:border-amber-400 shadow-sm'
-                : 'bg-transparent text-slate-700 dark:text-slate-300 border-transparent hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
-          >
-            {day.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Slots List */}
-      <div className="space-y-4">
-        {loading && scheduleSlots.length === 0 ? (
-          <div className="space-y-4 animate-pulse">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="bg-white rounded-xl border border-[#E5E5E5] p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                  <div className="w-12 h-12 rounded-xl bg-[#F5F5F5] shrink-0" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 bg-[#F5F5F5] rounded w-40" />
-                    <div className="h-3 bg-[#F5F5F5] rounded w-28" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                  <div className="h-8 bg-[#F5F5F5] rounded-xl w-24" />
-                  <div className="h-8 bg-[#F5F5F5] rounded-xl w-20" />
-                </div>
-              </div>
-            ))}
+        {/* ── Day Header & Schedule List ── */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-1 border-b border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">
+                {activeDayName} Classes
+              </h2>
+              {activeDay === pktnow.dayIndex && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  Today
+                </span>
+              )}
+            </div>
+            <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+              {activeSlots.length} {activeSlots.length === 1 ? 'class' : 'classes'} scheduled
+            </span>
           </div>
-        ) : scheduleSlots.length === 0 ? (
-          <EmptyState
-            icon={Calendar}
-            title="No schedule set yet"
-            description="The school administration or timetable manager has not set a class schedule for your grade and stream yet. Please check back soon!"
-          />
-        ) : filteredSlots.length === 0 ? (
-          <EmptyState
-            icon={Calendar}
-            title="No classes scheduled"
-            description={`You have no lectures or classes scheduled for ${
-              DAYS_OF_WEEK.find(d => d.index === activeDay)?.label
-            }.`}
-          />
-        ) : (
-          (() => {
-            const sessionDateForTab = activeDay === pktnow.dayIndex
-              ? pktnow.dateString
-              : getClosestDateForDayOfWeek(activeDay, pktnow);
 
-            return filteredSlots.map(slot => {
-              const att = attendanceRecords.find(
-                a => a.slot_id === slot.id && a.session_date === sessionDateForTab
-              );
-              return (
-                <ClassSlotCard
-                  key={slot.id}
-                  slot={slot}
-                  sessionDate={sessionDateForTab}
-                  attendanceRecord={att}
-                  onAttendanceMarked={(slotId, rec) => {
-                    setAttendanceRecords(prev => [
-                      rec,
-                      ...prev.filter(a => !(a.slot_id === slotId && a.session_date === rec.session_date))
-                    ]);
-                  }}
-                />
-              );
-            });
-          })()
-        )}
+          {loading ? (
+            <div className="space-y-3">
+              <StudentClassCardSkeleton />
+              <StudentClassCardSkeleton />
+              <StudentClassCardSkeleton />
+            </div>
+          ) : activeSlots.length === 0 ? (
+            <StudentEmptyState
+              icon={<Calendar size={28} />}
+              title={`No classes on ${activeDayName}`}
+              description="You have no scheduled lectures for this day. You can review past notes or practice in Self Testing."
+              action={{
+                label: 'Practice in Self Testing',
+                onClick: () => window.location.assign('/student/self-testing'),
+              }}
+            />
+          ) : (
+            <div className="space-y-3.5">
+              {activeSlots.map((slot) => {
+                const att = attendanceRecords.find(
+                  (a) => a.slot_id === slot.id && a.session_date === activeDayDateStr
+                );
+                return (
+                  <StudentClassCard
+                    key={slot.id}
+                    slot={slot}
+                    studentId={studentId}
+                    sessionDate={activeDayDateStr}
+                    attendanceRecord={att}
+                    onAttendanceMarked={(slotId, rec) => {
+                      setAttendanceRecords((prev) => [
+                        rec,
+                        ...prev.filter(
+                          (a) => !(a.slot_id === slotId && a.session_date === rec.session_date)
+                        ),
+                      ]);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </StudentShell>
   );

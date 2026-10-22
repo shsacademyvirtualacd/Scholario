@@ -1,31 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, BookMarked } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Search, BookMarked, MessageSquare, Target } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
-import SectionHeader from '../../components/ui/SectionHeader';
+import { StudentPageHeader } from '../../components/student/shared/StudentPageHeader';
+import { StudentEmptyState } from '../../components/student/shared/StudentEmptyState';
+import { StudentGridSkeleton } from '../../components/student/shared/StudentSkeleton';
 import NoteCard from '../../components/student/NoteCard';
 import NoteViewerModal from '../../components/student/NoteViewerModal';
-import EmptyState from '../../components/ui/EmptyState';
 import { getOfferingsForStudent, getNotesForOfferings } from '../../lib/db';
 import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { pageCache } from '../../lib/pageCache';
 import type { Note } from '../../types';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
-import { useMobile } from '../../hooks/useMobile';
 
 export const NotesPage: React.FC = () => {
   const { profile } = useAuth();
-  const [searchParams] = useSearchParams();
-  const isMobile = useMobile();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const studentId = profile?.id || '';
-  
-  const cachedNotes = studentId ? pageCache.get<Note[]>('student_notes', studentId) : null;
-  const cachedOfferings = studentId ? pageCache.get<any[]>('student_offerings', studentId) : null;
 
-  const [notes, setNotes] = useState<Note[]>(cachedNotes || []);
-  const [offerings, setOfferings] = useState<any[]>(cachedOfferings || []);
-  const [loading, setLoading] = useState<boolean>(!cachedNotes);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [offerings, setOfferings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [activeSubject, setActiveSubject] = useState<string>('All');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -34,36 +31,32 @@ export const NotesPage: React.FC = () => {
     if (!studentId) return;
     let mounted = true;
 
-    const initNotes = pageCache.get<Note[]>('student_notes', studentId);
-    const initOffs = pageCache.get<any[]>('student_offerings', studentId);
-    if (initNotes && notes.length === 0 && mounted) {
-      setNotes(initNotes);
-      if (initOffs) setOfferings(initOffs);
+    const cachedNotes = pageCache.get<Note[]>('student_notes', studentId);
+    const cachedOfferings = pageCache.get<any[]>('student_offerings', studentId);
+    if (cachedNotes && mounted) {
+      setNotes(cachedNotes);
+      if (cachedOfferings) setOfferings(cachedOfferings);
       setLoading(false);
     }
 
-    getOfferingsForStudent(studentId).then(async (offs) => {
-      if (!mounted) return;
-      const currentOffs = pageCache.get<any[]>('student_offerings', studentId);
-      if (!currentOffs || JSON.stringify(currentOffs) !== JSON.stringify(offs)) {
-        setOfferings(offs);
-        pageCache.set('student_offerings', offs, studentId);
-      }
+    getOfferingsForStudent(studentId)
+      .then(async (offs) => {
+        if (!mounted) return;
+        setOfferings(offs || []);
+        pageCache.set('student_offerings', offs || [], studentId);
 
-      const ids = offs.map(o => o.id);
-      const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
-      if (!mounted) return;
-      
-      const currentNotes = pageCache.get<Note[]>('student_notes', studentId);
-      if (!currentNotes || JSON.stringify(currentNotes) !== JSON.stringify(n)) {
-        setNotes(n);
-        pageCache.set('student_notes', n, studentId);
-      }
-      setLoading(false);
-    }).catch((err) => {
-      console.error(err);
-      if (mounted) setLoading(false);
-    });
+        const ids = (offs || []).map((o) => o.id);
+        const notesList = await getNotesForOfferings(ids).catch(() => [] as Note[]);
+        if (!mounted) return;
+
+        setNotes(notesList || []);
+        pageCache.set('student_notes', notesList || [], studentId);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('[NotesPage] Error fetching notes:', err);
+        if (mounted) setLoading(false);
+      });
 
     return () => {
       mounted = false;
@@ -72,180 +65,206 @@ export const NotesPage: React.FC = () => {
 
   useRealtimeTable({
     table: 'notes',
-    debounceMs: 2000,
+    debounceMs: 1500,
     onAny: async () => {
       if (!studentId || offerings.length === 0) return;
-      const ids = offerings.map(o => o.id);
-      const n = await getNotesForOfferings(ids).catch(() => [] as Note[]);
-      setNotes(n);
-      pageCache.set('student_notes', n, studentId);
-    }
+      const ids = offerings.map((o) => o.id);
+      const notesList = await getNotesForOfferings(ids).catch(() => [] as Note[]);
+      setNotes(notesList || []);
+      pageCache.set('student_notes', notesList || [], studentId);
+    },
   });
 
-  // Synchronize search query from URL search parameters
-  useEffect(() => {
-    const query = searchParams.get('search');
-    if (query !== null) {
-      setSearchTerm(query);
-    }
-  }, [searchParams]);
+  // Calculate subject counts
+  const enrolledSubjects = useMemo(() => {
+    return getEnrolledSubjectsForStudent(profile, offerings);
+  }, [profile, offerings]);
 
-  // Reset activeSubject to 'All' on studentId change
-  useEffect(() => {
-    setActiveSubject('All');
-  }, [studentId]);
+  const subjectCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: notes.length };
+    enrolledSubjects.forEach((sub) => {
+      counts[sub] = 0;
+    });
 
-  // Filter notes (already filtered by active student enrollments)
-  const groupNotes = notes;
+    notes.forEach((note) => {
+      const rawSubj =
+        note.offering?.subject_name ||
+        (typeof note.offering?.subject === 'string'
+          ? note.offering.subject
+          : note.offering?.subject?.name) ||
+        '';
+      if (rawSubj) {
+        counts[rawSubj] = (counts[rawSubj] || 0) + 1;
+      }
+    });
 
-  // Extract unique subjects for the tabs based on enrolled subjects
-  const enrolledSubjects = getEnrolledSubjectsForStudent(profile, offerings);
-  const subjects = [
-    'All', 
-    ...enrolledSubjects
-  ];
+    return counts;
+  }, [notes, enrolledSubjects]);
 
-  // Filter notes based on active subject and search term
-  const filteredNotes = groupNotes.filter(note => {
-    const isCustomPlan = profile?.plan_type === 'custom';
-    const noteSubject = note.offering?.subject || '';
-    const matchesSubject = activeSubject === 'All'
-      ? (isCustomPlan ? enrolledSubjects.some(es => es.toLowerCase().trim() === noteSubject.toLowerCase().trim()) : true)
-      : noteSubject.toLowerCase().trim() === activeSubject.toLowerCase().trim();
-    const q = searchTerm.toLowerCase();
-    const matchesSearch = !q ||
-      (note.chapter_name || '').toLowerCase().includes(q) ||
-      (note.title || '').toLowerCase().includes(q);
-    return matchesSubject && matchesSearch;
-  });
+  const subjectList = useMemo(() => {
+    const set = new Set<string>(['All', ...enrolledSubjects]);
+    // Also include any subjects that have notes
+    notes.forEach((note) => {
+      const rawSubj =
+        note.offering?.subject_name ||
+        (typeof note.offering?.subject === 'string'
+          ? note.offering.subject
+          : note.offering?.subject?.name);
+      if (rawSubj) set.add(rawSubj);
+    });
+    return Array.from(set);
+  }, [enrolledSubjects, notes]);
 
-  // Group notes by chapter
-  const groupedNotes: Record<string, typeof filteredNotes> = {};
-  filteredNotes.forEach(note => {
-    const chap = note.chapter_name || 'General Notes';
-    if (!groupedNotes[chap]) {
-      groupedNotes[chap] = [];
-    }
-    groupedNotes[chap].push(note);
-  });
+  // Filter notes based on active subject and search term, sorted newest first
+  const filteredNotes = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    return notes
+      .filter((note) => {
+        const rawSubj =
+          note.offering?.subject_name ||
+          (typeof note.offering?.subject === 'string'
+            ? note.offering.subject
+            : note.offering?.subject?.name) ||
+          '';
+
+        const matchesSubject =
+          activeSubject === 'All' ||
+          rawSubj.toLowerCase().trim() === activeSubject.toLowerCase().trim();
+
+        const matchesSearch =
+          !q ||
+          (note.chapter_name || '').toLowerCase().includes(q) ||
+          (note.title || '').toLowerCase().includes(q) ||
+          rawSubj.toLowerCase().includes(q);
+
+        return matchesSubject && matchesSearch;
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [notes, activeSubject, searchTerm]);
 
   return (
     <StudentShell>
-      {/* Page Header */}
-      <SectionHeader
-        title="Notes Library"
-        description="Browse, preview, and download chapter-wise notes uploaded by your teachers."
-      />
+      <div className="space-y-6 max-w-7xl mx-auto">
+        {/* Page Header */}
+        <StudentPageHeader
+          title="Notes Library"
+          description="Browse chapter-wise revision notes, lecture slides, and study PDFs uploaded by your subject teachers."
+        />
 
-      {/* Filters & Search Control Bar */}
-      <div className="flex flex-col xl:flex-row gap-4 items-stretch justify-between mb-6 bg-white p-4 border border-[#E5E5E5] rounded-xl shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-4 items-stretch flex-1">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
+        {/* ── Search & Horizontal Subject Strip ── */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-2xs space-y-3">
+          {/* Search Input */}
+          <div className="relative">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Search by note title or chapter..."
+              placeholder="Search by note title, chapter name, or subject..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-9 w-full bg-[#FAFAFA]"
+              className="min-h-[44px] w-full pl-10 pr-4 py-2 rounded-xl text-xs sm:text-sm bg-neutral-50 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-amber-400/50"
             />
           </div>
+
+          {/* Subject Filter Chips in Single Scrollable Row */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            {subjectList.map((subject) => {
+              const count = subjectCounts[subject] || 0;
+              const isSelected = activeSubject === subject;
+              const hasNoNotes = subject !== 'All' && count === 0;
+
+              return (
+                <button
+                  key={subject}
+                  type="button"
+                  onClick={() => setActiveSubject(subject)}
+                  className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-neutral-950 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
+                      : hasNoNotes
+                      ? 'bg-neutral-100 dark:bg-neutral-800/50 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                  }`}
+                >
+                  <span>{subject}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isSelected
+                        ? 'bg-white/20 text-white dark:bg-black/20 dark:text-neutral-950'
+                        : 'bg-neutral-200/60 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        
-        {/* Subject Filter Tabs */}
-        <div className={`py-0.5 self-center ${isMobile ? 'flex flex-wrap gap-2 justify-center' : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar'}`}>
-          {subjects.map(subject => (
-            <button
-              key={subject}
-              onClick={() => setActiveSubject(subject || 'All')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${
-                activeSubject === subject
-                  ? 'bg-[#111111] text-white border-[#111111] shadow-sm'
-                  : 'bg-[#FAFAFA] text-[#525252] border-[#E5E5E5] hover:bg-[#F5F5F5]'
-              }`}
-            >
-              {subject}
-            </button>
-          ))}
-        </div>
+
+        {/* ── Main Notes Grid / Empty States ── */}
+        {loading ? (
+          <StudentGridSkeleton count={6} />
+        ) : notes.length === 0 ? (
+          /* Empty state when NO notes exist across the board */
+          <StudentEmptyState
+            icon={<BookMarked size={28} />}
+            title="No notes for your class yet"
+            description="Your teachers will upload chapter notes, formulas, and past paper answers here as classes progress."
+            action={{
+              label: 'Practice in Self Testing',
+              onClick: () => navigate('/student/self-testing'),
+            }}
+            secondaryAction={{
+              label: 'Message your teacher',
+              onClick: () => navigate('/student/chat'),
+            }}
+          />
+        ) : filteredNotes.length === 0 ? (
+          /* Empty state when filtering or searching returns 0 results */
+          <StudentEmptyState
+            icon={<BookMarked size={28} />}
+            title={`No notes found for "${activeSubject}"`}
+            description={
+              searchTerm
+                ? `No notes match "${searchTerm}" in ${activeSubject}. Try clearing your search or picking another subject.`
+                : `Your teacher has not uploaded any study materials for ${activeSubject} yet.`
+            }
+            action={{
+              label: 'View all subjects',
+              onClick: () => {
+                setActiveSubject('All');
+                setSearchTerm('');
+              },
+            }}
+            secondaryAction={{
+              label: 'Practice in Self Testing',
+              onClick: () => navigate('/student/self-testing'),
+            }}
+          />
+        ) : (
+          /* Cards Grid sorted newest first */
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 pb-1">
+              <span>
+                Showing <strong>{filteredNotes.length}</strong> {filteredNotes.length === 1 ? 'note' : 'notes'}
+              </span>
+              <span>Sorted newest first</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredNotes.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note as any}
+                  onView={(n) => setSelectedNote(n)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Main Grid View */}
-      {loading && filteredNotes.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div key={n} className="bg-white rounded-xl border border-[#E5E5E5] p-5 shadow-xs flex flex-col justify-between h-44">
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <div className="h-5 bg-[#F5F5F5] rounded w-20" />
-                  <div className="h-5 bg-[#F5F5F5] rounded-full w-12" />
-                </div>
-                <div className="h-4 bg-[#F5F5F5] rounded w-3/4" />
-                <div className="h-3 bg-[#F5F5F5] rounded w-full" />
-                <div className="h-3 bg-[#F5F5F5] rounded w-2/3" />
-              </div>
-              <div className="flex justify-between pt-3 border-t border-[#F5F5F5]">
-                <div className="h-3 bg-[#F5F5F5] rounded w-16" />
-                <div className="flex gap-2">
-                  <div className="w-7 h-7 bg-[#F5F5F5] rounded-lg" />
-                  <div className="w-7 h-7 bg-[#F5F5F5] rounded-lg" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filteredNotes.length === 0 ? (
-        <EmptyState
-          icon={BookMarked}
-          title="No notes found"
-          description={
-            searchTerm 
-              ? `We couldn't find any notes matching "${searchTerm}". Try a different term or clear filters.`
-              : "No notes are currently available for this subject."
-          }
-          action={
-            searchTerm || activeSubject !== 'All' ? (
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setActiveSubject('All');
-                }}
-                className="btn btn-ghost border border-[#E5E5E5] hover:bg-[#F5F5F5] font-bold interactive"
-              >
-                Clear all filters
-              </button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <div className="space-y-8">
-          {Object.keys(groupedNotes).map(chapterName => (
-            <div key={chapterName} className="space-y-4">
-              {/* Chapter Header */}
-              <div className="flex items-center gap-2 border-b border-[#E5E5E5] pb-2">
-                <h2 className="text-base font-extrabold text-[#111111]">{chapterName}</h2>
-                <span className="bg-[#F5F5F5] text-[#737373] text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {groupedNotes[chapterName].length} {groupedNotes[chapterName].length === 1 ? 'note' : 'notes'}
-                </span>
-              </div>
-              
-              {/* Note Cards List */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {groupedNotes[chapterName].map(note => (
-                  <NoteCard
-                    key={note.id}
-                    note={note as any}
-                    onView={(n) => setSelectedNote(n)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Lightbox Inline Note Previewer */}
+      {/* Lightbox Inline Note Previewer Modal */}
       <NoteViewerModal
         note={selectedNote}
         onClose={() => setSelectedNote(null)}

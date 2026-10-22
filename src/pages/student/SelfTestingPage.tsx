@@ -1,6 +1,6 @@
 import React from 'react';
 import StudentShell from '../../components/student/StudentShell';
-import SectionHeader from '../../components/ui/SectionHeader';
+import StudentPageHeader from '../../components/student/shared/StudentPageHeader';
 import SelfTestingView from '../../components/tests/SelfTestingView';
 import { useAuth } from '../../features/auth/AuthContext';
 
@@ -15,9 +15,10 @@ export const SelfTestingPage: React.FC = () => {
 
   return (
     <StudentShell>
-      <SectionHeader
+      <StudentPageHeader
         title="Self Testing"
-        description="Practice with curriculum-aligned multiple choice questions, mock exam simulations, and instant performance feedback."
+        description="Practice curriculum-aligned multiple choice questions, mock exams, and instant performance feedback."
+        badge="UI v2"
       />
 
       <div className="mt-4">

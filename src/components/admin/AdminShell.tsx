@@ -31,6 +31,7 @@ import ProfileDropdownMenu from '../common/ProfileDropdownMenu';
 import ThemeToggleSwitch from '../common/ThemeToggleSwitch';
 import { NotificationBell } from '../common/NotificationBell';
 import { AnnouncementBanner } from '../common/AnnouncementBanner';
+import { APP_VERSION } from '../../utils/version';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -242,7 +243,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           <span className="text-[11px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
             Admin Panel
           </span>
-          <span className="text-[10px] text-neutral-400">v2.4</span>
+          <span className="text-[10px] text-neutral-400">{APP_VERSION}</span>
         </div>
 
         {/* ── Independent Scrolling Navigation (Sage, Prices, Fees always reachable) ── */}

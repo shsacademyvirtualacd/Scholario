@@ -1,28 +1,26 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Check, X, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
 import type { Attendance } from '../../types';
 
 interface AttendanceCalendarProps {
   attendanceRecords: Attendance[];
+  onSelectDay?: (dateStr: string, records: Attendance[]) => void;
 }
 
-export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords }) => {
+export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
+  attendanceRecords,
+  onSelectDay,
+}) => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Get month details
   const firstDayOfMonth = new Date(year, month, 1);
   const lastDayOfMonth = new Date(year, month + 1, 0);
-  
   const numDaysInMonth = lastDayOfMonth.getDate();
-  
-  // Day of week of the first day (0 = Sun, 1 = Mon, ..., 6 = Sat)
-  // Shift so Mon is 0, Tue is 1, ..., Sun is 6
   const startDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7;
 
-  // Month navigation
   const prevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
   };
@@ -33,44 +31,42 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendan
 
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
 
-  // Generate calendar days grid
   const daysGrid: (number | null)[] = [];
-  
-  // Padding for start of month
   for (let i = 0; i < startDayOfWeek; i++) {
     daysGrid.push(null);
   }
-  
-  // Days of month
   for (let i = 1; i <= numDaysInMonth; i++) {
     daysGrid.push(i);
   }
 
-  // Get status color for a specific day
-  const getDayAttendance = (day: number) => {
+  const getDayRecords = (day: number): Attendance[] => {
     const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return attendanceRecords.find(record => record.session_date === formattedDate);
+    return attendanceRecords.filter((record) => record.session_date === formattedDate);
   };
 
-  const DAYS_HEADER = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const DAYS_HEADER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
-    <div className="bg-white border border-[#E5E5E5] rounded-2xl p-5 shadow-sm">
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 shadow-2xs">
       {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-sm font-extrabold text-[#111111] uppercase tracking-wider">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
           {monthName} {year}
         </h3>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
+            type="button"
             onClick={prevMonth}
-            className="w-8 h-8 rounded-lg border border-[#E5E5E5] hover:bg-[#F5F5F5] flex items-center justify-center text-[#525252] transition-colors interactive"
+            className="min-h-[44px] min-w-[44px] p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 transition-colors cursor-pointer"
+            aria-label="Previous month"
           >
             <ChevronLeft size={16} />
           </button>
           <button
+            type="button"
             onClick={nextMonth}
-            className="w-8 h-8 rounded-lg border border-[#E5E5E5] hover:bg-[#F5F5F5] flex items-center justify-center text-[#525252] transition-colors interactive"
+            className="min-h-[44px] min-w-[44px] p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-400 transition-colors cursor-pointer"
+            aria-label="Next month"
           >
             <ChevronRight size={16} />
           </button>
@@ -80,72 +76,83 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendan
       {/* Weekday headers */}
       <div className="grid grid-cols-7 text-center mb-2">
         {DAYS_HEADER.map((day, idx) => (
-          <span key={idx} className="text-[10px] font-bold text-[#A3A3A3] uppercase">
+          <span key={idx} className="text-[11px] font-bold text-neutral-400 uppercase">
             {day}
           </span>
         ))}
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-y-2 gap-x-1.5 text-center">
+      <div className="grid grid-cols-7 gap-1.5 text-center">
         {daysGrid.map((day, idx) => {
           if (day === null) {
             return <div key={`empty-${idx}`} className="h-10" />;
           }
 
-          const record = getDayAttendance(day);
-          const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+          const dayRecords = getDayRecords(day);
+          const hasRecord = dayRecords.length > 0;
+          const hasPresent = dayRecords.some((r) => r.status === 'present');
+          const hasLate = dayRecords.some((r) => r.status === 'late');
+          const hasAbsent = dayRecords.some((r) => r.status === 'absent');
+          const hasPending = dayRecords.some((r) => r.status === 'pending');
 
-          let dayStyles = 'text-[#111111] hover:bg-[#F5F5F5]';
-          let indicatorElement = null;
+          const isToday =
+            new Date().toDateString() === new Date(year, month, day).toDateString();
 
-          if (record) {
-            if (record.status === 'present') {
-              dayStyles = 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]';
-              indicatorElement = <span className="absolute bottom-1 w-1 h-1 rounded-full bg-[#10b981]" />;
-            } else if (record.status === 'absent') {
-              dayStyles = 'bg-[#FEF2F2] text-[#991B1B] border border-[#FCA5A5]';
-              indicatorElement = <span className="absolute bottom-1 w-1 h-1 rounded-full bg-[#ef4444]" />;
-            } else if (record.status === 'late') {
-              dayStyles = 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]';
-              indicatorElement = <span className="absolute bottom-1 w-1 h-1 rounded-full bg-[#F4C430]" />;
-            } else if (record.status === 'pending') {
-              dayStyles = 'bg-amber-50 text-amber-900 border border-amber-300';
-              indicatorElement = <span className="absolute bottom-1 w-1 h-1 rounded-full bg-amber-500 animate-pulse" />;
+          let dayStyles = 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800';
+          let indicatorDot = null;
+
+          if (hasRecord) {
+            if (hasPresent) {
+              dayStyles = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800';
+              indicatorDot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-emerald-500" />;
+            } else if (hasLate) {
+              dayStyles = 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800';
+              indicatorDot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-amber-500" />;
+            } else if (hasAbsent) {
+              dayStyles = 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800';
+              indicatorDot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-rose-500" />;
+            } else if (hasPending) {
+              dayStyles = 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800';
+              indicatorDot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />;
             }
           }
 
+          const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
           return (
-            <div
+            <button
               key={`day-${day}`}
-              className={`relative h-10 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-colors cursor-pointer ${dayStyles} ${
-                isToday ? 'ring-2 ring-[#F4C430] ring-offset-2' : ''
+              type="button"
+              onClick={() => onSelectDay?.(formattedDate, dayRecords)}
+              className={`min-h-[44px] relative rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all cursor-pointer ${dayStyles} ${
+                isToday ? 'ring-2 ring-amber-400 ring-offset-2 dark:ring-offset-neutral-900' : ''
               }`}
             >
               <span>{day}</span>
-              {indicatorElement}
-            </div>
+              {indicatorDot}
+            </button>
           );
         })}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-3.5 mt-6 pt-4 border-t border-[#F5F5F5] text-[10px] font-bold text-[#737373] flex-wrap">
-        <div className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-50 border border-amber-300 flex items-center justify-center text-[7px] text-amber-800 font-extrabold animate-pulse">●</span>
-          Pending
+      {/* Bigger Legend with Icon and Text */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-800 text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+          <span>Present</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center text-[7px] text-[#065F46] font-extrabold"><Check size={6} /></span>
-          Present
+        <div className="flex items-center gap-1.5">
+          <Clock size={14} className="text-amber-500 shrink-0" />
+          <span>Late</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center text-[7px] text-[#92400E] font-extrabold"><Clock size={6} /></span>
-          Late
+        <div className="flex items-center gap-1.5">
+          <XCircle size={14} className="text-rose-500 shrink-0" />
+          <span>Absent</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FEF2F2] border border-[#FCA5A5] flex items-center justify-center text-[7px] text-[#991B1B] font-extrabold"><X size={6} /></span>
-          Absent
+        <div className="flex items-center gap-1.5">
+          <AlertCircle size={14} className="text-amber-500 shrink-0" />
+          <span>Pending</span>
         </div>
       </div>
     </div>

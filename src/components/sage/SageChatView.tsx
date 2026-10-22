@@ -624,27 +624,27 @@ PdfPreviewModal.displayName = 'PdfPreviewModal';
 const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: string; text: string; icon: any; tone?: string }>> = {
   student: [
     {
-      label: 'Celebrate High Attendance',
-      text: 'Assalam-o-Alaikum Sage! I just maintained 100% attendance this month in Physics and Math, thank you!',
-      icon: Smile,
-      tone: 'positive',
-    },
-    {
-      label: 'Attendance & Absence Alert',
-      text: 'I missed 3 consecutive classes this week due to fever. Is my attendance in danger of FBISE exam suspension?',
-      icon: AlertTriangle,
-      tone: 'concerned',
-    },
-    {
-      label: 'Derive Physics Formula',
-      text: 'Explain Newton’s Laws of Motion with real-life FBISE physics examples and step-by-step formula derivations.',
+      label: "Explain Newton's Third Law",
+      text: "Explain Newton's third law of motion with everyday Pakistani examples and simple formula derivations.",
       icon: Lightbulb,
       tone: 'neutral',
     },
     {
-      label: '7-Day Study Schedule',
-      text: 'Create a 7-day revision schedule for upcoming FBISE board exams balancing Science and English.',
+      label: 'Balance Chemical Equations',
+      text: 'Help me understand step-by-step how to balance chemical equations with examples from our syllabus.',
+      icon: Sparkles,
+      tone: 'neutral',
+    },
+    {
+      label: 'Mitosis vs Meiosis Summary',
+      text: 'Explain the key differences between mitosis and meiosis in clear bullet points for exam revision.',
       icon: BookOpen,
+      tone: 'neutral',
+    },
+    {
+      label: '5-Day Board Exam Schedule',
+      text: 'Create a 5-day study revision plan for upcoming Matric board exams balancing science and languages.',
+      icon: GraduationCap,
       tone: 'neutral',
     },
   ],
@@ -757,6 +757,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [previewTime, setPreviewTime] = useState(0);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [lastSentPrompt, setLastSentPrompt] = useState<string>('');
 
   // ── PDF Generation & Preview State ──
   const [generatingPdfMsgId, setGeneratingPdfMsgId] = useState<string | null>(null);

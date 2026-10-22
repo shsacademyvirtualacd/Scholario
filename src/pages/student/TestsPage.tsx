@@ -1,38 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   BookOpen,
   FileCheck2,
-  Target,
+  Filter,
   ShieldAlert,
   Award,
   ArrowRight,
   Eye,
-  Camera,
   Clock,
   PenTool,
   X,
+  ArrowLeft,
+  Calendar,
+  AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
-import SectionHeader from '../../components/ui/SectionHeader';
+import { StudentPageHeader } from '../../components/student/shared/StudentPageHeader';
+import { StudentBottomSheet } from '../../components/student/shared/StudentBottomSheet';
+import { StudentEmptyState } from '../../components/student/shared/StudentEmptyState';
+import { StudentListSkeleton } from '../../components/student/shared/StudentSkeleton';
 import StudentTestCard from '../../components/student/StudentTestCard';
 import StudentSubmissionPanel from '../../components/student/StudentSubmissionPanel';
 import TestViewerModal from '../../components/common/TestViewerModal';
-import SelfTestingView from '../../components/tests/SelfTestingView';
 import ProctoredMCQAccessModal from '../../components/student/ProctoredMCQAccessModal';
 import { ProctoredMCQExamModal } from '../../components/student/ProctoredMCQExamModal';
 import ProctoredMCQResultModal from '../../components/student/ProctoredMCQResultModal';
 import { WrittenTestExamModal } from '../../components/student/WrittenTestExamModal';
-import { getTestsForStudent, getSubmissionsForStudent, getOfferingsForStudent } from '../../lib/db';
-import { getProctoredMCQTests, getProctoredMCQSubmissions } from '../../lib/proctoredMcqService';
-import { getWrittenTests, getWrittenSubmissions } from '../../lib/writtenTestService';
+import {
+  getTestsForStudent,
+  getSubmissionsForStudent,
+  getOfferingsForStudent,
+} from '../../lib/db';
+import {
+  getProctoredMCQTests,
+  getProctoredMCQSubmissions,
+} from '../../lib/proctoredMcqService';
+import {
+  getWrittenTests,
+  getWrittenSubmissions,
+} from '../../lib/writtenTestService';
 import { getEnrolledSubjectsForStudent } from '../../lib/taxonomy';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useRealtimeTable } from '../../hooks/useRealtimeTable';
 import type { TestPaper, TestSubmission } from '../../types';
 import type { ProctoredMCQTest, ProctoredMCQSubmission } from '../../types/proctoredMcq';
 import type { WrittenTest, WrittenSubmission } from '../../types/writtenTest';
+import { formatProperName, formatTitleCase } from '../../utils/studentFormatting';
+
+type StatusTab = 'todo' | 'submitted' | 'graded' | 'overdue';
 
 export const TestsPage: React.FC = () => {
   const { profile } = useAuth();
@@ -46,28 +64,26 @@ export const TestsPage: React.FC = () => {
     profile?.class?.board_id ||
     'fbise';
 
-  // Tab navigation: 'class-test' vs 'self-test'
-  const activeTab = searchParams.get('tab') === 'self-test' ? 'self-test' : 'class-test';
-
-  const setActiveTab = (tab: 'class-test' | 'self-test') => {
-    const newParams = new URLSearchParams(searchParams);
-    if (tab === 'class-test') {
-      newParams.delete('tab');
-    } else {
-      newParams.set('tab', 'self-test');
-    }
-    setSearchParams(newParams);
-  };
-
   const [tests, setTests] = useState<TestPaper[]>([]);
   const [submissions, setSubmissions] = useState<TestSubmission[]>([]);
   const [offerings, setOfferings] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
+
+  // Active status tab: 'todo' | 'submitted' | 'graded' | 'overdue'
+  const [activeTab, setActiveTab] = useState<StatusTab>('todo');
+
+  // Selected test for detail view
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+  // Mobile detail screen toggle: true when viewing a selected test on small screens
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+
+  // Filters
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [activeSubject, setActiveSubject] = useState<string>('All');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'submitted' | 'graded'>('all');
-  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'unified' | 'proctored' | 'short_question' | 'long_question' | 'standard'>('all');
+  const [testTypeFilter, setTestTypeFilter] = useState<'all' | 'mcq' | 'written' | 'standard'>('all');
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+
+  // Modals & Viewers
   const [viewingTest, setViewingTest] = useState<TestPaper | null>(null);
   const [viewingSubmission, setViewingSubmission] = useState<TestSubmission | null>(null);
 
@@ -76,21 +92,28 @@ export const TestsPage: React.FC = () => {
   const [proctoredSubmissions, setProctoredSubmissions] = useState<ProctoredMCQSubmission[]>([]);
   const [accessModalTest, setAccessModalTest] = useState<ProctoredMCQTest | null>(null);
   const [activeExamTest, setActiveExamTest] = useState<ProctoredMCQTest | null>(null);
-  const [examVerifiedStudentId, setExamVerifiedStudentId] = useState<string>('');
-  const [examVerifiedStudentName, setExamVerifiedStudentName] = useState<string>('');
+  const [examVerifiedStudentId, setExamVerifiedStudentId] = useState('');
+  const [examVerifiedStudentName, setExamVerifiedStudentName] = useState('');
   const [viewingGradedMCQSub, setViewingGradedMCQSub] = useState<ProctoredMCQSubmission | null>(null);
 
-  // Written Tests state (Short Question & Long Question Tests)
+  // Written tests
   const [writtenTests, setWrittenTests] = useState<WrittenTest[]>([]);
   const [writtenSubmissions, setWrittenSubmissions] = useState<WrittenSubmission[]>([]);
   const [activeWrittenExamTest, setActiveWrittenExamTest] = useState<WrittenTest | null>(null);
-  const [viewingWrittenSubmission, setViewingWrittenSubmission] = useState<WrittenSubmission | null>(null);
 
   const fetchData = async () => {
     if (!studentId) return;
     try {
       setLoading(true);
-      const [fetchedTests, fetchedSubs, fetchedOffs, fetchedMcqTests, fetchedMcqSubs, fetchedWrittenTests, fetchedWrittenSubs] = await Promise.all([
+      const [
+        fetchedTests,
+        fetchedSubs,
+        fetchedOffs,
+        fetchedMcqTests,
+        fetchedMcqSubs,
+        fetchedWrittenTests,
+        fetchedWrittenSubs,
+      ] = await Promise.all([
         getTestsForStudent(studentGrade, studentStream, studentBoardId),
         getSubmissionsForStudent(studentId),
         getOfferingsForStudent(studentId).catch(() => []),
@@ -100,20 +123,19 @@ export const TestsPage: React.FC = () => {
         getWrittenSubmissions({ studentId }).catch(() => []),
       ]);
 
-      setTests(fetchedTests);
-      setSubmissions(fetchedSubs);
-      setOfferings(fetchedOffs);
-      setProctoredTests(fetchedMcqTests);
-      setProctoredSubmissions(fetchedMcqSubs);
-      setWrittenTests(fetchedWrittenTests);
-      setWrittenSubmissions(fetchedWrittenSubs);
+      setTests(fetchedTests || []);
+      setSubmissions(fetchedSubs || []);
+      setOfferings(fetchedOffs || []);
+      setProctoredTests(fetchedMcqTests || []);
+      setProctoredSubmissions(fetchedMcqSubs || []);
+      setWrittenTests(fetchedWrittenTests || []);
+      setWrittenSubmissions(fetchedWrittenSubs || []);
 
-      // Default select the first test if none is currently selected
-      if (!selectedTestId && fetchedTests.length > 0) {
+      if (!selectedTestId && fetchedTests && fetchedTests.length > 0) {
         setSelectedTestId(fetchedTests[0].id);
       }
     } catch (err) {
-      console.error('Error fetching student tests data:', err);
+      console.error('[TestsPage] Fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -121,269 +143,342 @@ export const TestsPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [studentId, studentGrade, studentStream]);
+  }, [studentId, studentGrade, studentStream, studentBoardId]);
 
   useRealtimeTable({
     table: 'tests',
     debounceMs: 1500,
-    onAny: () => fetchData(),
+    onAny: fetchData,
   });
 
   useRealtimeTable({
     table: 'test_submissions',
     debounceMs: 1500,
-    onAny: () => fetchData(),
+    onAny: fetchData,
   });
 
-  // Map submissions by test_id for fast lookup
-  const submissionByTestId = React.useMemo(() => {
+  const submissionByTestId = useMemo(() => {
     const map = new Map<string, TestSubmission>();
     submissions.forEach((s) => map.set(s.test_id, s));
     return map;
   }, [submissions]);
 
-  // Map proctored submissions by test_id for fast lookup
-  const proctoredSubByTestId = React.useMemo(() => {
+  const proctoredSubByTestId = useMemo(() => {
     const map = new Map<string, ProctoredMCQSubmission>();
     proctoredSubmissions.forEach((s) => map.set(s.test_id, s));
     return map;
   }, [proctoredSubmissions]);
 
-  // Map written test submissions by test_id for fast lookup
-  const writtenSubByTestId = React.useMemo(() => {
-    const map = new Map<string, WrittenSubmission>();
-    writtenSubmissions.forEach((s) => map.set(s.test_id, s));
-    return map;
-  }, [writtenSubmissions]);
+  const enrolledSubjects = useMemo(() => {
+    return getEnrolledSubjectsForStudent(profile, offerings);
+  }, [profile, offerings]);
 
-  // Filter written tests (Short & Long Questions)
-  const filteredWrittenTests = writtenTests.filter((t) => {
-    if (t.status !== 'published') return false;
+  const subjectOptions = useMemo(() => {
+    const set = new Set<string>(['All', ...enrolledSubjects]);
+    tests.forEach((t) => t.subject && set.add(t.subject));
+    proctoredTests.forEach((t) => t.subject && set.add(t.subject));
+    writtenTests.forEach((t) => t.subject && set.add(t.subject));
+    return Array.from(set);
+  }, [enrolledSubjects, tests, proctoredTests, writtenTests]);
 
-    // Check grade match if studentGrade is set
-    if (studentGrade && t.grade && String(t.grade) !== String(studentGrade)) {
-      // allow if matching
+  // Standard Test categorized lists
+  const categorizedTests = useMemo(() => {
+    const now = new Date();
+
+    const todo: TestPaper[] = [];
+    const overdue: TestPaper[] = [];
+    const submitted: TestPaper[] = [];
+    const graded: TestPaper[] = [];
+
+    tests.forEach((t) => {
+      // Filter by subject
+      if (
+        activeSubject !== 'All' &&
+        t.subject.toLowerCase().trim() !== activeSubject.toLowerCase().trim()
+      ) {
+        return;
+      }
+      // Filter by test type
+      if (testTypeFilter !== 'all' && testTypeFilter !== 'standard') {
+        return;
+      }
+      // Filter by search term
+      const q = searchTerm.toLowerCase().trim();
+      if (
+        q &&
+        !t.title.toLowerCase().includes(q) &&
+        !t.subject.toLowerCase().includes(q) &&
+        !(t.teacher_name || '').toLowerCase().includes(q)
+      ) {
+        return;
+      }
+
+      const sub = submissionByTestId.get(t.id);
+      const dueDate = new Date(t.due_date);
+      dueDate.setHours(23, 59, 59, 999);
+      const isPastDue = now.getTime() > dueDate.getTime();
+
+      if (sub) {
+        if (sub.status === 'graded') {
+          graded.push(t);
+        } else {
+          submitted.push(t);
+        }
+      } else {
+        if (isPastDue) {
+          overdue.push(t);
+        } else {
+          todo.push(t);
+        }
+      }
+    });
+
+    return { todo, overdue, submitted, graded };
+  }, [tests, submissionByTestId, activeSubject, testTypeFilter, searchTerm]);
+
+  // Active list based on selected StatusTab
+  const activeTestsList = useMemo(() => {
+    switch (activeTab) {
+      case 'todo':
+        return categorizedTests.todo;
+      case 'overdue':
+        return categorizedTests.overdue;
+      case 'submitted':
+        return categorizedTests.submitted;
+      case 'graded':
+        return categorizedTests.graded;
+      default:
+        return categorizedTests.todo;
     }
+  }, [categorizedTests, activeTab]);
 
-    const matchesSubject = activeSubject === 'All' || t.subject.toLowerCase() === activeSubject.toLowerCase();
-    const q = searchTerm.toLowerCase();
-    const matchesSearch =
-      !q ||
-      t.title.toLowerCase().includes(q) ||
-      t.subject.toLowerCase().includes(q) ||
-      (t.instructions || '').toLowerCase().includes(q);
+  const selectedTest = useMemo(() => {
+    return tests.find((t) => t.id === selectedTestId) || activeTestsList[0] || null;
+  }, [tests, selectedTestId, activeTestsList]);
 
-    if (!matchesSubject || !matchesSearch) return false;
+  const currentSubmission = selectedTest
+    ? submissionByTestId.get(selectedTest.id)
+    : undefined;
 
-    const sub = writtenSubByTestId.get(t.id);
-    if (!sub) {
-      return statusFilter === 'all' || statusFilter === 'pending';
-    } else if (sub.status === 'submitted') {
-      return statusFilter === 'submitted';
-    } else if (sub.status === 'graded') {
-      return statusFilter === 'all' || statusFilter === 'graded';
-    }
-    return false;
-  });
-
-  // Filter proctored tests:
-  // Strictly respects the prompt:
-  // 1. Only published tests (drafts hidden from student)
-  // 2. If submitted and not yet graded, it disappears from active/pending view
-  // 3. If submitted and graded, it reappears so the student can view their final grade & feedback
-  const filteredProctoredTests = proctoredTests.filter((t) => {
-    if (t.status !== 'published') return false;
-
-    const matchesSubject = activeSubject === 'All' || t.subject.toLowerCase() === activeSubject.toLowerCase();
-    const q = searchTerm.toLowerCase();
-    const matchesSearch =
-      !q ||
-      t.title.toLowerCase().includes(q) ||
-      t.subject.toLowerCase().includes(q) ||
-      (t.instructions || '').toLowerCase().includes(q);
-
-    if (!matchesSubject || !matchesSearch) return false;
-
-    const sub = proctoredSubByTestId.get(t.id);
-    if (!sub) {
-      // Pending / not taken yet:
-      return statusFilter === 'all' || statusFilter === 'pending';
-    } else if (sub.status === 'submitted') {
-      // Submitted but not graded yet:
-      // USER REQUIREMENT: "The submitted test should then disappear from their active/pending view."
-      return false;
-    } else if (sub.status === 'graded') {
-      // Graded by teacher:
-      // USER REQUIREMENT: "The submitted test should then reappear to the student only once grading is complete — so they can view their final grade and teacher feedback"
-      return statusFilter === 'all' || statusFilter === 'graded';
-    }
-    return false;
-  });
-
-  // Derive enrolled subjects for filter tabs
-  const enrolledSubjects = getEnrolledSubjectsForStudent(profile, offerings);
-  const subjects = ['All', ...enrolledSubjects];
-
-  // Filter tests based on Subject, Status, and Search Term
-  const filteredTests = tests.filter((t) => {
-    const isCustomPlan = profile?.plan_type === 'custom';
-    const matchesSubject = activeSubject === 'All'
-      ? (isCustomPlan ? enrolledSubjects.some((es) => es.toLowerCase().trim() === t.subject.toLowerCase().trim()) : true)
-      : t.subject.toLowerCase().trim() === activeSubject.toLowerCase().trim();
-    const sub = submissionByTestId.get(t.id);
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'pending' && !sub) ||
-      (statusFilter === 'submitted' && !!sub && sub.status !== 'graded') ||
-      (statusFilter === 'graded' && sub?.status === 'graded');
-
-    const q = searchTerm.toLowerCase();
-    const matchesSearch =
-      !q ||
-      t.title.toLowerCase().includes(q) ||
-      t.subject.toLowerCase().includes(q) ||
-      (t.teacher_name || '').toLowerCase().includes(q) ||
-      (t.instructions || '').toLowerCase().includes(q);
-
-    return matchesSubject && matchesStatus && matchesSearch;
-  });
-
-  // Selected test object
-  const selectedTest = tests.find((t) => t.id === selectedTestId) || filteredTests[0] || null;
-  const currentSubmission = selectedTest ? submissionByTestId.get(selectedTest.id) : undefined;
+  const handleSelectTest = (test: TestPaper) => {
+    setSelectedTestId(test.id);
+    setMobileDetailOpen(true);
+  };
 
   const handleSubmissionSuccess = (newSub: TestSubmission) => {
-    setSubmissions((prev) => {
-      const filtered = prev.filter((s) => s.test_id !== newSub.test_id);
-      return [newSub, ...filtered];
-    });
+    setSubmissions((prev) => [newSub, ...prev.filter((s) => s.test_id !== newSub.test_id)]);
   };
 
-  const handleProctoredExamSubmitted = (newSub: ProctoredMCQSubmission) => {
-    setActiveExamTest(null);
-    setProctoredSubmissions((prev) => {
-      const filtered = prev.filter((s) => s.test_id !== newSub.test_id);
-      return [newSub, ...filtered];
-    });
-  };
+  const hasActiveFilters = activeSubject !== 'All' || testTypeFilter !== 'all' || searchTerm.trim().length > 0;
 
   return (
     <StudentShell>
-      {/* Page Header */}
-      <SectionHeader
-        title="Testing Center"
-        description="Access scheduled class assessments and practice curriculum multiple choice quizzes for self-testing."
-      />
-
-      {/* Subsection Tab Switcher */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#EBEBEB] rounded-2xl w-fit mb-6 overflow-x-auto no-scrollbar max-w-full">
-        <button
-          onClick={() => setActiveTab('class-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-            activeTab === 'class-test'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <FileCheck2 size={15} className={activeTab === 'class-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Class Test</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap ${
-            activeTab === 'class-test' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#737373]'
-          }`}>
-            {tests.length + proctoredTests.length + writtenTests.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('self-test')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-            activeTab === 'self-test'
-              ? 'bg-[#111111] text-white shadow-xs'
-              : 'text-[#525252] hover:text-[#111111] hover:bg-black/5'
-          }`}
-        >
-          <Target size={15} className={activeTab === 'self-test' ? 'text-[#F4C430]' : 'text-[#737373]'} />
-          <span>Self Testing</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F4C430]/20 text-[#111111] whitespace-nowrap">
-            MCQ
-          </span>
-        </button>
-      </div>
-
-      {activeTab === 'self-test' ? (
-        <SelfTestingView
-          defaultBoard={profile?.board_id || profile?.board?.id || 'fbise'}
-          defaultGrade={studentGrade}
-          userRole="student"
+      <div className="space-y-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <StudentPageHeader
+          title="Testing Center"
+          description="Access assigned class tests, view question papers, submit answer sheets, and review teacher grading feedback."
         />
-      ) : (
-        <>
-          {/* Filter & Search Bar */}
-          <div className="flex flex-col xl:flex-row gap-4 items-stretch justify-between mb-6 bg-white p-4 border border-[#E5E5E5] rounded-2xl shadow-xs">
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch flex-1">
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
-                <input
-                  type="text"
-                  placeholder="Search tests by title, subject, or chapter..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-10 pl-10 pr-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden focus:ring-2 focus:ring-[#111111]"
-                />
-              </div>
 
-              {/* Test Type Filter */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0 overflow-x-auto no-scrollbar">
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'proctored', label: 'MCQs' },
-                  { id: 'short_question', label: 'Short Qs' },
-                  { id: 'long_question', label: 'Long Qs' },
-                  { id: 'standard', label: 'PDF Papers' },
-                ].map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => setTestTypeFilter(type.id as any)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                      testTypeFilter === type.id
-                        ? 'bg-[#111111] text-white shadow-xs'
-                        : 'text-[#737373] hover:text-[#111111]'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5] shrink-0 overflow-x-auto no-scrollbar">
-                {(['all', 'pending', 'submitted', 'graded'] as const).map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setStatusFilter(st)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold capitalize whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                      statusFilter === st
-                        ? 'bg-[#111111] text-white shadow-xs'
-                        : 'text-[#737373] hover:text-[#111111] hover:bg-[#E5E5E5]'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
+        {/* ── Toolbar: Search + Single "Filters" Button + Active Filter Chips ── */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-2xs space-y-3">
+          <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search tests by title, subject, or teacher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="min-h-[44px] w-full pl-10 pr-4 py-2 rounded-xl text-xs sm:text-sm bg-neutral-50 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-amber-400/50"
+              />
             </div>
 
-            {/* Subject Filter Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-              {subjects.map((sub) => (
+            {/* Single Filters Button */}
+            <button
+              type="button"
+              onClick={() => setFilterModalOpen(true)}
+              className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white flex items-center gap-2 transition-colors cursor-pointer shrink-0"
+            >
+              <Filter size={15} />
+              <span>Filters</span>
+              {hasActiveFilters && (
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+              )}
+            </button>
+          </div>
+
+          {/* Active Filter Chips */}
+          {hasActiveFilters && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-1 text-xs">
+              <span className="text-neutral-400 text-[11px] font-semibold">Active filters:</span>
+              {activeSubject !== 'All' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveSubject('All')}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[11px] font-bold cursor-pointer"
+                >
+                  <span>Subject: {activeSubject}</span>
+                  <X size={12} />
+                </button>
+              )}
+              {testTypeFilter !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setTestTypeFilter('all')}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 text-[11px] font-bold cursor-pointer"
+                >
+                  <span>Type: {testTypeFilter.toUpperCase()}</span>
+                  <X size={12} />
+                </button>
+              )}
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 text-[11px] font-bold cursor-pointer"
+                >
+                  <span>Search: "{searchTerm}"</span>
+                  <X size={12} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSubject('All');
+                  setTestTypeFilter('all');
+                  setSearchTerm('');
+                }}
+                className="text-[11px] text-neutral-500 hover:text-neutral-900 underline ml-1 cursor-pointer"
+              >
+                Reset all
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Status Tabs with Counts: To do, Submitted, Graded, Overdue ── */}
+        <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-neutral-800 overflow-x-auto no-scrollbar pb-1">
+          {[
+            { id: 'todo', label: 'To do', count: categorizedTests.todo.length },
+            { id: 'submitted', label: 'Submitted', count: categorizedTests.submitted.length },
+            { id: 'graded', label: 'Graded', count: categorizedTests.graded.length },
+            { id: 'overdue', label: 'Overdue', count: categorizedTests.overdue.length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as StatusTab)}
+              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-neutral-950 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-850'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                  activeTab === tab.id
+                    ? 'bg-white/20 text-white dark:bg-neutral-900/20 dark:text-neutral-950'
+                    : tab.id === 'overdue' && tab.count > 0
+                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                    : 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Main View: Side-by-Side on Desktop, List / Detail view on Mobile ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Test List (Visible on desktop always; on mobile only when NOT in mobile detail mode) */}
+          <div
+            className={`space-y-4 lg:col-span-5 ${
+              mobileDetailOpen ? 'hidden lg:block' : 'block'
+            }`}
+          >
+            <div className="flex items-center justify-between pb-1">
+              <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+                {activeTestsList.length} {activeTestsList.length === 1 ? 'assessment' : 'assessments'} in {activeTab}
+              </span>
+            </div>
+
+            {loading ? (
+              <StudentListSkeleton rows={4} />
+            ) : activeTestsList.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-800 text-center space-y-2">
+                <FileCheck2 size={32} className="mx-auto text-neutral-400" />
+                <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
+                  No tests in "{activeTab}"
+                </h4>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {activeTab === 'overdue'
+                    ? 'Great job! You have no overdue assessments.'
+                    : activeTab === 'todo'
+                    ? 'You have completed all scheduled assessments.'
+                    : 'No assessments currently match this status.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeTestsList.map((test) => (
+                  <StudentTestCard
+                    key={test.id}
+                    test={test}
+                    submission={submissionByTestId.get(test.id)}
+                    isSelected={selectedTest?.id === test.id}
+                    onSelect={handleSelectTest}
+                    onView={(t) => setViewingTest(t)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Detail / Submission Panel (Visible on desktop; on mobile only when mobileDetailOpen is true) */}
+          <div
+            className={`lg:col-span-7 ${
+              !mobileDetailOpen ? 'hidden lg:block' : 'block'
+            }`}
+          >
+            <StudentSubmissionPanel
+              selectedTest={selectedTest}
+              submission={currentSubmission}
+              onOpenTestViewer={(test) => setViewingTest(test)}
+              onOpenSubmissionViewer={(sub) => setViewingSubmission(sub)}
+              onSubmissionSuccess={handleSubmissionSuccess}
+              onBackToList={() => setMobileDetailOpen(false)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Filters Bottom Sheet Modal ── */}
+      <StudentBottomSheet
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        title="Filter Assessments"
+        subtitle="Filter by subject or assessment format"
+      >
+        <div className="space-y-4">
+          {/* Subject Options */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-neutral-900 dark:text-white block">
+              Subject
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {subjectOptions.map((sub) => (
                 <button
                   key={sub}
+                  type="button"
                   onClick={() => setActiveSubject(sub)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                  className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeSubject === sub
-                      ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
-                      : 'bg-[#FAFAFA] text-[#525252] border-[#E5E5E5] hover:bg-[#F5F5F5]'
+                      ? 'bg-neutral-950 text-white dark:bg-amber-400 dark:text-neutral-950'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
                   }`}
                 >
                   {sub}
@@ -392,520 +487,124 @@ export const TestsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Split-Panel 2-Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: Test Papers List (5 Cols) */}
-            <div className="lg:col-span-6 xl:col-span-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-[#111111] flex items-center gap-2">
-                  <span>Available Class Tests</span>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
-                    {(testTypeFilter === 'all' || testTypeFilter === 'proctored' ? filteredProctoredTests.length : 0) +
-                      (testTypeFilter === 'all' || testTypeFilter === 'unified'
-                        ? filteredWrittenTests.filter((w) => w.test_type === 'unified').length
-                        : 0) +
-                      (testTypeFilter === 'all' || testTypeFilter === 'short_question'
-                        ? filteredWrittenTests.filter((w) => w.test_type === 'short_question').length
-                        : 0) +
-                      (testTypeFilter === 'all' || testTypeFilter === 'long_question'
-                        ? filteredWrittenTests.filter((w) => w.test_type === 'long_question').length
-                        : 0) +
-                      (testTypeFilter === 'all' || testTypeFilter === 'standard' ? filteredTests.length : 0)}
-                  </span>
-                </h3>
-                <span className="text-xs text-[#737373] font-semibold">
-                  Grade {studentGrade} {studentStream ? `• ${studentStream}` : ''}
-                </span>
-              </div>
-
-              {loading && tests.length === 0 && proctoredTests.length === 0 ? (
-                <div className="space-y-3 animate-pulse">
-                  {[1, 2, 3].map((n) => (
-                    <div key={n} className="bg-white rounded-2xl border border-[#E5E5E5] p-5 h-36" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-                  {/* Proctored MCQ Tests Section */}
-                  {testTypeFilter !== 'standard' &&
-                    filteredProctoredTests.map((test) => {
-                      const sub = proctoredSubByTestId.get(test.id);
-                      const isGraded = sub?.status === 'graded';
-
-                      if (isGraded && sub) {
-                        const finalScore = sub.final_score ?? sub.auto_score ?? 0;
-                        const pct = sub.percentage ?? Math.round((finalScore / Math.max(1, sub.total_marks)) * 100);
-                        return (
-                          <div
-                            key={test.id}
-                            className="bg-white rounded-2xl border-2 border-emerald-300/80 p-4 shadow-xs space-y-3 transition-all hover:border-emerald-500"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                <Award size={11} />
-                                Graded Proctored Test
-                              </span>
-                              <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg">
-                                Score: {finalScore} / {sub.total_marks} ({pct}%)
-                              </span>
-                            </div>
-
-                            <div>
-                              <h4 className="text-sm font-black text-[#111111]">{test.title}</h4>
-                              <p className="text-[11px] font-medium text-[#737373] mt-0.5">
-                                {test.subject} • Grade {test.grade} • Completed on {new Date(sub.submitted_at).toLocaleDateString()}
-                              </p>
-                            </div>
-
-                            {sub.teacher_feedback && (
-                              <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-[11px] text-amber-950 font-medium">
-                                <strong className="font-bold">Teacher Feedback:</strong> "{sub.teacher_feedback}"
-                              </div>
-                            )}
-
-                            <div className="pt-2 border-t border-[#F0F0F0] flex justify-end">
-                              <button
-                                onClick={() => setViewingGradedMCQSub(sub)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black shadow-xs cursor-pointer transition-all"
-                              >
-                                <Eye size={13} />
-                                <span>View Graded Paper</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      // Pending Proctored Test
-                      return (
-                        <div
-                          key={test.id}
-                          className="bg-white rounded-2xl border border-[#E5E5E5] hover:border-[#111111] p-3.5 sm:p-4 shadow-xs space-y-3 transition-all group text-left flex flex-col justify-between"
-                        >
-                          <div className="space-y-2">
-                            {/* 1. Title (bold, 1 line) */}
-                            <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-sm font-black text-[#111111] leading-snug line-clamp-1 flex-1 group-hover:text-amber-950 transition-colors">
-                                {test.title}
-                              </h4>
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 shrink-0 whitespace-nowrap">
-                                <ShieldAlert size={11} className="text-amber-700" />
-                                Proctored
-                              </span>
-                            </div>
-
-                            {/* 2. Short subtitle: Subject • Grade • Marks */}
-                            <p className="text-xs font-semibold text-[#525252] leading-tight">
-                              {test.subject} • Grade {test.grade} • {test.total_marks} Marks
-                            </p>
-
-                            {/* 3. Small icon row: 🕐 Duration | 📝 Question count breakdown */}
-                            <div className="flex items-center gap-3 text-xs text-[#737373]">
-                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                <Clock size={12} className="text-[#A3A3A3] shrink-0" />
-                                <span>{test.duration_minutes}m</span>
-                              </span>
-                              <span className="text-[#E5E5E5]">•</span>
-                              <span className="inline-flex items-center gap-1 text-[#737373] whitespace-nowrap">
-                                <PenTool size={12} className="text-[#A3A3A3] shrink-0" />
-                                <span>{test.questions.length} Questions</span>
-                              </span>
-                            </div>
-
-                            {/* 4. Single compact status / helper subtext */}
-                            <div className="pt-0.5">
-                              <span className="text-[11px] font-medium text-[#737373]">
-                                Online • Camera Proctored
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-mono text-[#737373]">
-                              Student ID Access
-                            </span>
-                            <button
-                              onClick={() => setAccessModalTest(test)}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-[#F4C430] text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
-                            >
-                              <span>Start Test</span>
-                              <ArrowRight size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                  {/* Written & Unified Tests Section */}
-                  {(testTypeFilter === 'all' || testTypeFilter === 'unified' || testTypeFilter === 'short_question' || testTypeFilter === 'long_question') &&
-                    filteredWrittenTests
-                      .filter((w) => (testTypeFilter === 'all' ? true : w.test_type === testTypeFilter))
-                      .map((test) => {
-                        const sub = writtenSubByTestId.get(test.id);
-                        const isGraded = sub?.status === 'graded';
-                        const isUnified = test.test_type === 'unified';
-                        const isShort = test.test_type === 'short_question';
-
-                        // Graded view
-                        if (isGraded && sub) {
-                          const finalScore = sub.final_score ?? 0;
-                          const pct = sub.percentage ?? Math.round((finalScore / Math.max(1, sub.total_marks)) * 100);
-                          return (
-                            <div
-                              key={test.id}
-                              className="bg-white rounded-2xl border-2 border-emerald-300/80 p-4 shadow-xs space-y-3 transition-all hover:border-emerald-500"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                  <Award size={11} />
-                                  Graded {isUnified ? 'Online' : isShort ? 'Short Question' : 'Long Question'} Test
-                                </span>
-                                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg">
-                                  Score: {finalScore} / {sub.total_marks} ({pct}%)
-                                </span>
-                              </div>
-
-                              <div>
-                                <h4 className="text-sm font-black text-[#111111]">{test.title}</h4>
-                                <p className="text-[11px] font-medium text-[#737373] mt-0.5">
-                                  {test.subject} • Grade {test.grade} • Graded on {sub.graded_at ? new Date(sub.graded_at).toLocaleDateString() : 'Recent'}
-                                </p>
-                              </div>
-
-                              {sub.general_feedback && (
-                                <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-[11px] text-amber-950 font-medium">
-                                  <strong className="font-bold">Teacher Feedback:</strong> "{sub.general_feedback}"
-                                </div>
-                              )}
-
-                              <div className="pt-2 border-t border-[#F0F0F0] flex justify-end">
-                                <button
-                                  onClick={() => setViewingWrittenSubmission(sub)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-amber-400 text-xs font-black shadow-xs cursor-pointer transition-all"
-                                >
-                                  <Eye size={13} />
-                                  <span>View Graded Feedback</span>
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        // Submitted (Awaiting Grading)
-                        if (sub && sub.status === 'submitted') {
-                          return (
-                            <div
-                              key={test.id}
-                              className="bg-white rounded-2xl border border-amber-300/60 p-4 shadow-xs space-y-3"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1">
-                                  <Clock size={11} />
-                                  Awaiting Teacher Grading
-                                </span>
-                                <span className="text-[10px] text-[#737373] font-mono">
-                                  Submitted {new Date(sub.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-
-                              <div>
-                                <h4 className="text-sm font-black text-[#111111]">{test.title}</h4>
-                                <p className="text-[11px] font-medium text-[#737373] mt-0.5">
-                                  {test.subject} • Grade {test.grade} • {sub.answers?.length || test.questions.length} Answers Captured
-                                </p>
-                              </div>
-
-                              <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200/60">
-                                {isUnified
-                                  ? 'Your multiple choice answers have been auto-checked, and written responses uploaded for evaluation. Marks will be displayed once released.'
-                                  : 'Your handwritten answer photos have been securely uploaded to secure cloud storage for teacher evaluation. Marks will be displayed here once released.'}
-                              </p>
-                            </div>
-                          );
-                        }
-
-                        const mcqCount = test.mcq_count ?? test.questions.filter((q) => q.type === 'mcq').length;
-                        const shortCount = test.short_count ?? test.questions.filter((q) => q.type === 'short_question').length;
-                        const longCount = test.long_count ?? test.questions.filter((q) => q.type === 'long_question').length;
-
-                        let questionBreakdown = '';
-                        if (isUnified) {
-                          const parts: string[] = [];
-                          if (mcqCount > 0) parts.push(`${mcqCount} MCQ`);
-                          if (shortCount > 0) parts.push(`${shortCount} Short`);
-                          if (longCount > 0) parts.push(`${longCount} Long`);
-                          questionBreakdown = parts.length > 0 ? parts.join(' • ') : `${test.questions.length} Qs`;
-                        } else if (isShort) {
-                          questionBreakdown = `${test.questions.length} Short Qs`;
-                        } else {
-                          questionBreakdown = `${test.questions.length} Long Qs`;
-                        }
-
-                        // Pending Written / Unified Test
-                        return (
-                          <div
-                            key={test.id}
-                            className="bg-white rounded-2xl border border-[#E5E5E5] hover:border-[#111111] p-3.5 sm:p-4 shadow-xs space-y-3 transition-all group text-left flex flex-col justify-between"
-                          >
-                            <div className="space-y-2">
-                              {/* 1. Title (bold, 1 line) */}
-                              <div className="flex items-start justify-between gap-2">
-                                <h4 className="text-sm font-black text-[#111111] leading-snug line-clamp-1 flex-1 group-hover:text-amber-950 transition-colors">
-                                  {test.title}
-                                </h4>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 shrink-0 whitespace-nowrap">
-                                  <Camera size={11} className="text-amber-700" />
-                                  Proctored
-                                </span>
-                              </div>
-
-                              {/* 2. Short subtitle: Subject • Grade • Marks */}
-                              <p className="text-xs font-semibold text-[#525252] leading-tight">
-                                {test.subject} • Grade {test.grade} • {test.total_marks} Marks
-                              </p>
-
-                              {/* 3. Small icon row: 🕐 Duration | 📝 Question count breakdown */}
-                              <div className="flex items-center gap-3 text-xs text-[#737373]">
-                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                  <Clock size={12} className="text-[#A3A3A3] shrink-0" />
-                                  <span>{test.duration_minutes}m</span>
-                                </span>
-                                <span className="text-[#E5E5E5]">•</span>
-                                <span className="inline-flex items-center gap-1 text-[#737373] whitespace-nowrap">
-                                  <PenTool size={12} className="text-[#A3A3A3] shrink-0" />
-                                  <span>{questionBreakdown}</span>
-                                </span>
-                              </div>
-
-                              {/* 4. Single compact status / helper subtext */}
-                              <div className="pt-0.5">
-                                <span className="text-[11px] font-medium text-[#737373]">
-                                  {isUnified
-                                    ? 'Online • In-Browser Camera & Auto-submission'
-                                    : 'Handwritten Answer Photo Upload • Timed Session'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* 5. Clean Action Button */}
-                            <div className="pt-2 border-t border-[#F0F0F0] flex items-center justify-between gap-2">
-                              <span className="text-[11px] font-mono text-[#737373]">
-                                In-Browser Camera
-                              </span>
-                              <button
-                                onClick={() => setActiveWrittenExamTest(test)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] hover:bg-black text-amber-400 text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
-                              >
-                                <span>{isUnified ? 'Start Assessment' : 'Start Exam'}</span>
-                                <ArrowRight size={13} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                  {/* Standard / PDF Tests Section */}
-                  {(testTypeFilter === 'all' || testTypeFilter === 'standard') &&
-                    filteredTests.map((test) => (
-                      <StudentTestCard
-                        key={test.id}
-                        test={test}
-                        submission={submissionByTestId.get(test.id)}
-                        isSelected={selectedTest?.id === test.id}
-                        onSelect={(t) => setSelectedTestId(t.id)}
-                        onView={(t) => setViewingTest(t)}
-                      />
-                    ))}
-
-                  {/* Empty state */}
-                  {((testTypeFilter === 'proctored' && filteredProctoredTests.length === 0) ||
-                    (testTypeFilter === 'short_question' && filteredWrittenTests.filter((w) => w.test_type === 'short_question').length === 0) ||
-                    (testTypeFilter === 'long_question' && filteredWrittenTests.filter((w) => w.test_type === 'long_question').length === 0) ||
-                    (testTypeFilter === 'standard' && filteredTests.length === 0) ||
-                    (testTypeFilter === 'all' &&
-                      filteredTests.length === 0 &&
-                      filteredProctoredTests.length === 0 &&
-                      filteredWrittenTests.length === 0)) && (
-                    <div className="bg-white rounded-2xl border border-[#E5E5E5] p-8 text-center shadow-xs">
-                      <BookOpen size={36} className="mx-auto mb-2 text-[#A3A3A3]" />
-                      <p className="text-sm font-bold text-[#111111]">No class tests found</p>
-                      <p className="text-xs text-[#737373] mt-1">
-                        {searchTerm || activeSubject !== 'All' || statusFilter !== 'all'
-                          ? 'Try clearing your active filters or search terms.'
-                          : 'No class tests have been scheduled yet for your grade and stream.'}
-                      </p>
-                      {(searchTerm || activeSubject !== 'All' || statusFilter !== 'all') && (
-                        <button
-                          onClick={() => {
-                            setSearchTerm('');
-                            setActiveSubject('All');
-                            setStatusFilter('all');
-                            setTestTypeFilter('all');
-                          }}
-                          className="mt-4 px-4 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold hover:bg-[#F5F5F5] cursor-pointer"
-                        >
-                          Reset filters
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Right Column: Submissions & Uploading Panel (7 Cols) */}
-            <div className="lg:col-span-6 xl:col-span-7 sticky top-4">
-              <StudentSubmissionPanel
-                selectedTest={selectedTest}
-                submission={currentSubmission}
-                onOpenTestViewer={(t) => setViewingTest(t)}
-                onOpenSubmissionViewer={(s) => setViewingSubmission(s)}
-                onSubmissionSuccess={handleSubmissionSuccess}
-              />
+          {/* Format Options */}
+          <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <label className="text-xs font-bold text-neutral-900 dark:text-white block">
+              Assessment Format
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'all', label: 'All Formats' },
+                { id: 'standard', label: 'PDF Papers' },
+                { id: 'mcq', label: 'Online MCQs' },
+                { id: 'written', label: 'Short & Long Qs' },
+              ].map((fmt) => (
+                <button
+                  key={fmt.id}
+                  type="button"
+                  onClick={() => setTestTypeFilter(fmt.id as any)}
+                  className={`min-h-[44px] p-2 rounded-xl text-xs font-bold text-left px-3 transition-all cursor-pointer ${
+                    testTypeFilter === fmt.id
+                      ? 'bg-neutral-950 text-white dark:bg-amber-400 dark:text-neutral-950'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                  }`}
+                >
+                  {fmt.label}
+                </button>
+              ))}
             </div>
           </div>
-        </>
+
+          <div className="pt-3">
+            <button
+              type="button"
+              onClick={() => setFilterModalOpen(false)}
+              className="min-h-[44px] w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-xs"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </StudentBottomSheet>
+
+      {/* Lightbox Question Paper Viewer */}
+      <TestViewerModal test={viewingTest} onClose={() => setViewingTest(null)} />
+
+      {/* Answer Sheet Viewer */}
+      {viewingSubmission && (
+        <StudentBottomSheet
+          isOpen={Boolean(viewingSubmission)}
+          onClose={() => setViewingSubmission(null)}
+          title="Submitted Answer Sheet"
+          subtitle={`Submitted on ${new Date(viewingSubmission.submitted_at).toLocaleString()}`}
+          maxWidth="lg"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-850 rounded-xl text-xs">
+              <span>Format: {viewingSubmission.file_type.toUpperCase()}</span>
+              {viewingSubmission.marks_obtained !== null && (
+                <span className="font-bold text-emerald-600">
+                  Score: {viewingSubmission.marks_obtained} / {viewingSubmission.max_marks}
+                </span>
+              )}
+            </div>
+            {viewingSubmission.file_url ? (
+              <iframe
+                src={viewingSubmission.file_url}
+                title="Submitted Answer Sheet Preview"
+                className="w-full h-[60vh] rounded-xl border border-neutral-200 dark:border-neutral-800"
+              />
+            ) : (
+              <p className="text-xs text-neutral-500 py-8 text-center">
+                Answer sheet preview is unavailable.
+              </p>
+            )}
+          </div>
+        </StudentBottomSheet>
       )}
 
-      {/* Student ID Verification Modal for Proctored MCQs */}
+      {/* Proctored Exam Modals */}
       <ProctoredMCQAccessModal
-        isOpen={!!accessModalTest}
         test={accessModalTest}
-        defaultStudentId={(profile as any)?.roll_no || (profile?.id ? profile.id.slice(0, 8) : '')}
-        defaultStudentName={profile?.full_name || 'Student'}
+        studentId={studentId}
         onClose={() => setAccessModalTest(null)}
-        onVerified={(verifiedId, verifiedName) => {
+        onVerified={(verifiedTest, verifiedId, verifiedName) => {
+          setAccessModalTest(null);
           setExamVerifiedStudentId(verifiedId);
           setExamVerifiedStudentName(verifiedName);
-          setActiveExamTest(accessModalTest);
-          setAccessModalTest(null);
+          setActiveExamTest(verifiedTest);
         }}
       />
 
-      {/* Proctored Exam Fullscreen Modal */}
       {activeExamTest && (
         <ProctoredMCQExamModal
-          isOpen={true}
           test={activeExamTest}
-          studentId={examVerifiedStudentId || (profile as any)?.roll_no || profile?.id || ''}
-          studentName={examVerifiedStudentName || profile?.full_name || 'Student'}
+          studentId={studentId}
+          studentRollNumber={examVerifiedStudentId}
+          studentName={examVerifiedStudentName}
           onClose={() => setActiveExamTest(null)}
-          onSubmitted={handleProctoredExamSubmitted}
+          onSubmitSuccess={handleSubmissionSuccess as any}
         />
       )}
 
-      {/* Graded Proctored Result Inspection Modal */}
       <ProctoredMCQResultModal
-        isOpen={!!viewingGradedMCQSub}
         submission={viewingGradedMCQSub}
         onClose={() => setViewingGradedMCQSub(null)}
       />
 
-      {/* Written Test Exam Modal (Camera Proctored) */}
+      {/* Written Exam Modal */}
       {activeWrittenExamTest && (
         <WrittenTestExamModal
-          isOpen={true}
           test={activeWrittenExamTest}
-          studentId={(profile as any)?.roll_no || profile?.id || 'STUDENT'}
+          studentId={studentId}
           studentName={profile?.full_name || 'Student'}
           onClose={() => setActiveWrittenExamTest(null)}
-          onSubmitSuccess={async () => {
+          onSubmitSuccess={() => {
             setActiveWrittenExamTest(null);
-            await fetchData();
+            fetchData();
           }}
         />
       )}
-
-      {/* Graded Written Test Inspection Modal */}
-      {viewingWrittenSubmission && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#E5E5E5] overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">
-                  <Award size={11} /> Graded Written Assessment
-                </span>
-                <h3 className="text-lg font-black text-[#111111] mt-1">{viewingWrittenSubmission.test_title}</h3>
-                <p className="text-xs text-[#737373]">
-                  Score: <strong className="text-emerald-700 font-black text-sm">{viewingWrittenSubmission.final_score ?? 0} / {viewingWrittenSubmission.total_marks}</strong> ({viewingWrittenSubmission.total_marks ? Math.round(((viewingWrittenSubmission.final_score ?? 0) / viewingWrittenSubmission.total_marks) * 100) : 0}%)
-                </p>
-              </div>
-
-              <button
-                onClick={() => setViewingWrittenSubmission(null)}
-                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] text-[#737373] hover:text-[#111111] flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              {(viewingWrittenSubmission.teacher_feedback || viewingWrittenSubmission.general_feedback) && (
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-950">
-                  <strong className="font-black text-amber-900 block mb-1">Teacher's Overall Remarks:</strong>
-                  {viewingWrittenSubmission.teacher_feedback || viewingWrittenSubmission.general_feedback}
-                </div>
-              )}
-
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#737373]">Per-Question Evaluation</h4>
-
-              {viewingWrittenSubmission.answers?.map((ans, idx) => (
-                <div key={idx} className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs font-black text-[#111111]">
-                      Question #{ans.question_order || idx + 1}
-                    </span>
-                    <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-white border border-[#E5E5E5] text-emerald-800">
-                      Awarded: {ans.marks_awarded ?? ans.awarded_marks ?? 0} / {ans.max_marks} Marks
-                    </span>
-                  </div>
-
-                  <p className="text-xs font-medium text-[#525252] bg-white p-2.5 rounded-xl border border-[#E5E5E5]">
-                    {ans.question_text}
-                  </p>
-
-                  {(ans.remarks || ans.teacher_remarks) && (
-                    <div className="text-[11px] text-amber-900 bg-amber-50/80 p-2 rounded-lg border border-amber-200/60 font-medium">
-                      <strong>Remarks:</strong> {ans.remarks || ans.teacher_remarks}
-                    </div>
-                  )}
-
-                  {(ans.photo_url || ans.photo_data_url) && (
-                    <div className="mt-2">
-                      <p className="text-[10px] font-bold text-[#737373] mb-1">Submitted Handwritten Photo:</p>
-                      <img
-                        src={ans.photo_url || ans.photo_data_url}
-                        alt={`Q${idx + 1} Answer`}
-                        className="w-full max-h-56 object-contain rounded-xl border border-[#E5E5E5] bg-black/5"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="p-4 border-t border-[#E5E5E5] bg-[#FAFAFA] flex justify-end">
-              <button
-                onClick={() => setViewingWrittenSubmission(null)}
-                className="px-5 py-2 rounded-xl bg-[#111111] text-white font-black text-xs cursor-pointer hover:bg-black transition-all"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lightbox Inline Viewer Modal */}
-      <TestViewerModal
-        test={viewingTest}
-        submission={viewingSubmission}
-        onClose={() => {
-          setViewingTest(null);
-          setViewingSubmission(null);
-        }}
-      />
     </StudentShell>
   );
 };

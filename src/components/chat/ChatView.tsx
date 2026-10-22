@@ -1422,7 +1422,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const formatMessageTime = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Karachi',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
     } catch {
       return '';
     }
@@ -1435,9 +1440,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
       const now = new Date();
       const isToday = d.toDateString() === now.toDateString();
       if (isToday) {
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Karachi',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
       }
-      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return d.toLocaleDateString('en-US', {
+        timeZone: 'Asia/Karachi',
+        month: 'short',
+        day: 'numeric',
+      });
     } catch {
       return '';
     }
@@ -1608,125 +1622,145 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </button>
               </div>
             ) : (
-              filteredThreads.map((thread) => {
-                const isSelected = thread.id === activeThreadId && !isSageActive;
-                const other = thread.other_participant;
-                const isAdmin = other?.role === 'admin';
-                const hasUnread = (thread.unread_count || 0) > 0;
+              (() => {
+                const activeThreads = filteredThreads.filter((t) => !!t.latest_message);
+                const emptyThreads = filteredThreads.filter((t) => !t.latest_message);
 
-                return (
-                  <button
-                    key={thread.id}
-                    onClick={() => {
-                      setIsSageActive(false);
-                      setActiveThreadId(thread.id);
-                      setMobileViewActiveThread(true);
-                    }}
-                    className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors border-b border-[#F0F2F5] dark:border-zinc-800/80 ${
-                      isSelected
-                        ? 'bg-[#F0F2F5] dark:bg-zinc-800 border-l-4 border-l-[#111111] dark:border-l-[#F4C430]'
-                        : 'hover:bg-[#F5F6F6] dark:hover:bg-zinc-800/50 bg-transparent'
-                    }`}
-                  >
-                    {/* WhatsApp Avatar with online dot */}
-                    <div className="relative shrink-0">
-                      <ProfileAvatar
-                        avatarUrl={other?.avatar_url}
-                        name={other?.full_name || 'User'}
-                        role={other?.role || 'student'}
-                        size="md"
-                        showOnlineBadge={isContactOnline(other?.id, other)}
-                      />
-                    </div>
+                const renderThreadButton = (thread: ChatThreadWithDetails, isEmptyThread: boolean) => {
+                  const isSelected = thread.id === activeThreadId && !isSageActive;
+                  const other = thread.other_participant;
+                  const isAdmin = other?.role === 'admin';
+                  const hasUnread = (thread.unread_count || 0) > 0;
+                  const roleLabel = isAdmin
+                    ? 'Admin'
+                    : other?.role === 'teacher'
+                    ? ((other as any)?.teacher_subjects?.[0] ? `${(other as any).teacher_subjects[0]} teacher` : 'Faculty Instructor')
+                    : 'Student';
 
-                    <div className="flex-1 min-w-0">
-                      {/* Row 1: Name + subtle role tag on left, timestamp on right */}
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                  return (
+                    <button
+                      key={thread.id}
+                      onClick={() => {
+                        setIsSageActive(false);
+                        setActiveThreadId(thread.id);
+                        setMobileViewActiveThread(true);
+                      }}
+                      className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors border-b border-[#F0F2F5] dark:border-zinc-800/80 ${
+                        isSelected
+                          ? 'bg-[#F0F2F5] dark:bg-zinc-800 border-l-4 border-l-[#111111] dark:border-l-[#F4C430]'
+                          : 'hover:bg-[#F5F6F6] dark:hover:bg-zinc-800/50 bg-transparent'
+                      }`}
+                    >
+                      {/* Avatar with online dot */}
+                      <div className="relative shrink-0">
+                        <ProfileAvatar
+                          avatarUrl={other?.avatar_url}
+                          name={other?.full_name || 'User'}
+                          role={other?.role || 'student'}
+                          size="md"
+                          showOnlineBadge={isContactOnline(other?.id, other)}
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        {/* Row 1: Name & Timestamp */}
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
                           <span
                             className="chat-contact-name text-[13.5px] sm:text-sm truncate font-bold text-[#111827] dark:text-[#F4F4F5]"
                             style={{ fontWeight: 700 }}
                           >
                             {other?.full_name || (isAdmin ? 'Scholario Support' : 'User')}
                           </span>
-                          {getRoleBadge(
-                            other?.role || 'student',
-                            isAdmin,
-                            {
-                              subjects: (other as any)?.teacher_subjects,
-                              tag: (other as any)?.admin_tag,
-                              stream: other?.stream_obj?.name || other?.stream || undefined,
-                            },
-                            true
+                          {!isEmptyThread && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {mutedThreadIds.includes(thread.id) && (
+                                <span title="Notifications muted">
+                                  <BellOff size={13} className="text-[#8696A0] dark:text-zinc-400" />
+                                </span>
+                              )}
+                              <span
+                                className={`text-[11px] font-normal ${
+                                  hasUnread ? 'text-[#25D366] dark:text-emerald-400 font-semibold' : 'text-[#8696A0] dark:text-zinc-400'
+                                }`}
+                              >
+                                {formatThreadDate(thread.latest_message?.created_at)}
+                              </span>
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {mutedThreadIds.includes(thread.id) && (
-                            <span title="Notifications muted">
-                              <BellOff size={13} className="text-[#8696A0] dark:text-zinc-400" />
-                            </span>
-                          )}
-                          <span
-                            className={`text-[11px] font-normal ${
-                              hasUnread ? 'text-[#25D366] dark:text-emerald-400 font-semibold' : 'text-[#8696A0] dark:text-zinc-400'
+
+                        {/* Row 2: Short Role Label */}
+                        <div className="text-[11px] text-neutral-500 dark:text-neutral-400 -mt-0.5 mb-1 truncate font-medium">
+                          {roleLabel}
+                        </div>
+
+                        {/* Row 3: Message preview & unread badge */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div
+                            className={`text-[12px] truncate leading-tight flex items-center ${
+                              hasUnread ? 'font-semibold text-[#111111] dark:text-[#F4F4F5]' : 'text-[#667781] dark:text-zinc-300'
                             }`}
                           >
-                            {formatThreadDate(thread.latest_message?.created_at || thread.created_at)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Row 2: Message preview with checkmark on left, WhatsApp green unread badge on right */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div
-                          className={`text-[12px] truncate leading-tight flex items-center ${
-                            hasUnread ? 'font-semibold text-[#111111] dark:text-[#F4F4F5]' : 'text-[#667781] dark:text-zinc-300'
-                          }`}
-                        >
-                          {thread.latest_message ? (
-                            <>
-                              {thread.latest_message.sender_id === currentUserId && (
-                                <span className="inline-flex items-center mr-1 shrink-0">
-                                  {thread.latest_message.read_at ? (
-                                    <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
-                                  ) : (
-                                    <CheckCheck size={14} className="text-[#8696A0] dark:text-zinc-400 stroke-[1.8]" />
-                                  )}
-                                </span>
-                              )}
-                              {thread.latest_message.message_type === 'voice' || thread.latest_message.audio_url ? (
-                                <span className="inline-flex items-center gap-1 text-[#D97706] dark:text-amber-400 font-medium truncate">
-                                  <Volume2 size={12} className="shrink-0" />
-                                  <span>Voice message ({formatAudioDuration(thread.latest_message.audio_duration_seconds || 0)})</span>
-                                </span>
-                              ) : thread.latest_message.message_type === 'image' ? (
-                                <span className="inline-flex items-center gap-1 text-[#2563EB] dark:text-blue-400 font-medium truncate">
-                                  <ImageIcon size={12} className="shrink-0" />
-                                  <span>Photo {thread.latest_message.content && thread.latest_message.content !== 'Photo' ? `• ${thread.latest_message.content}` : ''}</span>
-                                </span>
-                              ) : thread.latest_message.message_type === 'file' ? (
-                                <span className="inline-flex items-center gap-1 text-[#7C3AED] dark:text-purple-400 font-medium truncate">
-                                  <FileText size={12} className="shrink-0" />
-                                  <span>Document • {thread.latest_message.attachment_name || thread.latest_message.content || 'Attachment'}</span>
-                                </span>
-                              ) : (
-                                <span className="truncate">{thread.latest_message.content}</span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="italic text-[#8696A0] dark:text-zinc-400">No messages yet — send a greeting</span>
+                            {thread.latest_message ? (
+                              <>
+                                {thread.latest_message.sender_id === currentUserId && (
+                                  <span className="inline-flex items-center mr-1 shrink-0">
+                                    {thread.latest_message.read_at ? (
+                                      <CheckCheck size={14} className="text-[#53BDEB] stroke-[2.2]" />
+                                    ) : (
+                                      <CheckCheck size={14} className="text-[#8696A0] dark:text-zinc-400 stroke-[1.8]" />
+                                    )}
+                                  </span>
+                                )}
+                                {thread.latest_message.message_type === 'voice' || thread.latest_message.audio_url ? (
+                                  <span className="inline-flex items-center gap-1 text-[#D97706] dark:text-amber-400 font-medium truncate">
+                                    <Volume2 size={12} className="shrink-0" />
+                                    <span>Voice message ({formatAudioDuration(thread.latest_message.audio_duration_seconds || 0)})</span>
+                                  </span>
+                                ) : thread.latest_message.message_type === 'image' ? (
+                                  <span className="inline-flex items-center gap-1 text-[#2563EB] dark:text-blue-400 font-medium truncate">
+                                    <ImageIcon size={12} className="shrink-0" />
+                                    <span>Photo {thread.latest_message.content && thread.latest_message.content !== 'Photo' ? `• ${thread.latest_message.content}` : ''}</span>
+                                  </span>
+                                ) : thread.latest_message.message_type === 'file' ? (
+                                  <span className="inline-flex items-center gap-1 text-[#7C3AED] dark:text-purple-400 font-medium truncate">
+                                    <FileText size={12} className="shrink-0" />
+                                    <span>Document • {thread.latest_message.attachment_name || thread.latest_message.content || 'Attachment'}</span>
+                                  </span>
+                                ) : (
+                                  <span className="truncate">{thread.latest_message.content}</span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="italic text-[#8696A0] dark:text-zinc-400">No messages yet — tap to message</span>
+                            )}
+                          </div>
+                          {hasUnread && (
+                            <span className="min-w-[19px] h-[19px] px-1.5 flex items-center justify-center rounded-full bg-[#25D366] text-white text-[10px] font-bold shrink-0 shadow-2xs leading-none">
+                              {thread.unread_count}
+                            </span>
                           )}
                         </div>
-                        {hasUnread && (
-                          <span className="min-w-[19px] h-[19px] px-1.5 flex items-center justify-center rounded-full bg-[#25D366] text-white text-[10px] font-bold shrink-0 shadow-2xs leading-none">
-                            {thread.unread_count}
-                          </span>
-                        )}
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                  );
+                };
+
+                return (
+                  <div>
+                    {activeThreads.map((t) => renderThreadButton(t, false))}
+
+                    {emptyThreads.length > 0 && (
+                      <div>
+                        <div className="px-3.5 py-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider bg-neutral-100 dark:bg-zinc-800/80 border-y border-neutral-200 dark:border-zinc-700/60">
+                          Start a conversation
+                        </div>
+                        {emptyThreads.map((t) => renderThreadButton(t, true))}
+                      </div>
+                    )}
+                  </div>
                 );
-              })
+              })()
             )}
             {/* Bottom spacer */}
             <div className="h-6 w-full shrink-0 pointer-events-none" aria-hidden="true" />
@@ -2154,13 +2188,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <Loader2 size={24} className="animate-spin text-[#F4C430]" />
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-[#737373] dark:text-[#A1A1AA] space-y-2">
-                    <div className="w-12 h-12 rounded-2xl bg-[#F4C430]/20 text-[#111111] dark:text-[#F4C430] flex items-center justify-center">
-                      <Sparkles size={20} />
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-600 dark:text-neutral-400 space-y-2">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-400/20 text-neutral-900 dark:text-amber-400 flex items-center justify-center">
+                      <MessageSquare size={20} />
                     </div>
-                    <p className="text-sm font-bold text-[#111111] dark:text-[#F4F4F5]">Start of conversation</p>
-                    <p className="text-xs text-[#A3A3A3] dark:text-zinc-400 max-w-sm">
-                      Send a message to {activeThread.other_participant?.full_name || 'start chatting'}. Messages are delivered in real time.
+                    <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Send a message to your teacher</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm">
+                      Have questions about homework or need study guidance? Messages are delivered directly to {activeThread.other_participant?.full_name || 'your teacher'}.
                     </p>
                   </div>
                 ) : (
@@ -2343,16 +2377,26 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 theme={activeChatTheme}
                               />
                             ) : (
-                              /* WhatsApp Flat Text Bubble */
+                              /* Flat Text Bubble */
                               <div
                                 className={`relative w-fit max-w-full rounded-[8px] px-2.5 sm:px-3 py-1 sm:py-1.5 overflow-visible select-none md:select-text ${
                                   hasTail ? (isMe ? 'rounded-br-[0px]' : 'rounded-bl-[0px]') : ''
+                                } ${
+                                  role === 'student'
+                                    ? isMe
+                                      ? 'bg-amber-300 dark:bg-amber-400 text-neutral-900 shadow-xs'
+                                      : 'bg-neutral-100 dark:bg-zinc-800 text-neutral-900 dark:text-neutral-100 shadow-xs'
+                                    : ''
                                 }`}
-                                style={{
-                                  backgroundColor: isMe ? activeChatTheme.sentBubbleBg : activeChatTheme.receivedBubbleBg,
-                                  color: isMe ? activeChatTheme.sentBubbleText : activeChatTheme.receivedBubbleText,
-                                  boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
-                                }}
+                                style={
+                                  role === 'student'
+                                    ? undefined
+                                    : {
+                                        backgroundColor: isMe ? activeChatTheme.sentBubbleBg : activeChatTheme.receivedBubbleBg,
+                                        color: isMe ? activeChatTheme.sentBubbleText : activeChatTheme.receivedBubbleText,
+                                        boxShadow: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+                                      }
+                                }
                               >
                                 <div className="flex flex-wrap items-end justify-between gap-x-2.5 gap-y-0.5">
                                   <p

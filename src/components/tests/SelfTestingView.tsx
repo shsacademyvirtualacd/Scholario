@@ -111,6 +111,78 @@ const SUGGESTED_TOPICS: Record<string, string[]> = {
   ],
 };
 
+const GRADE_10_TOPICS: Record<string, string[]> = {
+  Physics: [
+    'Simple Harmonic Motion & Waves',
+    'Sound',
+    'Geometrical Optics',
+    'Electrostatics',
+    'Current Electricity',
+    'Electromagnetism',
+    'Basic Electronics',
+    'Information & Communication Technology',
+    'Atomic & Nuclear Physics',
+  ],
+  Chemistry: [
+    'Chemical Equilibrium',
+    'Acids, Bases & Salts',
+    'Organic Chemistry',
+    'Hydrocarbons',
+    'Biochemistry',
+    'Environmental Chemistry',
+    'Chemical Industries',
+  ],
+  Mathematics: [
+    'Quadratic Equations',
+    'Theory of Quadratic Equations',
+    'Variations',
+    'Partial Fractions',
+    'Sets & Functions',
+    'Basic Statistics',
+    'Introduction to Trigonometry',
+    'Practical Geometry',
+  ],
+  Biology: [
+    'Gaseous Exchange',
+    'Homeostasis',
+    'Coordination & Control',
+    'Support & Movement',
+    'Reproduction',
+    'Inheritance',
+    'Man & His Environment',
+    'Biotechnology',
+    'Pharmacology',
+  ],
+  'Computer Science': [
+    'Programming in C',
+    'Computational Thinking',
+    'Conditional & Loop Logic',
+    'Functions & Arrays',
+    'Web Development HTML/CSS',
+    'Database Basics',
+  ],
+  English: [
+    'Direct & Indirect Speech',
+    'Active & Passive Voice',
+    'Conditional Sentences',
+    'Comprehension & Summary',
+    'Essay Writing & Synonyms',
+    'Prepositions & Phrasal Verbs',
+  ],
+  Urdu: [
+    'Qawaid-o-Insha',
+    'Ghazal o Nazm Tashreeh',
+    'Asbaaq & Khulasa',
+    'Mazmoon Nigari',
+  ],
+  'Pakistan Studies': [
+    'History of Pakistan (1971-Present)',
+    'Foreign Policy & International Relations',
+    'Economic Development & Resources',
+    'Society, Culture & Heritage',
+  ],
+};
+
 export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
   defaultSubject,
   defaultGrade,
@@ -267,6 +339,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
     };
   }, [viewMode, isPaused]);
 
+  const [showAllTopics, setShowAllTopics] = useState<boolean>(false);
+
   // Available subjects for selected board/grade
   const availableGrades = getGradesForBoard(activeBoard);
   const currentGradeDef = availableGrades.find((g) => g.grade === activeGrade) || availableGrades[0];
@@ -287,6 +361,9 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
       // Official Grade 9 National/Provincial Curriculum Subjects (FBISE & Punjab Board)
       return ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science', 'English', 'Urdu'];
     }
+    const isBio = String(studentStream).toLowerCase().includes('bio');
+    const isCs = String(studentStream).toLowerCase().includes('comp') || String(studentStream).toLowerCase().includes('cs');
+
     return Array.from(
       new Set([
         ...studentEnrolledSubjects,
@@ -302,13 +379,16 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
         'Pakistan Studies',
       ])
     ).filter(
-      (s) =>
-        s !== 'Islamiat' &&
-        s.toLowerCase() !== 'islamiat' &&
-        s.toLowerCase() !== 'islamiyat' &&
-        !s.toLowerCase().includes('islam')
+      (s) => {
+        if (s === 'Islamiat' || s.toLowerCase() === 'islamiat' || s.toLowerCase() === 'islamiyat' || s.toLowerCase().includes('islam')) {
+          return false;
+        }
+        if (isBio && s === 'Computer Science') return false;
+        if (isCs && s === 'Biology') return false;
+        return true;
+      }
     );
-  }, [isIelts, isGt, isNational9, studentEnrolledSubjects, currentGradeDef]);
+  }, [isIelts, isGt, isNational9, studentEnrolledSubjects, currentGradeDef, studentStream]);
 
   // Safety fallback if subject is set to Islamiat or not available in current board/grade
   useEffect(() => {
@@ -969,6 +1049,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
 
     const popularTopics = isNational9
       ? getFBISEGrade9PopularTopics(activeSubjectName)
+      : (activeGrade === '10' && GRADE_10_TOPICS[activeSubjectName])
+      ? GRADE_10_TOPICS[activeSubjectName]
       : SUGGESTED_TOPICS[activeSubjectName] || [
           'Foundations & Core Principles',
           'Key Definitions & Laws',
@@ -1067,141 +1149,56 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
           <IELTSWritingCenter />
         ) : (
           <>
-            {/* Intro Card */}
-            <div className="bg-linear-to-r from-[#111111] to-[#1F1F1F] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#2A2A2A] shadow-md">
-              <div className="absolute right-0 top-0 w-80 h-80 bg-[#F4C430]/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="relative z-10 max-w-2xl space-y-3">
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  {isIelts
-                    ? 'IELTS Self-Testing MCQ Question Bank'
-                    : isPunjab9
-                    ? 'Grade 9 Punjab Board Self-Testing & Exam Generator'
-                    : isFbise9
-                    ? 'Grade 9 FBISE Self-Testing & Exam Generator'
-                    : 'Interactive Self-Testing Center'}
-                </h2>
-                <p className="text-xs sm:text-sm text-[#A3A3A3] leading-relaxed">
-                  {isIelts
-                    ? 'Practice 200 authentic IELTS MCQs strictly divided into Grammar (100 MCQs) and Comprehension of Passages (100 MCQs) with instant scoring and detailed explanations.'
-                    : isPunjab9
-                    ? 'Practice with 100% official Punjab Board Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
-                    : isFbise9
-                    ? 'Practice with 100% official FBISE Grade 9 curriculum questions. Target single chapters, multiple chapters, full syllabus exams, or diagnosed weak topics with zero made-up content.'
-                    : 'Generate 100% curriculum-accurate, syllabus-aligned multiple choice practice questions on any subject or topic. Your practice scores are private to you.'}
-                </p>
-
-                <div className="flex flex-wrap gap-4 pt-2">
-                  <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
-                    <CheckCircle2 size={15} className="text-[#10B981]" />
-                    <span>{isIelts ? '200 Authentic IELTS Questions' : 'Verified Curriculum Chapters'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
-                    <CheckCircle2 size={15} className="text-[#10B981]" />
-                    <span>Instant Explanations & Solutions</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[#E5E5E5] font-semibold">
-                    <CheckCircle2 size={15} className="text-[#10B981]" />
-                    <span>Private & Zero Impact on GPA</span>
-                  </div>
-                </div>
+            {/* 2-line Intro & Realistic AI Disclaimer */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xs space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-amber-500 shrink-0" />
+                <h3 className="text-sm sm:text-base font-bold text-neutral-900 dark:text-neutral-100">
+                  {isIelts ? 'Configure IELTS Practice Test' : 'Configure Practice Quiz'}
+                </h3>
               </div>
+              <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                Practice questions aligned to your syllabus. Questions are AI-generated and may occasionally contain mistakes, so check with your teacher if unsure. Your practice scores are private to you.
+              </p>
             </div>
 
             {/* Generator Form */}
-            <div className="bg-white rounded-3xl border border-[#E5E5E5] p-6 sm:p-8 shadow-xs space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-[#F0F0F0]">
-                <div>
-                  <h3 className="text-base font-extrabold text-[#111111] flex items-center gap-2">
-                    <Sliders size={18} className="text-[#F4C430]" />
-                    <span>{isIelts ? 'Configure IELTS Practice Test' : 'Configure Practice Quiz'}</span>
-                  </h3>
-                  <p className="text-xs text-[#737373] mt-0.5">
-                    {isIelts
-                      ? 'Select Grammar or Comprehension of Passages to test language proficiency and reading skills.'
-                      : isPunjab9
-                      ? 'Official Punjab Board Grade 9 chapters — select single chapter, multiple chapters, or full subject exam.'
-                      : isFbise9
-                      ? 'Official FBISE Grade 9 chapters — select single chapter, multiple chapters, or full subject exam.'
-                      : 'Customize syllabus parameters to target specific chapters or concepts.'}
-                  </p>
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6 shadow-xs space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
+                <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                  Quiz Configuration
                 </div>
-
                 {historyItems.length > 0 && (
                   <button
                     onClick={() => setViewMode('history')}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#111111] hover:bg-[#F5F5F5] transition-colors interactive"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-750 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                   >
-                    <History size={15} className="text-[#737373]" />
-                    <span>Past Self-Tests ({historyItems.length})</span>
+                    <History size={14} className="text-neutral-400" />
+                    <span>Past Quizzes ({historyItems.length})</span>
                   </button>
                 )}
               </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Board & Grade Configuration */}
-            <div className="space-y-4">
+              {/* Scope Row: 1 read-only line with lock icon */}
               {isStudent ? (
-                /* Locked / Read-Only Enrolled Scope for Students */
-                <div className="p-4 bg-[#FAFAFA] rounded-2xl border border-[#E5E5E5] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold text-[#737373] uppercase tracking-wider">
-                      Academic Scope
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#111111]/5 border border-[#E5E5E5] text-[11px] font-bold text-[#525252]">
-                      <Lock size={11} className="text-[#737373]" />
-                      <span>Enrolled & Verified</span>
+                <div className="p-3 sm:p-3.5 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl border border-neutral-200 dark:border-neutral-700/60 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                    <Lock size={14} className="text-amber-500 shrink-0" />
+                    <span>
+                      {isIelts
+                        ? 'IELTS Preparation'
+                        : activeBoard === 'sindh'
+                        ? 'Sindh Board'
+                        : activeBoard === 'punjab'
+                        ? 'Punjab Board'
+                        : 'Federal Board (FBISE)'}{' '}
+                      · Grade {activeGrade} (Matric)
+                      {studentStream ? ` · ${studentStream} Stream` : ''}
                     </span>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* Educational Board */}
-                    <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] shadow-2xs">
-                      <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wide flex items-center gap-1">
-                        <Lock size={10} className="text-[#A3A3A3]" />
-                        <span>Educational Board</span>
-                      </div>
-                      <div className="text-xs font-black text-[#111111] mt-0.5">
-                        {isIelts
-                          ? 'IELTS Preparation'
-                          : activeBoard === 'punjab'
-                          ? 'Punjab Board (BISE Lahore & Provincial)'
-                          : activeBoard === 'sindh'
-                          ? 'Sindh Board (BSEK / BIEK)'
-                          : 'Federal Board (FBISE)'}
-                      </div>
-                      <div className="text-[10px] text-[#737373] mt-0.5 truncate">
-                        {isIelts
-                          ? 'International English Language Testing System'
-                          : activeBoard === 'punjab'
-                          ? 'Punjab Secondary & Intermediate Boards'
-                          : activeBoard === 'sindh'
-                          ? 'BSEK / BIEK Karachi & Sindh'
-                          : 'Federal Board of Inter & Secondary Education'}
-                      </div>
-                    </div>
-
-                    {/* Target Grade / IELTS Stream */}
-                    <div className="p-3 bg-white rounded-xl border border-[#E5E5E5] shadow-2xs">
-                      <div className="text-[10px] font-bold text-[#737373] uppercase tracking-wide flex items-center gap-1">
-                        <Lock size={10} className="text-[#A3A3A3]" />
-                        <span>{isIelts ? 'IELTS Stream' : 'Target Grade'}</span>
-                      </div>
-                      <div className="text-xs font-black text-[#111111] mt-0.5">
-                        {isIelts
-                          ? isGt
-                            ? 'General Training'
-                            : 'Academic'
-                          : `Grade ${activeGrade} ${studentStream ? `• ${studentStream}` : ''}`}
-                      </div>
-                      <div className="text-[10px] text-[#737373] mt-0.5 truncate">
-                        {isIelts
-                          ? isGt
-                            ? 'General Training (All modules + GT Task 1)'
-                            : 'Academic Stream (Academic modules)'
-                          : profile?.class?.display_name || `Class ${activeGrade}th Roster`}
-                      </div>
-                    </div>
-                  </div>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold">
+                    Enrolled
+                  </span>
                 </div>
               ) : (
                 /* Selectable Board & Grade for Teachers / Admins */
@@ -1255,55 +1252,64 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 </>
               )}
 
-              {/* Subject Selector */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-[#111111]">
+              {/* Subject Selector: Single Scrollable Chip Row */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
                     Subject
                   </label>
                   {isStudent && studentStream && (
-                    <span className="text-[10px] font-semibold text-[#737373]">
+                    <span className="text-[10px] font-semibold text-neutral-500">
                       {studentStream} Stream
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {allSubjectsForGrade.slice(0, 9).map((sub) => (
-                    <button
-                      key={sub}
-                      type="button"
-                      onClick={() => {
-                        setSubject(sub);
-                        if (isNational9) {
-                          const chaps = getFBISEGrade9Chapters(sub);
-                          if (chaps.length > 0) {
-                            setTopic(chaps[0].name);
-                            setSelectedChapters([chaps[0].name]);
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
+                  {allSubjectsForGrade.map((sub) => {
+                    const isSelected = subject === sub;
+                    return (
+                      <button
+                        key={sub}
+                        type="button"
+                        onClick={() => {
+                          setSubject(sub);
+                          if (isNational9) {
+                            const chaps = getFBISEGrade9Chapters(sub);
+                            if (chaps.length > 0) {
+                              setTopic(chaps[0].name);
+                              setSelectedChapters([chaps[0].name]);
+                            }
+                          } else if (activeGrade === '10' && GRADE_10_TOPICS[sub]?.[0]) {
+                            setTopic(GRADE_10_TOPICS[sub][0]);
+                          } else if (SUGGESTED_TOPICS[sub]?.[0]) {
+                            setTopic(SUGGESTED_TOPICS[sub][0]);
                           }
-                        } else if (SUGGESTED_TOPICS[sub]?.[0]) {
-                          setTopic(SUGGESTED_TOPICS[sub][0]);
-                        }
-                      }}
-                      className={`p-2.5 rounded-xl border text-xs font-bold text-center truncate transition-all ${
-                        subject === sub
-                          ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
-                          : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
-                      }`}
-                    >
-                      {sub}
-                    </button>
-                  ))}
+                        }}
+                        className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all ${
+                          isSelected
+                            ? 'border-neutral-900 dark:border-amber-400 bg-neutral-900 dark:bg-amber-400/10 text-white dark:text-amber-400 shadow-xs'
+                            : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        }`}
+                      >
+                        {isSelected && <Check size={14} className="text-amber-400 shrink-0" />}
+                        <span>{sub}</span>
+                      </button>
+                    );
+                  })}
+
                   {!isNational9 && (
                     <button
                       type="button"
                       onClick={() => setSubject('Other')}
-                      className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
+                      className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all ${
                         subject === 'Other'
-                          ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
-                          : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
+                          ? 'border-neutral-900 dark:border-amber-400 bg-neutral-900 dark:bg-amber-400/10 text-white dark:text-amber-400 shadow-xs'
+                          : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                       }`}
                     >
-                      Custom Subject
+                      {subject === 'Other' && <Check size={14} className="text-amber-400 shrink-0" />}
+                      <span>Custom Subject</span>
                     </button>
                   )}
                 </div>
@@ -1314,7 +1320,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                     placeholder="Enter custom subject name..."
                     value={customSubject}
                     onChange={(e) => setCustomSubject(e.target.value)}
-                    className="mt-2 w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
+                    className="mt-2 w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 text-xs font-semibold text-neutral-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
                   />
                 )}
               </div>
@@ -1595,8 +1601,8 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 </div>
               ) : (
                 /* Standard Topic Selection for Other Grades / Boards */
-                <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-neutral-800 dark:text-neutral-200">
                     Topic or Chapter Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1604,24 +1610,36 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                     placeholder="e.g. Kinematics, Chemical Bonding, Matrices, Cell Biology..."
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
+                    className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
                   />
 
-                  {/* Topic quick chips */}
-                  <div className="mt-2.5">
-                    <span className="text-[11px] font-bold text-[#737373] block mb-1.5">
-                      Popular topics in {activeSubjectName}:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                      {popularTopics.map((t) => (
+                  {/* Suggestion Chips: Wrapping naturally in page flow without inner scroll */}
+                  <div className="pt-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
+                        Suggested topics in {activeSubjectName}:
+                      </span>
+                      {popularTopics.length > 8 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllTopics(!showAllTopics)}
+                          className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                        >
+                          {showAllTopics ? 'Show less' : `+${popularTopics.length - 8} more`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {(showAllTopics ? popularTopics : popularTopics.slice(0, 8)).map((t) => (
                         <button
                           key={t}
                           type="button"
                           onClick={() => setTopic(t)}
-                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                          className={`text-[11px] px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                             topic === t
-                              ? 'bg-[#F4C430] text-[#111111] border-[#E5B520] font-bold'
-                              : 'bg-[#FAFAFA] text-[#525252] border-[#E5E5E5] hover:bg-[#F0F0F0]'
+                              ? 'bg-amber-400 text-neutral-900 border-amber-500 font-bold'
+                              : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                           }`}
                         >
                           {t}
@@ -1632,11 +1650,11 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 </div>
               )}
 
-              {/* Number of Questions & Difficulty */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              {/* Number of Questions (Segmented) & Difficulty */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1.5">
-                    Number of Questions
+                  <label className="block text-xs font-bold text-neutral-800 dark:text-neutral-200 mb-1.5">
+                    Questions Count
                   </label>
                   <div className="grid grid-cols-4 gap-1.5">
                     {[5, 10, 15, 20].map((num) => (
@@ -1644,10 +1662,10 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                         key={num}
                         type="button"
                         onClick={() => setQuestionCount(num)}
-                        className={`py-2 rounded-xl border text-xs font-bold text-center transition-all ${
+                        className={`min-h-[44px] py-2 rounded-xl border text-xs font-bold text-center transition-all ${
                           questionCount === num
-                            ? 'border-[#111111] bg-[#111111] text-white shadow-xs'
-                            : 'border-[#E5E5E5] bg-[#FAFAFA] text-[#525252] hover:bg-[#F5F5F5]'
+                            ? 'border-neutral-900 dark:border-amber-400 bg-neutral-900 dark:bg-amber-400/10 text-white dark:text-amber-400 shadow-xs'
+                            : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                         }`}
                       >
                         {num}
@@ -1657,13 +1675,13 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#111111] mb-1.5">
+                  <label className="block text-xs font-bold text-neutral-800 dark:text-neutral-200 mb-1.5">
                     Difficulty Level
                   </label>
                   <select
                     value={difficulty}
                     onChange={(e) => setDifficulty(e.target.value as MCQDifficulty)}
-                    className="w-full h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-bold text-[#111111] focus:ring-2 focus:ring-[#111111] focus:outline-hidden"
+                    className="w-full min-h-[44px] px-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 text-xs font-bold text-neutral-800 dark:text-neutral-200 focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
                   >
                     <option value="easy">Easy (Foundational Concepts)</option>
                     <option value="medium">Medium (Standard Syllabus)</option>
@@ -1675,34 +1693,40 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             </div>
           </div>
 
-          {/* Generator Action */}
-          <div className="pt-4 border-t border-[#F0F0F0] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs text-[#737373] flex items-center gap-2">
-              <Zap size={15} className="text-[#F4C430]" />
-              <span>
-                Generates {questionCount} questions on <strong>{topic || 'Selected Chapters'}</strong> ({activeSubjectName} • Grade {activeGrade} • {activeBoard.toUpperCase()})
-              </span>
+          {/* Sticky Bottom Bar with summary and Start Practice Quiz button */}
+          <div className="sticky bottom-0 z-20 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex flex-col w-full sm:w-auto">
+              <div className="text-xs text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                <Zap size={15} className="text-amber-500 shrink-0" />
+                <span className="font-bold">
+                  {questionCount} questions · {activeSubjectName} · {topic.trim() || 'No topic selected'}
+                </span>
+              </div>
+              {!topic.trim() && selectedChapters.length === 0 && (
+                <span className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                  Please select or enter a topic above to begin quiz
+                </span>
+              )}
             </div>
 
             <button
               onClick={handleStartGeneration}
               disabled={isGenerating || (!topic.trim() && selectedChapters.length === 0)}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#111111] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2.5 hover:bg-[#222222] active:scale-[0.98] transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed interactive"
+              className="w-full sm:w-auto min-h-[44px] px-8 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-neutral-900 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               {isGenerating ? (
                 <>
-                  <Sparkles size={16} className="animate-spin text-[#F4C430]" />
-                  <span>Synthesizing MCQs with AI...</span>
+                  <Sparkles size={16} className="animate-spin text-neutral-900" />
+                  <span>Synthesizing MCQs...</span>
                 </>
               ) : (
                 <>
-                  <Play size={16} className="fill-[#F4C430] text-[#F4C430]" />
+                  <Play size={16} className="fill-current text-neutral-900" />
                   <span>Start Practice Quiz</span>
                 </>
               )}
             </button>
           </div>
-        </div>
 
         {/* Recent Past Performance Mini-Card */}
         {historyItems.length > 0 && (

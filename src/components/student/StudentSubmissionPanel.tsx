@@ -12,11 +12,21 @@ import {
   CheckCircle2,
   Loader2,
   RotateCcw,
+  Clock,
+  ArrowLeft,
+  AlertTriangle,
 } from 'lucide-react';
 import type { TestPaper, TestSubmission } from '../../types';
 import { uploadTestSubmissionToR2, downloadSubmissionBlob } from '../../lib/db';
 import { useAuth } from '../../features/auth/AuthContext';
 import { MathText } from '../common/MathText';
+import {
+  formatProperName,
+  formatTitleCase,
+  formatStandardDate,
+  formatStandardDateTime,
+} from '../../utils/studentFormatting';
+import { StudentStatusBadge } from './shared/StudentStatusBadge';
 
 interface StudentSubmissionPanelProps {
   selectedTest: TestPaper | null;
@@ -24,6 +34,7 @@ interface StudentSubmissionPanelProps {
   onOpenTestViewer: (test: TestPaper) => void;
   onOpenSubmissionViewer: (sub: TestSubmission) => void;
   onSubmissionSuccess: (newSub: TestSubmission) => void;
+  onBackToList?: () => void;
 }
 
 export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
@@ -32,6 +43,7 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
   onOpenTestViewer,
   onOpenSubmissionViewer,
   onSubmissionSuccess,
+  onBackToList,
 }) => {
   const { profile } = useAuth();
   const [file, setFile] = useState<File | null>(null);
@@ -44,23 +56,28 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
 
   if (!selectedTest) {
     return (
-      <div
-        id="student-submission-empty-panel"
-        className="bg-white rounded-2xl border border-[#E5E5E5] p-8 text-center flex flex-col items-center justify-center min-h-[480px] shadow-xs"
-      >
-        <div className="w-16 h-16 rounded-2xl bg-[#FAFAFA] border border-[#E5E5E5] text-[#A3A3A3] flex items-center justify-center mb-4">
-          <FileCheck2 size={28} />
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/90 dark:border-neutral-800 p-8 text-center flex flex-col items-center justify-center min-h-[420px] shadow-2xs space-y-3">
+        <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-neutral-400 flex items-center justify-center mb-1">
+          <FileCheck2 size={26} />
         </div>
-        <h3 className="text-base font-extrabold text-[#111111] mb-1">Select a Test Paper</h3>
-        <p className="text-xs text-[#737373] max-w-sm">
-          Click any test paper from the left column to view assessment instructions, download the question paper, and upload your answer sheet.
+        <h3 className="text-base font-bold text-neutral-900 dark:text-white">Select a Class Test</h3>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm leading-relaxed">
+          Choose a test from the list to view question instructions, open the question paper, and submit your completed answer sheet.
         </p>
       </div>
     );
   }
 
   const isGraded = submission?.status === 'graded';
-  const isSubmitted = !!submission && !showReupload;
+  const isSubmitted = Boolean(submission) && !showReupload;
+
+  // Due date checks
+  const dueDate = new Date(selectedTest.due_date);
+  dueDate.setHours(23, 59, 59, 999);
+  const isPastDue = new Date().getTime() > dueDate.getTime();
+  const isSubmittedLate =
+    Boolean(submission?.submitted_at) &&
+    new Date(submission!.submitted_at).getTime() > dueDate.getTime();
 
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -150,115 +167,125 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
     }
   };
 
+  const titleClean = formatTitleCase(selectedTest.title);
+  const teacherName = formatProperName(selectedTest.teacher_name || 'Faculty Teacher');
+
   return (
-    <div
-      id={`submission-panel-${selectedTest.id}`}
-      className="bg-white rounded-2xl border border-[#E5E5E5] p-5 sm:p-6 shadow-xs space-y-6 flex flex-col"
-    >
-      {/* Test Overview Header */}
-      <div className="border-b border-[#E5E5E5] pb-5">
-        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-[#111111] text-white">
-              {selectedTest.subject}
-            </span>
-            <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-[#F5F5F5] text-[#525252] border border-[#E5E5E5]">
-              Grade {selectedTest.grade} {selectedTest.stream && selectedTest.stream !== 'all' ? `• ${selectedTest.stream}` : ''}
-            </span>
-          </div>
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/90 dark:border-neutral-800 p-5 sm:p-6 shadow-2xs space-y-5">
+      {/* Back button (Mobile view) */}
+      {onBackToList && (
+        <button
+          type="button"
+          onClick={onBackToList}
+          className="lg:hidden min-h-[44px] min-w-[44px] -ml-2 px-3 py-1.5 text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          <span>Back to all tests</span>
+        </button>
+      )}
 
-          <button
-            id="preview-question-paper-btn"
-            onClick={() => onOpenTestViewer(selectedTest)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAFAFA] hover:bg-[#E5E5E5] text-[#111111] text-xs font-bold border border-[#E5E5E5] transition-colors"
-          >
-            <Eye size={14} />
-            <span>Open Question Paper</span>
-          </button>
+      {/* ── 1. Title & Subject Tags ── */}
+      <div className="space-y-2 border-b border-neutral-100 dark:border-neutral-800 pb-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900">
+            {selectedTest.subject}
+          </span>
+          <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+            Grade {selectedTest.grade}
+          </span>
+          {isSubmitted && (
+            <StudentStatusBadge
+              status={isGraded ? 'graded' : isSubmittedLate ? 'submitted_late' : 'submitted'}
+              size="sm"
+            />
+          )}
         </div>
 
-        <h3 className="text-lg font-extrabold text-[#111111] mb-2">
-          <MathText text={selectedTest.title} />
-        </h3>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#FAFAFA] p-3 rounded-xl border border-[#F0F0F0] text-xs">
-          <div>
-            <span className="text-[11px] text-[#737373] block">Teacher</span>
-            <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
-              <User size={12} className="text-[#A3A3A3]" /> {selectedTest.teacher_name || 'Faculty'}
-            </span>
-          </div>
-          <div>
-            <span className="text-[11px] text-[#737373] block">Total Marks</span>
-            <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
-              <Award size={12} className="text-[#A3A3A3]" /> {selectedTest.total_marks} Marks
-            </span>
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <span className="text-[11px] text-[#737373] block">Due Date</span>
-            <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
-              <Calendar size={12} className="text-[#A3A3A3]" /> {new Date(selectedTest.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
-          </div>
-        </div>
-
-        {selectedTest.instructions && (
-          <div className="mt-3 text-xs text-[#525252] bg-[#FFFBEB] border border-[#FDE68A] p-3 rounded-xl">
-            <strong className="text-[#92400E] block font-bold mb-0.5">Teacher Instructions:</strong>
-            <div className="text-[#78350F]">
-              <MathText text={selectedTest.instructions} />
-            </div>
-          </div>
-        )}
+        <h2 className="text-lg sm:text-xl font-black text-neutral-900 dark:text-white leading-tight">
+          {titleClean}
+        </h2>
       </div>
 
-      {/* Submission State Container */}
-      <div className="space-y-4 flex-1">
-        <h4 className="text-sm font-extrabold text-[#111111] flex items-center justify-between">
-          <span>Your Answer Sheet Submission</span>
-          {isSubmitted && (
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase ${
-                isGraded
-                  ? 'bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]'
-                  : 'bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]'
-              }`}
-            >
-              {isGraded ? 'Graded' : 'Submitted'}
-            </span>
-          )}
-        </h4>
+      {/* ── 2. Info Grid: Teacher, Total Marks, Due Date ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-neutral-50 dark:bg-neutral-850 rounded-2xl border border-neutral-150 dark:border-neutral-800 text-xs">
+        <div>
+          <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block font-medium">Instructor</span>
+          <span className="font-bold text-neutral-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+            <User size={13} className="text-amber-500" />
+            <span>{teacherName}</span>
+          </span>
+        </div>
+        <div>
+          <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block font-medium">Assessment Weight</span>
+          <span className="font-bold text-neutral-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+            <Award size={13} className="text-amber-500" />
+            <span>{selectedTest.total_marks} Total Marks</span>
+          </span>
+        </div>
+        <div>
+          <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block font-medium">Due Date</span>
+          <span className="font-bold text-neutral-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+            <Calendar size={13} className="text-amber-500" />
+            <span>{formatStandardDate(selectedTest.due_date)}</span>
+          </span>
+        </div>
+      </div>
 
-        {/* If Graded: Show Marks & Remarks */}
+      {/* ── 3. Open Question Paper Button ── */}
+      <div>
+        <button
+          type="button"
+          onClick={() => onOpenTestViewer(selectedTest)}
+          className="min-h-[44px] min-w-[44px] w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
+        >
+          <Eye size={16} />
+          <span>Open Question Paper</span>
+        </button>
+      </div>
+
+      {/* Teacher Instructions */}
+      {selectedTest.instructions && (
+        <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 rounded-2xl text-xs space-y-1">
+          <span className="font-bold text-amber-900 dark:text-amber-300 block">
+            Teacher Instructions:
+          </span>
+          <p className="text-amber-800 dark:text-amber-200 leading-relaxed">
+            <MathText text={selectedTest.instructions} />
+          </p>
+        </div>
+      )}
+
+      {/* Unsubmitted Overdue Note */}
+      {!isSubmitted && isPastDue && (
+        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl text-xs text-rose-800 dark:text-rose-300 flex items-center gap-2.5">
+          <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+          <span>
+            This assessment is past its deadline. Contact your teacher if you need more time to submit.
+          </span>
+        </div>
+      )}
+
+      {/* ── 4. Submission Section ── */}
+      <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+        <h3 className="text-sm font-bold text-neutral-900 dark:text-white">
+          Answer Sheet Submission
+        </h3>
+
+        {/* If Graded: Show Marks and Remarks */}
         {isSubmitted && isGraded && (
-          <div className="p-4 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl space-y-2">
+          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#16A34A] text-white flex items-center justify-center">
-                  <Award size={16} />
-                </div>
-                <div>
-                  <span className="text-[11px] text-[#15803D] font-bold block">Assigned Marks</span>
-                  <span className="text-lg font-black text-[#111111]">
-                    {submission.marks_obtained !== null && submission.marks_obtained !== undefined ? submission.marks_obtained : '—'}{' '}
-                    <span className="text-xs font-semibold text-[#737373]">/ {selectedTest.total_marks}</span>
-                  </span>
-                </div>
-              </div>
-              {submission.marks_obtained !== null && selectedTest.total_marks > 0 && (
-                <div className="text-right">
-                  <span className="text-xs font-black text-[#16A34A] px-2 py-1 bg-white rounded-lg border border-[#86EFAC]">
-                    {Math.round(((submission.marks_obtained || 0) / selectedTest.total_marks) * 100)}%
-                  </span>
-                </div>
-              )}
+              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                Graded Score
+              </span>
+              <span className="text-base font-black text-emerald-900 dark:text-emerald-200">
+                {submission?.marks_obtained ?? '—'} / {selectedTest.total_marks}
+              </span>
             </div>
-
-            {submission.teacher_feedback && (
-              <div className="pt-2 border-t border-[#DCFCE7] text-xs text-[#1F2937]">
-                <strong className="text-[#15803D]">Teacher's Remark: </strong>
-                <span><MathText text={submission.teacher_feedback} /></span>
-              </div>
+            {submission?.teacher_feedback && (
+              <p className="text-xs text-emerald-900 dark:text-emerald-300 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60">
+                <strong>Teacher's Remark:</strong> "{submission.teacher_feedback}"
+              </p>
             )}
           </div>
         )}
@@ -266,50 +293,57 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
         {/* If Submitted: Show Uploaded File Card */}
         {isSubmitted ? (
           <div className="space-y-3">
-            <div className="p-4 bg-[#FAFAFA] border border-[#E5E5E5] rounded-2xl flex items-center justify-between gap-3">
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-800 rounded-2xl flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-[#111111] text-white flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 flex items-center justify-center shrink-0">
                   <FileText size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-extrabold text-[#111111] truncate">
-                    {submission.student_name || 'My'}_Answer_Sheet.{submission.file_type === 'pdf' ? 'pdf' : 'jpg'}
+                  <p className="text-xs font-bold text-neutral-900 dark:text-white truncate">
+                    {submission?.student_name || 'My'}_Answer_Sheet.
+                    {submission?.file_type === 'pdf' ? 'pdf' : 'jpg'}
                   </p>
-                  <p className="text-[11px] text-[#737373]">
-                    Submitted {new Date(submission.submitted_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    Submitted {formatStandardDateTime(submission?.submitted_at)}
+                    {isSubmittedLate && (
+                      <span className="text-rose-600 dark:text-rose-400 font-bold ml-1.5">
+                        (Submitted late)
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
-                  id="view-submitted-answersheet-btn"
-                  onClick={() => onOpenSubmissionViewer(submission)}
-                  className="p-2 rounded-xl bg-white hover:bg-[#E5E5E5] text-[#111111] text-xs font-bold border border-[#E5E5E5] transition-colors"
-                  title="View Submitted Answer Sheet"
+                  type="button"
+                  onClick={() => onOpenSubmissionViewer(submission!)}
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+                  title="View Submitted Sheet"
                 >
-                  <Eye size={15} />
+                  <Eye size={16} />
                 </button>
                 <button
-                  id="download-submitted-answersheet-btn"
+                  type="button"
                   onClick={handleDownloadSub}
                   disabled={downloadingSub}
-                  className="p-2 rounded-xl bg-white hover:bg-[#E5E5E5] text-[#111111] text-xs font-bold border border-[#E5E5E5] transition-colors disabled:opacity-40"
-                  title="Download Submitted Answer Sheet"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center justify-center cursor-pointer disabled:opacity-40"
+                  title="Download Sheet"
                 >
-                  {downloadingSub ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                  {downloadingSub ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                 </button>
               </div>
             </div>
 
+            {/* Re-upload button (Respecting existing rule: allowed if !isGraded) */}
             {!isGraded && (
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-1">
                 <button
-                  id="reupload-answersheet-btn"
+                  type="button"
                   onClick={() => setShowReupload(true)}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#525252] hover:text-[#111111] hover:underline"
+                  className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer transition-colors"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={13} />
                   <span>Replace / Re-upload Answer Sheet</span>
                 </button>
               </div>
@@ -319,31 +353,29 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
           /* Upload Form */
           <form onSubmit={handleUploadSubmission} className="space-y-4">
             {error && (
-              <div className="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl text-xs text-[#991B1B] flex items-start gap-2">
-                <AlertCircle size={15} className="shrink-0 text-[#DC2626] mt-0.5" />
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 rounded-xl flex items-start gap-2">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
 
             <div
-              id="student-submission-dropzone"
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragActive(true);
               }}
               onDragLeave={() => setDragActive(false)}
               onDrop={handleFileDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
+              className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer ${
                 dragActive
-                  ? 'border-[#111111] dark:border-[#F4C430] bg-[#F5F5F5] dark:bg-[#202024]'
+                  ? 'border-amber-400 bg-amber-50/20 dark:bg-amber-950/10'
                   : file
-                  ? 'border-[#22C55E] dark:border-emerald-500 bg-[#F0FDF4] dark:bg-emerald-950/20'
-                  : 'border-[#E5E5E5] dark:border-[#27272A] bg-[#FAFAFA] dark:bg-[#141416] hover:bg-[#F5F5F5] dark:hover:bg-[#1C1C20]'
+                  ? 'border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10'
+                  : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-850 hover:bg-neutral-100 dark:hover:bg-neutral-800'
               }`}
             >
               <input
                 type="file"
-                id="student-answer-file-input"
                 accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                 onChange={handleFileChange}
                 disabled={uploading}
@@ -351,78 +383,69 @@ export const StudentSubmissionPanel: React.FC<StudentSubmissionPanelProps> = ({
               />
 
               {file ? (
-                <div className="flex items-center justify-center gap-3 pointer-events-none">
-                  <div className="w-10 h-10 rounded-xl bg-[#22C55E]/10 dark:bg-emerald-500/20 text-[#16A34A] dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                     <FileCheck2 size={20} />
                   </div>
-                  <div className="text-left">
-                    <p className="text-xs font-extrabold text-[#111111] dark:text-[#F4F4F5] truncate max-w-xs">{file.name}</p>
-                    <p className="text-[11px] text-[#737373] dark:text-[#A1A1AA]">
+                  <div className="text-left min-w-0">
+                    <p className="text-xs font-bold text-neutral-900 dark:text-white truncate max-w-xs">
+                      {file.name}
+                    </p>
+                    <p className="text-[11px] text-neutral-500">
                       {(file.size / (1024 * 1024)).toFixed(2)} MB • Ready to submit
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-2 pointer-events-none">
-                  <div className="w-12 h-12 rounded-2xl bg-[#E5E5E5] dark:bg-[#27272A] text-[#525252] dark:text-[#A1A1AA] flex items-center justify-center mx-auto">
-                    <Upload size={20} />
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40 flex items-center justify-center mx-auto">
+                    <Upload size={22} />
                   </div>
-                  <p className="text-xs font-extrabold text-[#111111] dark:text-[#F4F4F5]">
-                    Drag & drop your solved answer sheet here, or <span className="underline text-[#111111] dark:text-[#F4C430]">browse file</span>
-                  </p>
-                  <p className="text-[11px] text-[#737373] dark:text-[#A1A1AA]">
-                    Accepted: PDF, Scanned Images (JPG/PNG) up to 25MB
-                  </p>
+                  <div>
+                    <p className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white">
+                      Drop answer file here or tap to browse
+                    </p>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                      Accepts PDF, JPG, PNG up to 25MB
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
 
-            {uploading && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-semibold text-[#525252]">
-                  <span>Uploading answer sheet...</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="w-full h-2 bg-[#E5E5E5] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#111111] transition-all duration-200 rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
+            {file && (
+              <div className="flex items-center justify-between gap-3 pt-1">
+                {showReupload && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFile(null);
+                      setShowReupload(false);
+                    }}
+                    className="min-h-[44px] px-3 text-xs font-semibold text-neutral-500 hover:text-neutral-900 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="min-h-[44px] min-w-[44px] w-full py-2.5 px-5 bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-xs sm:text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Uploading ({progress}%)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      <span>Submit Answer Sheet</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
-
-            <div className="flex items-center justify-between gap-3 pt-2">
-              {showReupload && (
-                <button
-                  type="button"
-                  onClick={() => setShowReupload(false)}
-                  disabled={uploading}
-                  className="px-3 py-2 text-xs font-bold text-[#525252] hover:text-[#111111]"
-                >
-                  Cancel Re-upload
-                </button>
-              )}
-
-              <button
-                type="submit"
-                id="submit-answersheet-btn"
-                disabled={uploading || !file}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#111111] hover:bg-[#262626] text-white text-xs font-extrabold transition-all shadow-sm ml-auto disabled:opacity-40 disabled:hover:bg-[#111111]"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    <span>Submitting Answer Sheet...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 size={15} />
-                    <span>Submit Answer Sheet</span>
-                  </>
-                )}
-              </button>
-            </div>
           </form>
         )}
       </div>
