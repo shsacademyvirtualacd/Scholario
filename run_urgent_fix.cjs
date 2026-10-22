@@ -3,15 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 async function runFix() {
-  const envContent = fs.readFileSync(path.join(__dirname, '.env.local'), 'utf8');
-  let connectionString = process.env.SUPABASE_DB_URL;
-  if (!connectionString) {
-    const match = envContent.match(/SUPABASE_DB_URL="?([^"\n]+)"?/);
-    if (match) connectionString = match[1];
-  }
+  const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
 
   if (!connectionString) {
-    console.error('SUPABASE_DB_URL is missing in .env.local');
+    console.error('SUPABASE_DB_URL or DATABASE_URL is missing in environment variables');
     process.exit(1);
   }
 

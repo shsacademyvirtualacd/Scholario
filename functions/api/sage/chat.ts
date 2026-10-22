@@ -35,8 +35,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-const DEFAULT_SUPABASE_URL = 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'placeholder-anon-key';
+const DEFAULT_SUPABASE_URL = '';
+const DEFAULT_SUPABASE_KEY = '';
 
 export async function onRequestOptions(): Promise<Response> {
   return new Response(null, {

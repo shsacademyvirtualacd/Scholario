@@ -6,34 +6,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function loadEnv() {
-  const envPath = path.resolve(__dirname, '../.env.local');
-  if (!fs.existsSync(envPath)) {
-    console.error('.env.local file not found');
-    process.exit(1);
-  }
-  const envContent = fs.readFileSync(envPath, 'utf-8');
-  const env = {};
-  envContent.split('\n').forEach(line => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) return;
-    const match = trimmed.match(/^([^=]+)=(.*)$/);
-    if (match) {
-      let value = match[2].trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      env[match[1].trim()] = value;
-    }
-  });
-  return env;
-}
-
 async function main() {
-  const env = loadEnv();
-  const dbUrl = env.SUPABASE_DB_URL;
+  const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
   if (!dbUrl) {
-    console.error('SUPABASE_DB_URL is not defined in .env.local');
+    console.error('SUPABASE_DB_URL or DATABASE_URL is not defined in environment variables');
     process.exit(1);
   }
 

@@ -3,10 +3,15 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const sb = createClient(
-  process.env.SUPABASE_URL || 'https://rxgrxjlyrfzojvirkhdc.supabase.co',
-  process.env.SUPABASE_ANON_KEY || 'placeholder-anon-key'
-);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("Missing SUPABASE_URL or SUPABASE_ANON_KEY in environment variables.");
+  process.exit(1);
+}
+
+const sb = createClient(supabaseUrl, supabaseAnonKey);
 
 async function main() {
   // 1. Get all offerings under 'local' board

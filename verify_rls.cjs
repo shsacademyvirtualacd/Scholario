@@ -2,22 +2,9 @@ const pg = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-function loadEnv() {
-  const envPath = path.resolve(__dirname, '.env.local');
-  if (!fs.existsSync(envPath)) return {};
-  const envContent = fs.readFileSync(envPath, 'utf-8');
-  const env = {};
-  envContent.split('\n').forEach(line => {
-    const match = line.match(/^([^=]+)=(.*)$/);
-    if (match) env[match[1].trim()] = match[2].replace(/['"]/g, '').trim();
-  });
-  return env;
-}
-
 async function verify() {
-  const env = loadEnv();
-  const dbUrl = env.SUPABASE_DB_URL;
-  if (!dbUrl) throw new Error("SUPABASE_DB_URL not found");
+  const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+  if (!dbUrl) throw new Error("SUPABASE_DB_URL or DATABASE_URL not found in environment variables");
 
   const parsedUrl = new URL(dbUrl);
   const host = parsedUrl.hostname;

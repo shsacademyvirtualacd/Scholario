@@ -2,8 +2,8 @@ import type { EventContext } from '@cloudflare/workers-types';
 import { createClient } from '@supabase/supabase-js';
 import type { Env } from '../../env';
 
-const DEFAULT_URL = 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
-const DEFAULT_ANON_KEY = 'placeholder-anon-key';
+const DEFAULT_URL = '';
+const DEFAULT_ANON_KEY = '';
 
 export async function onRequest(context: EventContext<Env, any, any>): Promise<Response> {
   const { env } = context;

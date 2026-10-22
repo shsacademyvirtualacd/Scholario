@@ -6,8 +6,8 @@ export interface AuthHelperResult {
   token: string;
 }
 
-const DEFAULT_URL = 'https://rxgrxjlyrfzojvirkhdc.supabase.co';
-const DEFAULT_ANON_KEY = 'placeholder-anon-key';
+const DEFAULT_URL = '';
+const DEFAULT_ANON_KEY = '';
 
 /**
  * Extracts Bearer token from Authorization header (or ?token= query parameter fallback for <a> and <img> tags)

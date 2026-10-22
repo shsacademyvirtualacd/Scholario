@@ -30,7 +30,7 @@ export interface PushPayload {
 const VAPID_PUBLIC_KEY =
   process.env.VAPID_PUBLIC_KEY ||
   process.env.VITE_VAPID_PUBLIC_KEY ||
-  'BG1BeEJ4j5MXV95t_QGabbo_K1KrL33bPrKwomccCzC4_sEpXTswN_hCxr19qdX9LgxSy7kG8BSn2GBTO7kFI2A';
+  '';
 
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 
@@ -38,7 +38,7 @@ const VAPID_SUBJECT =
   process.env.VAPID_SUBJECT ||
   'mailto:admin@scholario.app';
 
-if (VAPID_PRIVATE_KEY) {
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   try {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
     console.log('[ServerPush] WebPush VAPID configured successfully from environment');
@@ -46,7 +46,7 @@ if (VAPID_PRIVATE_KEY) {
     console.warn('[ServerPush] Warning configuring VAPID details:', err);
   }
 } else {
-  console.log('[ServerPush] Notice: VAPID_PRIVATE_KEY not set in process.env. Server will rely on Supabase Edge Function send-push for dispatches.');
+  console.log('[ServerPush] Notice: VAPID keys not fully set in process.env. Push notifications via direct web-push will be skipped.');
 }
 
 // ── Persistent Subscription Store (File + Memory Fallback) ───────────────────

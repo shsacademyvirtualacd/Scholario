@@ -5,10 +5,10 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 BUN_VERSION = "1.2.15"
-SUPABASE_URL = "https://rxgrxjlyrfzojvirkhdc.supabase.co"
-SUPABASE_ANON_KEY = "placeholder-anon-key"
-VITE_SUPABASE_URL = "https://rxgrxjlyrfzojvirkhdc.supabase.co"
-VITE_SUPABASE_ANON_KEY = "placeholder-anon-key"
+SUPABASE_URL = ""
+SUPABASE_ANON_KEY = ""
+VITE_SUPABASE_URL = ""
+VITE_SUPABASE_ANON_KEY = ""
 
 [assets]
 directory = "./dist"

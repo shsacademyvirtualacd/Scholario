@@ -2,8 +2,7 @@ import { supabase } from './supabase';
 import type { Profile } from '../types';
 
 export const VAPID_PUBLIC_KEY =
-  (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY ||
-  'BG1BeEJ4j5MXV95t_QGabbo_K1KrL33bPrKwomccCzC4_sEpXTswN_hCxr19qdX9LgxSy7kG8BSn2GBTO7kFI2A';
+  ((import.meta as any).env?.VITE_VAPID_PUBLIC_KEY as string) || '';
 
 /**
  * Converts a base64url VAPID public key string into a Uint8Array required by pushManager.subscribe().
