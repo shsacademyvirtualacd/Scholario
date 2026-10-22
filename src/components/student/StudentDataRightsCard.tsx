@@ -10,6 +10,7 @@ export const StudentDataRightsCard: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [parentEmailInput, setParentEmailInput] = useState('');
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteCompleted, setDeleteCompleted] = useState(false);
 
@@ -326,11 +327,27 @@ export const StudentDataRightsCard: React.FC = () => {
                   </ul>
                 </div>
 
+                <div className="p-3 bg-red-50/60 border border-red-200 rounded-xl space-y-1.5">
+                  <label className="block text-xs font-bold text-red-700">
+                    To confirm, type <span className="font-mono bg-white px-1 py-0.5 rounded border border-red-300">DELETE</span> below:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmationText}
+                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                    placeholder="Type DELETE"
+                    className="input text-xs w-full py-2 bg-white font-mono uppercase border-red-300 focus:border-red-500"
+                  />
+                </div>
+
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <button
                     type="button"
                     disabled={isDeleting}
-                    onClick={() => setShowDeleteModal(false)}
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setDeleteConfirmationText('');
+                    }}
                     className="px-4 py-2.5 rounded-xl border border-[#E5E5E5] text-xs font-bold text-[#737373] hover:text-[#111111] hover:bg-[#FAFAFA]"
                   >
                     Cancel
@@ -348,8 +365,8 @@ export const StudentDataRightsCard: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={isDeleting}
-                    className="px-4 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 text-xs font-bold flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                    disabled={isDeleting || deleteConfirmationText !== 'DELETE'}
+                    className="px-4 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 text-xs font-bold flex items-center gap-1.5 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isDeleting ? (
                       <>

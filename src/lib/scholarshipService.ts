@@ -32,6 +32,17 @@ export const DEFAULT_SCHOLARSHIP_TIERS: ScholarshipTier[] = [
     updated_at: new Date().toISOString()
   },
   {
+    id: 'tier-70-20',
+    min_marks_percentage: 70,
+    discount_percentage: 20,
+    applicable_boards: 'all',
+    is_active: true,
+    tier_name: 'Merit Scholar (70%+ Marks)',
+    description: 'Merit Scholar Allowance (70%+ Marks / B equivalent) — 20% tuition waiver',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
     id: 'tier-improvement-50',
     min_marks_percentage: 0,
     discount_percentage: 50,

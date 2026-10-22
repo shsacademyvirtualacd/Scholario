@@ -26,6 +26,8 @@ import {
 } from '../../lib/scholarshipService';
 import { ScholarshipTier } from '../../types/scholarship';
 import PlanComparisonPage from './PlanComparisonPage';
+import { StudentRegistrationV2 } from '../../components/student/registration/StudentRegistrationV2';
+import { isFeatureV2Enabled } from '../../lib/academicConfig';
 
 export const UnregisteredPage: React.FC = () => {
   const { signOut, user, profile, refreshProfile, suspended, isBillingSuspended, proceedToPaymentCheckout } = useAuth();
@@ -574,6 +576,17 @@ export const UnregisteredPage: React.FC = () => {
           <span className="text-xs text-[#737373] font-bold">Loading educational structure...</span>
         </div>
       </div>
+    );
+  }
+
+  // UI v2 Feature Flag: Render redesigned 4-step registration experience
+  if (isFeatureV2Enabled('ui_v2_registration')) {
+    return (
+      <StudentRegistrationV2
+        taxonomy={taxonomy}
+        queryBoard={queryBoard}
+        queryGrade={queryGrade}
+      />
     );
   }
 
