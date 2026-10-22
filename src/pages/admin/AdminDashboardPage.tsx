@@ -125,8 +125,8 @@ const AdminDashboardPage: React.FC = () => {
       value: counts.students.toString(),
       subtext: 'Enrolled students',
       icon: Users,
-      colorClass: 'text-blue-600 dark:text-blue-400',
-      bgClass: 'bg-blue-500/10 dark:bg-blue-500/20',
+      colorClass: 'text-[#8A6A00] dark:text-[#F2C230]',
+      bgClass: 'bg-[rgba(242,194,48,0.16)]',
       onClick: () => navigate('/admin/students'),
     },
     {
@@ -135,8 +135,8 @@ const AdminDashboardPage: React.FC = () => {
       value: `${attendanceStats.attendanceRate}%`,
       subtext: `${attendanceStats.totalRecords} sessions tracked`,
       icon: Percent,
-      colorClass: 'text-emerald-600 dark:text-emerald-400',
-      bgClass: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+      colorClass: 'text-[#8A6A00] dark:text-[#F2C230]',
+      bgClass: 'bg-[rgba(242,194,48,0.16)]',
       onClick: () => navigate('/admin/attendance'),
     },
     {
@@ -145,8 +145,8 @@ const AdminDashboardPage: React.FC = () => {
       value: counts.teachers.toString(),
       subtext: 'Active faculty members',
       icon: GraduationCap,
-      colorClass: 'text-amber-600 dark:text-amber-400',
-      bgClass: 'bg-amber-500/10 dark:bg-amber-500/20',
+      colorClass: 'text-[#8A6A00] dark:text-[#F2C230]',
+      bgClass: 'bg-[rgba(242,194,48,0.16)]',
       onClick: () => navigate('/admin/teachers'),
     },
     {
@@ -155,8 +155,8 @@ const AdminDashboardPage: React.FC = () => {
       value: counts.announcements.toString(),
       subtext: 'Total published broadcasts',
       icon: Megaphone,
-      colorClass: 'text-purple-600 dark:text-purple-400',
-      bgClass: 'bg-purple-500/10 dark:bg-purple-500/20',
+      colorClass: 'text-[#8A6A00] dark:text-[#F2C230]',
+      bgClass: 'bg-[rgba(242,194,48,0.16)]',
       onClick: () => navigate('/admin/announcements'),
     },
   ];
@@ -305,31 +305,31 @@ const AdminDashboardPage: React.FC = () => {
 
   return (
     <AdminShell>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* ── a) Page Header: Title, PKT Date, Last Updated & Refresh ── */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-neutral-200/80 dark:border-neutral-800">
+        <header className="pb-3 border-b border-[var(--admin-card-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+            <h1 className="text-[26px] font-extrabold tracking-tight text-[var(--admin-text)] leading-tight">
               Dashboard
             </h1>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              {formatPKTDate(new Date(), 'full')} (PKT, UTC+5)
+            <p className="text-[13px] text-[var(--admin-muted)] mt-0.5 font-medium">
+              {formatPKTDate(new Date(), 'full')} · PKT (UTC+5)
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-center">
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              Last updated: <span className="font-medium text-neutral-700 dark:text-neutral-300 tabular-nums">{formatPKTTime(lastUpdated, true)}</span>
+          <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+            <span className="text-[13px] text-[var(--admin-muted)] font-medium">
+              Last updated: <span className="font-bold text-[var(--admin-text)] tabular-nums">{formatPKTTime(lastUpdated, true)}</span>
             </span>
             <button
               type="button"
               onClick={() => fetchDashboardData(true)}
               disabled={loading || refreshing}
-              className="p-2 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-[var(--admin-text)] transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer shrink-0"
               title="Refresh dashboard data"
               aria-label="Refresh dashboard data"
             >
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
             </button>
           </div>
         </header>
@@ -339,45 +339,56 @@ const AdminDashboardPage: React.FC = () => {
 
         {/* ── b) Summary Row: 4 Equal Stat Cards ── */}
         <section aria-label="Summary statistics">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
             {loading ? (
               [1, 2, 3, 4].map((n) => (
                 <div
                   key={n}
-                  className="bg-white dark:bg-[#18181B] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 h-[124px] flex flex-col justify-between animate-pulse"
+                  className="admin-card p-4 min-h-[112px] flex flex-col justify-between animate-pulse"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800" />
-                  <div className="space-y-1.5">
-                    <div className="h-7 bg-neutral-100 dark:bg-neutral-800 rounded w-20" />
-                    <div className="h-3.5 bg-neutral-100 dark:bg-neutral-800 rounded w-28" />
+                  <div className="w-8 h-8 rounded-xl bg-neutral-200 dark:bg-neutral-800" />
+                  <div className="space-y-1.5 mt-3">
+                    <div className="h-7 bg-neutral-200 dark:bg-neutral-800 rounded w-20" />
+                    <div className="h-3.5 bg-neutral-200 dark:bg-neutral-800 rounded w-28" />
                   </div>
                 </div>
               ))
             ) : (
-              summaryCards.map((card) => {
+              summaryCards.map((card, idx) => {
                 const IconComponent = card.icon;
                 return (
                   <button
                     key={card.id}
                     type="button"
                     onClick={card.onClick}
-                    className="text-left bg-white dark:bg-[#18181B] border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 rounded-2xl p-4 flex flex-col justify-between h-[124px] transition-all hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 group"
+                    className={`admin-card p-4 flex flex-col justify-between min-h-[112px] h-auto transition-all hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 group text-left cursor-pointer overflow-hidden admin-stagger-${idx + 1}`}
                   >
                     <div className="flex items-center justify-between">
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${card.bgClass} group-hover:scale-105 transition-transform`}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[rgba(242,194,48,0.16)] text-[#8A6A00] dark:text-[#F2C230] group-hover:scale-105 transition-transform"
                       >
-                        <IconComponent size={16} className={card.colorClass} />
+                        <IconComponent size={16} />
                       </div>
                     </div>
-                    <div>
-                      <div className="text-[28px] font-bold tracking-tight text-neutral-900 dark:text-neutral-100 leading-none tabular-nums">
+                    <div className="min-w-0 w-full mt-3">
+                      <div className="text-[28px] font-extrabold tracking-tight text-[var(--admin-text)] leading-none tabular-nums">
                         {card.value}
                       </div>
-                      <div className="text-sm font-medium text-neutral-600 dark:text-neutral-300 mt-1.5">
+
+                      {/* 4px bar under Attendance Rate value */}
+                      {card.id === 'attendance' && (
+                        <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1 rounded-full overflow-hidden mt-1.5">
+                          <div
+                            className="bg-[#F2C230] h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min(attendanceStats.attendanceRate, 100)}%` }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="text-sm font-semibold text-[var(--admin-text)] mt-1.5 leading-snug line-clamp-2 break-words" style={{ overflowWrap: 'anywhere' }}>
                         {card.label}
                       </div>
-                      <div className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+                      <div className="text-xs text-[var(--admin-muted)] mt-0.5 leading-tight line-clamp-2 break-words" style={{ overflowWrap: 'anywhere' }}>
                         {card.subtext}
                       </div>
                     </div>
@@ -392,22 +403,21 @@ const AdminDashboardPage: React.FC = () => {
         {hasUrgentAttention && (
           <section
             aria-label="Needs attention"
-            className="bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 dark:border-amber-500/30 rounded-xl p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-3"
+            className="rounded-[20px] p-3 status-pill-warning border border-amber-300/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs"
           >
-            <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
+            <div className="flex items-center gap-2 text-xs font-bold">
               <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
               <span>Needs attention:</span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               {staleSessionCount > 0 && (
                 <button
                   type="button"
                   onClick={() => scrollToSection('teacher-attendance-section')}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors flex items-center gap-1.5 shadow-2xs"
+                  className="h-12 sm:h-9 px-4 rounded-xl font-bold text-xs status-pill-warning border border-amber-400/40 hover:opacity-90 transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98]"
                 >
-                  <span>{staleSessionCount} {staleSessionCount === 1 ? 'session needs review' : 'sessions need review'}</span>
-                  <ExternalLink size={11} />
+                  <span>{staleSessionCount} {staleSessionCount === 1 ? 'session needs review' : 'sessions need review'} ↗</span>
                 </button>
               )}
 
@@ -415,10 +425,9 @@ const AdminDashboardPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => scrollToSection('low-attendance-watchlist')}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center gap-1.5 shadow-2xs"
+                  className="h-12 sm:h-9 px-4 rounded-xl font-bold text-xs status-pill-danger hover:opacity-90 transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98]"
                 >
-                  <span>{sortedLowAttendance.length} {sortedLowAttendance.length === 1 ? 'student' : 'students'} below 75% attendance</span>
-                  <ExternalLink size={11} />
+                  <span>{sortedLowAttendance.length} {sortedLowAttendance.length === 1 ? 'student' : 'students'} below 75% attendance ↗</span>
                 </button>
               )}
             </div>
@@ -432,22 +441,22 @@ const AdminDashboardPage: React.FC = () => {
         />
 
         {/* ── e & f) Teacher Workload & Low Attendance Watchlist (Side-by-side on wide screens) ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
           {/* ── e) Teacher Workload (8 cols on wide screens) ── */}
           <section
             aria-labelledby="teacher-workload-title"
-            className="xl:col-span-8 bg-white dark:bg-[#18181B] border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xs overflow-hidden"
+            className="admin-card xl:col-span-8 overflow-hidden"
           >
             {/* Header */}
-            <div className="p-4 sm:p-5 border-b border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-4 sm:p-5 border-b border-[var(--admin-card-border)] flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2
                   id="teacher-workload-title"
-                  className="text-base font-bold text-neutral-900 dark:text-neutral-100 tracking-tight"
+                  className="text-lg font-bold text-[var(--admin-text)] tracking-tight"
                 >
                   Teacher workload
                 </h2>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                <p className="text-[13px] text-[var(--admin-muted)] line-clamp-2 mt-0.5">
                   Assigned subjects, boards, grades, student reach, and weekly teaching schedule
                 </p>
               </div>
@@ -456,7 +465,7 @@ const AdminDashboardPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/admin/teachers')}
-                  className="btn btn-secondary text-xs font-semibold px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                  className="h-11 min-h-[44px] px-4 rounded-full border border-[var(--admin-card-border)] text-xs font-bold text-[var(--admin-text)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors inline-flex items-center cursor-pointer"
                 >
                   Manage teachers
                 </button>
@@ -464,20 +473,22 @@ const AdminDashboardPage: React.FC = () => {
             </div>
 
             {/* Controls: Search & Sort */}
-            <div className="p-3.5 bg-neutral-50/50 dark:bg-neutral-900/30 border-b border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-2.5">
-              <div className="relative flex-1 min-w-[200px] max-w-xs">
-                <Search size={13} className="absolute left-2.5 top-2.5 text-neutral-400" />
+            <div className="p-3.5 bg-neutral-50/50 dark:bg-neutral-900/30 border-b border-[var(--admin-card-border)] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* 48px Search */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search size={15} className="absolute left-3.5 top-3.5 text-neutral-400" />
                 <input
                   type="text"
                   value={workloadSearch}
                   onChange={(e) => setWorkloadSearch(e.target.value)}
                   placeholder="Search teacher, subject or board..."
-                  className="w-full text-xs pl-8 pr-2.5 py-1.5 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  className="w-full h-12 text-xs pl-10 pr-3 border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-[var(--admin-text)] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                 />
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-                <span>Sort:</span>
+              {/* Single-row scrollable 40px chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 shrink-0">
+                <span className="text-xs text-[var(--admin-muted)] font-medium mr-1 shrink-0">Sort:</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -487,14 +498,14 @@ const AdminDashboardPage: React.FC = () => {
                       setWorkloadSortAsc(false);
                     }
                   }}
-                  className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors ${
+                  className={`h-10 px-3.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer transition-colors flex items-center gap-1.5 ${
                     workloadSortBy === 'classes'
-                      ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
-                      : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      ? 'bg-[#111111] dark:bg-[#F2C230] text-white dark:text-[#111111] font-bold shadow-xs'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-[var(--admin-muted)] hover:text-[var(--admin-text)]'
                   }`}
                 >
                   <span>Classes/wk</span>
-                  {workloadSortBy === 'classes' && <ArrowUpDown size={11} />}
+                  {workloadSortBy === 'classes' && <ArrowUpDown size={12} />}
                 </button>
                 <button
                   type="button"
@@ -505,14 +516,14 @@ const AdminDashboardPage: React.FC = () => {
                       setWorkloadSortAsc(false);
                     }
                   }}
-                  className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors ${
+                  className={`h-10 px-3.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer transition-colors flex items-center gap-1.5 ${
                     workloadSortBy === 'students'
-                      ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
-                      : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      ? 'bg-[#111111] dark:bg-[#F2C230] text-white dark:text-[#111111] font-bold shadow-xs'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-[var(--admin-muted)] hover:text-[var(--admin-text)]'
                   }`}
                 >
                   <span>Students</span>
-                  {workloadSortBy === 'students' && <ArrowUpDown size={11} />}
+                  {workloadSortBy === 'students' && <ArrowUpDown size={12} />}
                 </button>
                 <button
                   type="button"
@@ -523,22 +534,22 @@ const AdminDashboardPage: React.FC = () => {
                       setWorkloadSortAsc(true);
                     }
                   }}
-                  className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors ${
+                  className={`h-10 px-3.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer transition-colors flex items-center gap-1.5 ${
                     workloadSortBy === 'name'
-                      ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
-                      : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      ? 'bg-[#111111] dark:bg-[#F2C230] text-white dark:text-[#111111] font-bold shadow-xs'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-[var(--admin-muted)] hover:text-[var(--admin-text)]'
                   }`}
                 >
                   <span>Name</span>
-                  {workloadSortBy === 'name' && <ArrowUpDown size={11} />}
+                  {workloadSortBy === 'name' && <ArrowUpDown size={12} />}
                 </button>
               </div>
             </div>
 
-            {/* Desktop Table View */}
+            {/* Desktop Table View (>= 768px) */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-semibold text-[11px] border-b border-neutral-200 dark:border-neutral-700">
+                <thead className="bg-neutral-100/80 dark:bg-neutral-800/80 text-[var(--admin-muted)] font-semibold text-[11px] border-b border-[var(--admin-card-border)]">
                   <tr>
                     <th className="py-3 px-4">Teacher</th>
                     <th className="py-3 px-4">Subjects</th>
@@ -548,15 +559,15 @@ const AdminDashboardPage: React.FC = () => {
                     <th className="py-3 px-4">Classes/wk</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                <tbody className="divide-y divide-[var(--admin-card-border)]">
                   {processedWorkload.list.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-neutral-400">
+                      <td colSpan={6} className="text-center py-8 text-[var(--admin-muted)]">
                         No teachers found.
                       </td>
                     </tr>
                   ) : (
-                    (workloadShowAll ? processedWorkload.list : processedWorkload.list.slice(0, 8)).map(
+                    (workloadShowAll ? processedWorkload.list : processedWorkload.list.slice(0, 5)).map(
                       (teacher) => {
                         const progressPercent = Math.min(
                           Math.round((teacher.classesPerWeek / processedWorkload.maxWeeklyClasses) * 100),
@@ -575,27 +586,27 @@ const AdminDashboardPage: React.FC = () => {
                                   <img
                                     src={teacher.avatar_url}
                                     alt={teacher.name}
-                                    className="w-7 h-7 rounded-full object-cover shrink-0 border border-neutral-200 dark:border-neutral-700"
+                                    className="w-8 h-8 rounded-xl object-cover shrink-0 border border-[var(--admin-card-border)]"
                                   />
                                 ) : (
-                                  <div className="w-7 h-7 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold text-xs flex items-center justify-center shrink-0">
+                                  <div className="w-8 h-8 rounded-xl bg-[rgba(242,194,48,0.16)] text-[#8A6A00] dark:text-[#F2C230] font-bold text-xs flex items-center justify-center shrink-0">
                                     {teacher.avatar}
                                   </div>
                                 )}
-                                <span className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                                <span className="font-semibold text-[var(--admin-text)] truncate">
                                   {teacher.name}
                                 </span>
                               </div>
                             </td>
 
-                            {/* Subjects (max 2 shown, +N tooltip) or "Not assigned yet" */}
+                            {/* Subjects */}
                             {teacher.isUnassigned ? (
-                              <td colSpan={3} className="py-3 px-4 text-neutral-400 dark:text-neutral-500 italic">
+                              <td colSpan={3} className="py-3 px-4 text-[var(--admin-muted)] italic">
                                 Not assigned yet
                               </td>
                             ) : (
                               <>
-                                <td className="py-3 px-4 text-neutral-800 dark:text-neutral-200">
+                                <td className="py-3 px-4 text-[var(--admin-text)]">
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     {teacher.subjects.slice(0, 2).map((s, idx) => (
                                       <span key={idx} className="whitespace-nowrap">
@@ -605,7 +616,7 @@ const AdminDashboardPage: React.FC = () => {
                                     ))}
                                     {teacher.subjects.length > 2 && (
                                       <span
-                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 cursor-help"
+                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-[var(--admin-muted)] cursor-help"
                                         title={teacher.subjects.join(', ')}
                                       >
                                         +{teacher.subjects.length - 2}
@@ -614,13 +625,13 @@ const AdminDashboardPage: React.FC = () => {
                                   </div>
                                 </td>
 
-                                {/* Boards: small neutral chips in FBISE, Punjab, Sindh order */}
+                                {/* Boards */}
                                 <td className="py-3 px-4">
                                   <div className="flex items-center gap-1 flex-wrap">
                                     {teacher.boards.map((b, idx) => (
                                       <span
                                         key={idx}
-                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200/60 dark:border-neutral-700/60"
+                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded status-pill-neutral"
                                       >
                                         {b}
                                       </span>
@@ -628,28 +639,28 @@ const AdminDashboardPage: React.FC = () => {
                                   </div>
                                 </td>
 
-                                {/* Grades: "9, 10, 11" sorted */}
-                                <td className="py-3 px-4 text-neutral-700 dark:text-neutral-300 tabular-nums">
+                                {/* Grades */}
+                                <td className="py-3 px-4 text-[var(--admin-muted)] tabular-nums font-medium">
                                   {teacher.grades.join(', ') || '—'}
                                 </td>
                               </>
                             )}
 
                             {/* Students */}
-                            <td className="py-3 px-4 font-semibold text-neutral-900 dark:text-neutral-100 tabular-nums">
+                            <td className="py-3 px-4 font-bold text-[var(--admin-text)] tabular-nums">
                               {teacher.studentsCount}
                             </td>
 
-                            {/* Classes/week with scaled progress bar */}
+                            {/* Classes/week with gold progress bar */}
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2 min-w-[100px]">
                                 <div className="flex-1 bg-neutral-100 dark:bg-neutral-800 h-2 rounded-full overflow-hidden">
                                   <div
-                                    className="bg-amber-500 h-full rounded-full transition-all duration-300"
+                                    className="bg-[#F2C230] h-full rounded-full transition-all duration-300"
                                     style={{ width: `${progressPercent}%` }}
                                   />
                                 </div>
-                                <span className="font-semibold text-neutral-900 dark:text-neutral-100 tabular-nums text-xs min-w-[20px] text-right">
+                                <span className="font-bold text-[var(--admin-text)] tabular-nums text-xs min-w-[20px] text-right">
                                   {teacher.classesPerWeek}
                                 </span>
                               </div>
@@ -663,9 +674,9 @@ const AdminDashboardPage: React.FC = () => {
               </table>
             </div>
 
-            {/* Mobile Stacked Cards */}
-            <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800">
-              {(workloadShowAll ? processedWorkload.list : processedWorkload.list.slice(0, 8)).map(
+            {/* Mobile Stacked Cards (< 768px) */}
+            <div className="md:hidden divide-y divide-[var(--admin-card-border)] p-3 sm:p-4 space-y-3">
+              {(workloadShowAll ? processedWorkload.list : processedWorkload.list.slice(0, 5)).map(
                 (teacher) => {
                   const progressPercent = Math.min(
                     Math.round((teacher.classesPerWeek / processedWorkload.maxWeeklyClasses) * 100),
@@ -673,51 +684,68 @@ const AdminDashboardPage: React.FC = () => {
                   );
 
                   return (
-                    <div key={teacher.id} className="p-4 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold text-xs flex items-center justify-center shrink-0">
-                            {teacher.avatar}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-sm text-neutral-900 dark:text-neutral-100">
+                    <div key={teacher.id} className="p-3.5 bg-white/60 dark:bg-neutral-900/40 border border-[var(--admin-card-border)] rounded-2xl space-y-2.5">
+                      {/* Row 1: 40px avatar, name, subjects, classes/wk right aligned */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {teacher.avatar_url ? (
+                            <img
+                              src={teacher.avatar_url}
+                              alt={teacher.name}
+                              className="w-10 h-10 rounded-xl object-cover shrink-0 border border-[var(--admin-card-border)]"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-[rgba(242,194,48,0.16)] text-[#8A6A00] dark:text-[#F2C230] font-bold text-xs flex items-center justify-center shrink-0">
+                              {teacher.avatar}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-bold text-base text-[var(--admin-text)] truncate leading-snug">
                               {teacher.name}
                             </div>
-                            <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                            <div className="text-[13px] text-[var(--admin-muted)] line-clamp-2 mt-0.5 leading-snug">
                               {teacher.isUnassigned ? 'Not assigned yet' : teacher.subjects.join(', ')}
                             </div>
                           </div>
                         </div>
 
-                        <div className="text-right">
-                          <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 tabular-nums">
-                            {teacher.classesPerWeek} classes/wk
+                        <div className="text-right shrink-0">
+                          <span className="text-xl font-extrabold text-[var(--admin-text)] tabular-nums leading-none block">
+                            {teacher.classesPerWeek}
+                          </span>
+                          <span className="text-xs text-[var(--admin-muted)] font-medium block mt-0.5">
+                            classes/wk
                           </span>
                         </div>
                       </div>
 
+                      {/* Row 2: Board chips */}
+                      {!teacher.isUnassigned && teacher.boards.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                          {teacher.boards.map((b, i) => (
+                            <span
+                              key={i}
+                              className="text-xs font-semibold px-2 py-0.5 rounded status-pill-neutral"
+                            >
+                              {b}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Row 3: Meta line */}
                       {!teacher.isUnassigned && (
-                        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-neutral-600 dark:text-neutral-300">
-                          <div className="flex items-center gap-1">
-                            {teacher.boards.map((b, i) => (
-                              <span
-                                key={i}
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-                              >
-                                {b}
-                              </span>
-                            ))}
-                          </div>
-                          <span className="text-neutral-400">•</span>
-                          <span className="tabular-nums">Grades: {teacher.grades.join(', ') || '—'}</span>
-                          <span className="text-neutral-400">•</span>
+                        <div className="text-xs text-[var(--admin-muted)] font-medium flex items-center gap-1.5 flex-wrap">
+                          <span className="tabular-nums">Grades {teacher.grades.join(', ') || '—'}</span>
+                          <span>·</span>
                           <span className="tabular-nums">{teacher.studentsCount} students</span>
                         </div>
                       )}
 
-                      <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden mt-1">
+                      {/* Row 4: 6px gold progress bar */}
+                      <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden mt-1">
                         <div
-                          className="bg-amber-500 h-full rounded-full"
+                          className="bg-[#F2C230] h-full rounded-full transition-all duration-300"
                           style={{ width: `${progressPercent}%` }}
                         />
                       </div>
@@ -727,16 +755,16 @@ const AdminDashboardPage: React.FC = () => {
               )}
             </div>
 
-            {/* Pagination / "View all" toggle footer */}
-            {processedWorkload.list.length > 8 && (
-              <div className="p-3 bg-neutral-50/60 dark:bg-neutral-900/40 border-t border-neutral-100 dark:border-neutral-800 text-center">
+            {/* 48px Full-width Pagination / "View all" toggle footer */}
+            {processedWorkload.list.length > 5 && (
+              <div className="p-3 bg-neutral-50/60 dark:bg-neutral-900/40 border-t border-[var(--admin-card-border)] text-center">
                 <button
                   type="button"
                   onClick={() => setWorkloadShowAll(!workloadShowAll)}
-                  className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
+                  className="w-full h-12 flex items-center justify-center font-bold text-xs rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-[var(--admin-text)] transition-colors cursor-pointer"
                 >
                   {workloadShowAll
-                    ? 'Show fewer teachers (top 8)'
+                    ? 'Show fewer teachers (top 5)'
                     : `View all (${processedWorkload.list.length} teachers)`}
                 </button>
               </div>
@@ -747,46 +775,48 @@ const AdminDashboardPage: React.FC = () => {
           <section
             id="low-attendance-watchlist"
             aria-labelledby="low-attendance-title"
-            className="xl:col-span-4 bg-white dark:bg-[#18181B] border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xs overflow-hidden"
+            className="admin-card xl:col-span-4 overflow-hidden"
           >
             {/* Header */}
-            <div className="p-4 sm:p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+            <div className="p-4 sm:p-5 border-b border-[var(--admin-card-border)]">
+              <div className="flex items-center justify-between gap-2">
                 <h2
                   id="low-attendance-title"
-                  className="text-base font-bold text-neutral-900 dark:text-neutral-100 tracking-tight"
+                  className="text-lg font-bold text-[var(--admin-text)] tracking-tight"
                 >
                   Low attendance
                 </h2>
                 {sortedLowAttendance.length > 0 && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
+                  <span className="status-pill-danger text-xs font-bold px-2.5 py-0.5 rounded-full">
                     {sortedLowAttendance.length} at risk
                   </span>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => navigate('/admin/attendance')}
-                className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-              >
-                Manage attendance
-              </button>
+              <div className="mt-1">
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/attendance')}
+                  className="h-11 inline-flex items-center text-xs font-semibold text-[var(--admin-muted)] hover:text-[var(--admin-text)] transition-colors cursor-pointer"
+                >
+                  Manage attendance ›
+                </button>
+              </div>
             </div>
 
-            <div className="p-4 bg-neutral-50/50 dark:bg-neutral-900/30 border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="p-3.5 sm:p-4 text-[13px] text-[var(--admin-muted)] border-b border-[var(--admin-card-border)]">
               Students below 75% attendance threshold (min. 10 class sessions)
             </div>
 
             {/* List */}
-            <div className="p-4">
+            <div className="p-3.5 sm:p-4">
               {sortedLowAttendance.length === 0 ? (
-                <div className="py-8 text-center text-xs text-neutral-500 dark:text-neutral-400 space-y-2">
+                <div className="py-8 text-center text-xs text-[var(--admin-muted)] space-y-2">
                   <ShieldCheck size={28} className="mx-auto text-emerald-600 dark:text-emerald-400" />
-                  <p className="font-semibold text-neutral-800 dark:text-neutral-200">
+                  <p className="font-semibold text-[var(--admin-text)]">
                     No students currently at risk.
                   </p>
-                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 max-w-xs mx-auto">
+                  <p className="text-[11px] text-[var(--admin-muted)] max-w-xs mx-auto">
                     All students with 10+ sessions meet or exceed the 75% attendance requirement.
                   </p>
                 </div>
@@ -800,24 +830,22 @@ const AdminDashboardPage: React.FC = () => {
                       .slice(0, 2)
                       .toUpperCase();
 
-                    const isVeryLow = item.rate < 50;
-
                     return (
                       <div
                         key={idx}
                         onClick={() => navigate('/admin/attendance')}
-                        className="p-3 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900/60 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 cursor-pointer transition-colors space-y-2"
+                        className="p-3 rounded-xl border border-[var(--admin-card-border)] bg-white/60 dark:bg-neutral-900/60 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 cursor-pointer transition-colors space-y-2 min-h-[88px]"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold text-xs flex items-center justify-center shrink-0">
+                            <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-[var(--admin-card-border)] text-[var(--admin-text)] font-bold text-xs flex items-center justify-center shrink-0">
                               {initials}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-semibold text-xs text-neutral-900 dark:text-neutral-100 truncate">
+                              <div className="font-bold text-base text-[var(--admin-text)] truncate">
                                 {item.student.full_name}
                               </div>
-                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                              <div className="text-[13px] text-[var(--admin-muted)] truncate mt-0.5">
                                 {item.subject} • {item.attended} of {item.total} classes attended
                               </div>
                             </div>
@@ -825,20 +853,16 @@ const AdminDashboardPage: React.FC = () => {
 
                           {/* Percentage Pill */}
                           <span
-                            className={`text-xs font-bold px-2 py-0.5 rounded-md tabular-nums shrink-0 border ${
-                              isVeryLow
-                                ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'
-                                : 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
-                            }`}
+                            className="status-pill-danger text-xs font-bold px-2 py-0.5 rounded-md tabular-nums shrink-0"
                           >
                             {item.rate}%
                           </span>
                         </div>
 
-                        {/* Thin Progress Bar */}
-                        <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden">
+                        {/* 6px Red Progress Bar */}
+                        <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden mt-1.5">
                           <div
-                            className={`h-full rounded-full ${isVeryLow ? 'bg-rose-500' : 'bg-amber-500'}`}
+                            className="bg-rose-500 h-full rounded-full transition-all duration-300"
                             style={{ width: `${item.rate}%` }}
                           />
                         </div>

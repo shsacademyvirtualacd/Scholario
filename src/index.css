@@ -1735,18 +1735,83 @@ button.bg-amber-400,
   color: #111111 !important;
 }
 
+/* Admin Portal Theme Tokens & Classes */
+:root {
+  --admin-page-bg: #FAFAF9;
+  --admin-card-bg: rgba(255, 255, 255, 0.85);
+  --admin-card-border: rgba(0, 0, 0, 0.08);
+  --admin-text: #111111;
+  --admin-muted: #5B5B5B;
+  --admin-gold-text: #8A6A00;
+  --admin-gold-icon-bg: rgba(242, 194, 48, 0.16);
+}
+
+html.dark {
+  --admin-page-bg: #0E0E0E;
+  --admin-card-bg: rgba(255, 255, 255, 0.06);
+  --admin-card-border: rgba(255, 255, 255, 0.14);
+  --admin-text: #F5F5F5;
+  --admin-muted: rgba(255, 255, 255, 0.65);
+  --admin-gold-text: #F2C230;
+  --admin-gold-icon-bg: rgba(242, 194, 48, 0.16);
+}
+
+.admin-page {
+  background-color: var(--admin-page-bg);
+  color: var(--admin-text);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.admin-card {
+  background-color: var(--admin-card-bg);
+  border: 1px solid var(--admin-card-border);
+  color: var(--admin-text);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1.25rem;
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* Animation stagger for cards */
 @media (prefers-reduced-motion: no-preference) {
   .teacher-stagger-1 { animation: teacherFadeUp 300ms ease-out 0ms both; }
   .teacher-stagger-2 { animation: teacherFadeUp 300ms ease-out 50ms both; }
   .teacher-stagger-3 { animation: teacherFadeUp 300ms ease-out 100ms both; }
   .teacher-stagger-4 { animation: teacherFadeUp 300ms ease-out 150ms both; }
+
+  .admin-stagger-1 { animation: adminFadeUp 250ms ease-out 0ms both; }
+  .admin-stagger-2 { animation: adminFadeUp 250ms ease-out 50ms both; }
+  .admin-stagger-3 { animation: adminFadeUp 250ms ease-out 100ms both; }
+  .admin-stagger-4 { animation: adminFadeUp 250ms ease-out 150ms both; }
+  .admin-stagger-5 { animation: adminFadeUp 250ms ease-out 200ms both; }
+  .admin-stagger-6 { animation: adminFadeUp 250ms ease-out 250ms both; }
 }
 
 @keyframes teacherFadeUp {
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes adminFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
