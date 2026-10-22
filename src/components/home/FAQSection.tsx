@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Minus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Minus, MessageSquare, Mail } from 'lucide-react';
 
 const faqs = [
   {
@@ -12,11 +12,11 @@ const faqs = [
   },
   {
     q: 'How does the Parent Portal work?',
-    a: 'Parent/guardian accounts are linked to their child\'s student record. Parents get secure, read-only access to view daily class attendance, assignment deadlines, teacher announcements, and term grades.',
+    a: "Parent/guardian accounts are linked to their child's student record. Parents get secure, read-only access to view daily class attendance, assignment deadlines, teacher announcements, and term grades.",
   },
   {
     q: 'How are fee payments tracked and verified?',
-    a: 'Scholario uses a secure manual fee verification process. Payers transfer school fees directly to SHS Virtual Academy\'s bank or mobile wallet accounts, then submit the payment reference or receipt photo inside the portal for administrative verification.',
+    a: "Scholario uses a secure manual fee verification process. Payers transfer school fees directly to SHS Virtual Academy's bank or mobile wallet accounts, then submit the payment reference or receipt photo inside the portal for administrative verification.",
   },
   {
     q: 'Are live classes hosted directly on Scholario?',
@@ -30,6 +30,28 @@ interface FAQSectionProps {
 
 const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [isInView, setIsInView] = useState<boolean>(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentSection = sectionRef.current;
+    if (currentSection) {
+      observer.observe(currentSection);
+    }
+
+    return () => {
+      if (currentSection) observer.unobserve(currentSection);
+    };
+  }, []);
 
   const handleContactClick = (e: React.MouseEvent) => {
     if (onOpenContact) {
@@ -38,69 +60,106 @@ const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
     }
   };
 
+  const toggleFAQ = (index: number) => {
+    setOpenIndex((prev) => (prev === index ? null : index));
+  };
+
   return (
-    <section className="py-28 bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <span className="section-label justify-center mb-4">FAQ</span>
-          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#111111] mb-4">
-            Frequently asked
-            <br />
-            questions
+    <section
+      ref={sectionRef}
+      id="faq-section"
+      className="pt-14 sm:pt-18 pb-10 sm:pb-12 bg-white dark:bg-[#0E0E0E] text-[#111111] dark:text-white transition-colors relative overflow-hidden"
+      style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+    >
+      {/* ── Soft ambient glow ── */}
+      <div
+        aria-hidden="true"
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] sm:w-[520px] h-[360px] sm:h-[520px] rounded-full pointer-events-none opacity-15 dark:opacity-10 blur-3xl"
+        style={{
+          background: 'radial-gradient(circle, rgba(242,194,48,0.55) 0%, transparent 70%)',
+        }}
+      />
+
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
+
+        {/* ── 1. Section Header (Left-aligned on mobile, centered on md+) ── */}
+        <div className="flex flex-col items-start md:items-center text-left md:text-center max-w-xl md:max-w-2xl mx-auto mb-6">
+          <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#D4A017] dark:text-[#F2C230] mb-2">
+            — FAQ
+          </span>
+          <h2 className="text-[28px] sm:text-[32px] md:text-4xl font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
+            Frequently asked{' '}
+            <span className="text-[#D4A017] dark:text-[#F2C230]">questions</span>
           </h2>
-          <p className="text-[#737373] text-lg max-w-xl mx-auto">
+          <p className="text-[15px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3] max-w-[36ch] md:max-w-xl text-left md:text-center">
             Everything you need to know about Scholario. Can't find what you're looking for?{' '}
-            <a 
-              href="#" 
+            <a
+              href="#contact"
               onClick={handleContactClick}
-              className="text-[#111111] font-semibold underline underline-offset-2"
+              className="text-[#D4A017] dark:text-[#F2C230] font-bold underline underline-offset-2 hover:opacity-85 transition-opacity"
             >
               Chat with us.
             </a>
           </p>
         </div>
 
-        {/* FAQ List */}
-        <div className="space-y-3" id="faq-accordion-container">
+        {/* ── 2. Accordion List (One glass card per question, 12px gap) ── */}
+        <div className="space-y-3 max-w-2xl mx-auto" id="faq-accordion-container">
           {faqs.map((faq, i) => {
             const isOpen = openIndex === i;
             return (
               <div
-                key={i}
+                key={faq.q}
                 id={`faq-accordion-item-${i}`}
-                className={`accordion-item rounded-xl border transition-all duration-200 ${
-                  isOpen ? 'accordion-item-active shadow-sm' : ''
+                style={{
+                  transitionDelay: `${i * 50}ms`,
+                }}
+                className={`rounded-[20px] transition-all duration-200 overflow-hidden ${
+                  isOpen
+                    ? 'bg-white/90 dark:bg-[#161616]/90 border border-[#F2C230]/60 dark:border-[#F2C230]/60 shadow-[0_4px_20px_rgba(242,194,48,0.12)]'
+                    : 'bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] shadow-xs hover:border-[#F2C230]/40'
+                } ${
+                  isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
                 }`}
               >
+                {/* Full Question Row as Tap Target (min-height 56px, press scale 0.99) */}
                 <button
                   type="button"
                   id={`faq-accordion-trigger-${i}`}
-                  className="accordion-trigger interactive"
-                  onClick={() => setOpenIndex(isOpen ? null : i)}
                   aria-expanded={isOpen}
+                  aria-controls={`faq-accordion-content-${i}`}
+                  onClick={() => toggleFAQ(i)}
+                  className="w-full min-h-[56px] p-4 sm:p-5 text-left flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230] rounded-[20px]"
                 >
-                  <span className="pr-4 font-semibold text-[0.9375rem] transition-colors duration-200 text-[#111111]">
+                  <span className="font-semibold text-[15px] sm:text-[16px] leading-[1.35] text-[#111111] dark:text-white line-clamp-2 pr-2">
                     {faq.q}
                   </span>
+
+                  {/* 32px Circle Icon (Thin gold plus on soft gold tint / Solid gold with dark minus when open) */}
                   <div
-                    className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-xs ${
-                      isOpen 
-                        ? 'bg-[#111111] text-[#F4C430]' 
-                        : 'bg-[#F5F5F5] text-[#111111]'
+                    className={`w-8 h-8 min-w-[32px] min-h-[32px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
+                      isOpen
+                        ? 'bg-[#F2C230] text-[#111111] shadow-xs rotate-180'
+                        : 'bg-[#F2C230]/[0.14] text-[#D4A017] dark:text-[#F2C230] rotate-0'
                     }`}
                   >
-                    {isOpen ? <Minus size={14} /> : <Plus size={14} />}
+                    {isOpen ? <Minus size={15} className="stroke-[2.5]" /> : <Plus size={15} className="stroke-[2.5]" />}
                   </div>
                 </button>
+
+                {/* Animated Answer Section */}
                 {isOpen && (
                   <div
                     id={`faq-accordion-content-${i}`}
-                    className="accordion-content animate-fade-up"
+                    role="region"
+                    aria-labelledby={`faq-accordion-trigger-${i}`}
+                    className="px-4 sm:px-5 pb-4 sm:pb-5 pt-0 animate-fade-in"
                   >
-                    <p className="text-[#525252] text-[0.9375rem] leading-relaxed">
-                      {faq.a}
-                    </p>
+                    <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08]">
+                      <p className="text-[14px] sm:text-[15px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3]">
+                        {faq.a}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -108,23 +167,46 @@ const FAQSection: React.FC<FAQSectionProps> = ({ onOpenContact }) => {
           })}
         </div>
 
-        {/* Bottom contact */}
-        <div className="mt-14 text-center p-8 rounded-2xl border border-[#E5E5E5] bg-[#FAFAFA]">
-          <div className="text-2xl mb-2">💬</div>
-          <h3 className="font-bold text-[#111111] text-lg mb-2">Still have questions?</h3>
-          <p className="text-[#737373] text-sm mb-5">
-            Our team is available 9 AM – 9 PM PKT, Monday to Saturday.
-          </p>
-          <div className="flex justify-center">
-            <a 
-              href="mailto:shs.academy.virtual@gmail.com"
-              className="btn btn-primary btn-md interactive"
-            >
-              shs.academy.virtual@gmail.com
-            </a>
+        {/* ── 3. Contact Card ("Still have questions?") ── */}
+        <div className="mt-8 max-w-2xl mx-auto rounded-[24px] bg-white/85 dark:bg-[#161616]/85 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 shadow-xs text-left">
+          {/* Row layout: 44px gold-tinted square + Chat icon + Title + Availability */}
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-[#F2C230]/15 dark:bg-[#F2C230]/20 border border-[#F2C230]/30 text-[#D4A017] dark:text-[#F2C230] flex items-center justify-center shrink-0">
+              <MessageSquare size={21} className="stroke-[2.2]" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[18px] font-bold text-[#111111] dark:text-white leading-snug">
+                Still have questions?
+              </h3>
+              <p className="text-[13px] sm:text-[14px] text-[#737373] dark:text-[#A3A3A3] leading-relaxed mt-0.5">
+                Our team is available 9 AM – 9 PM PKT, Monday to Saturday.
+              </p>
+            </div>
           </div>
+
+          {/* Full-width gold pill email button (48px tall) */}
+          <a
+            id="faq-email-btn"
+            href="mailto:shs.academy.virtual@gmail.com"
+            className="w-full h-12 min-h-[48px] rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-[14px] shadow-[0_4px_16px_rgba(242,194,48,0.25)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+          >
+            <Mail size={16} className="text-[#111111] shrink-0" />
+            <span className="truncate">shs.academy.virtual@gmail.com</span>
+          </a>
         </div>
+
       </div>
+
+      <style>{`
+        @media (prefers-reduced-motion: reduce) {
+          #faq-section * {
+            animation: none !important;
+            transition-delay: 0ms !important;
+            transition-duration: 0ms !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };

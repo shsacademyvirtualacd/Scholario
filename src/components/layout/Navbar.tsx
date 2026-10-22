@@ -139,7 +139,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
       />
 
       {/* ── Floating Header & Dropdown Container ── */}
-      <header className="fixed top-3.5 sm:top-4 inset-x-3.5 sm:inset-x-6 z-50 mx-auto max-w-5xl pointer-events-none flex flex-col items-center">
+      <header className="fixed top-3.5 sm:top-4 inset-x-4 sm:inset-x-6 z-50 mx-auto max-w-5xl pointer-events-none flex flex-col items-center">
         {/* Floating Pill Navbar: Glassmorphic rgba(255,255,255,0.6) / rgba(22,22,22,0.6) */}
         <nav
           ref={navContainerRef}
@@ -158,12 +158,18 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
               className="flex items-center gap-2.5 shrink-0 rounded-2xl p-1 -ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230] active:scale-95 transition-transform"
               aria-label="Scholario — Home"
             >
-              {/* Gold "S" icon tile */}
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] overflow-hidden shrink-0 shadow-xs flex items-center justify-center bg-[#F2C230]">
+              {/* Logo icon tile with subtle gold-tinted background and border (not cropped) */}
+              <div
+                style={{
+                  backgroundColor: 'rgba(242,194,48,0.12)',
+                  borderColor: 'rgba(242,194,48,0.35)',
+                }}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] border p-1 shrink-0 shadow-xs flex items-center justify-center"
+              >
                 <img
                   src="/logo.svg"
                   alt="Scholario"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = '/favicon.svg';
                   }}

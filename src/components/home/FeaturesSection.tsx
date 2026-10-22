@@ -1,134 +1,262 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  BookOpen, Video, LayoutDashboard, FileText, Bell, ClipboardList, Sparkles
+  BookOpen, Video, LayoutDashboard, FileText, Bell, ClipboardList, Sparkles, ArrowRight
 } from 'lucide-react';
 
-const features = [
+interface FeatureItem {
+  icon: React.ComponentType<{ size?: number | string; className?: string; style?: React.CSSProperties }>;
+  title: string;
+  description: string;
+  tag: string;
+}
+
+const ALL_FEATURES: FeatureItem[] = [
+  {
+    icon: Sparkles,
+    title: 'Sage AI Academic Assistant',
+    description: 'Advanced AI tutor with multimodal document and diagram analysis, intelligent curriculum semantic search across Subject Note Vault materials, and real-time page-aware context.',
+    tag: 'AI',
+  },
   {
     icon: LayoutDashboard,
     title: 'Interactive Dashboards',
     description: 'Track active courses, student grades, attendance records, and platform health at a glance with clean, dedicated views.',
     tag: 'Analytics',
-    fullWidth: false,
   },
   {
     icon: BookOpen,
     title: 'Course Management',
     description: 'Organize study streams (ICS, Pre-Med, Pre-Eng), upload notes, share documents, and track individual course progress.',
     tag: 'Core',
-    fullWidth: false,
   },
   {
     icon: Video,
     title: 'Live Class Scheduling',
     description: 'Check daily calendars for scheduled live lectures, interactive sessions, and recorded class links directly from the portal.',
     tag: 'Live',
-    fullWidth: false,
   },
   {
     icon: ClipboardList,
     title: 'Attendance Tracking',
     description: 'Seamlessly record and review student attendance. Access attendance rate charts and trace remaining class slots dynamically.',
     tag: 'Management',
-    fullWidth: false,
   },
   {
     icon: FileText,
     title: 'Resource Library',
     description: 'Access or share course-specific study resources, worksheets, past papers, syllabus files, and lecture notes instantly.',
     tag: 'Core',
-    fullWidth: false,
   },
   {
     icon: Bell,
     title: 'Announcements Broadcast',
     description: 'Broadcast and read institution-wide updates filtered by categories, complete with unread notification badges.',
     tag: 'Communication',
-    fullWidth: false,
-  },
-  {
-    icon: Sparkles,
-    title: 'Sage AI Academic Assistant',
-    description: 'Advanced AI tutor with multimodal document and diagram analysis, intelligent curriculum semantic search across Subject Note Vault materials, and real-time page-aware context.',
-    tag: 'AI',
-    fullWidth: true,
   },
 ];
 
+const CATEGORIES = ['All', 'Core', 'Analytics', 'Live', 'Management', 'Communication', 'AI'] as const;
+
 const FeaturesSection: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState('All');
-  const categories = ['All', 'Core', 'Analytics', 'Live', 'Management', 'Communication', 'AI'];
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [isInView, setIsInView] = useState<boolean>(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+        }
+      },
+      { threshold: 0.08 }
+    );
+
+    const currentRef = sectionRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) observer.unobserve(currentRef);
+    };
+  }, []);
+
+  // Filter features based on active category
+  const filteredFeatures = ALL_FEATURES.filter(
+    (f) => activeCategory === 'All' || f.tag === activeCategory
+  );
+
+  // Sage AI feature for hero spot (when active or in 'All' view)
+  const sageFeature = ALL_FEATURES.find((f) => f.title === 'Sage AI Academic Assistant');
+  const showSageHero = sageFeature && (activeCategory === 'All' || activeCategory === 'AI');
+
+  // Remaining features for the 2-column grid
+  const gridFeatures = filteredFeatures.filter(
+    (f) => !(showSageHero && f.title === 'Sage AI Academic Assistant')
+  );
 
   return (
-    <section className="py-28 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <span className="section-label justify-center mb-4">Features</span>
-          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#111111] mb-5 leading-tight">
-            Everything you need to
-            <br />
-            run a modern institution
+    <section
+      ref={sectionRef}
+      id="features-section"
+      className="pt-14 sm:pt-20 pb-12 sm:pb-16 bg-white dark:bg-[#0E0E0E] text-[#111111] dark:text-white transition-colors relative"
+      style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+    >
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+
+        {/* ── 1. Section Header (Left-aligned on mobile, centered on md+) ── */}
+        <div className="flex flex-col items-start md:items-center text-left md:text-center max-w-xl md:max-w-2xl mx-auto mb-6">
+          <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#D4A017] dark:text-[#F2C230] mb-2">
+            — FEATURES
+          </span>
+          <h2 className="text-[28px] sm:text-[32px] md:text-4xl font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
+            Everything you need to run a{' '}
+            <span className="text-[#D4A017] dark:text-[#F2C230]">modern institution</span>
           </h2>
-          <p className="text-xl text-[#737373] max-w-2xl mx-auto leading-relaxed">
+          <p className="text-[15px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3] max-w-[36ch] md:max-w-xl text-left md:text-center">
             Scholario is the complete operating system for modern education — designed from the ground up for the Pakistani context.
           </p>
         </div>
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border ${
-                activeCategory === cat
-                  ? 'bg-[#111111] text-white border-[#111111]'
-                  : 'bg-white text-[#525252] border-[#E5E5E5] hover:border-[#D4D4D4] hover:text-[#111111]'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* ── 2. Filters (Single horizontally scrollable row, sticky under floating navbar, right fade edge) ── */}
+        <div className="sticky top-[68px] sm:top-[74px] z-30 py-2.5 -mx-4 px-4 sm:mx-0 sm:px-0 backdrop-blur-xl bg-white/85 dark:bg-[#0E0E0E]/85 transition-colors mb-4">
+          <div className="relative w-full">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1 px-1 -mx-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {CATEGORIES.map((cat) => {
+                const isSelected = activeCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    id={`feature-filter-${cat.toLowerCase()}`}
+                    type="button"
+                    onClick={() => setActiveCategory(cat)}
+                    className={`h-[40px] min-h-[44px] px-4 rounded-full flex items-center justify-center shrink-0 snap-start text-xs sm:text-sm font-bold cursor-pointer transition-all active:scale-[0.98] ${
+                      isSelected
+                        ? 'bg-[#F2C230] text-[#111111] shadow-xs font-black'
+                        : 'border border-black/[0.12] dark:border-white/[0.15] bg-transparent text-[#525252] dark:text-[#D4D4D4] hover:text-[#111111] dark:hover:text-white hover:border-black/30 dark:hover:border-white/30'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right fade edge to hint at scrolling */}
+            <div
+              aria-hidden="true"
+              className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-white dark:from-[#0E0E0E] to-transparent"
+            />
+          </div>
+
+          {/* Filter count indicator */}
+          <div className="flex items-center justify-between text-[13px] text-[#737373] dark:text-[#A3A3A3] font-medium pt-2 px-1">
+            <span>
+              Showing {filteredFeatures.length} {filteredFeatures.length === 1 ? 'feature' : 'features'}
+            </span>
+            {activeCategory !== 'All' && (
+              <button
+                type="button"
+                onClick={() => setActiveCategory('All')}
+                className="text-xs font-bold text-[#D4A017] dark:text-[#F2C230] hover:underline cursor-pointer"
+              >
+                Show all
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Feature Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {features
-            .filter((f) => activeCategory === 'All' || f.tag === activeCategory)
-            .map((feature, i) => {
-              const Icon = feature.icon;
+        {/* ── 3. Featured Card (Sage AI Academic Assistant: Full-width Hero Anchor) ── */}
+        {showSageHero && sageFeature && (
+          <div
+            id="feature-card-sage-hero"
+            onClick={() => setExpandedCard(expandedCard === sageFeature.title ? null : sageFeature.title)}
+            className={`group relative w-full rounded-[24px] bg-gradient-to-br from-white/95 via-white/85 to-[#F2C230]/10 dark:from-[#161616]/95 dark:via-[#161616]/90 dark:to-[#F2C230]/15 backdrop-blur-xl border border-[#F2C230]/40 dark:border-[#F2C230]/50 p-5 sm:p-6 shadow-[0_8px_32px_rgba(242,194,48,0.12)] hover:shadow-[0_8px_32px_rgba(242,194,48,0.22)] active:scale-[0.98] transition-all duration-300 cursor-pointer mb-3.5 ${
+              isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="w-11 h-11 rounded-2xl bg-[#F2C230]/20 border border-[#F2C230]/35 text-[#D4A017] dark:text-[#F2C230] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                <Sparkles size={22} className="stroke-[2.5]" />
+              </div>
+              <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#F2C230] text-[#111111] shadow-xs shrink-0">
+                AI FEATURE
+              </span>
+            </div>
+
+            <h3 className="text-lg sm:text-xl font-extrabold text-[#111111] dark:text-white tracking-tight mb-2 flex items-center gap-2">
+              <span>{sageFeature.title}</span>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#F2C230] animate-pulse" />
+            </h3>
+
+            <p
+              className={`text-[13px] sm:text-sm leading-relaxed text-[#525252] dark:text-[#CCCCCC] transition-all duration-200 ${
+                expandedCard === sageFeature.title ? 'line-clamp-none' : 'line-clamp-2 sm:line-clamp-3'
+              }`}
+            >
+              {sageFeature.description}
+            </p>
+
+            <div className="mt-4 pt-3 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#F2C230]/15 text-[#111111] dark:text-[#F2C230] border border-[#F2C230]/30">
+                AI · Sage
+              </span>
+              <span className="text-xs font-bold text-[#D4A017] dark:text-[#F2C230] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                <span>{expandedCard === sageFeature.title ? 'Collapse' : 'Explore capabilities'}</span>
+                <ArrowRight size={13} />
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── 4. Remaining Cards: 2-Column Grid on Mobile (~170px tall compact tiles, 12px gap) ── */}
+        <div className="grid grid-cols-1 min-[340px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 w-full">
+          {gridFeatures.map((feature, idx) => {
+            const Icon = feature.icon;
+            const isExpanded = expandedCard === feature.title;
             return (
               <div
                 key={feature.title}
                 id={`feature-card-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}
-                className={`group relative p-6 rounded-2xl border transition-all duration-250 cursor-pointer bg-white border-[#E5E5E5] hover:border-[#D4D4D4] hover:shadow-lg hover:-translate-y-1 ${
-                  feature.fullWidth ? 'md:col-span-2' : ''
+                onClick={() => setExpandedCard(isExpanded ? null : feature.title)}
+                style={{
+                  transitionDelay: `${idx * 50}ms`,
+                }}
+                className={`group relative rounded-[20px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] hover:border-[#F2C230]/60 dark:hover:border-[#F2C230]/60 p-4 flex flex-col justify-between shadow-xs hover:shadow-[0_8px_24px_rgba(242,194,48,0.18)] active:scale-[0.98] transition-all duration-200 cursor-pointer min-h-[170px] ${
+                  isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
                 }`}
-                style={{ animationDelay: `${i * 50}ms` }}
               >
-                {/* Tag */}
-                <div className="flex items-start justify-between mb-5">
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110 bg-[#F5F5F5] text-[#111111]">
-                    <Icon size={20} />
+                <div>
+                  {/* 40px soft gold-tinted rounded square with gold icon */}
+                  <div className="w-10 h-10 min-w-[40px] rounded-xl bg-[#F2C230]/15 dark:bg-[#F2C230]/20 border border-[#F2C230]/30 text-[#D4A017] dark:text-[#F2C230] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <Icon size={19} className="stroke-[2.2]" />
                   </div>
-                  <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full bg-[#F5F5F5] text-[#737373]">
-                    {feature.tag}
-                  </span>
+
+                  {/* Title (16px, bold, max 2 lines) */}
+                  <h3 className="text-[15px] sm:text-[16px] font-bold text-[#111111] dark:text-white line-clamp-2 leading-snug mb-1.5 group-hover:text-[#D4A017] dark:group-hover:text-[#F2C230] transition-colors">
+                    {feature.title}
+                  </h3>
+
+                  {/* Description shortened visually to 3 lines with line-clamp, 13px muted */}
+                  <p
+                    className={`text-[13px] leading-relaxed text-[#666666] dark:text-[#A3A3A3] transition-all duration-200 ${
+                      isExpanded ? 'line-clamp-none' : 'line-clamp-3'
+                    }`}
+                  >
+                    {feature.description}
+                  </p>
                 </div>
 
-                <h3 className="text-base font-bold mb-2.5 leading-snug text-[#111111]">
-                  {feature.title}
-                </h3>
-                <p className="text-sm leading-relaxed text-[#737373]">
-                  {feature.description}
-                </p>
-
-                {/* Hover indicator */}
-                <div className="absolute bottom-5 right-5 w-7 h-7 rounded-full bg-[#F5F5F5] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 10L10 2M10 2H4M10 2V8" stroke="#111111" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
+                {/* Bottom row: Category tag at bottom-left as small 11px pill, plus tap hint */}
+                <div className="mt-3 pt-2 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-black/[0.05] dark:bg-white/[0.08] text-[#737373] dark:text-[#A3A3A3] border border-black/[0.06] dark:border-white/[0.1] inline-flex items-center">
+                    {feature.tag}
+                  </span>
+                  <span className="text-[11px] text-[#A3A3A3] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isExpanded ? 'Less' : 'More'}
+                  </span>
                 </div>
               </div>
             );
@@ -136,6 +264,15 @@ const FeaturesSection: React.FC = () => {
         </div>
 
       </div>
+
+      <style>{`
+        @media (prefers-reduced-motion: reduce) {
+          #features-section * {
+            animation: none !important;
+            transition-delay: 0ms !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };
