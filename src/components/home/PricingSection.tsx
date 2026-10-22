@@ -233,116 +233,119 @@ const PricingSection: React.FC = () => {
     <section
       ref={sectionRef}
       id="pricing-calculator"
-      className="pt-16 sm:pt-24 pb-28 sm:pb-24 bg-white dark:bg-[#111111] text-[#111111] dark:text-white transition-colors"
+      className="pt-14 sm:pt-20 lg:pt-24 pb-20 sm:pb-24 lg:pb-28 bg-white dark:bg-[#111111] text-[#111111] dark:text-white transition-colors"
     >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-12">
 
         {/* ── 1. Section Header ── */}
-        <div className="text-center mb-8 sm:mb-10">
+        <div className="text-center mb-8 sm:mb-10 lg:mb-12">
           <span className="inline-block text-[11px] font-black uppercase tracking-[0.18em] text-[#D4A017] dark:text-[#F2C230] mb-2.5">
             PRICING CALCULATOR
           </span>
-          <h2 className="text-[26px] sm:text-[28px] md:text-3xl font-extrabold tracking-tight text-[#111111] dark:text-white mb-2.5 leading-tight">
+          <h2 className="text-[26px] sm:text-[34px] lg:text-[44px] font-[800] tracking-tight text-[#111111] dark:text-white mb-2.5 leading-tight [text-wrap:balance]">
             Select your Board &amp; Program
           </h2>
-          <p className="text-sm sm:text-[15px] text-[#737373] dark:text-[#A3A3A3] max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-[15px] lg:text-[16px] text-[#737373] dark:text-[#A3A3A3] max-w-xl mx-auto leading-relaxed">
             Choose your education board and program below to see the exact subjects and official fee rates.
           </p>
         </div>
 
-        {/* ── 2. Steps Flow Container ── */}
-        <div className="space-y-6 sm:space-y-7">
+        {/* ── 2. Steps Flow: 2 Columns on Desktop (Selectors Left, Sticky Plan Right), Stacked on Mobile & Tablet ── */}
+        <div className="lg:grid lg:grid-cols-12 lg:gap-10 lg:items-start space-y-6 sm:space-y-7 lg:space-y-0">
 
-          {/* ── Step 1: Board Selector (Single Horizontally Scrollable Pill Row) ── */}
-          <div>
-            <label className="block text-left text-xs sm:text-[13px] font-bold text-[#737373] dark:text-[#A3A3A3] tracking-wide mb-2.5">
-              1 · Choose your board
-            </label>
-            <div
-              ref={boardRowRef}
-              className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1 px-0.5 -mx-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-            >
-              {BOARDS.map((board) => {
-                const isSelected = selectedBoardId === board.id;
-                return (
-                  <button
-                    key={board.id}
-                    id={`pricing-board-btn-${board.id}`}
-                    type="button"
-                    onClick={() => handleBoardSelect(board.id as BoardId)}
-                    className={`h-[44px] min-h-[44px] px-4 rounded-full flex items-center justify-center shrink-0 snap-start text-xs sm:text-sm font-bold cursor-pointer transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
-                        : 'border border-black/[0.12] dark:border-white/[0.15] bg-transparent text-[#525252] dark:text-[#D4D4D4] hover:text-[#111111] dark:hover:text-white hover:border-black/30 dark:hover:border-white/30'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      {isSelected && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#F2C230] shrink-0" />
-                      )}
-                      <span>{getBoardLabel(board)}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── Step 2: Grade / Stream Selector (Single-row segmented control with gold highlight) ── */}
-          {(isIelts || gradesForSelectedBoard.length > 0) && (
+          {/* Left Column on Desktop (Selectors): col-span-7 */}
+          <div className="lg:col-span-7 space-y-6 sm:space-y-7">
+            {/* ── Step 1: Board Selector (Pill Row: horizontally scrollable on mobile, wraps in 1-2 rows on tablet & desktop) ── */}
             <div>
               <label className="block text-left text-xs sm:text-[13px] font-bold text-[#737373] dark:text-[#A3A3A3] tracking-wide mb-2.5">
-                {isIelts ? '2 · Choose your stream' : '2 · Choose your grade'}
+                1 · Choose your board
               </label>
-
-              {isIelts ? (
-                <div className="inline-flex p-1 rounded-full bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.12] w-full max-w-md">
-                  {(['Academic', 'General Training'] as const).map((stream) => {
-                    const isSelected = selectedIeltsStream === stream;
-                    return (
-                      <button
-                        key={stream}
-                        id={`pricing-ielts-stream-btn-${stream.toLowerCase().replace(/\s+/g, '-')}`}
-                        type="button"
-                        onClick={() => handleIeltsStreamSelect(stream)}
-                        className={`h-[40px] flex-1 px-3 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center ${
-                          isSelected
-                            ? 'bg-[#F2C230] text-[#111111] shadow-xs'
-                            : 'text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white'
-                        }`}
-                      >
-                        {stream}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="grid grid-flow-col auto-cols-fr p-1 rounded-full bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.12] w-full max-w-lg">
-                  {gradesForSelectedBoard.map((g) => {
-                    const isSelected = selectedGradeValue === g.grade;
-                    return (
-                      <button
-                        key={g.grade}
-                        id={`pricing-grade-btn-${g.grade}`}
-                        type="button"
-                        onClick={() => handleGradeSelect(g.grade)}
-                        className={`h-[40px] px-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap ${
-                          isSelected
-                            ? 'bg-[#F2C230] text-[#111111] shadow-xs'
-                            : 'text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white'
-                        }`}
-                      >
-                        {formatGradeDisplay(g.grade, selectedBoardId)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              <div
+                ref={boardRowRef}
+                className="flex sm:flex-wrap items-center gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar scroll-smooth snap-x snap-mandatory py-1 px-0.5 -mx-1 sm:mx-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              >
+                {BOARDS.map((board) => {
+                  const isSelected = selectedBoardId === board.id;
+                  return (
+                    <button
+                      key={board.id}
+                      id={`pricing-board-btn-${board.id}`}
+                      type="button"
+                      onClick={() => handleBoardSelect(board.id as BoardId)}
+                      className={`h-[44px] min-h-[44px] px-4 rounded-full flex items-center justify-center shrink-0 snap-start text-xs sm:text-sm font-bold cursor-pointer transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
+                          : 'border border-black/[0.12] dark:border-white/[0.15] bg-transparent text-[#525252] dark:text-[#D4D4D4] hover:text-[#111111] dark:hover:text-white hover:border-black/30 dark:hover:border-white/30'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {isSelected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#F2C230] shrink-0" />
+                        )}
+                        <span>{getBoardLabel(board)}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          )}
 
-          {/* ── Step 3: Your Plan (ONE Combined Summary Card) ── */}
-          <div>
+            {/* ── Step 2: Grade / Stream Selector (Single-row segmented control with gold highlight) ── */}
+            {(isIelts || gradesForSelectedBoard.length > 0) && (
+              <div>
+                <label className="block text-left text-xs sm:text-[13px] font-bold text-[#737373] dark:text-[#A3A3A3] tracking-wide mb-2.5">
+                  {isIelts ? '2 · Choose your stream' : '2 · Choose your grade'}
+                </label>
+
+                {isIelts ? (
+                  <div className="inline-flex p-1 rounded-full bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.12] w-full max-w-md">
+                    {(['Academic', 'General Training'] as const).map((stream) => {
+                      const isSelected = selectedIeltsStream === stream;
+                      return (
+                        <button
+                          key={stream}
+                          id={`pricing-ielts-stream-btn-${stream.toLowerCase().replace(/\s+/g, '-')}`}
+                          type="button"
+                          onClick={() => handleIeltsStreamSelect(stream)}
+                          className={`h-[40px] flex-1 px-3 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center ${
+                            isSelected
+                              ? 'bg-[#F2C230] text-[#111111] shadow-xs'
+                              : 'text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white'
+                          }`}
+                        >
+                          {stream}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-flow-col auto-cols-fr p-1 rounded-full bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.12] w-full max-w-lg">
+                    {gradesForSelectedBoard.map((g) => {
+                      const isSelected = selectedGradeValue === g.grade;
+                      return (
+                        <button
+                          key={g.grade}
+                          id={`pricing-grade-btn-${g.grade}`}
+                          type="button"
+                          onClick={() => handleGradeSelect(g.grade)}
+                          className={`h-[40px] px-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap ${
+                            isSelected
+                              ? 'bg-[#F2C230] text-[#111111] shadow-xs'
+                              : 'text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white'
+                          }`}
+                        >
+                          {formatGradeDisplay(g.grade, selectedBoardId)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column on Desktop (Plan Summary Card): col-span-5, sticky top: 100px */}
+          <div className="lg:col-span-5 lg:sticky lg:top-[100px] w-full sm:max-w-[640px] lg:max-w-none mx-auto">
             <label className="block text-left text-xs sm:text-[13px] font-bold text-[#737373] dark:text-[#A3A3A3] tracking-wide mb-2.5">
               3 · Your plan summary
             </label>

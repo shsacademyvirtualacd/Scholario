@@ -665,7 +665,7 @@ const DashboardPreview: React.FC = () => {
       {/* ─── Device-Style Frame (Radius ~32px, Soft Shadow, No Horizontal Scroll) ─── */}
       <div
         ref={frameRef}
-        className="relative w-full max-w-[540px] rounded-[32px] border border-black/[0.08] dark:border-white/[0.12] bg-[#F8F8F6] dark:bg-[#111111] shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)] overflow-hidden transition-all duration-300"
+        className="relative w-full max-w-[540px] sm:max-w-[640px] lg:max-w-[520px] rounded-[32px] border border-black/[0.08] dark:border-white/[0.12] bg-[#F8F8F6] dark:bg-[#111111] shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)] overflow-hidden transition-all duration-300"
         style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
       >
         {/* ── 1. Tab Row & Segmented Grade Toggle ── */}

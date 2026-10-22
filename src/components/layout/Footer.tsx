@@ -55,11 +55,11 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
       <footer
         className="w-full bg-[#F2C230] text-[#111111] rounded-t-[48px] sm:rounded-t-[64px] overflow-hidden pt-12 sm:pt-16 pb-0 relative shadow-[0_-12px_48px_rgba(242,194,48,0.22)]"
       >
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-10">
-          {/* ── Top Section & Columns ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-12">
+          {/* ── Top Section & Columns (4 columns on lg, 2 columns on tablet/mobile) ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-12 gap-8 sm:gap-10 lg:gap-8 items-start">
             {/* Top Left Brand Section */}
-            <div className="lg:col-span-6 space-y-4">
+            <div className="col-span-2 lg:col-span-4 space-y-4">
               {/* Scholario Logo */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#111111] p-1.5 shadow-sm flex items-center justify-center shrink-0">
@@ -101,93 +101,146 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
               </p>
             </div>
 
-            {/* Link Sections: Stacked in a clean 2-column grid on mobile */}
-            <div className="lg:col-span-6 grid grid-cols-2 gap-6 sm:gap-10">
-              {/* Column 1: Company */}
-              <div>
-                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black/85 mb-4 sm:mb-5">
-                  Company
-                </h4>
-                <ul className="space-y-3 sm:space-y-3.5">
-                  <li>
-                    <button
-                      type="button"
-                      onClick={handleOpenAbout}
-                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1 cursor-pointer"
-                    >
-                      About Us
-                    </button>
-                  </li>
-                  <li>
-                    <Link
-                      id="footer-leadership-link"
-                      to="/leadership"
-                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
-                    >
-                      Leadership
-                    </Link>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={handleOpenContact}
-                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1 cursor-pointer"
-                    >
-                      Contact
-                    </button>
-                  </li>
-                </ul>
+            {/* Column 2: Company */}
+            <div className="col-span-1 lg:col-span-2">
+              <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black/85 mb-4 sm:mb-5">
+                Company
+              </h4>
+              <ul className="space-y-3 sm:space-y-3.5">
+                <li>
+                  <button
+                    type="button"
+                    onClick={handleOpenAbout}
+                    className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1 cursor-pointer"
+                  >
+                    About Us
+                  </button>
+                </li>
+                <li>
+                  <Link
+                    id="footer-leadership-link"
+                    to="/leadership"
+                    className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
+                  >
+                    Leadership
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={handleOpenContact}
+                    className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1 cursor-pointer"
+                  >
+                    Contact
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: Legal & trust */}
+            <div className="col-span-1 lg:col-span-3">
+              <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black/85 mb-4 sm:mb-5">
+                Legal &amp; trust
+              </h4>
+              <ul className="space-y-3 sm:space-y-3.5">
+                <li>
+                  <Link
+                    id="footer-privacy-link"
+                    to="/privacy"
+                    className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
+                  >
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    id="footer-terms-link"
+                    to="/terms"
+                    className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
+                  >
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    id="footer-refund-link"
+                    to="/refund"
+                    className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
+                  >
+                    Refund Policy
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={handleOpenAbout}
+                    className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-flex items-center gap-1.5 py-1 cursor-pointer group"
+                  >
+                    <span>SHS Virtual Academy</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </button>
+                </li>
+              </ul>
+
+              {/* Disclaimer */}
+              <p className="mt-4 sm:mt-5 text-[11px] sm:text-xs font-semibold text-black/75 leading-relaxed">
+                Digital-first online institution. No physical public campus.
+              </p>
+            </div>
+
+            {/* Column 4: Contact & Social (Desktop dedicated column) */}
+            <div className="col-span-2 lg:col-span-3 hidden lg:block space-y-4">
+              <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black/85 mb-4">
+                Contact &amp; Support
+              </h4>
+              <div className="space-y-2 text-sm font-semibold text-[#111111]">
+                <p>
+                  <span className="font-bold text-black/70 block text-xs uppercase tracking-wider">Admissions / WhatsApp</span>
+                  <a
+                    href="https://wa.me/9230586969050?text=Hi%2C%20I%20have%20an%20inquiry%20regarding%20SHS%20Virtual%20Academy%20admissions."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-black underline underline-offset-2 hover:opacity-75 transition-opacity"
+                  >
+                    +92 305 86969050
+                  </a>
+                </p>
+                <p className="pt-1">
+                  <span className="font-bold text-black/70 block text-xs uppercase tracking-wider">Email Inquiry</span>
+                  <a
+                    href="mailto:shs.academy.virtual@gmail.com"
+                    className="font-bold hover:underline hover:opacity-75 transition-opacity"
+                  >
+                    shs.academy.virtual@gmail.com
+                  </a>
+                </p>
+                <p className="text-xs text-black/75 pt-1">
+                  Timezone: Asia/Karachi (PKT) · Mon–Sat 9AM–9PM
+                </p>
               </div>
 
-              {/* Column 2: Legal & trust */}
-              <div>
-                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black/85 mb-4 sm:mb-5">
-                  Legal &amp; trust
-                </h4>
-                <ul className="space-y-3 sm:space-y-3.5">
-                  <li>
-                    <Link
-                      id="footer-privacy-link"
-                      to="/privacy"
-                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
-                    >
-                      Privacy Policy
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      id="footer-terms-link"
-                      to="/terms"
-                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
-                    >
-                      Terms of Service
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      id="footer-refund-link"
-                      to="/refund"
-                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
-                    >
-                      Refund Policy
-                    </Link>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={handleOpenAbout}
-                      className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-flex items-center gap-1.5 py-1 cursor-pointer group"
-                    >
-                      <span>SHS Virtual Academy</span>
-                      <span className="group-hover:translate-x-1 transition-transform">→</span>
-                    </button>
-                  </li>
-                </ul>
-
-                {/* Disclaimer */}
-                <p className="mt-4 sm:mt-5 text-[11px] sm:text-xs font-semibold text-black/75 leading-relaxed">
-                  Digital-first online institution. No physical public campus.
-                </p>
+              {/* Social Icons: Instagram & YouTube */}
+              <div className="flex items-center gap-2.5 pt-2">
+                <a
+                  href="https://www.instagram.com/shs_academy?igsh=MXR2c2NuZDFwd3RsMQ=="
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Scholario Instagram"
+                  title="Instagram"
+                  className="w-9 h-9 rounded-full bg-black/10 hover:bg-black/20 text-[#111111] flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                >
+                  <SocialIcon name="instagram" />
+                </a>
+                <a
+                  href="https://youtube.com/@shsacademy-w5x?si=5pBN6W4zd1wRgUhw"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Scholario YouTube"
+                  title="YouTube"
+                  className="w-9 h-9 rounded-full bg-black/10 hover:bg-black/20 text-[#111111] flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                >
+                  <SocialIcon name="youtube" />
+                </a>
               </div>
             </div>
           </div>
@@ -195,60 +248,72 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
           {/* ── Thin Divider Line ── */}
           <div className="border-t border-black/15 my-8 sm:my-10" />
 
-          {/* ── Centered Copyright ── */}
-          <div className="text-center">
+          {/* ── Mobile/Tablet Bottom Bar (<lg) ── */}
+          <div className="block lg:hidden text-center pb-2">
             <p className="text-xs sm:text-sm font-bold text-[#111111]/90">
               © 2026 Scholario. All rights reserved. Made with ❤️ in Pakistan.
             </p>
-          </div>
 
-          {/* ── Contact Row under it with dot separators & social icons ── */}
-          <div className="mt-3 sm:mt-4 text-center">
-            <div className="text-xs sm:text-sm font-semibold text-black/85 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-              <span>
-                Phone / WhatsApp:{' '}
+            {/* Contact Row under it with dot separators & social icons */}
+            <div className="mt-3 sm:mt-4 text-center">
+              <div className="text-xs sm:text-sm font-semibold text-black/85 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                <span>
+                  Phone / WhatsApp:{' '}
+                  <a
+                    href="https://wa.me/9230586969050?text=Hi%2C%20I%20have%20an%20inquiry%20regarding%20SHS%20Virtual%20Academy%20admissions."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-black underline underline-offset-2 hover:opacity-75 transition-opacity"
+                  >
+                    +92 305 86969050
+                  </a>
+                </span>
+                <span className="hidden sm:inline" aria-hidden="true">•</span>
                 <a
-                  href="https://wa.me/9230586969050?text=Hi%2C%20I%20have%20an%20inquiry%20regarding%20SHS%20Virtual%20Academy%20admissions."
+                  href="mailto:shs.academy.virtual@gmail.com"
+                  className="hover:underline hover:opacity-75 transition-opacity"
+                >
+                  shs.academy.virtual@gmail.com
+                </a>
+                <span className="hidden sm:inline" aria-hidden="true">•</span>
+                <span>Asia/Karachi (PKT)</span>
+              </div>
+
+              {/* Social Icons: Instagram & YouTube */}
+              <div className="flex items-center justify-center gap-3 mt-4">
+                <a
+                  href="https://www.instagram.com/shs_academy?igsh=MXR2c2NuZDFwd3RsMQ=="
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-black underline underline-offset-2 hover:opacity-75 transition-opacity"
+                  aria-label="Scholario Instagram"
+                  title="Instagram"
+                  className="w-10 h-10 rounded-full bg-black/10 hover:bg-black/20 text-[#111111] flex items-center justify-center transition-all active:scale-95 cursor-pointer"
                 >
-                  +92 305 86969050
+                  <SocialIcon name="instagram" />
                 </a>
-              </span>
-              <span className="hidden sm:inline" aria-hidden="true">•</span>
-              <a
-                href="mailto:shs.academy.virtual@gmail.com"
-                className="hover:underline hover:opacity-75 transition-opacity"
-              >
-                shs.academy.virtual@gmail.com
-              </a>
-              <span className="hidden sm:inline" aria-hidden="true">•</span>
-              <span>Asia/Karachi (PKT)</span>
+                <a
+                  href="https://youtube.com/@shsacademy-w5x?si=5pBN6W4zd1wRgUhw"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Scholario YouTube"
+                  title="YouTube"
+                  className="w-10 h-10 rounded-full bg-black/10 hover:bg-black/20 text-[#111111] flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                >
+                  <SocialIcon name="youtube" />
+                </a>
+              </div>
             </div>
+          </div>
 
-            {/* Social Icons: Instagram & YouTube */}
-            <div className="flex items-center justify-center gap-3 mt-4">
-              <a
-                href="https://www.instagram.com/shs_academy?igsh=MXR2c2NuZDFwd3RsMQ=="
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Scholario Instagram"
-                title="Instagram"
-                className="w-10 h-10 rounded-full bg-black/10 hover:bg-black/20 text-[#111111] flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-              >
-                <SocialIcon name="instagram" />
-              </a>
-              <a
-                href="https://youtube.com/@shsacademy-w5x?si=5pBN6W4zd1wRgUhw"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Scholario YouTube"
-                title="YouTube"
-                className="w-10 h-10 rounded-full bg-black/10 hover:bg-black/20 text-[#111111] flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-              >
-                <SocialIcon name="youtube" />
-              </a>
+          {/* ── Desktop Bottom Bar (lg+) on one single clean line ── */}
+          <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between text-xs font-bold text-black/85 pb-2">
+            <p>
+              © 2026 Scholario. All rights reserved. Made with ❤️ in Pakistan.
+            </p>
+            <div className="flex items-center gap-2">
+              <span>Official Virtual Portal for SHS Virtual Academy</span>
+              <span aria-hidden="true">•</span>
+              <span>Asia/Karachi (PKT)</span>
             </div>
           </div>
         </div>

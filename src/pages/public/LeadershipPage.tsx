@@ -129,39 +129,42 @@ export const LeadershipPage: React.FC = () => {
       <main
         ref={contentRef}
         id="leadership-main"
-        className="flex-1 pt-24 sm:pt-28 pb-16 px-4 sm:px-6 relative z-10 w-full max-w-2xl mx-auto"
+        className="flex-1 pt-24 sm:pt-28 lg:pt-32 pb-16 sm:pb-20 lg:pb-24 px-4 sm:px-8 lg:px-12 relative z-10 w-full max-w-[1200px] mx-auto lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-8 lg:items-start"
       >
-        {/* Back Link */}
-        <div className="mb-4">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white transition-colors min-h-[44px] py-2"
-          >
-            <ArrowLeft size={14} />
-            <span>Back to Home</span>
-          </Link>
-        </div>
+        {/* Back Link & Header */}
+        <div className="lg:col-span-2">
+          {/* Back Link */}
+          <div className="mb-4">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white transition-colors min-h-[44px] py-2"
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Home</span>
+            </Link>
+          </div>
 
-        {/* ── A. Header ── */}
-        <section
-          className={`mb-8 transition-all duration-300 ease-out ${
-            inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-          }`}
-        >
-          <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#D4A017] dark:text-[#F2C230] mb-2 inline-block">
-            — LEADERSHIP
-          </span>
-          <h1 className="text-[28px] sm:text-[32px] md:text-[34px] font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
-            Ownership, <span className="text-[#D4A017] dark:text-[#F2C230]">Leadership</span> &amp; Mission
-          </h1>
-          <p className="text-[15px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3]">
-            SHS Virtual Academy is a Pakistan-based online education initiative focused on making quality education more accessible, affordable, and technology-driven for students across Pakistan.
-          </p>
-        </section>
+          {/* ── A. Header ── */}
+          <section
+            className={`mb-8 transition-all duration-300 ease-out ${
+              inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+            }`}
+          >
+            <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#D4A017] dark:text-[#F2C230] mb-2 inline-block">
+              — LEADERSHIP
+            </span>
+            <h1 className="text-[28px] sm:text-[36px] lg:text-[44px] font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
+              Ownership, <span className="text-[#D4A017] dark:text-[#F2C230]">Leadership</span> &amp; Mission
+            </h1>
+            <p className="text-[15px] sm:text-[16px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3] max-w-3xl">
+              SHS Virtual Academy is a Pakistan-based online education initiative focused on making quality education more accessible, affordable, and technology-driven for students across Pakistan.
+            </p>
+          </section>
+        </div>
 
         {/* ── B. Founding Team ── */}
         <section
-          className={`mb-8 transition-all duration-300 ease-out delay-[50ms] ${
+          className={`mb-8 lg:mb-0 lg:col-span-2 transition-all duration-300 ease-out delay-[50ms] ${
             inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
@@ -174,18 +177,18 @@ export const LeadershipPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
             {foundingTeam.map((leader, idx) => (
               <div
                 key={leader.name}
                 id={`leader-card-${idx}`}
-                className={`rounded-[20px] sm:rounded-[22px] p-4 sm:p-5 flex items-center justify-between gap-3 transition-all duration-200 ${
+                className={`rounded-[20px] sm:rounded-[22px] p-4 sm:p-5 flex sm:flex-col items-center sm:items-start justify-between gap-3 sm:gap-4 transition-all duration-200 ${
                   leader.isFounder
                     ? 'bg-[#F2C230]/[0.10] dark:bg-[#F2C230]/[0.14] border-2 border-[#F2C230] shadow-[0_4px_24px_rgba(242,194,48,0.18)]'
                     : 'bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] shadow-xs'
                 }`}
               >
-                <div className="flex items-center gap-3.5 min-w-0">
+                <div className="flex sm:flex-col items-center sm:items-start gap-3.5 sm:gap-3 min-w-0 w-full">
                   {/* Circular initials avatar in gold */}
                   <div
                     className={`w-11 h-11 sm:w-12 sm:h-12 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center shrink-0 font-black text-sm sm:text-base ${
@@ -198,15 +201,15 @@ export const LeadershipPage: React.FC = () => {
                   </div>
 
                   {/* Full Name */}
-                  <div className="min-w-0">
-                    <span className="font-bold text-[15px] sm:text-[17px] text-[#111111] dark:text-white leading-tight block truncate">
+                  <div className="min-w-0 w-full">
+                    <span className="font-bold text-[15px] sm:text-[17px] text-[#111111] dark:text-white leading-tight block truncate sm:whitespace-normal">
                       {leader.name}
                     </span>
                   </div>
                 </div>
 
                 {/* Position Pill */}
-                <div className="shrink-0">
+                <div className="shrink-0 sm:mt-auto">
                   <span
                     className={`inline-flex items-center px-3 sm:px-3.5 py-1 rounded-full text-xs font-extrabold ${
                       leader.isFounder
@@ -222,33 +225,52 @@ export const LeadershipPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── C. Vision ── */}
+        {/* ── C. Vision (Desktop Left in Row 3) ── */}
         <section
-          className={`mb-8 transition-all duration-300 ease-out delay-[100ms] ${
+          className={`mb-8 lg:mb-0 lg:col-start-1 lg:row-start-3 h-full transition-all duration-300 ease-out delay-[100ms] ${
             inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
           <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#D4A017] dark:text-[#F2C230] mb-2 inline-block">
             — VISION
           </span>
-          <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 shadow-xs">
+          <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 lg:p-7 shadow-xs h-[calc(100%-28px)] flex items-center">
             <p className="text-[15px] sm:text-[16px] leading-[1.65] font-medium text-[#222222] dark:text-[#E0E0E0]">
               The primary aim of SHS Virtual Academy is to make quality education accessible to students throughout Pakistan, regardless of their location or financial circumstances.
             </p>
           </div>
         </section>
 
-        {/* ── D. Mission ── */}
+        {/* ── F. Long-Term Vision (Desktop Right in Row 3, Mobile in Row 6) ── */}
         <section
-          className={`mb-8 transition-all duration-300 ease-out delay-[150ms] ${
+          className={`mb-8 lg:mb-0 lg:col-start-2 lg:row-start-3 h-full transition-all duration-300 ease-out delay-[250ms] ${
+            inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+          }`}
+        >
+          <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#D4A017] dark:text-[#F2C230] mb-2 inline-block">
+            — LONG-TERM VISION
+          </span>
+          <div className="rounded-[22px] sm:rounded-[24px] bg-[#F2C230]/[0.08] dark:bg-[#F2C230]/[0.10] border border-[#F2C230]/40 p-5 sm:p-6 lg:p-7 shadow-xs space-y-3 h-[calc(100%-28px)] flex flex-col justify-center">
+            <p className="text-[14px] sm:text-[15px] leading-[1.65] text-[#222222] dark:text-[#E0E0E0]">
+              The long-term vision of SHS Virtual Academy is to build a comprehensive digital education ecosystem for Pakistani students. Through online teaching, educational technology, and affordable exam preparation, the academy aims to make learning more convenient, structured, and accessible.
+            </p>
+            <p className="text-[14px] sm:text-[15px] leading-[1.65] text-[#222222] dark:text-[#E0E0E0]">
+              The broader goal is to help students receive quality academic support without being limited by geographical barriers or the high costs of traditional educational institutions.
+            </p>
+          </div>
+        </section>
+
+        {/* ── D. Mission (Desktop Row 4, spans full width) ── */}
+        <section
+          className={`mb-8 lg:mb-0 lg:col-span-2 lg:row-start-4 transition-all duration-300 ease-out delay-[150ms] ${
             inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
           <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#D4A017] dark:text-[#F2C230] mb-2 inline-block">
             — MISSION
           </span>
-          <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 shadow-xs">
-            <ul className="space-y-3 sm:space-y-3.5">
+          <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 lg:p-7 shadow-xs">
+            <ul className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4">
               {missionPoints.map((point) => (
                 <li key={point} className="flex items-start gap-3">
                   <div className="w-5 h-5 min-w-[20px] min-h-[20px] rounded-full bg-[#F2C230]/20 dark:bg-[#F2C230]/25 text-[#D4A017] dark:text-[#F2C230] flex items-center justify-center shrink-0 mt-0.5">
@@ -263,18 +285,18 @@ export const LeadershipPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── E. Our Platforms ── */}
+        {/* ── E. Our Platforms (Desktop Row 5, spans full width) ── */}
         <section
-          className={`mb-8 transition-all duration-300 ease-out delay-[200ms] ${
+          className={`mb-8 lg:mb-0 lg:col-span-2 lg:row-start-5 transition-all duration-300 ease-out delay-[200ms] ${
             inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
           <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#D4A017] dark:text-[#F2C230] mb-2 inline-block">
             — OUR PLATFORMS
           </span>
-          <div className="space-y-3.5">
+          <div className="space-y-3.5 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-5">
             {/* Platform 1: Scholario */}
-            <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+            <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 lg:p-7 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h3 className="text-[18px] sm:text-[20px] font-extrabold text-[#111111] dark:text-white">
@@ -300,7 +322,7 @@ export const LeadershipPage: React.FC = () => {
             </div>
 
             {/* Platform 2: Boardly */}
-            <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+            <div className="rounded-[22px] sm:rounded-[24px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 lg:p-7 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h3 className="text-[18px] sm:text-[20px] font-extrabold text-[#111111] dark:text-white">
@@ -329,28 +351,9 @@ export const LeadershipPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── F. Long-Term Vision ── */}
+        {/* ── G. Leadership Summary Table (Desktop Row 6) ── */}
         <section
-          className={`mb-8 transition-all duration-300 ease-out delay-[250ms] ${
-            inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-          }`}
-        >
-          <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#D4A017] dark:text-[#F2C230] mb-2 inline-block">
-            — LONG-TERM VISION
-          </span>
-          <div className="rounded-[22px] sm:rounded-[24px] bg-[#F2C230]/[0.08] dark:bg-[#F2C230]/[0.10] border border-[#F2C230]/40 p-5 sm:p-6 shadow-xs space-y-3">
-            <p className="text-[14px] sm:text-[15px] leading-[1.65] text-[#222222] dark:text-[#E0E0E0]">
-              The long-term vision of SHS Virtual Academy is to build a comprehensive digital education ecosystem for Pakistani students. Through online teaching, educational technology, and affordable exam preparation, the academy aims to make learning more convenient, structured, and accessible.
-            </p>
-            <p className="text-[14px] sm:text-[15px] leading-[1.65] text-[#222222] dark:text-[#E0E0E0]">
-              The broader goal is to help students receive quality academic support without being limited by geographical barriers or the high costs of traditional educational institutions.
-            </p>
-          </div>
-        </section>
-
-        {/* ── G. Leadership Summary Table ── */}
-        <section
-          className={`mb-10 transition-all duration-300 ease-out delay-[300ms] ${
+          className={`mb-10 lg:mb-0 lg:col-span-2 lg:row-start-6 transition-all duration-300 ease-out delay-[300ms] ${
             inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
@@ -366,13 +369,13 @@ export const LeadershipPage: React.FC = () => {
                 <tr className="border-b border-black/[0.08] dark:border-white/[0.1] bg-black/[0.03] dark:bg-white/[0.04]">
                   <th
                     scope="col"
-                    className="w-3/5 py-3.5 px-4 text-[12px] font-extrabold uppercase tracking-wider text-[#666666] dark:text-[#A3A3A3]"
+                    className="w-3/5 py-3.5 px-4 sm:px-6 text-[12px] font-extrabold uppercase tracking-wider text-[#666666] dark:text-[#A3A3A3]"
                   >
                     Name
                   </th>
                   <th
                     scope="col"
-                    className="w-2/5 py-3.5 px-4 text-[12px] font-extrabold uppercase tracking-wider text-[#666666] dark:text-[#A3A3A3]"
+                    className="w-2/5 py-3.5 px-4 sm:px-6 text-[12px] font-extrabold uppercase tracking-wider text-[#666666] dark:text-[#A3A3A3]"
                   >
                     Position
                   </th>
@@ -388,10 +391,10 @@ export const LeadershipPage: React.FC = () => {
                         : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'
                     }
                   >
-                    <td className="py-3.5 px-4 font-bold text-[14px] text-[#111111] dark:text-white truncate">
+                    <td className="py-3.5 px-4 sm:px-6 font-bold text-[14px] text-[#111111] dark:text-white truncate">
                       {leader.name}
                     </td>
-                    <td className="py-3.5 px-4 text-[13px] font-semibold text-[#555555] dark:text-[#BBBBBB]">
+                    <td className="py-3.5 px-4 sm:px-6 text-[13px] font-semibold text-[#555555] dark:text-[#BBBBBB]">
                       <span
                         className={
                           leader.isFounder
@@ -409,32 +412,34 @@ export const LeadershipPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── H. Bottom CTA ── */}
+        {/* ── H. Bottom CTA (Desktop Row 7) ── */}
         <section
-          className={`transition-all duration-300 ease-out delay-[350ms] ${
+          className={`lg:col-span-2 lg:row-start-7 transition-all duration-300 ease-out delay-[350ms] ${
             inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
-          <div className="rounded-[24px] bg-white/85 dark:bg-[#161616]/85 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-5 sm:p-6 shadow-xs text-center space-y-3">
-            <button
-              id="leadership-cta-btn"
-              type="button"
-              onClick={handleGetStarted}
-              className="w-full h-12 min-h-[48px] rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-[15px] shadow-[0_4px_16px_rgba(242,194,48,0.25)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
-            >
-              <span>Get Started</span>
-              <ArrowRight size={16} />
-            </button>
+          <div className="rounded-[24px] bg-white/85 dark:bg-[#161616]/85 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] p-6 sm:p-8 shadow-xs text-center max-w-xl mx-auto space-y-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                id="leadership-cta-btn"
+                type="button"
+                onClick={handleGetStarted}
+                className="w-full sm:w-auto sm:px-8 h-12 min-h-[48px] rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-[15px] shadow-[0_4px_16px_rgba(242,194,48,0.25)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+              >
+                <span>Get Started</span>
+                <ArrowRight size={16} />
+              </button>
 
-            <button
-              id="leadership-contact-btn"
-              type="button"
-              onClick={() => setContactOpen(true)}
-              className="w-full min-h-[48px] flex items-center justify-center gap-1.5 text-sm font-bold text-[#666666] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white transition-colors cursor-pointer underline underline-offset-4"
-            >
-              <Mail size={15} />
-              <span>Contact us</span>
-            </button>
+              <button
+                id="leadership-contact-btn"
+                type="button"
+                onClick={() => setContactOpen(true)}
+                className="w-full sm:w-auto min-h-[48px] px-4 flex items-center justify-center gap-1.5 text-sm font-bold text-[#666666] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white transition-colors cursor-pointer underline underline-offset-4"
+              >
+                <Mail size={15} />
+                <span>Contact us</span>
+              </button>
+            </div>
           </div>
         </section>
       </main>

@@ -101,29 +101,29 @@ const FeaturesSection: React.FC = () => {
     <section
       ref={sectionRef}
       id="features-section"
-      className="pt-14 sm:pt-20 pb-12 sm:pb-16 bg-white dark:bg-[#0E0E0E] text-[#111111] dark:text-white transition-colors relative"
+      className="pt-14 sm:pt-20 lg:pt-24 pb-14 sm:pb-20 lg:pb-24 bg-white dark:bg-[#0E0E0E] text-[#111111] dark:text-white transition-colors relative"
       style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
     >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-12">
 
-        {/* ── 1. Section Header (Left-aligned on mobile, centered on md+) ── */}
+        {/* ── 1. Section Header ── */}
         <div className="flex flex-col items-start md:items-center text-left md:text-center max-w-xl md:max-w-2xl mx-auto mb-6">
           <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#D4A017] dark:text-[#F2C230] mb-2">
             — FEATURES
           </span>
-          <h2 className="text-[28px] sm:text-[32px] md:text-4xl font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
+          <h2 className="text-[28px] sm:text-[36px] lg:text-[44px] font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
             Everything you need to run a{' '}
             <span className="text-[#D4A017] dark:text-[#F2C230]">modern institution</span>
           </h2>
-          <p className="text-[15px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3] max-w-[36ch] md:max-w-xl text-left md:text-center">
+          <p className="text-[15px] sm:text-[16px] lg:text-[17px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3] max-w-[36ch] md:max-w-xl text-left md:text-center">
             Scholario is the complete operating system for modern education — designed from the ground up for the Pakistani context.
           </p>
         </div>
 
-        {/* ── 2. Filters (Single horizontally scrollable row, sticky under floating navbar, right fade edge) ── */}
+        {/* ── 2. Filters (Single row on tablet & desktop, horizontally scrollable on mobile) ── */}
         <div className="sticky top-[68px] sm:top-[74px] z-30 py-2.5 -mx-4 px-4 sm:mx-0 sm:px-0 backdrop-blur-xl bg-white/85 dark:bg-[#0E0E0E]/85 transition-colors mb-4">
           <div className="relative w-full">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1 px-1 -mx-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="flex items-center sm:justify-center gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar scroll-smooth snap-x snap-mandatory py-1 px-1 -mx-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {CATEGORIES.map((cat) => {
                 const isSelected = activeCategory === cat;
                 return (
@@ -144,15 +144,15 @@ const FeaturesSection: React.FC = () => {
               })}
             </div>
 
-            {/* Right fade edge to hint at scrolling */}
+            {/* Right fade edge on mobile only */}
             <div
               aria-hidden="true"
-              className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-white dark:from-[#0E0E0E] to-transparent"
+              className="sm:hidden absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-white dark:from-[#0E0E0E] to-transparent"
             />
           </div>
 
           {/* Filter count indicator */}
-          <div className="flex items-center justify-between text-[13px] text-[#737373] dark:text-[#A3A3A3] font-medium pt-2 px-1">
+          <div className="flex items-center justify-between text-[13px] text-[#737373] dark:text-[#A3A3A3] font-medium pt-2 px-1 max-w-3xl mx-auto">
             <span>
               Showing {filteredFeatures.length} {filteredFeatures.length === 1 ? 'feature' : 'features'}
             </span>
@@ -168,51 +168,52 @@ const FeaturesSection: React.FC = () => {
           </div>
         </div>
 
-        {/* ── 3. Featured Card (Sage AI Academic Assistant: Full-width Hero Anchor) ── */}
-        {showSageHero && sageFeature && (
-          <div
-            id="feature-card-sage-hero"
-            onClick={() => setExpandedCard(expandedCard === sageFeature.title ? null : sageFeature.title)}
-            className={`group relative w-full rounded-[24px] bg-gradient-to-br from-white/95 via-white/85 to-[#F2C230]/10 dark:from-[#161616]/95 dark:via-[#161616]/90 dark:to-[#F2C230]/15 backdrop-blur-xl border border-[#F2C230]/40 dark:border-[#F2C230]/50 p-5 sm:p-6 shadow-[0_8px_32px_rgba(242,194,48,0.12)] hover:shadow-[0_8px_32px_rgba(242,194,48,0.22)] active:scale-[0.98] transition-all duration-300 cursor-pointer mb-3.5 ${
-              isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="w-11 h-11 rounded-2xl bg-[#F2C230]/20 border border-[#F2C230]/35 text-[#D4A017] dark:text-[#F2C230] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                <Sparkles size={22} className="stroke-[2.5]" />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#F2C230] text-[#111111] shadow-xs shrink-0">
-                AI FEATURE
-              </span>
-            </div>
-
-            <h3 className="text-lg sm:text-xl font-extrabold text-[#111111] dark:text-white tracking-tight mb-2 flex items-center gap-2">
-              <span>{sageFeature.title}</span>
-              <span className="inline-block w-2 h-2 rounded-full bg-[#F2C230] animate-pulse" />
-            </h3>
-
-            <p
-              className={`text-[13px] sm:text-sm leading-relaxed text-[#525252] dark:text-[#CCCCCC] transition-all duration-200 ${
-                expandedCard === sageFeature.title ? 'line-clamp-none' : 'line-clamp-2 sm:line-clamp-3'
+        {/* ── 3. Features Grid (Mobile: 1-2 cols, Tablet: 2 cols with Sage hero spanning both, Desktop: 3 cols with Sage hero spanning 2 cols on 1st row) ── */}
+        <div className="grid grid-cols-1 min-[340px]:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 w-full">
+          {/* Sage AI Hero Card (Spans 2 columns on tablet and desktop) */}
+          {showSageHero && sageFeature && (
+            <div
+              id="feature-card-sage-hero"
+              onClick={() => setExpandedCard(expandedCard === sageFeature.title ? null : sageFeature.title)}
+              className={`col-span-1 min-[340px]:col-span-2 sm:col-span-2 lg:col-span-2 group relative w-full rounded-[24px] bg-gradient-to-br from-white/95 via-white/85 to-[#F2C230]/10 dark:from-[#161616]/95 dark:via-[#161616]/90 dark:to-[#F2C230]/15 backdrop-blur-xl border border-[#F2C230]/40 dark:border-[#F2C230]/50 p-5 sm:p-6 shadow-[0_8px_32px_rgba(242,194,48,0.12)] hover:shadow-[0_8px_32px_rgba(242,194,48,0.22)] active:scale-[0.98] transition-all duration-300 cursor-pointer ${
+                isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
               }`}
             >
-              {sageFeature.description}
-            </p>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#F2C230]/20 border border-[#F2C230]/35 text-[#D4A017] dark:text-[#F2C230] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <Sparkles size={22} className="stroke-[2.5]" />
+                </div>
+                <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#F2C230] text-[#111111] shadow-xs shrink-0">
+                  AI FEATURE
+                </span>
+              </div>
 
-            <div className="mt-4 pt-3 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#F2C230]/15 text-[#111111] dark:text-[#F2C230] border border-[#F2C230]/30">
-                AI · Sage
-              </span>
-              <span className="text-xs font-bold text-[#D4A017] dark:text-[#F2C230] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                <span>{expandedCard === sageFeature.title ? 'Collapse' : 'Explore capabilities'}</span>
-                <ArrowRight size={13} />
-              </span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-[#111111] dark:text-white tracking-tight mb-2 flex items-center gap-2">
+                <span>{sageFeature.title}</span>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#F2C230] animate-pulse" />
+              </h3>
+
+              <p
+                className={`text-[13px] sm:text-sm leading-relaxed text-[#525252] dark:text-[#CCCCCC] transition-all duration-200 ${
+                  expandedCard === sageFeature.title ? 'line-clamp-none' : 'line-clamp-2 sm:line-clamp-3'
+                }`}
+              >
+                {sageFeature.description}
+              </p>
+
+              <div className="mt-4 pt-3 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#F2C230]/15 text-[#111111] dark:text-[#F2C230] border border-[#F2C230]/30">
+                  AI · Sage
+                </span>
+                <span className="text-xs font-bold text-[#D4A017] dark:text-[#F2C230] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>{expandedCard === sageFeature.title ? 'Collapse' : 'Explore capabilities'}</span>
+                  <ArrowRight size={13} />
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── 4. Remaining Cards: 2-Column Grid on Mobile (~170px tall compact tiles, 12px gap) ── */}
-        <div className="grid grid-cols-1 min-[340px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 w-full">
+          {/* Regular Feature Cards */}
           {gridFeatures.map((feature, idx) => {
             const Icon = feature.icon;
             const isExpanded = expandedCard === feature.title;
@@ -224,7 +225,7 @@ const FeaturesSection: React.FC = () => {
                 style={{
                   transitionDelay: `${idx * 50}ms`,
                 }}
-                className={`group relative rounded-[20px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] hover:border-[#F2C230]/60 dark:hover:border-[#F2C230]/60 p-4 flex flex-col justify-between shadow-xs hover:shadow-[0_8px_24px_rgba(242,194,48,0.18)] active:scale-[0.98] transition-all duration-200 cursor-pointer min-h-[170px] ${
+                className={`group relative rounded-[20px] bg-white/80 dark:bg-[#161616]/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.1] hover:border-[#F2C230]/60 dark:hover:border-[#F2C230]/60 p-4 sm:p-5 flex flex-col justify-between shadow-xs hover:shadow-[0_8px_24px_rgba(242,194,48,0.18)] active:scale-[0.98] transition-all duration-200 cursor-pointer min-h-[170px] ${
                   isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
                 }`}
               >

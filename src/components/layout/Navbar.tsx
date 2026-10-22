@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, LogIn, UserPlus, ExternalLink } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, ExternalLink, Sun, Moon, Laptop } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useTheme, ThemeMode } from '../../context/ThemeContext';
@@ -22,13 +22,37 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
   const [menuOpen, setMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const navContainerRef = useRef<HTMLDivElement>(null);
   const menuCardRef = useRef<HTMLDivElement>(null);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
 
   const { session, profile } = useAuth();
   const { themeMode, setThemeMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Close menu automatically if window is resized to desktop (>= 1024px)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && menuOpen) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [menuOpen]);
+
+  // Close desktop theme dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setThemeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   // Lock body scroll while menu is open
   useEffect(() => {
@@ -139,7 +163,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
       />
 
       {/* ── Floating Header & Dropdown Container ── */}
-      <header className="fixed top-3.5 sm:top-4 inset-x-4 sm:inset-x-6 z-50 mx-auto max-w-5xl pointer-events-none flex flex-col items-center">
+      <header className="fixed top-3.5 sm:top-4 inset-x-4 sm:inset-x-6 lg:inset-x-8 z-50 mx-auto w-auto max-w-full sm:max-w-[720px] lg:max-w-[1200px] pointer-events-none flex flex-col items-center">
         {/* Floating Pill Navbar: Glassmorphic rgba(255,255,255,0.6) / rgba(22,22,22,0.6) */}
         <nav
           ref={navContainerRef}
@@ -187,8 +211,109 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
               </div>
             </Link>
 
-            {/* Right: Hamburger / X button ONLY */}
-            <div className="flex items-center">
+            {/* Desktop Center: Inline Links (Home, About Us, Leadership, Contact with gold underline on active) */}
+            <div className="hidden lg:flex items-center gap-8">
+              <Link
+                to="/"
+                onClick={handleHomeClick}
+                className={`text-[14px] font-bold transition-all pb-1 ${
+                  location.pathname === '/'
+                    ? 'text-[#111111] dark:text-white border-b-2 border-[#F2C230]'
+                    : 'text-[#666666] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white border-b-2 border-transparent'
+                }`}
+              >
+                Home
+              </Link>
+              <button
+                type="button"
+                onClick={handleOpenAbout}
+                className="text-[14px] font-bold text-[#666666] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white transition-all pb-1 cursor-pointer border-b-2 border-transparent"
+              >
+                About Us
+              </button>
+              <Link
+                id="desktop-nav-leadership"
+                to="/leadership"
+                className={`text-[14px] font-bold transition-all pb-1 ${
+                  location.pathname === '/leadership'
+                    ? 'text-[#111111] dark:text-white border-b-2 border-[#F2C230]'
+                    : 'text-[#666666] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white border-b-2 border-transparent'
+                }`}
+              >
+                Leadership
+              </Link>
+              <button
+                type="button"
+                onClick={handleOpenContact}
+                className="text-[14px] font-bold text-[#666666] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white transition-all pb-1 cursor-pointer border-b-2 border-transparent"
+              >
+                Contact
+              </button>
+            </div>
+
+            {/* Desktop Right: Theme Toggle, Sign in, Register & Apply */}
+            <div className="hidden lg:flex items-center gap-3">
+              {/* Compact theme toggle */}
+              <div className="relative" ref={themeMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setThemeDropdownOpen((p) => !p)}
+                  aria-label="Toggle theme mode"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#111111] dark:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+                >
+                  {themeMode === 'dark' ? (
+                    <Moon size={18} className="stroke-[2.2]" />
+                  ) : themeMode === 'light' ? (
+                    <Sun size={18} className="stroke-[2.2]" />
+                  ) : (
+                    <Laptop size={18} className="stroke-[2.2]" />
+                  )}
+                </button>
+
+                {themeDropdownOpen && (
+                  <div className="absolute right-0 top-11 p-1.5 rounded-2xl bg-white/95 dark:bg-[#161616]/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-xl flex flex-col gap-1 z-50 min-w-[130px] animate-in fade-in zoom-in-95">
+                    {themeOptions.map(({ mode, label }) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setThemeMode(mode);
+                          setThemeDropdownOpen(false);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold text-left flex items-center justify-between cursor-pointer transition-colors ${
+                          themeMode === mode
+                            ? 'bg-[#F2C230] text-[#111111]'
+                            : 'text-[#737373] dark:text-[#A3A3A3] hover:text-[#111111] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <span>{label}</span>
+                        {themeMode === mode && <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sign in outlined pill */}
+              <button
+                type="button"
+                onClick={handleAuthAction}
+                className="h-10 px-4 rounded-full border border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white text-xs sm:text-sm font-bold text-[#111111] dark:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+              >
+                {session ? 'Dashboard' : 'Sign in'}
+              </button>
+
+              {/* Register & Apply gold pill */}
+              <Link
+                to="/register"
+                className="h-10 px-5 rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-xs sm:text-sm shadow-[0_2px_12px_rgba(242,194,48,0.3)] active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+              >
+                Register &amp; Apply
+              </Link>
+            </div>
+
+            {/* Mobile / Tablet Right: Hamburger / X button ONLY (Hidden on Desktop) */}
+            <div className="flex items-center lg:hidden">
               <button
                 id="mobile-menu-toggle"
                 type="button"
@@ -207,7 +332,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
           </div>
         </nav>
 
-        {/* ── Compact Floating Dropdown Card: Frosted glass rgba(255,255,255,0.55) / rgba(22,22,22,0.55) ── */}
+        {/* ── Compact Floating Dropdown Card: Frosted glass (Full width on mobile, max-width 420px aligned to the right on tablet, hidden on desktop) ── */}
         <div
           ref={menuCardRef}
           id="mobile-nav-card"
@@ -218,7 +343,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
             backdropFilter: 'blur(24px) saturate(180%)',
             WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           }}
-          className={`pointer-events-auto mt-2 w-full sm:max-w-xl bg-white/[0.55] dark:bg-[#161616]/[0.55] text-[#111111] dark:text-white rounded-[28px] border border-white/60 dark:border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.15)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
+          className={`pointer-events-auto mt-2 w-full sm:self-end sm:max-w-[420px] lg:hidden bg-white/[0.55] dark:bg-[#161616]/[0.55] text-[#111111] dark:text-white rounded-[28px] border border-white/60 dark:border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.15)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
             menuOpen
               ? 'opacity-100 translate-y-0 visible scale-100'
               : 'opacity-0 -translate-y-2 pointer-events-none invisible scale-[0.98]'

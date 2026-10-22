@@ -91,27 +91,27 @@ const ComparisonSection: React.FC<ComparisonSectionProps> = ({ onNavigate }) => 
         }}
       />
 
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
+      <div className="relative max-w-[1200px] mx-auto px-4 sm:px-8 lg:px-12">
 
-        {/* ── 1. Section Header (Left-aligned on mobile, centered on md+) ── */}
-        <div className="flex flex-col items-start md:items-center text-left md:text-center max-w-xl md:max-w-2xl mx-auto mb-6">
+        {/* ── 1. Section Header ── */}
+        <div className="flex flex-col items-start md:items-center text-left md:text-center max-w-xl md:max-w-2xl mx-auto mb-8 sm:mb-10">
           <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#D4A017] dark:text-[#F2C230] mb-2">
             — WHY SCHOLARIO
           </span>
-          <h2 className="text-[28px] sm:text-[32px] md:text-4xl font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
+          <h2 className="text-[28px] sm:text-[36px] lg:text-[44px] font-[800] leading-[1.2] tracking-[-0.02em] text-[#111111] dark:text-white mb-3 [text-wrap:balance]">
             Built specifically{' '}
             <span className="text-[#D4A017] dark:text-[#F2C230]">for Pakistan</span>
           </h2>
-          <p className="text-[15px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3] max-w-[36ch] md:max-w-xl text-left md:text-center">
+          <p className="text-[15px] sm:text-[16px] lg:text-[17px] leading-[1.6] text-[#666666] dark:text-[#A3A3A3] max-w-[36ch] md:max-w-xl text-left md:text-center">
             Generic LMS platforms weren't built with Pakistani educators in mind. Scholario was.
           </p>
         </div>
 
-        {/* ── 2. Glass Card Container (Radius 24px, 16px Padding, Soft Shadow) ── */}
-        <div className="w-full max-w-2xl mx-auto rounded-[24px] bg-white/85 dark:bg-[#161616]/85 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.12] p-4 sm:p-6 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4)]">
+        {/* ── 2. Glass Card Container (Mobile/Tablet: max-w 720px, Desktop: max-w 4xl) ── */}
+        <div className="w-full max-w-2xl sm:max-w-[720px] lg:max-w-4xl mx-auto rounded-[24px] sm:rounded-[28px] bg-white/85 dark:bg-[#161616]/85 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.12] p-4 sm:p-6 lg:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4)]">
 
-          {/* ── Segmented Control: Choose competitor ── */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 mb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+          {/* ── Segmented Control (Mobile & Tablet ONLY: Hidden on Desktop) ── */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 mb-3 border-b border-black/[0.06] dark:border-white/[0.08] lg:hidden">
             <span className="text-xs font-bold text-[#737373] dark:text-[#A3A3A3] uppercase tracking-wider shrink-0">
               Compare with:
             </span>
@@ -138,8 +138,8 @@ const ComparisonSection: React.FC<ComparisonSectionProps> = ({ onNavigate }) => 
             </div>
           </div>
 
-          {/* ── Summary Count Line (Calculated directly from data) ── */}
-          <div className="flex items-center justify-between flex-wrap gap-2 text-xs sm:text-[13px] font-semibold text-[#737373] dark:text-[#A3A3A3] mb-3 px-0.5">
+          {/* ── Summary Count Line for Mobile & Tablet ── */}
+          <div className="flex items-center justify-between flex-wrap gap-2 text-xs sm:text-[13px] font-semibold text-[#737373] dark:text-[#A3A3A3] mb-3 px-0.5 lg:hidden">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F2C230]/15 border border-[#F2C230]/30 text-[#111111] dark:text-[#F2C230] font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-[#F2C230]" />
               <span>Scholario: {scholarioScore} of {FEATURES.length} features</span>
@@ -154,17 +154,14 @@ const ComparisonSection: React.FC<ComparisonSectionProps> = ({ onNavigate }) => 
             </div>
           </div>
 
-          {/* ── 3. Mobile No-Scroll Table (3 Columns: 50% / 25% / 25%) ── */}
-          <div className="w-full overflow-hidden">
+          {/* ── 3A. Mobile & Tablet 3-Column Table (Feature 50% / Scholario 25% / Competitor 25%) ── */}
+          <div className="w-full overflow-hidden lg:hidden">
             <table className="w-full table-fixed border-collapse">
               <thead>
                 <tr>
-                  {/* Column 1: Feature (50%) */}
                   <th className="w-[50%] py-3 px-2 sm:px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#737373] dark:text-[#A3A3A3] align-bottom">
                     Feature
                   </th>
-
-                  {/* Column 2: Scholario (25%) - Continuous Highlighted Gold Lane Header */}
                   <th className="w-[25%] py-3 px-1.5 sm:px-2 text-center align-bottom bg-[#F2C230]/[0.10] dark:bg-[#F2C230]/[0.12] border-x border-t border-[#F2C230]/35 rounded-t-[16px]">
                     <div className="flex flex-col items-center">
                       <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F2C230] text-[#111111] shadow-xs mb-1">
@@ -175,8 +172,6 @@ const ComparisonSection: React.FC<ComparisonSectionProps> = ({ onNavigate }) => 
                       </span>
                     </div>
                   </th>
-
-                  {/* Column 3: Selected Competitor (25%) */}
                   <th
                     className={`w-[25%] py-3 px-1.5 sm:px-2 text-center align-bottom transition-opacity duration-150 ${
                       isSwitching ? 'opacity-30' : 'opacity-100'
@@ -204,14 +199,12 @@ const ComparisonSection: React.FC<ComparisonSectionProps> = ({ onNavigate }) => 
                         isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
                       }`}
                     >
-                      {/* Feature name (14px, max 2 lines, left-aligned) */}
                       <td className="py-3 px-2 sm:px-3 text-left">
                         <span className="text-[13px] sm:text-[14px] font-medium text-[#262626] dark:text-[#E5E5E5] line-clamp-2 leading-snug">
                           {feature}
                         </span>
                       </td>
 
-                      {/* Scholario Cell (Gold Lane continuation + 24px solid gold circle check) */}
                       <td
                         className={`py-3 px-1.5 sm:px-2 text-center bg-[#F2C230]/[0.10] dark:bg-[#F2C230]/[0.12] border-x border-[#F2C230]/35 ${
                           isLastRow ? 'border-b rounded-b-[16px]' : ''
@@ -222,7 +215,6 @@ const ComparisonSection: React.FC<ComparisonSectionProps> = ({ onNavigate }) => 
                         </div>
                       </td>
 
-                      {/* Selected Competitor Cell (Muted grey-green check or faint grey cross) */}
                       <td
                         className={`py-3 px-1.5 sm:px-2 text-center transition-opacity duration-150 ${
                           isSwitching ? 'opacity-30' : 'opacity-100'
@@ -238,6 +230,89 @@ const ComparisonSection: React.FC<ComparisonSectionProps> = ({ onNavigate }) => 
                           </div>
                         )}
                       </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── 3B. Desktop Full Table (ALL 5 Columns at once: Feature, Scholario, Moodle, Google Classroom, Edmodo) ── */}
+          <div className="w-full overflow-hidden hidden lg:block">
+            <table className="w-full table-fixed border-collapse">
+              <thead>
+                <tr>
+                  <th className="w-[36%] py-3.5 px-4 text-left text-xs font-bold uppercase tracking-wider text-[#737373] dark:text-[#A3A3A3] align-bottom">
+                    Feature
+                  </th>
+
+                  {/* Scholario: Highlighted Gold Lane Header */}
+                  <th className="w-[16%] py-3.5 px-2 text-center align-bottom bg-[#F2C230]/[0.10] dark:bg-[#F2C230]/[0.12] border-x border-t border-[#F2C230]/35 rounded-t-[16px]">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F2C230] text-[#111111] shadow-xs mb-1">
+                        Recommended
+                      </span>
+                      <span className="font-extrabold text-sm text-[#111111] dark:text-white truncate">
+                        Scholario
+                      </span>
+                    </div>
+                  </th>
+
+                  {/* Competitor Columns */}
+                  {COMPETITOR_OPTIONS.map((name) => (
+                    <th key={name} className="w-[16%] py-3.5 px-2 text-center align-bottom">
+                      <span className="font-bold text-sm text-[#525252] dark:text-[#A3A3A3] truncate block">
+                        {name}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {FEATURES.map((feature, fi) => {
+                  const isLastRow = fi === FEATURES.length - 1;
+
+                  return (
+                    <tr
+                      key={feature}
+                      className="h-[56px] border-b border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors"
+                    >
+                      {/* Feature name */}
+                      <td className="py-3 px-4 text-left">
+                        <span className="text-[14px] font-medium text-[#262626] dark:text-[#E5E5E5] line-clamp-2 leading-snug">
+                          {feature}
+                        </span>
+                      </td>
+
+                      {/* Scholario Gold Lane Column */}
+                      <td
+                        className={`py-3 px-2 text-center bg-[#F2C230]/[0.10] dark:bg-[#F2C230]/[0.12] border-x border-[#F2C230]/35 ${
+                          isLastRow ? 'border-b rounded-b-[16px]' : ''
+                        }`}
+                      >
+                        <div className="w-6 h-6 min-w-[24px] min-h-[24px] rounded-full bg-[#F2C230] text-[#111111] flex items-center justify-center shadow-xs mx-auto">
+                          <Check size={13} className="stroke-[3]" />
+                        </div>
+                      </td>
+
+                      {/* Other Competitor Columns */}
+                      {COMPETITOR_OPTIONS.map((name) => {
+                        const hasFeature = (COMPETITOR_DATA[name] || [])[fi];
+                        return (
+                          <td key={name} className="py-3 px-2 text-center">
+                            {hasFeature ? (
+                              <div className="flex justify-center text-emerald-600 dark:text-emerald-400 opacity-80">
+                                <Check size={16} className="stroke-[2.5]" />
+                              </div>
+                            ) : (
+                              <div className="flex justify-center text-[#A3A3A3] dark:text-[#666666] opacity-60">
+                                <X size={15} className="stroke-[2]" />
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}
