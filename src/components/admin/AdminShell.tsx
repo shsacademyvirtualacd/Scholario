@@ -196,28 +196,25 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
       {/* Mobile drawer backdrop overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* ── Sidebar (Collapsible to icon rail on laptops, slide-in drawer on mobile) ── */}
+      {/* ── Sidebar (Icon rail on tablet 640-1023px, slide-in drawer on mobile <640px, full collapsible on desktop) ── */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 bg-[#111111] border-r border-neutral-800 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'
-        } ${isRailCollapsed ? 'lg:w-16' : 'lg:w-64'}`}
+          sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full sm:translate-x-0'
+        } ${sidebarOpen ? 'w-64' : 'sm:w-16'} ${isRailCollapsed ? 'lg:w-16' : 'lg:w-64'}`}
       >
         {/* Top Header: Logo + Collapse Toggle */}
         <div className="h-16 flex items-center justify-between px-3.5 border-b border-neutral-800/80 shrink-0">
-          {!isRailCollapsed ? (
-            <div className="flex items-center gap-2 overflow-hidden">
-              <Logo size="sm" variant="full" darkMode />
-            </div>
-          ) : (
-            <div className="mx-auto">
-              <Logo size="sm" variant="icon" darkMode />
-            </div>
-          )}
+          <div className={`${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center gap-2 overflow-hidden`}>
+            <Logo size="sm" variant="full" darkMode />
+          </div>
+          <div className={`${sidebarOpen ? 'hidden' : isRailCollapsed ? 'flex' : 'flex lg:hidden'} mx-auto`}>
+            <Logo size="sm" variant="icon" darkMode />
+          </div>
 
           {/* Desktop Rail Collapse Toggle */}
           <button
@@ -234,21 +231,19 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-neutral-400 hover:text-white"
+            className="sm:hidden p-1.5 rounded-lg text-neutral-400 hover:text-white"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Small Admin Panel Badge */}
-        {!isRailCollapsed && (
-          <div className="px-4 py-2.5 border-b border-neutral-800/60 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
-              Admin Panel
-            </span>
-            <span className="text-[10px] text-neutral-400">v2.4</span>
-          </div>
-        )}
+        <div className={`px-4 py-2.5 border-b border-neutral-800/60 ${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between`}>
+          <span className="text-[11px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
+            Admin Panel
+          </span>
+          <span className="text-[10px] text-neutral-400">v2.4</span>
+        </div>
 
         {/* ── Independent Scrolling Navigation (Sage, Prices, Fees always reachable) ── */}
         <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 min-h-0 custom-scrollbar">
@@ -259,88 +254,82 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
             return (
               <div key={groupIdx} className="space-y-1">
                 {/* Group Heading (only in expanded mode) */}
-                {!isRailCollapsed && (
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.title)}
-                    className="w-full flex items-center justify-between px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
-                  >
-                    <span>{group.title}</span>
-                    {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.title)}
+                  className={`w-full ${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'} items-center justify-between px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer`}
+                >
+                  <span>{group.title}</span>
+                  {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                </button>
 
                 {/* Group Nav Items */}
-                {!isCollapsed && (
+                {(!isCollapsed || sidebarOpen) && (
                   <div className="space-y-0.5">
-                {group.items.map(({ icon: Icon, label, path, disabled }) => {
-                  const isActive = !disabled && isPathActive(path);
-                  const isChat = path === '/admin/chat';
-                  const isVisibility = path === '/admin/visibility-requests';
+                    {group.items.map(({ icon: Icon, label, path, disabled }) => {
+                      const isActive = !disabled && isPathActive(path);
+                      const isChat = path === '/admin/chat';
+                      const isVisibility = path === '/admin/visibility-requests';
 
-                  return (
-                    <button
-                      key={path}
-                      onClick={() => !disabled && handleNav(path)}
-                      disabled={disabled}
-                      title={label}
-                      className={`w-full flex items-center rounded-xl text-xs font-semibold transition-all relative group ${
-                        isRailCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2.5'
-                      } ${
-                        isActive
-                          ? 'bg-neutral-800 text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-amber-400 before:rounded-r'
-                          : 'text-neutral-300 hover:text-white hover:bg-neutral-800/70'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {/* 20px icon in consistent line style */}
-                        <Icon
-                          size={20}
-                          className={`shrink-0 transition-colors ${
-                            isActive ? 'text-amber-400' : 'text-neutral-400 group-hover:text-white'
+                      return (
+                        <button
+                          key={path}
+                          onClick={() => !disabled && handleNav(path)}
+                          disabled={disabled}
+                          title={label}
+                          className={`w-full min-h-[44px] flex items-center rounded-xl text-xs font-semibold transition-all relative group ${
+                            sidebarOpen ? 'justify-between px-3 py-2.5' : isRailCollapsed ? 'justify-center p-2.5' : 'justify-center sm:p-2.5 lg:justify-between lg:px-3 lg:py-2.5'
+                          } ${
+                            isActive
+                              ? 'bg-neutral-800 text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-amber-400 before:rounded-r'
+                              : 'text-neutral-300 hover:text-white hover:bg-neutral-800/70'
                           }`}
-                        />
-                        {!isRailCollapsed && (
-                          <span className="truncate tracking-tight">{label}</span>
-                        )}
-                      </div>
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {/* 20px icon in consistent line style */}
+                            <Icon
+                              size={20}
+                              className={`shrink-0 transition-colors ${
+                                isActive ? 'text-amber-400' : 'text-neutral-400 group-hover:text-white'
+                              }`}
+                            />
+                            <span className={`truncate tracking-tight ${sidebarOpen ? 'inline' : isRailCollapsed ? 'hidden' : 'hidden lg:inline'}`}>{label}</span>
+                          </div>
 
-                      {/* Right Badges: unread counts or "Soon" tag */}
-                      {!isRailCollapsed && (
-                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          {isChat && unreadCount > 0 && !disabled && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-400 text-neutral-900 leading-none">
-                              {unreadCount > 99 ? '99+' : unreadCount}
-                            </span>
-                          )}
+                          {/* Right Badges: unread counts or "Soon" tag */}
+                          <div className={`items-center gap-1.5 shrink-0 ml-2 ${sidebarOpen ? 'flex' : isRailCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
+                            {isChat && unreadCount > 0 && !disabled && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-400 text-neutral-900 leading-none">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                              </span>
+                            )}
 
-                          {isVisibility && pendingVisibilityCount > 0 && !disabled && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white leading-none">
-                              {pendingVisibilityCount > 99 ? '99+' : pendingVisibilityCount}
-                            </span>
-                          )}
+                            {isVisibility && pendingVisibilityCount > 0 && !disabled && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white leading-none">
+                                {pendingVisibilityCount > 99 ? '99+' : pendingVisibilityCount}
+                              </span>
+                            )}
 
-                          {disabled && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">
-                              Soon
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                            {disabled && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">
+                                Soon
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
         </nav>
       </aside>
 
       {/* ── Main Layout Container ── */}
       <div
-        className={`flex-1 flex flex-col min-h-screen max-w-full overflow-x-hidden transition-all duration-300 ${
+        className={`flex-1 flex flex-col min-h-screen max-w-full overflow-x-hidden transition-all duration-300 sm:ml-16 ${
           isRailCollapsed ? 'lg:ml-16' : 'lg:ml-64'
         }`}
       >
@@ -353,7 +342,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
             {/* Hamburger for mobile */}
             <button
               type="button"
-              className="lg:hidden p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 transition-colors"
+              className="sm:hidden p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 transition-colors"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label="Toggle navigation menu"
             >

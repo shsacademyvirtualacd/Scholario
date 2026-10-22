@@ -17,7 +17,8 @@ import {
   ChevronUp,
   MoreVertical,
   Eye,
-  AlertCircle
+  AlertCircle,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MathText } from '../../common/MathText';
@@ -100,6 +101,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
   // Tablet & Mobile UI controls
   const [tabletChapterOpen, setTabletChapterOpen] = useState<boolean>(false);
   const [mobileChapterSheetOpen, setMobileChapterSheetOpen] = useState<boolean>(false);
+  const [mobileFilterSheetOpen, setMobileFilterSheetOpen] = useState<boolean>(false);
   const [topMenuOpen, setTopMenuOpen] = useState<boolean>(false);
   const topMenuRef = useRef<HTMLDivElement>(null);
 
@@ -131,6 +133,7 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
 
   useModalScrollLock(isDrawerOpen);
   useModalScrollLock(mobileChapterSheetOpen);
+  useModalScrollLock(mobileFilterSheetOpen);
 
   // Close top action menu on click outside
   useEffect(() => {
@@ -863,21 +866,33 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           )}
         </div>
 
-        {/* Mobile Chapter Button (<640px) */}
-        <div className="sm:hidden col-span-1 flex items-center justify-between bg-white dark:bg-neutral-900 border border-zinc-200 dark:border-neutral-800 rounded-2xl p-3 shadow-xs">
-          <div className="min-w-0 flex-1 pr-2">
+        {/* Mobile Chapter & Filters Bar (<640px) */}
+        <div className="sm:hidden col-span-1 flex items-center justify-between gap-2 bg-white dark:bg-neutral-900 border border-zinc-200 dark:border-neutral-800 rounded-2xl p-3 shadow-xs">
+          <div className="min-w-0 flex-1 pr-1">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Chapter:</span>
             <span className="text-xs font-bold text-zinc-900 dark:text-neutral-100 truncate block">
               {selectedChapter || 'Tap to choose chapter'}
             </span>
           </div>
-          <button
-            onClick={() => setMobileChapterSheetOpen(true)}
-            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-neutral-800 text-zinc-800 dark:text-neutral-200 text-xs font-bold flex items-center gap-1.5"
-          >
-            <span>Change</span>
-            <ChevronDown size={14} />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => setMobileChapterSheetOpen(true)}
+              className="min-h-[44px] px-3 py-2 rounded-xl bg-zinc-100 dark:bg-neutral-800 text-zinc-800 dark:text-neutral-200 text-xs font-bold flex items-center gap-1"
+            >
+              <span>Chapters</span>
+              <ChevronDown size={14} />
+            </button>
+            <button
+              onClick={() => setMobileFilterSheetOpen(true)}
+              className="min-h-[44px] px-3 py-2 rounded-xl border border-zinc-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-zinc-800 dark:text-neutral-200 text-xs font-bold flex items-center gap-1.5 relative cursor-pointer"
+            >
+              <SlidersHorizontal size={14} />
+              <span>Filters</span>
+              {(searchQuery || difficultyFilter !== 'all') && (
+                <span className="w-2 h-2 rounded-full bg-[#F4C430] absolute -top-1 -right-1" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Desktop Sticky Left Rail (1024px+) */}
@@ -987,8 +1002,8 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
               </div>
             </div>
 
-            {/* Search + Difficulty Filter Controls */}
-            <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+            {/* Search + Difficulty Filter Controls (Desktop & Tablet) */}
+            <div className="hidden sm:flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
@@ -1020,7 +1035,29 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
           </div>
 
           {/* ── QUESTION LIST (Compact, accessible with KaTeX, difficulty, copyable ID) ── */}
-          {activeQuestions.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="bg-white dark:bg-neutral-900 border border-zinc-200 dark:border-neutral-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 animate-pulse">
+                  <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-neutral-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-4 bg-zinc-200 dark:bg-neutral-800 rounded" />
+                      <div className="w-16 h-4 bg-zinc-200 dark:bg-neutral-800 rounded" />
+                      <div className="w-14 h-4 bg-zinc-200 dark:bg-neutral-800 rounded" />
+                    </div>
+                    <div className="w-12 h-6 bg-zinc-200 dark:bg-neutral-800 rounded-lg" />
+                  </div>
+                  <div className="w-3/4 h-4 bg-zinc-200 dark:bg-neutral-800 rounded" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <div className="h-10 bg-zinc-100 dark:bg-neutral-800/60 rounded-xl" />
+                    <div className="h-10 bg-zinc-100 dark:bg-neutral-800/60 rounded-xl" />
+                    <div className="h-10 bg-zinc-100 dark:bg-neutral-800/60 rounded-xl" />
+                    <div className="h-10 bg-zinc-100 dark:bg-neutral-800/60 rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : activeQuestions.length === 0 ? (
             <div className="bg-white dark:bg-neutral-900 border border-zinc-200 dark:border-neutral-800 rounded-2xl p-12 text-center shadow-xs">
               <p className="text-xs font-semibold text-zinc-500 dark:text-neutral-400">
                 No {bankTab.toUpperCase()} questions found matching current parameters for this chapter.
@@ -1317,6 +1354,95 @@ export const AdminMCQVerificationView: React.FC<AdminMCQVerificationViewProps> =
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Mobile Filters Bottom Sheet (<640px) ── */}
+      {mobileFilterSheetOpen && createPortal(
+        <div className="fixed inset-0 z-50 overflow-hidden flex flex-col justify-end">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileFilterSheetOpen(false)}
+          />
+          <div className="relative bg-white dark:bg-neutral-900 rounded-t-3xl max-h-[85vh] flex flex-col z-10 shadow-2xl border-t border-zinc-200 dark:border-neutral-800 animate-in slide-in-from-bottom duration-200 overflow-hidden">
+            <div className="p-4 border-b border-zinc-200 dark:border-neutral-800 flex items-center justify-between bg-zinc-50 dark:bg-neutral-800/50 shrink-0">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal size={16} className="text-[#F4C430]" />
+                <h3 className="text-sm font-black text-zinc-900 dark:text-neutral-100">
+                  Search & Filter Questions
+                </h3>
+              </div>
+              <button
+                onClick={() => setMobileFilterSheetOpen(false)}
+                className="min-h-[44px] min-w-[44px] p-2 text-zinc-400 hover:text-zinc-700 rounded-lg flex items-center justify-center cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+              {/* Search input */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+                  Search Keywords / ID
+                </label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Search formula, terms, question text..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full min-h-[44px] pl-9 pr-3 rounded-xl border border-zinc-200 dark:border-neutral-700 bg-zinc-50 dark:bg-neutral-800 text-xs text-zinc-900 dark:text-neutral-100"
+                  />
+                </div>
+              </div>
+
+              {/* Difficulty selector */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+                  Difficulty Level
+                </label>
+                <div className="grid grid-cols-4 gap-1.5 bg-zinc-100 dark:bg-neutral-800 p-1 rounded-xl">
+                  {(['all', 'easy', 'medium', 'hard'] as const).map((diff) => (
+                    <button
+                      key={diff}
+                      onClick={() => setDifficultyFilter(diff)}
+                      className={`min-h-[40px] py-1 text-xs font-bold capitalize rounded-lg ${
+                        difficultyFilter === diff
+                          ? 'bg-white dark:bg-neutral-900 text-zinc-950 dark:text-neutral-100 shadow-xs'
+                          : 'text-zinc-600 dark:text-neutral-400'
+                      }`}
+                    >
+                      {diff}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reset or Apply */}
+              <div className="pt-2 flex gap-2">
+                {(searchQuery || difficultyFilter !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setDifficultyFilter('all');
+                    }}
+                    className="min-h-[44px] flex-1 rounded-xl border border-zinc-200 dark:border-neutral-700 text-xs font-bold text-zinc-700 dark:text-neutral-300"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+                <button
+                  onClick={() => setMobileFilterSheetOpen(false)}
+                  className="min-h-[44px] flex-1 rounded-xl bg-[#F4C430] hover:bg-[#E5B520] text-zinc-950 font-bold text-xs"
+                >
+                  Show ({activeQuestions.length}) Questions
+                </button>
+              </div>
             </div>
           </div>
         </div>,
