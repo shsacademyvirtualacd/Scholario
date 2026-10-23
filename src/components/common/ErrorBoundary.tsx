@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { CHUNK_RELOAD_STORAGE_KEY } from '../../utils/lazyWithRetry';
+import { performFullUpdateAndReload } from '../../lib/serviceWorkerRegistration';
 
 interface Props {
   children?: ReactNode;
@@ -79,8 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <button
                 type="button"
                 onClick={() => {
-                  window.sessionStorage.removeItem('scholario_chunk_reload_done');
-                  window.location.reload();
+                  performFullUpdateAndReload();
                 }}
                 className="w-full py-3 px-5 bg-[#111111] hover:bg-black text-[#F4C430] rounded-2xl font-bold text-sm shadow-md transition-all interactive cursor-pointer"
               >

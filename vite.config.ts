@@ -18,13 +18,17 @@ export default defineConfig({
       name: 'versioned-service-worker',
       apply: 'build',
       closeBundle() {
+        const buildId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
         const swDistPath = path.resolve(__dirname, 'dist', 'sw.js');
         if (fs.existsSync(swDistPath)) {
           let swContent = fs.readFileSync(swDistPath, 'utf8');
-          const buildId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
           swContent = swContent.replace(/__BUILD_HASH__/g, buildId);
           fs.writeFileSync(swDistPath, swContent, 'utf8');
         }
+        try {
+          const versionDistPath = path.resolve(__dirname, 'dist', 'version.json');
+          fs.writeFileSync(versionDistPath, JSON.stringify({ version: buildId, builtAt: Date.now() }), 'utf8');
+        } catch {}
       },
     },
   ],
