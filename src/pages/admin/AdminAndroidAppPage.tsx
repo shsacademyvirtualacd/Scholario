@@ -15,6 +15,8 @@ import {
   FileText,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { WORKER_UPLOAD_URL, validateWorkerUploadUrl } from '../../config/apkUploadConfig';
+import { isVersionHigher, parseSemver } from '../../utils/semver';
 
 interface ApkManifest {
   version: string;
@@ -91,11 +93,16 @@ export const AdminAndroidAppPage: React.FC = () => {
 
     setSelectedFile(file);
 
-    // Auto-suggest version if empty and filename contains version (e.g. app-release-1.0.3.apk)
+    // Auto-suggest version if empty and filename contains version (e.g. app-release-1.0.4.apk)
     if (!versionName) {
-      const match = file.name.match(/(\d+\.\d+(\.\d+)?)/);
+      const match = file.name.match(/(\d+\.\d+\.\d+)/);
       if (match) {
         setVersionName(match[1]);
+      } else if (currentApk?.version) {
+        const curParsed = parseSemver(currentApk.version);
+        if (curParsed) {
+          setVersionName(`${curParsed.major}.${curParsed.minor}.${curParsed.patch + 1}`);
+        }
       }
     }
 
@@ -135,15 +142,34 @@ export const AdminAndroidAppPage: React.FC = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    // 1. File presence check
     if (!selectedFile) {
       setErrorMessage('Please select a valid .apk file to upload.');
       return;
     }
 
-    if (!versionName.trim()) {
-      setErrorMessage('Please enter a version name (e.g. 1.0.3).');
+    // 2. SemVer validation: Must be valid SemVer and strictly higher than current version
+    const cleanVersion = versionName.trim().replace(/^v/i, '');
+    const semverCheck = isVersionHigher(cleanVersion, currentApk?.version);
+    if (!semverCheck.isHigher) {
+      setErrorMessage(semverCheck.error || 'Version must be higher than current published version.');
       return;
     }
+
+    // 3. Cloudflare Worker URL validation (Must be configured and absolute, never relative or site origin)
+    const urlCheck = validateWorkerUploadUrl(WORKER_UPLOAD_URL);
+    if (!urlCheck.isValid) {
+      const configErrMsg = "Upload service isn't configured";
+      setErrorMessage(configErrMsg);
+      console.error('[APK Upload Config Error] WORKER_UPLOAD_URL is not configured or points to the site domain:', {
+        WORKER_UPLOAD_URL,
+        reason: urlCheck.error,
+      });
+      return;
+    }
+
+    const uploadUrl = WORKER_UPLOAD_URL.trim();
+    const httpMethod = 'PUT';
 
     setUploading(true);
     setUploadProgress(5);
@@ -152,18 +178,31 @@ export const AdminAndroidAppPage: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || '';
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('version', versionName.trim());
-      formData.append('notes', releaseNotes.trim());
+      // 4. Log URL and HTTP Method BEFORE the request
+      console.log('[APK Upload Request: Starting]', {
+        url: uploadUrl,
+        method: httpMethod,
+        version: cleanVersion,
+        currentVersion: currentApk?.version || null,
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        contentType: 'application/vnd.android.package-archive',
+      });
 
-      // Use XMLHttpRequest to track real upload progress
+      // 5. Use XMLHttpRequest with PUT and stream binary file directly
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/admin/apk/upload');
+        xhr.open(httpMethod, uploadUrl);
+
+        xhr.setRequestHeader('Content-Type', 'application/vnd.android.package-archive');
+        xhr.setRequestHeader('X-Version', cleanVersion);
 
         if (token) {
           xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+
+        if (releaseNotes.trim()) {
+          xhr.setRequestHeader('X-Release-Notes', encodeURIComponent(releaseNotes.trim()));
         }
 
         xhr.upload.onprogress = (event) => {
@@ -174,6 +213,15 @@ export const AdminAndroidAppPage: React.FC = () => {
         };
 
         xhr.onload = () => {
+          // Log URL, method, status, and response body AFTER the request
+          console.log('[APK Upload Response: Received]', {
+            url: uploadUrl,
+            method: httpMethod,
+            status: xhr.status,
+            statusText: xhr.statusText,
+            body: xhr.responseText,
+          });
+
           if (xhr.status >= 200 && xhr.status < 300) {
             setUploadProgress(100);
             try {
@@ -186,25 +234,54 @@ export const AdminAndroidAppPage: React.FC = () => {
               resolve();
             }
           } else {
-            let errorText = 'Upload failed';
+            let errorText = `Upload failed with HTTP ${xhr.status}`;
             try {
               const errJson = JSON.parse(xhr.responseText);
-              errorText = errJson.error || xhr.statusText || 'Upload failed';
+              if (errJson && errJson.error) {
+                errorText = errJson.error;
+              }
             } catch {
-              errorText = xhr.statusText || `Upload failed with HTTP ${xhr.status}`;
+              if (xhr.status === 405) {
+                errorText = 'Upload failed with HTTP 405 (Method Not Allowed). Verify the Cloudflare Worker accepts PUT requests.';
+              } else if (xhr.status === 401) {
+                errorText = 'Authentication failed (HTTP 401). Please sign in again as an administrator.';
+              } else if (xhr.status === 403) {
+                errorText = 'Access denied (HTTP 403). Only administrators can publish APK builds.';
+              } else if (xhr.statusText) {
+                errorText = `Upload failed: ${xhr.statusText} (HTTP ${xhr.status})`;
+              }
             }
+
+            console.error('[APK Upload Response: Error]', {
+              url: uploadUrl,
+              method: httpMethod,
+              status: xhr.status,
+              statusText: xhr.statusText,
+              error: errorText,
+              body: xhr.responseText,
+            });
+
             reject(new Error(errorText));
           }
         };
 
         xhr.onerror = () => {
-          reject(new Error('Network error during APK upload. Please check your connection and try again.'));
+          console.error('[APK Upload Network: Error]', {
+            url: uploadUrl,
+            method: httpMethod,
+            status: xhr.status,
+            statusText: xhr.statusText,
+            body: xhr.responseText,
+          });
+
+          reject(new Error('Network error during APK upload. Verify CORS settings and connectivity to the Cloudflare Worker.'));
         };
 
-        xhr.send(formData);
+        // Send the raw binary file directly as the request body
+        xhr.send(selectedFile);
       });
 
-      setSuccessMessage(`Scholario v${versionName.trim()} has been uploaded to Cloudflare R2 and published successfully!`);
+      setSuccessMessage(`Scholario v${cleanVersion} has been uploaded to Cloudflare R2 and published successfully!`);
       setSelectedFile(null);
       setVersionName('');
       setReleaseNotes('');
@@ -212,6 +289,7 @@ export const AdminAndroidAppPage: React.FC = () => {
         fileInputRef.current.value = '';
       }
 
+      // Refresh Live Published Version card
       await fetchLatestRelease();
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred during APK upload.');
