@@ -5,15 +5,9 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
-  Sun,
-  Moon,
-  Laptop,
-  LogOut,
-  Loader2,
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import ProfileAvatar from './ProfileAvatar';
-import { useTheme } from '../../context/ThemeContext';
 import type { Profile } from '../../types';
 
 export interface PortalNavItem {
@@ -50,14 +44,11 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
   profile,
   navGroups,
   onOpenSearch,
-  onSignOut,
-  isSigningOut = false,
   activePath,
   extraFooterAction,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { themeMode, setThemeMode } = useTheme();
 
   const currentPath = activePath || location.pathname;
 
@@ -282,8 +273,8 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
           </button>
         </div>
 
-        {/* ── Navigation Links (Independent Scrolling, 52px Touch Height, 22px Icons, 3px Gold Left Active Bar) ── */}
-        <nav className="flex-1 overflow-y-auto p-2.5 space-y-3 custom-scrollbar min-h-0">
+        {/* ── Navigation Links (Fills freed space, Independent Scrolling, 52px Touch Height, Bottom Safe Area Padding) ── */}
+        <nav className="flex-1 overflow-y-auto p-2.5 space-y-3 custom-scrollbar min-h-0 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
           {navGroups.map((group, groupIdx) => {
             const hasActiveChild = group.items.some(
               (item) => !item.disabled && isPathActive(item.path)
@@ -364,74 +355,13 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
               </div>
             );
           })}
-        </nav>
 
-        {/* ── Pinned Footer: Segmented Theme Control + 52px Sign Out ── */}
-        <div className="p-3 border-t border-black/[0.08] dark:border-white/[0.10] bg-neutral-50/70 dark:bg-[#151517] shrink-0 space-y-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          {extraFooterAction}
-
-          {/* Segmented Theme Mode Switch (Light | Dark | System) */}
-          <div className="p-1 rounded-xl bg-neutral-200/80 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setThemeMode('light')}
-              className={`flex-1 h-8 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
-                themeMode === 'light'
-                  ? 'bg-white text-neutral-900 shadow-xs'
-                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
-              }`}
-            >
-              <Sun size={13} className={themeMode === 'light' ? 'text-amber-500' : ''} />
-              <span>Light</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setThemeMode('dark')}
-              className={`flex-1 h-8 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
-                themeMode === 'dark'
-                  ? 'bg-[#27272A] text-white shadow-xs'
-                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
-              }`}
-            >
-              <Moon size={13} className={themeMode === 'dark' ? 'text-[#F2C230]' : ''} />
-              <span>Dark</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setThemeMode('system')}
-              className={`flex-1 h-8 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
-                themeMode === 'system'
-                  ? 'bg-white dark:bg-[#27272A] text-neutral-900 dark:text-white shadow-xs'
-                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
-              }`}
-            >
-              <Laptop size={13} />
-              <span>Auto</span>
-            </button>
-          </div>
-
-          {/* 52px Sign Out button */}
-          {onSignOut && (
-            <button
-              type="button"
-              onClick={async () => {
-                onClose();
-                await onSignOut();
-              }}
-              disabled={isSigningOut}
-              className="w-full h-[52px] min-h-[52px] flex items-center justify-center gap-2 rounded-xl text-[15px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer"
-            >
-              {isSigningOut ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <LogOut size={18} />
-              )}
-              <span>{isSigningOut ? 'Signing out...' : 'Sign Out'}</span>
-            </button>
+          {extraFooterAction && (
+            <div className="pt-2 px-1">
+              {extraFooterAction}
+            </div>
           )}
-        </div>
+        </nav>
       </aside>
     </>
   );
