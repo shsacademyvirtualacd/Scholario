@@ -9,9 +9,9 @@ interface LogoProps {
 
 const Logo: React.FC<LogoProps> = ({ size = 'md', variant = 'full', darkMode = false, className = '' }) => {
   const sizes = {
-    sm: { tile: 32, text: 'text-lg', sub: 'text-[8px]' },
-    md: { tile: 40, text: 'text-xl', sub: 'text-[9px]' },
-    lg: { tile: 52, text: 'text-3xl', sub: 'text-[10px]' },
+    sm: { tile: 34, text: 'text-[17px]', sub: 'text-[8.5px]' },
+    md: { tile: 40, text: 'text-xl', sub: 'text-[9.5px]' },
+    lg: { tile: 52, text: 'text-3xl', sub: 'text-[11px]' },
   };
 
   const { tile, text, sub } = sizes[size];
@@ -37,15 +37,15 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', variant = 'full', darkMode = f
       />
 
       {variant === 'full' && (
-        <div className="flex flex-col leading-none">
+        <div className="flex flex-col justify-center min-w-0">
           <span
-            className={`${text} font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-[#111111]'}`}
+            className={`${text} font-extrabold tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-[#111111] dark:text-white'}`}
             style={{ letterSpacing: '-0.03em' }}
           >
             Scholario
           </span>
           <span
-            className={`${sub} font-semibold tracking-[0.15em] uppercase ${darkMode ? 'text-[#525252]' : 'text-[#737373]'} mt-0.5`}
+            className={`${sub} font-semibold tracking-[0.16em] uppercase ${darkMode ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'} mt-1 leading-normal whitespace-nowrap block`}
           >
             Learn&nbsp;·&nbsp;Grow&nbsp;·&nbsp;Achieve
           </span>

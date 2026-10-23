@@ -165,7 +165,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
 
   return (
     <header
-      className={`sticky top-0 z-30 h-[60px] sm:h-16 w-full backdrop-blur-md bg-white/85 dark:bg-[#111111]/85 border-b border-black/[0.08] dark:border-white/[0.12] flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top)] shrink-0 ${className}`}
+      className={`sticky top-0 z-30 w-full backdrop-blur-md bg-white/85 dark:bg-[#111111]/85 flex items-center justify-between px-3.5 sm:px-6 pt-[calc(18px+env(safe-area-inset-top,0px))] pb-[18px] sm:pt-0 sm:pb-0 sm:h-16 min-h-[76px] sm:min-h-0 shrink-0 transition-colors ${className}`}
       style={{
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -186,11 +186,11 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
         </button>
 
         {/* Title + Role Indicator */}
-        <div className="flex flex-col min-w-0 leading-tight">
-          <span className="font-bold text-[17px] sm:text-lg text-neutral-900 dark:text-neutral-100 truncate">
+        <div className="flex flex-col min-w-0 justify-center">
+          <span className="font-bold text-[17px] sm:text-lg text-neutral-900 dark:text-neutral-100 truncate leading-snug">
             {resolvedTitle}
           </span>
-          <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 truncate">
+          <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 truncate leading-normal">
             {roleLabel}
           </span>
         </div>

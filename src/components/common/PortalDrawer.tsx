@@ -226,16 +226,16 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
           WebkitBackdropFilter: 'blur(28px)',
         }}
       >
-        {/* ── Header: Logo + 44px Close button ── */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-black/[0.08] dark:border-white/[0.10] shrink-0 pt-[env(safe-area-inset-top)]">
-          <div className="flex items-center gap-2">
+        {/* ── Header: Logo + 44px Close button (divider line removed, spacious padding) ── */}
+        <div className="min-h-[72px] py-3.5 px-4 flex items-center justify-between shrink-0 pt-[calc(0.875rem+env(safe-area-inset-top,0px))]">
+          <div className="flex items-center gap-2 min-w-0 pr-2">
             <Logo size="sm" variant="full" />
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] transition-colors cursor-pointer"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] transition-colors cursor-pointer shrink-0"
             aria-label="Close navigation drawer"
           >
             <X size={20} />
