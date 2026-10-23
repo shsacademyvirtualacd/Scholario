@@ -273,7 +273,7 @@ export const TestsPage: React.FC = () => {
 
   return (
     <StudentShell>
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 max-w-7xl mx-auto pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-12">
         {/* Header */}
         <StudentPageHeader
           title="Testing Center"
@@ -359,7 +359,7 @@ export const TestsPage: React.FC = () => {
         </div>
 
         {/* ── Status Tabs with Counts: To do, Submitted, Graded, Overdue ── */}
-        <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-neutral-800 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-neutral-800 overflow-x-auto no-scrollbar hide-scrollbar snap-x snap-mandatory scroll-smooth w-full max-w-full pb-1 pr-6 sm:pr-0">
           {[
             { id: 'todo', label: 'To do', count: categorizedTests.todo.length },
             { id: 'submitted', label: 'Submitted', count: categorizedTests.submitted.length },
@@ -370,7 +370,7 @@ export const TestsPage: React.FC = () => {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id as StatusTab)}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer shrink-0 snap-start ${
                 activeTab === tab.id
                   ? 'bg-neutral-950 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
                   : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-850'

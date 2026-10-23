@@ -310,7 +310,7 @@ export const AdminTestsPage: React.FC = () => {
 
   return (
     <AdminShell>
-      <div className="space-y-6 pb-12">
+      <div className="space-y-6 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-12">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -474,7 +474,7 @@ export const AdminTestsPage: React.FC = () => {
           <>
             {/* ── BOARD SELECTOR BAR: SHORT LABELS, NO OVERFLOW ── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar hide-scrollbar snap-x snap-mandatory scroll-smooth w-full max-w-full pb-1 pr-6 sm:pr-0">
                 {BOARDS.map((b) => {
                   const label = SHORT_BOARD_NAMES[b.id] || b.name;
                   const isSelected = selectedBoard === b.id;
@@ -482,7 +482,7 @@ export const AdminTestsPage: React.FC = () => {
                     <button
                       key={b.id}
                       onClick={() => handleBoardChange(b.id)}
-                      className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
+                      className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer shrink-0 snap-start ${
                         isSelected
                           ? 'bg-neutral-900 text-amber-400 dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
                           : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -507,10 +507,10 @@ export const AdminTestsPage: React.FC = () => {
             </div>
 
             {/* ── SEARCH & FILTER CONTROLS ── */}
-            <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xs space-y-3">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xs space-y-3">
               <div className="flex flex-col lg:flex-row gap-3 items-stretch justify-between">
                 {/* Search */}
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-0">
                   <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                   <input
                     type="text"
@@ -530,17 +530,17 @@ export const AdminTestsPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-full min-w-0">
                   {/* Grade Selector */}
-                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg overflow-x-auto no-scrollbar shrink-0">
-                    <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 px-2 whitespace-nowrap">
+                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg overflow-x-auto no-scrollbar hide-scrollbar snap-x snap-mandatory scroll-smooth w-full sm:w-auto max-w-full pr-6 sm:pr-1 min-w-0">
+                    <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 px-2 whitespace-nowrap shrink-0">
                       Grade:
                     </span>
                     {['all', ...availableGrades.map((g) => g.grade)].map((g) => (
                       <button
                         key={g}
                         onClick={() => setGradeFilter(g)}
-                        className={`min-h-[38px] px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        className={`min-h-[38px] px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 snap-start ${
                           gradeFilter === g
                             ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
                             : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -554,7 +554,7 @@ export const AdminTestsPage: React.FC = () => {
                   </div>
 
                   {/* Test Type Selector */}
-                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg overflow-x-auto no-scrollbar shrink-0">
+                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg overflow-x-auto no-scrollbar hide-scrollbar snap-x snap-mandatory scroll-smooth w-full sm:w-auto max-w-full pr-6 sm:pr-1 min-w-0">
                     {[
                       { id: 'all', label: 'All' },
                       { id: 'unified', label: 'Online Tests' },
@@ -565,7 +565,7 @@ export const AdminTestsPage: React.FC = () => {
                       <button
                         key={type.id}
                         onClick={() => setTestTypeFilter(type.id as any)}
-                        className={`min-h-[38px] px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        className={`min-h-[38px] px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 snap-start ${
                           testTypeFilter === type.id
                             ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
                             : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -612,7 +612,7 @@ export const AdminTestsPage: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+                  <div className="space-y-3 w-full">
                     {/* Proctored MCQ Tests */}
                     {testTypeFilter !== 'standard' &&
                       filteredProctoredTests.map((test) => {
@@ -620,12 +620,12 @@ export const AdminTestsPage: React.FC = () => {
                         return (
                           <div
                             key={test.id}
-                            className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 p-4 shadow-2xs transition-all text-left flex flex-col justify-between space-y-3"
+                            className="w-full bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 p-4 shadow-2xs transition-all text-left flex flex-col justify-between space-y-3"
                           >
                             <div className="space-y-2">
                               {/* Title + (...) Safe Menu */}
                               <div className="flex items-start justify-between gap-2">
-                                <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 line-clamp-1 flex-1">
+                                <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 line-clamp-2 leading-snug break-words flex-1">
                                   {test.title}
                                 </h4>
 
@@ -635,7 +635,7 @@ export const AdminTestsPage: React.FC = () => {
                                     onClick={() =>
                                       setActiveMenuId(activeMenuId === test.id ? null : test.id)
                                     }
-                                    className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                                    className="w-11 h-11 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors border border-neutral-200 dark:border-neutral-700 cursor-pointer"
                                     aria-label="Test options"
                                   >
                                     <MoreVertical className="w-4 h-4" />
@@ -811,7 +811,7 @@ export const AdminTestsPage: React.FC = () => {
                             <div
                               key={test.id}
                               onClick={() => setSelectedWrittenTestId(test.id)}
-                              className={`bg-white dark:bg-neutral-900 rounded-xl border transition-all p-4 cursor-pointer text-left flex flex-col justify-between space-y-3 ${
+                              className={`w-full bg-white dark:bg-neutral-900 rounded-xl border transition-all p-4 cursor-pointer text-left flex flex-col justify-between space-y-3 ${
                                 isSelected
                                   ? 'border-neutral-900 dark:border-amber-400 ring-2 ring-neutral-900/10 dark:ring-amber-400/20 shadow-sm'
                                   : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-2xs'
@@ -819,7 +819,7 @@ export const AdminTestsPage: React.FC = () => {
                             >
                               <div className="space-y-2">
                                 <div className="flex items-start justify-between gap-2">
-                                  <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 line-clamp-1 flex-1">
+                                  <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 line-clamp-2 leading-snug break-words flex-1">
                                     {test.title}
                                   </h4>
 
@@ -832,7 +832,7 @@ export const AdminTestsPage: React.FC = () => {
                                       onClick={() =>
                                         setActiveMenuId(activeMenuId === test.id ? null : test.id)
                                       }
-                                      className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                                      className="w-11 h-11 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors border border-neutral-200 dark:border-neutral-700 cursor-pointer"
                                       aria-label="Test options"
                                     >
                                       <MoreVertical className="w-4 h-4" />

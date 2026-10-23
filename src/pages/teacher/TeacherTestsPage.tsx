@@ -150,7 +150,8 @@ export const TeacherTestsPage: React.FC = () => {
 
   return (
     <TeacherShell>
-      {/* Header */}
+      <div className="pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-12 space-y-6">
+        {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-black text-[#111111] dark:text-zinc-100 tracking-tight">Testing Center</h1>
@@ -227,30 +228,31 @@ export const TeacherTestsPage: React.FC = () => {
       ) : (
         <>
           {/* Filter & Search Bar */}
-          <div className="flex flex-col lg:flex-row gap-3 items-stretch justify-between mb-6 bg-white p-4 border border-[#E5E5E5] rounded-2xl shadow-xs">
-            <div className="relative flex-1">
+          {/* Filter & Search Bar */}
+          <div className="flex flex-col lg:flex-row gap-3 items-stretch justify-between mb-6 bg-white dark:bg-neutral-900 p-4 border border-[#E5E5E5] dark:border-neutral-800 rounded-2xl shadow-xs">
+            <div className="relative flex-1 min-w-0">
               <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A3A3A3]" />
               <input
                 type="text"
                 placeholder="Search tests by title or chapter..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
+                className="w-full h-11 pl-9 pr-3 rounded-xl border border-[#E5E5E5] dark:border-neutral-700 bg-[#FAFAFA] dark:bg-neutral-800 text-xs font-semibold text-[#111111] dark:text-neutral-100 focus:outline-hidden focus:ring-1 focus:ring-[#111111]"
               />
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap max-w-full min-w-0">
               {/* Grade Selector */}
-              <div className="flex items-center gap-1 bg-[#FAFAFA] p-1 rounded-xl border border-[#E5E5E5]">
-                <span className="text-[11px] font-bold text-[#737373] px-2">Grade:</span>
+              <div className="flex items-center gap-1 bg-[#FAFAFA] dark:bg-neutral-800 p-1 rounded-xl border border-[#E5E5E5] dark:border-neutral-700 overflow-x-auto no-scrollbar hide-scrollbar snap-x snap-mandatory scroll-smooth w-full sm:w-auto max-w-full pr-4 sm:pr-1 min-w-0">
+                <span className="text-[11px] font-bold text-[#737373] dark:text-neutral-400 px-2 shrink-0">Grade:</span>
                 {['all', '9', '10', '11', '12'].map((g) => (
                   <button
                     key={g}
                     onClick={() => setGradeFilter(g)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`min-h-[38px] px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 snap-start cursor-pointer ${
                       gradeFilter === g
-                        ? 'bg-[#111111] text-white shadow-xs'
-                        : 'text-[#525252] hover:text-[#111111]'
+                        ? 'bg-[#111111] dark:bg-amber-400 text-white dark:text-neutral-950 shadow-xs'
+                        : 'text-[#525252] dark:text-neutral-400 hover:text-[#111111] dark:hover:text-neutral-100'
                     }`}
                   >
                     {g === 'all' ? 'All' : g}
@@ -262,7 +264,7 @@ export const TeacherTestsPage: React.FC = () => {
               <select
                 value={subjectFilter}
                 onChange={(e) => setSubjectFilter(e.target.value)}
-                className="h-9 px-3 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-xs font-semibold text-[#111111] focus:outline-hidden"
+                className="h-11 px-3 rounded-xl border border-[#E5E5E5] dark:border-neutral-700 bg-[#FAFAFA] dark:bg-neutral-800 text-xs font-semibold text-[#111111] dark:text-neutral-100 focus:outline-hidden shrink-0 cursor-pointer"
               >
                 <option value="all">All Subjects</option>
                 {distinctSubjects.map((sub) => (
@@ -279,9 +281,9 @@ export const TeacherTestsPage: React.FC = () => {
             {/* Left Column: Test Papers (5 Cols) */}
             <div className="lg:col-span-6 xl:col-span-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-[#111111] flex items-center gap-2">
+                <h3 className="text-sm font-extrabold text-[#111111] dark:text-neutral-100 flex items-center gap-2">
                   <span>Assigned Class Tests</span>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#737373]">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F5F5F5] dark:bg-neutral-800 text-[#737373] dark:text-neutral-300">
                     {filteredTests.length}
                   </span>
                 </h3>
@@ -290,21 +292,21 @@ export const TeacherTestsPage: React.FC = () => {
               {loading && tests.length === 0 ? (
                 <div className="space-y-3 animate-pulse">
                   {[1, 2, 3].map((n) => (
-                    <div key={n} className="bg-white rounded-2xl border border-[#E5E5E5] p-5 h-36" />
+                    <div key={n} className="bg-white dark:bg-neutral-900 rounded-2xl border border-[#E5E5E5] dark:border-neutral-800 p-5 h-36" />
                   ))}
                 </div>
               ) : filteredTests.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#E5E5E5] p-8 text-center shadow-xs">
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-[#E5E5E5] dark:border-neutral-800 p-8 text-center shadow-xs">
                   <BookOpen size={36} className="mx-auto mb-2 text-[#A3A3A3]" />
-                  <p className="text-sm font-bold text-[#111111]">No class tests found</p>
-                  <p className="text-xs text-[#737373] mt-1">
+                  <p className="text-sm font-bold text-[#111111] dark:text-neutral-100">No class tests found</p>
+                  <p className="text-xs text-[#737373] dark:text-neutral-400 mt-1">
                     {searchTerm || gradeFilter !== 'all' || subjectFilter !== 'all'
                       ? 'Try clearing active filters to see more tests.'
                       : 'No class tests have been assigned to your subject roster yet. Tests uploaded and assigned by Admin will appear here.'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+                <div className="space-y-3 w-full">
                   {filteredTests.map((test) => (
                     <TeacherTestCard
                       key={test.id}
@@ -340,6 +342,7 @@ export const TeacherTestsPage: React.FC = () => {
           setViewingSubmission(null);
         }}
       />
+      </div>
     </TeacherShell>
   );
 };

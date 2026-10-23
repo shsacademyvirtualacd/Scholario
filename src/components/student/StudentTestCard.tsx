@@ -102,7 +102,7 @@ export const StudentTestCard: React.FC<StudentTestCardProps> = ({
   return (
     <div
       onClick={() => onSelect(test)}
-      className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between gap-3 shadow-2xs ${
+      className={`w-full p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between gap-3 shadow-2xs ${
         isSelected
           ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/20'
           : 'bg-white dark:bg-neutral-900 border-neutral-200/90 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
