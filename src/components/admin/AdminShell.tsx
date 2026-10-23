@@ -20,6 +20,7 @@ import {
   PanelLeft,
   ChevronDown,
   ChevronRight,
+  Smartphone,
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -87,6 +88,12 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: Sparkles, label: 'Sage', path: '/admin/sage' },
       { icon: DollarSign, label: 'Prices', path: '/admin/prices' },
       { icon: Coins, label: 'Fees', path: '/admin/fees' },
+    ],
+  },
+  {
+    title: 'App',
+    items: [
+      { icon: Smartphone, label: 'Android App', path: '/admin/android-app' },
     ],
   },
 ];

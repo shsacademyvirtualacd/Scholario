@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,6 +11,8 @@ import {
   Sparkles,
   PanelLeftClose,
   PanelLeft,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -25,15 +27,42 @@ interface TeacherShellProps {
   children: React.ReactNode;
 }
 
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',     path: '/teacher' },
-  { icon: MessageSquare,   label: 'Chat',          path: '/teacher/chat' },
-  { icon: ClipboardCheck,  label: 'Attendance',    path: '/teacher/attendance' },
-  { icon: BookMarked,      label: 'Notes Manager', path: '/teacher/notes' },
-  { icon: FileCheck2,      label: 'Testing Center', path: '/teacher/tests' },
-  { icon: Calendar,        label: 'Schedule',      path: '/teacher/schedule' },
-  { icon: Bell,            label: 'Announcements', path: '/teacher/announcements' },
-  { icon: Sparkles,        label: 'Sage',          path: '/teacher/sage' },
+interface NavItem {
+  icon: any;
+  label: string;
+  path: string;
+  disabled?: boolean;
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'Overview',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/teacher' },
+      { icon: MessageSquare, label: 'Chat', path: '/teacher/chat' },
+      { icon: Bell, label: 'Announcements', path: '/teacher/announcements' },
+    ],
+  },
+  {
+    title: 'People & Scheduling',
+    items: [
+      { icon: ClipboardCheck, label: 'Attendance', path: '/teacher/attendance' },
+      { icon: Calendar, label: 'Schedule', path: '/teacher/schedule' },
+    ],
+  },
+  {
+    title: 'Academics',
+    items: [
+      { icon: BookMarked, label: 'Notes Manager', path: '/teacher/notes' },
+      { icon: FileCheck2, label: 'Testing Center', path: '/teacher/tests' },
+      { icon: Sparkles, label: 'Sage', path: '/teacher/sage' },
+    ],
+  },
 ];
 
 export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
@@ -51,20 +80,45 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
     isExpandedOrOpen,
   } = useSidebarNav('teacher');
 
-  const [searchOpen, setSearchOpen] = React.useState(false);
-  const [isSigningOut, setIsSigningOut] = React.useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const drawerNavGroups = useMemo(() => [
-    {
-      title: 'ACADEMICS & TEACHING',
-      items: NAV_ITEMS.map((item) => ({
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('scholario_teacher_collapsed_groups');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleGroup = (title: string) => {
+    setCollapsedGroups((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      try {
+        localStorage.setItem('scholario_teacher_collapsed_groups', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const drawerNavGroups = useMemo(() => {
+    return NAV_GROUPS.map((group) => ({
+      title: group.title,
+      items: group.items.map((item) => ({
         icon: item.icon,
         label: item.label,
         path: item.path,
-        badge: item.path === '/teacher/chat' && unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+        disabled: item.disabled,
+        badge:
+          item.path === '/teacher/chat' && unreadCount > 0
+            ? unreadCount > 99
+              ? '99+'
+              : unreadCount
+            : undefined,
       })),
-    },
-  ], [unreadCount]);
+    }));
+  }, [unreadCount]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -137,47 +191,74 @@ export const TeacherShell: React.FC<TeacherShellProps> = ({ children }) => {
           <span className="badge badge-gold text-xs px-3.5 py-1 font-bold tracking-wide">🎓 Teacher Portal</span>
         </div>
 
-        {/* Navigation (Independent scrolling) */}
-        <nav className="flex-1 overflow-y-auto p-2.5 space-y-1 custom-scrollbar min-h-0">
-          {NAV_ITEMS.map(({ icon: Icon, label, path }) => {
-            const isActive = isPathActive(path);
-            const isChat = path === '/teacher/chat';
+        {/* Navigation (Independent scrolling with collapsible section headers) */}
+        <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 custom-scrollbar min-h-0">
+          {NAV_GROUPS.map((group, groupIdx) => {
+            const hasActiveChild = group.items.some((item) => !item.disabled && isPathActive(item.path));
+            const isCollapsed = !hasActiveChild && Boolean(collapsedGroups[group.title]);
 
             return (
-              <button
-                key={path}
-                type="button"
-                onClick={() => handleNav(path)}
-                title={label}
-                aria-label={label}
-                className={`w-full flex items-center rounded-xl font-semibold transition-all relative group cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
-                  isRailCollapsed
-                    ? 'min-h-[44px] justify-center p-2.5 text-xs'
-                    : 'min-h-[44px] justify-between px-3 py-2.5 text-xs'
-                } ${
-                  isActive
-                    ? 'bg-[rgba(242,194,48,0.14)] text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#F2C230] before:rounded-r'
-                    : 'text-neutral-400 hover:text-white hover:bg-neutral-800/70'
-                }`}
-              >
-                <div className={`flex items-center gap-3 min-w-0 ${isRailCollapsed ? 'justify-center' : ''}`}>
-                  <Icon
-                    size={19}
-                    className={`shrink-0 transition-colors ${
-                      isActive ? 'text-[#F4C430]' : 'text-neutral-400 group-hover:text-white'
-                    }`}
-                  />
-                  <span className={`truncate ${isRailCollapsed ? 'hidden' : 'inline'}`}>{label}</span>
-                </div>
+              <div key={groupIdx} className="space-y-1">
+                {/* Group Heading (only in expanded desktop mode) */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.title)}
+                  className={`w-full ${isRailCollapsed ? 'hidden' : 'flex'} items-center justify-between px-3 pt-1.5 pb-1 text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white transition-colors cursor-pointer`}
+                >
+                  <span>{group.title}</span>
+                  <div className={`transition-transform duration-200 ${isCollapsed ? '' : 'rotate-0'}`}>
+                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                </button>
 
-                {isChat && unreadCount > 0 && (
-                  <span className={`shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none shadow-xs animate-pulse ${
-                    isRailCollapsed ? 'hidden' : 'inline-block'
-                  }`}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
+                {/* Group Nav Items */}
+                {!isCollapsed && (
+                  <div className="space-y-0.5">
+                    {group.items.map(({ icon: Icon, label, path, disabled }) => {
+                      const isActive = !disabled && isPathActive(path);
+                      const isChat = path === '/teacher/chat';
+
+                      return (
+                        <button
+                          key={path}
+                          type="button"
+                          onClick={() => !disabled && handleNav(path)}
+                          disabled={disabled}
+                          title={label}
+                          aria-label={label}
+                          className={`w-full flex items-center rounded-xl font-semibold transition-all relative group cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230] ${
+                            isRailCollapsed
+                              ? 'min-h-[44px] justify-center p-2.5 text-xs'
+                              : 'min-h-[44px] justify-between px-3 py-2.5 text-xs'
+                          } ${
+                            isActive
+                              ? 'bg-[rgba(242,194,48,0.14)] text-white font-bold before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#F2C230] before:rounded-r'
+                              : 'text-neutral-400 hover:text-white hover:bg-neutral-800/70'
+                          }`}
+                        >
+                          <div className={`flex items-center gap-3 min-w-0 ${isRailCollapsed ? 'justify-center' : ''}`}>
+                            <Icon
+                              size={19}
+                              className={`shrink-0 transition-colors ${
+                                isActive ? 'text-[#F4C430]' : 'text-neutral-400 group-hover:text-white'
+                              }`}
+                            />
+                            <span className={`truncate ${isRailCollapsed ? 'hidden' : 'inline'}`}>{label}</span>
+                          </div>
+
+                          {isChat && unreadCount > 0 && (
+                            <span className={`shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full bg-[#F4C430] text-[#111111] leading-none shadow-xs ${
+                              isRailCollapsed ? 'hidden' : 'inline-block'
+                            }`}>
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </nav>

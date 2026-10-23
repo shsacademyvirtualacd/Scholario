@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ZoomIn, ZoomOut, RotateCcw, Download, FileText, ExternalLink, Maximize2 } from 'lucide-react';
+import PdfViewer from '../ui/PdfViewer';
 
 export interface ReceiptViewerData {
   url: string;
@@ -158,11 +159,11 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({ data, on
         }`}
       >
         {isPdf ? (
-          <div className="w-full h-full max-w-5xl bg-white rounded-2xl overflow-hidden flex flex-col shadow-2xl">
-            <iframe
-              src={`${data.url}#toolbar=1`}
-              title="Receipt Document PDF"
-              className="w-full flex-1 border-0"
+          <div className="w-full h-full max-w-5xl bg-white dark:bg-[#151518] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+            <PdfViewer
+              fileUrl={data.url}
+              downloadFileName={data.filename || `Receipt_${data.studentName}.pdf`}
+              title="Receipt Document"
             />
           </div>
         ) : (

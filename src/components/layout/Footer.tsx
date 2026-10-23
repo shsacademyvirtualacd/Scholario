@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AboutModal } from '../ui/AboutModal';
 import { ContactModal } from '../ui/ContactModal';
+import { useLatestApk } from '../../hooks/useLatestApk';
 
 const SocialIcon: React.FC<{ name: string }> = ({ name }) => {
   const icons: Record<string, React.ReactNode> = {
@@ -28,6 +29,7 @@ interface FooterProps {
 const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const { apkInfo, isIos } = useLatestApk();
 
   const handleOpenAbout = () => {
     if (onOpenAbout) {
@@ -137,6 +139,25 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout, onOpenContact }) => {
                     Contact
                   </button>
                 </li>
+                {apkInfo && apkInfo.url && (
+                  <li>
+                    {isIos ? (
+                      <span className="text-base sm:text-lg font-bold text-black/60 inline-block py-1 select-none">
+                        Android only
+                      </span>
+                    ) : (
+                      <a
+                        id="footer-download-app-link"
+                        href={apkInfo.url}
+                        download={apkInfo.fileName || `scholario-${apkInfo.version}.apk`}
+                        className="text-base sm:text-lg font-bold text-[#111111] hover:text-black/70 transition-colors inline-block py-1"
+                        title={`Download Scholario Android APK (v${apkInfo.version})`}
+                      >
+                        Download App
+                      </a>
+                    )}
+                  </li>
+                )}
               </ul>
             </div>
 

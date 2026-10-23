@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Loader2
 } from 'lucide-react';
+import PdfViewer from '../ui/PdfViewer';
 
 export interface MarksheetInspectorData {
   applicant_name: string;
@@ -388,14 +389,10 @@ export const MarksheetInspectorModal: React.FC<MarksheetInspectorModalProps> = (
           {/* PDF Viewport */}
           {!isLoading && !hasError && fileMeta.type === 'pdf' && safeBlobUrl && (
             <div className="w-full h-full min-h-[550px] flex flex-col items-center justify-center bg-zinc-950 rounded-xl overflow-hidden border border-zinc-800">
-              <iframe
-                src={`${safeBlobUrl}#toolbar=1&navpanes=0`}
-                title="Marksheet PDF Preview"
-                className="w-full h-[65vh] border-0 rounded-xl"
-                onError={() => {
-                  setHasError(true);
-                  setErrorMessage('Embedded PDF preview blocked by browser policy. Please use the Download or New Tab button.');
-                }}
+              <PdfViewer
+                fileUrl={safeBlobUrl}
+                downloadFileName={`Marksheet_${data?.applicant_name || 'applicant'}.pdf`}
+                title="Marksheet PDF Document"
               />
             </div>
           )}

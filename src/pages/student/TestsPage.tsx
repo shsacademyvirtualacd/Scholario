@@ -25,6 +25,7 @@ import { StudentListSkeleton } from '../../components/student/shared/StudentSkel
 import StudentTestCard from '../../components/student/StudentTestCard';
 import StudentSubmissionPanel from '../../components/student/StudentSubmissionPanel';
 import TestViewerModal from '../../components/common/TestViewerModal';
+import PdfViewer from '../../components/ui/PdfViewer';
 import ProctoredMCQAccessModal from '../../components/student/ProctoredMCQAccessModal';
 import { ProctoredMCQExamModal } from '../../components/student/ProctoredMCQExamModal';
 import ProctoredMCQResultModal from '../../components/student/ProctoredMCQResultModal';
@@ -549,11 +550,23 @@ export const TestsPage: React.FC = () => {
               )}
             </div>
             {viewingSubmission.file_url ? (
-              <iframe
-                src={viewingSubmission.file_url}
-                title="Submitted Answer Sheet Preview"
-                className="w-full h-[60vh] rounded-xl border border-neutral-200 dark:border-neutral-800"
-              />
+              viewingSubmission.file_type === 'image' || viewingSubmission.file_url.match(/\.(jpeg|jpg|png|webp|gif)/i) ? (
+                <div className="w-full flex items-center justify-center p-3 bg-neutral-100 dark:bg-neutral-900 rounded-xl">
+                  <img
+                    src={viewingSubmission.file_url}
+                    alt="Submitted Answer Sheet"
+                    className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-[65vh] rounded-xl overflow-hidden">
+                  <PdfViewer
+                    fileUrl={viewingSubmission.file_url}
+                    downloadFileName={`AnswerSheet_${viewingSubmission.id || 'submission'}.pdf`}
+                    title="Submitted Answer Sheet"
+                  />
+                </div>
+              )
             ) : (
               <p className="text-xs text-neutral-500 py-8 text-center">
                 Answer sheet preview is unavailable.

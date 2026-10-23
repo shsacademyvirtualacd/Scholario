@@ -96,6 +96,11 @@ const upload = multer({
   limits: { fileSize: 30 * 1024 * 1024 }, // 30 MB
 });
 
+const apkUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 150 * 1024 * 1024 }, // 150 MB for Android APK builds
+});
+
 // In-memory buffer store for dev server local previewing
 const fileStorage = new Map<string, { buffer: Buffer; mimeType: string; filename: string }>();
 const proctoredMcqTests = new Map<string, any>();
@@ -2350,10 +2355,14 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   // ── Tests View ──────────────────────────────────────
   app.get('/api/tests/view/:testId', async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Disposition, Content-Type, Accept-Ranges');
     const { testId } = req.params;
     const stored = fileStorage.get(testId);
     if (stored) {
-      res.setHeader('Content-Type', stored.mimeType);
+      res.setHeader('Content-Type', stored.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${stored.filename || 'test_paper.pdf'}"`);
       res.setHeader('Content-Length', stored.buffer.length);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(stored.buffer);
@@ -2364,6 +2373,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     if (fs.existsSync(samplePdfPath)) {
       const buf = fs.readFileSync(samplePdfPath);
       res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline; filename="test_paper.pdf"');
       res.setHeader('Content-Length', buf.length);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(buf);
@@ -3135,10 +3145,14 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   // ── Submissions View ────────────────────────────────
   app.get('/api/submissions/view/:submissionId', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Disposition, Content-Type, Accept-Ranges');
     const { submissionId } = req.params;
     const stored = fileStorage.get(submissionId);
     if (stored) {
-      res.setHeader('Content-Type', stored.mimeType);
+      res.setHeader('Content-Type', stored.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${stored.filename || 'submission.pdf'}"`);
       res.setHeader('Content-Length', stored.buffer.length);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(stored.buffer);
@@ -3148,6 +3162,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     if (fs.existsSync(samplePdfPath)) {
       const buf = fs.readFileSync(samplePdfPath);
       res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline; filename="submission.pdf"');
       res.setHeader('Content-Length', buf.length);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(buf);
@@ -3311,10 +3326,14 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
 
   // ── Notes View ──────────────────────────────────────
   app.get('/api/notes/view/:noteId', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Disposition, Content-Type, Accept-Ranges');
     const { noteId } = req.params;
     const stored = fileStorage.get(noteId);
     if (stored) {
-      res.setHeader('Content-Type', stored.mimeType);
+      res.setHeader('Content-Type', stored.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${stored.filename || 'note.pdf'}"`);
       res.setHeader('Content-Length', stored.buffer.length);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(stored.buffer);
@@ -3324,6 +3343,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     if (fs.existsSync(samplePdfPath)) {
       const buf = fs.readFileSync(samplePdfPath);
       res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline; filename="note.pdf"');
       res.setHeader('Content-Length', buf.length);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(buf);
@@ -3448,9 +3468,13 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     }
 
     const { testId } = req.params;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Disposition, Content-Type, Accept-Ranges');
     const stored = fileStorage.get(`ak_${testId}`);
     if (stored) {
       res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="answer_key_${testId}.pdf"`);
       res.setHeader('Content-Length', stored.buffer.length);
       res.setHeader('Accept-Ranges', 'bytes');
       return res.send(stored.buffer);
@@ -5477,12 +5501,224 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
     });
   }, 3 * 60 * 1000);
 
-  // ── Background Server-Side Cron: Teacher Reminders (Every 60s) ──
-  setInterval(() => {
-    checkAndSendTeacherPushReminders(supabaseServer).catch((cronErr) => {
-      console.warn('[ServerPush] Background teacher reminder check error:', cronErr);
-    });
-  }, 60 * 1000);
+  // ── Android APK Release Management & Distribution ──
+  app.post('/api/admin/apk/upload', apkUpload.single('file'), async (req, res) => {
+    try {
+      // 1. Authenticate caller as Admin
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid authentication token' });
+      }
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+      const { data: { user }, error: userError } = await supabaseServer.auth.getUser(token);
+      if (userError || !user) {
+        return res.status(401).json({ error: 'Invalid or expired authentication session' });
+      }
+
+      // Check role
+      const userRole = user.user_metadata?.role || (user as any).role;
+      let isAdmin = userRole === 'admin' || userRole === 'super_admin';
+      if (!isAdmin) {
+        const { data: profile } = await supabaseServer
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profile?.role === 'admin' || profile?.role === 'super_admin') {
+          isAdmin = true;
+        }
+      }
+
+      if (!isAdmin) {
+        return res.status(403).json({ error: 'Permission denied: Administrator role required to publish APK releases' });
+      }
+
+      // 2. Validate uploaded file
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'No APK file was uploaded' });
+      }
+
+      if (!file.originalname.toLowerCase().endsWith('.apk')) {
+        return res.status(400).json({ error: 'Invalid file format. Only .apk files are accepted' });
+      }
+
+      if (file.size > 150 * 1024 * 1024) {
+        return res.status(400).json({ error: 'File size exceeds maximum allowed limit of 150 MB' });
+      }
+
+      const version = ((req.body.version as string) || '').trim();
+      const notes = ((req.body.notes as string) || '').trim();
+      if (!version) {
+        return res.status(400).json({ error: 'Version name is required (e.g. 1.0.3)' });
+      }
+
+      const cleanVersion = version.replace(/^v/i, '');
+      const apkFileName = `scholario-${cleanVersion}.apk`;
+      const sizeBytes = file.size;
+      const formattedSize = sizeBytes < 1024 * 1024
+        ? `${(sizeBytes / 1024).toFixed(1)} KB`
+        : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+      const todayDate = new Date().toISOString().split('T')[0];
+
+      // Custom domain or fallback to relative/files.scholario.app
+      const publicBaseDomain = (process.env.APK_PUBLIC_DOMAIN || process.env.VITE_APK_PUBLIC_DOMAIN || 'https://files.scholario.app').replace(/\/+$/, '');
+      const downloadUrl = `${publicBaseDomain}/apk/${apkFileName}`;
+
+      const manifest = {
+        version: cleanVersion,
+        fileName: apkFileName,
+        url: downloadUrl,
+        size: formattedSize,
+        sizeBytes: sizeBytes,
+        date: todayDate,
+        notes: notes || 'Performance improvements and bug fixes.',
+      };
+
+      // 3. Upload to Cloudflare R2 if configured
+      const s3Client = getR2Client();
+      const r2ApkBucket = process.env.R2_APK_BUCKET || 'scholario-apk';
+
+      if (s3Client) {
+        try {
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: r2ApkBucket,
+              Key: `apk/${apkFileName}`,
+              Body: file.buffer,
+              ContentType: 'application/vnd.android.package-archive',
+              ContentDisposition: `attachment; filename="${apkFileName}"`,
+              Metadata: {
+                version: cleanVersion,
+                uploadedAt: new Date().toISOString(),
+              },
+            })
+          );
+
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: r2ApkBucket,
+              Key: 'apk/latest.json',
+              Body: Buffer.from(JSON.stringify(manifest, null, 2)),
+              ContentType: 'application/json',
+              CacheControl: 'public, max-age=60',
+            })
+          );
+          console.log(`[R2 Storage] APK ${apkFileName} published to bucket ${r2ApkBucket}`);
+        } catch (r2Err) {
+          console.warn('[R2 Storage Warning] Failed to upload to remote R2 bucket, falling back to local store:', r2Err);
+        }
+      }
+
+      // 4. Also store locally in public/apk for instant zero-config availability
+      try {
+        const publicApkDir = path.join(process.cwd(), 'public', 'apk');
+        fs.mkdirSync(publicApkDir, { recursive: true });
+        fs.writeFileSync(path.join(publicApkDir, 'latest.json'), JSON.stringify(manifest, null, 2));
+        fs.writeFileSync(path.join(publicApkDir, apkFileName), file.buffer);
+      } catch (localWriteErr) {
+        console.warn('[Local APK Cache Warning]:', localWriteErr);
+      }
+
+      // 5. Store in memory map
+      fileStorage.set(`apk_${apkFileName}`, {
+        buffer: file.buffer,
+        mimeType: 'application/vnd.android.package-archive',
+        filename: apkFileName,
+      });
+
+      return res.json({
+        success: true,
+        message: `Scholario v${cleanVersion} uploaded and published successfully!`,
+        manifest,
+      });
+    } catch (err: any) {
+      console.error('[APK Upload Route Error]:', err);
+      return res.status(500).json({ error: err.message || 'Failed to process APK upload' });
+    }
+  });
+
+  // GET /apk/latest.json (Served with CORS headers & short cache control)
+  app.get(['/apk/latest.json', '/api/apk/latest'], async (_req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.setHeader('Content-Type', 'application/json');
+
+    const localManifestPath = path.join(process.cwd(), 'public', 'apk', 'latest.json');
+    if (fs.existsSync(localManifestPath)) {
+      try {
+        const content = fs.readFileSync(localManifestPath, 'utf-8');
+        return res.send(content);
+      } catch {}
+    }
+
+    // Try fetching from R2
+    const s3Client = getR2Client();
+    const r2ApkBucket = process.env.R2_APK_BUCKET || 'scholario-apk';
+    if (s3Client) {
+      try {
+        const r2Res = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: r2ApkBucket,
+            Key: 'apk/latest.json',
+          })
+        );
+        if (r2Res.Body) {
+          const bodyStr = await r2Res.Body.transformToString();
+          return res.send(bodyStr);
+        }
+      } catch {}
+    }
+
+    return res.status(404).json({ error: 'No APK release published yet' });
+  });
+
+  // GET /apk/:filename (Direct binary download with attachment headers)
+  app.get('/apk/:filename', async (req, res) => {
+    const { filename } = req.params;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Check memory store
+    const stored = fileStorage.get(`apk_${filename}`);
+    if (stored) {
+      res.setHeader('Content-Length', stored.buffer.length);
+      return res.send(stored.buffer);
+    }
+
+    // Check public/apk folder
+    const localFilePath = path.join(process.cwd(), 'public', 'apk', filename);
+    if (fs.existsSync(localFilePath)) {
+      const buf = fs.readFileSync(localFilePath);
+      res.setHeader('Content-Length', buf.length);
+      return res.send(buf);
+    }
+
+    // Check R2
+    const s3Client = getR2Client();
+    const r2ApkBucket = process.env.R2_APK_BUCKET || 'scholario-apk';
+    if (s3Client) {
+      try {
+        const r2Res = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: r2ApkBucket,
+            Key: `apk/${filename}`,
+          })
+        );
+        if (r2Res.Body) {
+          const buf = Buffer.from(await r2Res.Body.transformToByteArray());
+          res.setHeader('Content-Length', buf.length);
+          return res.send(buf);
+        }
+      } catch {}
+    }
+
+    return res.status(404).send('APK file not found');
+  });
 
   // Vite middleware for dev or static serving for production
   const isCjsBundle = typeof __filename !== 'undefined' && __filename.endsWith('.cjs');

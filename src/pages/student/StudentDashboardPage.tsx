@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import StudentShell from '../../components/student/StudentShell';
 import { SectionErrorBoundary } from '../../components/common/ErrorBoundary';
+import StudentAndroidAppCard from '../../components/common/StudentAndroidAppCard';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   getSlotsForStudent,
@@ -579,6 +580,9 @@ export const StudentDashboardPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Android App Download Card */}
+            <StudentAndroidAppCard />
 
             {/* Notes Library Preview (Shown ONLY if notes exist) */}
             {recentNotes.length > 0 && (

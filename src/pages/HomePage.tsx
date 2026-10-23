@@ -1,5 +1,6 @@
 import React from 'react';
 import HeroSection from '../components/home/HeroSection';
+import LandingAndroidPromoCard from '../components/home/LandingAndroidPromoCard';
 import FeaturesSection from '../components/home/FeaturesSection';
 import HowItWorksSection from '../components/home/HowItWorksSection';
 import ComparisonSection from '../components/home/ComparisonSection';
@@ -14,6 +15,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   return (
     <main>
       <HeroSection onNavigate={onNavigate} />
+      <LandingAndroidPromoCard />
       <FeaturesSection />
       <HowItWorksSection onNavigate={onNavigate} />
       <ComparisonSection />

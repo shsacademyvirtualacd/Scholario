@@ -82,6 +82,7 @@ const PriceManagerPage     = lazyWithRetry(() => import('../pages/admin/PriceMan
 const RosterManagerPage    = lazyWithRetry(() => import('../pages/admin/RosterManagerPage'), 'RosterManagerPage');
 const AdminChatPage        = lazyWithRetry(() => import('../pages/admin/AdminChatPage'), 'AdminChatPage');
 const AdminVisibilityRequestsPage = lazyWithRetry(() => import('../pages/admin/AdminVisibilityRequestsPage'), 'AdminVisibilityRequestsPage');
+const AdminAndroidAppPage  = lazyWithRetry(() => import('../pages/admin/AdminAndroidAppPage'), 'AdminAndroidAppPage');
 
 // ─── Page loader ────────────────────────────
 const PageLoader: React.FC = () => {
@@ -286,6 +287,10 @@ const AppRouter: React.FC = () => (
           <Route
             path="/admin/visibility-requests"
             element={<ProtectedRoute requiredRole="admin"><AdminVisibilityRequestsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/android-app"
+            element={<ProtectedRoute requiredRole="admin"><AdminAndroidAppPage /></ProtectedRoute>}
           />
 
           {/* Teacher Portal */}

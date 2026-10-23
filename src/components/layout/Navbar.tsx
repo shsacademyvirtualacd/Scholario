@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, LogIn, UserPlus, ExternalLink, Sun, Moon, Laptop } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, ExternalLink, Sun, Moon, Laptop, Download, Smartphone } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useTheme, ThemeMode } from '../../context/ThemeContext';
+import { useLatestApk } from '../../hooks/useLatestApk';
 import { isRedesignEnabled } from '../../lib/featureFlags';
 import { NavbarOld } from './NavbarOld';
 import { AboutModal } from '../ui/AboutModal';
@@ -29,6 +30,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
 
   const { session, profile } = useAuth();
   const { themeMode, setThemeMode } = useTheme();
+  const { apkInfo, isIos } = useLatestApk();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -283,7 +285,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
               <div className="relative" ref={themeMenuRef}>
                 <button
                   type="button"
-                  onClick={() => setThemeDropdownOpen((p) => !p)}
+                  onClick={() => setThemeDropdownOpen((p: boolean) => !p)}
                   aria-label="Toggle theme mode"
                   className="w-9 h-9 rounded-full flex items-center justify-center text-[#111111] dark:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
                 >
@@ -320,6 +322,25 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 )}
               </div>
 
+              {/* Get the app outlined button on desktop (hidden if no apk metadata) */}
+              {apkInfo && apkInfo.url && (
+                isIos ? (
+                  <span className="hidden xl:inline-flex h-10 px-3.5 rounded-full border border-black/15 dark:border-white/15 text-xs font-bold text-neutral-400 items-center justify-center select-none">
+                    Android only
+                  </span>
+                ) : (
+                  <a
+                    href={apkInfo.url}
+                    download={apkInfo.fileName || `scholario-${apkInfo.version}.apk`}
+                    className="h-10 px-3.5 rounded-full border border-black/20 dark:border-white/20 hover:border-[#F2C230] dark:hover:border-[#F2C230] text-xs font-bold text-[#111111] dark:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+                    title={`Download Scholario App (v${apkInfo.version})`}
+                  >
+                    <Download size={14} className="text-[#8A6A00] dark:text-[#F2C230]" />
+                    <span>Get the app</span>
+                  </a>
+                )
+              )}
+
               {/* Sign in outlined pill */}
               <button
                 type="button"
@@ -345,7 +366,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 type="button"
                 aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((prev) => !prev)}
+                onClick={() => setMenuOpen((prev: boolean) => !prev)}
                 className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-[#111111] dark:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.08] active:scale-90 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
               >
                 {menuOpen ? (
@@ -506,6 +527,34 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 <UserPlus size={18} className="text-[#111111]" />
                 <span className="text-[#111111]">Register &amp; Apply</span>
               </Link>
+
+              {/* Download App outlined pill (only if latest APK metadata is available) */}
+              {apkInfo && apkInfo.url && (
+                isIos ? (
+                  <div
+                    className="w-full h-12 min-h-[48px] rounded-full bg-transparent border border-black/[0.15] dark:border-[rgba(255,255,255,0.20)] text-neutral-400 dark:text-neutral-500 font-bold text-base flex items-center justify-center gap-2 select-none"
+                  >
+                    <Smartphone size={18} className="text-neutral-400" />
+                    <span>Android only</span>
+                  </div>
+                ) : (
+                  <a
+                    id="nav-download-app-btn"
+                    href={apkInfo.url}
+                    download={apkInfo.fileName || `scholario-${apkInfo.version}.apk`}
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full h-12 min-h-[48px] rounded-full bg-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.08] border border-black/[0.15] dark:border-[rgba(255,255,255,0.30)] text-[#111111] dark:text-white font-bold text-base active:scale-[0.99] transition-all flex items-center justify-between px-5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Download size={18} className="text-[#111111] dark:text-white" />
+                      <span>Download App</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#F2C230]/20 dark:bg-[#F2C230]/25 text-[#8A6A00] dark:text-[#F2C230]">
+                      v{apkInfo.version}
+                    </span>
+                  </a>
+                )
+              )}
 
               {/* WhatsApp Admissions link (green text stays ~90% in dark mode) */}
               <a
