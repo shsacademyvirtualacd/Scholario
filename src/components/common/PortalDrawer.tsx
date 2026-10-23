@@ -7,7 +7,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import Logo from '../ui/Logo';
-import ProfileAvatar from './ProfileAvatar';
 import type { Profile } from '../../types';
 
 export interface PortalNavItem {
@@ -41,7 +40,7 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
   isOpen,
   onClose,
   role,
-  profile,
+  profile: _profile,
   navGroups,
   onOpenSearch,
   activePath,
@@ -179,13 +178,6 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
     return currentPath.startsWith(path);
   };
 
-  const roleBadgeText =
-    role === 'admin'
-      ? 'Administrator'
-      : role === 'teacher'
-      ? 'Faculty Teacher'
-      : 'Student Portal';
-
   return (
     <>
       {/* ── Backdrop Overlay (Visible on phones & tablets, hidden on desktop lg:) ── */}
@@ -233,35 +225,15 @@ export const PortalDrawer: React.FC<PortalDrawerProps> = ({
           </button>
         </div>
 
-        {/* ── User Profile Card ── */}
-        <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-neutral-50/70 dark:bg-white/[0.02] shrink-0">
-          <div className="flex items-center gap-3">
-            <ProfileAvatar
-              avatarUrl={profile?.avatar_url}
-              name={profile?.full_name || roleBadgeText}
-              role={role}
-              size="md"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-neutral-900 dark:text-white truncate">
-                {profile?.full_name || 'Scholario User'}
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[11px] font-semibold text-[#8A6A00] dark:text-[#F2C230] bg-[rgba(242,194,48,0.16)] px-2 py-0.5 rounded-md leading-none">
-                  {roleBadgeText}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 48px In-Drawer Search Trigger Button */}
+        {/* ── Search Bar Trigger (Placed directly under Logo header with clean 12-16px spacing) ── */}
+        <div className="px-4 pb-3 pt-0 shrink-0">
           <button
             type="button"
             onClick={() => {
               onClose();
               onOpenSearch();
             }}
-            className="w-full h-12 mt-3 px-3.5 rounded-xl bg-neutral-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.10] flex items-center justify-between text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-white/[0.10] active:scale-[0.99] transition-all cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230]"
+            className="w-full h-12 px-3.5 rounded-xl bg-neutral-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.10] flex items-center justify-between text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-white/[0.10] active:scale-[0.99] transition-all cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F2C230]"
           >
             <div className="flex items-center gap-2.5">
               <Search size={16} className="text-neutral-400" />

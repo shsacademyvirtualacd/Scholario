@@ -25,6 +25,7 @@ import {
   getAllOfferings,
   getAllTeachers,
   upsertSlot,
+  upsertSlots,
   deleteSlot,
   deleteSlots,
   getTaxonomy,
@@ -494,29 +495,21 @@ export const ScheduleManagerPage: React.FC = () => {
   const handleSaveSlot = async (formData: any) => {
     const isEditMode = !isDuplicateMode && !!editingSlotId;
 
-    if (formData.days_of_week && formData.days_of_week.length > 0) {
-      for (const d of formData.days_of_week) {
-        const conflict = checkSlotConflict({ ...formData, day_of_week: d }, null);
-        if (conflict) {
-          setConflictData({ ...conflict, pendingFormData: { ...formData, day_of_week: d } });
-          return;
-        }
-      }
-    } else {
+    if (isEditMode) {
       const conflict = checkSlotConflict(formData, editingSlotId);
       if (conflict) {
         setConflictData(conflict);
         return;
       }
-    }
 
-    if (isEditMode && selectedSlot) {
-      const dayChanged = selectedSlot.day_of_week !== formData.day_of_week;
-      const timeChanged = selectedSlot.start_time !== formData.start_time;
-      if ((dayChanged || timeChanged) && !pendingMoveData) {
-        setPendingMoveData(formData);
-        setMoveModalOpen(true);
-        return;
+      if (selectedSlot) {
+        const dayChanged = selectedSlot.day_of_week !== formData.day_of_week;
+        const timeChanged = selectedSlot.start_time !== formData.start_time;
+        if ((dayChanged || timeChanged) && !pendingMoveData) {
+          setPendingMoveData(formData);
+          setMoveModalOpen(true);
+          return;
+        }
       }
     }
 
@@ -533,21 +526,20 @@ export const ScheduleManagerPage: React.FC = () => {
           ? formData.days_of_week
           : [formData.day_of_week];
 
-      if (targetDays.length > 1 || isDuplicateMode) {
-        for (const d of targetDays) {
-          await upsertSlot({
-            id: undefined,
-            offering_id: formData.offering_id || null,
-            custom_title: formData.custom_title || null,
-            class_id: formData.class_id || null,
-            stream_id: formData.stream_id || null,
-            day_of_week: d as any,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            room_or_link: formData.room_or_link !== undefined ? formData.room_or_link : null,
-            is_cancelled: false,
-          });
-        }
+      if (!isEditMode && targetDays.length > 0) {
+        // Single batch insert!
+        const slotsToUpsert = targetDays.map((d) => ({
+          offering_id: formData.offering_id || null,
+          custom_title: formData.custom_title || null,
+          class_id: formData.class_id || null,
+          stream_id: formData.stream_id || null,
+          day_of_week: d as any,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          room_or_link: formData.room_or_link !== undefined ? formData.room_or_link : null,
+          is_cancelled: false,
+        }));
+        await upsertSlots(slotsToUpsert);
       } else {
         await upsertSlot({
           id: targetSlotId,
@@ -566,13 +558,33 @@ export const ScheduleManagerPage: React.FC = () => {
         });
       }
 
-      await loadData();
+      if (formData.notify_affected) {
+        try {
+          const off = offerings.find((o) => o.id === formData.offering_id);
+          const sub = formData.custom_title || off?.subject_name || off?.subject?.name || 'Class';
+          await createAnnouncement({
+            title: `New Schedule: ${sub}`,
+            content: `A new class slot for ${sub} has been scheduled (${formatTime12h(formData.start_time)} – ${formatTime12h(formData.end_time)}).`,
+            priority: 'normal',
+            target_audience: 'students',
+          } as any);
+        } catch (annErr) {
+          console.warn('Could not post announcement for new schedule:', annErr);
+        }
+      }
+
+      await Promise.all([loadData(), fetchSessionLinks()]);
       setDrawerOpen(false);
       setSelectedSlot(null);
       setEditingSlotId(null);
       setIsDuplicateMode(false);
       setSourceDuplicateSlot(null);
-      toast.success(isEditMode ? 'Class slot updated.' : 'Class scheduled successfully.');
+      const count = targetDays.length;
+      toast.success(
+        isEditMode
+          ? 'Class slot updated.'
+          : `${count} class slot${count === 1 ? '' : 's'} added.`
+      );
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to save class slot.');

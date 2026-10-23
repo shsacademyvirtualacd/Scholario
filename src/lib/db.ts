@@ -637,6 +637,16 @@ export async function upsertSlot(slot: Partial<ClassSlot> & { offering_id?: stri
   return throwOnError(data, error, 'upsertSlot') as ClassSlot;
 }
 
+/** Admin: batch upsert multiple class slots in a single operation */
+export async function upsertSlots(slots: Array<Partial<ClassSlot> & { offering_id?: string | null; custom_title?: string | null; class_id?: string | null; stream_id?: string | null }>): Promise<ClassSlot[]> {
+  if (!slots.length) return [];
+  const { data, error } = await (supabase as any)
+    .from('class_slots')
+    .upsert(slots as any)
+    .select();
+  return throwOnError(data, error, 'upsertSlots') as ClassSlot[];
+}
+
 /** Admin: delete a slot */
 export async function deleteSlot(slotId: string): Promise<void> {
   const { error } = await (supabase as any).from('class_slots').delete().eq('id', slotId);
