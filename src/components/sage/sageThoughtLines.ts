@@ -1647,6 +1647,12 @@ export function detectThoughtCategory(rawText: string): ThoughtCategory {
 // Track last returned line per persona & category to ensure no repetition
 const lastUsedLine = new Map<string, string>();
 
+const STAR_CHAR_RE = /[\u2726\u2727\u2605\u2606\u2728\u2B50\u{1F31F}\u{1F4AB}\u22C6\u2729-\u2730][\uFE0E\uFE0F]?/gu;
+
+function stripStarChars(text: string): string {
+  return text.replace(STAR_CHAR_RE, '').replace(/\s{2,}/g, ' ').trim();
+}
+
 /**
  * Retrieves a non-repeating reaction line for the active character and category.
  */
@@ -1666,7 +1672,7 @@ export function getThoughtReactionLine(
       : pool[0];
 
   lastUsedLine.set(key, choice);
-  return choice;
+  return stripStarChars(choice);
 }
 
 /**
@@ -1688,7 +1694,7 @@ export function getThinkingThoughtLine(
       : pool[0];
 
   lastUsedLine.set(key, choice);
-  return choice;
+  return stripStarChars(choice);
 }
 
 /**
@@ -1707,7 +1713,7 @@ export function getCompletionThoughtLine(characterId: SageCharacterId): string {
       : pool[0];
 
   lastUsedLine.set(key, choice);
-  return choice;
+  return stripStarChars(choice);
 }
 
 /**
@@ -1726,5 +1732,5 @@ export function getIdleThoughtLine(characterId: SageCharacterId): string {
       : pool[0];
 
   lastUsedLine.set(key, choice);
-  return choice;
+  return stripStarChars(choice);
 }

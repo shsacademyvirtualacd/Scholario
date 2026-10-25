@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Sparkles, Brain, CheckCircle2, BookOpen, PenTool } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Lightbulb, Brain, CheckCircle2, BookOpen, PenTool } from 'lucide-react';
 import { SageCharacterId } from './useSageAvatarState';
 import { SAGE_THOUGHT_DATA } from './sageThoughtLines';
 
@@ -34,7 +34,7 @@ export const SageThoughtBubble: React.FC<SageThoughtBubbleProps> = ({
     : persona.role;
   const [visible, setVisible] = useState(false);
   const [displayText, setDisplayText] = useState('');
-  const [currentIcon, setCurrentIcon] = useState<'brain' | 'sparkle' | 'pen' | 'book' | 'check'>('sparkle');
+  const [currentIcon, setCurrentIcon] = useState<'brain' | 'idea' | 'pen' | 'book' | 'check'>('idea');
   const prefersReducedMotion =
     typeof window !== 'undefined' &&
     window.matchMedia &&
@@ -54,7 +54,7 @@ export const SageThoughtBubble: React.FC<SageThoughtBubbleProps> = ({
       } else if (mode === 'idle') {
         setCurrentIcon('book');
       } else {
-        setCurrentIcon('sparkle');
+        setCurrentIcon('idea');
       }
     } else {
       setVisible(false);
@@ -72,7 +72,7 @@ export const SageThoughtBubble: React.FC<SageThoughtBubbleProps> = ({
         borderColor: `${persona.accentColor}55`,
         boxShadow: `0 4px 16px -2px ${persona.accentColor}25, 0 1px 3px rgba(0,0,0,0.05)`,
       }}
-      className={`pointer-events-none select-none z-30 transition-all duration-300 ${
+      className={`sage-thought-bubble pointer-events-none select-none z-30 transition-all duration-300 ${
         visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
       } ${
         prefersReducedMotion ? '' : 'animate-in fade-in zoom-in-95 duration-200'
@@ -101,7 +101,7 @@ export const SageThoughtBubble: React.FC<SageThoughtBubbleProps> = ({
         ) : currentIcon === 'book' ? (
           <BookOpen size={11} />
         ) : (
-          <Sparkles size={11} />
+          <Lightbulb size={11} />
         )}
       </div>
 

@@ -36,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   Volume2,
+  VolumeX,
   Share2,
   MoreHorizontal,
   Menu,
@@ -45,7 +46,7 @@ import {
 import { toast } from 'sonner';
 import ConfirmModal from '../admin/ConfirmModal';
 import { useAuth } from '../../features/auth/AuthContext';
-import { SageAvatar, SageCharacterSvg } from './SageAvatar';
+import { SageAvatar } from './SageAvatar';
 import { SageEmotion, SAGE_EMOTIONS, detectSageEmotion } from './sageEmotion';
 import { getLastPageContext, PageContextInfo } from '../../lib/pageContext';
 import {
@@ -76,6 +77,8 @@ import {
   useSageAvatarController,
   SageAvatarStateProvider,
   SAGE_CHARACTERS,
+  SageCharacterId,
+  DEFAULT_SAGE_CHARACTER_ID,
 } from './useSageAvatarState';
 
 import { Sage3DAvatar } from './Sage3DAvatar';
@@ -784,7 +787,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             ? `Hello **${profile?.full_name || 'Professor'}**! I am **Sage**, your faculty assistant. Ask me for lesson preparation, quiz questions, syllabus breakdowns, voice notes, or export quizzes and notes directly into formatted printable PDFs!`
             : role === 'admin'
             ? `Greetings **${profile?.full_name || 'Administrator'}**! I am **Sage**, your administrative AI assistant with real-time live database access. Ask me about live student counts, board/grade distributions, faculty rosters, active offerings, test submissions, fee configurations, or drafting academic notices!`
-            : `Assalam-o-Alaikum **${profile?.full_name || 'Student'}**! 🌟 I'm **Sage**, your AI study companion for SHS Virtual Academy. Ask me anything about your FBISE subjects (Math, Physics, Chemistry, Biology, CS, English, Urdu, etc.), formula derivations, or note summaries!`,
+            : `Assalam-o-Alaikum **${profile?.full_name || 'Student'}**! I'm **Sage**, your AI study companion for SHS Virtual Academy. Ask me anything about your FBISE subjects (Math, Physics, Chemistry, Biology, CS, English, Urdu, etc.), formula derivations, or note summaries!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ];
@@ -812,11 +815,24 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('scholario_sage_voice_enabled_v1') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [hoveredPickerCardId, setHoveredPickerCardId] = useState<SageCharacterId | null>(null);
+  const [focusedPickerCardIdx, setFocusedPickerCardIdx] = useState<number>(-1);
+  const [previewingCardVoiceId, setPreviewingCardVoiceId] = useState<SageCharacterId | null>(null);
   const [headerVoices, setHeaderVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [ suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
+  const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
   const [activeModelId, setActiveModelId] = useState<string>(SAGE_AI_MODELS.PRIMARY);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const voiceMenuRef = useRef<HTMLDivElement>(null);
+  const pickerModalRef = useRef<HTMLDivElement>(null);
+  const pickerCardRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const pickerCloseTimerRef = useRef<number | null>(null);
 
   // ── Voice Recording State ──
   const [isRecording, setIsRecording] = useState(false);
@@ -941,13 +957,13 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               ? `Hello **${profile?.full_name || 'Professor'}**! I am **${nameLabel}**, your faculty assistant. Ask me for lesson preparation, quiz questions, syllabus breakdowns, voice notes, or export quizzes and notes directly into formatted printable PDFs!`
               : role === 'admin'
               ? `Greetings **${profile?.full_name || 'Administrator'}**! I am **${nameLabel}**, your administrative AI assistant with real-time live database access. Ask me about live student counts, board/grade distributions, faculty rosters, active offerings, test submissions, fee configurations, or drafting academic notices!`
-              : `Assalam-o-Alaikum **${profile?.full_name || 'Student'}**! 🌟 I'm **${nameLabel}**, your AI study companion for SHS Virtual Academy. Ask me anything about your FBISE subjects (Math, Physics, Chemistry, Biology, CS, English, Urdu, etc.), formula derivations, or note summaries!`,
+              : `Assalam-o-Alaikum **${profile?.full_name || 'Student'}**! I'm **${nameLabel}**, your AI study companion for SHS Virtual Academy. Ask me anything about your FBISE subjects (Math, Physics, Chemistry, Biology, CS, English, Urdu, etc.), formula derivations, or note summaries!`,
         };
       })
     );
   }, [avatarController.displayName, role, profile?.full_name]);
 
-  // Close header overflow menu & voice menu on outside click
+  // Close header overflow menu & voice menu on outside click or Escape key
   useEffect(() => {
     if (!overflowMenuOpen && !voiceMenuOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -958,9 +974,92 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         setVoiceMenuOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOverflowMenuOpen(false);
+        setVoiceMenuOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [overflowMenuOpen, voiceMenuOpen]);
+
+  // Focus selected companion card & trap focus / handle Esc when "Choose your companion" modal opens
+  useEffect(() => {
+    if (!avatarPickerOpen) {
+      setHoveredPickerCardId(null);
+      setFocusedPickerCardIdx(-1);
+      return;
+    }
+    const activeIdx = Math.max(
+      0,
+      SAGE_CHARACTERS.findIndex((c) => c.id === avatarController.characterId)
+    );
+    setFocusedPickerCardIdx(activeIdx);
+    const focusTimer = window.setTimeout(() => {
+      pickerCardRefs.current[activeIdx]?.focus();
+    }, 40);
+
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setAvatarPickerOpen(false);
+        return;
+      }
+      if (e.key === 'Tab' && pickerModalRef.current) {
+        const focusable = pickerModalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [role="button"][tabindex="0"]'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleModalKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', handleModalKeyDown);
+    };
+  }, [avatarPickerOpen, avatarController.characterId]);
+
+  useEffect(() => {
+    return () => {
+      if (pickerCloseTimerRef.current !== null) {
+        window.clearTimeout(pickerCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleToggleHeaderVoice = () => {
+    const next = !voiceEnabled;
+    setVoiceEnabled(next);
+    try {
+      localStorage.setItem('scholario_sage_voice_enabled_v1', String(next));
+    } catch {
+      // ignore storage errors
+    }
+    if (!next) {
+      sageSpeech.stop();
+      toast.info(`Voice responses turned off`);
+    } else {
+      toast.success(`Voice responses turned on for ${avatarController.displayName}`);
+      const latestMsg = [...messages].reverse().find((m) => m.role === 'assistant' && m.content);
+      if (latestMsg && speechStatus === 'idle') {
+        sageSpeech.speak(latestMsg.id, latestMsg.content, avatarController.characterId);
+      }
+    }
+  };
 
   // Sync to session storage
   useEffect(() => {
@@ -1768,6 +1867,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         );
       }
       avatarController.triggerSuccess();
+      if (voiceEnabled && finalContent.trim()) {
+        sageSpeech.speak(assistantMsgId, finalContent, avatarController.characterId);
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('[Sage Chat] Stream cancelled by user');
@@ -1821,13 +1923,13 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       <div
         className={
           embedded
-            ? 'flex flex-col h-full w-full bg-[#FAFAFA] dark:bg-[#0E0E11] overflow-hidden'
-            : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-[#FAFAFA] dark:bg-[#0E0E11] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
+            ? 'sage-chat-shell flex flex-col h-full w-full bg-[#FAFAFA] dark:bg-[#0E0E11] overflow-hidden'
+            : 'sage-chat-shell flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-[#FAFAFA] dark:bg-[#0E0E11] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
         }
       >
         {/* ── Clean Single-Row Top Header ── */}
-        <div className="bg-[#111111] px-3.5 sm:px-5 py-2.5 text-white flex items-center justify-between gap-2 border-b border-[#242428] shrink-0">
-          {/* Left: Back Button, Hamburger Avatar Picker Button, Frameless Live-Animated Avatar Thumbnail, Custom/Default Name + Profile Drawer Trigger */}
+        <div className="sage-chat-header bg-[#111114] px-3.5 sm:px-5 py-2.5 text-white flex items-center justify-between gap-2 border-b border-[#23232B] shrink-0">
+          {/* Left: Back/List button, Live Mini-Avatar, Name + Hover-only Pencil, Role Badge, and Online Status Dot */}
           <div className="flex items-center gap-2.5 min-w-0">
             {onBack && (
               <button
@@ -1841,14 +1943,13 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               </button>
             )}
 
-            {/* Three-line Hamburger Menu Button to Open "Choose your Sage" Character Picker */}
             <button
               type="button"
               id="choose-sage-avatar-btn"
               onClick={() => setAvatarPickerOpen(true)}
-              className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-200 hover:text-[#F4C430] border border-[#2E2E34] shrink-0 transition-colors flex items-center justify-center cursor-pointer"
-              title="Choose your Sage character (9 companions)"
-              aria-label="Choose your Sage character"
+              className="w-9 h-9 rounded-xl bg-[#1A1A20] hover:bg-[#24242C] text-zinc-200 hover:text-[#F4C430] border border-[#2B2B35] shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+              title="Choose companion"
+              aria-label="Choose companion"
             >
               <Menu size={17} />
             </button>
@@ -1868,8 +1969,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               type="button"
               data-testid="sage-header-profile-trigger"
               onClick={() => setProfilePanelOpen(true)}
-              className="min-w-0 text-left group cursor-pointer focus:outline-none"
-              title="Click to open Sage Profile, Rename & Voice settings"
+              className="min-w-0 text-left group cursor-pointer focus:outline-none rounded-lg focus-visible:ring-2 focus-visible:ring-[#F4C430]/50 px-1 py-0.5 -mx-1"
+              title="Open Profile and Voice settings"
+              aria-label={`Open profile and voice settings for ${avatarController.displayName}`}
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 <h1 className="text-[15px] sm:text-base font-extrabold tracking-tight text-white group-hover:text-[#F4C430] transition-colors truncate">
@@ -1877,274 +1979,216 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                 </h1>
                 <Pencil
                   size={12}
-                  className="text-zinc-400 group-hover:text-[#F4C430] shrink-0 transition-colors"
+                  className="text-zinc-400 group-hover:text-[#F4C430] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 shrink-0 transition-all duration-150"
                 />
                 <span
                   className="px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide bg-white/8 text-zinc-300 border border-white/10 shrink-0"
-                  title={`${role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'} mode • ${activeModelDisplayName}`}
+                  title={`${role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'} mode`}
                 >
                   {role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 leading-tight truncate mt-0.5">
-                {avatarController.headerStatusText}
-              </p>
+              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 leading-tight truncate mt-0.5">
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="truncate">
+                  {avatarController.state === 'idle' ? 'Online' : avatarController.headerStatusText}
+                </span>
+              </div>
             </button>
           </div>
 
-          {/* Right: Top Voice Selector Dropdown, Profile Button, PDF Actions + "⋯" Overflow Menu */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Top-of-Window Voice Selector Popover (Task 2) */}
-            <div className="relative" ref={voiceMenuRef}>
-              <button
-                type="button"
-                data-testid="sage-header-voice-btn"
-                onClick={() => {
-                  setHeaderVoicePref(sageSpeech.getAvatarVoicePref(avatarController.characterId));
-                  setVoiceMenuOpen((v) => !v);
-                }}
-                className="h-9 px-2.5 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-200 hover:text-[#F4C430] flex items-center gap-1.5 transition-colors border border-[#2E2E34] text-xs font-bold cursor-pointer"
-                title={`Voice settings for ${avatarController.displayName}`}
-              >
-                <Volume2 size={14} className="text-[#F4C430]" />
-                <span className="hidden md:inline">Voice</span>
-              </button>
-
-              {voiceMenuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-72 rounded-2xl bg-[#18181C] text-zinc-100 border border-[#2E2E36] shadow-2xl p-3.5 z-40 space-y-3 animate-in fade-in slide-in-from-top-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                      <Volume2 size={13} className="text-[#F4C430]" />
-                      {avatarController.displayName} Voice
-                    </span>
-                    <button
-                      type="button"
-                      data-testid="sage-header-voice-preview-btn"
-                      onClick={() =>
-                        sageSpeech.previewVoice(
-                          avatarController.characterId,
-                          avatarController.displayName
-                        )
-                      }
-                      className="px-2.5 py-1 rounded-lg bg-[#F4C430] hover:bg-[#e5b625] text-black text-[11px] font-extrabold cursor-pointer"
-                    >
-                      Preview
-                    </button>
-                  </div>
-
-                  <div>
-                    <select
-                      data-testid="sage-header-voice-select"
-                      value={headerVoicePref.voiceURI || ''}
-                      onChange={(e) => {
-                        const updated = sageSpeech.setAvatarVoicePref(
-                          avatarController.characterId,
-                          { voiceURI: e.target.value || undefined }
-                        );
-                        setHeaderVoicePref({ ...updated });
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-zinc-100 focus:outline-none focus:border-[#F4C430]"
-                    >
-                      <option value="">
-                        Auto ({sageSpeech.resolveVoiceForAvatar(avatarController.characterId, false).voice?.name || 'Default'})
-                      </option>
-                      {headerVoices.map((v) => (
-                        <option key={v.voiceURI} value={v.voiceURI}>
-                          {v.name} ({v.lang})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div>
-                      <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
-                        <span className="flex items-center gap-1">
-                          <Sliders size={10} /> Speed
-                        </span>
-                        <span className="font-mono font-bold text-[#F4C430]">
-                          {headerVoicePref.rate.toFixed(2)}x
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.6}
-                        max={1.5}
-                        step={0.05}
-                        value={headerVoicePref.rate}
-                        onChange={(e) => {
-                          const updated = sageSpeech.setAvatarVoicePref(
-                            avatarController.characterId,
-                            { rate: parseFloat(e.target.value) }
-                          );
-                          setHeaderVoicePref({ ...updated });
-                        }}
-                        className="w-full accent-[#F4C430] cursor-pointer"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
-                        <span className="flex items-center gap-1">
-                          <Sliders size={10} /> Pitch
-                        </span>
-                        <span className="font-mono font-bold text-[#F4C430]">
-                          {headerVoicePref.pitch.toFixed(2)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.7}
-                        max={1.35}
-                        step={0.03}
-                        value={headerVoicePref.pitch}
-                        onChange={(e) => {
-                          const updated = sageSpeech.setAvatarVoicePref(
-                            avatarController.characterId,
-                            { pitch: parseFloat(e.target.value) }
-                          );
-                          setHeaderVoicePref({ ...updated });
-                        }}
-                        className="w-full accent-[#F4C430] cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Profile & Rename Drawer Trigger Button */}
+          {/* Right: ONLY two visible actions — Voice toggle and "..." overflow menu */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              data-testid="sage-header-profile-btn"
-              onClick={() => setProfilePanelOpen(true)}
-              className="h-9 px-2.5 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-200 hover:text-[#F4C430] flex items-center gap-1.5 transition-colors border border-[#2E2E34] text-xs font-bold cursor-pointer"
-              title="Open Companion Profile & Rename"
+              data-testid="sage-header-voice-btn"
+              onClick={handleToggleHeaderVoice}
+              aria-pressed={voiceEnabled}
+              aria-label={voiceEnabled ? 'Voice enabled (click to mute)' : 'Voice muted (click to enable)'}
+              title={
+                voiceEnabled
+                  ? `Voice is ON for ${avatarController.displayName} — click to turn off`
+                  : `Voice is OFF for ${avatarController.displayName} — click to turn on`
+              }
+              className={`sage-header-voice-toggle h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all border text-xs font-bold cursor-pointer ${
+                voiceEnabled
+                  ? 'bg-[#F4C430]/15 hover:bg-[#F4C430]/22 text-[#F4C430] border-[#F4C430]/45'
+                  : 'bg-[#1A1A20] hover:bg-[#24242C] text-zinc-300 hover:text-white border-[#2B2B35]'
+              }`}
             >
-              <User size={14} className="text-[#F4C430]" />
-              <span className="hidden sm:inline">Profile</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownloadConversationPdf}
-              disabled={isExportingConversationPdf || isLoading || messages.length === 0}
-              className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-[#F4C430] flex items-center justify-center transition-colors border border-[#2E2E34] disabled:opacity-40 cursor-pointer"
-              title="Chat PDF — Download full conversation as A4 PDF"
-              aria-label="Download Chat PDF"
-            >
-              {isExportingConversationPdf ? (
-                <Loader2 size={15} className="animate-spin text-[#F4C430]" />
+              {voiceEnabled ? (
+                <Volume2 size={15} className="text-[#F4C430] shrink-0" />
               ) : (
-                <FileDown size={15} />
+                <VolumeX size={15} className="text-zinc-400 shrink-0" />
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShareConversationPdf}
-              disabled={isSharingConversationPdf || isLoading || messages.length === 0}
-              className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-300 hover:text-white flex items-center justify-center transition-colors border border-[#2E2E34] disabled:opacity-40 cursor-pointer"
-              title="Share PDF — Share or send conversation PDF"
-              aria-label="Share Chat PDF"
-            >
-              {isSharingConversationPdf ? (
-                <Loader2 size={15} className="animate-spin text-[#F4C430]" />
-              ) : (
-                <Share2 size={15} />
-              )}
+              <span className="hidden sm:inline">Voice</span>
+              <span
+                className={`hidden sm:inline-block w-1.5 h-1.5 rounded-full ${
+                  voiceEnabled ? 'bg-[#F4C430]' : 'bg-zinc-600'
+                }`}
+              />
             </button>
 
             {/* "⋯" Overflow Menu */}
             <div className="relative" ref={overflowMenuRef}>
               <button
                 type="button"
+                data-testid="sage-header-overflow-btn"
                 onClick={() => setOverflowMenuOpen((prev) => !prev)}
-                className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-300 hover:text-white flex items-center justify-center transition-colors border border-[#2E2E34] cursor-pointer"
-                title="More options"
-                aria-label="More options"
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors border cursor-pointer ${
+                  overflowMenuOpen
+                    ? 'bg-[#24242C] text-white border-[#3A3A46]'
+                    : 'bg-[#1A1A20] hover:bg-[#24242C] text-zinc-300 hover:text-white border-[#2B2B35]'
+                }`}
+                title="More actions"
+                aria-label="More actions"
                 aria-expanded={overflowMenuOpen}
+                aria-haspopup="menu"
               >
                 <MoreHorizontal size={16} />
               </button>
 
               {overflowMenuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-60 rounded-2xl bg-[#18181C] text-zinc-200 border border-[#2E2E36] shadow-2xl p-1.5 z-40 animate-in fade-in slide-in-from-top-1">
-                  {/* Quiet Model & RAG Info Section */}
-                  <div className="px-3 py-2 border-b border-[#27272F] mb-1">
-                    <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                      <span>AI Engine</span>
-                      <span className="font-semibold text-zinc-200">{activeModelDisplayName}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-1">
-                      <span className="flex items-center gap-1">
-                        <Database size={11} className="text-[#F4C430]" />
-                        <span>Knowledge Base</span>
-                      </span>
-                      <span className="font-semibold text-zinc-200">RAG Note Vault</span>
-                    </div>
+                <div
+                  role="menu"
+                  aria-label="Sage chat options"
+                  className="sage-overflow-menu absolute right-0 top-full mt-2 w-64 rounded-2xl bg-[#16161C] text-zinc-200 border border-[#2B2B36] shadow-2xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 origin-top-right"
+                >
+                  {/* Group 1: Companion */}
+                  <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    Companion
                   </div>
-
-                  {/* Open Companion Profile & Rename */}
                   <button
                     type="button"
+                    role="menuitem"
+                    data-testid="sage-header-profile-btn"
                     onClick={() => {
                       setOverflowMenuOpen(false);
                       setProfilePanelOpen(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-white/8 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors cursor-pointer text-left"
                   >
-                    <Pencil size={14} className="text-[#F4C430] shrink-0" />
-                    <span>Profile, Rename & Voice ({avatarController.displayName})</span>
+                    <User size={14} className="text-[#F4C430] shrink-0" />
+                    <span>Profile and Voice</span>
                   </button>
 
-                  {/* Choose Your Sage Character */}
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={() => {
                       setOverflowMenuOpen(false);
                       setAvatarPickerOpen(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-white/8 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors cursor-pointer text-left"
                   >
                     <Smile size={14} className="text-[#F4C430] shrink-0" />
-                    <span>Choose your Sage (9 Avatars)</span>
+                    <span>Choose companion</span>
                   </button>
 
-                  {/* Sync Note Vault (Teachers & Admins) */}
+                  <div className="my-1.5 border-t border-[#24242E]" />
+
+                  {/* Group 2: Chat */}
+                  <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    Chat
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      handleDownloadConversationPdf();
+                    }}
+                    disabled={isExportingConversationPdf || isLoading || messages.length === 0}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-40 cursor-pointer text-left"
+                  >
+                    {isExportingConversationPdf ? (
+                      <Loader2 size={14} className="animate-spin text-[#F4C430] shrink-0" />
+                    ) : (
+                      <FileDown size={14} className="text-[#F4C430] shrink-0" />
+                    )}
+                    <span>Download PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      handleShareConversationPdf();
+                    }}
+                    disabled={isSharingConversationPdf || isLoading || messages.length === 0}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-40 cursor-pointer text-left"
+                  >
+                    {isSharingConversationPdf ? (
+                      <Loader2 size={14} className="animate-spin text-[#F4C430] shrink-0" />
+                    ) : (
+                      <Share2 size={14} className="text-[#F4C430] shrink-0" />
+                    )}
+                    <span>Share</span>
+                  </button>
+
                   {(role === 'admin' || role === 'teacher') && (
                     <button
                       type="button"
+                      role="menuitem"
                       id="sync-note-vault-btn"
                       onClick={() => {
                         setOverflowMenuOpen(false);
                         handleSyncNotes();
                       }}
                       disabled={isSyncingNotes}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-white/8 transition-colors disabled:opacity-50 cursor-pointer text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-50 cursor-pointer text-left"
                     >
                       <RefreshCw
                         size={14}
-                        className={isSyncingNotes ? 'animate-spin text-[#F4C430] shrink-0' : 'text-[#F4C430] shrink-0'}
+                        className={
+                          isSyncingNotes
+                            ? 'animate-spin text-[#F4C430] shrink-0'
+                            : 'text-[#F4C430] shrink-0'
+                        }
                       />
                       <span>{isSyncingNotes ? 'Syncing Note Vault...' : 'Sync RAG Note Vault'}</span>
                     </button>
                   )}
 
-                  <div className="my-1 border-t border-[#27272F]" />
+                  <div className="my-1.5 border-t border-[#24242E]" />
 
-                  {/* Reset Session */}
+                  {/* Muted Non-Clickable Info Row */}
+                  <div
+                    aria-label="System information"
+                    className="px-3 py-2 rounded-xl bg-[#111116] border border-[#22222B] space-y-1 select-none"
+                  >
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                      <span>AI Engine</span>
+                      <span className="font-medium text-zinc-400">{activeModelDisplayName}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                      <span className="flex items-center gap-1">
+                        <Database size={10} className="text-zinc-500" />
+                        <span>Knowledge Base</span>
+                      </span>
+                      <span className="font-medium text-zinc-400">RAG Note Vault</span>
+                    </div>
+                  </div>
+
+                  <div className="my-1.5 border-t border-[#24242E]" />
+
+                  {/* Danger Action: Reset Chat Session */}
                   <button
                     type="button"
+                    role="menuitem"
                     id="clear-chat-btn"
                     onClick={() => {
                       setOverflowMenuOpen(false);
                       setConfirmClearOpen(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:bg-red-500/12 hover:text-red-300 transition-colors cursor-pointer text-left"
                   >
                     <RotateCcw size={14} className="shrink-0" />
-                    <span>Reset Chat Session</span>
+                    <span>Reset chat session</span>
                   </button>
                 </div>
               )}
@@ -2915,122 +2959,215 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         </div>
       </div>
 
-      {/* ── "Choose your Sage" Avatar Picker Modal / Bottom Sheet (All 9 Companions, Transparent Previews) ── */}
+      {/* ── "Choose your companion" Picker Modal (Desktop centered max-w-[880px] max-h-[85vh], Mobile full-height bottom sheet) ── */}
       {avatarPickerOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
+          className="sage-companion-picker-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150 motion-reduce:animate-none"
           onClick={() => setAvatarPickerOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sage-companion-picker-title"
         >
           <div
-            className="w-full sm:max-w-2xl bg-[#121216] text-zinc-100 rounded-t-3xl sm:rounded-3xl border border-[#2A2A34] shadow-2xl overflow-hidden max-h-[88vh] flex flex-col"
+            ref={pickerModalRef}
+            className="sage-companion-picker-modal w-full sm:max-w-[880px] h-[92dvh] sm:h-auto sm:max-h-[85vh] bg-[#121217] text-zinc-100 rounded-t-3xl sm:rounded-3xl border border-[#282833] shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 motion-reduce:animate-none"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="px-5 py-4 bg-[#111111] text-white flex items-center justify-between border-b border-[#26262E]">
-              <div>
-                <h3 className="text-base font-extrabold tracking-tight text-white">
-                  Choose your Sage ({avatarController.displayName})
+            {/* Sticky Clean Header Row */}
+            <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 bg-[#14141A]/95 backdrop-blur-md text-white flex items-center justify-between border-b border-[#252530] shrink-0">
+              <div className="min-w-0">
+                <h3
+                  id="sage-companion-picker-title"
+                  className="text-base sm:text-lg font-extrabold tracking-tight text-white"
+                >
+                  Choose your companion
                 </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Pick from 9 study companions — each with its own 3D rig, personality, and fixed voice
+                <p className="text-xs font-bold text-[#F4C430] mt-0.5 truncate">
+                  Current: {avatarController.displayName}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAvatarPickerOpen(false);
-                    setProfilePanelOpen(true);
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-[#F4C430] text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Pencil size={12} />
-                  <span>Rename / Voice</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAvatarPickerOpen(false)}
-                  className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                  aria-label="Close character picker"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setAvatarPickerOpen(false)}
+                className="w-9 h-9 rounded-xl bg-white/8 hover:bg-white/14 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
+                aria-label="Close companion picker"
+                title="Close (Esc)"
+              >
+                <X size={17} />
+              </button>
             </div>
 
-            {/* 9 Character Preview Cards Grid */}
-            <div className="p-4 sm:p-5 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {SAGE_CHARACTERS.map((charItem) => {
+            {/* Scrollable 9-Card Grid (3 cols desktop, 2 cols tablet, 1 col phone horizontal card) */}
+            <div
+              role="listbox"
+              aria-label="Study companions"
+              className="sage-companion-picker-grid flex-1 overflow-y-auto px-4 sm:px-6 pt-4 sm:pt-5 pb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 auto-rows-fr"
+            >
+              {SAGE_CHARACTERS.map((charItem, idx) => {
                 const isSelected = avatarController.characterId === charItem.id;
+                const isDefaultChar = charItem.id === DEFAULT_SAGE_CHARACTER_ID;
+                const isHovered = hoveredPickerCardId === charItem.id;
+                const isFocused = focusedPickerCardIdx === idx;
+                const isPreviewingThisVoice = previewingCardVoiceId === charItem.id;
                 const displayCardName =
                   isSelected && avatarController.customName
                     ? `${avatarController.customName} (${charItem.name})`
                     : charItem.name;
+
+                const selectThisCompanion = () => {
+                  avatarController.setCharacterId(charItem.id);
+                  avatarController.triggerPoke();
+                  toast.success(`${charItem.name} selected as your companion`);
+                  if (pickerCloseTimerRef.current) {
+                    window.clearTimeout(pickerCloseTimerRef.current);
+                  }
+                  pickerCloseTimerRef.current = window.setTimeout(() => {
+                    setAvatarPickerOpen(false);
+                  }, 240);
+                };
+
+                const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+                  const total = SAGE_CHARACTERS.length;
+                  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const nextIdx = (idx + 1) % total;
+                    setFocusedPickerCardIdx(nextIdx);
+                    pickerCardRefs.current[nextIdx]?.focus();
+                  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prevIdx = (idx - 1 + total) % total;
+                    setFocusedPickerCardIdx(prevIdx);
+                    pickerCardRefs.current[prevIdx]?.focus();
+                  } else if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectThisCompanion();
+                  }
+                };
+
                 return (
-                  <button
+                  <div
                     key={charItem.id}
-                    type="button"
-                    id={`sage-picker-card-${charItem.id}`}
-                    onClick={() => {
-                      avatarController.setCharacterId(charItem.id);
-                      avatarController.triggerPoke();
-                      toast.success(`${charItem.name} (${charItem.title}) selected!`);
-                      setAvatarPickerOpen(false);
+                    ref={(el) => {
+                      pickerCardRefs.current[idx] = el;
                     }}
+                    role="option"
+                    aria-selected={isSelected}
+                    tabIndex={0}
+                    id={`sage-picker-card-${charItem.id}`}
+                    onClick={selectThisCompanion}
+                    onKeyDown={handleCardKeyDown}
+                    onMouseEnter={() => setHoveredPickerCardId(charItem.id)}
+                    onMouseLeave={() =>
+                      setHoveredPickerCardId((prev) => (prev === charItem.id ? null : prev))
+                    }
+                    onFocus={() => setFocusedPickerCardIdx(idx)}
                     style={
                       isSelected
                         ? {
                             borderColor: charItem.accentColor,
-                            boxShadow: `0 0 0 2px ${charItem.accentColor}55`,
-                            backgroundColor: `${charItem.accentColor}14`,
+                            boxShadow: `0 0 0 1px ${charItem.accentColor}66, 0 10px 28px -10px ${charItem.accentColor}40`,
+                            backgroundColor: `${charItem.accentColor}12`,
                           }
-                        : {}
+                        : undefined
                     }
-                    className={`group relative flex flex-col items-center text-center p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                    className={`sage-companion-card group relative h-full flex flex-row sm:flex-col items-center sm:text-center gap-3.5 sm:gap-2 p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 motion-reduce:transition-none hover:-translate-y-0.5 focus-visible:-translate-y-0.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430] ${
                       isSelected
                         ? ''
-                        : 'border-[#2A2A34] bg-[#1A1A22] hover:border-zinc-500 hover:bg-[#22222C]'
+                        : 'border-[#262632] bg-[#181820] hover:border-[#3A3A4A] hover:bg-[#1E1E28]'
                     }`}
                   >
-                    {/* Badge */}
-                    <span
-                      style={
-                        isSelected
-                          ? { backgroundColor: charItem.accentColor, color: '#111111' }
-                          : {}
-                      }
-                      className={`absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
-                        isSelected
-                          ? ''
-                          : 'bg-zinc-800 text-zinc-300'
+                    {/* Active Pill ONLY on the currently selected card */}
+                    {isSelected && (
+                      <span
+                        style={{
+                          backgroundColor: charItem.accentColor,
+                          color: '#111111',
+                        }}
+                        className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide shadow-xs"
+                      >
+                        <Check size={11} strokeWidth={3} />
+                        <span>Active</span>
+                      </span>
+                    )}
+
+                    {/* Preview Voice Speaker Button on Each Card */}
+                    <button
+                      type="button"
+                      data-testid={`sage-picker-voice-preview-${charItem.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewingCardVoiceId(charItem.id);
+                        sageSpeech.previewVoice(charItem.id, charItem.name);
+                        window.setTimeout(() => {
+                          setPreviewingCardVoiceId((prev) =>
+                            prev === charItem.id ? null : prev
+                          );
+                        }, 2400);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                        }
+                      }}
+                      title={`Preview ${charItem.name}'s voice`}
+                      aria-label={`Preview ${charItem.name}'s voice`}
+                      className={`sage-card-voice-btn sm:absolute sm:top-2.5 sm:left-2.5 order-last sm:order-none ml-auto sm:ml-0 w-7 h-7 rounded-lg flex items-center justify-center border transition-colors shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430] ${
+                        isPreviewingThisVoice
+                          ? 'bg-[#F4C430] text-black border-[#F4C430]'
+                          : 'bg-[#121218]/90 hover:bg-[#262633] text-zinc-300 hover:text-[#F4C430] border-[#2E2E3C]'
                       }`}
                     >
-                      {isSelected ? 'Active' : charItem.badge}
-                    </span>
+                      <Volume2 size={13} />
+                    </button>
 
-                    {/* Character Animated Preview (Frameless & Transparent — NO WHITE SHEET) */}
-                    <div className="w-16 h-16 flex items-center justify-center mb-2 bg-transparent border-0 shadow-none group-hover:scale-110 transition-transform">
-                      <SageCharacterSvg
+                    {/* Live 3D Character Preview on Transparent Background (Shared WebGL Pool — No White Sheet) */}
+                    <div
+                      className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 bg-transparent border-0 shadow-none"
+                      style={{
+                        background: `radial-gradient(circle, ${charItem.accentColor}1E 0%, transparent 68%)`,
+                      }}
+                    >
+                      <Sage3DAvatar
                         characterId={charItem.id}
-                        avatarState={isSelected ? 'poke' : 'idle'}
-                        svgSize={58}
-                        uid={`picker-${charItem.id}`}
+                        state={
+                          isPreviewingThisVoice
+                            ? 'speaking'
+                            : isSelected || isHovered || isFocused
+                            ? 'poke'
+                            : 'idle'
+                        }
+                        audioLevel={isPreviewingThisVoice ? 0.55 : 0}
+                        sizeClassName="w-20 h-20 sm:w-24 sm:h-24"
+                        chromeless={true}
+                        portraitFraming={true}
+                        useSharedRenderer={true}
                       />
                     </div>
 
-                    <div className="font-extrabold text-xs sm:text-sm text-white">
-                      {displayCardName}
+                    {/* Card Text Details */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center sm:items-center text-left sm:text-center">
+                      <div className="font-extrabold text-sm sm:text-[15px] text-white leading-tight truncate max-w-full">
+                        {displayCardName}
+                      </div>
+
+                      {isDefaultChar && (
+                        <span className="text-[10px] font-semibold text-zinc-400 mt-0.5">
+                          Default
+                        </span>
+                      )}
+
+                      <div
+                        style={{ color: charItem.accentColor }}
+                        className="text-xs font-bold mt-0.5 truncate max-w-full"
+                      >
+                        {charItem.role}
+                      </div>
+
+                      <p className="text-[11px] text-zinc-400 mt-1.5 line-clamp-2 leading-relaxed">
+                        {charItem.description}
+                      </p>
                     </div>
-                    <div
-                      style={{ color: charItem.accentColor }}
-                      className="text-[11px] font-bold mt-0.5"
-                    >
-                      {charItem.role}
-                    </div>
-                    <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2 leading-snug">
-                      {charItem.personality}
-                    </p>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -3038,7 +3175,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         </div>
       )}
 
-      {/* ── Sage Profile & Rename Drawer / Bottom Sheet (Task 3) ── */}
+      {/* ── Sage Profile & Voice Drawer / Bottom Sheet ── */}
       <SageProfilePanel
         isOpen={profilePanelOpen}
         onClose={() => setProfilePanelOpen(false)}
@@ -3049,6 +3186,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         audioLevel={avatarController.audioLevel}
         onRename={avatarController.setCustomName}
         onResetName={avatarController.resetCustomName}
+        onResetCompanion={() => avatarController.setCharacterId(DEFAULT_SAGE_CHARACTER_ID)}
         onOpenCharacterPicker={() => setAvatarPickerOpen(true)}
         onVoicePrefChanged={() =>
           setHeaderVoicePref(sageSpeech.getAvatarVoicePref(avatarController.characterId))

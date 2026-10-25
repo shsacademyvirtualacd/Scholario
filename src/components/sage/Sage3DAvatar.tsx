@@ -40,11 +40,77 @@ export interface Sage3DAvatarProps {
   onPoke?: () => void;
   /** Incremented counter for tap reactions */
   pokeCount?: number;
+  /** Wider portrait camera framing so hats, ears, and ossicones are never cropped */
+  portraitFraming?: boolean;
+  /** Reuse a single shared offscreen WebGL renderer (used in the 9-card companion picker) */
+  useSharedRenderer?: boolean;
   /** Live thought bubble props */
   thoughtText?: string | null;
   thoughtMode?: 'typing' | 'thinking' | 'streaming' | 'done' | 'idle' | null;
   isTypingTransition?: boolean;
   streamingSnippet?: string;
+}
+
+interface SharedPickerWebGLPool {
+  renderer: THREE.WebGLRenderer;
+  pmremGenerator: THREE.PMREMGenerator;
+  envTarget: THREE.WebGLRenderTarget;
+  dpr: number;
+  refCount: number;
+}
+
+let sharedPickerPool: SharedPickerWebGLPool | null = null;
+
+function acquireSharedPickerPool(): SharedPickerWebGLPool | null {
+  if (sharedPickerPool) {
+    sharedPickerPool.refCount += 1;
+    return sharedPickerPool;
+  }
+  try {
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
+    const debugInfo = renderer.getContext().getExtension('WEBGL_debug_renderer_info');
+    const rendererStr = debugInfo
+      ? String(renderer.getContext().getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '')
+      : '';
+    const isSoftware = /swiftshader|llvmpipe|software|microsoft basic render/i.test(rendererStr);
+    const dpr = isSoftware ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(160, 160);
+    renderer.setClearColor(0x000000, 0);
+    renderer.setClearAlpha(0);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.18;
+
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const envTarget = pmremGenerator.fromScene(new RoomEnvironment(), 0.05);
+
+    sharedPickerPool = {
+      renderer,
+      pmremGenerator,
+      envTarget,
+      dpr,
+      refCount: 1,
+    };
+    return sharedPickerPool;
+  } catch {
+    return null;
+  }
+}
+
+function releaseSharedPickerPool(): void {
+  if (!sharedPickerPool) return;
+  sharedPickerPool.refCount -= 1;
+  if (sharedPickerPool.refCount <= 0) {
+    sharedPickerPool.envTarget.dispose();
+    sharedPickerPool.pmremGenerator.dispose();
+    sharedPickerPool.renderer.dispose();
+    sharedPickerPool = null;
+  }
 }
 
 /**
@@ -76,32 +142,6 @@ function createPlushBumpTexture(): THREE.CanvasTexture | null {
   tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(4, 4);
   return tex;
-}
-
-/**
- * Creates 3D star geometry for pins and sparkles
- */
-function createStarGeometry(outerR = 0.08, innerR = 0.038, depth = 0.025): THREE.ExtrudeGeometry {
-  const shape = new THREE.Shape();
-  const points = 5;
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const angle = (i * Math.PI) / points - Math.PI / 2;
-    const x = Math.cos(angle) * r;
-    const y = Math.sin(angle) * r;
-    if (i === 0) shape.moveTo(x, y);
-    else shape.lineTo(x, y);
-  }
-  shape.closePath();
-
-  return new THREE.ExtrudeGeometry(shape, {
-    depth,
-    bevelEnabled: true,
-    bevelSegments: 2,
-    steps: 1,
-    bevelSize: depth * 0.35,
-    bevelThickness: depth * 0.35,
-  });
 }
 
 /**
@@ -151,6 +191,8 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
   greetingTitle = "Hi, I'm Sage",
   onPoke,
   pokeCount = 0,
+  portraitFraming = false,
+  useSharedRenderer = false,
   thoughtText,
   thoughtMode,
   isTypingTransition = false,
@@ -221,46 +263,80 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     }
 
     let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true,
-        powerPreference: 'high-performance',
-      });
-    } catch {
-      setWebglSupported(false);
-      return;
-    }
-
-    const debugInfo = renderer.getContext().getExtension('WEBGL_debug_renderer_info');
-    const rendererStr = debugInfo
-      ? String(renderer.getContext().getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '')
-      : '';
-    const isSoftware = /swiftshader|llvmpipe|software|microsoft basic render/i.test(rendererStr);
-    let currentDpr = isSoftware ? 1 : Math.min(window.devicePixelRatio || 1, 2);
-
+    let pmremGenerator: THREE.PMREMGenerator | null = null;
+    let envTarget: THREE.WebGLRenderTarget | null = null;
+    let cardCanvas2D: HTMLCanvasElement | null = null;
+    let currentDpr = Math.min(window.devicePixelRatio || 1, 2);
     const width = Math.max(container.clientWidth, 68);
     const height = Math.max(container.clientHeight, 68);
-    renderer.setPixelRatio(currentDpr);
-    renderer.setSize(width, height);
-    renderer.setClearColor(0x000000, 0);
-    renderer.setClearAlpha(0);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
-    renderer.domElement.style.background = 'transparent';
-    renderer.domElement.style.backgroundColor = 'transparent';
-    renderer.domElement.style.display = 'block';
 
-    container.innerHTML = '';
-    container.appendChild(renderer.domElement);
+    if (useSharedRenderer) {
+      const pool = acquireSharedPickerPool();
+      if (!pool) {
+        setWebglSupported(false);
+        return;
+      }
+      renderer = pool.renderer;
+      currentDpr = pool.dpr;
+      cardCanvas2D = document.createElement('canvas');
+      cardCanvas2D.width = Math.round(width * currentDpr);
+      cardCanvas2D.height = Math.round(height * currentDpr);
+      cardCanvas2D.style.width = `${width}px`;
+      cardCanvas2D.style.height = `${height}px`;
+      cardCanvas2D.style.background = 'transparent';
+      cardCanvas2D.style.backgroundColor = 'transparent';
+      cardCanvas2D.style.display = 'block';
+      container.innerHTML = '';
+      container.appendChild(cardCanvas2D);
+    } else {
+      try {
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true,
+          powerPreference: 'high-performance',
+        });
+      } catch {
+        setWebglSupported(false);
+        return;
+      }
+
+      const debugInfo = renderer.getContext().getExtension('WEBGL_debug_renderer_info');
+      const rendererStr = debugInfo
+        ? String(renderer.getContext().getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '')
+        : '';
+      const isSoftware = /swiftshader|llvmpipe|software|microsoft basic render/i.test(rendererStr);
+      currentDpr = isSoftware ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+
+      renderer.setPixelRatio(currentDpr);
+      renderer.setSize(width, height);
+      renderer.setClearColor(0x000000, 0);
+      renderer.setClearAlpha(0);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.18;
+      renderer.domElement.style.background = 'transparent';
+      renderer.domElement.style.backgroundColor = 'transparent';
+      renderer.domElement.style.display = 'block';
+
+      container.innerHTML = '';
+      container.appendChild(renderer.domElement);
+
+      pmremGenerator = new THREE.PMREMGenerator(renderer);
+      envTarget = pmremGenerator.fromScene(new RoomEnvironment(), 0.05);
+    }
+
+    const activeDomElement = cardCanvas2D || renderer.domElement;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 50);
-    camera.position.set(0, 0.05, 4.45);
+    if (portraitFraming || useSharedRenderer) {
+      camera.position.set(0, 0.1, 4.95);
+    } else {
+      camera.position.set(0, 0.05, 4.45);
+    }
 
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const envTarget = pmremGenerator.fromScene(new RoomEnvironment(), 0.05);
-    scene.environment = envTarget.texture;
+    scene.environment = useSharedRenderer
+      ? sharedPickerPool?.envTarget.texture || null
+      : envTarget?.texture || null;
 
     const hemiLight = new THREE.HemisphereLight(0xfffdf9, 0xf3e5c8, 1.35);
     scene.add(hemiLight);
@@ -445,11 +521,12 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     scarfRing.rotation.x = Math.PI / 2 + 0.08;
     scarfGroup.add(scarfRing);
 
-    const starGeo = createStarGeometry(0.085, 0.04, 0.024);
-    const scarfStarPin = new THREE.Mesh(starGeo, goldStarMat);
-    scarfStarPin.position.set(0.28, -0.04, 0.72);
-    scarfStarPin.rotation.y = 0.35;
-    scarfGroup.add(scarfStarPin);
+    const pinMedallionGeo = new THREE.SphereGeometry(0.052, 16, 16);
+    pinMedallionGeo.scale(1, 1, 0.45);
+    const scarfPin = new THREE.Mesh(pinMedallionGeo, goldStarMat);
+    scarfPin.position.set(0.28, -0.04, 0.72);
+    scarfPin.rotation.y = 0.35;
+    scarfGroup.add(scarfPin);
 
     // Sage Feet
     const footGeo = new THREE.SphereGeometry(0.19, 20, 16);
@@ -1490,12 +1567,12 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     // ═══════════════════════════════════════════════════════════════════════
     const targetPointer = { x: 0, y: 0 };
     const currentPointer = { x: 0, y: 0 };
-    let cachedCanvasRect = renderer.domElement.getBoundingClientRect();
+    let cachedCanvasRect = activeDomElement.getBoundingClientRect();
     let lastTouchOrPointerTime = 0;
 
     const updateCanvasRect = () => {
-      if (renderer.domElement && renderer.domElement.isConnected) {
-        cachedCanvasRect = renderer.domElement.getBoundingClientRect();
+      if (activeDomElement && activeDomElement.isConnected) {
+        cachedCanvasRect = activeDomElement.getBoundingClientRect();
       }
     };
 
@@ -1592,8 +1669,8 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       const curLevel = Math.max(0, Math.min(1, audioLevelRef.current));
       const roamLean = roamLeanXRef.current || 0;
 
-      // Auto-lower quality if FPS drops
-      if (!qualityReduced && currentDpr > 1) {
+      // Auto-lower quality if FPS drops (dedicated renderer only)
+      if (!useSharedRenderer && !qualityReduced && currentDpr > 1) {
         frameSampleCount++;
         frameDeltaSum += delta;
         if (frameSampleCount >= 45) {
@@ -1929,6 +2006,24 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       }
 
       renderer.render(scene, camera);
+      if (useSharedRenderer && cardCanvas2D) {
+        const ctx2d = cardCanvas2D.getContext('2d');
+        const srcCanvas = renderer.domElement;
+        if (ctx2d && srcCanvas.width > 0 && srcCanvas.height > 0) {
+          ctx2d.clearRect(0, 0, cardCanvas2D.width, cardCanvas2D.height);
+          ctx2d.drawImage(
+            srcCanvas,
+            0,
+            0,
+            srcCanvas.width,
+            srcCanvas.height,
+            0,
+            0,
+            cardCanvas2D.width,
+            cardCanvas2D.height
+          );
+        }
+      }
       if (!hasMarkedReady) {
         hasMarkedReady = true;
         setWebglReady(true);
@@ -1936,7 +2031,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
 
       // Live mirror close-up of avatar head into header canvas
       const headerCanvas = headerCanvasRef?.current;
-      if (headerCanvas) {
+      if (headerCanvas && !useSharedRenderer) {
         const ctx = headerCanvas.getContext('2d');
         const srcCanvas = renderer.domElement;
         if (ctx && srcCanvas.width > 0 && srcCanvas.height > 0) {
@@ -1959,7 +2054,14 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       const h = Math.max(container.clientHeight || (compact ? 104 : 216), 68);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      if (useSharedRenderer && cardCanvas2D) {
+        cardCanvas2D.width = Math.round(w * currentDpr);
+        cardCanvas2D.height = Math.round(h * currentDpr);
+        cardCanvas2D.style.width = `${w}px`;
+        cardCanvas2D.style.height = `${h}px`;
+      } else {
+        renderer.setSize(w, h);
+      }
       updateCanvasRect();
     };
     syncSizeRef.current = syncContainerSize;
@@ -2008,7 +2110,14 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         const h = Math.max(entry.contentRect.height, 68);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
+        if (useSharedRenderer && cardCanvas2D) {
+          cardCanvas2D.width = Math.round(w * currentDpr);
+          cardCanvas2D.height = Math.round(h * currentDpr);
+          cardCanvas2D.style.width = `${w}px`;
+          cardCanvas2D.style.height = `${h}px`;
+        } else {
+          renderer.setSize(w, h);
+        }
         updateCanvasRect();
       });
       resizeObserver.observe(container);
@@ -2055,11 +2164,15 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       });
 
       plushBumpTex?.dispose();
-      envTarget.dispose();
-      pmremGenerator.dispose();
-      renderer.dispose();
+      if (useSharedRenderer) {
+        releaseSharedPickerPool();
+      } else {
+        envTarget?.dispose();
+        pmremGenerator?.dispose();
+        renderer.dispose();
+      }
     };
-  }, [headerCanvasRef]);
+  }, [headerCanvasRef, portraitFraming, useSharedRenderer]);
 
   const activeChar = getSageCharacterById(characterId);
   const effectiveLabel = customName?.trim() || activeChar.name;
