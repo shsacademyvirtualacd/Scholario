@@ -5,6 +5,7 @@ import { SAGE_THOUGHT_DATA } from './sageThoughtLines';
 
 export interface SageThoughtBubbleProps {
   characterId: SageCharacterId;
+  customName?: string;
   thoughtText?: string | null;
   /** Whether the bubble is currently in a brief typing/transitioning state */
   isTypingTransition?: boolean;
@@ -19,6 +20,7 @@ export interface SageThoughtBubbleProps {
 
 export const SageThoughtBubble: React.FC<SageThoughtBubbleProps> = ({
   characterId,
+  customName,
   thoughtText,
   isTypingTransition = false,
   mode = null,
@@ -27,6 +29,9 @@ export const SageThoughtBubble: React.FC<SageThoughtBubbleProps> = ({
   className = '',
 }) => {
   const persona = SAGE_THOUGHT_DATA[characterId] || SAGE_THOUGHT_DATA['sage-classic'];
+  const headerTitle = customName?.trim()
+    ? `${customName.trim()} • ${persona.role}`
+    : persona.role;
   const [visible, setVisible] = useState(false);
   const [displayText, setDisplayText] = useState('');
   const [currentIcon, setCurrentIcon] = useState<'brain' | 'sparkle' | 'pen' | 'book' | 'check'>('sparkle');
@@ -114,7 +119,7 @@ export const SageThoughtBubble: React.FC<SageThoughtBubbleProps> = ({
               style={{ color: persona.accentColor }}
               className="text-[10px] font-bold uppercase tracking-wider mb-0.5 flex items-center justify-between"
             >
-              <span>{persona.role}</span>
+              <span>{headerTitle}</span>
               {mode === 'streaming' && (
                 <span className="text-[9px] font-mono lowercase opacity-75">writing...</span>
               )}

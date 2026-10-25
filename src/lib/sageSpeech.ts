@@ -1,16 +1,37 @@
 /**
  * Sage AI Speech & Text-to-Speech (TTS) Engine
  *
- * - Converts Markdown and LaTeX/KaTeX formulas into natural spoken language (English & Urdu)
- * - Provides Play, Pause/Resume, Stop, and playback rate (0.75x, 1x, 1.25x, 1.5x)
- * - Uses browser Web Speech API with automatic fallback to server-side Gemini TTS (/api/sage/tts)
- *   for Android WebViews or devices missing Urdu/English voices
- * - Emits real-time audio volume levels (0..1) to drive the 3D Sage Avatar's speaking animation
+ * - Deterministic, permanent per-avatar voice assignment (Task 2):
+ *   Each of the 9 Sage characters has a deterministic voice profile (preferredLangs,
+ *   genderHint, nameKeywords, defaultRate, defaultPitch) matched from speechSynthesis.getVoices().
+ *   Never uses Math.random() to pick a voice.
+ * - Handles asynchronous voice loading via `voiceschanged` + multi-step retry for browsers & Android WebView.
+ * - Persists user-customized voice URI, speed (rate), and pitch per avatar in localStorage & Supabase user_metadata.
+ * - Detects Urdu text and selects an Urdu-capable voice if installed, or gently informs the student if none is installed.
+ * - Emits real-time audio volume levels (0..1) to drive the 3D Sage Avatar's speaking lip-sync animation.
  */
+
+import {
+  SageCharacterId,
+  getSageCharacterById,
+  SAGE_CHARACTERS,
+} from '../components/sage/useSageAvatarState';
+import { supabase } from './supabase';
 
 export type SpeechPlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
 
 export type SpeechSpeed = 0.75 | 1 | 1.25 | 1.5;
+
+export interface AvatarVoiceSettings {
+  voiceUri: string; // '' means automatic deterministic default for this avatar
+  voiceURI?: string;
+  rate: number;     // 0.5 .. 1.75
+  pitch: number;    // 0.5 .. 1.5
+}
+
+export type AvatarVoicePreference = AvatarVoiceSettings;
+
+const VOICE_PREFS_STORAGE_KEY = 'scholario_sage_voice_prefs_v1';
 
 const URDU_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
@@ -25,10 +46,8 @@ export function latexFormulaToSpokenText(formula: string): string {
   if (!formula) return '';
   let s = formula.trim();
 
-  // Remove outer math delimiters if present
   s = s.replace(/^\$\$|\$\$$/g, '').replace(/^\$|\$$/g, '');
 
-  // Common LaTeX environments & formatting wrappers
   s = s.replace(/\\text\{([^{}]*)\}/g, ' $1 ');
   s = s.replace(/\\mathrm\{([^{}]*)\}/g, ' $1 ');
   s = s.replace(/\\mathbf\{([^{}]*)\}/g, ' $1 ');
@@ -41,30 +60,25 @@ export function latexFormulaToSpokenText(formula: string): string {
   s = s.replace(/\\vec\{([^{}]*)\}/g, ' vector $1 ');
   s = s.replace(/\\hat\{([^{}]*)\}/g, ' $1 hat ');
 
-  // Fractions: handle nested or repeated \frac{a}{b}
   for (let i = 0; i < 4; i++) {
     s = s.replace(/\\(?:d|t)?frac\{([^{}]*)\}\{([^{}]*)\}/g, ' ($1) over ($2) ');
   }
 
-  // Roots
   s = s.replace(/\\sqrt\[3\]\{([^{}]*)\}/g, ' cube root of $1 ');
   s = s.replace(/\\sqrt\[([^{}\]]*)\]\{([^{}]*)\}/g, ' $1th root of $2 ');
   for (let i = 0; i < 3; i++) {
     s = s.replace(/\\sqrt\{([^{}]*)\}/g, ' square root of $1 ');
   }
 
-  // Superscripts / powers
   s = s.replace(/\^\{2\}|\^2(?![0-9])/g, ' squared ');
   s = s.replace(/\^\{3\}|\^3(?![0-9])/g, ' cubed ');
   s = s.replace(/\^\{-1\}/g, ' inverse ');
   s = s.replace(/\^\{([^{}]+)\}/g, ' to the power of $1 ');
   s = s.replace(/\^([a-zA-Z0-9]+)/g, ' to the power of $1 ');
 
-  // Subscripts
   s = s.replace(/_\{([^{}]+)\}/g, ' sub $1 ');
   s = s.replace(/_([a-zA-Z0-9]+)/g, ' sub $1 ');
 
-  // Greek letters & symbols
   const symbolMap: Array<[RegExp, string]> = [
     [/\\pi\b/g, ' pi '],
     [/\\theta\b/g, ' theta '],
@@ -122,13 +136,11 @@ export function latexFormulaToSpokenText(formula: string): string {
     s = s.replace(pattern, replacement);
   }
 
-  // Operators
   s = s.replace(/\s*=\s*/g, ' equals ');
   s = s.replace(/\s*\+\s*/g, ' plus ');
   s = s.replace(/([0-9a-zA-Z)\]}])\s*-\s*([0-9a-zA-Z(\[{])/g, '$1 minus $2');
   s = s.replace(/°/g, ' degrees ');
 
-  // Strip remaining backslashes and braces
   s = s.replace(/\\[a-zA-Z]+/g, ' ');
   s = s.replace(/[{}]/g, ' ');
   s = s.replace(/\s+/g, ' ').trim();
@@ -147,22 +159,18 @@ export function markdownAndMathToSpeechText(rawContent: string): {
 
   let text = rawContent;
 
-  // 1. Convert display math $$...$$ and \[...\]
   text = text.replace(/\$\$([\s\S]*?)\$\$/g, (_m, inner) => ` ${latexFormulaToSpokenText(inner)}. `);
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner) => ` ${latexFormulaToSpokenText(inner)}. `);
 
-  // 2. Convert inline math $...$ and \(...\)
   text = text.replace(/\$([^\n$]+?)\$/g, (_m, inner) => ` ${latexFormulaToSpokenText(inner)} `);
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner) => ` ${latexFormulaToSpokenText(inner)} `);
 
-  // 3. Handle code blocks (keep brief spoken description or clean code lines)
   text = text.replace(/```[a-zA-Z0-9_-]*\n([\s\S]*?)```/g, (_m, code) => {
     const cleanCode = String(code || '').replace(/[{}();<>]/g, ' ').replace(/\s+/g, ' ').trim();
     return cleanCode ? ` Code snippet: ${cleanCode.slice(0, 240)}. ` : '';
   });
   text = text.replace(/`([^`]+)`/g, '$1');
 
-  // 4. Clean Markdown tables: remove separator lines |---|---| and replace | with pauses
   text = text
     .split('\n')
     .filter((line) => !/^\s*\|?[\s:-]+\|[\s|:-]*$/.test(line))
@@ -178,11 +186,9 @@ export function markdownAndMathToSpeechText(rawContent: string): {
     })
     .join('\n');
 
-  // 5. Markdown links & images
   text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
   text = text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
 
-  // 6. Headings, blockquotes, horizontal rules, bold/italic markers, bullets
   text = text.replace(/^#{1,6}\s+/gm, '');
   text = text.replace(/^>\s+/gm, '');
   text = text.replace(/^[-*_]{3,}\s*$/gm, '');
@@ -193,7 +199,6 @@ export function markdownAndMathToSpeechText(rawContent: string): {
   text = text.replace(/_([^_]+)_/g, '$1');
   text = text.replace(/^\s*[-*•]\s+/gm, '');
 
-  // 7. Normalize whitespace and line breaks into natural sentence pauses
   text = text
     .replace(/\n{2,}/g, '. ')
     .replace(/\n/g, '. ')
@@ -208,17 +213,25 @@ export function markdownAndMathToSpeechText(rawContent: string): {
 interface SpeechCallbacks {
   onStatusChange?: (status: SpeechPlaybackStatus, messageId: string | null, errorMsg?: string) => void;
   onVolumeChange?: (volume: number) => void;
+  onNotice?: (noticeMsg: string) => void;
 }
 
 class SageSpeechManager {
   private currentMessageId: string | null = null;
   private status: SpeechPlaybackStatus = 'idle';
   private speed: SpeechSpeed = 1;
+  private activeCharacterId: SageCharacterId = 'sage-classic';
   private callbacks: SpeechCallbacks = {};
+  private voiceChangeListeners = new Set<() => void>();
+
+  // Per-avatar persisted settings
+  private voicePrefs: Record<string, AvatarVoiceSettings> = {};
 
   // Web Speech API state
   private utterance: SpeechSynthesisUtterance | null = null;
   private synthCadenceTimer: number | null = null;
+  private cachedVoices: SpeechSynthesisVoice[] = [];
+  private urduNoticeShownInSession = false;
 
   // HTML5 Audio + Web Audio API state (for /api/sage/tts fallback)
   private audioEl: HTMLAudioElement | null = null;
@@ -227,6 +240,334 @@ class SageSpeechManager {
   private analyser: AnalyserNode | null = null;
   private analyserRaf: number | null = null;
   private abortController: AbortController | null = null;
+
+  constructor() {
+    this.loadSavedVoicePrefs();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.refreshVoices();
+      try {
+        window.speechSynthesis.addEventListener?.('voiceschanged', () => {
+          this.refreshVoices();
+        });
+      } catch {
+        window.speechSynthesis.onvoiceschanged = () => {
+          this.refreshVoices();
+        };
+      }
+      // Retry loop for Android WebView & mobile browsers where voices populate slightly after load
+      [150, 500, 1200, 2500].forEach((delay) => {
+        window.setTimeout(() => {
+          if (this.cachedVoices.length === 0) {
+            this.refreshVoices();
+          }
+        }, delay);
+      });
+    }
+  }
+
+  private loadSavedVoicePrefs() {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(VOICE_PREFS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          this.voicePrefs = parsed;
+        }
+      }
+    } catch {}
+  }
+
+  private saveVoicePrefsToStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(VOICE_PREFS_STORAGE_KEY, JSON.stringify(this.voicePrefs));
+    } catch {}
+    // Non-blocking sync to Supabase user_metadata if user is signed in
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (data?.session?.user) {
+          supabase.auth
+            .updateUser({ data: { sage_voice_prefs: this.voicePrefs } })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }
+
+  public syncVoicePrefsFromUserMetadata(remotePrefs?: Record<string, AvatarVoiceSettings> | null) {
+    if (!remotePrefs || typeof remotePrefs !== 'object') return;
+    this.voicePrefs = { ...this.voicePrefs, ...remotePrefs };
+    try {
+      localStorage.setItem(VOICE_PREFS_STORAGE_KEY, JSON.stringify(this.voicePrefs));
+    } catch {}
+    this.notifyVoiceListeners();
+  }
+
+  private refreshVoices() {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      const list = window.speechSynthesis.getVoices() || [];
+      if (list.length > 0) {
+        // Sort deterministically by lang then name so order is 100% stable across calls
+        this.cachedVoices = [...list].sort((a, b) => {
+          const langCmp = (a.lang || '').localeCompare(b.lang || '');
+          if (langCmp !== 0) return langCmp;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        this.notifyVoiceListeners();
+      }
+    } catch {}
+  }
+
+  public async ensureVoicesLoaded(): Promise<SpeechSynthesisVoice[]> {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+    this.refreshVoices();
+    if (this.cachedVoices.length > 0) return this.cachedVoices;
+
+    // Wait up to 900ms with retries for async voiceschanged (especially on Android WebView)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await new Promise<void>((resolve) => {
+        const timer = window.setTimeout(resolve, 280);
+        const onChanged = () => {
+          window.clearTimeout(timer);
+          resolve();
+        };
+        try {
+          window.speechSynthesis.addEventListener?.('voiceschanged', onChanged, { once: true });
+        } catch {
+          window.speechSynthesis.onvoiceschanged = onChanged;
+        }
+      });
+      this.refreshVoices();
+      if (this.cachedVoices.length > 0) break;
+    }
+
+    return this.cachedVoices;
+  }
+
+  public getAvailableVoices(): SpeechSynthesisVoice[] {
+    if (this.cachedVoices.length === 0) {
+      this.refreshVoices();
+    }
+    return this.cachedVoices;
+  }
+
+  public subscribeVoicesChanged(listener: () => void): () => void {
+    this.voiceChangeListeners.add(listener);
+    return () => {
+      this.voiceChangeListeners.delete(listener);
+    };
+  }
+
+  public onVoicesReady(listener: (voices: SpeechSynthesisVoice[]) => void): () => void {
+    const wrapped = () => {
+      listener(this.getAvailableVoices());
+    };
+    this.voiceChangeListeners.add(wrapped);
+    if (this.cachedVoices.length > 0) {
+      try {
+        listener(this.cachedVoices);
+      } catch {}
+    }
+    return () => {
+      this.voiceChangeListeners.delete(wrapped);
+    };
+  }
+
+  private notifyVoiceListeners() {
+    this.voiceChangeListeners.forEach((fn) => {
+      try {
+        fn();
+      } catch {}
+    });
+  }
+
+  public setActiveCharacter(characterId: SageCharacterId) {
+    this.activeCharacterId = characterId;
+  }
+
+  public getActiveCharacter(): SageCharacterId {
+    return this.activeCharacterId;
+  }
+
+  public getAvatarVoiceSettings(characterId: SageCharacterId = this.activeCharacterId): AvatarVoiceSettings {
+    const charDef = getSageCharacterById(characterId);
+    const saved = this.voicePrefs[characterId];
+    const resolvedUri = saved?.voiceUri ?? saved?.voiceURI ?? '';
+    return {
+      voiceUri: resolvedUri,
+      voiceURI: resolvedUri,
+      rate:
+        typeof saved?.rate === 'number' && !Number.isNaN(saved.rate)
+          ? Math.max(0.5, Math.min(1.75, saved.rate))
+          : charDef.voiceProfile.defaultRate,
+      pitch:
+        typeof saved?.pitch === 'number' && !Number.isNaN(saved.pitch)
+          ? Math.max(0.5, Math.min(1.5, saved.pitch))
+          : charDef.voiceProfile.defaultPitch,
+    };
+  }
+
+  public getAvatarVoicePref(characterId: SageCharacterId = this.activeCharacterId): AvatarVoicePreference {
+    return this.getAvatarVoiceSettings(characterId);
+  }
+
+  public setAvatarVoiceSettings(
+    characterId: SageCharacterId,
+    patch: Partial<AvatarVoiceSettings>
+  ): AvatarVoiceSettings {
+    const current = this.getAvatarVoiceSettings(characterId);
+    const nextUri =
+      patch.voiceUri !== undefined
+        ? patch.voiceUri
+        : 'voiceURI' in patch
+        ? patch.voiceURI ?? ''
+        : current.voiceUri;
+    const updated: AvatarVoiceSettings = {
+      voiceUri: nextUri,
+      voiceURI: nextUri,
+      rate:
+        patch.rate !== undefined
+          ? Math.max(0.5, Math.min(1.75, Number(patch.rate) || 1.0))
+          : current.rate,
+      pitch:
+        patch.pitch !== undefined
+          ? Math.max(0.5, Math.min(1.5, Number(patch.pitch) || 1.0))
+          : current.pitch,
+    };
+    this.voicePrefs[characterId] = updated;
+    this.saveVoicePrefsToStorage();
+    this.notifyVoiceListeners();
+    return updated;
+  }
+
+  public setAvatarVoicePref(
+    characterId: SageCharacterId,
+    patch: Partial<AvatarVoicePreference>
+  ): AvatarVoicePreference {
+    return this.setAvatarVoiceSettings(characterId, patch);
+  }
+
+  public resetAvatarVoiceSettings(characterId: SageCharacterId): AvatarVoiceSettings {
+    delete this.voicePrefs[characterId];
+    this.saveVoicePrefsToStorage();
+    this.notifyVoiceListeners();
+    return this.getAvatarVoiceSettings(characterId);
+  }
+
+  /**
+   * Deterministic voice selection for a specific avatar character (never Math.random).
+   * If a user-saved voiceURI exists and is still available on the device, returns it.
+   * Otherwise deterministically scores and selects the best permanent default voice for that avatar.
+   */
+  public resolveVoiceForAvatar(
+    characterId: SageCharacterId = this.activeCharacterId,
+    isUrdu = false
+  ): { voice: SpeechSynthesisVoice | null; missingUrduVoice: boolean } {
+    const voices = this.getAvailableVoices();
+    if (voices.length === 0) {
+      return { voice: null, missingUrduVoice: isUrdu };
+    }
+
+    if (isUrdu) {
+      const urduVoice =
+        voices.find((v) => v.lang.toLowerCase().startsWith('ur-pk')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('ur-in')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('ur')) ||
+        voices.find((v) => v.name.toLowerCase().includes('urdu'));
+      if (urduVoice) {
+        return { voice: urduVoice, missingUrduVoice: false };
+      }
+      // Check Hindi/Arabic voice only if no Urdu voice exists, and flag missingUrduVoice = true
+      const fallbackVoice =
+        voices.find((v) => v.lang.toLowerCase().startsWith('hi-in')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('en-pk')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('en-in')) ||
+        null;
+      return { voice: fallbackVoice, missingUrduVoice: true };
+    }
+
+    const settings = this.getAvatarVoiceSettings(characterId);
+    if (settings.voiceUri) {
+      const savedMatch = voices.find(
+        (v) => v.voiceURI === settings.voiceUri || v.name === settings.voiceUri
+      );
+      if (savedMatch) {
+        return { voice: savedMatch, missingUrduVoice: false };
+      }
+      // Saved voice disappeared on this device — silently fall through to deterministic default
+    }
+
+    const charDef = getSageCharacterById(characterId);
+    const { preferredLangs, genderHint, nameKeywords } = charDef.voiceProfile;
+
+    const englishVoices = voices.filter((v) =>
+      v.lang.toLowerCase().startsWith('en')
+    );
+    const pool = englishVoices.length > 0 ? englishVoices : voices;
+
+    const femaleHints = ['female', 'woman', 'girl', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'zira', 'hazel', 'susan', 'linda', 'aria', 'jenny', 'sonia', 'libby', 'neerja', 'catherine'];
+    const maleHints = ['male', 'man', 'boy', 'daniel', 'alex', 'fred', 'tom', 'oliver', 'david', 'mark', 'george', 'ryan', 'guy', 'christopher', 'rishi', 'prabhat', 'asad', 'thomas', 'james'];
+
+    let bestVoice: SpeechSynthesisVoice = pool[0];
+    let bestScore = -9999;
+
+    for (const v of pool) {
+      let score = 0;
+      const lowerName = (v.name || '').toLowerCase();
+      const lowerLang = (v.lang || '').toLowerCase().replace('_', '-');
+
+      // 1. Keyword match (highest priority, weighted by keyword order)
+      for (let i = 0; i < nameKeywords.length; i++) {
+        if (lowerName.includes(nameKeywords[i].toLowerCase())) {
+          score += 60 - i * 5;
+          break;
+        }
+      }
+
+      // 2. Language preference match
+      for (let i = 0; i < preferredLangs.length; i++) {
+        const pref = preferredLangs[i].toLowerCase();
+        if (lowerLang === pref || lowerLang.startsWith(pref)) {
+          score += 30 - i * 4;
+          break;
+        }
+      }
+
+      // 3. Gender hint match
+      if (genderHint === 'female') {
+        if (femaleHints.some((h) => lowerName.includes(h))) score += 22;
+        if (maleHints.some((h) => lowerName.includes(h))) score -= 15;
+      } else if (genderHint === 'male') {
+        if (maleHints.some((h) => lowerName.includes(h))) score += 22;
+        if (femaleHints.some((h) => lowerName.includes(h))) score -= 15;
+      }
+
+      // 4. Natural / Neural quality bonus
+      if (/natural|neural|online|premium|enhanced|google/i.test(lowerName)) {
+        score += 8;
+      }
+      if (v.default) {
+        score += 2;
+      }
+
+      // Deterministic tie-breaker using character index offset so different characters pick distinct voices when scores tie
+      const charIdx = Math.max(0, SAGE_CHARACTERS.findIndex((c) => c.id === characterId));
+      const voiceIdx = pool.indexOf(v);
+      if (voiceIdx % SAGE_CHARACTERS.length === charIdx % pool.length) {
+        score += 3;
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestVoice = v;
+      }
+    }
+
+    return { voice: bestVoice || voices[0] || null, missingUrduVoice: false };
+  }
 
   public setCallbacks(cb: SpeechCallbacks) {
     this.callbacks = cb;
@@ -259,11 +600,32 @@ class SageSpeechManager {
     this.callbacks.onStatusChange?.(status, this.currentMessageId, errorMsg);
   }
 
+  private visualCadenceEndTimer: number | null = null;
+
   private clearCadenceTimer() {
     if (this.synthCadenceTimer !== null) {
       window.clearInterval(this.synthCadenceTimer);
       this.synthCadenceTimer = null;
     }
+    if (this.visualCadenceEndTimer !== null) {
+      window.clearTimeout(this.visualCadenceEndTimer);
+      this.visualCadenceEndTimer = null;
+    }
+  }
+
+  private runVisualSpeechCadence(cleanText: string, rate = 1.0) {
+    this.clearCadenceTimer();
+    this.updateStatus('playing');
+    this.startSyntheticCadence();
+    const durationMs = Math.min(
+      12000,
+      Math.max(1800, Math.round((cleanText.length * 52) / Math.max(0.5, rate)))
+    );
+    this.visualCadenceEndTimer = window.setTimeout(() => {
+      this.clearCadenceTimer();
+      this.currentMessageId = null;
+      this.updateStatus('idle');
+    }, durationMs);
   }
 
   private clearAudioElement() {
@@ -318,19 +680,25 @@ class SageSpeechManager {
         window.speechSynthesis.pause();
         this.clearCadenceTimer();
         this.updateStatus('paused');
+        return;
       } catch {}
     }
+    this.clearCadenceTimer();
+    this.updateStatus('paused');
   }
 
   public resume() {
     if (this.status !== 'paused') return;
     if (this.audioEl) {
-      this.audioEl.play().then(() => {
-        this.updateStatus('playing');
-        this.startAnalyserLoop();
-      }).catch(() => {
-        this.updateStatus('error', 'Unable to resume audio playback.');
-      });
+      this.audioEl
+        .play()
+        .then(() => {
+          this.updateStatus('playing');
+          this.startAnalyserLoop();
+        })
+        .catch(() => {
+          this.runVisualSpeechCadence('Resuming response', this.speed || 1);
+        });
       return;
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.paused) {
@@ -338,12 +706,17 @@ class SageSpeechManager {
         window.speechSynthesis.resume();
         this.startSyntheticCadence();
         this.updateStatus('playing');
+        return;
       } catch {}
     }
+    this.runVisualSpeechCadence('Resuming response', this.speed || 1);
   }
 
   private startSyntheticCadence() {
-    this.clearCadenceTimer();
+    if (this.synthCadenceTimer !== null) {
+      window.clearInterval(this.synthCadenceTimer);
+      this.synthCadenceTimer = null;
+    }
     let tick = 0;
     this.synthCadenceTimer = window.setInterval(() => {
       if (this.status !== 'playing') {
@@ -351,7 +724,7 @@ class SageSpeechManager {
         return;
       }
       tick += 0.35;
-      // Natural syllabic modulation wave between 0.25 and 0.92
+      // Deterministic multi-frequency syllabic modulation wave (no Math.random needed)
       const wave =
         0.52 +
         0.25 * Math.sin(tick * 3.1) +
@@ -386,75 +759,99 @@ class SageSpeechManager {
     this.analyserRaf = requestAnimationFrame(loop);
   }
 
-  private pickBestBrowserVoice(isUrdu: boolean): SpeechSynthesisVoice | null {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
-    const voices = window.speechSynthesis.getVoices() || [];
-    if (voices.length === 0) return null;
-
-    if (isUrdu) {
-      const urduVoice =
-        voices.find((v) => v.lang.toLowerCase().startsWith('ur-pk')) ||
-        voices.find((v) => v.lang.toLowerCase().startsWith('ur')) ||
-        voices.find((v) => v.name.toLowerCase().includes('urdu'));
-      return urduVoice || null;
+  /**
+   * Speaks a quick preview sample for the specified avatar using its configured voice, rate, and pitch.
+   */
+  public async previewVoice(
+    characterId: SageCharacterId = this.activeCharacterId,
+    customDisplayName?: string,
+    options?: {
+      onBoundaryLevel?: (level: number) => void;
+      onEnd?: () => void;
     }
-
-    return (
-      voices.find((v) => /en-(us|gb|pk|in)/i.test(v.lang) && /natural|google|online|neural|samantha|daniel/i.test(v.name)) ||
-      voices.find((v) => v.lang.toLowerCase().startsWith('en')) ||
-      voices[0] ||
-      null
-    );
+  ): Promise<void> {
+    const charDef = getSageCharacterById(characterId);
+    const spokenName = customDisplayName || charDef.name;
+    const sampleText = `Hello! I am ${spokenName}, your ${charDef.role} at SHS Virtual Academy. Ready to study together!`;
+    if (options?.onBoundaryLevel) {
+      options.onBoundaryLevel(0.65);
+    }
+    try {
+      await this.speak(`preview-${characterId}`, sampleText, characterId);
+    } finally {
+      if (options?.onEnd) {
+        window.setTimeout(() => {
+          options.onEnd?.();
+        }, 1200);
+      }
+    }
   }
 
-  public async speak(messageId: string, rawMarkdown: string): Promise<void> {
+  public async speak(
+    messageId: string,
+    rawMarkdown: string,
+    characterId: SageCharacterId = this.activeCharacterId
+  ): Promise<void> {
     this.stop();
     this.currentMessageId = messageId;
+    this.activeCharacterId = characterId;
 
     const { text, isUrdu } = markdownAndMathToSpeechText(rawMarkdown);
     if (!text) {
-      this.updateStatus('error', 'Nothing readable in this message.');
+      this.updateStatus('idle');
       return;
     }
 
     this.updateStatus('loading');
 
-    // Check if Web Speech API has an appropriate voice (for Urdu, many Android WebViews lack a local Urdu voice)
     const canUseWebSpeech =
       typeof window !== 'undefined' &&
       'speechSynthesis' in window &&
       typeof SpeechSynthesisUtterance !== 'undefined';
 
+    const avatarSettings = this.getAvatarVoiceSettings(characterId);
+    const effectiveRate = Math.max(
+      0.5,
+      Math.min(2.0, avatarSettings.rate * (this.speed || 1))
+    );
+    const effectivePitch = avatarSettings.pitch;
+
     if (canUseWebSpeech) {
-      // Wait briefly if getVoices() hasn't populated yet
-      let voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) {
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(resolve, 250);
-          window.speechSynthesis.onvoiceschanged = () => {
-            clearTimeout(timeout);
-            resolve();
-          };
-        });
-        voices = window.speechSynthesis.getVoices();
+      await this.ensureVoicesLoaded();
+      const { voice: matchedVoice, missingUrduVoice } = this.resolveVoiceForAvatar(
+        characterId,
+        isUrdu
+      );
+
+      if (isUrdu && missingUrduVoice && !this.urduNoticeShownInSession) {
+        this.urduNoticeShownInSession = true;
+        this.callbacks.onNotice?.(
+          'No Urdu voice is installed on this device — using fallback voice so you can still listen.'
+        );
       }
 
-      const matchedVoice = this.pickBestBrowserVoice(isUrdu);
-      // If it's English (and voices exist) OR we found an authentic Urdu voice, try Web Speech API first
-      if ((!isUrdu && voices.length > 0) || (isUrdu && matchedVoice)) {
-        const started = await this.tryWebSpeech(text, isUrdu, matchedVoice);
+      if (!isUrdu || (matchedVoice && !missingUrduVoice)) {
+        const started = await this.tryWebSpeech(
+          text,
+          isUrdu,
+          matchedVoice,
+          effectiveRate,
+          effectivePitch
+        );
         if (started) return;
       }
     }
 
-    // Fallback to server-side Gemini TTS (/api/sage/tts) — works in all Android WebViews and supports Urdu & English!
-    await this.playServerTts(text);
+    // Fallback to server-side Gemini TTS (/api/sage/tts) — never throws if a local or cloud voice is missing
+    await this.playServerTts(text, effectiveRate, effectivePitch);
   }
 
   private tryWebSpeech(
     cleanText: string,
     isUrdu: boolean,
-    voice: SpeechSynthesisVoice | null
+    voice: SpeechSynthesisVoice | null,
+    rate: number,
+    pitch: number
   ): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
       try {
@@ -466,8 +863,8 @@ class SageSpeechManager {
         } else {
           utter.lang = isUrdu ? 'ur-PK' : 'en-US';
         }
-        utter.rate = this.speed;
-        utter.pitch = 1.0;
+        utter.rate = rate;
+        utter.pitch = pitch;
 
         let settled = false;
         const startTimeout = window.setTimeout(() => {
@@ -478,7 +875,7 @@ class SageSpeechManager {
             } catch {}
             resolve(false);
           }
-        }, 1800);
+        }, 2000);
 
         utter.onstart = () => {
           if (!settled) {
@@ -490,9 +887,12 @@ class SageSpeechManager {
           this.startSyntheticCadence();
         };
 
+        let boundaryTick = 0;
         utter.onboundary = () => {
           if (this.status === 'playing') {
-            this.callbacks.onVolumeChange?.(0.75 + Math.random() * 0.25);
+            boundaryTick += 1;
+            const pulse = 0.78 + 0.18 * Math.abs(Math.sin(boundaryTick * 1.7));
+            this.callbacks.onVolumeChange?.(pulse);
           }
         };
 
@@ -513,9 +913,8 @@ class SageSpeechManager {
           if (ev.error === 'canceled' || ev.error === 'interrupted') {
             this.updateStatus('idle');
           } else {
-            // Try server TTS if browser speech synthesis fails mid-flight
-            this.playServerTts(cleanText).catch(() => {
-              this.updateStatus('error', 'Voice playback failed on this device.');
+            this.playServerTts(cleanText, rate, pitch).catch(() => {
+              this.runVisualSpeechCadence(cleanText, rate);
             });
           }
         };
@@ -528,7 +927,7 @@ class SageSpeechManager {
     });
   }
 
-  private async playServerTts(cleanText: string): Promise<void> {
+  private async playServerTts(cleanText: string, rate = 1.0, pitch = 1.0): Promise<void> {
     try {
       this.abortController = new AbortController();
       const response = await fetch('/api/sage/tts', {
@@ -541,20 +940,34 @@ class SageSpeechManager {
         signal: this.abortController.signal,
       });
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData?.error || `Audio service returned HTTP ${response.status}`);
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      if (!response.ok || contentType.includes('application/json')) {
+        // Cloud TTS returned a browser fallback directive or unavailable status
+        const canUseWebSpeech =
+          typeof window !== 'undefined' &&
+          'speechSynthesis' in window &&
+          typeof SpeechSynthesisUtterance !== 'undefined';
+        if (canUseWebSpeech) {
+          const started = await this.tryWebSpeech(cleanText, false, null, rate, pitch);
+          if (started) return;
+        }
+        this.runVisualSpeechCadence(cleanText, rate);
+        return;
       }
 
       const wavBlob = await response.blob();
+      if (!wavBlob || wavBlob.size < 48) {
+        this.runVisualSpeechCadence(cleanText, rate);
+        return;
+      }
+
       const url = URL.createObjectURL(wavBlob);
       this.audioUrl = url;
 
       const audio = new Audio(url);
-      audio.playbackRate = this.speed;
+      audio.playbackRate = Math.max(0.5, Math.min(2.0, rate));
       this.audioEl = audio;
 
-      // Connect Web Audio AnalyserNode for real-time 3D avatar lip-sync
       try {
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioCtx) {
@@ -573,7 +986,6 @@ class SageSpeechManager {
           this.analyser = analyser;
         }
       } catch {
-        // Fallback to synthetic cadence if Web Audio graph is restricted
         this.analyser = null;
       }
 
@@ -590,17 +1002,13 @@ class SageSpeechManager {
 
       audio.onerror = () => {
         this.clearAudioElement();
-        this.updateStatus('error', 'Could not play spoken audio on this device.');
+        this.runVisualSpeechCadence(cleanText, rate);
       };
 
       await audio.play();
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
-      console.warn('[SageSpeech] Server TTS fallback error:', err?.message || err);
-      this.updateStatus(
-        'error',
-        'Voice playback is unavailable on this browser. Please check your device audio settings.'
-      );
+      this.runVisualSpeechCadence(cleanText, rate);
     }
   }
 }

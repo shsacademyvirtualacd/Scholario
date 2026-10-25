@@ -16,14 +16,22 @@ export type { Sage3DAvatarState };
 
 export interface Sage3DAvatarProps {
   state: Sage3DAvatarState;
-  /** Selected character ID (#1 sage-classic default + 5 additional characters) */
+  /** Selected character ID (#1 sage-classic default + 8 additional characters) */
   characterId?: SageCharacterId;
+  /** Custom user-assigned name for Sage */
+  customName?: string;
   /** Shared canvas ref to mirror the live 3D head into the top-left header avatar */
   headerCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
   /** Audio volume level 0..1 when speaking or recording */
   audioLevel?: number;
-  /** Compact layout (76px docked at top of chat) once messages exist */
+  /** Compact layout once messages exist */
   compact?: boolean;
+  /** Optional custom size class override (used in Profile drawer or Roaming Cat guide) */
+  sizeClassName?: string;
+  /** Hide greeting and thought bubble (e.g., when used inside Profile drawer or Roaming guide) */
+  chromeless?: boolean;
+  /** Optional horizontal lean / direction hint (-1..1) for roaming movement */
+  roamLeanX?: number;
   /** Optional subtitle/status label */
   statusLabel?: string;
   /** Greeting title when shown large in empty/fresh chat */
@@ -132,9 +140,13 @@ const Plush2DFallback: React.FC<{
 export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
   state,
   characterId = 'sage-classic',
+  customName,
   headerCanvasRef,
   audioLevel = 0,
   compact = false,
+  sizeClassName,
+  chromeless = false,
+  roamLeanX = 0,
   statusLabel,
   greetingTitle = "Hi, I'm Sage",
   onPoke,
@@ -153,8 +165,13 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
   const characterIdRef = useRef<SageCharacterId>(characterId);
   const audioLevelRef = useRef<number>(audioLevel);
   const pokeCountRef = useRef<number>(pokeCount);
+  const roamLeanXRef = useRef<number>(roamLeanX);
   const applyCharacterRef = useRef<((id: SageCharacterId, animateSwitch: boolean) => void) | null>(null);
   const syncSizeRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    roamLeanXRef.current = roamLeanX;
+  }, [roamLeanX]);
 
   useEffect(() => {
     stateRef.current = state;
@@ -935,7 +952,335 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     miloRig.add(miloRightClaw);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // COMMON FACE FEATURES (For Sage, Ayan, Zain, Hamza, Milo)
+    // RIG 7: TANGO CAT (Fluffy orange tabby cat, gold/obsidian scarf, pencil behind ear, swishing tail)
+    // ═══════════════════════════════════════════════════════════════════════
+    const tangoRig = new THREE.Group();
+    tangoRig.visible = false;
+    characterGroup.add(tangoRig);
+
+    const tangoOrangeMat = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#FB923C'),
+      roughness: 0.76,
+      metalness: 0.01,
+      sheen: 1.0,
+      sheenRoughness: 0.78,
+      sheenColor: new THREE.Color('#FFEDD5'),
+      bumpMap: plushBumpTex || undefined,
+      bumpScale: 0.016,
+    });
+
+    const tangoStripeMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#9A3412'),
+      roughness: 0.82,
+    });
+
+    const tangoEarInnerMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#FDA4AF'),
+      roughness: 0.85,
+    });
+
+    // Squishy Tabby Head + Chubby Body
+    const tangoHeadGeo = new THREE.SphereGeometry(0.92, 48, 48);
+    tangoHeadGeo.scale(1.08, 0.94, 0.98);
+    const tangoHeadMesh = new THREE.Mesh(tangoHeadGeo, tangoOrangeMat);
+    tangoRig.add(tangoHeadMesh);
+
+    // Tabby Stripes on Forehead
+    [-0.16, 0, 0.16].forEach((sx, idx) => {
+      const stripe = new THREE.Mesh(new THREE.CapsuleGeometry(0.028, idx === 1 ? 0.24 : 0.18, 8, 12), tangoStripeMat);
+      stripe.position.set(sx, 0.56, 0.74);
+      stripe.rotation.set(0.52, 0, sx * -0.4);
+      tangoRig.add(stripe);
+    });
+
+    // Pointed Cat Ears (Pivots for ear twitches)
+    const tangoLeftEar = new THREE.Group();
+    tangoLeftEar.position.set(-0.62, 0.72, 0.05);
+    tangoLeftEar.rotation.set(0.08, 0, 0.35);
+    tangoRig.add(tangoLeftEar);
+    const catEarConeGeo = new THREE.ConeGeometry(0.28, 0.52, 24);
+    const tangoLeftEarMesh = new THREE.Mesh(catEarConeGeo, tangoOrangeMat);
+    tangoLeftEar.add(tangoLeftEarMesh);
+    const catEarInnerConeGeo = new THREE.ConeGeometry(0.16, 0.34, 16);
+    const tangoLeftEarInner = new THREE.Mesh(catEarInnerConeGeo, tangoEarInnerMat);
+    tangoLeftEarInner.position.set(0, -0.02, 0.11);
+    tangoLeftEar.add(tangoLeftEarInner);
+
+    const tangoRightEar = new THREE.Group();
+    tangoRightEar.position.set(0.62, 0.72, 0.05);
+    tangoRightEar.rotation.set(0.08, 0, -0.35);
+    tangoRig.add(tangoRightEar);
+    const tangoRightEarMesh = new THREE.Mesh(catEarConeGeo, tangoOrangeMat);
+    tangoRig.add(tangoRightEar);
+    tangoRightEar.add(tangoRightEarMesh);
+    const tangoRightEarInner = new THREE.Mesh(catEarInnerConeGeo, tangoEarInnerMat);
+    tangoRightEarInner.position.set(0, -0.02, 0.11);
+    tangoRightEar.add(tangoRightEarInner);
+
+    // Tiny Gold Pencil Tucked Behind Right Ear
+    const pencilGroup = new THREE.Group();
+    pencilGroup.position.set(0.76, 0.58, 0.16);
+    pencilGroup.rotation.set(0.25, 0.15, -0.58);
+    tangoRig.add(pencilGroup);
+    const pencilShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.46, 12), goldStarMat);
+    pencilGroup.add(pencilShaft);
+    const pencilTip = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.12, 12), obsidianMat);
+    pencilTip.position.y = 0.29;
+    pencilGroup.add(pencilTip);
+    const pencilEraser = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.08, 12), tangoEarInnerMat);
+    pencilEraser.position.y = -0.26;
+    pencilGroup.add(pencilEraser);
+
+    // Pink Triangular Cat Nose & Whiskers
+    const catNose = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.065, 12), tangoEarInnerMat);
+    catNose.position.set(0, 0.01, 0.94);
+    catNose.rotation.x = Math.PI;
+    tangoRig.add(catNose);
+
+    [-1, 1].forEach((side) => {
+      [-0.04, 0.04].forEach((wy, wIdx) => {
+        const whisker = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.34, 8), tangoStripeMat);
+        whisker.rotation.z = Math.PI / 2 + side * (wIdx === 0 ? 0.14 : -0.1);
+        whisker.position.set(side * 0.72, -0.04 + wy, 0.68);
+        tangoRig.add(whisker);
+      });
+    });
+
+    // Tango Gold & Obsidian Scarf
+    const tangoScarf = new THREE.Group();
+    tangoScarf.position.set(0, -0.66, 0.02);
+    tangoRig.add(tangoScarf);
+    const tangoScarfRing = new THREE.Mesh(scarfRingGeo, goldMat);
+    tangoScarfRing.rotation.x = Math.PI / 2 + 0.08;
+    tangoScarf.add(tangoScarfRing);
+    const tangoScarfStripe = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.045, 12, 36), obsidianMat);
+    tangoScarfStripe.rotation.x = Math.PI / 2 + 0.08;
+    tangoScarfStripe.position.y = -0.03;
+    tangoScarf.add(tangoScarfStripe);
+
+    // Tango Swishing Tail Pivot
+    const tangoTailPivot = new THREE.Group();
+    tangoTailPivot.position.set(0.55, -0.58, -0.55);
+    tangoRig.add(tangoTailPivot);
+    const tailSeg1 = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.48, 12, 16), tangoOrangeMat);
+    tailSeg1.position.set(0.28, 0.25, 0);
+    tailSeg1.rotation.z = -0.65;
+    tangoTailPivot.add(tailSeg1);
+    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.125, 16, 16), whiteMat);
+    tailTip.position.set(0.45, 0.48, 0);
+    tangoTailPivot.add(tailTip);
+
+    // Tango Paws
+    const tangoLeftPaw = new THREE.Mesh(footGeo, whiteMat);
+    tangoLeftPaw.position.set(-0.34, -0.92, 0.14);
+    tangoLeftPaw.rotation.y = 0.16;
+    tangoRig.add(tangoLeftPaw);
+    const tangoRightPaw = new THREE.Mesh(footGeo, whiteMat);
+    tangoRightPaw.position.set(0.34, -0.92, 0.14);
+    tangoRightPaw.rotation.y = -0.16;
+    tangoRig.add(tangoRightPaw);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RIG 8: GIGI GIRAFFE (Tall gentle giraffe, ossicones, spotted coat, bow tie, tiny book, bends neck when typing)
+    // ═══════════════════════════════════════════════════════════════════════
+    const gigiRig = new THREE.Group();
+    gigiRig.visible = false;
+    characterGroup.add(gigiRig);
+
+    const gigiCoatMat = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#FBBF24'),
+      roughness: 0.74,
+      metalness: 0.01,
+      sheen: 0.9,
+      sheenColor: new THREE.Color('#FEF3C7'),
+      bumpMap: plushBumpTex || undefined,
+      bumpScale: 0.014,
+    });
+
+    const gigiSpotMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#92400E'),
+      roughness: 0.82,
+    });
+
+    const gigiMuzzleMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#FFFBEB'),
+      roughness: 0.78,
+    });
+
+    // Lower Spotted Giraffe Body + Tiny Book
+    const gigiTorsoGeo = new THREE.SphereGeometry(0.68, 36, 36);
+    gigiTorsoGeo.scale(1.02, 0.78, 0.94);
+    const gigiTorsoMesh = new THREE.Mesh(gigiTorsoGeo, gigiCoatMat);
+    gigiTorsoMesh.position.set(0, -0.58, -0.04);
+    gigiRig.add(gigiTorsoMesh);
+
+    // Gold & Obsidian Bow Tie on Neck Base
+    const bowTieGroup = new THREE.Group();
+    bowTieGroup.position.set(0, -0.32, 0.62);
+    gigiRig.add(bowTieGroup);
+    const bowWingGeo = new THREE.ConeGeometry(0.14, 0.24, 12);
+    const bowLeft = new THREE.Mesh(bowWingGeo, goldStarMat);
+    bowLeft.rotation.z = -Math.PI / 2;
+    bowLeft.position.x = -0.12;
+    bowTieGroup.add(bowLeft);
+    const bowRight = new THREE.Mesh(bowWingGeo, goldStarMat);
+    bowRight.rotation.z = Math.PI / 2;
+    bowRight.position.x = 0.12;
+    bowTieGroup.add(bowRight);
+    const bowCenter = new THREE.Mesh(new THREE.SphereGeometry(0.065, 14, 14), obsidianMat);
+    bowTieGroup.add(bowCenter);
+
+    // Tiny Study Book held near Gigi's chest
+    const gigiBook = bookGroup.clone();
+    gigiBook.position.set(0, -0.68, 0.72);
+    gigiBook.scale.setScalar(0.88);
+    gigiRig.add(gigiBook);
+
+    // Articulated Neck + Head Pivot (bends down when typing!)
+    const gigiNeckPivot = new THREE.Group();
+    gigiNeckPivot.position.set(0, -0.28, 0);
+    gigiRig.add(gigiNeckPivot);
+
+    const gigiNeckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 0.62, 24), gigiCoatMat);
+    gigiNeckMesh.position.set(0, 0.2, 0);
+    gigiNeckPivot.add(gigiNeckMesh);
+
+    // Giraffe Spots on Neck
+    [
+      { x: -0.18, y: 0.18, z: 0.34, r: 0.075 },
+      { x: 0.2, y: 0.28, z: 0.31, r: 0.085 },
+      { x: -0.08, y: 0.35, z: 0.33, r: 0.065 },
+    ].forEach((sp) => {
+      const spot = new THREE.Mesh(new THREE.SphereGeometry(sp.r, 12, 12), gigiSpotMat);
+      spot.scale.set(1, 1, 0.35);
+      spot.position.set(sp.x, sp.y, sp.z);
+      gigiNeckPivot.add(spot);
+    });
+
+    // Giraffe Plush Head atop Neck
+    const gigiHeadGeo = new THREE.SphereGeometry(0.76, 42, 42);
+    gigiHeadGeo.scale(1.04, 0.95, 1.02);
+    const gigiHeadMesh = new THREE.Mesh(gigiHeadGeo, gigiCoatMat);
+    gigiHeadMesh.position.set(0, 0.46, 0.06);
+    gigiNeckPivot.add(gigiHeadMesh);
+
+    // Soft Cream Muzzle
+    const gigiMuzzle = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), gigiMuzzleMat);
+    gigiMuzzle.scale.set(1.22, 0.72, 0.75);
+    gigiMuzzle.position.set(0, 0.32, 0.62);
+    gigiNeckPivot.add(gigiMuzzle);
+
+    // Cute Giraffe Ossicones (Horns) on Top
+    [-0.24, 0.24].forEach((ox) => {
+      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.28, 12), gigiCoatMat);
+      stalk.position.set(ox, 1.18, 0.04);
+      stalk.rotation.z = ox < 0 ? 0.15 : -0.15;
+      gigiNeckPivot.add(stalk);
+      const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 16), gigiSpotMat);
+      tuft.position.set(ox * 1.12, 1.33, 0.04);
+      gigiNeckPivot.add(tuft);
+    });
+
+    // Giraffe Leaf Ears
+    [-0.68, 0.68].forEach((ex) => {
+      const gEar = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), gigiCoatMat);
+      gEar.scale.set(1.35, 0.55, 0.5);
+      gEar.position.set(ex, 0.78, 0.02);
+      gigiNeckPivot.add(gEar);
+    });
+
+    const gigiLeftHoof = new THREE.Mesh(footGeo, gigiSpotMat);
+    gigiLeftHoof.position.set(-0.32, -0.94, 0.12);
+    gigiRig.add(gigiLeftHoof);
+    const gigiRightHoof = new THREE.Mesh(footGeo, gigiSpotMat);
+    gigiRightHoof.position.set(0.32, -0.94, 0.12);
+    gigiRig.add(gigiRightHoof);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RIG 9: LUMI LAMP (Emerald green shade, articulated metallic arm, warm base, glowing idea bulb)
+    // ═══════════════════════════════════════════════════════════════════════
+    const lumiRig = new THREE.Group();
+    lumiRig.visible = false;
+    characterGroup.add(lumiRig);
+
+    const lumiEmeraldMat = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#10B981'),
+      roughness: 0.28,
+      metalness: 0.15,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.12,
+    });
+
+    const lumiArmMetalMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#CBD5E1'),
+      roughness: 0.3,
+      metalness: 0.78,
+    });
+
+    const lumiBulbMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#FEF08A'),
+      emissive: new THREE.Color('#FACC15'),
+      emissiveIntensity: 0.85,
+      roughness: 0.15,
+    });
+
+    // Warm Circular Lamp Base
+    const lumiBase = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.64, 0.16, 32), goldMat);
+    lumiBase.position.set(0, -0.88, 0);
+    lumiRig.add(lumiBase);
+
+    const lumiBaseTrim = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.04, 12, 36), obsidianMat);
+    lumiBaseTrim.rotation.x = Math.PI / 2;
+    lumiBaseTrim.position.set(0, -0.82, 0);
+    lumiRig.add(lumiBaseTrim);
+
+    // Articulated Metallic Lamp Arm with Gold Elbow Joint
+    const lumiLowerArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.56, 16), lumiArmMetalMat);
+    lumiLowerArm.position.set(-0.14, -0.62, -0.18);
+    lumiLowerArm.rotation.z = 0.38;
+    lumiRig.add(lumiLowerArm);
+
+    const lumiElbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), goldStarMat);
+    lumiElbowJoint.position.set(-0.24, -0.36, -0.18);
+    lumiRig.add(lumiElbowJoint);
+
+    const lumiUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.56, 16), lumiArmMetalMat);
+    lumiUpperArm.position.set(-0.12, -0.12, -0.08);
+    lumiUpperArm.rotation.z = -0.42;
+    lumiRig.add(lumiUpperArm);
+
+    // Lumi Emerald Shade Head Pivot
+    const lumiShadePivot = new THREE.Group();
+    lumiShadePivot.position.set(0, 0.16, 0.06);
+    lumiRig.add(lumiShadePivot);
+
+    // Conical Emerald Lamp Shade (Open bottom)
+    const lumiShadeGeo = new THREE.CylinderGeometry(0.46, 0.86, 0.88, 36, 1, false);
+    const lumiShadeMesh = new THREE.Mesh(lumiShadeGeo, lumiEmeraldMat);
+    lumiShadePivot.add(lumiShadeMesh);
+
+    // Gold Rim along Bottom of Shade
+    const lumiShadeRim = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.045, 16, 42), goldStarMat);
+    lumiShadeRim.rotation.x = Math.PI / 2;
+    lumiShadeRim.position.y = -0.43;
+    lumiShadePivot.add(lumiShadeRim);
+
+    // Top Gold Switch Knob
+    const lumiTopKnob = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.16, 20), goldStarMat);
+    lumiTopKnob.position.y = 0.5;
+    lumiShadePivot.add(lumiTopKnob);
+
+    // Glowing Warm Idea Bulb & Dynamic PointLight Inside Shade
+    const lumiBulbMesh = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 24), lumiBulbMat);
+    lumiBulbMesh.position.set(0, -0.38, 0.06);
+    lumiShadePivot.add(lumiBulbMesh);
+
+    const lumiBulbLight = new THREE.PointLight(0xfef08a, 1.2, 6);
+    lumiBulbLight.position.set(0, -0.45, 0.35);
+    lumiShadePivot.add(lumiBulbLight);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // COMMON FACE FEATURES (For all characters except Nova Bot)
     // ═══════════════════════════════════════════════════════════════════════
     const commonFaceGroup = new THREE.Group();
     commonFaceGroup.position.set(0, 0.03, 0.87);
@@ -1018,6 +1363,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     const leftArmPivot = new THREE.Group();
     leftArmPivot.position.set(-0.84, -0.18, 0.12);
     leftArmPivot.rotation.z = 0.42;
+    characterGroup.add(leftArmPivot);
     const leftArmMesh: THREE.Mesh<THREE.CapsuleGeometry, THREE.Material> = new THREE.Mesh(armGeo, sagePlushMat);
     leftArmMesh.position.y = -0.14;
     leftArmPivot.add(leftArmMesh);
@@ -1060,21 +1406,32 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     let switchScaleDip = 0;
 
     const applyCharacterToRig = (id: SageCharacterId, animateSwitch: boolean) => {
-      const def = getSageCharacterById(id);
       const persona = SAGE_THOUGHT_DATA[id] || SAGE_THOUGHT_DATA['sage-classic'];
 
-      // Toggle active rig
+      // Toggle active rig among all 9 characters
       sageRig.visible = id === 'sage-classic';
       ayanRig.visible = id === 'ayan-scholar';
       zainRig.visible = id === 'zain-explorer';
       hamzaRig.visible = id === 'hamza-kurta';
       novaRig.visible = id === 'nova-bot';
       miloRig.visible = id === 'milo-owl';
+      tangoRig.visible = id === 'tango-cat';
+      gigiRig.visible = id === 'gigi-giraffe';
+      lumiRig.visible = id === 'lumi-lamp';
 
       // Hide common face on Nova Bot (she has full cyber visor)
       commonFaceGroup.visible = id !== 'nova-bot';
 
-      // Update arm materials to match character skin/coat
+      // Position commonFaceGroup accurately on each character's head/shade
+      if (id === 'gigi-giraffe') {
+        commonFaceGroup.position.set(0, 0.24, 0.78);
+      } else if (id === 'lumi-lamp') {
+        commonFaceGroup.position.set(0, 0.16, 0.74);
+      } else {
+        commonFaceGroup.position.set(0, 0.03, 0.87);
+      }
+
+      // Update arm materials & visibility to match character skin/coat
       if (id === 'ayan-scholar') {
         leftArmMesh.material = navyBlazerMat;
         rightArmMesh.material = navyBlazerMat;
@@ -1090,8 +1447,18 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         rightArmMesh.material = whiteMat;
         leftArmPivot.visible = true;
         rightArmPivot.visible = true;
-      } else if (id === 'milo-owl') {
-        // Milo uses wings on left/right instead of humanoid arms
+      } else if (id === 'tango-cat') {
+        leftArmMesh.material = tangoOrangeMat;
+        rightArmMesh.material = tangoOrangeMat;
+        leftArmPivot.visible = true;
+        rightArmPivot.visible = true;
+      } else if (id === 'gigi-giraffe') {
+        leftArmMesh.material = gigiCoatMat;
+        rightArmMesh.material = gigiCoatMat;
+        leftArmPivot.visible = true;
+        rightArmPivot.visible = true;
+      } else if (id === 'milo-owl' || id === 'lumi-lamp') {
+        // Milo uses wings; Lumi is an articulated desk lamp
         leftArmPivot.visible = false;
         rightArmPivot.visible = false;
       } else if (id === 'nova-bot') {
@@ -1118,23 +1485,77 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     applyCharacterRef.current = applyCharacterToRig;
     applyCharacterToRig(characterIdRef.current, false);
 
-    // Pointer Tracking
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACCURATE POINTER / TOUCH / TILT TRACKING IN AVATAR COORDINATE SPACE
+    // ═══════════════════════════════════════════════════════════════════════
     const targetPointer = { x: 0, y: 0 };
     const currentPointer = { x: 0, y: 0 };
+    let cachedCanvasRect = renderer.domElement.getBoundingClientRect();
+    let lastTouchOrPointerTime = 0;
+
+    const updateCanvasRect = () => {
+      if (renderer.domElement && renderer.domElement.isConnected) {
+        cachedCanvasRect = renderer.domElement.getBoundingClientRect();
+      }
+    };
+
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
       window.matchMedia &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const handlePointerMove = (e: PointerEvent) => {
+    const updateTargetFromClientXY = (clientX: number, clientY: number) => {
       if (prefersReducedMotion) return;
-      const nx = (e.clientX / Math.max(window.innerWidth, 1)) * 2 - 1;
-      const ny = -(e.clientY / Math.max(window.innerHeight, 1)) * 2 + 1;
+      if (cachedCanvasRect.width < 10 || cachedCanvasRect.height < 10) {
+        updateCanvasRect();
+      }
+      const centerX = cachedCanvasRect.left + cachedCanvasRect.width * 0.5;
+      const centerY = cachedCanvasRect.top + cachedCanvasRect.height * 0.5;
+      const maxRadiusX = Math.max(cachedCanvasRect.width * 1.85, window.innerWidth * 0.42, 160);
+      const maxRadiusY = Math.max(cachedCanvasRect.height * 1.85, window.innerHeight * 0.42, 160);
+
+      const nx = (clientX - centerX) / maxRadiusX;
+      const ny = -(clientY - centerY) / maxRadiusY;
+
       targetPointer.x = Math.max(-1, Math.min(1, nx));
       targetPointer.y = Math.max(-1, Math.min(1, ny));
+      lastTouchOrPointerTime = performance.now();
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      updateTargetFromClientXY(e.clientX, e.clientY);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        updateTargetFromClientXY(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const handlePointerLeaveWindow = () => {
+      targetPointer.x = 0;
+      targetPointer.y = 0;
+    };
+
+    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
+      if (prefersReducedMotion) return;
+      // Only use device tilt if user hasn't touched/moved pointer in the last 2.5 seconds
+      if (performance.now() - lastTouchOrPointerTime < 2500) return;
+      if (e.gamma === null || e.beta === null) return;
+      const tiltX = Math.max(-1, Math.min(1, e.gamma / 30));
+      const tiltY = Math.max(-1, Math.min(1, -(e.beta - 45) / 30));
+      targetPointer.x = tiltX * 0.75;
+      targetPointer.y = tiltY * 0.75;
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchstart', handleTouchMove, { passive: true });
+    window.addEventListener('resize', updateCanvasRect, { passive: true });
+    window.addEventListener('scroll', updateCanvasRect, { passive: true, capture: true });
+    document.addEventListener('mouseleave', handlePointerLeaveWindow);
+    window.addEventListener('blur', handlePointerLeaveWindow);
+    window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
 
     let rafId: number | null = null;
     let isVisible = true;
@@ -1143,7 +1564,6 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
 
     let nextBlinkTime = 2.2 + Math.random() * 2.5;
     let blinkStart = -1;
-    const blinkDuration = 0.17;
 
     const smoothHeadRot = { x: 0, y: 0, z: 0 };
     const smoothBodyPos = { x: 0, y: 0 };
@@ -1152,6 +1572,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     let spinAngle = 0;
     let lastHandledPokeCount = pokeCountRef.current;
     let deskScaleSmooth = 0;
+    let gigiNeckBendSmooth = 0;
 
     let frameSampleCount = 0;
     let frameDeltaSum = 0;
@@ -1169,6 +1590,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       const curState = stateRef.current;
       const curCharId = characterIdRef.current;
       const curLevel = Math.max(0, Math.min(1, audioLevelRef.current));
+      const roamLean = roamLeanXRef.current || 0;
 
       // Auto-lower quality if FPS drops
       if (!qualityReduced && currentDpr > 1) {
@@ -1202,48 +1624,60 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         if (switchScaleDip < 0.01) switchScaleDip = 0;
       }
 
-      currentPointer.x += (targetPointer.x - currentPointer.x) * Math.min(1, delta * 6);
-      currentPointer.y += (targetPointer.y - currentPointer.y) * Math.min(1, delta * 6);
+      // Smooth damped pointer interpolation
+      const pointerDamp = Math.min(1, delta * 7.5);
+      currentPointer.x += (targetPointer.x - currentPointer.x) * pointerDamp;
+      currentPointer.y += (targetPointer.y - currentPointer.y) * pointerDamp;
 
-      // Target Pose computation taking character personalities into account!
-      let targetRotX = -currentPointer.y * 0.14;
-      let targetRotY = currentPointer.x * 0.24;
-      let targetRotZ = -currentPointer.x * 0.05;
+      // Target Pose computation with accurate head turn + slight body lean toward cursor
+      let targetRotX = -currentPointer.y * 0.22;
+      let targetRotY = currentPointer.x * 0.34 + roamLean * 0.28;
+      let targetRotZ = -currentPointer.x * 0.075 - roamLean * 0.12;
+      let targetPosX = currentPointer.x * 0.045;
       let targetPosY = Math.sin(t * 2.1) * 0.045;
       let targetScaleX = 1 + Math.sin(t * 2.1) * 0.012;
       let targetScaleY = 1 - Math.sin(t * 2.1) * 0.012;
 
       // Character-specific movement quirks
       if (curCharId === 'zain-explorer') {
-        // Zain is hyper and bouncy: faster bobbing
         targetPosY = Math.sin(t * 3.8) * 0.06;
       } else if (curCharId === 'nova-bot') {
-        // Nova floats with smooth hovering thruster motion
         targetPosY = Math.sin(t * 2.4) * 0.075 + Math.cos(t * 1.2) * 0.02;
         targetRotZ += Math.sin(t * 1.8) * 0.04;
       } else if (curCharId === 'hamza-kurta') {
-        // Hamza has calm, dignified, slower movements
         targetPosY = Math.sin(t * 1.5) * 0.035;
+      } else if (curCharId === 'tango-cat') {
+        // Playful springy cat bobbing
+        targetPosY = Math.sin(t * 2.6) * 0.05;
+      } else if (curCharId === 'gigi-giraffe') {
+        // Graceful gentle sway
+        targetPosY = Math.sin(t * 1.7) * 0.04;
+        targetRotZ += Math.sin(t * 1.4) * 0.03;
+      } else if (curCharId === 'lumi-lamp') {
+        // Tiny playful desk-lamp hops
+        const hopWave = Math.max(0, Math.sin(t * 2.8));
+        targetPosY = Math.pow(hopWave, 2) * 0.065;
       }
 
       if (prefersReducedMotion) {
         targetRotX = 0;
         targetRotY = 0;
         targetRotZ = 0;
+        targetPosX = 0;
         targetPosY = 0;
         targetScaleX = 1;
         targetScaleY = 1;
       } else {
         switch (curState) {
           case 'idle': {
-            const slowLook = Math.sin(t * 0.55) * 0.08;
+            const slowLook = Math.sin(t * 0.55) * 0.06;
             targetRotY += slowLook;
-            targetRotZ += Math.sin(t * 0.8) * 0.035;
+            targetRotZ += Math.sin(t * 0.8) * 0.03;
             break;
           }
           case 'typing': {
             targetRotX = 0.22;
-            targetRotY = currentPointer.x * 0.12 + Math.sin(t * 2.4) * 0.03;
+            targetRotY = currentPointer.x * 0.14 + Math.sin(t * 2.4) * 0.03;
             targetPosY = -0.04 + Math.sin(t * 3.2) * 0.025;
             break;
           }
@@ -1271,14 +1705,14 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
           case 'speaking': {
             const speakEnergy = curLevel > 0.03 ? curLevel : 0.45;
             targetRotX = Math.sin(t * 7.5) * 0.06 * speakEnergy;
-            targetRotY = currentPointer.x * 0.16 + Math.sin(t * 2.4) * 0.08;
+            targetRotY = currentPointer.x * 0.18 + Math.sin(t * 2.4) * 0.08;
             targetRotZ = Math.cos(t * 3.8) * 0.045;
             targetPosY = Math.abs(Math.sin(t * 5.2)) * 0.055 * speakEnergy;
             break;
           }
           case 'success':
           case 'poke': {
-            const bounceAmp = curCharId === 'zain-explorer' ? 0.22 : 0.15;
+            const bounceAmp = curCharId === 'zain-explorer' || curCharId === 'lumi-lamp' ? 0.22 : 0.16;
             const bounce = Math.abs(Math.sin(t * 7.5));
             targetPosY = bounce * bounceAmp;
             targetScaleX = 1 + (0.5 - bounce) * 0.06;
@@ -1305,13 +1739,15 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       smoothHeadRot.x += (targetRotX - smoothHeadRot.x) * damp;
       smoothHeadRot.y += (targetRotY - smoothHeadRot.y) * damp;
       smoothHeadRot.z += (targetRotZ - smoothHeadRot.z) * damp;
+      smoothBodyPos.x += (targetPosX - smoothBodyPos.x) * damp;
       smoothBodyPos.y += (targetPosY - smoothBodyPos.y) * damp;
       smoothBodyScale.x += (targetScaleX - smoothBodyScale.x) * damp;
       smoothBodyScale.y += (targetScaleY - smoothBodyScale.y) * damp;
 
       const switchFactor = 1 - switchScaleDip * 0.18;
+      characterGroup.position.x = smoothBodyPos.x;
       characterGroup.position.y = smoothBodyPos.y;
-      characterGroup.rotation.y = spinAngle + switchScaleDip * 0.5;
+      characterGroup.rotation.y = smoothHeadRot.y + spinAngle + switchScaleDip * 0.5;
       characterGroup.rotation.x = smoothHeadRot.x;
       characterGroup.rotation.z = smoothHeadRot.z;
       characterGroup.scale.set(
@@ -1325,6 +1761,35 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       const targetDeskScale = isTypingActive ? 1.0 : 0.0;
       deskScaleSmooth += (targetDeskScale - deskScaleSmooth) * Math.min(1, delta * 12);
       typingDeskGroup.scale.setScalar(deskScaleSmooth);
+
+      // ── Character-Specific Rig Animations (#7 Tango, #8 Gigi, #9 Lumi) ──
+      if (curCharId === 'tango-cat') {
+        // Swishing tail & ear twitches
+        const swishSpeed = curState === 'success' || curState === 'poke' ? 9.5 : isTypingActive ? 6.0 : 3.2;
+        tangoTailPivot.rotation.z = Math.sin(t * swishSpeed) * 0.35;
+        tangoTailPivot.rotation.y = Math.cos(t * (swishSpeed * 0.7)) * 0.25;
+
+        const earTwitchL = Math.sin(t * 7.3) > 0.92 ? 0.18 : 0;
+        const earTwitchR = Math.cos(t * 6.1) > 0.92 ? -0.18 : 0;
+        tangoLeftEar.rotation.z = 0.35 + earTwitchL;
+        tangoRightEar.rotation.z = -0.35 + earTwitchR;
+      } else if (curCharId === 'gigi-giraffe') {
+        // Gigi bends its tall neck/head down toward the input box when typing!
+        const targetNeckBend = isTypingActive ? 0.36 : curState === 'thinking' ? -0.08 : 0.0;
+        gigiNeckBendSmooth += (targetNeckBend - gigiNeckBendSmooth) * Math.min(1, delta * 8);
+        gigiNeckPivot.rotation.x = gigiNeckBendSmooth + Math.sin(t * 1.8) * 0.03;
+        gigiNeckPivot.rotation.z = Math.cos(t * 1.4) * 0.04 - currentPointer.x * 0.08;
+        commonFaceGroup.position.y = 0.24 - gigiNeckBendSmooth * 0.22;
+        commonFaceGroup.position.z = 0.78 + gigiNeckBendSmooth * 0.18;
+      } else if (curCharId === 'lumi-lamp') {
+        // Lumi bulb glows brighter when thinking or when it has an idea (success / poke)
+        const hasIdea = curState === 'thinking' || curState === 'success' || curState === 'poke';
+        const pulseGlow = hasIdea ? 1.8 + Math.sin(t * 8) * 0.45 : isTypingActive ? 1.35 : 0.85;
+        lumiBulbMat.emissiveIntensity = pulseGlow;
+        lumiBulbLight.intensity = pulseGlow * 1.3;
+        lumiShadePivot.rotation.z = Math.sin(t * 2.2) * 0.06 - currentPointer.x * 0.1;
+        lumiShadePivot.rotation.x = isTypingActive ? 0.18 : Math.cos(t * 1.7) * 0.04;
+      }
 
       if (curCharId === 'milo-owl') {
         // Milo flaps wings during success, speaking, and poking
@@ -1340,16 +1805,14 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
           miloLeftWingPivot.rotation.z = 0.15 + Math.sin(t * 1.8) * 0.03;
           miloRightWingPivot.rotation.z = -0.15 - Math.sin(t * 1.8) * 0.03;
         }
-      } else {
+      } else if (curCharId !== 'lumi-lamp') {
         // Humanoid / Plush arms
         if (isTypingActive) {
-          // Tapping hands alternately on desk!
           const leftTap = Math.sin(t * 14) * 0.18;
           const rightTap = Math.cos(t * 14) * 0.18;
           leftArmPivot.rotation.set(0.65 + leftTap, 0.25, 0.32);
           rightArmPivot.rotation.set(0.65 + rightTap, -0.25, -0.32);
         } else if (curCharId === 'ayan-scholar' && curState === 'thinking') {
-          // Ayan pushes his glasses up when thinking!
           rightArmPivot.position.set(0.48, 0.08, 0.45);
           rightArmPivot.rotation.set(-0.85, -0.4, -0.6);
           leftArmPivot.rotation.set(0, 0, 0.42);
@@ -1390,7 +1853,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
           novaRightEyeMesh.scale.set(1, 1, 1);
         }
       } else {
-        // Natural blinking for other characters
+        // Natural blinking for other characters (Tango does cozy slow cat blinks!)
         const showHappyArcs = curState === 'success' || curState === 'poke';
         leftHappyEye.visible = showHappyArcs;
         rightHappyEye.visible = showHappyArcs;
@@ -1398,28 +1861,30 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         rightEyeGroup.visible = !showHappyArcs;
 
         if (!showHappyArcs) {
+          const activeBlinkDuration = curCharId === 'tango-cat' ? 0.32 : 0.17;
           if (blinkStart < 0 && t >= nextBlinkTime) {
             blinkStart = t;
           }
           let eyeScaleY = curState === 'sleepy' ? 0.32 : 1.0;
           if (blinkStart >= 0) {
-            const progress = (t - blinkStart) / blinkDuration;
+            const progress = (t - blinkStart) / activeBlinkDuration;
             if (progress >= 1) {
               blinkStart = -1;
-              nextBlinkTime = t + (Math.random() < 0.22 ? 0.25 : 2.6 + Math.random() * 3.2);
+              nextBlinkTime = t + (Math.random() < 0.22 ? 0.28 : 2.6 + Math.random() * 3.2);
             } else {
               const closeFactor = Math.sin(progress * Math.PI);
               eyeScaleY = Math.max(0.08, eyeScaleY * (1 - closeFactor * 0.94));
             }
           }
 
-          const eyeOffsetX = currentPointer.x * 0.04;
+          // Accurate eye look offset toward cursor
+          const eyeOffsetX = currentPointer.x * 0.055;
           const eyeOffsetY =
             curState === 'typing'
-              ? -0.035
+              ? -0.042
               : curState === 'thinking'
-              ? 0.035
-              : currentPointer.y * 0.03;
+              ? 0.042
+              : currentPointer.y * 0.045;
 
           leftEyeGroup.position.set(-0.31 + eyeOffsetX, 0.08 + eyeOffsetY, 0);
           rightEyeGroup.position.set(0.31 + eyeOffsetX, 0.08 + eyeOffsetY, 0);
@@ -1490,11 +1955,12 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     let hasMarkedReady = false;
 
     const syncContainerSize = () => {
-      const w = Math.max(container.clientWidth || (compact ? 76 : 180), 68);
-      const h = Math.max(container.clientHeight || (compact ? 76 : 180), 68);
+      const w = Math.max(container.clientWidth || (compact ? 104 : 216), 68);
+      const h = Math.max(container.clientHeight || (compact ? 104 : 216), 68);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      updateCanvasRect();
     };
     syncSizeRef.current = syncContainerSize;
 
@@ -1543,6 +2009,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
+        updateCanvasRect();
       });
       resizeObserver.observe(container);
     }
@@ -1563,6 +2030,13 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       applyCharacterRef.current = null;
       syncSizeRef.current = null;
       window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchstart', handleTouchMove);
+      window.removeEventListener('resize', updateCanvasRect);
+      window.removeEventListener('scroll', updateCanvasRect, true);
+      document.removeEventListener('mouseleave', handlePointerLeaveWindow);
+      window.removeEventListener('blur', handlePointerLeaveWindow);
+      window.removeEventListener('deviceorientation', handleDeviceOrientation);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       observer?.disconnect();
       resizeObserver?.disconnect();
@@ -1588,6 +2062,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
   }, [headerCanvasRef]);
 
   const activeChar = getSageCharacterById(characterId);
+  const effectiveLabel = customName?.trim() || activeChar.name;
 
   const resolvedThoughtText =
     thoughtText ||
@@ -1608,8 +2083,15 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       : null);
 
   const hasActiveThought = Boolean(
-    (resolvedThoughtText && resolvedThoughtText.trim().length > 0) || isTypingTransition
+    !chromeless && ((resolvedThoughtText && resolvedThoughtText.trim().length > 0) || isTypingTransition)
   );
+
+  // Task 1: ~30% larger in both states (was 160/180 -> 208/234; was 80/88 -> 104/114)
+  const resolvedSizeClasses =
+    sizeClassName ||
+    (compact
+      ? 'w-[104px] h-[104px] sm:w-[114px] sm:h-[114px]'
+      : 'w-[208px] h-[208px] sm:w-[234px] sm:h-[234px]');
 
   return (
     <div
@@ -1618,7 +2100,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       data-character={characterId}
       className="relative flex flex-col items-center justify-center w-full mx-auto bg-transparent border-0 shadow-none select-none pointer-events-none transition-all duration-300"
     >
-      {/* Centered Frameless Avatar Viewport */}
+      {/* Centered Frameless Avatar Viewport (Zero white background/border/shadow) */}
       <div
         onClick={onPoke}
         role="button"
@@ -1626,12 +2108,10 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') onPoke?.();
         }}
-        title={`Tap ${activeChar.name} to say hello!`}
-        className={`pointer-events-auto relative flex items-center justify-center shrink-0 mx-auto cursor-pointer bg-transparent border-0 shadow-none transition-all duration-200 ${
-          compact
-            ? 'w-[80px] h-[80px] sm:w-[88px] sm:h-[88px]'
-            : 'w-[160px] h-[160px] sm:w-[180px] sm:h-[180px]'
-        } ${isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'}`}
+        title={`Tap ${effectiveLabel} to say hello!`}
+        className={`pointer-events-auto relative flex items-center justify-center shrink-0 mx-auto cursor-pointer bg-transparent border-0 shadow-none transition-all duration-200 ${resolvedSizeClasses} ${
+          isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'
+        }`}
       >
         {/* Persistent Transparent WebGL Mount */}
         {webglSupported && (
@@ -1657,8 +2137,8 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       </div>
 
       {/* Empty Chat Greeting Centered Underneath Large Avatar (No Background) */}
-      {!compact && (
-        <div className="text-center mt-1.5 px-3 max-w-md mx-auto bg-transparent border-0 shadow-none pointer-events-none">
+      {!compact && !chromeless && (
+        <div className="text-center mt-1 px-3 max-w-md mx-auto bg-transparent border-0 shadow-none pointer-events-none">
           <h2 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight bg-transparent">
             {greetingTitle}
           </h2>
@@ -1673,6 +2153,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         <div className="mt-1 flex items-center justify-center w-full px-3 mx-auto bg-transparent pointer-events-none z-30">
           <SageThoughtBubble
             characterId={characterId}
+            customName={customName}
             thoughtText={resolvedThoughtText}
             isTypingTransition={isTypingTransition}
             mode={resolvedThoughtMode}

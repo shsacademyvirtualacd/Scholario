@@ -1,7 +1,7 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../env';
 import { GoogleGenAI, Modality } from '@google/genai';
-import { SAGE_AI_MODELS } from '../../../src/lib/knowledgeBaseService';
+import { SAGE_TTS_FALLBACK_CHAIN } from '../../../src/lib/knowledgeBaseService';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -73,8 +73,8 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'Gemini API key is not configured for server TTS' }),
-        { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+        JSON.stringify({ fallback: 'browser', reason: 'missing_api_key' }),
+        { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -90,24 +90,35 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     const clippedText = rawText.slice(0, 3500);
     const voiceName = body.voiceName || 'Kore';
 
-    const response = await ai.models.generateContent({
-      model: SAGE_AI_MODELS.TTS,
-      contents: [{ parts: [{ text: clippedText }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName },
+    let base64Pcm: string | undefined;
+    for (const ttsModel of SAGE_TTS_FALLBACK_CHAIN) {
+      try {
+        const response = await ai.models.generateContent({
+          model: ttsModel,
+          contents: [{ parts: [{ text: clippedText }] }],
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName },
+              },
+            },
           },
-        },
-      },
-    });
+        });
+        const candidateData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (candidateData) {
+          base64Pcm = candidateData;
+          break;
+        }
+      } catch (modelErr: any) {
+        console.warn(`[Cloudflare Sage TTS] Model ${ttsModel} unavailable, trying next.`);
+      }
+    }
 
-    const base64Pcm = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Pcm) {
       return new Response(
-        JSON.stringify({ error: 'No audio data returned from TTS model' }),
-        { status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+        JSON.stringify({ fallback: 'browser', reason: 'cloud_tts_unavailable' }),
+        { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -138,10 +149,10 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       },
     });
   } catch (err: any) {
-    console.error('[Cloudflare Pages Sage TTS Error]:', err?.message || err);
+    console.warn('[Cloudflare Pages Sage TTS] Delegating to browser speech synthesis:', err?.status || 'fallback');
     return new Response(
-      JSON.stringify({ error: err?.message || 'TTS generation failed' }),
-      { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+      JSON.stringify({ fallback: 'browser', reason: 'cloud_tts_unavailable' }),
+      { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     );
   }
 }

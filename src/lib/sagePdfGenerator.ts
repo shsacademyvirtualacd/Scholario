@@ -32,6 +32,7 @@ import { containsUrdu } from './urduReshaper';
 
 export interface SagePdfOptions {
   teacherName?: string;
+  sageName?: string;
   subject?: string;
   className?: string;
   topic?: string;
@@ -620,7 +621,8 @@ export async function generateSageContentPdf(
   const mode = options?.mode || 'teacher';
   const autoMeta = extractAcademicMetadata(rawContent, options?.teacherName);
 
-  const teacherName = options?.teacherName || autoMeta.teacherName || 'Sage AI Tutor';
+  const sageDisplay = options?.sageName?.trim() || 'Sage AI';
+  const teacherName = options?.teacherName || autoMeta.teacherName || `${sageDisplay} Tutor`;
   const subject = options?.subject || autoMeta.subject || 'Scholario Academic';
   const className = options?.className || autoMeta.className || 'Grade 9-12';
   const topic = options?.topic || autoMeta.topic || 'Study Notes & Solutions';
@@ -1151,10 +1153,11 @@ export async function generateSageConversationPdf(
   messages: Array<{ role: string; content: string; created_at?: string }>,
   options?: SagePdfOptions
 ): Promise<GeneratedPdfResult> {
+  const sageLabel = options?.sageName?.trim() || 'Sage AI';
   const validMessages = (messages || []).filter((m) => m && m.content && m.content.trim().length > 0);
   const formattedTranscript = validMessages
     .map((m, idx) => {
-      const speakerLabel = m.role === 'user' ? 'Student / User Question' : 'Sage AI Response';
+      const speakerLabel = m.role === 'user' ? 'Student / User Question' : `${sageLabel} Response`;
       return `## ${idx + 1}. ${speakerLabel}\n\n${m.content.trim()}\n\n---`;
     })
     .join('\n\n');
@@ -1162,7 +1165,7 @@ export async function generateSageConversationPdf(
   return generateSageContentPdf(formattedTranscript || 'Empty conversation.', {
     ...options,
     docType: 'notes',
-    topic: options?.topic || 'Sage AI Study Session Transcript',
+    topic: options?.topic || `${sageLabel} Study Session Transcript`,
   });
 }
 

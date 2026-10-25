@@ -15,8 +15,14 @@ export const SAGE_AI_MODELS = {
   STABLE: 'gemini-2.5-flash',
   TRANSCRIBE: 'gemini-3.5-transcribe',
   TTS: 'gemini-3.8-flash-lite-tts',
+  TTS_FALLBACK: 'gemini-2.5-flash-preview-tts',
   EMBEDDING: 'gemini-embedding-2-preview',
 } as const;
+
+export const SAGE_TTS_FALLBACK_CHAIN: readonly string[] = [
+  SAGE_AI_MODELS.TTS,
+  SAGE_AI_MODELS.TTS_FALLBACK,
+];
 
 export const SAGE_MODEL_FALLBACK_CHAIN: readonly string[] = [
   SAGE_AI_MODELS.PRIMARY,

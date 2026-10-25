@@ -1,6 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
+import { supabase } from '../../lib/supabase';
 
+/**
+ * Unified 3D Sage Avatar State Machine
+ */
 export type Sage3DAvatarState =
   | 'idle'
   | 'typing'
@@ -13,31 +24,43 @@ export type Sage3DAvatarState =
   | 'sleepy'
   | 'poke';
 
-export type TransientAvatarState = 'nod' | 'success' | 'error' | 'poke';
-
+/**
+ * 9 Selectable Sage Character Personas (#1 Classic Default + 8 Distinct Characters)
+ */
 export type SageCharacterId =
   | 'sage-classic'
   | 'ayan-scholar'
   | 'zain-explorer'
   | 'hamza-kurta'
   | 'nova-bot'
-  | 'milo-owl';
+  | 'milo-owl'
+  | 'tango-cat'
+  | 'gigi-giraffe'
+  | 'lumi-lamp';
+
+export interface SageVoiceHeuristic {
+  preferredLangs: string[];
+  genderHint: 'female' | 'male' | 'neutral';
+  nameKeywords: string[];
+  defaultRate: number;
+  defaultPitch: number;
+}
 
 export interface SageCharacterDefinition {
   id: SageCharacterId;
   name: string;
   title: string;
   role: string;
+  subtitle: string;
   personality: string;
-  tagline: string;
+  description: string;
   badge: string;
-  accentColor: string;
   bodyColor: string;
-  shadowColor: string;
-  rimColor: string;
   earInnerColor: string;
-  accentGold: string;
-  outfitPrimary: string;
+  accentColor: string;
+  secondaryColor: string;
+  shadowColor: string;
+  voiceProfile: SageVoiceHeuristic;
 }
 
 export const SAGE_CHARACTERS: SageCharacterDefinition[] = [
@@ -46,174 +69,332 @@ export const SAGE_CHARACTERS: SageCharacterDefinition[] = [
     name: 'Sage',
     title: 'Classic Scholar',
     role: 'Classic Scholar',
+    subtitle: 'Classic Scholar',
     personality: 'Erudite, encouraging, and classic academy wisdom',
-    tagline: 'Cream plush companion with graduation cap & gold scarf',
-    badge: 'Classic',
+    description: 'Erudite, encouraging, and classic academy wisdom',
+    badge: 'Default',
+    bodyColor: '#FFF8EC',
+    earInnerColor: '#FADADD',
     accentColor: '#F4C430',
-    bodyColor: '#FFFBF2',
-    shadowColor: '#EFE4CE',
-    rimColor: '#FFF2C2',
-    earInnerColor: '#F9D5C4',
-    accentGold: '#F4C430',
-    outfitPrimary: '#18181B',
+    secondaryColor: '#18181B',
+    shadowColor: '#EEDCBE',
+    voiceProfile: {
+      preferredLangs: ['en-GB', 'en-US', 'en-IN', 'en'],
+      genderHint: 'female',
+      nameKeywords: ['samantha', 'libby', 'sonia', 'victoria', 'aria', 'google uk english female', 'natural'],
+      defaultRate: 1.0,
+      defaultPitch: 1.04,
+    },
   },
   {
     id: 'ayan-scholar',
     name: 'Ayan',
     title: 'Head Boy Scholar',
     role: 'Head Boy Scholar',
-    personality: 'Calm, disciplined, methodical, and high-achieving',
-    tagline: 'Taller oval silhouette, deep brown skin, round gold glasses & navy school blazer with tie',
-    badge: 'Scholar',
-    accentColor: '#2563EB',
+    subtitle: 'Head Boy Scholar',
+    personality: 'Sharp, disciplined, methodical, and high-achieving',
+    description: 'Sharp, disciplined, methodical, and high-achieving',
+    badge: 'Topper',
     bodyColor: '#8D5524',
-    shadowColor: '#6E3D19',
-    rimColor: '#D4A373',
-    earInnerColor: '#703E1C',
-    accentGold: '#F4C430',
-    outfitPrimary: '#1E3A8A',
+    earInnerColor: '#704218',
+    accentColor: '#2563EB',
+    secondaryColor: '#1E3A8A',
+    shadowColor: '#693D16',
+    voiceProfile: {
+      preferredLangs: ['en-GB', 'en-IN', 'en-US', 'en'],
+      genderHint: 'male',
+      nameKeywords: ['daniel', 'ryan', 'george', 'prabhat', 'arthur', 'google uk english male'],
+      defaultRate: 1.02,
+      defaultPitch: 0.96,
+    },
   },
   {
     id: 'zain-explorer',
     name: 'Zain',
     title: 'Campus Explorer',
     role: 'Campus Explorer',
-    personality: 'Hyper, bouncy, curious, and full of energy',
-    tagline: 'Wide round head, warm tan skin, curly hair under bright orange beanie & backpack',
-    badge: 'Explorer',
-    accentColor: '#F97316',
+    subtitle: 'Campus Explorer',
+    personality: 'Bouncy, enthusiastic, curious, and full of energy',
+    description: 'Bouncy, enthusiastic, curious, and full of energy',
+    badge: 'Energetic',
     bodyColor: '#C68642',
-    shadowColor: '#9C5B23',
-    rimColor: '#E6A868',
-    earInnerColor: '#A8652D',
-    accentGold: '#F4C430',
-    outfitPrimary: '#EA580C',
+    earInnerColor: '#A66A2C',
+    accentColor: '#F97316',
+    secondaryColor: '#EA580C',
+    shadowColor: '#9E652B',
+    voiceProfile: {
+      preferredLangs: ['en-US', 'en-GB', 'en-AU', 'en'],
+      genderHint: 'male',
+      nameKeywords: ['guy', 'christopher', 'alex', 'fred', 'reed', 'google us english'],
+      defaultRate: 1.08,
+      defaultPitch: 1.08,
+    },
   },
   {
     id: 'hamza-kurta',
     name: 'Hamza',
     title: 'Traditional Scholar',
     role: 'Traditional Scholar',
-    personality: 'Gentle, respectful, humble, and serene',
-    tagline: 'Square-ish head, light-brown complexion, neat beard shadow, white prayer topi & gold-buttoned kurta',
-    badge: 'Traditional',
-    accentColor: '#10B981',
+    subtitle: 'Traditional Scholar',
+    personality: 'Courteous, humble, gentle, and culturally grounded',
+    description: 'Courteous, humble, gentle, and culturally grounded',
+    badge: 'Cultural',
     bodyColor: '#D89B62',
-    shadowColor: '#B0753E',
-    rimColor: '#ECC495',
-    earInnerColor: '#BE834E',
-    accentGold: '#F4C430',
-    outfitPrimary: '#F8FAFC',
+    earInnerColor: '#B87B44',
+    accentColor: '#10B981',
+    secondaryColor: '#F8FAFC',
+    shadowColor: '#B57B45',
+    voiceProfile: {
+      preferredLangs: ['en-PK', 'en-IN', 'en-GB', 'en'],
+      genderHint: 'male',
+      nameKeywords: ['asad', 'rishi', 'prabhat', 'oliver', 'daniel', 'male'],
+      defaultRate: 0.95,
+      defaultPitch: 0.92,
+    },
   },
   {
     id: 'nova-bot',
     name: 'Nova',
     title: 'Cyber Companion',
     role: 'Cyber Companion',
+    subtitle: 'Cyber Companion',
     personality: 'Futuristic, visor-displaying, witty, and ultra-fast',
-    tagline: 'Rounded-rectangle mechanical head, expressive visor screen, floating hover thruster & antenna',
-    badge: 'Cyber Bot',
-    accentColor: '#06B6D4',
+    description: 'Futuristic, visor-displaying, witty, and ultra-fast',
+    badge: 'Sci-Fi',
     bodyColor: '#F8FAFC',
+    earInnerColor: '#38BDF8',
+    accentColor: '#06B6D4',
+    secondaryColor: '#0F172A',
     shadowColor: '#CBD5E1',
-    rimColor: '#38BDF8',
-    earInnerColor: '#06B6D4',
-    accentGold: '#F4C430',
-    outfitPrimary: '#0F172A',
+    voiceProfile: {
+      preferredLangs: ['en-US', 'en-GB', 'en'],
+      genderHint: 'female',
+      nameKeywords: ['zira', 'jenny', 'ava', 'siri', 'google us english', 'karen', 'tessa'],
+      defaultRate: 1.06,
+      defaultPitch: 1.12,
+    },
   },
   {
     id: 'milo-owl',
     name: 'Milo',
     title: 'Library Owl',
     role: 'Library Owl',
+    subtitle: 'Library Owl',
     personality: 'Wise, cozy, book-loving, and gently hooting',
-    tagline: 'Fluffy feathered body, large ear-tufts, reading glasses, flapping wings & open study book',
-    badge: 'Library Owl',
-    accentColor: '#D97706',
+    description: 'Wise, cozy, book-loving, and gently hooting',
+    badge: 'Mascot',
     bodyColor: '#E6D2B5',
-    shadowColor: '#B8976C',
-    rimColor: '#FDE68A',
-    earInnerColor: '#C49F74',
-    accentGold: '#F4C430',
-    outfitPrimary: '#78350F',
+    earInnerColor: '#D4A373',
+    accentColor: '#D97706',
+    secondaryColor: '#78350F',
+    shadowColor: '#C5AC89',
+    voiceProfile: {
+      preferredLangs: ['en-GB', 'en-AU', 'en-US', 'en'],
+      genderHint: 'male',
+      nameKeywords: ['thomas', 'malcolm', 'gordon', 'daniel', 'james', 'uk'],
+      defaultRate: 0.94,
+      defaultPitch: 0.9,
+    },
+  },
+  {
+    id: 'tango-cat',
+    name: 'Tango',
+    title: 'Campus Cat Guide',
+    role: 'Campus Cat Guide',
+    subtitle: 'Campus Cat Guide',
+    personality: 'Playful orange tabby with a gold scarf, pencil behind ear, and swishing tail',
+    description: 'Playful orange tabby with a gold scarf, pencil behind ear, and swishing tail',
+    badge: 'Feline',
+    bodyColor: '#FB923C',
+    earInnerColor: '#FDE047',
+    accentColor: '#F59E0B',
+    secondaryColor: '#C2410C',
+    shadowColor: '#EA580C',
+    voiceProfile: {
+      preferredLangs: ['en-US', 'en-GB', 'en-IN', 'en'],
+      genderHint: 'female',
+      nameKeywords: ['neerja', 'moira', 'fiona', 'samantha', 'tessa', 'female'],
+      defaultRate: 1.04,
+      defaultPitch: 1.1,
+    },
+  },
+  {
+    id: 'gigi-giraffe',
+    name: 'Gigi',
+    title: 'Gentle Giraffe',
+    role: 'Gentle Giraffe',
+    subtitle: 'Gentle Giraffe',
+    personality: 'Tall, graceful giraffe with a gold bow tie who bends down kindly as you type',
+    description: 'Tall, graceful giraffe with a gold bow tie who bends down kindly as you type',
+    badge: 'Graceful',
+    bodyColor: '#FDE047',
+    earInnerColor: '#FEF08A',
+    accentColor: '#EAB308',
+    secondaryColor: '#92400E',
+    shadowColor: '#CA8A04',
+    voiceProfile: {
+      preferredLangs: ['en-GB', 'en-AU', 'en-ZA', 'en-US', 'en'],
+      genderHint: 'female',
+      nameKeywords: ['catherine', 'hazel', 'serena', 'martha', 'stephanie', 'female'],
+      defaultRate: 0.96,
+      defaultPitch: 1.05,
+    },
+  },
+  {
+    id: 'lumi-lamp',
+    name: 'Lumi',
+    title: 'Idea Desk Lamp',
+    role: 'Idea Desk Lamp',
+    subtitle: 'Idea Desk Lamp',
+    personality: 'Bright emerald desk lamp whose warm bulb glows whenever a great idea sparks',
+    description: 'Bright emerald desk lamp whose warm bulb glows whenever a great idea sparks',
+    badge: 'Bright',
+    bodyColor: '#10B981',
+    earInnerColor: '#FEF08A',
+    accentColor: '#34D399',
+    secondaryColor: '#065F46',
+    shadowColor: '#059669',
+    voiceProfile: {
+      preferredLangs: ['en-US', 'en-CA', 'en-GB', 'en'],
+      genderHint: 'neutral',
+      nameKeywords: ['allison', 'nicky', 'monica', 'paulina', 'samantha', 'natural'],
+      defaultRate: 1.05,
+      defaultPitch: 1.14,
+    },
   },
 ];
 
 export const DEFAULT_SAGE_CHARACTER_ID: SageCharacterId = 'sage-classic';
 
-export function isValidSageCharacterId(val: unknown): val is SageCharacterId {
-  return (
-    typeof val === 'string' &&
-    SAGE_CHARACTERS.some((c) => c.id === val)
-  );
+export function getSageCharacterById(id?: string | null): SageCharacterDefinition {
+  const found = SAGE_CHARACTERS.find((c) => c.id === id);
+  return found || SAGE_CHARACTERS[0];
 }
 
-export function getSageCharacterById(id?: SageCharacterId | string | null): SageCharacterDefinition {
-  return SAGE_CHARACTERS.find((c) => c.id === id) || SAGE_CHARACTERS[0];
+const PROFANITY_BLOCKLIST = [
+  'fuck',
+  'shit',
+  'bitch',
+  'asshole',
+  'bastard',
+  'dick',
+  'pussy',
+  'cunt',
+  'slut',
+  'whore',
+  'nigger',
+  'faggot',
+  'chutiya',
+  'harami',
+  'bhenchod',
+  'madarchod',
+  'gandu',
+  'kanjar',
+];
+
+export function escapeSafeDisplayName(raw: string): string {
+  return raw
+    .replace(/[<>&"'`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function validateSageCustomName(rawInput: string): {
+  valid: boolean;
+  sanitized: string;
+  error?: string;
+} {
+  const cleaned = escapeSafeDisplayName(rawInput || '');
+  if (!cleaned || cleaned.length < 1) {
+    return { valid: false, sanitized: '', error: 'Name cannot be blank (1 to 20 characters).' };
+  }
+  if (cleaned.length > 20) {
+    return { valid: false, sanitized: cleaned.slice(0, 20), error: 'Name must be 20 characters or fewer.' };
+  }
+  const lower = cleaned.toLowerCase();
+  for (const bad of PROFANITY_BLOCKLIST) {
+    if (lower.includes(bad)) {
+      return { valid: false, sanitized: '', error: 'Please choose a polite, academy-friendly name.' };
+    }
+  }
+  return { valid: true, sanitized: cleaned };
 }
 
 /**
- * Central configuration for Sage's appearance, colors, dimensions, and accessories.
- * Edit these values in one place to customize Sage's look across 3D and 2D views.
+ * Central Theme & Tuning Constants for the 3D Sage Avatar
  */
 export const SAGE_AVATAR_THEME = {
   colors: {
-    plushBody: '#FFFBF2',         // Soft warm cream / ivory plush fur
-    plushShadow: '#EFE4CE',       // Subtle warm shading tone
-    plushRimGlow: '#FFF2C2',      // Soft Fresnel rim highlight
-    earInner: '#F9D5C4',          // Warm peach inner ear tint
-    eyes: '#191716',              // Deep expressive charcoal eyes
-    eyeCatchlight: '#FFFFFF',     // Glossy white eye highlights
-    blush: '#F59B95',             // Soft coral-rose cheek blush
-    mouth: '#2B221E',             // Cute tiny mouth line
-    mouthInner: '#E07A74',        // Open speaking mouth inner tint
-    goldPrimary: '#F4C430',       // Scholario signature gold
-    goldDeep: '#D4A017',          // Brushed gold accent
-    obsidianAccent: '#18181B',    // Scholario obsidian cap & scarf stripe
+    plushBody: '#FFF8EC',
+    plushShadow: '#EEDCBE',
+    earInner: '#FADADD',
+    goldPrimary: '#F4C430',
+    goldLight: '#FFE066',
+    goldDeep: '#C69214',
+    obsidianAccent: '#18181B',
+    eyes: '#1E1B18',
+    eyeCatchlight: '#FFFFFF',
+    blush: '#FF9EAA',
+    mouth: '#29221E',
+    mouthInner: '#E56B6F',
+    glowRing: 'rgba(244, 196, 48, 0.35)',
   },
   sizes: {
-    heroHeightPx: 200,            // Height (px) when centered in fresh chat
-    compactHeightPx: 72,          // Height (px) when docked at top of active chat
-    bodyScale: 1.0,               // Overall character scale multiplier
+    expandedDesktop: 224,
+    expandedMobile: 196,
+    compactDocked: 106,
+    headerThumb: 36,
+    bodyScale: 1.0,
+    headRatio: 1.08,
   },
-  accessories: {
-    showGraduationCap: true,      // Tilted Scholario black & gold mortarboard cap
-    showGoldScarf: true,          // Cozy gold & obsidian academic neck scarf
-    showStarPin: true,            // Gleaming gold star pin on the scarf
-    showFloatingBook: false,      // Optional mini floating book prop
+  timings: {
+    sleepyTimeoutMs: 45_000,
+    nodDurationMs: 900,
+    successDurationMs: 2_200,
+    errorDurationMs: 2_200,
+    pokeDurationMs: 1_100,
+    blinkMinIntervalSec: 2.4,
+    blinkMaxIntervalSec: 5.8,
+    blinkDurationSec: 0.16,
   },
-  inactivitySleepMs: 45000,       // Enter sleepy state after 45 seconds of inactivity
 } as const;
 
-export interface SageAvatarControllerInput {
-  isTyping?: boolean;
-  isRecording?: boolean;
-  isThinking?: boolean;
-  isSpeaking?: boolean;
-  audioLevel?: number;
-  userId?: string;
+export const STATE_STATUS_LABELS: Record<Sage3DAvatarState, string> = {
+  idle: 'Online',
+  typing: 'Watching you type...',
+  listening: 'Listening carefully...',
+  nod: 'Got it! Thinking...',
+  thinking: 'Thinking...',
+  speaking: 'Speaking...',
+  success: 'Here is what I found!',
+  error: 'Hmm, let us try that again',
+  sleepy: 'Resting quietly — type or tap to wake',
+  poke: 'Hehe! Ready to help!',
+};
+
+export interface UseSageAvatarInputs {
+  isTyping: boolean;
+  isRecording: boolean;
+  isThinking: boolean;
+  isSpeaking: boolean;
+  audioLevel: number;
+  userId?: string | null;
 }
 
-export interface SageAvatarStateValue {
-  /** Final resolved animation state for the avatar */
+export interface SageAvatarController {
   state: Sage3DAvatarState;
-  /** Currently selected character ID (persisted per user + localStorage) */
   characterId: SageCharacterId;
-  /** Full metadata for the active character */
   character: SageCharacterDefinition;
-  /** Select and persist a new character */
+  customName: string;
+  displayName: string;
   setCharacterId: (id: SageCharacterId) => void;
-  /** Shared canvas ref for live-mirroring the 3D WebGL avatar into the header thumbnail */
-  headerCanvasRef: React.RefObject<HTMLCanvasElement | null>;
-  /** Real-time audio volume 0..1 for lip-sync or listening pulse */
+  setCustomName: (rawName: string) => { valid: boolean; sanitized: string; error?: string };
+  resetCustomName: () => void;
   audioLevel: number;
-  /** Short, clean status text for the header subtitle ("Online", "Thinking...", "Speaking...") */
   headerStatusText: string;
-  /** Friendly caption for the stage or compact bar */
   stageCaption: string;
-  /** Counter incremented each time the user taps the avatar */
   pokeCount: number;
-  /** Imperative triggers for chat, TTS, and PDF events */
+  headerCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   triggerNod: () => void;
   triggerSuccess: () => void;
   triggerError: () => void;
@@ -221,113 +402,138 @@ export interface SageAvatarStateValue {
   wakeUp: () => void;
 }
 
-const TRANSIENT_DURATIONS: Record<TransientAvatarState, number> = {
-  nod: 700,
-  success: 2200,
-  error: 2600,
-  poke: 1600,
-};
+const STORAGE_KEY_AVATAR = 'scholario_sage_avatar_id';
+const STORAGE_KEY_CUSTOM_NAME = 'scholario_sage_custom_name';
 
-const STORAGE_KEY_GLOBAL = 'scholario_sage_avatar_id';
-
-export function useSageAvatarController(input: SageAvatarControllerInput = {}): SageAvatarStateValue {
-  const {
-    isTyping = false,
-    isRecording = false,
-    isThinking = false,
-    isSpeaking = false,
-    audioLevel = 0,
-    userId,
-  } = input;
+export function useSageAvatarController(inputs: UseSageAvatarInputs): SageAvatarController {
+  const { isTyping, isRecording, isThinking, isSpeaking, audioLevel, userId } = inputs;
 
   const [characterId, setCharacterIdState] = useState<SageCharacterId>(() => {
-    if (typeof window === 'undefined') return DEFAULT_SAGE_CHARACTER_ID;
-    try {
-      if (userId) {
-        const userSaved = window.localStorage.getItem(`${STORAGE_KEY_GLOBAL}_${userId}`);
-        if (isValidSageCharacterId(userSaved)) return userSaved;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY_AVATAR) as SageCharacterId | null;
+      if (saved && SAGE_CHARACTERS.some((c) => c.id === saved)) {
+        return saved;
       }
-      const globalSaved = window.localStorage.getItem(STORAGE_KEY_GLOBAL);
-      if (isValidSageCharacterId(globalSaved)) return globalSaved;
-    } catch {
-      // ignore storage errors
     }
     return DEFAULT_SAGE_CHARACTER_ID;
   });
 
-  const [transientState, setTransientState] = useState<TransientAvatarState | null>(null);
+  const [customName, setCustomNameState] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_NAME) || '';
+      const check = validateSageCustomName(raw);
+      return check.valid ? check.sanitized : '';
+    }
+    return '';
+  });
+
+  const [transientState, setTransientState] = useState<
+    'nod' | 'success' | 'error' | 'poke' | null
+  >(null);
   const [isSleepy, setIsSleepy] = useState(false);
   const [pokeCount, setPokeCount] = useState(0);
 
-  const headerCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const transientTimerRef = useRef<number | null>(null);
-  const sleepTimerRef = useRef<number | null>(null);
+  const sleepyTimerRef = useRef<number | null>(null);
+  const headerCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Restore user preference from user_metadata or per-user localStorage when userId resolves
+  // Sync character choice & custom name from Supabase Auth user_metadata / profiles when logged in
   useEffect(() => {
-    let mounted = true;
-    try {
-      if (userId) {
-        const userSaved = window.localStorage.getItem(`${STORAGE_KEY_GLOBAL}_${userId}`);
-        if (isValidSageCharacterId(userSaved)) {
-          setCharacterIdState(userSaved);
-        }
-      }
-    } catch {
-      // ignore
-    }
+    if (!userId) return;
+    let isMounted = true;
 
-    if (isSupabaseConfigured) {
-      supabase.auth
-        .getUser()
-        .then(({ data }) => {
-          if (!mounted) return;
-          const metaAvatar = data?.user?.user_metadata?.sage_avatar_id;
-          if (isValidSageCharacterId(metaAvatar)) {
-            setCharacterIdState(metaAvatar);
-            try {
-              window.localStorage.setItem(STORAGE_KEY_GLOBAL, metaAvatar);
-              if (data?.user?.id) {
-                window.localStorage.setItem(`${STORAGE_KEY_GLOBAL}_${data.user.id}`, metaAvatar);
-              }
-            } catch {
-              // ignore
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (!isMounted || !data?.user) return;
+        const meta = data.user.user_metadata || {};
+        const remoteId = meta.sage_avatar_id as SageCharacterId | undefined;
+        if (remoteId && SAGE_CHARACTERS.some((c) => c.id === remoteId)) {
+          setCharacterIdState(remoteId);
+          try {
+            localStorage.setItem(STORAGE_KEY_AVATAR, remoteId);
+          } catch {}
+        }
+        if (typeof meta.sage_custom_name === 'string') {
+          const check = validateSageCustomName(meta.sage_custom_name);
+          const resolvedName = check.valid ? check.sanitized : '';
+          setCustomNameState(resolvedName);
+          try {
+            if (resolvedName) {
+              localStorage.setItem(STORAGE_KEY_CUSTOM_NAME, resolvedName);
+            } else {
+              localStorage.removeItem(STORAGE_KEY_CUSTOM_NAME);
             }
-          }
-        })
-        .catch(() => {
-          // ignore offline/guest
-        });
-    }
+          } catch {}
+        }
+      })
+      .catch(() => {});
 
     return () => {
-      mounted = false;
+      isMounted = false;
     };
   }, [userId]);
 
-  const setCharacterId = useCallback(
-    (nextId: SageCharacterId) => {
-      if (!isValidSageCharacterId(nextId)) return;
-      setCharacterIdState(nextId);
-      try {
-        window.localStorage.setItem(STORAGE_KEY_GLOBAL, nextId);
-        if (userId) {
-          window.localStorage.setItem(`${STORAGE_KEY_GLOBAL}_${userId}`, nextId);
-        }
-      } catch {
-        // ignore storage errors
-      }
-      // Persist to Supabase user metadata asynchronously in background
-      if (isSupabaseConfigured) {
-        supabase.auth
-          .updateUser({ data: { sage_avatar_id: nextId } })
-          .catch(() => {
-            // ignore if not signed into Supabase
-          });
+  const persistProfilePrefs = useCallback(
+    (nextAvatarId?: SageCharacterId, nextCustomName?: string) => {
+      if (!userId) return;
+      const updateMeta: Record<string, any> = {};
+      if (nextAvatarId !== undefined) updateMeta.sage_avatar_id = nextAvatarId;
+      if (nextCustomName !== undefined) updateMeta.sage_custom_name = nextCustomName;
+
+      supabase.auth.updateUser({ data: updateMeta }).catch(() => {});
+
+      // Also attempt to persist to profiles table if the optional columns exist
+      const profilePatch: Record<string, any> = {};
+      if (nextAvatarId !== undefined) profilePatch.sage_avatar_id = nextAvatarId;
+      if (nextCustomName !== undefined) profilePatch.sage_custom_name = nextCustomName || null;
+      if (Object.keys(profilePatch).length > 0) {
+        try {
+          (supabase.from('profiles') as any)
+            .update(profilePatch)
+            .eq('id', userId)
+            .then(() => {}, () => {});
+        } catch {}
       }
     },
     [userId]
   );
+
+  const setCharacterId = useCallback(
+    (newId: SageCharacterId) => {
+      if (!SAGE_CHARACTERS.some((c) => c.id === newId)) return;
+      setCharacterIdState(newId);
+      try {
+        localStorage.setItem(STORAGE_KEY_AVATAR, newId);
+      } catch {}
+      persistProfilePrefs(newId, undefined);
+    },
+    [persistProfilePrefs]
+  );
+
+  const setCustomName = useCallback(
+    (rawName: string): { valid: boolean; sanitized: string; error?: string } => {
+      const check = validateSageCustomName(rawName);
+      if (!check.valid) {
+        return { valid: false, sanitized: '', error: check.error };
+      }
+      setCustomNameState(check.sanitized);
+      try {
+        localStorage.setItem(STORAGE_KEY_CUSTOM_NAME, check.sanitized);
+      } catch {}
+      persistProfilePrefs(undefined, check.sanitized);
+      return { valid: true, sanitized: check.sanitized };
+    },
+    [persistProfilePrefs]
+  );
+
+  const resetCustomName = useCallback(() => {
+    setCustomNameState('');
+    try {
+      localStorage.removeItem(STORAGE_KEY_CUSTOM_NAME);
+    } catch {}
+    persistProfilePrefs(undefined, '');
+  }, [persistProfilePrefs]);
 
   const clearTransientTimer = useCallback(() => {
     if (transientTimerRef.current !== null) {
@@ -336,148 +542,109 @@ export function useSageAvatarController(input: SageAvatarControllerInput = {}): 
     }
   }, []);
 
-  const resetSleepTimer = useCallback(() => {
-    setIsSleepy((prev) => (prev ? false : prev));
-    if (sleepTimerRef.current !== null) {
-      window.clearTimeout(sleepTimerRef.current);
+  const resetSleepyTimer = useCallback(() => {
+    setIsSleepy(false);
+    if (sleepyTimerRef.current !== null) {
+      window.clearTimeout(sleepyTimerRef.current);
     }
-    sleepTimerRef.current = window.setTimeout(() => {
+    sleepyTimerRef.current = window.setTimeout(() => {
       setIsSleepy(true);
-    }, SAGE_AVATAR_THEME.inactivitySleepMs);
+    }, SAGE_AVATAR_THEME.timings.sleepyTimeoutMs);
   }, []);
 
-  const fireTransient = useCallback(
-    (next: TransientAvatarState) => {
-      resetSleepTimer();
-      clearTransientTimer();
-      setTransientState(next);
-      transientTimerRef.current = window.setTimeout(() => {
-        setTransientState(null);
-        transientTimerRef.current = null;
-      }, TRANSIENT_DURATIONS[next]);
-    },
-    [clearTransientTimer, resetSleepTimer]
-  );
-
-  const triggerNod = useCallback(() => fireTransient('nod'), [fireTransient]);
-  const triggerSuccess = useCallback(() => fireTransient('success'), [fireTransient]);
-  const triggerError = useCallback(() => fireTransient('error'), [fireTransient]);
-  const triggerPoke = useCallback(() => {
-    setPokeCount((c) => c + 1);
-    fireTransient('poke');
-  }, [fireTransient]);
-
-  const wakeUp = useCallback(() => {
-    resetSleepTimer();
-  }, [resetSleepTimer]);
-
-  // Reset inactivity timer whenever active states change
   useEffect(() => {
-    if (isTyping || isRecording || isThinking || isSpeaking) {
-      resetSleepTimer();
+    if (isTyping || isRecording || isThinking || isSpeaking || transientState) {
+      resetSleepyTimer();
     }
-  }, [isTyping, isRecording, isThinking, isSpeaking, resetSleepTimer]);
+  }, [isTyping, isRecording, isThinking, isSpeaking, transientState, resetSleepyTimer]);
 
-  // Listen for user interaction in the window to wake up Sage
   useEffect(() => {
-    resetSleepTimer();
-    const handleActivity = () => {
-      resetSleepTimer();
-    };
-    window.addEventListener('pointerdown', handleActivity, { passive: true });
-    window.addEventListener('keydown', handleActivity, { passive: true });
+    resetSleepyTimer();
     return () => {
-      window.removeEventListener('pointerdown', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
       clearTransientTimer();
-      if (sleepTimerRef.current !== null) {
-        window.clearTimeout(sleepTimerRef.current);
+      if (sleepyTimerRef.current !== null) {
+        window.clearTimeout(sleepyTimerRef.current);
       }
     };
-  }, [resetSleepTimer, clearTransientTimer]);
+  }, [resetSleepyTimer, clearTransientTimer]);
 
-  // Priority resolution for avatar state
-  let resolvedState: Sage3DAvatarState = 'idle';
-  if (transientState === 'poke') {
-    resolvedState = 'poke';
-  } else if (transientState === 'error') {
-    resolvedState = 'error';
-  } else if (isRecording) {
-    resolvedState = 'listening';
-  } else if (isSpeaking) {
-    resolvedState = 'speaking';
-  } else if (transientState === 'nod') {
-    resolvedState = 'nod';
-  } else if (isThinking) {
-    resolvedState = 'thinking';
-  } else if (transientState === 'success') {
-    resolvedState = 'success';
-  } else if (isTyping) {
-    resolvedState = 'typing';
-  } else if (isSleepy) {
-    resolvedState = 'sleepy';
-  } else {
-    resolvedState = 'idle';
-  }
+  const triggerNod = useCallback(() => {
+    clearTransientTimer();
+    setIsSleepy(false);
+    setTransientState('nod');
+    transientTimerRef.current = window.setTimeout(() => {
+      setTransientState((prev) => (prev === 'nod' ? null : prev));
+    }, SAGE_AVATAR_THEME.timings.nodDurationMs);
+  }, [clearTransientTimer]);
 
-  let headerStatusText = 'Online';
-  let stageCaption = 'Ready to help with your studies';
+  const triggerSuccess = useCallback(() => {
+    clearTransientTimer();
+    setIsSleepy(false);
+    setTransientState('success');
+    transientTimerRef.current = window.setTimeout(() => {
+      setTransientState((prev) => (prev === 'success' ? null : prev));
+    }, SAGE_AVATAR_THEME.timings.successDurationMs);
+  }, [clearTransientTimer]);
 
-  switch (resolvedState) {
-    case 'speaking':
-      headerStatusText = 'Speaking...';
-      stageCaption = 'Explaining step by step...';
-      break;
-    case 'thinking':
-      headerStatusText = 'Thinking...';
-      stageCaption = 'Thinking through your question...';
-      break;
-    case 'listening':
-      headerStatusText = 'Listening...';
-      stageCaption = 'Listening to your voice note...';
-      break;
-    case 'typing':
-      headerStatusText = 'Online';
-      stageCaption = 'Reading what you are typing...';
-      break;
-    case 'nod':
-      headerStatusText = 'Thinking...';
-      stageCaption = 'Got it! Working on that...';
-      break;
-    case 'success':
-      headerStatusText = 'Online';
-      stageCaption = 'All done! Hope that helps!';
-      break;
-    case 'error':
-      headerStatusText = 'Online';
-      stageCaption = 'Oops, something went wrong — let’s try again';
-      break;
-    case 'poke':
-      headerStatusText = 'Online';
-      stageCaption = 'Hehe! Ready whenever you are!';
-      break;
-    case 'sleepy':
-      headerStatusText = 'Online';
-      stageCaption = 'Resting quietly... tap or type to wake me';
-      break;
-    default:
-      headerStatusText = 'Online';
-      stageCaption = 'Ask me anything or tap me to say hello';
-      break;
-  }
+  const triggerError = useCallback(() => {
+    clearTransientTimer();
+    setIsSleepy(false);
+    setTransientState('error');
+    transientTimerRef.current = window.setTimeout(() => {
+      setTransientState((prev) => (prev === 'error' ? null : prev));
+    }, SAGE_AVATAR_THEME.timings.errorDurationMs);
+  }, [clearTransientTimer]);
 
-  const character = getSageCharacterById(characterId);
+  const triggerPoke = useCallback(() => {
+    clearTransientTimer();
+    setIsSleepy(false);
+    setPokeCount((c) => c + 1);
+    setTransientState('poke');
+    transientTimerRef.current = window.setTimeout(() => {
+      setTransientState((prev) => (prev === 'poke' ? null : prev));
+    }, SAGE_AVATAR_THEME.timings.pokeDurationMs);
+  }, [clearTransientTimer]);
+
+  const wakeUp = useCallback(() => {
+    resetSleepyTimer();
+  }, [resetSleepyTimer]);
+
+  // Priority resolution of the active state
+  const state: Sage3DAvatarState = useMemo(() => {
+    if (transientState === 'poke') return 'poke';
+    if (isSpeaking) return 'speaking';
+    if (isRecording) return 'listening';
+    if (transientState === 'nod') return 'nod';
+    if (isThinking) return 'thinking';
+    if (transientState === 'error') return 'error';
+    if (transientState === 'success') return 'success';
+    if (isTyping) return 'typing';
+    if (isSleepy) return 'sleepy';
+    return 'idle';
+  }, [transientState, isSpeaking, isRecording, isThinking, isTyping, isSleepy]);
+
+  const character = useMemo(() => getSageCharacterById(characterId), [characterId]);
+  const displayName = useMemo(
+    () => (customName && customName.trim().length > 0 ? customName.trim() : character.name),
+    [customName, character.name]
+  );
+  const headerStatusText = STATE_STATUS_LABELS[state];
+  const stageCaption = STATE_STATUS_LABELS[state];
 
   return {
-    state: resolvedState,
+    state,
     characterId,
     character,
+    customName,
+    displayName,
     setCharacterId,
-    headerCanvasRef,
+    setCustomName,
+    resetCustomName,
     audioLevel,
     headerStatusText,
     stageCaption,
     pokeCount,
+    headerCanvasRef,
     triggerNod,
     triggerSuccess,
     triggerError,
@@ -486,16 +653,11 @@ export function useSageAvatarController(input: SageAvatarControllerInput = {}): 
   };
 }
 
-const SageAvatarStateContext = createContext<SageAvatarStateValue | null>(null);
+const SageAvatarStateContext = createContext<SageAvatarController | null>(null);
 
-export const SageAvatarStateProvider: React.FC<{
-  value: SageAvatarStateValue;
-  children: React.ReactNode;
-}> = ({ value, children }) => {
-  return React.createElement(SageAvatarStateContext.Provider, { value }, children);
-};
+export const SageAvatarStateProvider = SageAvatarStateContext.Provider;
 
-export function useSageAvatarState(): SageAvatarStateValue {
+export function useSageAvatarState(): SageAvatarController {
   const ctx = useContext(SageAvatarStateContext);
   if (!ctx) {
     throw new Error('useSageAvatarState must be used within a SageAvatarStateProvider');

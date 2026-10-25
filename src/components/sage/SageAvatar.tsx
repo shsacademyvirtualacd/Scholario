@@ -11,6 +11,7 @@ export interface SageAvatarProps {
   emotion?: SageEmotion;
   avatarState?: Sage3DAvatarState;
   characterId?: SageCharacterId;
+  customName?: string;
   headerCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   showBadge?: boolean;
@@ -25,30 +26,31 @@ export interface SageAvatarProps {
 const SIZE_MAP = {
   xs: {
     container: 'w-7 h-7 rounded-xl',
-    svgSize: 24,
+    svgSize: 26,
   },
   sm: {
     container: 'w-9 h-9 rounded-xl',
-    svgSize: 34,
+    svgSize: 36,
   },
   md: {
     container: 'w-11 h-11 rounded-2xl',
-    svgSize: 40,
+    svgSize: 42,
   },
   lg: {
     container: 'w-14 h-14 rounded-2xl',
-    svgSize: 52,
+    svgSize: 54,
   },
   xl: {
     container: 'w-20 h-20 rounded-3xl',
-    svgSize: 74,
+    svgSize: 78,
   },
 };
 
 /**
- * Character-aware 2D SVG portrait for each of the 6 Sage characters.
+ * Character-aware 2D SVG portrait for each of the 9 Sage characters.
  * Used in the "Choose your Sage" picker cards, message bubbles, and as the base layer
  * underneath the live WebGL header canvas.
+ * Fully transparent background — no white or light box behind the character.
  */
 export const SageCharacterSvg: React.FC<{
   characterId: SageCharacterId;
@@ -85,7 +87,7 @@ export const SageCharacterSvg: React.FC<{
       viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="select-none pointer-events-none"
+      className="select-none pointer-events-none bg-transparent"
     >
       <defs>
         <radialGradient id={gradBodyId} cx="50%" cy="38%" r="58%">
@@ -100,7 +102,7 @@ export const SageCharacterSvg: React.FC<{
         </linearGradient>
       </defs>
 
-      {/* ── Outer / Back Silhouette & Ears / Tufts / Antenna ── */}
+      {/* ── Outer / Back Silhouette & Ears / Tufts / Antenna / Tail / Ossicones ── */}
       {characterId === 'nova-bot' ? (
         <g>
           {/* Robot Golden Antenna with Glowing Tip */}
@@ -118,6 +120,49 @@ export const SageCharacterSvg: React.FC<{
           {/* Wing Feathers on Sides */}
           <path d="M11 32C7 38 8 48 15 54C12 47 11 40 13 34Z" fill="#78350F" opacity="0.9" />
           <path d="M53 32C57 38 56 48 49 54C52 47 53 40 51 34Z" fill="#78350F" opacity="0.9" />
+        </g>
+      ) : characterId === 'tango-cat' ? (
+        <g>
+          {/* Tango Playful Swishing Orange Tabby Tail */}
+          <path
+            d="M47 46C55 44 59 35 55 28C53 25 50 27 51 31C52 35 49 41 44 43"
+            stroke="#EA580C"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+          {/* Pointed Fluffy Cat Ears */}
+          <path d="M13 26L10 9L25 16Z" fill={`url(#${gradBodyId})`} stroke="#C2410C" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M14.5 23L12.5 12.5L22 17Z" fill={charDef.earInnerColor} opacity="0.85" />
+          <path d="M51 26L54 9L39 16Z" fill={`url(#${gradBodyId})`} stroke="#C2410C" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M49.5 23L51.5 12.5L42 17Z" fill={charDef.earInnerColor} opacity="0.85" />
+          {/* Tiny Gold Pencil Tucked Behind Right Ear */}
+          <g transform="translate(49, 16) rotate(32)">
+            <rect x="-1.8" y="-9" width="3.6" height="14" rx="1" fill="#F4C430" stroke="#78350F" strokeWidth="0.7" />
+            <polygon points="-1.8,-9 1.8,-9 0,-13" fill="#FDE68A" />
+            <polygon points="-0.8,-11.2 0.8,-11.2 0,-13" fill="#18181B" />
+            <rect x="-1.8" y="3.5" width="3.6" height="2.5" rx="0.6" fill="#FB7185" />
+          </g>
+        </g>
+      ) : characterId === 'gigi-giraffe' ? (
+        <g>
+          {/* Gigi Cute Giraffe Ossicones (Horns) + Side Ears */}
+          <line x1="25" y1="15" x2="23" y2="6.5" stroke="#D97706" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="22.8" cy="5.8" r="3" fill="#78350F" />
+          <line x1="39" y1="15" x2="41" y2="6.5" stroke="#D97706" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="41.2" cy="5.8" r="3" fill="#78350F" />
+          {/* Leaf-shaped Giraffe Ears */}
+          <ellipse cx="13" cy="20" rx="5.5" ry="3" transform="rotate(-24 13 20)" fill={`url(#${gradBodyId})`} stroke="#B45309" strokeWidth="1" />
+          <ellipse cx="51" cy="20" rx="5.5" ry="3" transform="rotate(24 51 20)" fill={`url(#${gradBodyId})`} stroke="#B45309" strokeWidth="1" />
+        </g>
+      ) : characterId === 'lumi-lamp' ? (
+        <g>
+          {/* Lumi Articulated Metallic Lamp Arm & Warm Base */}
+          <ellipse cx="32" cy="56.5" rx="14" ry="4" fill={`url(#${gradGoldId})`} stroke="#78350F" strokeWidth="1" />
+          <path d="M32 55L25 44L32 35" stroke="#CBD5E1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="25" cy="44" r="2.5" fill={colors.goldPrimary} stroke="#0F172A" strokeWidth="0.9" />
+          {/* Top Finial Switch Knob */}
+          <rect x="29.5" y="6.5" width="5" height="5" rx="2" fill={`url(#${gradGoldId})`} stroke="#065F46" strokeWidth="0.9" />
         </g>
       ) : characterId === 'zain-explorer' ? (
         <g>
@@ -167,6 +212,68 @@ export const SageCharacterSvg: React.FC<{
             stroke="#94A3B8"
             strokeWidth="1.4"
           />
+        </g>
+      ) : characterId === 'tango-cat' ? (
+        /* Tango: Squishy orange tabby cat head + forehead stripes + whiskers */
+        <g>
+          <ellipse
+            cx="32"
+            cy="34"
+            rx="20.5"
+            ry="18.2"
+            fill={`url(#${gradBodyId})`}
+            stroke="#C2410C"
+            strokeWidth="1.2"
+          />
+          {/* Tabby Forehead Stripes */}
+          <path d="M32 16.5V22.5" stroke="#9A3412" strokeWidth="2.2" strokeLinecap="round" opacity="0.7" />
+          <path d="M27.5 17.5L29 22" stroke="#9A3412" strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
+          <path d="M36.5 17.5L35 22" stroke="#9A3412" strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
+          {/* Cute Cat Whiskers */}
+          <line x1="8" y1="33" x2="15" y2="34.5" stroke="#7C2D12" strokeWidth="1.1" strokeLinecap="round" opacity="0.65" />
+          <line x1="7.5" y1="37" x2="15" y2="37" stroke="#7C2D12" strokeWidth="1.1" strokeLinecap="round" opacity="0.65" />
+          <line x1="56" y1="33" x2="49" y2="34.5" stroke="#7C2D12" strokeWidth="1.1" strokeLinecap="round" opacity="0.65" />
+          <line x1="56.5" y1="37" x2="49" y2="37" stroke="#7C2D12" strokeWidth="1.1" strokeLinecap="round" opacity="0.65" />
+          {/* Pink Cat Nose */}
+          <polygon points="32,34.5 29.8,32.2 34.2,32.2" fill="#FB7185" />
+        </g>
+      ) : characterId === 'gigi-giraffe' ? (
+        /* Gigi: Graceful giraffe neck + spotted plush coat + warm cream muzzle */
+        <g>
+          {/* Tall Graceful Neck */}
+          <rect x="24" y="34" width="16" height="22" rx="7" fill={`url(#${gradBodyId})`} stroke="#B45309" strokeWidth="1.1" />
+          {/* Giraffe Spots on Neck */}
+          <circle cx="28" cy="44" r="2.3" fill="#B45309" opacity="0.55" />
+          <circle cx="35.5" cy="49" r="2.6" fill="#B45309" opacity="0.55" />
+          {/* Giraffe Head */}
+          <ellipse cx="32" cy="26.5" rx="16.5" ry="14.5" fill={`url(#${gradBodyId})`} stroke="#B45309" strokeWidth="1.2" />
+          {/* Giraffe Spots on Forehead */}
+          <circle cx="22" cy="20" r="2.2" fill="#B45309" opacity="0.5" />
+          <circle cx="42" cy="20" r="2.2" fill="#B45309" opacity="0.5" />
+          {/* Soft Cream Muzzle */}
+          <ellipse cx="32" cy="33.5" rx="10.5" ry="6.2" fill="#FFFBEB" opacity="0.92" />
+        </g>
+      ) : characterId === 'lumi-lamp' ? (
+        /* Lumi: Friendly emerald lamp shade head + warm glowing bulb inside */
+        <g>
+          {/* Warm Bulb Glow Underneath Shade */}
+          <circle
+            cx="32"
+            cy="35"
+            r={isThinking || isHappy ? 12 : 9.5}
+            fill="#FEF08A"
+            opacity={isThinking || isHappy ? 0.95 : 0.75}
+          />
+          {/* Emerald Conical Lamp Shade Head */}
+          <path
+            d="M19 11H45L53 36H11L19 11Z"
+            fill="#10B981"
+            stroke="#047857"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
+          {/* Gold Rim along Shade Bottom */}
+          <path d="M11 36H53" stroke={`url(#${gradGoldId})`} strokeWidth="2.8" strokeLinecap="round" />
         </g>
       ) : characterId === 'ayan-scholar' ? (
         /* Ayan: Taller slightly oval head + slim tidy body */
@@ -286,9 +393,9 @@ export const SageCharacterSvg: React.FC<{
       )}
 
       {/* ── Character-Specific Outfits ── */}
-      {characterId === 'sage-classic' && (
+      {(characterId === 'sage-classic' || characterId === 'tango-cat') && (
         <g>
-          {/* Classic Gold Scarf & Obsidian Stripe & Star Pin */}
+          {/* Gold & Obsidian Scarf */}
           <path
             d="M17 47.5C21.2 50.8 26.4 52.2 32 52.2C37.6 52.2 42.8 50.8 47 47.5C48.2 50.2 46.8 53.5 43.2 54.6C36 56.8 28 56.8 20.8 54.6C17.2 53.5 15.8 50.2 17 47.5Z"
             fill={`url(#${gradGoldId})`}
@@ -300,6 +407,15 @@ export const SageCharacterSvg: React.FC<{
             strokeLinecap="round"
           />
           <circle cx="40.5" cy="51.5" r="2.3" fill="#FFFDF7" stroke={colors.obsidianAccent} strokeWidth="0.8" />
+        </g>
+      )}
+
+      {characterId === 'gigi-giraffe' && (
+        <g>
+          {/* Gigi: Gold & Obsidian Bow Tie + Tiny Study Book */}
+          <polygon points="32,42 24,38.5 24,45.5" fill={`url(#${gradGoldId})`} stroke="#18181B" strokeWidth="0.9" />
+          <polygon points="32,42 40,38.5 40,45.5" fill={`url(#${gradGoldId})`} stroke="#18181B" strokeWidth="0.9" />
+          <circle cx="32" cy="42" r="2.2" fill="#18181B" stroke={colors.goldPrimary} strokeWidth="0.8" />
         </g>
       )}
 
@@ -355,8 +471,22 @@ export const SageCharacterSvg: React.FC<{
       {/* ── Cheeks / Blush (except Nova) ── */}
       {characterId !== 'nova-bot' && (
         <>
-          <ellipse cx="19.5" cy="36.5" rx="3.8" ry="2.3" fill={colors.blush} opacity={isHappy ? 0.75 : 0.45} />
-          <ellipse cx="44.5" cy="36.5" rx="3.8" ry="2.3" fill={colors.blush} opacity={isHappy ? 0.75 : 0.45} />
+          <ellipse
+            cx="19.5"
+            cy={characterId === 'gigi-giraffe' ? 29.5 : characterId === 'lumi-lamp' ? 28.5 : 36.5}
+            rx="3.8"
+            ry="2.3"
+            fill={colors.blush}
+            opacity={isHappy ? 0.75 : 0.45}
+          />
+          <ellipse
+            cx="44.5"
+            cy={characterId === 'gigi-giraffe' ? 29.5 : characterId === 'lumi-lamp' ? 28.5 : 36.5}
+            rx="3.8"
+            ry="2.3"
+            fill={colors.blush}
+            opacity={isHappy ? 0.75 : 0.45}
+          />
         </>
       )}
 
@@ -392,13 +522,21 @@ export const SageCharacterSvg: React.FC<{
       ) : isHappy ? (
         <>
           <path
-            d="M20.5 31.5C21.8 28.8 25.2 28.8 26.5 31.5"
+            d={
+              characterId === 'gigi-giraffe' || characterId === 'lumi-lamp'
+                ? 'M20.5 25.5C21.8 22.8 25.2 22.8 26.5 25.5'
+                : 'M20.5 31.5C21.8 28.8 25.2 28.8 26.5 31.5'
+            }
             stroke={colors.eyes}
             strokeWidth="2.5"
             strokeLinecap="round"
           />
           <path
-            d="M37.5 31.5C38.8 28.8 42.2 28.8 43.5 31.5"
+            d={
+              characterId === 'gigi-giraffe' || characterId === 'lumi-lamp'
+                ? 'M37.5 25.5C38.8 22.8 42.2 22.8 43.5 25.5'
+                : 'M37.5 31.5C38.8 28.8 42.2 28.8 43.5 31.5'
+            }
             stroke={colors.eyes}
             strokeWidth="2.5"
             strokeLinecap="round"
@@ -407,13 +545,21 @@ export const SageCharacterSvg: React.FC<{
       ) : isSleepy ? (
         <>
           <path
-            d="M20.5 32C21.8 34.2 25.2 34.2 26.5 32"
+            d={
+              characterId === 'gigi-giraffe' || characterId === 'lumi-lamp'
+                ? 'M20.5 26C21.8 28.2 25.2 28.2 26.5 26'
+                : 'M20.5 32C21.8 34.2 25.2 34.2 26.5 32'
+            }
             stroke={colors.eyes}
             strokeWidth="2.3"
             strokeLinecap="round"
           />
           <path
-            d="M37.5 32C38.8 34.2 42.2 34.2 43.5 32"
+            d={
+              characterId === 'gigi-giraffe' || characterId === 'lumi-lamp'
+                ? 'M37.5 26C38.8 28.2 42.2 28.2 43.5 26'
+                : 'M37.5 32C38.8 34.2 42.2 34.2 43.5 32'
+            }
             stroke={colors.eyes}
             strokeWidth="2.3"
             strokeLinecap="round"
@@ -421,26 +567,30 @@ export const SageCharacterSvg: React.FC<{
         </>
       ) : (
         <>
-          {/* Standard Eyes (Zain has extra large excited eyes) */}
-          <ellipse
-            cx="23.5"
-            cy={isThinking ? 30.2 : 31.2}
-            rx={characterId === 'zain-explorer' ? 4.2 : 3.4}
-            ry={characterId === 'zain-explorer' ? 4.6 : 3.9}
-            fill={colors.eyes}
-          />
-          <circle cx="22.3" cy={isThinking ? 28.8 : 29.8} r={characterId === 'zain-explorer' ? 1.6 : 1.25} fill={colors.eyeCatchlight} />
-          <circle cx="24.7" cy={isThinking ? 31.3 : 32.3} r="0.65" fill={colors.eyeCatchlight} opacity="0.85" />
+          {/* Standard Glossy Plush Eyes */}
+          {(() => {
+            const baseEyeY =
+              characterId === 'gigi-giraffe' || characterId === 'lumi-lamp'
+                ? isThinking
+                  ? 23.8
+                  : 24.8
+                : isThinking
+                ? 30.2
+                : 31.2;
+            const rx = characterId === 'zain-explorer' || characterId === 'tango-cat' ? 3.9 : 3.4;
+            const ry = characterId === 'zain-explorer' || characterId === 'tango-cat' ? 4.3 : 3.9;
+            return (
+              <>
+                <ellipse cx="23.5" cy={baseEyeY} rx={rx} ry={ry} fill={colors.eyes} />
+                <circle cx="22.3" cy={baseEyeY - 1.4} r="1.35" fill={colors.eyeCatchlight} />
+                <circle cx="24.7" cy={baseEyeY + 1.1} r="0.65" fill={colors.eyeCatchlight} opacity="0.85" />
 
-          <ellipse
-            cx="40.5"
-            cy={isThinking ? 30.2 : 31.2}
-            rx={characterId === 'zain-explorer' ? 4.2 : 3.4}
-            ry={characterId === 'zain-explorer' ? 4.6 : 3.9}
-            fill={colors.eyes}
-          />
-          <circle cx="39.3" cy={isThinking ? 28.8 : 29.8} r={characterId === 'zain-explorer' ? 1.6 : 1.25} fill={colors.eyeCatchlight} />
-          <circle cx="41.7" cy={isThinking ? 31.3 : 32.3} r="0.65" fill={colors.eyeCatchlight} opacity="0.85" />
+                <ellipse cx="40.5" cy={baseEyeY} rx={rx} ry={ry} fill={colors.eyes} />
+                <circle cx="39.3" cy={baseEyeY - 1.4} r="1.35" fill={colors.eyeCatchlight} />
+                <circle cx="41.7" cy={baseEyeY + 1.1} r="0.65" fill={colors.eyeCatchlight} opacity="0.85" />
+              </>
+            );
+          })()}
         </>
       )}
 
@@ -467,31 +617,44 @@ export const SageCharacterSvg: React.FC<{
 
       {/* ── Mouth ── */}
       {characterId !== 'nova-bot' && (
-        isSpeaking ? (
-          <ellipse
-            cx="32"
-            cy="37"
-            rx="2.6"
-            ry="3.1"
-            fill={colors.mouth}
-          />
-        ) : isThinking ? (
-          <circle cx="32" cy="37" r="1.7" fill={colors.mouth} />
-        ) : isConcerned ? (
-          <path
-            d="M29.5 38C30.7 36.8 33.3 36.8 34.5 38"
-            stroke={colors.mouth}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        ) : (
-          <path
-            d="M29.2 36C30.5 38 33.5 38 34.8 36"
-            stroke={colors.mouth}
-            strokeWidth="1.9"
-            strokeLinecap="round"
-          />
-        )
+        (() => {
+          const mouthY = characterId === 'gigi-giraffe' ? 32.5 : characterId === 'lumi-lamp' ? 30.5 : 37;
+          if (isSpeaking) {
+            return <ellipse cx="32" cy={mouthY} rx="2.6" ry="3.1" fill={colors.mouth} />;
+          }
+          if (isThinking) {
+            return <circle cx="32" cy={mouthY} r="1.7" fill={colors.mouth} />;
+          }
+          if (isConcerned) {
+            return (
+              <path
+                d={`M29.5 ${mouthY + 1}C30.7 ${mouthY - 0.2} 33.3 ${mouthY - 0.2} 34.5 ${mouthY + 1}`}
+                stroke={colors.mouth}
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            );
+          }
+          if (characterId === 'tango-cat') {
+            return (
+              <path
+                d="M28.5 36.2C29.8 38 31.5 37.5 32 35.8C32.5 37.5 34.2 38 35.5 36.2"
+                stroke={colors.mouth}
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            );
+          }
+          return (
+            <path
+              d={`M29.2 ${mouthY - 1}C30.5 ${mouthY + 1} 33.5 ${mouthY + 1} 34.8 ${mouthY - 1}`}
+              stroke={colors.mouth}
+              strokeWidth="1.9"
+              strokeLinecap="round"
+            />
+          );
+        })()
       )}
 
       {/* ── Classic Sage Graduation Cap (#1 Default) ── */}
@@ -509,17 +672,17 @@ export const SageCharacterSvg: React.FC<{
 };
 
 /**
- * Clean, live-animated Sage character thumbnail used in the Sage window header
- * and message stream bubbles.
+ * Clean, live-animated Sage character thumbnail used in the Sage window header,
+ * character picker, profile panel, and message stream bubbles.
  *
- * When `headerCanvasRef` is passed (in the top-left header), it renders the live
- * WebGL mirror canvas driven by the single Three.js renderer so the header profile
- * picture blinks, breathes, tracks the pointer, and lip-syncs in real time!
+ * Strictly adheres to the GLOBAL RULE: NO WHITE SHEET — zero background box, border,
+ * or shadow behind the character canvas/SVG.
  */
 export const SageAvatar: React.FC<SageAvatarProps> = ({
   emotion = 'idle',
   avatarState,
   characterId = 'sage-classic',
+  customName,
   headerCanvasRef,
   size = 'sm',
   showStatusText = false,
@@ -531,27 +694,28 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
   const meta = SAGE_EMOTIONS[emotion] || SAGE_EMOTIONS.idle;
   const sizeConfig = SIZE_MAP[size] || SIZE_MAP.sm;
   const charDef = getSageCharacterById(characterId);
+  const displayLabel = customName?.trim() || charDef.name;
 
   const isThinking = avatarState === 'thinking' || emotion === 'thinking';
   const isSpeaking = avatarState === 'speaking';
 
   return (
-    <div className={`inline-flex items-center gap-2.5 ${className}`}>
+    <div className={`inline-flex items-center gap-2.5 bg-transparent ${className}`}>
       <div
-        className={`relative shrink-0 flex items-center justify-center bg-gradient-to-b from-[#FFFDF8] to-[#F5ECDA] dark:from-[#262420] dark:to-[#1B1A17] border border-[#E8DEC8] dark:border-[#3A352A] shadow-2xs overflow-hidden transition-transform duration-200 ${
+        className={`relative shrink-0 flex items-center justify-center bg-transparent border-0 shadow-none overflow-visible transition-transform duration-200 ${
           sizeConfig.container
         } ${
           pulseOnThinking && (isThinking || isSpeaking)
-            ? 'ring-2 ring-[#F4C430]/70'
+            ? 'drop-shadow-[0_0_8px_rgba(244,196,48,0.55)]'
             : ''
         } ${interactive ? 'cursor-pointer hover:scale-105 active:scale-95' : ''}`}
         onClick={onClick}
-        title={interactive ? `Tap ${charDef.name} to say hello!` : `${charDef.name} — Sage AI`}
+        title={interactive ? `Tap ${displayLabel} to open profile or say hello!` : `${displayLabel} — Sage AI`}
         id={`sage-avatar-${size}-${characterId}`}
       >
-        {/* Base animated 2D SVG character (always visible if WebGL is warming up or unsupported) */}
+        {/* Base animated 2D SVG character (visible when WebGL mirror canvas isn't attached) */}
         <div
-          className={`flex items-center justify-center w-full h-full ${
+          className={`flex items-center justify-center w-full h-full bg-transparent ${
             avatarState === 'poke' || avatarState === 'success'
               ? 'animate-bounce'
               : 'animate-[pulse_3.4s_ease-in-out_infinite]'
@@ -572,14 +736,15 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
             ref={headerCanvasRef}
             width={96}
             height={96}
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            style={{ background: 'transparent' }}
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none bg-transparent"
           />
         )}
       </div>
 
       {showStatusText && (
         <div className="flex flex-col min-w-0">
-          <span className="text-xs font-bold text-white tracking-tight">{charDef.name}</span>
+          <span className="text-xs font-bold text-white tracking-tight">{displayLabel}</span>
           <span className="text-[11px] text-[#A3A3A3] truncate max-w-[200px]">{meta.statusText}</span>
         </div>
       )}

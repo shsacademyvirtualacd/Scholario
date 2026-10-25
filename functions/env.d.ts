@@ -1,4 +1,4 @@
-import type { R2Bucket } from '@cloudflare/workers-types';
+import type { R2Bucket, KVNamespace } from '@cloudflare/workers-types';
 
 export interface Env {
   NOTES_BUCKET: R2Bucket;
@@ -7,6 +7,7 @@ export interface Env {
   APK_BUCKET?: R2Bucket;
   R2_APK_BUCKET?: R2Bucket;
   BUCKET?: R2Bucket;
+  PUBLIC_GUIDE_KV?: KVNamespace;
   PUBLIC_DOMAIN?: string;
   APK_PUBLIC_DOMAIN?: string;
   VITE_APK_PUBLIC_DOMAIN?: string;

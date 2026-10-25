@@ -18,7 +18,12 @@ import {
   chunkDocumentText,
   SAGE_AI_MODELS,
   SAGE_MODEL_FALLBACK_CHAIN,
+  SAGE_TTS_FALLBACK_CHAIN,
 } from './src/lib/knowledgeBaseService';
+import {
+  ACADEMY_KNOWLEDGE_SYSTEM_PROMPT,
+  getPublicGuideLocalAnswer,
+} from './src/data/academyKnowledge';
 const { Pool } = pg;
 
 const rawDbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
@@ -250,6 +255,109 @@ async function startServer() {
   // Health check
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // ─── Public Roaming Cat Guide Endpoint (/api/public-guide) ─────────────────
+  const publicGuideRateMap = new Map<string, { count: number; resetAt: number }>();
+  const PUBLIC_GUIDE_MODELS = [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+  ] as const;
+
+  app.post('/api/public-guide', async (req, res) => {
+    try {
+      const clientIp =
+        (req.headers['cf-connecting-ip'] as string) ||
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+        req.socket.remoteAddress ||
+        'anon';
+
+      const now = Date.now();
+      const windowMs = 10 * 60 * 1000;
+      const maxReqs = 15;
+      const existing = publicGuideRateMap.get(clientIp);
+      if (existing && now < existing.resetAt) {
+        if (existing.count >= maxReqs) {
+          return res.status(429).json({
+            reply:
+              "Meow! You've sent quite a few messages in a short time 🐾 Please wait a few minutes, or tap **Get Started** above to explore the portal directly!",
+            rateLimited: true,
+          });
+        }
+        existing.count += 1;
+      } else {
+        publicGuideRateMap.set(clientIp, { count: 1, resetAt: now + windowMs });
+      }
+
+      const sanitizePlain = (s: string) =>
+        (s || '')
+          .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+          .replace(/<\/?[a-z][^>]*>/gi, '')
+          .trim();
+
+      const rawMessage = sanitizePlain(String(req.body?.message || '')).slice(0, 500);
+      if (!rawMessage) {
+        return res.status(400).json({ error: 'Message cannot be empty.' });
+      }
+
+      const rawHistory = Array.isArray(req.body?.history) ? req.body.history.slice(-6) : [];
+      const safeHistory = rawHistory
+        .map((h: any) => ({
+          role: h?.role === 'assistant' || h?.role === 'model' ? 'model' : 'user',
+          parts: [{ text: sanitizePlain(String(h?.content || '')).slice(0, 500) }],
+        }))
+        .filter((h: any) => h.parts[0].text.length > 0);
+
+      const ai = getGeminiClient();
+      if (!ai) {
+        return res.json({
+          reply: getPublicGuideLocalAnswer(rawMessage),
+          model: 'local-knowledge-fallback',
+        });
+      }
+
+      const contents = [
+        ...safeHistory,
+        {
+          role: 'user',
+          parts: [{ text: rawMessage }],
+        },
+      ];
+
+      for (const modelName of PUBLIC_GUIDE_MODELS) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents,
+            config: {
+              systemInstruction: ACADEMY_KNOWLEDGE_SYSTEM_PROMPT,
+              temperature: 0.35,
+              maxOutputTokens: 320,
+            },
+          });
+          const text = (response.text || '').trim();
+          if (text) {
+            return res.json({
+              reply: sanitizePlain(text),
+              model: modelName,
+            });
+          }
+        } catch {
+          // Try next model in fallback chain
+        }
+      }
+
+      return res.json({
+        reply: getPublicGuideLocalAnswer(rawMessage),
+        model: 'local-knowledge-fallback',
+      });
+    } catch {
+      return res.json({
+        reply: getPublicGuideLocalAnswer(String(req.body?.message || '')),
+        model: 'local-knowledge-fallback',
+      });
+    }
   });
 
   // ─── Subject-Level Enrollment & Fee Settings Store ──────────────────────────
@@ -743,10 +851,9 @@ Key Guidelines:
           break;
         } catch (err: any) {
           lastErr = err;
-          console.error('[Server Sage Chat] Model attempt failed:', {
+          console.warn('[Server Sage Chat] Model attempt fallback:', {
             model: modelId,
             httpStatus: err?.status || err?.code || 'unknown',
-            errorBody: err?.message || String(err),
           });
         }
       }
@@ -758,9 +865,8 @@ Key Guidelines:
       res.write('data: [DONE]\n\n');
       res.end();
     } catch (err: any) {
-      console.error('[Sage Chat Streaming All Models Failed]:', {
+      console.warn('[Sage Chat Streaming Fallback]:', {
         httpStatus: err?.status || err?.code || 'unknown',
-        errorBody: err?.message || String(err),
       });
       const status = Number(err?.status || err?.code || 0);
       const msg = String(err?.message || err || '');
@@ -843,10 +949,9 @@ Transcribe what the person said verbatim.
           break;
         } catch (modelErr: any) {
           lastErr = modelErr;
-          console.error('[server:transcribe] model attempt failed:', {
+          console.warn('[server:transcribe] model attempt fallback:', {
             model: modelId,
             httpStatus: modelErr?.status || modelErr?.code || 'unknown',
-            errorBody: modelErr?.message || String(modelErr),
           });
         }
       }
@@ -868,7 +973,7 @@ Transcribe what the person said verbatim.
         transcript: rawTranscript,
       });
     } catch (transcribeErr: any) {
-      console.error('[Sage Audio Transcription Error]:', transcribeErr);
+      console.warn('[Sage Audio Transcription Fallback]:', transcribeErr?.message || transcribeErr);
       return res.status(500).json({
         error: 'Voice transcription failed. Please try again.',
       });
@@ -886,27 +991,44 @@ Transcribe what the person said verbatim.
 
       const client = getGeminiClient();
       if (!client) {
-        return res.status(503).json({
-          error: 'Gemini API key is not configured for server TTS',
+        return res.status(200).json({
+          fallback: 'browser',
+          reason: 'missing_api_key',
         });
       }
 
-      const response = await client.models.generateContent({
-        model: SAGE_AI_MODELS.TTS,
-        contents: [{ parts: [{ text: rawText.slice(0, 3500) }] }],
-        config: {
-          responseModalities: ['AUDIO' as any],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName },
+      let base64Pcm: string | undefined;
+      for (const ttsModel of SAGE_TTS_FALLBACK_CHAIN) {
+        try {
+          const response = await client.models.generateContent({
+            model: ttsModel,
+            contents: [{ parts: [{ text: rawText.slice(0, 3500) }] }],
+            config: {
+              responseModalities: ['AUDIO' as any],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName },
+                },
+              },
             },
-          },
-        },
-      });
+          });
+          const candidateData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          if (candidateData) {
+            base64Pcm = candidateData;
+            break;
+          }
+        } catch (modelErr: any) {
+          console.warn(
+            `[Sage Server TTS] Model ${ttsModel} unavailable (${modelErr?.status || modelErr?.code || 'fallback'}), trying next.`
+          );
+        }
+      }
 
-      const base64Pcm = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (!base64Pcm) {
-        return res.status(502).json({ error: 'No audio data returned from TTS model' });
+        return res.status(200).json({
+          fallback: 'browser',
+          reason: 'cloud_tts_unavailable',
+        });
       }
 
       const audioBuf = Buffer.from(base64Pcm, 'base64');
@@ -942,8 +1064,11 @@ Transcribe what the person said verbatim.
       res.setHeader('Cache-Control', 'no-store');
       return res.status(200).send(wavBuf);
     } catch (ttsErr: any) {
-      console.error('[Sage Server TTS Error]:', ttsErr?.message || ttsErr);
-      return res.status(500).json({ error: ttsErr?.message || 'TTS generation failed' });
+      console.warn('[Sage Server TTS] Delegating to browser speech synthesis:', ttsErr?.status || 'fallback');
+      return res.status(200).json({
+        fallback: 'browser',
+        reason: 'cloud_tts_unavailable',
+      });
     }
   });
 
