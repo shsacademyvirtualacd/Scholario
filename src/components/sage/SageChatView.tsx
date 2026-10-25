@@ -37,6 +37,8 @@ import {
   ChevronUp,
   Volume2,
   Share2,
+  MoreHorizontal,
+  EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmModal from '../admin/ConfirmModal';
@@ -67,7 +69,10 @@ import {
   SpeechSpeed,
 } from '../../lib/sageSpeech';
 import { SAGE_MODEL_DISPLAY_NAME } from '../../lib/knowledgeBaseService';
-import type { Sage3DAvatarState } from './Sage3DAvatar';
+import {
+  useSageAvatarController,
+  SageAvatarStateProvider,
+} from './useSageAvatarState';
 
 const LazySage3DAvatar = React.lazy(() => import('./Sage3DAvatar'));
 
@@ -769,7 +774,6 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [streamingId, setStreamingId] = useState<string | null>(null);
-  const [manualEmotion, setManualEmotion] = useState<SageEmotion | null>(null);
   const [activePageContext, setActivePageContext] = useState<PageContextInfo | null>(() => getLastPageContext());
   const [pendingAttachment, setPendingAttachment] = useState<{
     file: File;
@@ -783,6 +787,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   } | null>(null);
   const [isSyncingNotes, setIsSyncingNotes] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
+  const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Voice Recording State ──
   const [isRecording, setIsRecording] = useState(false);
@@ -819,12 +826,32 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     hasAnswers: false,
   });
 
-  // ── Text-to-Speech (TTS) & 3D Avatar State ──
+  // ── Text-to-Speech (TTS) & Shared Avatar State Controller ──
   const [speechStatus, setSpeechStatus] = useState<SpeechPlaybackStatus>('idle');
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeed>(1);
   const [speechVolume, setSpeechVolume] = useState<number>(0);
-  const [avatar3DCollapsed, setAvatar3DCollapsed] = useState<boolean>(false);
+
+  const isStreamingTokens = Boolean(
+    streamingId && messages.find((m) => m.id === streamingId)?.content
+  );
+  const isWaitingForFirstToken =
+    (isLoading && !isStreamingTokens) || isTranscribing;
+
+  const avatarController = useSageAvatarController({
+    isTyping: input.trim().length > 0 && !isLoading && !isRecording,
+    isRecording,
+    isThinking: isWaitingForFirstToken,
+    isSpeaking: speechStatus === 'playing' || isStreamingTokens,
+    audioLevel:
+      speechStatus === 'playing'
+        ? speechVolume
+        : isRecording
+        ? recordingLevel
+        : isStreamingTokens
+        ? 0.55
+        : 0,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -832,6 +859,18 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   const abortControllerRef = useRef<AbortController | null>(null);
   const voiceRecorderRef = useRef<SageVoiceRecorder | null>(null);
   const previewAudioElRef = useRef<HTMLAudioElement | null>(null);
+
+  // Close header overflow menu on outside click
+  useEffect(() => {
+    if (!overflowMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) {
+        setOverflowMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [overflowMenuOpen]);
 
   // Sync to session storage
   useEffect(() => {
@@ -967,8 +1006,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       const data = (await res.json()) as { synced?: number; error?: string };
       if (res.ok) {
         toast.success(`Knowledge Base synced! Indexed ${data.synced ?? 0} notes into vector knowledge base.`);
+        avatarController.triggerSuccess();
       } else {
         toast.error(data.error || 'Failed to sync notes');
+        avatarController.triggerError();
       }
     } catch {
       toast.info('Knowledge base sync requested.');
@@ -977,16 +1018,13 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     }
   };
 
-  // Derive current overall Sage emotional state
+  // Derive current overall Sage emotional state for thumbnail
   const latestAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
-  const activeEmotion: SageEmotion = manualEmotion
-    ? manualEmotion
-    : isLoading
+  const activeEmotion: SageEmotion = isLoading
     ? 'thinking'
     : latestAssistantMsg
     ? detectSageEmotion(latestAssistantMsg.content, false, role)
     : 'idle';
-  const activeEmotionMeta = SAGE_EMOTIONS[activeEmotion] || SAGE_EMOTIONS.idle;
 
   // Scroll to bottom smoothly
   const scrollToBottom = () => {
@@ -1215,9 +1253,11 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       });
       toast.success(`Downloaded: ${filename}`);
       setPdfMenuMsgId(null);
+      avatarController.triggerSuccess();
     } catch (err: any) {
       console.error('PDF generation error:', err);
       toast.error('Failed to generate PDF. Please try again.');
+      avatarController.triggerError();
     } finally {
       if (msgId) setGeneratingPdfMsgId(null);
     }
@@ -1239,9 +1279,11 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         toast.success(`Saved ${result.filename} — ready to attach on WhatsApp or Email!`);
       }
       setPdfMenuMsgId(null);
+      avatarController.triggerSuccess();
     } catch (err: any) {
       console.error('PDF share error:', err);
       toast.error('Could not share PDF. Please try downloading instead.');
+      avatarController.triggerError();
     } finally {
       if (msgId) setSharingPdfMsgId(null);
     }
@@ -1260,9 +1302,11 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       await triggerPdfBlobDownload(result.blob, result.filename);
       revokeSagePdfUrl(result.dataUrl);
       toast.success(`Downloaded Conversation PDF: ${result.filename}`);
+      avatarController.triggerSuccess();
     } catch (err: any) {
       console.error('Conversation PDF error:', err);
       toast.error('Failed to export conversation PDF.');
+      avatarController.triggerError();
     } finally {
       setIsExportingConversationPdf(false);
     }
@@ -1289,9 +1333,11 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       } else {
         toast.success(`Saved ${result.filename} — ready to send via WhatsApp or Email!`);
       }
+      avatarController.triggerSuccess();
     } catch (err: any) {
       console.error('Conversation PDF share error:', err);
       toast.error('Failed to share conversation PDF.');
+      avatarController.triggerError();
     } finally {
       setIsSharingConversationPdf(false);
     }
@@ -1409,6 +1455,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     }
     setIsLoading(true);
     setStreamingId(assistantMsgId);
+    avatarController.triggerNod();
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -1521,6 +1568,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           )
         );
       }
+      avatarController.triggerSuccess();
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('[Sage Chat] Stream cancelled by user');
@@ -1530,6 +1578,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       const friendlyMsg = 'Sage is temporarily unavailable. Please try again in a moment.';
       setErrorMsg(friendlyMsg);
       toast.error(friendlyMsg);
+      avatarController.triggerError();
       setMessages((prev) =>
         prev.filter((msg) => msg.id !== assistantMsgId || msg.content.trim().length > 0)
       );
@@ -1557,179 +1606,263 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const isConversationStarted = messages.length > 1;
+  const greetingName =
+    profile?.full_name?.split(' ')[0] ||
+    (role === 'teacher' ? 'Professor' : role === 'admin' ? 'Admin' : 'there');
+
   return (
-    <div
-      className={
-        embedded
-          ? 'flex flex-col h-full w-full bg-white dark:bg-[#121215] overflow-hidden'
-          : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white dark:bg-[#121215] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
-      }
-    >
-      {/* ── Top Header ── */}
-      <div className="bg-gradient-to-r from-[#111111] via-[#1A1A1A] to-[#111111] px-4 sm:px-6 py-3 sm:py-3.5 text-white flex items-center justify-between border-b border-[#262626] shrink-0">
-        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="min-h-[44px] min-w-[44px] p-2 -ml-1 rounded-lg hover:bg-white/10 text-white shrink-0 transition-colors flex items-center justify-center cursor-pointer"
-              title="Back to conversations"
-              aria-label="Back to conversations"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <SageAvatar
-            emotion={activeEmotion}
-            size="md"
-            showBadge={true}
-            interactive={true}
-          />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5">
-                Sage AI
-              </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#2B2B2B] text-[#F4C430] border border-[#3D3D3D]">
-                {role === 'student' ? 'Study Companion' : role === 'teacher' ? 'Faculty Assistant' : 'Admin Copilot'}
-              </span>
-              <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-purple-950/80 text-purple-300 border border-purple-800/60" title={`Powered by Google ${SAGE_MODEL_DISPLAY_NAME}`}>
-                {SAGE_MODEL_DISPLAY_NAME}
-              </span>
-              <span
-                className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${activeEmotionMeta.badgeBg} ${activeEmotionMeta.badgeTextColor}`}
-                title={activeEmotionMeta.description}
+    <SageAvatarStateProvider value={avatarController}>
+      <div
+        className={
+          embedded
+            ? 'flex flex-col h-full w-full bg-white dark:bg-[#121215] overflow-hidden'
+            : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white dark:bg-[#121215] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
+        }
+      >
+        {/* ── Clean Single-Row Top Header ── */}
+        <div className="bg-[#111111] px-3.5 sm:px-5 py-2.5 text-white flex items-center justify-between gap-2 border-b border-[#242428] shrink-0">
+          {/* Left: Back Button, Small Avatar Thumbnail, "Sage" Title + Low-Key Role Chip, Single Status Line */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="w-9 h-9 rounded-xl hover:bg-white/10 text-zinc-200 hover:text-white shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+                title="Back"
+                aria-label="Back"
               >
-                {activeEmotionMeta.badgeLabel}
-              </span>
-            </div>
-            <p className="text-[11px] text-[#A3A3A3] flex items-center gap-1.5 mt-0.5">
-              <span>{activeEmotionMeta.statusText}</span>
-            </p>
-          </div>
-        </div>
+                <ArrowLeft size={18} />
+              </button>
+            )}
 
-        <div className="flex items-center gap-2">
-          {/* Interactive Mood Selector */}
-          <div className="hidden md:flex items-center gap-1 bg-[#1C1C1E] p-1 rounded-xl border border-[#2B2B2B]">
-            {(['idle', 'thinking', 'positive', 'neutral', 'concerned'] as SageEmotion[]).map((emo) => {
-              const eMeta = SAGE_EMOTIONS[emo];
-              const Icon = eMeta.icon;
-              const isSelected = activeEmotion === emo;
-              return (
-                <button
-                  key={emo}
-                  onClick={() => setManualEmotion(emo === manualEmotion ? null : emo)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                    isSelected
-                      ? `${eMeta.badgeBg} ${eMeta.badgeTextColor} shadow-xs scale-102`
-                      : 'text-[#A3A3A3] hover:text-white hover:bg-[#2A2A2A]'
-                  }`}
-                  title={`${eMeta.label}: ${eMeta.description} (Click to toggle)`}
+            <SageAvatar
+              emotion={activeEmotion}
+              size="sm"
+              interactive={true}
+              onClick={() => avatarController.triggerPoke()}
+            />
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-[15px] sm:text-base font-extrabold tracking-tight text-white truncate">
+                  Sage
+                </h1>
+                <span
+                  className="px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide bg-white/8 text-zinc-300 border border-white/10 shrink-0"
+                  title={`${role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'} mode • ${SAGE_MODEL_DISPLAY_NAME}`}
                 >
-                  <Icon size={11} />
-                  <span className="hidden xl:inline">{eMeta.badgeLabel}</span>
-                </button>
-              );
-            })}
+                  {role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-tight truncate mt-0.5">
+                {avatarController.headerStatusText}
+              </p>
+            </div>
           </div>
 
-          {/* Export Whole Conversation PDF & Share */}
-          <button
-            type="button"
-            onClick={handleDownloadConversationPdf}
-            disabled={isExportingConversationPdf || isLoading || messages.length === 0}
-            className="min-h-[44px] sm:min-h-[36px] flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-[#F4C430] transition-colors border border-[#3D3D3D] disabled:opacity-50 cursor-pointer"
-            title="Download full conversation as A4 PDF"
-          >
-            {isExportingConversationPdf ? (
-              <Loader2 size={13} className="animate-spin text-[#F4C430]" />
-            ) : (
-              <FileDown size={13} className="text-[#F4C430]" />
-            )}
-            <span className="hidden sm:inline">{isExportingConversationPdf ? 'Exporting...' : 'Chat PDF'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleShareConversationPdf}
-            disabled={isSharingConversationPdf || isLoading || messages.length === 0}
-            className="min-h-[44px] sm:min-h-[36px] flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-[#D4D4D4] hover:text-white transition-colors border border-[#333333] disabled:opacity-50 cursor-pointer"
-            title="Share or send conversation PDF"
-          >
-            {isSharingConversationPdf ? (
-              <Loader2 size={13} className="animate-spin text-[#F4C430]" />
-            ) : (
-              <Share2 size={13} />
-            )}
-            <span className="hidden lg:inline">{isSharingConversationPdf ? 'Sharing...' : 'Share PDF'}</span>
-          </button>
-
-          {/* RAG Vault Badge */}
-          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#1C1C1E] border border-[#2B2B2B] text-[11px] text-[#A3A3A3]">
-            <Database size={12} className="text-[#38BDF8]" />
-            <span className="font-semibold text-white">RAG Note Vault</span>
-          </div>
-
-          {(role === 'admin' || role === 'teacher') && (
+          {/* Right: At Most Two Primary Icon Actions (Chat PDF, Share PDF) + "⋯" Overflow Menu */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
-              id="sync-note-vault-btn"
-              onClick={handleSyncNotes}
-              disabled={isSyncingNotes}
-              className="min-h-[44px] sm:min-h-[36px] hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors border border-[#3D3D3D] disabled:opacity-50 interactive cursor-pointer"
-              title="Index Subject Note Vault documents into vector knowledge base"
+              onClick={handleDownloadConversationPdf}
+              disabled={isExportingConversationPdf || isLoading || messages.length === 0}
+              className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-[#F4C430] flex items-center justify-center transition-colors border border-[#2E2E34] disabled:opacity-40 cursor-pointer"
+              title="Chat PDF — Download full conversation as A4 PDF"
+              aria-label="Download Chat PDF"
             >
-              <RefreshCw size={13} className={isSyncingNotes ? 'animate-spin text-amber-400' : 'text-amber-400'} />
-              <span>{isSyncingNotes ? 'Syncing...' : 'Sync Notes'}</span>
+              {isExportingConversationPdf ? (
+                <Loader2 size={15} className="animate-spin text-[#F4C430]" />
+              ) : (
+                <FileDown size={15} />
+              )}
             </button>
+
+            <button
+              type="button"
+              onClick={handleShareConversationPdf}
+              disabled={isSharingConversationPdf || isLoading || messages.length === 0}
+              className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-300 hover:text-white flex items-center justify-center transition-colors border border-[#2E2E34] disabled:opacity-40 cursor-pointer"
+              title="Share PDF — Share or send conversation PDF"
+              aria-label="Share Chat PDF"
+            >
+              {isSharingConversationPdf ? (
+                <Loader2 size={15} className="animate-spin text-[#F4C430]" />
+              ) : (
+                <Share2 size={15} />
+              )}
+            </button>
+
+            {/* "⋯" Overflow Menu */}
+            <div className="relative" ref={overflowMenuRef}>
+              <button
+                type="button"
+                onClick={() => setOverflowMenuOpen((prev) => !prev)}
+                className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-300 hover:text-white flex items-center justify-center transition-colors border border-[#2E2E34] cursor-pointer"
+                title="More options"
+                aria-label="More options"
+                aria-expanded={overflowMenuOpen}
+              >
+                <MoreHorizontal size={16} />
+              </button>
+
+              {overflowMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-60 rounded-2xl bg-[#18181C] text-zinc-200 border border-[#2E2E36] shadow-2xl p-1.5 z-40 animate-in fade-in slide-in-from-top-1">
+                  {/* Quiet Model & RAG Info Section */}
+                  <div className="px-3 py-2 border-b border-[#27272F] mb-1">
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                      <span>AI Engine</span>
+                      <span className="font-semibold text-zinc-200">{SAGE_MODEL_DISPLAY_NAME}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-1">
+                      <span className="flex items-center gap-1">
+                        <Database size={11} className="text-[#F4C430]" />
+                        <span>Knowledge Base</span>
+                      </span>
+                      <span className="font-semibold text-zinc-200">RAG Note Vault</span>
+                    </div>
+                  </div>
+
+                  {/* Toggle Sage Avatar Visibility */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      avatarController.setCollapsed((prev) => !prev);
+                      setOverflowMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-white/8 transition-colors cursor-pointer text-left"
+                  >
+                    {avatarController.collapsed ? (
+                      <Eye size={14} className="text-[#F4C430] shrink-0" />
+                    ) : (
+                      <EyeOff size={14} className="text-zinc-400 shrink-0" />
+                    )}
+                    <span>{avatarController.collapsed ? 'Show Sage Character' : 'Minimize Sage Character'}</span>
+                  </button>
+
+                  {/* Sync Note Vault (Teachers & Admins) */}
+                  {(role === 'admin' || role === 'teacher') && (
+                    <button
+                      type="button"
+                      id="sync-note-vault-btn"
+                      onClick={() => {
+                        setOverflowMenuOpen(false);
+                        handleSyncNotes();
+                      }}
+                      disabled={isSyncingNotes}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-white/8 transition-colors disabled:opacity-50 cursor-pointer text-left"
+                    >
+                      <RefreshCw
+                        size={14}
+                        className={isSyncingNotes ? 'animate-spin text-[#F4C430] shrink-0' : 'text-[#F4C430] shrink-0'}
+                      />
+                      <span>{isSyncingNotes ? 'Syncing Note Vault...' : 'Sync RAG Note Vault'}</span>
+                    </button>
+                  )}
+
+                  <div className="my-1 border-t border-[#27272F]" />
+
+                  {/* Reset Session */}
+                  <button
+                    type="button"
+                    id="clear-chat-btn"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      setConfirmClearOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
+                  >
+                    <RotateCcw size={14} className="shrink-0" />
+                    <span>Reset Chat Session</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Slim Dismissible Page Context Strip ── */}
+        {activePageContext && (
+          <div className="bg-amber-50/80 dark:bg-amber-950/25 border-b border-amber-200/70 dark:border-amber-800/40 px-3.5 sm:px-5 py-1.5 flex items-center justify-between gap-2 text-[11px] text-amber-900 dark:text-amber-200 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Compass size={12} className="text-amber-700 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold truncate">{activePageContext.title}</span>
+              {activePageContext.summary && (
+                <span className="hidden md:inline text-amber-700/80 dark:text-amber-300/70 truncate">
+                  · {activePageContext.summary}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() =>
+                  handleSend(`Can you guide me on what I'm looking at on the ${activePageContext.title} page?`)
+                }
+                className="px-2 py-0.5 rounded-md bg-amber-200/75 dark:bg-amber-900/50 hover:bg-amber-300/80 text-amber-950 dark:text-amber-100 font-semibold transition-colors cursor-pointer"
+              >
+                Ask about screen
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePageContext(null)}
+                className="p-0.5 hover:bg-amber-200/70 dark:hover:bg-amber-900/50 rounded text-amber-700 dark:text-amber-300 transition-colors cursor-pointer"
+                title="Dismiss page context"
+                aria-label="Dismiss page context"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Compact 72px Docked Avatar Bar (Once Messages Exist) ── */}
+        {isConversationStarted && (
+          <Suspense
+            fallback={
+              <div className="h-[72px] flex items-center px-5 border-b border-zinc-200/50 dark:border-zinc-800/60 text-xs text-zinc-400">
+                Loading Sage...
+              </div>
+            }
+          >
+            <LazySage3DAvatar
+              state={avatarController.state}
+              audioLevel={avatarController.audioLevel}
+              compact={true}
+              statusLabel={avatarController.stageCaption}
+              collapsed={avatarController.collapsed}
+              onToggleCollapse={() => avatarController.setCollapsed((prev) => !prev)}
+              onPoke={() => avatarController.triggerPoke()}
+              pokeCount={avatarController.pokeCount}
+            />
+          </Suspense>
+        )}
+
+        {/* ── Chat Messages Stream ── */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
+          {/* When Chat is Fresh, Show Large Center Stage Avatar Above Greeting */}
+          {!isConversationStarted && (
+            <Suspense
+              fallback={
+                <div className="h-48 flex items-center justify-center text-xs text-zinc-400">
+                  Loading Sage...
+                </div>
+              }
+            >
+              <LazySage3DAvatar
+                state={avatarController.state}
+                audioLevel={avatarController.audioLevel}
+                compact={false}
+                greetingTitle={`Hi ${greetingName}, I'm Sage!`}
+                statusLabel={avatarController.stageCaption}
+                collapsed={avatarController.collapsed}
+                onToggleCollapse={() => avatarController.setCollapsed((prev) => !prev)}
+                onPoke={() => avatarController.triggerPoke()}
+                pokeCount={avatarController.pokeCount}
+              />
+            </Suspense>
           )}
-
-          {/* Reset / Clear Chat Action with Safe Modal Confirmation */}
-          <button
-            type="button"
-            id="clear-chat-btn"
-            onClick={() => setConfirmClearOpen(true)}
-            className="min-h-[44px] sm:min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-[#D4D4D4] hover:text-white transition-colors border border-[#333333] interactive cursor-pointer"
-            title="Reset Chat Session"
-          >
-            <RotateCcw size={13} />
-            <span className="hidden sm:inline">Reset</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Page Context Bar ── */}
-      {activePageContext && (
-        <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 sm:px-6 py-2 flex items-center justify-between text-xs text-amber-900 transition-all shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <Compass size={14} className="text-amber-700 shrink-0" />
-            <span className="font-bold text-amber-950 truncate">Page Context: {activePageContext.title}</span>
-            <span className="hidden md:inline text-amber-800/80 truncate text-[11px]">— {activePageContext.summary}</span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-            <button
-              type="button"
-              onClick={() => handleSend(`Can you guide me on what I'm looking at on the ${activePageContext.title} page?`)}
-              className="px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 text-amber-950 text-[11px] font-semibold transition-colors cursor-pointer"
-            >
-              Ask about this screen
-            </button>
-            <button
-              type="button"
-              onClick={() => setActivePageContext(null)}
-              className="p-1 hover:bg-amber-200/70 rounded-lg text-amber-700 hover:text-amber-950 transition-colors"
-              title="Dismiss page context"
-            >
-              <X size={13} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Chat Messages Stream ── */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
-        {messages.map((msg) => {
+          {messages.map((msg) => {
           const isUser = msg.role === 'user';
           const isCurrentStreaming = msg.id === streamingId;
           const isPendingFirstToken = isCurrentStreaming && !msg.content;
@@ -2070,85 +2203,56 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Starter Prompts (if chat is fresh) ── */}
+      {/* ── Suggested Questions (Neat Collapsible Horizontal Row) ── */}
       {messages.length <= 2 && !isLoading && (
-        <div className="px-4 sm:px-6 py-3 bg-white dark:bg-[#141418] border-t border-[#F0F0F0] dark:border-[#27272A] overflow-x-auto">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[11px] font-bold text-[#737373] dark:text-[#A1A1AA] uppercase tracking-wider flex items-center gap-1.5">
-              <Lightbulb size={12} className="text-[#F4C430]" /> Suggested Questions & Interactions
-            </div>
-            <span className="text-[10px] text-[#A3A3A3] dark:text-[#71717A] hidden sm:inline">
-              Try voice recording or PDF export directly from these prompts
-            </span>
+        <div className="px-4 sm:px-5 py-2 bg-white dark:bg-[#141418] border-t border-[#F0F0F0] dark:border-[#27272A] shrink-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <button
+              type="button"
+              onClick={() => setSuggestionsCollapsed((prev) => !prev)}
+              className="text-[11px] font-bold text-[#737373] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Lightbulb size={12} className="text-[#F4C430] shrink-0" />
+              <span>Suggested questions</span>
+              {suggestionsCollapsed ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {starters.map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={idx}
-                  id={`starter-chip-${idx}`}
-                  onClick={() => handleSend(item.text)}
-                  className={`min-h-[44px] sm:min-h-[36px] flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs text-[#525252] dark:text-[#D4D4D8] hover:text-[#111111] dark:hover:text-white transition-all text-left group interactive shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F4C430] ${
-                    item.tone === 'positive'
-                      ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:border-emerald-400'
-                      : item.tone === 'concerned'
-                      ? 'border-red-200 dark:border-red-900/60 bg-red-50/40 dark:bg-red-950/30 hover:bg-red-50 dark:hover:bg-red-950/50 hover:border-red-400'
-                      : 'border-[#E5E5E5] dark:border-[#2E2E36] bg-[#FAFAFA] dark:bg-[#1A1A1F] hover:bg-[#FFFBF0] dark:hover:bg-[#24242C] hover:border-[#F4C430]'
-                  }`}
-                >
-                  <Icon
-                    size={14}
-                    className={`shrink-0 group-hover:scale-110 transition-transform ${
+
+          {!suggestionsCollapsed && (
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              {starters.map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={idx}
+                    id={`starter-chip-${idx}`}
+                    onClick={() => handleSend(item.text)}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs text-[#525252] dark:text-[#D4D4D8] hover:text-[#111111] dark:hover:text-white transition-all text-left group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F4C430] ${
                       item.tone === 'positive'
-                        ? 'text-emerald-600 dark:text-emerald-400'
+                        ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/30 hover:bg-emerald-50'
                         : item.tone === 'concerned'
-                        ? 'text-red-500 dark:text-red-400'
-                        : 'text-[#F4C430]'
+                        ? 'border-red-200 dark:border-red-900/60 bg-red-50/40 dark:bg-red-950/30 hover:bg-red-50'
+                        : 'border-[#E5E5E5] dark:border-[#2E2E36] bg-[#FAFAFA] dark:bg-[#1A1A1F] hover:bg-[#FFFBF0] dark:hover:bg-[#24242C] hover:border-[#F4C430]'
                     }`}
-                  />
-                  <span className="font-semibold truncate max-w-[260px]">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+                  >
+                    <Icon
+                      size={13}
+                      className={`shrink-0 ${
+                        item.tone === 'positive'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : item.tone === 'concerned'
+                          ? 'text-red-500 dark:text-red-400'
+                          : 'text-[#F4C430]'
+                      }`}
+                    />
+                    <span className="font-medium whitespace-nowrap">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
-
-      {/* ── 3D AI Tutor Avatar (Middle of Sage Window, Above Chat Input) ── */}
-      <div className="px-4 sm:px-6 pt-2.5 pb-1 bg-white dark:bg-[#141418] border-t border-[#F0F0F0] dark:border-[#27272A] shrink-0">
-        <Suspense
-          fallback={
-            <div className="h-28 rounded-2xl bg-[#111318] border border-[#D4A017]/25 flex items-center justify-center text-xs text-[#F4C430]">
-              Loading 3D AI Tutor...
-            </div>
-          }
-        >
-          <LazySage3DAvatar
-            state={
-              speechStatus === 'playing' || Boolean(streamingId)
-                ? 'speaking'
-                : isLoading || isTranscribing
-                ? 'thinking'
-                : isRecording || input.trim().length > 0
-                ? 'listening'
-                : ('idle' as Sage3DAvatarState)
-            }
-            audioLevel={
-              speechStatus === 'playing'
-                ? speechVolume
-                : isRecording
-                ? recordingLevel
-                : streamingId
-                ? 0.55
-                : 0
-            }
-            compact={messages.length > 2}
-            collapsed={avatar3DCollapsed}
-            onToggleCollapse={() => setAvatar3DCollapsed((prev) => !prev)}
-          />
-        </Suspense>
-      </div>
 
       {/* ── Input Box & Controls ── */}
       <div className="p-4 sm:p-5 bg-white dark:bg-[#141418] border-t border-[#E5E5E5] dark:border-[#27272A] shrink-0">
@@ -2446,7 +2550,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         cancelLabel="Keep Conversation"
         danger
       />
-    </div>
+      </div>
+    </SageAvatarStateProvider>
   );
 };
 

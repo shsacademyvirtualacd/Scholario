@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { SageEmotion, SAGE_EMOTIONS } from './sageEmotion';
+import { SAGE_AVATAR_THEME } from './useSageAvatarState';
 
 export interface SageAvatarProps {
   emotion?: SageEmotion;
@@ -15,147 +16,165 @@ export interface SageAvatarProps {
 
 const SIZE_MAP = {
   xs: {
-    container: 'w-7 h-7 rounded-lg',
-    badge: 'w-3.5 h-3.5 -bottom-0.5 -right-0.5 text-[8px]',
-    iconSize: 12,
-    badgeIconSize: 8,
+    container: 'w-7 h-7 rounded-xl',
+    svgSize: 24,
   },
   sm: {
     container: 'w-9 h-9 rounded-xl',
-    badge: 'w-4 h-4 -bottom-1 -right-1 text-[9px]',
-    iconSize: 16,
-    badgeIconSize: 9,
+    svgSize: 32,
   },
   md: {
-    container: 'w-12 h-12 rounded-2xl',
-    badge: 'w-5 h-5 -bottom-1 -right-1 text-[10px]',
-    iconSize: 20,
-    badgeIconSize: 11,
+    container: 'w-10 h-10 rounded-2xl',
+    svgSize: 36,
   },
   lg: {
-    container: 'w-16 h-16 rounded-2xl',
-    badge: 'w-6 h-6 -bottom-1.5 -right-1.5 text-xs',
-    iconSize: 28,
-    badgeIconSize: 13,
+    container: 'w-14 h-14 rounded-2xl',
+    svgSize: 50,
   },
   xl: {
-    container: 'w-24 h-24 rounded-3xl',
-    badge: 'w-8 h-8 -bottom-2 -right-2 text-sm',
-    iconSize: 40,
-    badgeIconSize: 16,
+    container: 'w-20 h-20 rounded-3xl',
+    svgSize: 72,
   },
 };
 
+/**
+ * Clean, lightweight plush cream-and-gold Sage character thumbnail
+ * used in the Sage window header and message stream bubbles.
+ */
 export const SageAvatar: React.FC<SageAvatarProps> = ({
   emotion = 'idle',
-  size = 'md',
-  showBadge = true,
+  size = 'sm',
   showStatusText = false,
   pulseOnThinking = true,
   interactive = false,
   className = '',
-  videoClassName = '',
   onClick,
 }) => {
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const [videoError, setVideoError] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
   const meta = SAGE_EMOTIONS[emotion] || SAGE_EMOTIONS.idle;
-  const sizeConfig = SIZE_MAP[size] || SIZE_MAP.md;
-  const EmotionIcon = meta.icon;
+  const sizeConfig = SIZE_MAP[size] || SIZE_MAP.sm;
+  const { colors, accessories } = SAGE_AVATAR_THEME;
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      // Ensure video is playing smoothly
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Auto-play was prevented; video is muted so usually allowed
-        });
-      }
-    }
-  }, [emotion, meta.videoUrl]);
+  const isThinking = emotion === 'thinking';
+  const isHappy = emotion === 'positive';
+  const isConcerned = emotion === 'concerned';
 
   return (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
-      {/* ── Avatar Frame with Halo & Video ── */}
       <div
-        className={`relative shrink-0 flex items-center justify-center bg-[#111111] overflow-hidden transition-all duration-300 ${
+        className={`relative shrink-0 flex items-center justify-center bg-gradient-to-b from-[#FFFDF8] to-[#F5ECDA] dark:from-[#262420] dark:to-[#1B1A17] border border-[#E8DEC8] dark:border-[#3A352A] shadow-2xs overflow-hidden transition-transform duration-200 ${
           sizeConfig.container
-        } ${meta.glowClass} ${
-          pulseOnThinking && emotion === 'thinking' ? 'animate-pulse' : ''
-        } ${interactive ? 'cursor-pointer hover:scale-105 active:scale-95' : ''}`}
+        } ${pulseOnThinking && isThinking ? 'ring-2 ring-[#F4C430]/60' : ''} ${
+          interactive ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
+        }`}
         onClick={onClick}
-        title={`Sage AI (${meta.label})`}
+        title={interactive ? 'Tap Sage to say hello!' : 'Sage AI'}
         id={`sage-avatar-${size}-${emotion}`}
       >
-        {/* Animated Video Stream */}
-        {!videoError ? (
-          <video
-            ref={videoRef}
-            key={meta.videoUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            poster={meta.posterUrl}
-            onLoadedData={() => setVideoLoaded(true)}
-            onError={() => setVideoError(true)}
-            className={`w-full h-full object-cover select-none pointer-events-none transition-opacity duration-300 ${
-              videoLoaded ? 'opacity-100' : 'opacity-80'
-            } ${videoClassName}`}
-          >
-            {meta.webmUrl && <source src={meta.webmUrl} type="video/webm" />}
-            <source src={meta.videoUrl} type="video/mp4" />
-            {/* Fallback to original uncompressed MP4 if needed */}
-            <source src="/animations/sage-avatar.mp4" type="video/mp4" />
-          </video>
-        ) : (
-          /* Fallback static poster/icon if video decoding is unsupported in environment */
-          <div className="w-full h-full flex items-center justify-center bg-[#1C1C1E] text-[#F4C430]">
-            <EmotionIcon size={sizeConfig.iconSize} className="animate-pulse" />
-          </div>
-        )}
+        <svg
+          width={sizeConfig.svgSize}
+          height={sizeConfig.svgSize}
+          viewBox="0 0 64 64"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="select-none pointer-events-none"
+        >
+          <defs>
+            <radialGradient id={`sagePlushGrad-${size}`} cx="50%" cy="38%" r="58%">
+              <stop offset="0%" stopColor="#FFFFFF" />
+              <stop offset="68%" stopColor={colors.plushBody} />
+              <stop offset="100%" stopColor={colors.plushShadow} />
+            </radialGradient>
+            <linearGradient id={`sageGoldGrad-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFE066" />
+              <stop offset="55%" stopColor={colors.goldPrimary} />
+              <stop offset="100%" stopColor={colors.goldDeep} />
+            </linearGradient>
+          </defs>
 
-        {/* Dynamic Emotional Mood Tint / Overlay */}
-        {emotion === 'thinking' && (
-          <div className="absolute inset-0 bg-purple-900/20 mix-blend-overlay pointer-events-none" />
-        )}
-        {emotion === 'concerned' && (
-          <div className="absolute inset-0 bg-red-900/25 mix-blend-overlay pointer-events-none" />
-        )}
-        {emotion === 'positive' && (
-          <div className="absolute inset-0 bg-emerald-900/15 mix-blend-overlay pointer-events-none" />
-        )}
+          {/* Left & Right Plush Ears */}
+          <ellipse cx="16" cy="21" rx="7.5" ry="8.5" transform="rotate(-18 16 21)" fill={`url(#sagePlushGrad-${size})`} stroke="#E6DAC3" strokeWidth="1.2" />
+          <ellipse cx="16.5" cy="21.5" rx="4" ry="4.8" transform="rotate(-18 16.5 21.5)" fill={colors.earInner} opacity="0.75" />
 
-        {/* Emotion Badge Indicator */}
-        {showBadge && (
-          <div
-            className={`absolute ${sizeConfig.badge} ${meta.badgeBg} ${meta.badgeTextColor} rounded-full flex items-center justify-center font-bold shadow-md ring-2 ring-[#111111] transition-transform duration-200`}
-            title={`Mood: ${meta.label}`}
-          >
-            <EmotionIcon size={sizeConfig.badgeIconSize} />
-          </div>
-        )}
+          <ellipse cx="48" cy="21" rx="7.5" ry="8.5" transform="rotate(18 48 21)" fill={`url(#sagePlushGrad-${size})`} stroke="#E6DAC3" strokeWidth="1.2" />
+          <ellipse cx="47.5" cy="21.5" rx="4" ry="4.8" transform="rotate(18 47.5 21.5)" fill={colors.earInner} opacity="0.75" />
+
+          {/* Chubby Plush Head / Body */}
+          <path
+            d="M32 13C19.5 13 11.5 22.2 11.5 34.2C11.5 45.4 19.6 52.5 32 52.5C44.4 52.5 52.5 45.4 52.5 34.2C52.5 22.2 44.5 13 32 13Z"
+            fill={`url(#sagePlushGrad-${size})`}
+            stroke="#E5D9C0"
+            strokeWidth="1.2"
+          />
+
+          {/* Cozy Gold & Obsidian Scarf */}
+          {accessories.showGoldScarf && (
+            <g>
+              <path
+                d="M17 47.5C21.2 50.8 26.4 52.2 32 52.2C37.6 52.2 42.8 50.8 47 47.5C48.2 50.2 46.8 53.5 43.2 54.6C36 56.8 28 56.8 20.8 54.6C17.2 53.5 15.8 50.2 17 47.5Z"
+                fill={`url(#sageGoldGrad-${size})`}
+              />
+              <path
+                d="M19.5 50.6C27.5 53.3 36.5 53.3 44.5 50.6"
+                stroke={colors.obsidianAccent}
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+              {/* Little Gold Star Pin */}
+              <circle cx="40.5" cy="51.5" r="2.3" fill="#FFFDF7" stroke={colors.obsidianAccent} strokeWidth="0.8" />
+            </g>
+          )}
+
+          {/* Soft Rosy Blush Cheeks */}
+          <ellipse cx="19.5" cy="36.8" rx="4.2" ry="2.5" fill={colors.blush} opacity={isHappy ? 0.75 : 0.52} />
+          <ellipse cx="44.5" cy="36.8" rx="4.2" ry="2.5" fill={colors.blush} opacity={isHappy ? 0.75 : 0.52} />
+
+          {/* Big Expressive Eyes */}
+          {isHappy ? (
+            <>
+              <path d="M20.5 31.5C21.8 28.8 25.2 28.8 26.5 31.5" stroke={colors.eyes} strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M37.5 31.5C38.8 28.8 42.2 28.8 43.5 31.5" stroke={colors.eyes} strokeWidth="2.5" strokeLinecap="round" />
+            </>
+          ) : (
+            <>
+              <ellipse cx="23.5" cy={isThinking ? 30.2 : 31.2} rx="3.4" ry="3.9" fill={colors.eyes} />
+              <circle cx="22.3" cy={isThinking ? 28.8 : 29.8} r="1.25" fill={colors.eyeCatchlight} />
+              <circle cx="24.7" cy={isThinking ? 31.3 : 32.3} r="0.65" fill={colors.eyeCatchlight} opacity="0.85" />
+
+              <ellipse cx="40.5" cy={isThinking ? 30.2 : 31.2} rx="3.4" ry="3.9" fill={colors.eyes} />
+              <circle cx="39.3" cy={isThinking ? 28.8 : 29.8} r="1.25" fill={colors.eyeCatchlight} />
+              <circle cx="41.7" cy={isThinking ? 31.3 : 32.3} r="0.65" fill={colors.eyeCatchlight} opacity="0.85" />
+            </>
+          )}
+
+          {/* Tiny Mouth */}
+          {isThinking ? (
+            <circle cx="32" cy="36.8" r="1.7" fill={colors.mouth} />
+          ) : isConcerned ? (
+            <path d="M29.5 37.6C30.7 36.4 33.3 36.4 34.5 37.6" stroke={colors.mouth} strokeWidth="1.8" strokeLinecap="round" />
+          ) : (
+            <path d="M29.2 35.8C30.5 37.8 33.5 37.8 34.8 35.8" stroke={colors.mouth} strokeWidth="1.9" strokeLinecap="round" />
+          )}
+
+          {/* Miniature Tilted Scholario Graduation Cap */}
+          {accessories.showGraduationCap && (
+            <g transform="translate(32, 12.5) rotate(8)">
+              {/* Cap Crown */}
+              <path d="M-8 0.5L0 3.2L8 0.5L6.5 4.8C3 6.2 -3 6.2 -6.5 4.8L-8 0.5Z" fill={colors.obsidianAccent} />
+              {/* Cap Mortarboard Top */}
+              <polygon points="0,-4.5 13,0 0,4.2 -13,0" fill="#232329" stroke={colors.goldPrimary} strokeWidth="0.9" />
+              {/* Gold Button & Tassel */}
+              <circle cx="0" cy="-0.2" r="1.3" fill={colors.goldPrimary} />
+              <path d="M0 -0.2Q7 1.2 9.5 6.2" stroke={colors.goldPrimary} strokeWidth="1.4" strokeLinecap="round" />
+              <circle cx="9.5" cy="6.5" r="1.4" fill={colors.goldPrimary} />
+            </g>
+          )}
+        </svg>
       </div>
 
-      {/* Optional Status Text Layout */}
       {showStatusText && (
         <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-white tracking-tight">Sage AI</span>
-            <span
-              className={`px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded-md tracking-wider ${meta.badgeBg} ${meta.badgeTextColor}`}
-            >
-              {meta.badgeLabel}
-            </span>
-          </div>
-          <span className="text-[11px] text-[#A3A3A3] truncate max-w-[200px]">
-            {meta.statusText}
-          </span>
+          <span className="text-xs font-bold text-white tracking-tight">Sage</span>
+          <span className="text-[11px] text-[#A3A3A3] truncate max-w-[200px]">{meta.statusText}</span>
         </div>
       )}
     </div>
