@@ -28,7 +28,7 @@ interface ApkManifest {
   notes?: string;
 }
 
-const MAX_SIZE_BYTES = 150 * 1024 * 1024; // 150 MB
+const MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
 export const AdminAndroidAppPage: React.FC = () => {
   const [currentApk, setCurrentApk] = useState<ApkManifest | null>(null);
@@ -52,8 +52,9 @@ export const AdminAndroidAppPage: React.FC = () => {
   const fetchLatestRelease = async () => {
     setLoadingCurrent(true);
     try {
-      const res = await fetch('/apk/latest.json', {
-        headers: { 'Cache-Control': 'no-cache' },
+      const res = await fetch(`/apk/latest.json?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
       });
       if (res.ok) {
         const data = await res.json();
@@ -87,7 +88,7 @@ export const AdminAndroidAppPage: React.FC = () => {
 
     if (file.size > MAX_SIZE_BYTES) {
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      setErrorMessage(`The selected file is too large (${sizeMb} MB). Maximum allowed size is 150 MB.`);
+      setErrorMessage(`The selected file is too large (${sizeMb} MB). Maximum allowed size is 100 MB.`);
       return false;
     }
 
@@ -156,20 +157,16 @@ export const AdminAndroidAppPage: React.FC = () => {
       return;
     }
 
-    // 3. Cloudflare Worker URL validation (Must be configured and absolute, never relative or site origin)
+    // 3. Endpoint validation
     const urlCheck = validateWorkerUploadUrl(WORKER_UPLOAD_URL);
     if (!urlCheck.isValid) {
-      const configErrMsg = "Upload service isn't configured";
+      const configErrMsg = urlCheck.error || "Upload service isn't configured";
       setErrorMessage(configErrMsg);
-      console.error('[APK Upload Config Error] WORKER_UPLOAD_URL is not configured or points to the site domain:', {
-        WORKER_UPLOAD_URL,
-        reason: urlCheck.error,
-      });
+      console.error('[APK Upload Config Error]:', urlCheck.error);
       return;
     }
 
-    const uploadUrl = WORKER_UPLOAD_URL.trim();
-    const httpMethod = 'PUT';
+    const uploadUrl = WORKER_UPLOAD_URL.trim() || '/api/admin/apk/upload';
 
     setUploading(true);
     setUploadProgress(5);
@@ -178,45 +175,43 @@ export const AdminAndroidAppPage: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || '';
 
-      // 4. Log URL and HTTP Method BEFORE the request
+      // 4. Create multipart/form-data payload
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('version', cleanVersion);
+      if (releaseNotes.trim()) {
+        formData.append('notes', releaseNotes.trim());
+        formData.append('releaseNotes', releaseNotes.trim());
+      }
+
       console.log('[APK Upload Request: Starting]', {
         url: uploadUrl,
-        method: httpMethod,
+        method: 'POST',
         version: cleanVersion,
         currentVersion: currentApk?.version || null,
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
-        contentType: 'application/vnd.android.package-archive',
       });
 
-      // 5. Use XMLHttpRequest with PUT and stream binary file directly
+      // 5. Use XMLHttpRequest with POST multipart/form-data
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open(httpMethod, uploadUrl);
-
-        xhr.setRequestHeader('Content-Type', 'application/vnd.android.package-archive');
-        xhr.setRequestHeader('X-Version', cleanVersion);
+        xhr.open('POST', uploadUrl);
 
         if (token) {
           xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         }
 
-        if (releaseNotes.trim()) {
-          xhr.setRequestHeader('X-Release-Notes', encodeURIComponent(releaseNotes.trim()));
-        }
-
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
-            const pct = Math.round((event.loaded / event.total) * 90);
-            setUploadProgress(Math.max(5, pct));
+            const pct = Math.round((event.loaded / event.total) * 95);
+            setUploadProgress(Math.min(95, Math.max(5, pct)));
           }
         };
 
         xhr.onload = () => {
-          // Log URL, method, status, and response body AFTER the request
           console.log('[APK Upload Response: Received]', {
             url: uploadUrl,
-            method: httpMethod,
             status: xhr.status,
             statusText: xhr.statusText,
             body: xhr.responseText,
@@ -229,10 +224,8 @@ export const AdminAndroidAppPage: React.FC = () => {
               if (resData.manifest) {
                 setCurrentApk(resData.manifest);
               }
-              resolve();
-            } catch {
-              resolve();
-            }
+            } catch {}
+            resolve();
           } else {
             let errorText = `Upload failed with HTTP ${xhr.status}`;
             try {
@@ -241,24 +234,23 @@ export const AdminAndroidAppPage: React.FC = () => {
                 errorText = errJson.error;
               }
             } catch {
-              if (xhr.status === 405) {
-                errorText = 'Upload failed with HTTP 405 (Method Not Allowed). Verify the Cloudflare Worker accepts PUT requests.';
-              } else if (xhr.status === 401) {
+              if (xhr.status === 401) {
                 errorText = 'Authentication failed (HTTP 401). Please sign in again as an administrator.';
               } else if (xhr.status === 403) {
                 errorText = 'Access denied (HTTP 403). Only administrators can publish APK builds.';
-              } else if (xhr.statusText) {
-                errorText = `Upload failed: ${xhr.statusText} (HTTP ${xhr.status})`;
+              } else if (xhr.status === 413) {
+                errorText = 'File is too large (HTTP 413). Maximum allowed size is 100 MB.';
+              } else if (xhr.status === 404) {
+                errorText = 'Upload endpoint not found (HTTP 404). Please ensure Cloudflare Pages functions are deployed.';
+              } else if (xhr.status >= 500) {
+                errorText = `Server error (HTTP ${xhr.status}). Cloudflare Pages or R2 bucket may be misconfigured.`;
               }
             }
 
             console.error('[APK Upload Response: Error]', {
               url: uploadUrl,
-              method: httpMethod,
               status: xhr.status,
-              statusText: xhr.statusText,
               error: errorText,
-              body: xhr.responseText,
             });
 
             reject(new Error(errorText));
@@ -266,19 +258,10 @@ export const AdminAndroidAppPage: React.FC = () => {
         };
 
         xhr.onerror = () => {
-          console.error('[APK Upload Network: Error]', {
-            url: uploadUrl,
-            method: httpMethod,
-            status: xhr.status,
-            statusText: xhr.statusText,
-            body: xhr.responseText,
-          });
-
-          reject(new Error('Network error during APK upload. Verify CORS settings and connectivity to the Cloudflare Worker.'));
+          reject(new Error('Network failure: Unable to reach the upload endpoint. Please check your network connection and Cloudflare Pages deployment.'));
         };
 
-        // Send the raw binary file directly as the request body
-        xhr.send(selectedFile);
+        xhr.send(formData);
       });
 
       setSuccessMessage(`Scholario v${cleanVersion} has been uploaded to Cloudflare R2 and published successfully!`);

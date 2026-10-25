@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -42,6 +42,10 @@ export function useRealtimeTable({
   }, [onInsert, onUpdate, onDelete, onAny]);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
     // Unique channel name to avoid collisions
     const channelName = `realtime-${schema}-${table}${filter ? '-' + filter : ''}-${Math.random().toString(36).substring(7)}`;
 

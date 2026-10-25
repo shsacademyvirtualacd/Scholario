@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Bell, Calendar, BookMarked, AlertCircle, Shield, X, CheckCheck } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { toast } from 'sonner';
 import {
   NotificationRow,
@@ -150,7 +150,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   useEffect(() => {
     fetchNotifications();
 
-    if (!profile?.id) return;
+    if (!profile?.id || !isSupabaseConfigured) return;
 
     const channel = supabase
       .channel(`realtime-notifications-${profile.id}`)

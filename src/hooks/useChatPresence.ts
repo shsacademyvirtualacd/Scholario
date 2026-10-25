@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Profile } from '../types';
 import {
   computeIsUserOnline,
@@ -76,7 +76,7 @@ export function useChatPresence({
 
   // Main presence channel effect
   useEffect(() => {
-    if (!currentUserId) return;
+    if (!currentUserId || !isSupabaseConfigured) return;
 
     let isCleanedUp = false;
 

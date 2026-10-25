@@ -26,7 +26,7 @@ import Logo from '../ui/Logo';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import { useSidebarNav } from '../../hooks/useSidebarNav';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { AnnouncementBanner } from '../common/AnnouncementBanner';
 import { APP_VERSION } from '../../utils/version';
 import PortalHeader from '../common/PortalHeader';
@@ -177,16 +177,21 @@ export const AdminShell: React.FC<AdminShellProps> = ({ children }) => {
     };
     fetchPending();
 
-    const channel = supabase
-      .channel('admin-shell-visibility-requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'visibility_requests' }, () => {
-        fetchPending();
-      })
-      .subscribe();
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      channel = supabase
+        .channel('admin-shell-visibility-requests')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'visibility_requests' }, () => {
+          fetchPending();
+        })
+        .subscribe();
+    }
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 

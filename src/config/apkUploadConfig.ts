@@ -1,20 +1,19 @@
 /**
- * Configuration for Android APK Upload to Cloudflare Worker
+ * Configuration for Android APK Upload
  *
- * WORKER_UPLOAD_URL must be the full, absolute URL of the Cloudflare Worker.
- * Example: https://scholario-apk-worker.<account>.workers.dev/upload
- * or https://files.scholario.app/upload
+ * Defaults to the built-in Cloudflare Pages Function / server endpoint:
+ * /api/admin/apk/upload
  *
- * It must NEVER be a relative path or the site's own domain (static hosting returns 405 on uploads).
+ * Can optionally be overridden via VITE_WORKER_UPLOAD_URL for custom workers.
  */
 export const WORKER_UPLOAD_URL: string =
   ((import.meta as any).env?.VITE_WORKER_UPLOAD_URL as string)?.trim() ||
   (typeof window !== 'undefined' && (window as any).WORKER_UPLOAD_URL)?.trim() ||
-  '';
+  '/api/admin/apk/upload';
 
 /**
- * Validates that the configured URL is a non-empty, full absolute URL
- * and is not a relative path or pointing to the site's own domain.
+ * Validates that the upload URL is configured.
+ * Supports relative paths like /api/admin/apk/upload and absolute URLs.
  */
 export function validateWorkerUploadUrl(url: string): { isValid: boolean; error?: string } {
   if (!url || !url.trim()) {
@@ -26,37 +25,26 @@ export function validateWorkerUploadUrl(url: string): { isValid: boolean; error?
 
   const trimmed = url.trim();
 
-  // Reject relative paths
-  if (trimmed.startsWith('/') || trimmed.startsWith('.')) {
-    return {
-      isValid: false,
-      error: "Upload service isn't configured (must be an absolute Cloudflare Worker URL, not a relative path)",
-    };
+  // If it's a relative path on the same app, it's valid
+  if (trimmed.startsWith('/')) {
+    return { isValid: true };
   }
 
-  // Ensure absolute HTTP/HTTPS URL
+  // If it's an absolute URL, verify protocol
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       return {
         isValid: false,
-        error: "Upload service isn't configured (URL must start with https://)",
+        error: "Upload service URL must start with https:// or http://",
       };
     }
-
-    // Must never be the site's own domain
-    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
-      return {
-        isValid: false,
-        error: "Upload service isn't configured (must be Cloudflare Worker URL, not the site's own static domain)",
-      };
-    }
-
     return { isValid: true };
   } catch {
     return {
       isValid: false,
-      error: "Upload service isn't configured (invalid Worker URL)",
+      error: "Upload service has an invalid URL configuration",
     };
   }
 }
+

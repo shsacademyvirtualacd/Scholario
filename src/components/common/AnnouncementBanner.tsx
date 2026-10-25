@@ -9,7 +9,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { getActiveSiteAnnouncements } from '../../lib/db';
 import type { SiteAnnouncement, SiteAnnouncementType } from '../../types';
 
@@ -237,23 +237,28 @@ export const AnnouncementBanner: React.FC = () => {
   useEffect(() => {
     fetchBanners();
 
-    // 1. Supabase Realtime subscription
-    const channel = supabase
-      .channel('site-announcements-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'site_announcements' },
-        () => {
-          fetchBanners();
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      // 1. Supabase Realtime subscription
+      channel = supabase
+        .channel('site-announcements-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'site_announcements' },
+          () => {
+            fetchBanners();
+          }
+        )
+        .subscribe();
+    }
 
     // 2. 30-second polling fallback
     const interval = setInterval(fetchBanners, 30000);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
       clearInterval(interval);
     };
   }, [fetchBanners]);

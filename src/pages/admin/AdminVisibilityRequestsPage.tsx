@@ -17,7 +17,7 @@ import AdminShell from '../../components/admin/AdminShell';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ProfileAvatar from '../../components/common/ProfileAvatar';
 import { useAuth } from '../../features/auth/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   getAdminVisibilityRequests,
   reviewVisibilityRequest,
@@ -57,24 +57,29 @@ export const AdminVisibilityRequestsPage: React.FC = () => {
   useEffect(() => {
     loadRequests();
 
-    // Subscribe to realtime updates on visibility_requests
-    const channel = supabase
-      .channel('admin-visibility-requests-feed')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'visibility_requests',
-        },
-        () => {
-          loadRequests();
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      // Subscribe to realtime updates on visibility_requests
+      channel = supabase
+        .channel('admin-visibility-requests-feed')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'visibility_requests',
+          },
+          () => {
+            loadRequests();
+          }
+        )
+        .subscribe();
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [loadRequests]);
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../features/auth/AuthContext';
 import { getTotalUnreadChatCount } from '../lib/chatService';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 /**
  * Hook to retrieve and subscribe to the user's unread chat messages count.
@@ -28,22 +28,25 @@ export function useUnreadChatCount() {
 
     if (!profile?.id) return;
 
-    // Listen for new messages or read_at updates in chat_messages table
-    const channelName = `chat-unread-count-${profile.id}-${Math.random().toString(36).substring(7)}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chat_messages',
-        },
-        () => {
-          refreshUnreadCount();
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      // Listen for new messages or read_at updates in chat_messages table
+      const channelName = `chat-unread-count-${profile.id}-${Math.random().toString(36).substring(7)}`;
+      channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chat_messages',
+          },
+          () => {
+            refreshUnreadCount();
+          }
+        )
+        .subscribe();
+    }
 
     // Also listen for custom event when messages are read locally
     const handleChatRead = () => {
@@ -52,7 +55,9 @@ export function useUnreadChatCount() {
     window.addEventListener('scholario-chat-read', handleChatRead);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
       window.removeEventListener('scholario-chat-read', handleChatRead);
     };
   }, [profile?.id, refreshUnreadCount]);

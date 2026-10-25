@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Check, Loader2, Clock } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   submitVisibilityRequest,
   turnOnVisibility,
@@ -44,42 +44,47 @@ export const ChatPrivacySettingCard: React.FC<ChatPrivacySettingCardProps> = ({
         console.warn('[ChatPrivacySettingCard] Error fetching visibility status:', err);
       });
 
-    // Realtime listener for request review updates
-    const channel = supabase
-      .channel(`user-visibility-requests-${profile.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'visibility_requests',
-          filter: `user_id=eq.${profile.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newReq = payload.new as VisibilityRequest;
-            if (newReq.status === 'pending') {
-              setPendingRequest(newReq);
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as VisibilityRequest;
-            if (updated.status === 'pending') {
-              setPendingRequest(updated);
-            } else {
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      // Realtime listener for request review updates
+      channel = supabase
+        .channel(`user-visibility-requests-${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'visibility_requests',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const newReq = payload.new as VisibilityRequest;
+              if (newReq.status === 'pending') {
+                setPendingRequest(newReq);
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              const updated = payload.new as VisibilityRequest;
+              if (updated.status === 'pending') {
+                setPendingRequest(updated);
+              } else {
+                setPendingRequest(null);
+                // Refresh profile so show_online_status reflects the approved change
+                refreshProfile();
+              }
+            } else if (payload.eventType === 'DELETE') {
               setPendingRequest(null);
-              // Refresh profile so show_online_status reflects the approved change
-              refreshProfile();
             }
-          } else if (payload.eventType === 'DELETE') {
-            setPendingRequest(null);
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    }
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [profile?.id, refreshProfile]);
 

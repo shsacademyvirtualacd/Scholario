@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../features/auth/AuthContext';
 import type { LiveSession } from '../../types';
 import {
@@ -25,7 +25,7 @@ export const AdminLiveNotificationListener: React.FC = () => {
   const initialLoadCompleteRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin || !isSupabaseConfigured) {
       return;
     }
 

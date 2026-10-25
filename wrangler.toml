@@ -28,3 +28,8 @@ bucket_name = "scholario-avatars"
 binding = "CHAT_ATTACHMENTS"
 bucket_name = "scholario-chat-attachments"
 
+[[r2_buckets]]
+binding = "APK_BUCKET"
+bucket_name = "scholario-apk"
+
+

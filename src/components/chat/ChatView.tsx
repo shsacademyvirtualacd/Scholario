@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import ProfileAvatar from '../common/ProfileAvatar';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { VoiceRecorderBar } from './VoiceRecorderBar';
@@ -908,9 +908,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
   useEffect(() => {
     if (!currentUserId) return;
 
-    const channelName = `chat-room-${currentUserId}-${Date.now()}`;
-    const channel = supabase
-      .channel(channelName)
+    let channel: any = null;
+    let threadChannel: any = null;
+
+    if (isSupabaseConfigured) {
+      const channelName = `chat-room-${currentUserId}-${Date.now()}`;
+      channel = supabase
+        .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -1014,17 +1018,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
         }
       });
 
-    // Also subscribe to the active thread's direct broadcast channel for instant recipient removal
-    let threadChannel: any = null;
-    if (activeThreadId) {
-      threadChannel = supabase
-        .channel(`chat-thread-${activeThreadId}`)
-        .on('broadcast', { event: 'message_deleted' }, ({ payload }) => {
-          if (payload?.messageId) {
-            handleMessageDeletedRealtime(payload.messageId);
-          }
-        })
-        .subscribe();
+      // Also subscribe to the active thread's direct broadcast channel for instant recipient removal
+      if (activeThreadId) {
+        threadChannel = supabase
+          .channel(`chat-thread-${activeThreadId}`)
+          .on('broadcast', { event: 'message_deleted' }, ({ payload }) => {
+            if (payload?.messageId) {
+              handleMessageDeletedRealtime(payload.messageId);
+            }
+          })
+          .subscribe();
+      }
     }
 
     // Local in-window event listener for immediate reactive zero-trace removal
@@ -1037,7 +1041,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     window.addEventListener('scholario-message-deleted', onWindowMessageDeleted);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
       if (threadChannel) supabase.removeChannel(threadChannel);
       window.removeEventListener('scholario-message-deleted', onWindowMessageDeleted);
     };

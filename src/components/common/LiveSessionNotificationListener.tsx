@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getEnrollmentsForStudent } from '../../lib/db';
 import type { LiveSession, Enrollment } from '../../types';
@@ -29,7 +29,7 @@ export const LiveSessionNotificationListener: React.FC = () => {
 
   // 1. Synchronize student enrollment data
   useEffect(() => {
-    if (!user?.id || !isStudent) {
+    if (!user?.id || !isStudent || !isSupabaseConfigured) {
       enrollmentsRef.current = [];
       return;
     }
@@ -53,7 +53,7 @@ export const LiveSessionNotificationListener: React.FC = () => {
   // 2. Setup Realtime subscription and initial stale-session suppression
   useEffect(() => {
     // Only students need live session desktop notifications
-    if (!user?.id || !isStudent) {
+    if (!user?.id || !isStudent || !isSupabaseConfigured) {
       return;
     }
 

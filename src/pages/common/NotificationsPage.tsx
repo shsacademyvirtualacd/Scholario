@@ -13,7 +13,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   NotificationRow,
   getNotificationsForUser,
@@ -54,33 +54,38 @@ export const NotificationsPage: React.FC = () => {
 
     if (!profile?.id) return;
 
-    // Realtime subscription on notifications table for instant updates
-    const channel = supabase
-      .channel(`realtime-notifications-page-${profile.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `recipient_id=eq.${profile.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setNotifications((prev) => [payload.new as NotificationRow, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setNotifications((prev) =>
-              prev.map((n) => (n.id === payload.new.id ? (payload.new as NotificationRow) : n))
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setNotifications((prev) => prev.filter((n) => n.id !== payload.old.id));
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      // Realtime subscription on notifications table for instant updates
+      channel = supabase
+        .channel(`realtime-notifications-page-${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              setNotifications((prev) => [payload.new as NotificationRow, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              setNotifications((prev) =>
+                prev.map((n) => (n.id === payload.new.id ? (payload.new as NotificationRow) : n))
+              );
+            } else if (payload.eventType === 'DELETE') {
+              setNotifications((prev) => prev.filter((n) => n.id !== payload.old.id));
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [profile?.id]);
 

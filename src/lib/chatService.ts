@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 import type { Role, Profile, ChatThread, ChatMessage, ChatMessageType, ChatThreadWithDetails } from '../types';
 
 /**
@@ -833,7 +833,7 @@ export async function deleteChatMessage(
   }
 
   // 3. Realtime broadcast to recipient so message vanishes immediately from their screen
-  if (threadId) {
+  if (threadId && isSupabaseConfigured) {
     try {
       const channel = supabase.channel(`chat-thread-${threadId}`);
       await channel.send({

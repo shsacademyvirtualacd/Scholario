@@ -5,7 +5,15 @@ import { trackedFetch } from '../utils/requestTracker';
 function sanitizeSupabaseUrl(rawUrl?: string): string {
   if (!rawUrl || typeof rawUrl !== 'string') return '';
   const trimmed = rawUrl.trim();
-  if (trimmed.includes('[') || trimmed.includes(']') || trimmed.includes('YOUR_PROJECT_REF') || trimmed.includes('<')) {
+  if (
+    trimmed.includes('[') ||
+    trimmed.includes(']') ||
+    trimmed.includes('YOUR_PROJECT_REF') ||
+    trimmed.includes('your-project') ||
+    trimmed.includes('placeholder') ||
+    trimmed.includes('example.com') ||
+    trimmed.includes('<')
+  ) {
     return '';
   }
   try {
@@ -26,15 +34,22 @@ const rawKey =
   ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string) ||
   '';
 
-const isPlaceholderKey = !rawKey || rawKey.includes('your_') || rawKey.includes('placeholder') || rawKey.includes('[');
+const isPlaceholderKey =
+  !rawKey ||
+  rawKey.includes('your_') ||
+  rawKey.includes('your-') ||
+  rawKey.includes('placeholder') ||
+  rawKey.includes('[');
 const validUrl = sanitizeSupabaseUrl(rawUrl);
+
+export const isSupabaseConfigured = Boolean(validUrl && !isPlaceholderKey);
 
 const supabaseUrl = validUrl || 'https://placeholder-domain.supabase.co';
 const supabaseAnonKey = isPlaceholderKey ? 'placeholder-anon-key' : rawKey;
 
-if (!validUrl) {
-  console.warn(
-    '[Scholario] Valid VITE_SUPABASE_URL not configured. Running with offline client.'
+if (!isSupabaseConfigured) {
+  console.log(
+    '[Scholario] Notice: Supabase credentials not configured. Running in offline/mock-safe mode.'
   );
 }
 

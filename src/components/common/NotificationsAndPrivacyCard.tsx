@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   isPushSupported,
   isPushSubscribed,
@@ -91,38 +91,43 @@ export const NotificationsAndPrivacyCard: React.FC<NotificationsAndPrivacyCardPr
         console.warn('[NotificationsAndPrivacyCard] Visibility query error:', err);
       });
 
-    const channel = supabase
-      .channel(`user-visibility-pref-${profile.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'visibility_requests',
-          filter: `user_id=eq.${profile.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newReq = payload.new as VisibilityRequest;
-            if (newReq.status === 'pending') setPendingRequest(newReq);
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as VisibilityRequest;
-            if (updated.status === 'pending') {
-              setPendingRequest(updated);
-            } else {
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      channel = supabase
+        .channel(`user-visibility-pref-${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'visibility_requests',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const newReq = payload.new as VisibilityRequest;
+              if (newReq.status === 'pending') setPendingRequest(newReq);
+            } else if (payload.eventType === 'UPDATE') {
+              const updated = payload.new as VisibilityRequest;
+              if (updated.status === 'pending') {
+                setPendingRequest(updated);
+              } else {
+                setPendingRequest(null);
+                refreshProfile();
+              }
+            } else if (payload.eventType === 'DELETE') {
               setPendingRequest(null);
-              refreshProfile();
             }
-          } else if (payload.eventType === 'DELETE') {
-            setPendingRequest(null);
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    }
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [profile?.id, refreshProfile]);
 

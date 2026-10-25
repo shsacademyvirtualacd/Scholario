@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getSlotsForTeacher } from '../../lib/db';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { getPKTNow } from '../../lib/scheduleUtils';
 import {
   syncTeacherClassReminders,
@@ -58,8 +58,10 @@ export const TeacherLiveReminderListener: React.FC = () => {
     }, 60_000);
 
     // 3. Realtime subscriptions for instantaneous stop on link creation
-    const linksChannel = supabase
-      .channel(`teacher-reminders-${teacherId}-${Date.now()}`)
+    let linksChannel: any = null;
+    if (isSupabaseConfigured) {
+      linksChannel = supabase
+        .channel(`teacher-reminders-${teacherId}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -110,11 +112,14 @@ export const TeacherLiveReminderListener: React.FC = () => {
         }
       )
       .subscribe();
+    }
 
     return () => {
       isMounted = false;
       clearInterval(interval);
-      supabase.removeChannel(linksChannel);
+      if (linksChannel) {
+        supabase.removeChannel(linksChannel);
+      }
       clearAllTeacherReminders();
     };
   }, [teacherId]);
