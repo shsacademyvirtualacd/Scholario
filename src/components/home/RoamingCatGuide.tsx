@@ -20,6 +20,11 @@ import {
   truncateByCodePoints,
 } from '../../data/academyKnowledge';
 
+// ─── Tango Avatar Size Constants (Public Home Page Only) ────────────────────
+export const TANGO_SIZE_DESKTOP = 104; // px (container width >= 1024px)
+export const TANGO_SIZE_TABLET = 92; // px (container width 640px – 1023px)
+export const TANGO_SIZE_MOBILE = 76; // px (container width < 640px)
+
 // ─── Tunable Turtle-Speed Roaming Constants ─────────────────────────────────
 export const ROAM_SPEED_PX_PER_SEC = 20; // Desktop walking speed (15–25 px/sec range)
 export const ROAM_SPEED_MOBILE_PX_PER_SEC = 14; // Mobile walking speed (10–18 px/sec range)
@@ -61,6 +66,28 @@ interface TangoWalkSegment {
 
 function getRandomIdlePauseMs(): number {
   return ROAM_IDLE_MIN_MS + Math.random() * (ROAM_IDLE_MAX_MS - ROAM_IDLE_MIN_MS);
+}
+
+export function getTangoSizeForContainerWidth(containerWidth: number): number {
+  if (containerWidth < 640) return TANGO_SIZE_MOBILE;
+  if (containerWidth < 1024) return TANGO_SIZE_TABLET;
+  return TANGO_SIZE_DESKTOP;
+}
+
+function isPublicPreLoginPathname(pathname: string): boolean {
+  const clean = (pathname || '/').toLowerCase();
+  if (
+    clean.startsWith('/dashboard') ||
+    clean.startsWith('/portal') ||
+    clean.startsWith('/student') ||
+    clean.startsWith('/teacher') ||
+    clean.startsWith('/parent') ||
+    clean.startsWith('/admin') ||
+    clean.startsWith('/sage')
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -147,7 +174,7 @@ function createTangoPlushBumpTexture(): THREE.CanvasTexture | null {
 }
 
 /**
- * 2D SVG Portrait of Tango the Orange Tabby Cat Guide (Zero stars, fully transparent)
+ * 2D SVG Portrait of Tango the Orange Tabby Cat Guide (Zero stars, tight viewBox with no empty space)
  */
 export const TangoGuideSvg: React.FC<{
   state?: TangoGuideState;
@@ -165,11 +192,11 @@ export const TangoGuideSvg: React.FC<{
     <svg
       width={svgSize}
       height={svgSize}
-      viewBox="0 0 64 64"
+      viewBox="6 8 52 50"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="Tango the Academy Guide Cat"
-      className="select-none pointer-events-none bg-transparent"
+      className="tango-svg-icon select-none pointer-events-none bg-transparent block"
     >
       <defs>
         <radialGradient id={gradBodyId} cx="50%" cy="38%" r="58%">
@@ -305,17 +332,21 @@ export const TangoGuideSvg: React.FC<{
 
 /**
  * Dedicated 3D WebGL Avatar for Tango on the public home page.
- * Features slow turtle-speed walk cycle (paws, body bob, tail, accessories)
- * synced to `walkIntensity`, calm idle breathing/blinking/looking around,
- * transparent alpha canvas (zero white sheet), and zero stars.
+ * Uses exact cssSize * min(devicePixelRatio, 2) pixel buffer with renderer.setSize(cssSize, cssSize, false),
+ * antialias: true, SRGBColorSpace, tight framing (no empty space around cat), and zero blur/scale.
  */
 const TangoGuide3DAvatar: React.FC<{
+  cssSize: number;
   state: TangoGuideState;
   walkIntensity: number;
   roamLeanX: number;
   pokeCount: number;
-}> = ({ state, walkIntensity, roamLeanX, pokeCount }) => {
+}> = ({ cssSize, state, walkIntensity, roamLeanX, pokeCount }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cssSizeRef = useRef<number>(cssSize);
+
   const [webglSupported, setWebglSupported] = useState(true);
   const [webglReady, setWebglReady] = useState(false);
 
@@ -339,6 +370,33 @@ const TangoGuide3DAvatar: React.FC<{
   useEffect(() => {
     pokeCountRef.current = pokeCount;
   }, [pokeCount]);
+
+  const applyExactCanvasSize = useCallback((targetCssSize: number) => {
+    const renderer = rendererRef.current;
+    const camera = cameraRef.current;
+    if (!renderer || !camera || typeof window === 'undefined') return;
+
+    const cleanCssSize = Math.max(48, Math.round(targetCssSize));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const bufferPx = Math.round(cleanCssSize * dpr);
+
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(cleanCssSize, cleanCssSize, false);
+
+    const canvas = renderer.domElement;
+    if (canvas.width !== bufferPx) canvas.width = bufferPx;
+    if (canvas.height !== bufferPx) canvas.height = bufferPx;
+    canvas.style.width = `${cleanCssSize}px`;
+    canvas.style.height = `${cleanCssSize}px`;
+
+    camera.aspect = 1;
+    camera.updateProjectionMatrix();
+  }, []);
+
+  useEffect(() => {
+    cssSizeRef.current = cssSize;
+    applyExactCanvasSize(cssSize);
+  }, [cssSize, applyExactCanvasSize]);
 
   useEffect(() => {
     const container = mountRef.current;
@@ -368,12 +426,7 @@ const TangoGuide3DAvatar: React.FC<{
       return;
     }
 
-    const currentDpr = Math.min(window.devicePixelRatio || 1, 2);
-    const width = Math.max(container.clientWidth, 80);
-    const height = Math.max(container.clientHeight, 80);
-
-    renderer.setPixelRatio(currentDpr);
-    renderer.setSize(width, height);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setClearColor(0x000000, 0);
     renderer.setClearAlpha(0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -386,8 +439,13 @@ const TangoGuide3DAvatar: React.FC<{
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 50);
-    camera.position.set(0, 0.05, 4.45);
+    // Tightly frame Tango (from ear tips to paws) so the wrapper is only as big as the visible cat
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
+    camera.position.set(0, -0.05, 3.42);
+
+    rendererRef.current = renderer;
+    cameraRef.current = camera;
+    applyExactCanvasSize(cssSizeRef.current);
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const envTarget = pmremGenerator.fromScene(new RoomEnvironment(), 0.05);
@@ -714,7 +772,8 @@ const TangoGuide3DAvatar: React.FC<{
     const currentPointer = { x: 0, y: 0 };
     let cachedRect = renderer.domElement.getBoundingClientRect();
 
-    const updateRect = () => {
+    const handleResizeAndDprSync = () => {
+      applyExactCanvasSize(cssSizeRef.current);
       if (renderer.domElement && renderer.domElement.isConnected) {
         cachedRect = renderer.domElement.getBoundingClientRect();
       }
@@ -727,7 +786,7 @@ const TangoGuide3DAvatar: React.FC<{
 
     const handlePointerMove = (e: PointerEvent) => {
       if (prefersReducedMotion) return;
-      if (cachedRect.width < 10) updateRect();
+      if (cachedRect.width < 10) handleResizeAndDprSync();
       const cx = cachedRect.left + cachedRect.width * 0.5;
       const cy = cachedRect.top + cachedRect.height * 0.5;
       const maxRx = Math.max(window.innerWidth * 0.5, 220);
@@ -742,8 +801,33 @@ const TangoGuide3DAvatar: React.FC<{
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    window.addEventListener('resize', updateRect, { passive: true });
+    window.addEventListener('resize', handleResizeAndDprSync, { passive: true });
+    window.addEventListener('orientationchange', handleResizeAndDprSync, { passive: true });
     document.addEventListener('mouseleave', handlePointerLeave);
+
+    // Watch devicePixelRatio changes (e.g. moving window across screens or zooming)
+    let dprMediaQuery: MediaQueryList | null = null;
+    const bindDprListener = () => {
+      if (typeof window === 'undefined' || !window.matchMedia) return;
+      if (dprMediaQuery) {
+        try {
+          dprMediaQuery.removeEventListener('change', onDprChange);
+        } catch {
+          // ignore
+        }
+      }
+      dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+      try {
+        dprMediaQuery.addEventListener('change', onDprChange);
+      } catch {
+        // ignore
+      }
+    };
+    const onDprChange = () => {
+      handleResizeAndDprSync();
+      bindDprListener();
+    };
+    bindDprListener();
 
     let rafId: number | null = null;
     const clock = new THREE.Clock();
@@ -890,15 +974,8 @@ const TangoGuide3DAvatar: React.FC<{
 
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (!entry) return;
-        const w = Math.max(entry.contentRect.width, 68);
-        const h = Math.max(entry.contentRect.height, 68);
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-        updateRect();
+      resizeObserver = new ResizeObserver(() => {
+        handleResizeAndDprSync();
       });
       resizeObserver.observe(container);
     }
@@ -908,9 +985,19 @@ const TangoGuide3DAvatar: React.FC<{
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('resize', handleResizeAndDprSync);
+      window.removeEventListener('orientationchange', handleResizeAndDprSync);
       document.removeEventListener('mouseleave', handlePointerLeave);
+      if (dprMediaQuery) {
+        try {
+          dprMediaQuery.removeEventListener('change', onDprChange);
+        } catch {
+          // ignore
+        }
+      }
       resizeObserver?.disconnect();
+      rendererRef.current = null;
+      cameraRef.current = null;
 
       scene.traverse((obj: THREE.Object3D) => {
         if ((obj as THREE.Mesh).isMesh) {
@@ -928,21 +1015,25 @@ const TangoGuide3DAvatar: React.FC<{
       pmremGenerator.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [applyExactCanvasSize]);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-transparent border-0 shadow-none select-none">
+    <div
+      style={{ width: `${cssSize}px`, height: `${cssSize}px` }}
+      className="tango-avatar-canvas-host relative flex items-center justify-center bg-transparent border-0 shadow-none select-none"
+    >
       {webglSupported && (
         <div
           ref={mountRef}
-          className={`w-full h-full relative z-10 bg-transparent border-0 shadow-none transition-opacity duration-200 ${
+          style={{ width: `${cssSize}px`, height: `${cssSize}px` }}
+          className={`tango-webgl-mount relative z-10 bg-transparent border-0 shadow-none transition-opacity duration-200 ${
             webglReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         />
       )}
       {(!webglSupported || !webglReady) && (
-        <div className="absolute inset-0 flex items-center justify-center z-0 bg-transparent">
-          <TangoGuideSvg state={state} svgSize={130} uid="roaming-fallback-tango" />
+        <div className="tango-svg-fallback absolute inset-0 flex items-center justify-center z-0 bg-transparent">
+          <TangoGuideSvg state={state} svgSize={cssSize} uid="roaming-fallback-tango" />
         </div>
       )}
     </div>
@@ -954,8 +1045,48 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
   enabled = true,
 }) => {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
   const chatPanelRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const [isPublicRoute, setIsPublicRoute] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return isPublicPreLoginPathname(window.location.pathname);
+  });
+
+  // Measure the preview container width (not only window.innerWidth) via ResizeObserver
+  const measurePreviewContainer = useCallback((): { width: number; height: number } => {
+    if (typeof window === 'undefined') {
+      return { width: 1280, height: 800 };
+    }
+    const parentEl =
+      wrapperRef.current?.parentElement ||
+      document.querySelector('main') ||
+      document.documentElement;
+    const rectW = parentEl ? Math.round(parentEl.getBoundingClientRect().width) : 0;
+    const clientW = document.documentElement?.clientWidth || window.innerWidth;
+    const vvW = window.visualViewport?.width ? Math.round(window.visualViewport.width) : window.innerWidth;
+
+    const candidates = [rectW, clientW, vvW, window.innerWidth].filter((n) => n > 100);
+    const width = candidates.length > 0 ? Math.min(...candidates) : window.innerWidth;
+    const height = window.visualViewport?.height
+      ? Math.round(window.visualViewport.height)
+      : window.innerHeight;
+    return { width, height };
+  }, []);
+
+  const [containerDims, setContainerDims] = useState<{ width: number; height: number }>(() =>
+    measurePreviewContainer()
+  );
+
+  const avatarSize = getTangoSizeForContainerWidth(containerDims.width);
+  const avatarSizeRef = useRef<number>(avatarSize);
+  const containerDimsRef = useRef<{ width: number; height: number }>(containerDims);
+
+  useEffect(() => {
+    avatarSizeRef.current = avatarSize;
+    containerDimsRef.current = containerDims;
+  }, [avatarSize, containerDims]);
 
   const [isFrozen, setIsFrozen] = useState<boolean>(() => {
     try {
@@ -979,7 +1110,6 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
   const [walkIntensity, setWalkIntensity] = useState(0);
   const [pokeCount, setPokeCount] = useState(0);
   const [roamLeanX, setRoamLeanX] = useState(0);
-  const [bubbleFlipLeft, setBubbleFlipLeft] = useState(false);
   const [activeBubble, setActiveBubble] = useState<RoamingSectionBubble | null>(
     ROAMING_TANGO_SECTION_BUBBLES[0]
   );
@@ -1014,6 +1144,17 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
   const isFrozenRef = useRef<boolean>(isFrozen);
   const chatOpenRef = useRef<boolean>(chatOpen);
 
+  // Guard so Tango never stays mounted on any post-login / dashboard route
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkRoute = () => {
+      setIsPublicRoute(isPublicPreLoginPathname(window.location.pathname));
+    };
+    checkRoute();
+    window.addEventListener('popstate', checkRoute);
+    return () => window.removeEventListener('popstate', checkRoute);
+  }, []);
+
   useEffect(() => {
     isFrozenRef.current = isFrozen;
     try {
@@ -1035,100 +1176,311 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
     }
   }, [isMinimized]);
 
-  // Compute responsive avatar pixel size matching clamp(100px, 16vw, 220px)
+  // Apply speech bubble position directly onto bubbleRef so it stays 100% inside the container
+  // and NEVER covers the cat itself at any width (360, 390, 768, 1024, 1366).
+  const syncSpeechBubblePosition = useCallback(
+    (catX: number, catY: number, size: number, cw: number, ch: number) => {
+      const bubbleEl = bubbleRef.current;
+      if (!bubbleEl) return;
+
+      const isMob = cw < 640;
+      const bubbleW = Math.min(Math.floor(cw * 0.7), isMob ? 220 : 240);
+      const bubbleH = bubbleEl.offsetHeight || 64;
+
+      bubbleEl.style.width = `${bubbleW}px`;
+      bubbleEl.style.maxWidth = 'min(70vw, 240px)';
+
+      const rightSpace = cw - (catX + size + 8) - 8;
+      const leftSpace = catX - 8 - 8;
+      const topSpace = catY - 74;
+
+      // Reset positioning properties
+      bubbleEl.style.left = '';
+      bubbleEl.style.right = '';
+      bubbleEl.style.top = '';
+      bubbleEl.style.bottom = '';
+
+      if (leftSpace >= bubbleW && (catX > cw * 0.45 || rightSpace < bubbleW)) {
+        // Place to the left of the cat
+        bubbleEl.style.left = `${Math.round(-(bubbleW + 8))}px`;
+        const clampedTop = Math.round(
+          Math.max(74 - catY, Math.min(0, ch - catY - bubbleH - 12))
+        );
+        bubbleEl.style.top = `${clampedTop}px`;
+      } else if (rightSpace >= bubbleW) {
+        // Place to the right of the cat
+        bubbleEl.style.left = `${Math.round(size + 8)}px`;
+        const clampedTop = Math.round(
+          Math.max(74 - catY, Math.min(0, ch - catY - bubbleH - 12))
+        );
+        bubbleEl.style.top = `${clampedTop}px`;
+      } else if (topSpace >= bubbleH + 8) {
+        // Place above the cat (never covering the cat, clamped inside [8, cw - bubbleW - 8])
+        const centeredOffset = Math.round((size - bubbleW) * 0.5);
+        const minOffset = 8 - catX;
+        const maxOffset = cw - bubbleW - 8 - catX;
+        const safeLeft = Math.round(Math.max(minOffset, Math.min(maxOffset, centeredOffset)));
+        bubbleEl.style.left = `${safeLeft}px`;
+        bubbleEl.style.bottom = `${Math.round(size + 6)}px`;
+      } else {
+        // Place below the cat and its Stay-here control bar (never covering the cat)
+        const centeredOffset = Math.round((size - bubbleW) * 0.5);
+        const minOffset = 8 - catX;
+        const maxOffset = cw - bubbleW - 8 - catX;
+        const safeLeft = Math.round(Math.max(minOffset, Math.min(maxOffset, centeredOffset)));
+        bubbleEl.style.left = `${safeLeft}px`;
+        bubbleEl.style.top = `${Math.round(size + 30)}px`;
+      }
+    },
+    []
+  );
+
+  // Observe preview container width, window resize, and orientation change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleContainerResize = () => {
+      const next = measurePreviewContainer();
+      setContainerDims((prev) =>
+        prev.width === next.width && prev.height === next.height ? prev : next
+      );
+
+      const newSize = getTangoSizeForContainerWidth(next.width);
+      const clampedX = Math.round(
+        Math.max(6, Math.min(next.width - newSize - 6, posRef.current.x))
+      );
+      const clampedY = Math.round(
+        Math.max(72, Math.min(next.height - newSize - 32, posRef.current.y))
+      );
+      posRef.current.x = clampedX;
+      posRef.current.y = clampedY;
+
+      if (wrapperRef.current) {
+        wrapperRef.current.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
+      }
+      syncSpeechBubblePosition(clampedX, clampedY, newSize, next.width, next.height);
+    };
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        handleContainerResize();
+      });
+      const mainEl = wrapperRef.current?.parentElement || document.querySelector('main');
+      if (mainEl) ro.observe(mainEl);
+      if (document.documentElement) ro.observe(document.documentElement);
+    }
+
+    window.addEventListener('resize', handleContainerResize, { passive: true });
+    window.addEventListener('orientationchange', handleContainerResize, { passive: true });
+    window.visualViewport?.addEventListener('resize', handleContainerResize);
+
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', handleContainerResize);
+      window.removeEventListener('orientationchange', handleContainerResize);
+      window.visualViewport?.removeEventListener('resize', handleContainerResize);
+    };
+  }, [measurePreviewContainer, syncSpeechBubblePosition]);
+
+  // Re-sync bubble placement whenever activeBubble changes
+  useEffect(() => {
+    if (!activeBubble || chatOpen) return;
+    syncSpeechBubblePosition(
+      Math.round(posRef.current.x),
+      Math.round(posRef.current.y),
+      avatarSizeRef.current,
+      containerDimsRef.current.width,
+      containerDimsRef.current.height
+    );
+  }, [activeBubble, chatOpen, avatarSize, containerDims, syncSpeechBubblePosition]);
+
   const getAvatarPixelSize = useCallback(() => {
-    if (typeof window === 'undefined') return 150;
-    return Math.round(Math.max(100, Math.min(220, window.innerWidth * 0.16)));
+    return avatarSizeRef.current;
   }, []);
 
   // Return desktop (20 px/s) or mobile (14 px/s) walking speed
   const getCurrentRoamSpeedPxPerSec = useCallback(() => {
-    if (typeof window === 'undefined') return ROAM_SPEED_PX_PER_SEC;
-    return window.innerWidth < 768 ? ROAM_SPEED_MOBILE_PX_PER_SEC : ROAM_SPEED_PX_PER_SEC;
+    return containerDimsRef.current.width < 768
+      ? ROAM_SPEED_MOBILE_PX_PER_SEC
+      : ROAM_SPEED_PX_PER_SEC;
   }, []);
 
-  // Compute safe waypoint that avoids no-go zones (navbar, primary buttons, inputs, open chat panel)
+  // Compute safe waypoint that keeps Tango at the edges / section gaps and avoids:
+  // hero text, filter pills, CTA buttons, the Android download card, and "Showing 7 features" labels.
   const pickSafeWaypoint = useCallback(
     (preferSectionY?: number) => {
-      if (typeof window === 'undefined') return { x: 40, y: 300 };
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const size = getAvatarPixelSize();
+      if (typeof window === 'undefined') return { x: 24, y: 300 };
+      const cw = containerDimsRef.current.width || window.innerWidth;
+      const ch = containerDimsRef.current.height || window.innerHeight;
+      const size = avatarSizeRef.current;
+      const isMob = cw < 640;
 
-      const topSafe = 78; // below top navbar
-      const bottomSafe = Math.max(24, vh - size - 32);
-      const leftMargin = 16;
-      const rightMargin = Math.max(leftMargin + 20, vw - size - 18);
+      const topSafe = 74; // below top navbar
+      const bottomSafe = Math.max(topSafe + 20, ch - size - 34);
+      const leftMargin = isMob ? 6 : 12;
+      const rightMargin = Math.max(leftMargin, cw - size - (isMob ? 6 : 12));
 
-      const noGoSelectors =
-        'header, nav, [data-roam-nogo], input, textarea, select, button.bg-gold, a[href*="login"]';
-      const noGoRects: DOMRect[] = [];
+      // Strict avoid-zones: navbar, hero text, filter pills, CTA buttons, download card, feature count label
+      const strictAvoidSelectors = [
+        'header',
+        'nav',
+        '[data-roam-nogo]',
+        'h1',
+        'h2',
+        'h3',
+        '.hero-stagger-1',
+        '.hero-stagger-2',
+        '.hero-stagger-3',
+        '.hero-stagger-4',
+        '.hero-stagger-5',
+        '[id^="feature-filter-"]',
+        '#features-section .sticky',
+        '#landing-apk-download-btn',
+        'button',
+        'a[href]',
+        'input',
+        'textarea',
+        'select',
+      ].join(', ');
+
+      const strictRects: DOMRect[] = [];
+      const softRects: DOMRect[] = [];
+
       try {
-        document.querySelectorAll(noGoSelectors).forEach((el) => {
+        document.querySelectorAll(strictAvoidSelectors).forEach((el) => {
+          if (wrapperRef.current && wrapperRef.current.contains(el)) return;
           const r = el.getBoundingClientRect();
-          if (r.width > 20 && r.height > 20 && r.bottom > 0 && r.top < vh) {
-            noGoRects.push(r);
+          if (r.width > 12 && r.height > 12 && r.bottom > 0 && r.top < ch) {
+            strictRects.push(r);
+          }
+        });
+
+        // Also include the entire Android promo card and the "Showing X features" label row
+        const apkBtn = document.getElementById('landing-apk-download-btn');
+        const apkCard = apkBtn?.closest('section');
+        if (apkCard) {
+          const r = apkCard.getBoundingClientRect();
+          if (r.bottom > 0 && r.top < ch) strictRects.push(r);
+        }
+
+        document.querySelectorAll('#features-section span, p, article').forEach((el) => {
+          if (wrapperRef.current && wrapperRef.current.contains(el)) return;
+          const txt = (el.textContent || '').trim();
+          const r = el.getBoundingClientRect();
+          if (r.width < 10 || r.height < 10 || r.bottom <= 0 || r.top >= ch) return;
+          if (/^showing\s+\d+\s+feature/i.test(txt)) {
+            strictRects.push(r);
+          } else {
+            softRects.push(r);
           }
         });
       } catch {
         // ignore
       }
 
-      for (let attempt = 0; attempt < 12; attempt++) {
-        const useRightLane = attempt % 2 === 0 ? Math.random() > 0.35 : Math.random() <= 0.35;
-        const laneWidth = Math.min(140, Math.max(36, vw * 0.14));
-        const candidateX = useRightLane
-          ? Math.max(leftMargin, rightMargin - Math.random() * laneWidth)
-          : Math.min(rightMargin, leftMargin + Math.random() * laneWidth);
+      // Collect vertical section gaps on the page so Tango prefers gaps between sections on mobile
+      const gapYs: number[] = [];
+      try {
+        document.querySelectorAll('main > section').forEach((sec) => {
+          const r = sec.getBoundingClientRect();
+          const topGap = Math.round(r.top - size * 0.5);
+          const bottomGap = Math.round(r.bottom - size * 0.5);
+          if (topGap >= topSafe && topGap <= bottomSafe) gapYs.push(topGap);
+          if (bottomGap >= topSafe && bottomGap <= bottomSafe) gapYs.push(bottomGap);
+        });
+      } catch {
+        // ignore
+      }
 
-        const baseY =
-          typeof preferSectionY === 'number'
-            ? Math.max(topSafe, Math.min(bottomSafe, preferSectionY))
-            : topSafe + Math.random() * Math.max(40, bottomSafe - topSafe);
+      const rectOverlapArea = (
+        a: { left: number; right: number; top: number; bottom: number },
+        b: DOMRect
+      ): number => {
+        const ox = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+        const oy = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        return ox * oy;
+      };
 
-        const catRect = {
-          left: candidateX + 12,
-          right: candidateX + size - 12,
-          top: baseY + 12,
-          bottom: baseY + size - 12,
-        };
+      let bestCandidate = {
+        x: rightMargin,
+        y: Math.round(Math.max(topSafe, bottomSafe - 12)),
+      };
+      let bestScore = Number.POSITIVE_INFINITY;
 
-        const overlaps = noGoRects.some(
-          (r) =>
-            catRect.left < r.right &&
-            catRect.right > r.left &&
-            catRect.top < r.bottom &&
-            catRect.bottom > r.top
+      const totalAttempts = 20;
+      for (let attempt = 0; attempt < totalAttempts; attempt++) {
+        const useRightEdge = attempt % 2 === 0 ? Math.random() > 0.3 : Math.random() <= 0.3;
+        const laneWidth = isMob ? 4 : Math.min(56, Math.max(12, cw * 0.05));
+        const candidateX = Math.round(
+          useRightEdge
+            ? Math.max(leftMargin, rightMargin - Math.random() * laneWidth)
+            : Math.min(rightMargin, leftMargin + Math.random() * laneWidth)
         );
 
-        if (!overlaps) {
-          return { x: candidateX, y: baseY };
+        let candidateY: number;
+        if (typeof preferSectionY === 'number' && attempt < 8) {
+          const jitter = (Math.random() - 0.5) * 70;
+          candidateY = Math.round(Math.max(topSafe, Math.min(bottomSafe, preferSectionY + jitter)));
+        } else if (gapYs.length > 0 && attempt < 12) {
+          const pickGap = gapYs[attempt % gapYs.length];
+          candidateY = Math.round(
+            Math.max(topSafe, Math.min(bottomSafe, pickGap + (Math.random() - 0.5) * 24))
+          );
+        } else {
+          candidateY = Math.round(topSafe + Math.random() * Math.max(20, bottomSafe - topSafe));
+        }
+
+        // Footprint of the cat + its small Stay-here bar below
+        const catFootprint = {
+          left: candidateX + 4,
+          right: candidateX + size - 4,
+          top: candidateY + 4,
+          bottom: candidateY + size + 24,
+        };
+
+        let strictPenalty = 0;
+        for (const sr of strictRects) {
+          strictPenalty += rectOverlapArea(catFootprint, sr) * 10;
+        }
+
+        let softPenalty = 0;
+        for (const pr of softRects) {
+          softPenalty += rectOverlapArea(catFootprint, pr);
+        }
+
+        const totalScore = strictPenalty + softPenalty;
+        if (totalScore === 0) {
+          return { x: candidateX, y: candidateY };
+        }
+        if (totalScore < bestScore) {
+          bestScore = totalScore;
+          bestCandidate = { x: candidateX, y: candidateY };
         }
       }
 
-      return {
-        x: rightMargin,
-        y: Math.max(topSafe, bottomSafe - 16),
-      };
+      return bestCandidate;
     },
-    [getAvatarPixelSize]
+    []
   );
 
   // Start a slow, calm walk segment whose duration is strictly distance / speed with ease-in-out
   const beginSlowWalkTo = useCallback(
     (targetX: number, targetY: number, customSpeedPxPerSec?: number) => {
       const now = performance.now();
-      const startX = posRef.current.x;
-      const startY = posRef.current.y;
-      const distance = Math.hypot(targetX - startX, targetY - startY);
+      const startX = Math.round(posRef.current.x);
+      const startY = Math.round(posRef.current.y);
+      const cleanTargetX = Math.round(targetX);
+      const cleanTargetY = Math.round(targetY);
+      const distance = Math.hypot(cleanTargetX - startX, cleanTargetY - startY);
 
       if (distance < 3) {
         walkSegRef.current = {
           active: false,
           startX,
           startY,
-          targetX,
-          targetY,
+          targetX: cleanTargetX,
+          targetY: cleanTargetY,
           startTime: now,
           durationMs: 0,
           arcOffset: 0,
@@ -1142,14 +1494,14 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         customSpeedPxPerSec ?? getCurrentRoamSpeedPxPerSec()
       );
       const durationMs = (distance / speedPxPerSec) * 1000;
-      const arcOffset = (Math.random() - 0.5) * Math.min(18, distance * 0.08);
+      const arcOffset = (Math.random() - 0.5) * Math.min(14, distance * 0.06);
 
       walkSegRef.current = {
         active: true,
         startX,
         startY,
-        targetX,
-        targetY,
+        targetX: cleanTargetX,
+        targetY: cleanTargetY,
         startTime: now,
         durationMs,
         arcOffset,
@@ -1161,17 +1513,19 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
 
   // Initialize starting position & turtle-speed roaming loop
   useEffect(() => {
-    if (!enabled || isMinimized || typeof window === 'undefined') return;
+    if (!enabled || !isPublicRoute || isMinimized || typeof window === 'undefined') return;
 
     const prefersReducedMotion =
       window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const size = getAvatarPixelSize();
+    const initialDims = measurePreviewContainer();
+    containerDimsRef.current = initialDims;
+    const size = getTangoSizeForContainerWidth(initialDims.width);
+    avatarSizeRef.current = size;
 
-    const startX = Math.max(16, vw - size - 24);
-    const startY = Math.max(88, vh - size - 42);
+    const initialSpot = pickSafeWaypoint(Math.round(initialDims.height - size - 44));
+    const startX = Math.round(initialSpot.x);
+    const startY = Math.round(initialSpot.y);
 
     posRef.current = { x: startX, y: startY };
     const nowInit = performance.now();
@@ -1189,9 +1543,9 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
     };
 
     if (wrapperRef.current) {
-      wrapperRef.current.style.transform = `translate3d(${Math.round(startX)}px, ${Math.round(startY)}px, 0)`;
+      wrapperRef.current.style.transform = `translate3d(${startX}px, ${startY}px, 0)`;
     }
-    setBubbleFlipLeft(startX > vw * 0.48);
+    syncSpeechBubblePosition(startX, startY, size, initialDims.width, initialDims.height);
 
     // Gentle pointer-avoidance hop: small, calm step away (never a fast dash)
     const handlePointerMove = (e: PointerEvent) => {
@@ -1200,8 +1554,8 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       if (now - lastHopTimeRef.current < 5500) return;
 
       const curSize = getAvatarPixelSize();
-      const curVw = window.innerWidth;
-      const curVh = window.innerHeight;
+      const curVw = containerDimsRef.current.width || window.innerWidth;
+      const curVh = containerDimsRef.current.height || window.innerHeight;
       const centerX = posRef.current.x + curSize * 0.5;
       const centerY = posRef.current.y + curSize * 0.5;
       const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
@@ -1209,18 +1563,22 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       if (dist < curSize * 0.36 && dist > 10) {
         lastHopTimeRef.current = now;
         const pushAngle = Math.atan2(centerY - e.clientY, centerX - e.clientX);
-        const hopX = Math.max(
-          14,
-          Math.min(
-            curVw - curSize - 14,
-            posRef.current.x + Math.cos(pushAngle) * POINTER_HOP_DISTANCE_PX
+        const hopX = Math.round(
+          Math.max(
+            6,
+            Math.min(
+              curVw - curSize - 6,
+              posRef.current.x + Math.cos(pushAngle) * POINTER_HOP_DISTANCE_PX
+            )
           )
         );
-        const hopY = Math.max(
-          76,
-          Math.min(
-            curVh - curSize - 28,
-            posRef.current.y + Math.sin(pushAngle) * POINTER_HOP_DISTANCE_PX
+        const hopY = Math.round(
+          Math.max(
+            74,
+            Math.min(
+              curVh - curSize - 32,
+              posRef.current.y + Math.sin(pushAngle) * POINTER_HOP_DISTANCE_PX
+            )
           )
         );
         beginSlowWalkTo(hopX, hopY, POINTER_HOP_SPEED_PX_PER_SEC);
@@ -1234,8 +1592,9 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         window.scrollY / Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
 
       if (!prefersReducedMotion && !isFrozenRef.current && !chatOpenRef.current) {
+        const curVh = containerDimsRef.current.height || window.innerHeight;
         const targetY =
-          96 + scrollRatio * Math.max(80, window.innerHeight - getAvatarPixelSize() - 140);
+          84 + scrollRatio * Math.max(60, curVh - getAvatarPixelSize() - 120);
         if (
           lastScrollTargetYRef.current === null ||
           Math.abs(targetY - lastScrollTargetYRef.current) > 48
@@ -1283,8 +1642,8 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       rafId = requestAnimationFrame(step);
 
       const curSize = getAvatarPixelSize();
-      const curVw = window.innerWidth;
-      const curVh = window.innerHeight;
+      const curVw = containerDimsRef.current.width || window.innerWidth;
+      const curVh = containerDimsRef.current.height || window.innerHeight;
 
       if (prefersReducedMotion || (isFrozenRef.current && !chatOpenRef.current)) {
         walkSegRef.current.active = false;
@@ -1300,12 +1659,12 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       if (chatOpenRef.current) {
         const parkX =
           curVw < 640
-            ? Math.max(12, curVw - curSize - 14)
-            : Math.max(16, curVw - 380 - curSize - 12);
+            ? Math.max(8, curVw - curSize - 10)
+            : Math.max(12, curVw - 380 - curSize - 12);
         const parkY =
           curVw < 640
-            ? Math.max(68, curVh - 450 - curSize * 0.75)
-            : Math.max(88, curVh - curSize - 42);
+            ? Math.max(72, curVh - 430 - curSize)
+            : Math.max(84, curVh - curSize - 38);
         const distToPark = Math.hypot(
           parkX - walkSegRef.current.targetX,
           parkY - walkSegRef.current.targetY
@@ -1337,17 +1696,19 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         const nextX = seg.startX + dx * eased + perpX * arc;
         const nextY = seg.startY + dy * eased + perpY * arc;
 
-        posRef.current.x = Math.max(10, Math.min(curVw - curSize - 10, nextX));
-        posRef.current.y = Math.max(70, Math.min(curVh - curSize - 20, nextY));
+        const roundedX = Math.round(Math.max(6, Math.min(curVw - curSize - 6, nextX)));
+        const roundedY = Math.round(Math.max(72, Math.min(curVh - curSize - 32, nextY)));
+        posRef.current.x = roundedX;
+        posRef.current.y = roundedY;
 
         if (wrapperRef.current) {
-          wrapperRef.current.style.transform = `translate3d(${posRef.current.x.toFixed(1)}px, ${posRef.current.y.toFixed(1)}px, 0)`;
+          wrapperRef.current.style.transform = `translate3d(${roundedX}px, ${roundedY}px, 0)`;
         }
+        syncSpeechBubblePosition(roundedX, roundedY, curSize, curVw, curVh);
 
         const dirX = Math.abs(dx) > 4 ? Math.sign(dx) * 0.35 * speedEnvelope : 0;
         setRoamLeanX(dirX);
         setWalkIntensity(speedEnvelope);
-        setBubbleFlipLeft(posRef.current.x > curVw * 0.45);
         lastWalkState = true;
 
         if (rawProgress >= 1) {
@@ -1379,11 +1740,20 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [enabled, isMinimized, getAvatarPixelSize, pickSafeWaypoint, beginSlowWalkTo]);
+  }, [
+    enabled,
+    isPublicRoute,
+    isMinimized,
+    measurePreviewContainer,
+    getAvatarPixelSize,
+    pickSafeWaypoint,
+    beginSlowWalkTo,
+    syncSpeechBubblePosition,
+  ]);
 
   // Rotate idle bubbles every 12 seconds if user hasn't scrolled
   useEffect(() => {
-    if (chatOpen || isMinimized) return;
+    if (chatOpen || isMinimized || !isPublicRoute) return;
     const interval = window.setInterval(() => {
       if (Date.now() - lastBubbleTimeRef.current < 10000) return;
       lastBubbleTimeRef.current = Date.now();
@@ -1392,7 +1762,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       setActiveBubble(ROAMING_TANGO_SECTION_BUBBLES[nextIdx]);
     }, 12000);
     return () => window.clearInterval(interval);
-  }, [chatOpen, isMinimized]);
+  }, [chatOpen, isMinimized, isPublicRoute]);
 
   useEffect(() => {
     if (chatOpen) {
@@ -1568,44 +1938,55 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
     }
   };
 
-  if (!enabled) return null;
+  if (!enabled || !isPublicRoute) return null;
 
-  // If visitor minimized Tango, show a small dark floating pill in bottom-right corner
+  const isMobileSize = avatarSize === TANGO_SIZE_MOBILE;
+
+  // If visitor minimized Tango, show a compact dark floating pill in bottom-right corner (~26px high on mobile)
   if (isMinimized) {
     return (
       <button
         type="button"
         data-testid="roaming-tango-restore-btn"
         onClick={() => setIsMinimized(false)}
-        style={{ bottom: 'max(16px, env(safe-area-inset-bottom))' }}
-        className="fixed right-4 z-40 flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#141418]/95 hover:bg-[#1E1E24] text-white border border-[#F4C430]/50 shadow-xl transition-all cursor-pointer"
+        style={{
+          bottom: 'max(14px, env(safe-area-inset-bottom))',
+          height: isMobileSize ? '26px' : '30px',
+        }}
+        className="tango-restore-btn fixed right-3 z-40 flex items-center gap-1.5 px-2.5 rounded-full bg-[#141418] hover:bg-[#1E1E24] text-white border border-[#F4C430]/55 shadow-lg transition-colors cursor-pointer"
         title="Bring back Tango the Academy Guide"
         aria-label="Bring back Tango the Academy Guide"
       >
-        <div className="w-7 h-7 flex items-center justify-center bg-transparent">
-          <TangoGuideSvg svgSize={28} uid="restore-tango" />
+        <div className="flex items-center justify-center bg-transparent shrink-0">
+          <TangoGuideSvg svgSize={isMobileSize ? 18 : 22} uid="restore-tango" />
         </div>
-        <span className="text-xs font-extrabold text-[#F4C430]">Ask Tango 🐾</span>
+        <span className="text-[11px] font-extrabold text-[#F4C430] whitespace-nowrap">
+          Ask Tango 🐾
+        </span>
       </button>
     );
   }
 
+  const bubbleShortText = activeBubble
+    ? truncateByCodePoints(stripTangoStarsUnicode(activeBubble.text), 90)
+    : '';
+
   return (
     <>
-      {/* ── Single Fixed Roaming Tango Layer (Turtle Speed, Zero Stars, Zero White Sheet) ── */}
+      {/* ── Single Fixed Roaming Tango Layer (Exact Size, Crisp DPR, No Blur/Will-Change) ── */}
       <div
         ref={wrapperRef}
         data-testid="roaming-tango-guide-wrapper"
         style={{
-          width: 'clamp(100px, 16vw, 220px)',
-          height: 'clamp(100px, 16vw, 220px)',
-          willChange: 'transform',
+          width: `${avatarSize}px`,
+          height: `${avatarSize}px`,
         }}
-        className="fixed top-0 left-0 z-40 pointer-events-none select-none bg-transparent border-0 shadow-none"
+        className="tango-roaming-wrapper fixed top-0 left-0 z-40 pointer-events-none select-none bg-transparent border-0 shadow-none"
       >
-        {/* Dark Speech Bubble with Tail Pointing at Tango (No Star/Sparkle Icons) */}
+        {/* Dark Speech Bubble (No Blur, Single-Line Header, Max 90 Chars, Always Inside Container) */}
         {activeBubble && !chatOpen && (
           <div
+            ref={bubbleRef}
             data-testid="roaming-tango-speech-bubble"
             onClick={() => handleOpenChatWithPrompt(activeBubble.topicPrompt)}
             role="button"
@@ -1616,33 +1997,27 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
                 handleOpenChatWithPrompt(activeBubble.topicPrompt);
               }
             }}
-            className={`pointer-events-auto absolute -top-3 ${
-              bubbleFlipLeft
-                ? 'right-[86%] mr-1.5 origin-bottom-right'
-                : 'left-[86%] ml-1.5 origin-bottom-left'
-            } w-[195px] sm:w-[235px] rounded-2xl bg-[#141418]/95 text-zinc-100 border border-[#F4C430]/50 px-3 py-2 shadow-xl backdrop-blur-md cursor-pointer hover:border-[#F4C430] transition-all animate-in fade-in zoom-in-95 duration-200`}
+            style={{
+              maxWidth: 'min(70vw, 240px)',
+              padding: isMobileSize ? '8px 10px' : '9px 11px',
+            }}
+            className="tango-speech-bubble pointer-events-auto absolute rounded-2xl bg-[#141418] text-zinc-100 border border-[#F4C430]/55 shadow-lg cursor-pointer hover:border-[#F4C430] transition-colors"
           >
-            <div className="flex items-center justify-between gap-1 mb-0.5">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#FB923C]">
-                Tango • Academy Guide
+            <div className="tango-bubble-header flex items-center justify-between gap-2 mb-0.5 whitespace-nowrap overflow-hidden">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#FB923C] whitespace-nowrap truncate">
+                {isMobileSize ? 'TANGO' : 'TANGO - ACADEMY GUIDE'}
               </span>
-              <span className="text-[9px] text-zinc-400 font-semibold">Tap to ask</span>
+              <span className="text-[10px] text-zinc-400 font-semibold whitespace-nowrap shrink-0">
+                Tap to ask
+              </span>
             </div>
-            <p className="text-[11px] leading-snug text-zinc-100 font-medium">
-              {activeBubble.text}
+            <p className="tango-bubble-text text-[12px] sm:text-[12.5px] leading-[1.35] text-zinc-100 font-medium break-words">
+              {bubbleShortText}
             </p>
-            {/* Speech Bubble Tail Pointing at Tango */}
-            <div
-              className={`absolute top-6 w-2.5 h-2.5 rotate-45 bg-[#141418] border-[#F4C430]/50 ${
-                bubbleFlipLeft
-                  ? '-right-1.5 border-t border-r'
-                  : '-left-1.5 border-b border-l'
-              }`}
-            />
           </div>
         )}
 
-        {/* Frameless Transparent Tango 3D Avatar */}
+        {/* Frameless Transparent Tango 3D Avatar (Only as big as the visible cat) */}
         <div
           data-testid="roaming-tango-avatar-trigger"
           onClick={() => {
@@ -1659,10 +2034,15 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
               setChatOpen((o) => !o);
             }
           }}
-          className="pointer-events-auto w-full h-full flex items-center justify-center bg-transparent border-0 shadow-none cursor-pointer"
+          style={{
+            width: `${avatarSize}px`,
+            height: `${avatarSize}px`,
+          }}
+          className="tango-avatar-trigger pointer-events-auto flex items-center justify-center bg-transparent border-0 shadow-none cursor-pointer"
           title="Tap Tango to ask about SHS Virtual Academy!"
         >
           <TangoGuide3DAvatar
+            cssSize={avatarSize}
             state={tangoState}
             walkIntensity={walkIntensity}
             roamLeanX={roamLeanX}
@@ -1670,8 +2050,11 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
           />
         </div>
 
-        {/* Tiny Floating Control Bar Under Tango ("Stay here" Freeze Toggle + Minimize) */}
-        <div className="pointer-events-auto -mt-2 flex items-center justify-center gap-1">
+        {/* Scaled Control Bar Under Tango (Roam/Stay Toggle + Minimize, ~24-26px high on mobile) */}
+        <div
+          style={{ top: `${avatarSize + 2}px` }}
+          className="tango-controls-bar pointer-events-auto absolute left-1/2 -translate-x-1/2 flex items-center justify-center gap-1 whitespace-nowrap"
+        >
           <button
             type="button"
             data-testid="roaming-tango-stay-btn"
@@ -1679,18 +2062,19 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
               e.stopPropagation();
               setIsFrozen((f) => !f);
             }}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#141418]/90 hover:bg-[#1F1F26] text-[10px] font-bold text-zinc-200 border border-zinc-700/80 shadow-md transition-colors cursor-pointer"
+            style={{ height: isMobileSize ? '24px' : '26px' }}
+            className="tango-roam-btn inline-flex items-center gap-1 px-2 rounded-full bg-[#141418] hover:bg-[#1F1F26] text-[10px] font-bold text-zinc-200 border border-zinc-700/90 shadow-sm transition-colors cursor-pointer whitespace-nowrap"
             title={isFrozen ? 'Let Tango roam slowly' : 'Freeze Tango in this spot'}
             aria-label={isFrozen ? 'Let Tango roam slowly' : 'Keep Tango staying here'}
           >
             {isFrozen ? (
               <>
-                <PinOff size={10} className="text-[#F4C430]" />
+                <PinOff size={isMobileSize ? 9 : 10} className="text-[#F4C430] shrink-0" />
                 <span>Roam</span>
               </>
             ) : (
               <>
-                <Pin size={10} className="text-[#F4C430]" />
+                <Pin size={isMobileSize ? 9 : 10} className="text-[#F4C430] shrink-0" />
                 <span>Stay here</span>
               </>
             )}
@@ -1704,11 +2088,15 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
               setChatOpen(false);
               setIsMinimized(true);
             }}
-            className="p-1 rounded-full bg-[#141418]/90 hover:bg-[#1F1F26] text-zinc-400 hover:text-white border border-zinc-700/80 shadow-md transition-colors cursor-pointer"
+            style={{
+              width: isMobileSize ? '24px' : '26px',
+              height: isMobileSize ? '24px' : '26px',
+            }}
+            className="tango-minimize-btn inline-flex items-center justify-center rounded-full bg-[#141418] hover:bg-[#1F1F26] text-zinc-400 hover:text-white border border-zinc-700/90 shadow-sm transition-colors cursor-pointer shrink-0"
             title="Minimize Tango guide"
             aria-label="Minimize Tango guide"
           >
-            <Minimize2 size={10} />
+            <Minimize2 size={isMobileSize ? 9 : 10} />
           </button>
         </div>
       </div>
