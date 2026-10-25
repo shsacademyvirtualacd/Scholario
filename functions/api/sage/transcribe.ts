@@ -1,7 +1,7 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../env';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
-import { SAGE_AI_MODELS } from '../../../src/lib/knowledgeBaseService';
+import { SAGE_AI_MODELS, SAGE_MODEL_FALLBACK_CHAIN } from '../../../src/lib/knowledgeBaseService';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -36,11 +36,14 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
     const apiKey =
       env?.GEMINI_API_KEY ||
-      (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
+      (env as any)?.GOOGLE_API_KEY ||
+      (typeof process !== 'undefined'
+        ? process.env?.GEMINI_API_KEY || process.env?.GOOGLE_API_KEY
+        : undefined);
 
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'Gemini API key is not configured' }),
+        JSON.stringify({ error: 'Sage is not configured yet (missing GEMINI_API_KEY).' }),
         { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
       );
     }
@@ -60,13 +63,8 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
     const cleanMime = mime_type.split(';')[0].trim() || 'audio/webm';
 
-    const rawModel =
-      env?.GEMINI_MODEL ||
-      (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
-      SAGE_AI_MODELS.TRANSCRIBE;
-    const primaryModel = rawModel.trim().replace(/^models\//i, '') || SAGE_AI_MODELS.TRANSCRIBE;
     const candidateModels = Array.from(
-      new Set([primaryModel, SAGE_AI_MODELS.PRIMARY, SAGE_AI_MODELS.FALLBACK])
+      new Set([SAGE_AI_MODELS.TRANSCRIBE, ...SAGE_MODEL_FALLBACK_CHAIN])
     );
 
     const prompt = `Listen to this voice message from a teacher or student carefully.
@@ -99,7 +97,9 @@ Transcribe what the person said verbatim.
           ],
           config: {
             temperature: 0.1,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            ...(modelId.startsWith('gemini-3')
+              ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
+              : {}),
           },
         });
         rawTranscript = (response.text || '').trim();
@@ -107,14 +107,21 @@ Transcribe what the person said verbatim.
         break;
       } catch (err: any) {
         lastErr = err;
-        console.warn(`[Sage Transcribe] Model ${modelId} failed, trying fallback:`, err?.message || err);
+        console.error('[Sage Transcribe] Model attempt failed:', {
+          model: modelId,
+          httpStatus: err?.status || err?.code || 'unknown',
+          errorBody: err?.message || String(err),
+        });
       }
     }
 
     if (lastErr && !rawTranscript) {
-      console.error('[Cloudflare Pages Sage Transcribe Model Error]:', lastErr);
+      console.error('[Cloudflare Pages Sage Transcribe All Models Failed]:', {
+        httpStatus: lastErr?.status || lastErr?.code || 'unknown',
+        errorBody: lastErr?.message || String(lastErr),
+      });
       return new Response(
-        JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' }),
+        JSON.stringify({ error: 'Voice transcription is busy right now. Please tap Retry or type your question.' }),
         { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
       );
     }

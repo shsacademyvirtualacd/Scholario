@@ -9,12 +9,21 @@
  */
 
 export const SAGE_AI_MODELS = {
-  PRIMARY: 'gemini-3.8-flash',
-  FALLBACK: 'gemini-3.1-flash-lite',
+  PRIMARY: 'gemini-3-flash-preview',
+  FALLBACK: 'gemini-3.5-flash-lite',
+  FALLBACK_ALT: 'gemini-3.1-flash-lite',
+  STABLE: 'gemini-2.5-flash',
   TRANSCRIBE: 'gemini-3.5-transcribe',
   TTS: 'gemini-3.8-flash-lite-tts',
   EMBEDDING: 'gemini-embedding-2-preview',
 } as const;
+
+export const SAGE_MODEL_FALLBACK_CHAIN: readonly string[] = [
+  SAGE_AI_MODELS.PRIMARY,
+  SAGE_AI_MODELS.FALLBACK,
+  SAGE_AI_MODELS.FALLBACK_ALT,
+  SAGE_AI_MODELS.STABLE,
+];
 
 export const DEFAULT_GEMINI_MODEL = SAGE_AI_MODELS.PRIMARY;
 export const SAGE_CHAT_MODEL = SAGE_AI_MODELS.PRIMARY;
@@ -23,15 +32,17 @@ export const SAGE_EMBEDDING_MODEL = SAGE_AI_MODELS.EMBEDDING;
 export const SAGE_EMBEDDING_DIMENSIONS = 768;
 
 /**
- * Normalizes model string to a clean UI display name:
- * 'gemini-3.8-flash' -> 'Gemini 3.8 Flash'
+ * Normalizes a real Gemini model ID to a clean UI display name:
+ * 'gemini-3-flash-preview' -> 'Gemini 3 Flash Preview (gemini-3-flash-preview)'
  */
 export function formatModelDisplayName(modelStr: string = SAGE_CHAT_MODEL): string {
-  if (!modelStr) return 'Gemini 3.8 Flash';
-  const clean = modelStr.replace(/^models\//i, '').trim();
+  const clean = (modelStr || SAGE_CHAT_MODEL).replace(/^models\//i, '').trim();
   if (clean.toLowerCase().startsWith('gemini-')) {
     const parts = clean.split('-');
-    return parts.map((p) => (p.length > 0 ? p.charAt(0).toUpperCase() + p.slice(1) : '')).join(' ');
+    const pretty = parts
+      .map((p) => (p.length > 0 ? p.charAt(0).toUpperCase() + p.slice(1) : ''))
+      .join(' ');
+    return `${pretty} (${clean})`;
   }
   return clean;
 }

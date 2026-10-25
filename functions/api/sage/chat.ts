@@ -3,7 +3,39 @@ import type { Env } from '../../env';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import { adminToolDeclarations, executeAdminDataQuery } from '../../../src/lib/adminDataTools';
-import { SAGE_AI_MODELS } from '../../../src/lib/knowledgeBaseService';
+import { SAGE_AI_MODELS, SAGE_MODEL_FALLBACK_CHAIN } from '../../../src/lib/knowledgeBaseService';
+
+function withModelTimeout<T>(promise: Promise<T>, ms: number, modelId: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`TIMEOUT: Model ${modelId} did not respond within ${ms}ms`));
+    }, ms);
+    promise
+      .then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
+function classifyGeminiError(err: any): string {
+  const status = Number(err?.status || err?.code || 0);
+  const msg = String(err?.message || err || '');
+  if (status === 429 || /429|quota|rate.?limit|resource_exhausted/i.test(msg)) {
+    return 'Sage is busy right now (rate limit reached). Please wait a few seconds and tap Retry.';
+  }
+  if (status === 401 || status === 403 || /api_key_invalid|invalid api key|permission_denied|unauthenticated/i.test(msg)) {
+    return 'Sage API key is invalid or restricted. Please verify GEMINI_API_KEY in Cloudflare Pages runtime settings.';
+  }
+  if (status === 503 || /503|unavailable|high demand|overloaded|timeout/i.test(msg)) {
+    return 'Sage AI servers are experiencing high traffic right now. Please tap Retry.';
+  }
+  return 'Sage could not complete that request right now. Please tap Retry.';
+}
 
 interface ChatMessagePayload {
   role: 'user' | 'assistant' | 'model';
@@ -83,7 +115,11 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
   const apiKey =
     env?.GEMINI_API_KEY ||
-    (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
+    (env as any)?.GOOGLE_API_KEY ||
+    (env as any)?.VITE_GEMINI_API_KEY ||
+    (typeof process !== 'undefined'
+      ? process.env?.GEMINI_API_KEY || process.env?.GOOGLE_API_KEY
+      : undefined);
 
   const supabaseUrl = env?.SUPABASE_URL || env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
   const supabaseKey = env?.SUPABASE_ANON_KEY || env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
@@ -226,16 +262,33 @@ Key Guidelines:
           },
         },
       });
-      const rawModel =
+      const rawEnvModel = (
         env?.GEMINI_MODEL ||
         (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
-        SAGE_AI_MODELS.PRIMARY;
-      const primaryModel = rawModel.trim().replace(/^models\//i, '') || SAGE_AI_MODELS.PRIMARY;
-      const fallbackModel = SAGE_AI_MODELS.FALLBACK;
-      const candidateModels =
-        primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
+        ''
+      )
+        .trim()
+        .replace(/^models\//i, '');
+
+      const candidateModels = Array.from(
+        new Set([
+          ...(rawEnvModel && rawEnvModel !== 'gemini-3.8-flash' ? [rawEnvModel] : []),
+          ...SAGE_MODEL_FALLBACK_CHAIN,
+        ])
+      );
+
+      const getThinkingConfig = (modelId: string) =>
+        modelId.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } : {};
 
       const runWithModel = async (modelId: string) => {
+        let modelAnnounced = false;
+        const announceModel = async () => {
+          if (!modelAnnounced) {
+            modelAnnounced = true;
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ model: modelId })}\n\n`));
+          }
+        };
+
         if (isAdmin) {
           let currentContents: any[] = [...contents];
           const maxTurns = 3;
@@ -244,15 +297,19 @@ Key Guidelines:
 
           while (turn < maxTurns) {
             turn++;
-            const genRes = await ai.models.generateContent({
-              model: modelId,
-              contents: currentContents,
-              config: {
-                systemInstruction,
-                tools: [{ functionDeclarations: adminToolDeclarations }],
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-              },
-            });
+            const genRes = await withModelTimeout(
+              ai.models.generateContent({
+                model: modelId,
+                contents: currentContents,
+                config: {
+                  systemInstruction,
+                  tools: [{ functionDeclarations: adminToolDeclarations }],
+                  ...getThinkingConfig(modelId),
+                },
+              }),
+              10000,
+              modelId
+            );
 
             if (genRes.functionCalls && genRes.functionCalls.length > 0) {
               const toolParts: any[] = [];
@@ -280,6 +337,7 @@ Key Guidelines:
               });
             } else {
               if (genRes.text) {
+                await announceModel();
                 const words = genRes.text.split(' ');
                 for (let i = 0; i < words.length; i += 3) {
                   const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
@@ -293,36 +351,46 @@ Key Guidelines:
           }
 
           if (!finalResponseSent) {
-            const streamResponse = await ai.models.generateContentStream({
-              model: modelId,
-              contents: currentContents,
-              config: {
-                systemInstruction,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-              },
-            });
+            const streamResponse = await withModelTimeout(
+              ai.models.generateContentStream({
+                model: modelId,
+                contents: currentContents,
+                config: {
+                  systemInstruction,
+                  ...getThinkingConfig(modelId),
+                },
+              }),
+              10000,
+              modelId
+            );
 
             for await (const chunk of streamResponse) {
               const chunkText = chunk.text;
               if (chunkText) {
+                await announceModel();
                 await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`));
               }
             }
           }
         } else {
           // Teacher/Student flow (no tools)
-          const streamResponse = await ai.models.generateContentStream({
-            model: modelId,
-            contents,
-            config: {
-              systemInstruction,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-            },
-          });
+          const streamResponse = await withModelTimeout(
+            ai.models.generateContentStream({
+              model: modelId,
+              contents,
+              config: {
+                systemInstruction,
+                ...getThinkingConfig(modelId),
+              },
+            }),
+            10000,
+            modelId
+          );
 
           for await (const chunk of streamResponse) {
             const chunkText = chunk.text;
             if (chunkText) {
+              await announceModel();
               await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`));
             }
           }
@@ -338,7 +406,11 @@ Key Guidelines:
           break;
         } catch (err: any) {
           lastErr = err;
-          console.warn(`[Sage Chat] Model ${modelId} failed, attempting fallback if available:`, err?.message || err);
+          console.error('[Sage Chat] Model attempt failed:', {
+            model: modelId,
+            httpStatus: err?.status || err?.code || 'unknown',
+            errorBody: err?.message || String(err),
+          });
         }
       }
 
@@ -348,9 +420,13 @@ Key Guidelines:
 
       await writer.write(encoder.encode('data: [DONE]\n\n'));
     } catch (err: any) {
-      console.error('[Cloudflare Pages Sage Chat Streaming Error]:', err);
+      console.error('[Cloudflare Pages Sage Chat All Models Failed]:', {
+        httpStatus: err?.status || err?.code || 'unknown',
+        errorBody: err?.message || String(err),
+      });
+      const friendlyError = classifyGeminiError(err);
       await writer.write(
-        encoder.encode(`data: ${JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' })}\n\n`)
+        encoder.encode(`data: ${JSON.stringify({ error: friendlyError })}\n\n`)
       );
       await writer.write(encoder.encode('data: [DONE]\n\n'));
     } finally {

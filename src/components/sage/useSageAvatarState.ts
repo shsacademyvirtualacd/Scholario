@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { supabase } from '../../lib/supabase';
 
 export type Sage3DAvatarState =
   | 'idle'
@@ -13,6 +14,122 @@ export type Sage3DAvatarState =
   | 'poke';
 
 export type TransientAvatarState = 'nod' | 'success' | 'error' | 'poke';
+
+export type SageCharacterId =
+  | 'sage-classic'
+  | 'ayan-scholar'
+  | 'zain-explorer'
+  | 'hamza-kurta'
+  | 'nova-bot'
+  | 'milo-owl';
+
+export interface SageCharacterDefinition {
+  id: SageCharacterId;
+  name: string;
+  title: string;
+  tagline: string;
+  badge: string;
+  bodyColor: string;
+  shadowColor: string;
+  rimColor: string;
+  earInnerColor: string;
+  accentGold: string;
+  outfitPrimary: string;
+}
+
+export const SAGE_CHARACTERS: SageCharacterDefinition[] = [
+  {
+    id: 'sage-classic',
+    name: 'Sage',
+    title: 'Classic Scholar',
+    tagline: 'Soft cream plush companion with graduation cap & gold scarf',
+    badge: 'Default',
+    bodyColor: '#FFFBF2',
+    shadowColor: '#EFE4CE',
+    rimColor: '#FFF2C2',
+    earInnerColor: '#F9D5C4',
+    accentGold: '#F4C430',
+    outfitPrimary: '#18181B',
+  },
+  {
+    id: 'ayan-scholar',
+    name: 'Ayan',
+    title: 'Head Boy Scholar',
+    tagline: 'Short dark hair, round gold glasses & gold-trimmed school sweater',
+    badge: 'Boy',
+    bodyColor: '#FFF6EA',
+    shadowColor: '#EDD9C0',
+    rimColor: '#FFEFC4',
+    earInnerColor: '#F5CBB8',
+    accentGold: '#F4C430',
+    outfitPrimary: '#1E293B',
+  },
+  {
+    id: 'zain-explorer',
+    name: 'Zain',
+    title: 'Campus Explorer',
+    tagline: 'Cozy knit beanie cap & twin backpack straps with gold buckles',
+    badge: 'Boy',
+    bodyColor: '#FFF7EC',
+    shadowColor: '#ECD8BE',
+    rimColor: '#FFF0C2',
+    earInnerColor: '#F6CCB8',
+    accentGold: '#F4C430',
+    outfitPrimary: '#27272A',
+  },
+  {
+    id: 'hamza-kurta',
+    name: 'Hamza',
+    title: 'Traditional Scholar',
+    tagline: 'Classic Pakistani kurta collar with gleaming gold button accents',
+    badge: 'Boy',
+    bodyColor: '#FFF6EB',
+    shadowColor: '#EBD6BC',
+    rimColor: '#FFEFC2',
+    earInnerColor: '#F5CBB6',
+    accentGold: '#F4C430',
+    outfitPrimary: '#0F172A',
+  },
+  {
+    id: 'nova-bot',
+    name: 'Nova',
+    title: 'White & Gold Bot',
+    tagline: 'Cute porcelain-white & brushed-gold robot friend with glowing antenna',
+    badge: 'Bot',
+    bodyColor: '#FFFFFF',
+    shadowColor: '#E5E7EB',
+    rimColor: '#FEF08A',
+    earInnerColor: '#F4C430',
+    accentGold: '#F4C430',
+    outfitPrimary: '#18181B',
+  },
+  {
+    id: 'milo-owl',
+    name: 'Milo',
+    title: 'Library Owl',
+    tagline: 'Fluffy cocoa-cream owl companion holding a miniature study book',
+    badge: 'Companion',
+    bodyColor: '#F5E6D3',
+    shadowColor: '#DEC4A4',
+    rimColor: '#FFF2C6',
+    earInnerColor: '#E8B89A',
+    accentGold: '#F4C430',
+    outfitPrimary: '#78350F',
+  },
+];
+
+export const DEFAULT_SAGE_CHARACTER_ID: SageCharacterId = 'sage-classic';
+
+export function isValidSageCharacterId(val: unknown): val is SageCharacterId {
+  return (
+    typeof val === 'string' &&
+    SAGE_CHARACTERS.some((c) => c.id === val)
+  );
+}
+
+export function getSageCharacterById(id?: SageCharacterId | string | null): SageCharacterDefinition {
+  return SAGE_CHARACTERS.find((c) => c.id === id) || SAGE_CHARACTERS[0];
+}
 
 /**
  * Central configuration for Sage's appearance, colors, dimensions, and accessories.
@@ -53,11 +170,20 @@ export interface SageAvatarControllerInput {
   isThinking?: boolean;
   isSpeaking?: boolean;
   audioLevel?: number;
+  userId?: string;
 }
 
 export interface SageAvatarStateValue {
   /** Final resolved animation state for the avatar */
   state: Sage3DAvatarState;
+  /** Currently selected character ID (persisted per user + localStorage) */
+  characterId: SageCharacterId;
+  /** Full metadata for the active character */
+  character: SageCharacterDefinition;
+  /** Select and persist a new character */
+  setCharacterId: (id: SageCharacterId) => void;
+  /** Shared canvas ref for live-mirroring the 3D WebGL avatar into the header thumbnail */
+  headerCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   /** Real-time audio volume 0..1 for lip-sync or listening pulse */
   audioLevel: number;
   /** Short, clean status text for the header subtitle ("Online", "Thinking...", "Speaking...") */
@@ -66,9 +192,6 @@ export interface SageAvatarStateValue {
   stageCaption: string;
   /** Counter incremented each time the user taps the avatar */
   pokeCount: number;
-  /** Whether the avatar stage is collapsed */
-  collapsed: boolean;
-  setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   /** Imperative triggers for chat, TTS, and PDF events */
   triggerNod: () => void;
   triggerSuccess: () => void;
@@ -84,6 +207,8 @@ const TRANSIENT_DURATIONS: Record<TransientAvatarState, number> = {
   poke: 1600,
 };
 
+const STORAGE_KEY_GLOBAL = 'scholario_sage_avatar_id';
+
 export function useSageAvatarController(input: SageAvatarControllerInput = {}): SageAvatarStateValue {
   const {
     isTyping = false,
@@ -91,15 +216,93 @@ export function useSageAvatarController(input: SageAvatarControllerInput = {}): 
     isThinking = false,
     isSpeaking = false,
     audioLevel = 0,
+    userId,
   } = input;
+
+  const [characterId, setCharacterIdState] = useState<SageCharacterId>(() => {
+    if (typeof window === 'undefined') return DEFAULT_SAGE_CHARACTER_ID;
+    try {
+      if (userId) {
+        const userSaved = window.localStorage.getItem(`${STORAGE_KEY_GLOBAL}_${userId}`);
+        if (isValidSageCharacterId(userSaved)) return userSaved;
+      }
+      const globalSaved = window.localStorage.getItem(STORAGE_KEY_GLOBAL);
+      if (isValidSageCharacterId(globalSaved)) return globalSaved;
+    } catch {
+      // ignore storage errors
+    }
+    return DEFAULT_SAGE_CHARACTER_ID;
+  });
 
   const [transientState, setTransientState] = useState<TransientAvatarState | null>(null);
   const [isSleepy, setIsSleepy] = useState(false);
   const [pokeCount, setPokeCount] = useState(0);
-  const [collapsed, setCollapsed] = useState(false);
 
+  const headerCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const transientTimerRef = useRef<number | null>(null);
   const sleepTimerRef = useRef<number | null>(null);
+
+  // Restore user preference from user_metadata or per-user localStorage when userId resolves
+  useEffect(() => {
+    let mounted = true;
+    try {
+      if (userId) {
+        const userSaved = window.localStorage.getItem(`${STORAGE_KEY_GLOBAL}_${userId}`);
+        if (isValidSageCharacterId(userSaved)) {
+          setCharacterIdState(userSaved);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (!mounted) return;
+        const metaAvatar = data?.user?.user_metadata?.sage_avatar_id;
+        if (isValidSageCharacterId(metaAvatar)) {
+          setCharacterIdState(metaAvatar);
+          try {
+            window.localStorage.setItem(STORAGE_KEY_GLOBAL, metaAvatar);
+            if (data?.user?.id) {
+              window.localStorage.setItem(`${STORAGE_KEY_GLOBAL}_${data.user.id}`, metaAvatar);
+            }
+          } catch {
+            // ignore
+          }
+        }
+      })
+      .catch(() => {
+        // ignore offline/guest
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  const setCharacterId = useCallback(
+    (nextId: SageCharacterId) => {
+      if (!isValidSageCharacterId(nextId)) return;
+      setCharacterIdState(nextId);
+      try {
+        window.localStorage.setItem(STORAGE_KEY_GLOBAL, nextId);
+        if (userId) {
+          window.localStorage.setItem(`${STORAGE_KEY_GLOBAL}_${userId}`, nextId);
+        }
+      } catch {
+        // ignore storage errors
+      }
+      // Persist to Supabase user metadata asynchronously in background
+      supabase.auth
+        .updateUser({ data: { sage_avatar_id: nextId } })
+        .catch(() => {
+          // ignore if not signed into Supabase
+        });
+    },
+    [userId]
+  );
 
   const clearTransientTimer = useCallback(() => {
     if (transientTimerRef.current !== null) {
@@ -238,14 +441,18 @@ export function useSageAvatarController(input: SageAvatarControllerInput = {}): 
       break;
   }
 
+  const character = getSageCharacterById(characterId);
+
   return {
     state: resolvedState,
+    characterId,
+    character,
+    setCharacterId,
+    headerCanvasRef,
     audioLevel,
     headerStatusText,
     stageCaption,
     pokeCount,
-    collapsed,
-    setCollapsed,
     triggerNod,
     triggerSuccess,
     triggerError,

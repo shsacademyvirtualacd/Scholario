@@ -13,7 +13,12 @@ import {
   PutBucketLifecycleConfigurationCommand,
 } from '@aws-sdk/client-s3';
 import pg from 'pg';
-import { searchFallbackKnowledgeBase, chunkDocumentText } from './src/lib/knowledgeBaseService';
+import {
+  searchFallbackKnowledgeBase,
+  chunkDocumentText,
+  SAGE_AI_MODELS,
+  SAGE_MODEL_FALLBACK_CHAIN,
+} from './src/lib/knowledgeBaseService';
 const { Pool } = pg;
 
 const rawDbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
@@ -572,12 +577,43 @@ Key Guidelines:
         };
       });
 
-      const rawModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-      const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
+      const rawEnvModel = (process.env.GEMINI_MODEL || '').trim().replace(/^models\//i, '');
+      const candidateModels = Array.from(
+        new Set([
+          ...(rawEnvModel && rawEnvModel !== 'gemini-3.8-flash' ? [rawEnvModel] : []),
+          ...SAGE_MODEL_FALLBACK_CHAIN,
+        ])
+      );
 
-      if (isAdmin) {
-        // Admin flow: Call generateContent with read-only tools
-        try {
+      const withServerModelTimeout = <T,>(promise: Promise<T>, ms: number, modelId: string): Promise<T> =>
+        new Promise<T>((resolve, reject) => {
+          const timer = setTimeout(() => {
+            reject(new Error(`TIMEOUT: Model ${modelId} did not respond within ${ms}ms`));
+          }, ms);
+          promise
+            .then((val) => {
+              clearTimeout(timer);
+              resolve(val);
+            })
+            .catch((err) => {
+              clearTimeout(timer);
+              reject(err);
+            });
+        });
+
+      const getThinkingConfig = (modelId: string) =>
+        modelId.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } : {};
+
+      const runWithServerModel = async (modelId: string) => {
+        let modelAnnounced = false;
+        const announceModel = () => {
+          if (!modelAnnounced) {
+            modelAnnounced = true;
+            res.write(`data: ${JSON.stringify({ model: modelId })}\n\n`);
+          }
+        };
+
+        if (isAdmin) {
           let currentContents = [...contents];
           const maxTurns = 3;
           let turn = 0;
@@ -585,15 +621,19 @@ Key Guidelines:
 
           while (turn < maxTurns) {
             turn++;
-            const genRes = await client.models.generateContent({
-              model: targetModel,
-              contents: currentContents,
-              config: {
-                systemInstruction,
-                tools: [{ functionDeclarations: adminToolDeclarations }],
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-              },
-            });
+            const genRes = await withServerModelTimeout(
+              client.models.generateContent({
+                model: modelId,
+                contents: currentContents,
+                config: {
+                  systemInstruction,
+                  tools: [{ functionDeclarations: adminToolDeclarations }],
+                  ...getThinkingConfig(modelId),
+                },
+              }),
+              10000,
+              modelId
+            );
 
             if (genRes.functionCalls && genRes.functionCalls.length > 0) {
               const toolParts: any[] = [];
@@ -620,9 +660,8 @@ Key Guidelines:
                 parts: toolParts,
               });
             } else {
-              // Final response produced
               if (genRes.text) {
-                // Stream the text to the client in smooth chunks
+                announceModel();
                 const words = genRes.text.split(' ');
                 for (let i = 0; i < words.length; i += 3) {
                   const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
@@ -636,64 +675,89 @@ Key Guidelines:
           }
 
           if (!finalResponseSent) {
-            // Stream the final response with full context
-            const streamResponse = await client.models.generateContentStream({
-              model: targetModel,
-              contents: currentContents,
-              config: {
-                systemInstruction,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-              },
-            });
+            const streamResponse = await withServerModelTimeout(
+              client.models.generateContentStream({
+                model: modelId,
+                contents: currentContents,
+                config: {
+                  systemInstruction,
+                  ...getThinkingConfig(modelId),
+                },
+              }),
+              10000,
+              modelId
+            );
 
             for await (const chunk of streamResponse) {
               const chunkText = chunk.text;
               if (chunkText) {
+                announceModel();
                 res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
               }
             }
           }
-        } catch (adminAiErr: any) {
-          console.warn('[Sage Admin AI error, falling back to direct stream/DB summary]:', adminAiErr.message);
-          // Fallback to deliver live platform overview summary if Gemini call fails
-          try {
-            const overview = await executeAdminDataQuery('queryPlatformOverview', {}, supabaseServer);
-            res.write(`data: ${JSON.stringify({
-              text: `**Sage (Live Platform Snapshot — Admin Mode)**:\n\n` +
-                `- **Total Registered Students**: ${overview?.kpis?.total_registered_students ?? 0} (Onboarded: ${overview?.kpis?.onboarded_students ?? 0})\n` +
-                `- **Total Faculty Teachers**: ${overview?.kpis?.total_faculty_teachers ?? 0} (Active: ${overview?.kpis?.active_teachers ?? 0})\n` +
-                `- **Active Class Offerings**: ${overview?.kpis?.active_class_offerings ?? 0}\n` +
-                `- **Published Assessments**: ${overview?.kpis?.published_assessments_count ?? 0} (${overview?.kpis?.total_student_submissions ?? 0} submissions)\n` +
-                `- **Tuition Fee Configurations**: ${overview?.kpis?.total_fee_configurations ?? 0} active tiers\n`
-            })}\n\n`);
-          } catch {
-            res.write(`data: ${JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' })}\n\n`);
-          }
-        }
-      } else {
-        // Non-admin flow (teacher/student): No tools, direct streaming general academic assistant
-        const streamResponse = await client.models.generateContentStream({
-          model: targetModel,
-          contents,
-          config: {
-            systemInstruction,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          },
-        });
+        } else {
+          // Non-admin flow (teacher/student)
+          const streamResponse = await withServerModelTimeout(
+            client.models.generateContentStream({
+              model: modelId,
+              contents,
+              config: {
+                systemInstruction,
+                ...getThinkingConfig(modelId),
+              },
+            }),
+            10000,
+            modelId
+          );
 
-        for await (const chunk of streamResponse) {
-          const chunkText = chunk.text;
-          if (chunkText) {
-            res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+          for await (const chunk of streamResponse) {
+            const chunkText = chunk.text;
+            if (chunkText) {
+              announceModel();
+              res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+            }
           }
         }
+      };
+
+      let lastErr: any = null;
+      let succeeded = false;
+      for (const modelId of candidateModels) {
+        try {
+          await runWithServerModel(modelId);
+          succeeded = true;
+          break;
+        } catch (err: any) {
+          lastErr = err;
+          console.error('[Server Sage Chat] Model attempt failed:', {
+            model: modelId,
+            httpStatus: err?.status || err?.code || 'unknown',
+            errorBody: err?.message || String(err),
+          });
+        }
+      }
+
+      if (!succeeded && lastErr) {
+        throw lastErr;
       }
 
       res.write('data: [DONE]\n\n');
       res.end();
     } catch (err: any) {
-      console.error('[Sage Chat Streaming Error]:', err);
-      res.write(`data: ${JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' })}\n\n`);
+      console.error('[Sage Chat Streaming All Models Failed]:', {
+        httpStatus: err?.status || err?.code || 'unknown',
+        errorBody: err?.message || String(err),
+      });
+      const status = Number(err?.status || err?.code || 0);
+      const msg = String(err?.message || err || '');
+      const friendlyError =
+        status === 429 || /429|quota|rate.?limit|resource_exhausted/i.test(msg)
+          ? 'Sage is busy right now (rate limit reached). Please wait a few seconds and tap Retry.'
+          : status === 401 || status === 403 || /api_key_invalid|invalid api key|permission_denied/i.test(msg)
+          ? 'Sage API key is invalid or restricted. Please verify GEMINI_API_KEY in runtime settings.'
+          : 'Sage AI servers are experiencing high traffic right now. Please tap Retry.';
+      res.write(`data: ${JSON.stringify({ error: friendlyError })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
     }
@@ -727,39 +791,56 @@ Transcribe what the person said verbatim.
 - Output ONLY the transcribed text. Do NOT add any preamble, explanation, notes, or punctuation commentary.
 - If the audio is empty, silent, or only background static noise, respond with strictly: [EMPTY]`;
 
-      const rawModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-      const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
+      const candidateTranscribeModels = [
+        SAGE_AI_MODELS.TRANSCRIBE,
+        ...SAGE_MODEL_FALLBACK_CHAIN,
+      ];
 
       let rawTranscript = '';
-      try {
-        const response = await client.models.generateContent({
-          model: targetModel,
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  inlineData: {
-                    data: cleanBase64,
-                    mimeType: cleanMime,
+      let lastErr: any = null;
+      for (const modelId of candidateTranscribeModels) {
+        try {
+          const response = await client.models.generateContent({
+            model: modelId,
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    inlineData: {
+                      data: cleanBase64,
+                      mimeType: cleanMime,
+                    },
                   },
-                },
-                {
-                  text: prompt,
-                },
-              ],
+                  {
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
+            config: {
+              temperature: 0.1,
+              ...(modelId.startsWith('gemini-3')
+                ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
+                : {}),
             },
-          ],
-          config: {
-            temperature: 0.1,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          },
-        });
-        rawTranscript = (response.text || '').trim();
-      } catch (modelErr: any) {
-        console.error('[server:transcribe] model generation failed:', modelErr);
+          });
+          rawTranscript = (response.text || '').trim();
+          lastErr = null;
+          break;
+        } catch (modelErr: any) {
+          lastErr = modelErr;
+          console.error('[server:transcribe] model attempt failed:', {
+            model: modelId,
+            httpStatus: modelErr?.status || modelErr?.code || 'unknown',
+            errorBody: modelErr?.message || String(modelErr),
+          });
+        }
+      }
+
+      if (lastErr && !rawTranscript) {
         return res.status(503).json({
-          error: 'Sage is temporarily unavailable. Please try again in a moment.',
+          error: 'Voice transcription is busy right now. Please tap Retry or type your question.',
         });
       }
 
@@ -776,7 +857,7 @@ Transcribe what the person said verbatim.
     } catch (transcribeErr: any) {
       console.error('[Sage Audio Transcription Error]:', transcribeErr);
       return res.status(500).json({
-        error: 'Sage is temporarily unavailable. Please try again in a moment.',
+        error: 'Voice transcription failed. Please try again.',
       });
     }
   });

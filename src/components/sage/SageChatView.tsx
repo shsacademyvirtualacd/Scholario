@@ -38,12 +38,12 @@ import {
   Volume2,
   Share2,
   MoreHorizontal,
-  EyeOff,
+  Menu,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmModal from '../admin/ConfirmModal';
 import { useAuth } from '../../features/auth/AuthContext';
-import { SageAvatar } from './SageAvatar';
+import { SageAvatar, SageCharacterSvg } from './SageAvatar';
 import { SageEmotion, SAGE_EMOTIONS, detectSageEmotion } from './sageEmotion';
 import { getLastPageContext, PageContextInfo } from '../../lib/pageContext';
 import {
@@ -68,13 +68,23 @@ import {
   SpeechPlaybackStatus,
   SpeechSpeed,
 } from '../../lib/sageSpeech';
-import { SAGE_MODEL_DISPLAY_NAME } from '../../lib/knowledgeBaseService';
+import { SAGE_AI_MODELS, SAGE_MODEL_DISPLAY_NAME } from '../../lib/knowledgeBaseService';
 import {
   useSageAvatarController,
   SageAvatarStateProvider,
+  SAGE_CHARACTERS,
 } from './useSageAvatarState';
 
 const LazySage3DAvatar = React.lazy(() => import('./Sage3DAvatar'));
+
+function formatSageModelLabel(modelId: string): string {
+  const id = (modelId || '').toLowerCase();
+  if (id.includes('gemini-3-flash')) return 'Gemini 3 Flash';
+  if (id.includes('gemini-3.5-flash-lite')) return 'Gemini 3.5 Flash-Lite';
+  if (id.includes('gemini-3.1-flash-lite')) return 'Gemini 3.1 Flash-Lite';
+  if (id.includes('gemini-2.5-flash')) return 'Gemini 2.5 Flash';
+  return SAGE_MODEL_DISPLAY_NAME;
+}
 
 export interface ChatAttachment {
   key?: string;
@@ -788,7 +798,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   const [isSyncingNotes, setIsSyncingNotes] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
+  const [activeModelId, setActiveModelId] = useState<string>(SAGE_AI_MODELS.PRIMARY);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Voice Recording State ──
@@ -851,7 +863,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         : isStreamingTokens
         ? 0.55
         : 0,
+    userId: profile?.id,
   });
+
+  const activeModelDisplayName = formatSageModelLabel(activeModelId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1415,6 +1430,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     const textToSend = (userText !== undefined ? userText : input).trim();
     if ((!textToSend && !pendingAttachment && !voiceAudio) || isLoading) return;
 
+    if (textToSend) {
+      setLastSentPrompt(textToSend);
+    }
     setErrorMsg(null);
     const currentAtt = pendingAttachment
       ? {
@@ -1491,7 +1509,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
       if (!res.ok) {
         const errorData = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(errorData.error || `Server responded with ${res.status}`);
+        throw new Error(errorData.error || `Server responded with HTTP ${res.status}`);
       }
 
       if (!res.body) {
@@ -1524,6 +1542,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             const parsed = JSON.parse(dataStr);
             if (parsed.error) {
               throw new Error(parsed.error);
+            }
+            if (parsed.model && typeof parsed.model === 'string') {
+              setActiveModelId(parsed.model);
             }
             if (parsed.text) {
               accumulatedText += parsed.text;
@@ -1575,9 +1596,15 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         return;
       }
       console.error('[Sage Chat Frontend Error]:', err);
-      const friendlyMsg = 'Sage is temporarily unavailable. Please try again in a moment.';
-      setErrorMsg(friendlyMsg);
-      toast.error(friendlyMsg);
+      const rawMsg = typeof err?.message === 'string' ? err.message.trim() : '';
+      let specificMsg = 'Could not reach Sage. Check your connection and try again.';
+      if (rawMsg && !rawMsg.startsWith('{') && rawMsg.length < 220) {
+        specificMsg = rawMsg;
+      } else if (/429|quota|rate/i.test(rawMsg)) {
+        specificMsg = 'Sage is busy right now (rate limit reached). Please wait a few seconds and tap Retry.';
+      }
+      setErrorMsg(specificMsg);
+      toast.error(specificMsg);
       avatarController.triggerError();
       setMessages((prev) =>
         prev.filter((msg) => msg.id !== assistantMsgId || msg.content.trim().length > 0)
@@ -1622,7 +1649,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       >
         {/* ── Clean Single-Row Top Header ── */}
         <div className="bg-[#111111] px-3.5 sm:px-5 py-2.5 text-white flex items-center justify-between gap-2 border-b border-[#242428] shrink-0">
-          {/* Left: Back Button, Small Avatar Thumbnail, "Sage" Title + Low-Key Role Chip, Single Status Line */}
+          {/* Left: Back Button, Hamburger Avatar Picker Button, Live-Animated Avatar Thumbnail, "Sage" Title + Role Chip, Status Line */}
           <div className="flex items-center gap-2.5 min-w-0">
             {onBack && (
               <button
@@ -1636,8 +1663,23 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               </button>
             )}
 
+            {/* Three-line Hamburger Menu Button to Open "Choose your Sage" Character Picker */}
+            <button
+              type="button"
+              id="choose-sage-avatar-btn"
+              onClick={() => setAvatarPickerOpen(true)}
+              className="w-9 h-9 rounded-xl bg-[#1E1E22] hover:bg-[#2A2A30] text-zinc-200 hover:text-[#F4C430] border border-[#2E2E34] shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+              title="Choose your Sage character"
+              aria-label="Choose your Sage character"
+            >
+              <Menu size={17} />
+            </button>
+
             <SageAvatar
               emotion={activeEmotion}
+              avatarState={avatarController.state}
+              characterId={avatarController.characterId}
+              headerCanvasRef={avatarController.headerCanvasRef}
               size="sm"
               interactive={true}
               onClick={() => avatarController.triggerPoke()}
@@ -1646,11 +1688,13 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <h1 className="text-[15px] sm:text-base font-extrabold tracking-tight text-white truncate">
-                  Sage
+                  {avatarController.character.name === 'Sage'
+                    ? 'Sage'
+                    : `Sage • ${avatarController.character.name}`}
                 </h1>
                 <span
                   className="px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide bg-white/8 text-zinc-300 border border-white/10 shrink-0"
-                  title={`${role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'} mode • ${SAGE_MODEL_DISPLAY_NAME}`}
+                  title={`${role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'} mode • ${activeModelDisplayName}`}
                 >
                   {role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'}
                 </span>
@@ -1712,7 +1756,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                   <div className="px-3 py-2 border-b border-[#27272F] mb-1">
                     <div className="flex items-center justify-between text-[11px] text-zinc-400">
                       <span>AI Engine</span>
-                      <span className="font-semibold text-zinc-200">{SAGE_MODEL_DISPLAY_NAME}</span>
+                      <span className="font-semibold text-zinc-200">{activeModelDisplayName}</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-1">
                       <span className="flex items-center gap-1">
@@ -1723,21 +1767,17 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                     </div>
                   </div>
 
-                  {/* Toggle Sage Avatar Visibility */}
+                  {/* Choose Your Sage Character */}
                   <button
                     type="button"
                     onClick={() => {
-                      avatarController.setCollapsed((prev) => !prev);
                       setOverflowMenuOpen(false);
+                      setAvatarPickerOpen(true);
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-white/8 transition-colors cursor-pointer text-left"
                   >
-                    {avatarController.collapsed ? (
-                      <Eye size={14} className="text-[#F4C430] shrink-0" />
-                    ) : (
-                      <EyeOff size={14} className="text-zinc-400 shrink-0" />
-                    )}
-                    <span>{avatarController.collapsed ? 'Show Sage Character' : 'Minimize Sage Character'}</span>
+                    <Smile size={14} className="text-[#F4C430] shrink-0" />
+                    <span>Choose your Sage ({avatarController.character.name})</span>
                   </button>
 
                   {/* Sync Note Vault (Teachers & Admins) */}
@@ -1816,52 +1856,32 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           </div>
         )}
 
-        {/* ── Compact 72px Docked Avatar Bar (Once Messages Exist) ── */}
-        {isConversationStarted && (
+        {/* ── Chat Messages Stream (Avatar sits directly on chat area with zero container/strip) ── */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
           <Suspense
             fallback={
-              <div className="h-[72px] flex items-center px-5 border-b border-zinc-200/50 dark:border-zinc-800/60 text-xs text-zinc-400">
+              <div className={isConversationStarted ? 'h-[72px] flex items-center px-2 text-xs text-zinc-400' : 'h-48 flex items-center justify-center text-xs text-zinc-400'}>
                 Loading Sage...
               </div>
             }
           >
             <LazySage3DAvatar
               state={avatarController.state}
+              characterId={avatarController.characterId}
+              headerCanvasRef={avatarController.headerCanvasRef}
               audioLevel={avatarController.audioLevel}
-              compact={true}
+              compact={isConversationStarted}
+              greetingTitle={
+                avatarController.character.name === 'Sage'
+                  ? `Hi ${greetingName}, I'm Sage!`
+                  : `Hi ${greetingName}, I'm ${avatarController.character.name}!`
+              }
               statusLabel={avatarController.stageCaption}
-              collapsed={avatarController.collapsed}
-              onToggleCollapse={() => avatarController.setCollapsed((prev) => !prev)}
               onPoke={() => avatarController.triggerPoke()}
               pokeCount={avatarController.pokeCount}
             />
           </Suspense>
-        )}
 
-        {/* ── Chat Messages Stream ── */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
-          {/* When Chat is Fresh, Show Large Center Stage Avatar Above Greeting */}
-          {!isConversationStarted && (
-            <Suspense
-              fallback={
-                <div className="h-48 flex items-center justify-center text-xs text-zinc-400">
-                  Loading Sage...
-                </div>
-              }
-            >
-              <LazySage3DAvatar
-                state={avatarController.state}
-                audioLevel={avatarController.audioLevel}
-                compact={false}
-                greetingTitle={`Hi ${greetingName}, I'm Sage!`}
-                statusLabel={avatarController.stageCaption}
-                collapsed={avatarController.collapsed}
-                onToggleCollapse={() => avatarController.setCollapsed((prev) => !prev)}
-                onPoke={() => avatarController.triggerPoke()}
-                pokeCount={avatarController.pokeCount}
-              />
-            </Suspense>
-          )}
           {messages.map((msg) => {
           const isUser = msg.role === 'user';
           const isCurrentStreaming = msg.id === streamingId;
@@ -1886,6 +1906,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               ) : (
                 <SageAvatar
                   emotion={msgEmotion}
+                  characterId={avatarController.characterId}
                   size="sm"
                   showBadge={true}
                   pulseOnThinking={isCurrentStreaming}
@@ -2193,10 +2214,33 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           </div>
         )}
 
-        {/* Error message */}
+        {/* Error message with Retry button */}
         {errorMsg && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center justify-between">
-            <span>{errorMsg}</span>
+          <div className="p-3 bg-red-50 dark:bg-red-950/35 border border-red-200 dark:border-red-800/60 rounded-xl text-xs text-red-700 dark:text-red-300 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertTriangle size={14} className="text-red-600 dark:text-red-400 shrink-0" />
+              <span className="break-words">{errorMsg}</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {lastSentPrompt && !isLoading && (
+                <button
+                  type="button"
+                  onClick={() => handleSend(lastSentPrompt)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+                >
+                  <RotateCcw size={11} />
+                  <span>Retry</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setErrorMsg(null)}
+                className="p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 transition-colors cursor-pointer"
+                title="Dismiss"
+              >
+                <X size={13} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -2511,9 +2555,100 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-[#A3A3A3] dark:text-[#71717A]">
           <span>Shift + Enter for new line • Enter to send • Mic for voice note</span>
-          <span className="text-[#737373] dark:text-[#A1A1AA] font-medium">Scholario Sage v2.0 • {SAGE_MODEL_DISPLAY_NAME} (AI Assistant + RAG)</span>
+          <span className="text-[#737373] dark:text-[#A1A1AA] font-medium">
+            Scholario Sage v2.0 • {activeModelDisplayName} (AI Assistant + RAG)
+          </span>
         </div>
       </div>
+
+      {/* ── "Choose your Sage" Avatar Picker Modal / Bottom Sheet ── */}
+      {avatarPickerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setAvatarPickerOpen(false)}
+        >
+          <div
+            className="w-full sm:max-w-xl bg-white dark:bg-[#16161B] rounded-t-3xl sm:rounded-3xl border border-zinc-200 dark:border-[#2A2A34] shadow-2xl overflow-hidden max-h-[88vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-5 py-4 bg-[#111111] text-white flex items-center justify-between border-b border-[#26262E]">
+              <div>
+                <h3 className="text-base font-extrabold tracking-tight text-white">
+                  Choose your Sage
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Pick your study companion — all 6 characters share the full live 3D animation set
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAvatarPickerOpen(false)}
+                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Close character picker"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* 6 Character Preview Cards Grid */}
+            <div className="p-4 sm:p-5 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {SAGE_CHARACTERS.map((charItem) => {
+                const isSelected = avatarController.characterId === charItem.id;
+                return (
+                  <button
+                    key={charItem.id}
+                    type="button"
+                    id={`sage-picker-card-${charItem.id}`}
+                    onClick={() => {
+                      avatarController.setCharacterId(charItem.id);
+                      avatarController.triggerPoke();
+                      toast.success(`${charItem.name} (${charItem.title}) selected!`);
+                      setAvatarPickerOpen(false);
+                    }}
+                    className={`group relative flex flex-col items-center text-center p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-[#F4C430] bg-amber-50/60 dark:bg-amber-950/25 ring-2 ring-[#F4C430]/70 shadow-sm'
+                        : 'border-zinc-200 dark:border-[#2A2A34] bg-zinc-50/70 dark:bg-[#1E1E26] hover:border-[#F4C430]/70 hover:bg-amber-50/30 dark:hover:bg-[#252530]'
+                    }`}
+                  >
+                    {/* Badge */}
+                    <span
+                      className={`absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
+                        isSelected
+                          ? 'bg-[#F4C430] text-[#111111]'
+                          : 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                      }`}
+                    >
+                      {isSelected ? 'Selected' : charItem.badge}
+                    </span>
+
+                    {/* Character Animated Preview */}
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-[#FFFDF8] to-[#F5ECDA] dark:from-[#262420] dark:to-[#1B1A17] border border-[#E8DEC8] dark:border-[#3A352A] flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                      <SageCharacterSvg
+                        characterId={charItem.id}
+                        avatarState={isSelected ? 'poke' : 'idle'}
+                        svgSize={56}
+                        uid={`picker-${charItem.id}`}
+                      />
+                    </div>
+
+                    <div className="font-extrabold text-xs sm:text-sm text-zinc-900 dark:text-white">
+                      {charItem.name}
+                    </div>
+                    <div className="text-[11px] font-semibold text-amber-700 dark:text-[#F4C430] mt-0.5">
+                      {charItem.title}
+                    </div>
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 leading-snug">
+                      {charItem.tagline}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PDF Preview Modal ── */}
       <PdfPreviewModal
