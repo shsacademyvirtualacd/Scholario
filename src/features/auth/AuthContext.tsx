@@ -25,6 +25,16 @@ interface AuthContextValue {
   authError: string | null;
   /** Initiates Google OAuth flow (redirect-based). */
   signInWithGoogle: () => Promise<void>;
+  /** Email + password sign in */
+  signInWithEmail: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  /** Email + password sign up with metadata and profile row creation */
+  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ data: any; error: any; isExistingUser?: boolean }>;
+  /** Request password reset email with recovery link */
+  resetPasswordForEmail: (email: string) => Promise<{ data: any; error: any }>;
+  /** Resend confirmation email */
+  resendVerificationEmail: (email: string) => Promise<{ data: any; error: any }>;
+  /** Update user password after recovery */
+  updatePassword: (password: string) => Promise<{ data: any; error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   /** Bypasses billing suspension lock to allow user into checkout */
@@ -530,6 +540,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ── signInWithEmail ───────────────────────────────────────────────────────
+  const signInWithEmail = async (email: string, password: string) => {
+    setRosterRejected(false);
+    setSuspended(false);
+    setAuthError(null);
+    const normalizedEmail = email.trim().toLowerCase();
+    return await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+  };
+
+  // ── signUpWithEmail ───────────────────────────────────────────────────────
+  const signUpWithEmail = async (email: string, password: string, fullName: string) => {
+    setRosterRejected(false);
+    setSuspended(false);
+    setAuthError(null);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
+      options: {
+        data: {
+          full_name: fullName.trim(),
+        },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      return { data, error, isExistingUser: false };
+    }
+
+    // Detect existing user: Supabase returns a fake success with empty identities array when confirm email is enabled
+    const isExistingUser = Boolean(data?.user && (!data.user.identities || data.user.identities.length === 0));
+
+    if (data?.user?.id && !isExistingUser) {
+      try {
+        const { data: existingProf } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (!existingProf) {
+          await (supabase as any).from('profiles').insert({
+            id: data.user.id,
+            role: 'student',
+            full_name: fullName.trim(),
+            phone: null,
+            onboarding_complete: false,
+          });
+        }
+      } catch (profErr) {
+        console.warn('[signUpWithEmail] Profile check/insert notice:', profErr);
+      }
+    }
+
+    return { data, error: null, isExistingUser };
+  };
+
+  // ── resetPasswordForEmail ─────────────────────────────────────────────────
+  const resetPasswordForEmail = async (email: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    return await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+  };
+
+  // ── resendVerificationEmail ───────────────────────────────────────────────
+  const resendVerificationEmail = async (email: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    return await supabase.auth.resend({
+      type: 'signup',
+      email: normalizedEmail,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+  };
+
+  // ── updatePassword ────────────────────────────────────────────────────────
+  const updatePassword = async (password: string) => {
+    return await supabase.auth.updateUser({ password });
+  };
+
   // ── signOut ───────────────────────────────────────────────────────────────
   const signOut = async () => {
     setRosterRejected(false);
@@ -607,6 +704,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       feeStatus,
       authError,
       signInWithGoogle,
+      signInWithEmail,
+      signUpWithEmail,
+      resetPasswordForEmail,
+      resendVerificationEmail,
+      updatePassword,
       signOut,
       refreshProfile,
       proceedToPaymentCheckout

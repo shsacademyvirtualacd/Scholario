@@ -12,8 +12,13 @@ const MAX_REQUESTS = 60;     // Max 60 requests per minute per IP
 export async function onRequest(context: EventContext<Env, any, any>): Promise<any> {
   const { request } = context;
 
-  // Bypass rate limiting for preflight requests
+  // Bypass rate limiting for preflight requests and verified webhooks
   if (request.method === 'OPTIONS') {
+    return context.next();
+  }
+
+  const url = new URL(request.url);
+  if (url.pathname === '/api/auth-email') {
     return context.next();
   }
 

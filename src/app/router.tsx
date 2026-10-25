@@ -18,6 +18,7 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 // ─── Public pages (eager loaded — small) ────
 import LoginPage from '../pages/public/LoginPage';
 import ForgotPasswordPage from '../pages/public/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/public/ResetPasswordPage';
 import UnregisteredPage from '../pages/public/UnregisteredPage';
 import PlanComparisonPage from '../pages/public/PlanComparisonPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
@@ -141,6 +142,7 @@ const AppRouter: React.FC = () => (
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/unregistered" element={<UnregisteredPage />} />
           <Route path="/enrollment/compare" element={<PlanComparisonPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
