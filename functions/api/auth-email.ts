@@ -136,16 +136,16 @@ function buildEmailTemplate(params: {
 
   switch (actionType) {
     case 'signup':
-      subject = 'Verify your email for Scholario LMS';
+      subject = 'Verify your email for Scholario';
       heading = 'Verify Your Email';
-      message = `Hello ${recipientName || 'Student'}, thank you for signing up for Scholario LMS at SHS Virtual Academy. Please confirm your email address to activate your account.`;
+      message = `Hello ${recipientName || 'Student'}, thank you for signing up for Scholario at SHS Virtual Academy. Please confirm your email address to activate your account.`;
       buttonText = 'Verify Email Address';
       break;
 
     case 'recovery':
       subject = 'Reset your Scholario password';
       heading = 'Reset Your Password';
-      message = `Hello ${recipientName || 'Student'}, we received a request to reset the password for your Scholario LMS account. Click the button below to choose a new password.`;
+      message = `Hello ${recipientName || 'Student'}, we received a request to reset the password for your Scholario account. Click the button below to choose a new password.`;
       buttonText = 'Reset Password';
       break;
 
@@ -157,21 +157,23 @@ function buildEmailTemplate(params: {
       break;
 
     case 'email_change':
+    case 'email_change_new':
+    case 'email_change_current':
       subject = 'Confirm your new email address for Scholario';
       heading = 'Confirm Email Change';
-      message = `Hello, please click below to confirm your new email address for your Scholario LMS account.`;
+      message = `Hello ${recipientName || 'there'}, please click below to confirm the email address update for your Scholario account.`;
       buttonText = 'Confirm New Email';
       break;
 
     case 'invite':
-      subject = 'You have been invited to Scholario LMS';
+      subject = 'You have been invited to Scholario';
       heading = 'Welcome to Scholario';
-      message = `Hello ${recipientName || 'Student'}, you have been invited to join Scholario LMS at SHS Virtual Academy. Click below to accept the invitation and set up your account.`;
+      message = `Hello ${recipientName || 'Student'}, you have been invited to join Scholario at SHS Virtual Academy. Click below to accept the invitation and set up your account.`;
       buttonText = 'Accept Invitation';
       break;
 
     case 'reauthentication':
-      subject = `Your verification code: ${token || ''}`;
+      subject = `Your Scholario verification code: ${token || ''}`;
       heading = 'Verification Code';
       message = `Your 6-digit verification code is shown below. This code will expire in 10 minutes.`;
       showButton = false;
@@ -179,9 +181,9 @@ function buildEmailTemplate(params: {
       break;
 
     default:
-      subject = 'Scholario LMS notification';
+      subject = 'Scholario security notification';
       heading = 'Authentication Notification';
-      message = `Please click the button below to proceed with your authentication request.`;
+      message = `Please click the button below to proceed with your authentication request on Scholario.`;
       buttonText = 'Confirm Request';
   }
 
@@ -207,7 +209,7 @@ function buildEmailTemplate(params: {
                 <tr>
                   <td>
                     <div style="display: inline-block; background-color: rgba(244, 196, 48, 0.15); border: 1px solid rgba(244, 196, 48, 0.3); border-radius: 10px; padding: 6px 14px; margin-bottom: 16px;">
-                      <span style="color: #F4C430; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">SCHOLARIO LMS</span>
+                      <span style="color: #F4C430; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">SCHOLARIO</span>
                     </div>
                     <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">${heading}</h1>
                   </td>
@@ -259,7 +261,7 @@ function buildEmailTemplate(params: {
 
               <!-- Security Notice -->
               <p style="margin: 28px 0 0 0; font-size: 12px; line-height: 1.5; color: #777777; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 20px;">
-                ⏱ <strong>Security Notice:</strong> This link is single-use and will expire in 24 hours. If you did not make this request, you can safely ignore this email; your account remains secure.
+                <strong>Security Notice:</strong> This link is single-use and will expire in 24 hours. If you did not make this request, you can safely ignore this email; your account remains secure.
               </p>
             </td>
           </tr>
@@ -268,10 +270,10 @@ function buildEmailTemplate(params: {
           <tr>
             <td style="padding: 24px 32px; background-color: #0f0f11; border-top: 1px solid rgba(255, 255, 255, 0.04); text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: bold; color: #888888;">
-                SHS Virtual Academy · Scholario LMS
+                Scholario · <a href="https://scholario.me" style="color: #F4C430; text-decoration: none;">scholario.me</a>
               </p>
               <p style="margin: 0; font-size: 11px; color: #555555; line-height: 1.4;">
-                Rawalpindi, Pakistan · A private learning hub for serious academic success.
+                Need help? Contact <a href="mailto:support@scholario.me" style="color: #888888; text-decoration: underline;">support@scholario.me</a>
               </p>
             </td>
           </tr>
@@ -293,11 +295,43 @@ ${showButton ? `Link: ${confirmLink}\n\n` : ''}${codeDisplay ? `Verification Cod
 This link expires in 24 hours. If you did not request this email, you can safely ignore it.
 
 --
-Scholario LMS · SHS Virtual Academy
-Rawalpindi, Pakistan
+Scholario (https://scholario.me)
+Support: support@scholario.me
   `.trim();
 
   return { subject, html, text };
+}
+
+const SUPPORTED_AUTH_ACTION_TYPES = new Set([
+  'signup',
+  'recovery',
+  'invite',
+  'magiclink',
+  'email_change',
+  'email_change_new',
+  'email_change_current',
+  'reauthentication',
+]);
+
+const DEFAULT_SITE_URL = 'https://scholario.me';
+const DEFAULT_FROM_EMAIL = 'Scholario <no-reply@scholario.me>';
+const SUPPORT_REPLY_TO_EMAIL = 'support@scholario.me';
+
+function normalizeScholarioUrl(rawUrl: string, allowEmpty = false): string {
+  const trimmed = (rawUrl || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return allowEmpty ? '' : DEFAULT_SITE_URL;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.hostname !== 'scholario.me' && parsed.hostname !== 'www.scholario.me' && parsed.hostname !== 'localhost') {
+      return `${DEFAULT_SITE_URL}${parsed.pathname === '/' ? '' : parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    return trimmed;
+  } catch {
+    if (trimmed.startsWith('/')) {
+      return `${DEFAULT_SITE_URL}${trimmed}`;
+    }
+    return allowEmpty ? '' : DEFAULT_SITE_URL;
+  }
 }
 
 export async function onRequestPost(context: EventContext<Env, any, any>): Promise<Response> {
@@ -316,7 +350,9 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   }
 
   // 2. Verify signature if SEND_EMAIL_HOOK_SECRET is configured
-  const hookSecret = env.SEND_EMAIL_HOOK_SECRET;
+  const hookSecret =
+    env.SEND_EMAIL_HOOK_SECRET ||
+    (typeof process !== 'undefined' ? process.env?.SEND_EMAIL_HOOK_SECRET : undefined);
   if (hookSecret) {
     const verification = await verifyWebhookSignature(rawBody, request.headers, hookSecret);
     if (!verification.valid) {
@@ -357,19 +393,36 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     );
   }
 
-  // 4. Extract parameters and build verification link
+  // 4. Extract parameters and validate action type
   const recipientEmail = (user.email as string).trim().toLowerCase();
   const recipientName = user.user_metadata?.full_name || '';
   const actionType = (email_data.email_action_type || 'signup').trim();
-  const tokenHash = email_data.token_hash || '';
-  const token = email_data.token || '';
+  const tokenHash = email_data.token_hash || email_data.token_hash_new || '';
+  const token = email_data.token || email_data.token_new || '';
 
-  const siteOrigin = (email_data.site_url || env.PUBLIC_DOMAIN || 'https://shsvirtualacademy.pro').replace(/\/+$/, '');
-  let redirectTo = (email_data.redirect_to || '').trim();
+  if (!SUPPORTED_AUTH_ACTION_TYPES.has(actionType)) {
+    console.error(
+      `[Supabase Send Email Hook] Unsupported email_action_type received: '${actionType}' for recipient ${recipientEmail}`
+    );
+    return new Response(
+      JSON.stringify({
+        error: {
+          http_code: 400,
+          message: `Unsupported email_action_type: ${actionType}`,
+        },
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
-  // For password recovery, ensure redirect_to lands on /reset-password
+  const siteOrigin = normalizeScholarioUrl(
+    email_data.site_url || env.PUBLIC_DOMAIN || DEFAULT_SITE_URL
+  );
+  let redirectTo = normalizeScholarioUrl(email_data.redirect_to || '', true);
+
+  // For password recovery, ensure redirect_to lands on https://scholario.me/reset-password
   if (actionType === 'recovery') {
-    if (!redirectTo || redirectTo.replace(/\/+$/, '') === siteOrigin) {
+    if (!redirectTo || redirectTo === siteOrigin) {
       redirectTo = `${siteOrigin}/reset-password`;
     }
   } else if (!redirectTo) {
@@ -382,6 +435,9 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     env.VITE_SUPABASE_URL ||
     (env as any).VITE_DATABASE_URL ||
     (env as any).DATABASE_URL ||
+    (typeof process !== 'undefined'
+      ? process.env?.SUPABASE_URL || process.env?.VITE_SUPABASE_URL
+      : '') ||
     ''
   ).replace(/\/+$/, '');
 
@@ -400,7 +456,12 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     );
   }
 
-  const confirmLink = `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(tokenHash)}&type=${encodeURIComponent(actionType)}&redirect_to=${encodeURIComponent(redirectTo)}`;
+  const verifyType =
+    actionType === 'email_change_new' || actionType === 'email_change_current'
+      ? 'email_change'
+      : actionType;
+
+  const confirmLink = `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(tokenHash)}&type=${encodeURIComponent(verifyType)}&redirect_to=${encodeURIComponent(redirectTo)}`;
 
   // 5. Generate template
   const { subject, html, text } = buildEmailTemplate({
@@ -411,28 +472,36 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     token,
   });
 
-  // 6. Send via Resend REST API
-  const resendApiKey = env.RESEND_API_KEY;
+  // 6. Send via Resend REST API (using the same RESEND_API_KEY and verified scholario.me domain as send-contact-email)
+  const resendApiKey =
+    env.RESEND_API_KEY ||
+    (typeof process !== 'undefined' ? process.env?.RESEND_API_KEY : undefined);
+
   if (!resendApiKey) {
     console.error('[Supabase Send Email Hook] RESEND_API_KEY environment variable is not configured.');
     return new Response(
-      JSON.stringify({ error: { http_code: 500, message: 'Resend API service is not configured on Cloudflare.' } }),
+      JSON.stringify({ error: { http_code: 500, message: 'RESEND_API_KEY is missing in Cloudflare environment variables.' } }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
-  const resendFrom = env.RESEND_FROM || 'Scholario <no-reply@shsvirtualacademy.pro>';
+  const configuredFrom = (env.RESEND_FROM || env.FROM_EMAIL || '').trim();
+  const resendFrom =
+    configuredFrom && configuredFrom.toLowerCase().includes('@scholario.me')
+      ? configuredFrom
+      : DEFAULT_FROM_EMAIL;
 
   try {
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
         from: resendFrom,
         to: [recipientEmail],
+        reply_to: SUPPORT_REPLY_TO_EMAIL,
         subject,
         html,
         text,
@@ -452,11 +521,14 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
             message: `Failed to deliver email through Resend (${resendRes.status}): ${errBody}`,
           },
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: resendRes.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[Supabase Send Email Hook] Dispatched '${actionType}' email to ${recipientEmail} via Resend.`);
+    const resendData = (await resendRes.json().catch(() => ({}))) as { id?: string };
+    console.log(
+      `[Supabase Send Email Hook] Dispatched '${actionType}' email to ${recipientEmail} via Resend (from=${resendFrom}, id=${resendData?.id || 'ok'}).`
+    );
 
     // Success response: Supabase Auth Hook expects HTTP 200 with an empty JSON object `{}`
     return new Response('{}', {

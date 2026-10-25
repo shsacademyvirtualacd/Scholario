@@ -16,6 +16,7 @@ export interface Env {
   VITE_SUPABASE_ANON_KEY?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
+  FROM_EMAIL?: string;
   SEND_EMAIL_HOOK_SECRET?: string;
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;

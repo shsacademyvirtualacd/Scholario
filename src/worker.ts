@@ -49,6 +49,7 @@ export interface Env {
   GEMINI_MODEL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
+  FROM_EMAIL?: string;
   SEND_EMAIL_HOOK_SECRET?: string;
 }
 
