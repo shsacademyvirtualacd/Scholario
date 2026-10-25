@@ -154,31 +154,6 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
 
   return (
     <>
-      {/* ── Soft Blurred Gold Glows behind Navbar (Dark mode only) ── */}
-      <div
-        aria-hidden="true"
-        className="hidden dark:block fixed top-0 inset-x-0 h-56 pointer-events-none z-30 overflow-hidden"
-      >
-        {/* Top-right gold glow: radial gradient rgba(242,194,48,0.22), ~380px wide, blur 80px */}
-        <div
-          className="absolute -top-16 right-0 sm:right-8 lg:right-24 w-[380px] h-[340px] rounded-full pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle, rgba(242,194,48,0.22) 0%, transparent 70%)',
-            filter: 'blur(80px)',
-            WebkitFilter: 'blur(80px)',
-          }}
-        />
-        {/* Softer gold glow on the left behind navbar area */}
-        <div
-          className="absolute -top-16 left-0 sm:left-4 lg:left-16 w-[320px] h-[300px] rounded-full pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle, rgba(242,194,48,0.15) 0%, transparent 70%)',
-            filter: 'blur(80px)',
-            WebkitFilter: 'blur(80px)',
-          }}
-        />
-      </div>
-
       {/* ── Dim Backdrop: light dim rgba(0,0,0,0.25) + 6px blur in light, rgba(0,0,0,0.30) with NO blur in dark ── */}
       <div
         id="nav-backdrop"
@@ -197,10 +172,10 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
           id="main-navbar-pill"
           aria-label="Main Navigation"
           style={{
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
           }}
-          className="pointer-events-auto w-full transition-all duration-300 ease-out bg-white/[0.60] text-[#111111] dark:text-white rounded-[28px] sm:rounded-[32px] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)]"
+          className="pointer-events-auto w-full transition-all duration-300 ease-out bg-white/90 text-[#111111] dark:text-white rounded-[28px] sm:rounded-[32px] border border-black/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
         >
           <div className="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6">
             {/* Left: Scholario logo & wordmark */}
@@ -353,7 +328,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
               {/* Register & Apply gold pill */}
               <Link
                 to="/register"
-                className="h-10 px-5 rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-xs sm:text-sm shadow-[0_2px_12px_rgba(242,194,48,0.3)] active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+                className="h-10 px-5 rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-xs sm:text-sm shadow-xs active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
               >
                 Register &amp; Apply
               </Link>
@@ -387,10 +362,10 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
           aria-modal="true"
           aria-label="Navigation Menu"
           style={{
-            backdropFilter: 'blur(24px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
           }}
-          className={`pointer-events-auto mt-2 w-full sm:self-end sm:max-w-[420px] lg:hidden bg-white/[0.55] text-[#111111] dark:text-white rounded-[28px] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.5)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
+          className={`pointer-events-auto mt-2 w-full sm:self-end sm:max-w-[420px] lg:hidden bg-white/95 text-[#111111] dark:text-white rounded-[28px] border border-black/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.12)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
             menuOpen
               ? 'opacity-100 translate-y-0 visible scale-100'
               : 'opacity-0 -translate-y-2 pointer-events-none invisible scale-[0.98]'
@@ -618,12 +593,12 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
         [data-theme="dark"] #main-navbar-pill,
         .dark #mobile-nav-card,
         [data-theme="dark"] #mobile-nav-card {
-          background: rgba(255, 255, 255, 0.07) !important;
-          background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
-          backdrop-filter: blur(28px) saturate(170%) brightness(1.1) !important;
-          -webkit-backdrop-filter: blur(28px) saturate(170%) brightness(1.1) !important;
-          border: 1px solid rgba(255, 255, 255, 0.18) !important;
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
+          background: rgba(20, 20, 22, 0.90) !important;
+          background-image: none !important;
+          backdrop-filter: blur(16px) !important;
+          -webkit-backdrop-filter: blur(16px) !important;
+          border: 1px solid rgba(255, 255, 255, 0.14) !important;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
         }
 
         /* Fallback for browsers without backdrop-filter in dark mode only */

@@ -117,15 +117,6 @@ export const LeadershipPage: React.FC = () => {
         onOpenAbout={() => setAboutOpen(true)}
       />
 
-      {/* ── Soft Ambient Glow in Background ── */}
-      <div
-        aria-hidden="true"
-        className="fixed top-24 left-1/2 -translate-x-1/2 w-[340px] sm:w-[500px] h-[340px] sm:h-[500px] rounded-full pointer-events-none opacity-15 dark:opacity-10 blur-3xl"
-        style={{
-          background: 'radial-gradient(circle, rgba(242,194,48,0.55) 0%, transparent 70%)',
-        }}
-      />
-
       <main
         ref={contentRef}
         id="leadership-main"

@@ -1961,7 +1961,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               customName={avatarController.displayName}
               headerCanvasRef={avatarController.headerCanvasRef}
               size="sm"
-              bubbleOrb={true}
+              bubbleOrb={false}
               interactive={true}
               onClick={() => setProfilePanelOpen(true)}
             />
@@ -2233,24 +2233,20 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
         {/* ── Main Chat Body: Flex Column with (1) Non-Scrolling Avatar Stage Row + (2) Scrolling Message List Below ── */}
         <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-[#FAFAFA] dark:bg-[#0E0E11]">
-          {/* (1) Non-Scrolling Avatar Stage Row (~128px when empty, ~84px once messages exist, centered, transparent, soft accent glow) */}
+          {/* (1) Non-Scrolling Avatar Stage Row (~128px when empty, ~84px once messages exist, centered, completely transparent) */}
           <div
             data-testid="sage-avatar-stage-row"
-            className={`sage-avatar-stage-row shrink-0 relative w-full flex flex-col items-center justify-center bg-transparent border-0 shadow-none z-10 transition-all duration-300 ${
+            style={{
+              background: 'transparent',
+              boxShadow: 'none',
+              border: 'none',
+              filter: 'none',
+              backdropFilter: 'none',
+            }}
+            className={`sage-avatar-stage-row shrink-0 relative w-full flex flex-col items-center justify-center bg-transparent border-0 shadow-none ring-0 z-10 transition-all duration-300 ${
               isConversationStarted ? 'h-[84px]' : 'h-[128px]'
             }`}
           >
-            {/* Soft Accent Radial Glow Behind Avatar */}
-            <div
-              aria-hidden="true"
-              style={{
-                background: `radial-gradient(circle, ${avatarController.character.accentColor}2A 0%, ${avatarController.character.accentColor}0D 48%, transparent 72%)`,
-              }}
-              className={`pointer-events-none rounded-full transition-all duration-300 ${
-                isConversationStarted ? 'w-[96px] h-[82px]' : 'w-[144px] h-[124px]'
-              } absolute`}
-            />
-
             <Sage3DAvatar
               state={avatarController.state}
               characterId={avatarController.characterId}

@@ -344,16 +344,18 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
 
         {/* Scrollable Content with 24px Bottom Padding */}
         <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-4">
-          {/* 1. Companion Identity Card with 180px Glossy Bubble Orb */}
+          {/* 1. Companion Identity Card with 180px Live 3D Portrait */}
           <div className="rounded-[24px] bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] p-5 shadow-2xs flex flex-col items-center text-center">
-            {/* Large 180px Bubble Orb — Never Cropped at Any Scroll Position */}
+            {/* Large 180px Portrait — Transparent Surface, Never Cropped at Any Scroll Position */}
             <div
               style={{
-                background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.65) 0%, ${activeChar.accentColor}2D 52%, ${activeChar.accentColor}12 100%)`,
-                borderColor: `${activeChar.accentColor}59`,
-                boxShadow: `inset 0 2px 8px rgba(255,255,255,0.55), inset 0 -4px 12px ${activeChar.accentColor}24, 0 8px 24px -8px ${activeChar.accentColor}33`,
+                background: 'transparent',
+                boxShadow: 'none',
+                border: 'none',
+                filter: 'none',
+                backdropFilter: 'none',
               }}
-              className="sage-profile-orb relative w-[180px] h-[180px] rounded-full border overflow-hidden flex items-center justify-center shrink-0"
+              className="sage-profile-orb relative w-[180px] h-[180px] bg-transparent border-0 shadow-none ring-0 flex items-center justify-center shrink-0"
             >
               <Sage3DAvatar
                 state={isPreviewingVoice ? 'speaking' : avatarState}

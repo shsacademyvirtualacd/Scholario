@@ -687,9 +687,9 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
   headerCanvasRef,
   size = 'sm',
   showStatusText = false,
-  pulseOnThinking = true,
+  pulseOnThinking = false,
   interactive = false,
-  bubbleOrb = true,
+  bubbleOrb = false,
   className = '',
   onClick,
 }) => {
@@ -698,29 +698,18 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
   const charDef = getSageCharacterById(characterId);
   const displayLabel = customName?.trim() || charDef.name;
 
-  const isThinking = avatarState === 'thinking' || emotion === 'thinking';
-  const isSpeaking = avatarState === 'speaking';
-
   return (
-    <div className={`sage-mini-avatar inline-flex items-center gap-2.5 bg-transparent ${className}`}>
+    <div className={`sage-mini-avatar inline-flex items-center gap-2.5 bg-transparent border-0 shadow-none ring-0 ${className}`}>
       <div
-        style={
-          bubbleOrb
-            ? {
-                background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.45) 0%, ${charDef.accentColor}26 55%, ${charDef.accentColor}12 100%)`,
-                borderColor: `${charDef.accentColor}4D`,
-                boxShadow: `inset 0 1.5px 3px rgba(255,255,255,0.45), inset 0 -2px 4px ${charDef.accentColor}20`,
-              }
-            : undefined
-        }
-        className={`sage-bubble-orb relative shrink-0 flex items-center justify-center overflow-hidden transition-transform duration-200 ${
+        style={{
+          background: 'transparent',
+          boxShadow: 'none',
+          border: 'none',
+          filter: 'none',
+          backdropFilter: 'none',
+        }}
+        className={`sage-bubble-orb relative shrink-0 flex items-center justify-center overflow-hidden bg-transparent border-0 shadow-none ring-0 transition-transform duration-200 ${
           sizeConfig.container
-        } ${
-          bubbleOrb ? 'border' : 'bg-transparent border-0 shadow-none'
-        } ${
-          pulseOnThinking && (isThinking || isSpeaking)
-            ? 'ring-2 ring-[#F4C430]/55'
-            : ''
         } ${interactive ? 'cursor-pointer hover:scale-105 active:scale-95' : ''}`}
         onClick={onClick}
         title={interactive ? `Tap ${displayLabel} to open profile or say hello!` : `${displayLabel} — Sage AI`}
