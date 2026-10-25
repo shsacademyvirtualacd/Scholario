@@ -23,6 +23,8 @@ import {
 import {
   ACADEMY_KNOWLEDGE_SYSTEM_PROMPT,
   getPublicGuideLocalAnswer,
+  stripTangoStarsUnicode,
+  truncateByCodePoints,
 } from './src/data/academyKnowledge';
 const { Pool } = pg;
 
@@ -281,7 +283,7 @@ async function startServer() {
         if (existing.count >= maxReqs) {
           return res.status(429).json({
             reply:
-              "Meow! Tango here 🐾 You've sent quite a few messages in a short time. Please wait a few minutes, or tap **Get Started** above to explore the portal directly!",
+              "Meow! Tango here 🐾 You've sent quite a few messages in a short time. Please wait a few minutes, or tap Get Started above to explore the portal directly!",
             rateLimited: true,
           });
         }
@@ -290,25 +292,57 @@ async function startServer() {
         tangoPublicGuideRateMap.set(clientIp, { count: 1, resetAt: now + windowMs });
       }
 
-      const sanitizePlain = (s: string) =>
-        (s || '')
+      const sanitizePlain = (s: string) => {
+        const withoutTags = (s || '')
           .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-          .replace(/<\/?[a-z][^>]*>/gi, '')
-          .replace(/[✦★✨⭐🌟💫]/g, '')
-          .trim();
+          .replace(/<\/?[a-z][^>]*>/gi, '');
+        return stripTangoStarsUnicode(withoutTags).trim();
+      };
 
-      const rawMessage = sanitizePlain(String(req.body?.message || '')).slice(0, 500);
+      const rawMessage = truncateByCodePoints(sanitizePlain(String(req.body?.message || '')), 500);
       if (!rawMessage) {
         return res.status(400).json({ error: 'Message to Tango cannot be empty.' });
       }
 
       const rawHistory = Array.isArray(req.body?.history) ? req.body.history.slice(-6) : [];
-      const safeHistory = rawHistory
-        .map((h: any) => ({
-          role: h?.role === 'assistant' || h?.role === 'model' ? 'model' : 'user',
-          parts: [{ text: sanitizePlain(String(h?.content || '')).slice(0, 500) }],
-        }))
-        .filter((h: any) => h.parts[0].text.length > 0);
+      const normalizedHistory: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+      for (const h of rawHistory) {
+        const role: 'user' | 'model' =
+          h?.role === 'assistant' || h?.role === 'model' ? 'model' : 'user';
+        const text = truncateByCodePoints(sanitizePlain(String(h?.content || '')), 500);
+        if (!text) continue;
+        normalizedHistory.push({ role, parts: [{ text }] });
+      }
+
+      if (
+        normalizedHistory.length > 0 &&
+        normalizedHistory[normalizedHistory.length - 1].role === 'user' &&
+        normalizedHistory[normalizedHistory.length - 1].parts[0].text === rawMessage
+      ) {
+        normalizedHistory.pop();
+      }
+
+      if (normalizedHistory.length > 0 && normalizedHistory[0].role === 'model') {
+        normalizedHistory.unshift({
+          role: 'user',
+          parts: [{ text: 'Hello' }],
+        });
+      }
+
+      normalizedHistory.push({
+        role: 'user',
+        parts: [{ text: rawMessage }],
+      });
+
+      const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+      for (const item of normalizedHistory) {
+        const prev = contents[contents.length - 1];
+        if (prev && prev.role === item.role) {
+          prev.parts[0].text = `${prev.parts[0].text}\n${item.parts[0].text}`;
+        } else {
+          contents.push({ role: item.role, parts: [{ text: item.parts[0].text }] });
+        }
+      }
 
       const ai = getGeminiClient();
       if (!ai) {
@@ -317,14 +351,6 @@ async function startServer() {
           model: 'tango-local-knowledge-fallback',
         });
       }
-
-      const contents = [
-        ...safeHistory,
-        {
-          role: 'user',
-          parts: [{ text: rawMessage }],
-        },
-      ];
 
       for (const modelName of TANGO_PUBLIC_GUIDE_MODELS) {
         try {
@@ -355,7 +381,7 @@ async function startServer() {
       });
     } catch {
       return res.json({
-        reply: getPublicGuideLocalAnswer(String(req.body?.message || '')),
+        reply: stripTangoStarsUnicode(getPublicGuideLocalAnswer(String(req.body?.message || ''))),
         model: 'tango-local-knowledge-fallback',
       });
     }

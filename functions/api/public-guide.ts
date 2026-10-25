@@ -3,6 +3,8 @@ import type { Env } from '../env';
 import {
   ACADEMY_KNOWLEDGE_SYSTEM_PROMPT,
   getPublicGuideLocalAnswer,
+  stripTangoStarsUnicode,
+  truncateByCodePoints,
 } from '../../src/data/academyKnowledge';
 
 /**
@@ -24,11 +26,64 @@ const MAX_HISTORY_TURNS = 6;
 const memoryRateMap = new Map<string, { count: number; resetAt: number }>();
 
 function sanitizePlainText(text: string): string {
-  return (text || '')
+  const withoutTags = (text || '')
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<\/?[a-z][^>]*>/gi, '')
-    .replace(/[✦★✨⭐🌟💫]/g, '')
-    .trim();
+    .replace(/<\/?[a-z][^>]*>/gi, '');
+  return stripTangoStarsUnicode(withoutTags).trim();
+}
+
+function buildGeminiContentsFromHistory(
+  rawHistory: Array<{ role?: string; content?: string }> | undefined,
+  currentMessage: string
+): Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> {
+  const turns = Array.isArray(rawHistory) ? rawHistory.slice(-MAX_HISTORY_TURNS) : [];
+  const normalized: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+
+  for (const h of turns) {
+    const role: 'user' | 'model' =
+      h?.role === 'assistant' || h?.role === 'model' ? 'model' : 'user';
+    const text = truncateByCodePoints(sanitizePlainText(String(h?.content || '')), MAX_INPUT_CHARS);
+    if (!text) continue;
+    normalized.push({ role, parts: [{ text }] });
+  }
+
+  // If the client included the current user message at the end of history, remove the duplicate
+  if (
+    normalized.length > 0 &&
+    normalized[normalized.length - 1].role === 'user' &&
+    normalized[normalized.length - 1].parts[0].text === currentMessage
+  ) {
+    normalized.pop();
+  }
+
+  // Gemini REST API requires the conversation to start with a 'user' turn.
+  // If history starts with Tango's welcome message ('model'), prepend an implicit user turn
+  // so Gemini keeps the welcome greeting in context and knows it already introduced itself.
+  if (normalized.length > 0 && normalized[0].role === 'model') {
+    normalized.unshift({
+      role: 'user',
+      parts: [{ text: 'Hello' }],
+    });
+  }
+
+  // Append the current user message
+  normalized.push({
+    role: 'user',
+    parts: [{ text: currentMessage }],
+  });
+
+  // Merge any consecutive turns of the same role so Gemini's alternating-role rule is always satisfied
+  const merged: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+  for (const item of normalized) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.role === item.role) {
+      prev.parts[0].text = `${prev.parts[0].text}\n${item.parts[0].text}`;
+    } else {
+      merged.push({ role: item.role, parts: [{ text: item.parts[0].text }] });
+    }
+  }
+
+  return merged;
 }
 
 async function checkIpRateLimit(
@@ -115,7 +170,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return new Response(
       JSON.stringify({
         reply:
-          "Meow! Tango here 🐾 You've sent quite a few messages in a short time. Please wait a few minutes, or tap **Get Started** above to explore the portal directly!",
+          "Meow! Tango here 🐾 You've sent quite a few messages in a short time. Please wait a few minutes, or tap Get Started above to explore the portal directly!",
         rateLimited: true,
       }),
       {
@@ -145,7 +200,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     );
   }
 
-  const rawMessage = sanitizePlainText(String(body.message || '')).slice(0, MAX_INPUT_CHARS);
+  const rawMessage = truncateByCodePoints(
+    sanitizePlainText(String(body.message || '')),
+    MAX_INPUT_CHARS
+  );
   if (!rawMessage) {
     return new Response(
       JSON.stringify({ error: 'Message to Tango cannot be empty.' }),
@@ -155,16 +213,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
     );
   }
-
-  const safeHistory = Array.isArray(body.history)
-    ? body.history
-        .slice(-MAX_HISTORY_TURNS)
-        .map((h) => ({
-          role: h?.role === 'assistant' || h?.role === 'model' ? 'model' : 'user',
-          parts: [{ text: sanitizePlainText(String(h?.content || '')).slice(0, MAX_INPUT_CHARS) }],
-        }))
-        .filter((h) => h.parts[0].text.length > 0)
-    : [];
 
   const apiKey = (
     env.GEMINI_API_KEY ||
@@ -189,13 +237,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     );
   }
 
-  const contents = [
-    ...safeHistory,
-    {
-      role: 'user',
-      parts: [{ text: rawMessage }],
-    },
-  ];
+  const contents = buildGeminiContentsFromHistory(body.history, rawMessage);
 
   for (const modelName of TANGO_PUBLIC_GUIDE_MODEL_CHAIN) {
     try {

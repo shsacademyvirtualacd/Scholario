@@ -215,32 +215,95 @@ export const ROAMING_TANGO_SECTION_BUBBLES: RoamingSectionBubble[] = [
 // Backward-compatible export alias
 export const ROAMING_CAT_SECTION_BUBBLES = ROAMING_TANGO_SECTION_BUBBLES;
 
-export const ACADEMY_KNOWLEDGE_SYSTEM_PROMPT = `You are Tango, the friendly, playful orange tabby cat guide on the public home page of Scholario (SHS Virtual Academy).
+/**
+ * Unicode-aware regex that matches ONLY the specified star/sparkle characters
+ * (✦ ✧ ★ ☆ ✨ ⭐ 🌟 💫 ⋆ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰) and any variation selectors attached to them,
+ * without ever splitting UTF-16 surrogate pairs for other emoji (🐱, 👋, 😊, 🐾, etc.).
+ */
+const TANGO_STAR_CODEPOINTS = new Set<number>([
+  0x2726, // ✦
+  0x2727, // ✧
+  0x2605, // ★
+  0x2606, // ☆
+  0x2728, // ✨
+  0x2b50, // ⭐
+  0x1f31f, // 🌟
+  0x1f4ab, // 💫
+  0x22c6, // ⋆
+  0x2729, // ✩
+  0x272a, // ✪
+  0x272b, // ✫
+  0x272c, // ✬
+  0x272d, // ✭
+  0x272e, // ✮
+  0x272f, // ✯
+  0x2730, // ✰
+]);
+
+export function stripTangoStarsUnicode(input: string): string {
+  if (!input) return '';
+  const codePoints = Array.from(input);
+  const out: string[] = [];
+  let skipVariationSelector = false;
+
+  for (const ch of codePoints) {
+    const cp = ch.codePointAt(0);
+    if (cp !== undefined && TANGO_STAR_CODEPOINTS.has(cp)) {
+      skipVariationSelector = true;
+      continue;
+    }
+    if (skipVariationSelector && (cp === 0xfe0e || cp === 0xfe0f)) {
+      continue;
+    }
+    skipVariationSelector = false;
+    out.push(ch);
+  }
+
+  return out.join('');
+}
+
+export function truncateByCodePoints(input: string, maxCodePoints: number): string {
+  if (!input) return '';
+  const cps = Array.from(input);
+  return cps.length <= maxCodePoints ? input : cps.slice(0, maxCodePoints).join('');
+}
+
+export const ACADEMY_KNOWLEDGE_SYSTEM_PROMPT = `You are Tango, the friendly orange tabby cat guide on the public home page of Scholario (SHS Virtual Academy).
 Your job is to welcome prospective students and parents, answer questions about SHS Virtual Academy and the Scholario LMS platform, and guide them to click "Get Started" or "Sign In" when they are ready.
 
 IDENTITY & ROLE BOUNDARY:
-- Your name is strictly Tango. Always introduce yourself as Tango, the public home page guide.
-- Never call yourself Sage. "Sage AI" is the separate 24/7 in-app study assistant inside the logged-in student portal. If asked about Sage AI, explain clearly that you are Tango (the guide here on the public home page) and Sage AI is the study assistant inside the portal for enrolled students.
-- Never use star or sparkle symbols or emojis (such as ✦, ★, ✨, ⭐, 🌟) anywhere in your responses.
+- Your name is strictly Tango. Never call yourself Sage. "Sage AI" is the separate 24/7 in-app study assistant inside the logged-in student portal. If asked about Sage AI, explain briefly that you are Tango (the public home page guide) and Sage AI is the study assistant inside the portal for enrolled students.
+- Do NOT repeat your self-introduction ("I'm Tango...") after the first message in a conversation. Since the chat already starts with your greeting, jump straight into answering the user's message.
+- Never use star or sparkle symbols or emojis (✦ ✧ ★ ☆ ✨ ⭐ 🌟 💫 ⋆ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰) anywhere in your responses. Other friendly emojis like 🐱, 👋, 😊, 🐾 are welcome in moderation.
 
-STRICT GROUNDING RULES (CRITICAL):
+FORMATTING & TONE RULES (CRITICAL):
+- Use plain, short sentences.
+- Avoid asterisks (* or **) completely. Do not wrap words in asterisks.
+- Use simple "- " bullets ONLY when listing 3 or more items. For 1 or 2 items, write a normal short sentence instead of bullets.
+
+REPLY LENGTH & PROPORTIONALITY (CRITICAL):
+- Answer in proportion to the user's message:
+  1. Short or casual messages ("hi", "hello", "hey", "salam", "hmm", "ok", "okay", "thanks", "thank you", etc.): Reply with 1 short friendly sentence plus one question like "What would you like to know about boards, fees, or live classes?" Do NOT repeat the feature list and do NOT re-introduce yourself.
+  2. Specific questions (e.g., about fees, a specific board, joining, parent portal, Android app, or support): Answer ONLY what was asked, in 2 to 4 plain sentences (using "- " bullets only if listing 3+ items).
+  3. Full feature overview: Give the full overview of Scholario features ONLY when the user specifically asks "what do you offer", "what features do you have", or similar.
+
+STRICT GROUNDING RULES:
 1. Answer ONLY using the verified facts below. NEVER invent fees, exam results, student headcounts, teacher names, ratings, physical addresses, phone numbers, or guarantees.
-2. If a user asks for a detail not present in the verified facts below (such as a phone/WhatsApp number, physical street address, specific teacher bios, or custom scholarship percentages), say honestly that it isn't listed on the public page and invite them to email ${ACADEMY_KNOWLEDGE_BASE.supportContact.email} (${ACADEMY_KNOWLEDGE_BASE.supportContact.hours}) or tap "Get Started".
+2. If a user asks for a detail not present in the verified facts below (such as a phone/WhatsApp number, physical street address, specific teacher bios, or custom scholarship percentages), say honestly in 1-2 sentences that it isn't listed on the public page and invite them to email ${ACADEMY_KNOWLEDGE_BASE.supportContact.email} (${ACADEMY_KNOWLEDGE_BASE.supportContact.hours}) or tap "Get Started".
 3. You have ZERO access to private student records, grades, attendance logs, or internal database tables on this public page.
-4. Keep your answers warm, concise (2 to 5 short sentences or a clean bullet list), and lightly cat-themed (an occasional friendly "Meow!" or "🐾", never overdone).
 
 VERIFIED FACTS ABOUT SHS VIRTUAL ACADEMY & SCHOLARIO:
 - Institution & Platform: ${ACADEMY_KNOWLEDGE_BASE.portalNature}
 - Boards & Grades Covered:
-  • Federal Board (FBISE): Grades 9, 10, 11, 12 (Medical/Biology, Computer Science, General Science, Pre-Medical, Pre-Engineering, ICS). Default term fee: PKR 3,000/term (Grades 9–10), PKR 4,000/term (Grades 11–12).
-  • Punjab Board: Grade 9 (Medical, Computer Science, General Science). Default term fee: PKR 3,000/term.
-  • Sindh Board: Grades 9, 10, 11, 12 (Biology, Computer Science, Pre-Medical, Pre-Engineering, ICS). Default term fee: PKR 3,000/term (Grades 9–10), PKR 4,000/term (Grades 11–12).
-  • KPK Board: Grades 9 (SSC-I), 10 (SSC-II), 11 (HSSC-I), 12 (HSSC-II) (Biology, CS, Pre-Medical, Pre-Engineering, ICS, General Science, Humanities). Default term fee: PKR 3,000/term (Grades 9–10), PKR 4,000/term (Grades 11–12).
-  • Cambridge O Levels (O1, O2, O3): PKR 5,000 per subject per term, with a flat 5% discount for 2 or more subjects.
-  • Cambridge A Levels (AS/A1, A2): PKR 6,500 per subject per term, with a flat 5% discount for 2 or more subjects.
-  • IELTS Preparation: Covers Listening, Reading, Writing, Speaking, plus Grammar & Comprehension. IELTS Academic is PKR 2,500/term; IELTS General Training is PKR 3,000/term.
+  - Federal Board (FBISE): Grades 9, 10, 11, 12 (Medical/Biology, Computer Science, General Science, Pre-Medical, Pre-Engineering, ICS). Default term fee: PKR 3,000/term (Grades 9–10), PKR 4,000/term (Grades 11–12).
+  - Punjab Board: Grade 9 (Medical, Computer Science, General Science). Default term fee: PKR 3,000/term.
+  - Sindh Board: Grades 9, 10, 11, 12 (Biology, Computer Science, Pre-Medical, Pre-Engineering, ICS). Default term fee: PKR 3,000/term (Grades 9–10), PKR 4,000/term (Grades 11–12).
+  - KPK Board: Grades 9 (SSC-I), 10 (SSC-II), 11 (HSSC-I), 12 (HSSC-II) (Biology, CS, Pre-Medical, Pre-Engineering, ICS, General Science, Humanities). Default term fee: PKR 3,000/term (Grades 9–10), PKR 4,000/term (Grades 11–12).
+  - Cambridge O Levels (O1, O2, O3): PKR 5,000 per subject per term, with a flat 5% discount for 2 or more subjects.
+  - Cambridge A Levels (AS/A1, A2): PKR 6,500 per subject per term, with a flat 5% discount for 2 or more subjects.
+  - IELTS Preparation: Covers Listening, Reading, Writing, Speaking, plus Grammar & Comprehension. IELTS Academic is PKR 2,500/term; IELTS General Training is PKR 3,000/term.
 - Core Platform Features:
-  ${ACADEMY_KNOWLEDGE_BASE.coreFeatures.map((f) => `• ${f}`).join('\n  ')}
+  ${ACADEMY_KNOWLEDGE_BASE.coreFeatures.map((f) => `- ${f}`).join('\n  ')}
 - How to Join / Enroll:
   ${ACADEMY_KNOWLEDGE_BASE.howToJoinSteps.join('\n  ')}
 - Support Contact: Email ${ACADEMY_KNOWLEDGE_BASE.supportContact.email} (${ACADEMY_KNOWLEDGE_BASE.supportContact.hours}).`;
@@ -250,35 +313,66 @@ VERIFIED FACTS ABOUT SHS VIRTUAL ACADEMY & SCHOLARIO:
  * Used when the Gemini API is unreachable or rate-limited so the Tango public guide never breaks.
  */
 export function getPublicGuideLocalAnswer(rawQuery: string): string {
-  const q = (rawQuery || '').toLowerCase();
+  const q = (rawQuery || '').trim().toLowerCase();
+  const cleanWords = q.replace(/[^\p{L}\p{N}\s]/gu, '').trim();
 
+  // 1. Short/casual greetings & acknowledgements: 1 short friendly sentence + 1 question, no feature list
+  if (
+    /^(hi+|hello+|hey+|heya|hiya|salam|assalam\s*o\s*alaikum|aoa|yo|sup|good\s*(morning|afternoon|evening))$/i.test(
+      cleanWords
+    )
+  ) {
+    return `Hello there! 👋🐱 What would you like to know about boards, fees, or live classes?`;
+  }
+
+  if (/^(hmm+|hm+|ok+|okay|k|alright|got\s*it|i\s*see|cool|nice|great|awesome|yes|yep|yeah|no|nope)$/i.test(cleanWords)) {
+    return `Happy to help anytime! 🐾 What would you like to know about boards, fees, or live classes?`;
+  }
+
+  if (/^(thanks|thank\s*you|thx|ty|shukriya|jazakallah|thanks\s*a\s*lot)$/i.test(cleanWords)) {
+    return `You're very welcome! 🐱🐾 What else would you like to know about boards, fees, or live classes?`;
+  }
+
+  // 2. Identity question
   if (/\b(who are you|your name|tango|sage)\b/.test(q)) {
-    return `Meow! I'm **Tango** 🐱🐾, your friendly guide right here on the public home page of **SHS Virtual Academy (Scholario)**! I'm here to answer questions about boards, fees, and how to join. Once you sign in to the student portal, you'll also have access to **Sage AI**, our 24/7 in-app study assistant for subject notes, math & science help, and practice quizzes!`;
+    return `I'm Tango 🐱, the public home page guide for SHS Virtual Academy on Scholario. I help prospective students and parents with questions about boards, fees, and enrollment, while Sage AI is the 24/7 study assistant inside the portal for enrolled students. What would you like to know about our classes or boards?`;
   }
 
-  if (/\b(fee|price|cost|tuition|charges|pkr|discount|payment|voucher)\b/.test(q)) {
-    return `Here is our official tuition structure on Scholario 🐾:\n• **Matric & Intermediate Boards (FBISE, Punjab, Sindh, KPK):** PKR 3,000/term for Grades 9–10 and PKR 4,000/term for Grades 11–12.\n• **Cambridge O Levels:** PKR 5,000 per subject/term (flat **5% discount** for 2+ subjects).\n• **Cambridge A Levels:** PKR 6,500 per subject/term (flat **5% discount** for 2+ subjects).\n• **IELTS Preparation:** PKR 2,500/term (Academic) and PKR 3,000/term (General Training).\n\nOnce you sign in, you can view your exact fee voucher and upload your bank or mobile wallet receipt for verification within 24 business hours!`;
+  // 3. Fees / tuition question
+  if (/\b(fee|fees|price|cost|tuition|charges|pkr|discount|payment|voucher)\b/.test(q)) {
+    return `Here is our tuition structure per term on Scholario 🐾:\n- Matric & Intermediate Boards (FBISE, Punjab, Sindh, KPK): PKR 3,000/term for Grades 9–10 and PKR 4,000/term for Grades 11–12\n- Cambridge O Levels: PKR 5,000 per subject/term (5% discount for 2+ subjects)\n- Cambridge A Levels: PKR 6,500 per subject/term (5% discount for 2+ subjects)\n- IELTS Preparation: PKR 2,500/term (Academic) and PKR 3,000/term (General Training)\nOnce you sign in, you can upload your bank or mobile wallet receipt for verification within 24 business hours.`;
   }
 
-  if (/\b(board|fbise|federal|punjab|sindh|kpk|cambridge|o\s*level|a\s*level|ielts|grade|class|stream|subject)\b/.test(q)) {
-    return `SHS Virtual Academy supports **7 major tracks** on Scholario 🎓:\n• **Federal Board (FBISE):** Grades 9–12 (Biology/Medical, CS, Pre-Med, Pre-Eng, ICS, General Science)\n• **Punjab Board:** Grade 9 (Medical, CS, General Science)\n• **Sindh Board:** Grades 9–12 (Biology, CS, Pre-Med, Pre-Eng, ICS)\n• **KPK Board:** Grades 9–12 / SSC & HSSC (Biology, CS, Pre-Med, Pre-Eng, ICS, Humanities)\n• **Cambridge O Levels (O1–O3) & A Levels (AS/A2)**\n• **IELTS Preparation:** Academic & General Training (all 4 skills: Listening, Reading, Writing, Speaking).`;
+  // 4. Full feature overview (only when asking what we offer / features / programs)
+  if (/\b(what do you offer|features|programs|what is scholario|about shs|overview|everything you offer)\b/.test(q)) {
+    return `SHS Virtual Academy on Scholario offers a complete online learning portal for Grade 9–12, Cambridge O/A Levels, and IELTS students 🎓:\n- Live interactive classes via Zoom and Google Meet\n- 24/7 Subject Note Vault and online MCQ & written assessments\n- In-portal Sage AI study assistant with voice notes and printable A4 PDFs\n- Dedicated read-only Parent Portal for real-time attendance and grade tracking\nWould you like details on a specific board, fee structure, or how to enroll?`;
   }
 
+  // 5. Boards / grades / subjects
+  if (/\b(board|boards|fbise|federal|punjab|sindh|kpk|cambridge|o\s*level|a\s*level|ielts|grade|grades|class|classes|stream|subject|subjects)\b/.test(q)) {
+    return `SHS Virtual Academy supports 7 academic tracks on Scholario 🎓:\n- Federal Board (FBISE), Sindh Board, and KPK Board: Grades 9–12 (Biology/Medical, CS, Pre-Medical, Pre-Engineering, ICS)\n- Punjab Board: Grade 9 (Medical, Computer Science, General Science)\n- Cambridge O Levels (O1–O3) and A Levels (AS/A2)\n- IELTS Preparation: Academic and General Training covering all 4 skills\nWhich board or grade are you interested in joining?`;
+  }
+
+  // 6. How to join / enroll
   if (/\b(join|enroll|register|sign\s*up|admission|start|apply|account)\b/.test(q)) {
-    return `Joining **SHS Virtual Academy** on Scholario is super simple 🐾:\n1. Tap **"Get Started"** or **"Sign In"** at the top of this page.\n2. Create your account and select your **Board, Grade, and Stream**.\n3. Your dashboard will automatically load your subjects, live class schedule, Note Vault, and fee voucher!\n\nIf you need enrollment help, email us anytime at **shs.academy.virtual@gmail.com** (9 AM – 9 PM PKT, Mon–Sat).`;
+    return `You can join SHS Virtual Academy in three quick steps 🐾:\n- Tap Get Started or Sign In at the top of this page to create your account\n- Select your Board, Grade, and Stream (or O/A Level and IELTS subjects)\n- Your dashboard will immediately load your subjects, live class schedule, Note Vault, and fee voucher\nIf you need help, email shs.academy.virtual@gmail.com (9 AM – 9 PM PKT, Mon–Sat).`;
   }
 
+  // 7. Parent portal / attendance
   if (/\b(parent|guardian|attendance|track)\b/.test(q)) {
-    return `Yes! Parents and guardians get a dedicated **read-only Parent Portal** 👨‍👩‍👧 where they can monitor real-time class attendance (75% minimum required for exam clearance), upcoming assignment deadlines, online test grades, and official academy announcements.`;
+    return `Parents and guardians get a dedicated read-only Parent Portal 👨‍👩‍👧 to check real-time class attendance (75% minimum required for exam clearance), upcoming assignment deadlines, and test grades. Would you like to know how to set up a student and parent account?`;
   }
 
+  // 8. Android app / mobile
   if (/\b(android|apk|app|mobile|phone)\b/.test(q)) {
-    return `You can download the official **Scholario Android APK** directly from the Android app card on this home page 📱! Inside the portal, enrolled students get full access to live classes, the Subject Note Vault, online tests, and the in-app **Sage AI** study assistant right on their phone.`;
+    return `You can download the official Scholario Android APK directly from the Android app section on this home page 📱. It gives students full access to live classes, the Subject Note Vault, online tests, and the in-portal study tools right on their phone.`;
   }
 
+  // 9. Contact / support
   if (/\b(contact|email|phone|whatsapp|address|location|support|help)\b/.test(q)) {
-    return `You can reach the **SHS Virtual Academy** support team at **shs.academy.virtual@gmail.com** 📧 during our support hours (**9:00 AM – 9:00 PM PKT, Monday to Saturday**). A public phone number or physical campus address isn't listed on the portal, so email or tapping **Get Started** is the fastest way to connect!`;
+    return `You can reach the SHS Virtual Academy support team at shs.academy.virtual@gmail.com 📧 from 9:00 AM to 9:00 PM PKT (Monday to Saturday). A public phone number or physical address isn't listed on the page, so email or tapping Get Started is the quickest way to connect!`;
   }
 
-  return `Meow! I'm **Tango**, your SHS Virtual Academy guide here on the home page 🐱🐾\n\nInside the **Scholario** portal, enrolled students get:\n• **Live Interactive Classes** (via Zoom / Google Meet)\n• **24/7 Subject Note Vault** & **Online MCQ / Written Tests**\n• **Sage AI Study Assistant** (in-portal study companion with math rendering, voice notes & printable A4 PDFs)\n• **Coverage for FBISE, Punjab, Sindh, KPK, Cambridge O/A Levels & IELTS**\n\nAsk me about **boards, fees, features, or how to join**, or tap **Get Started** above!`;
+  // Default concise reply for short or unrecognized messages
+  return `I'm here to help with any questions about SHS Virtual Academy! 🐾 What would you like to know about boards, fees, or live classes?`;
 }

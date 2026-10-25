@@ -16,6 +16,8 @@ import {
   ROAMING_TANGO_SECTION_BUBBLES,
   RoamingSectionBubble,
   getPublicGuideLocalAnswer,
+  stripTangoStarsUnicode,
+  truncateByCodePoints,
 } from '../../data/academyKnowledge';
 
 // ─── Tunable Turtle-Speed Roaming Constants ─────────────────────────────────
@@ -85,10 +87,10 @@ function speakTangoVoice(
   }
   try {
     window.speechSynthesis.cancel();
-    const cleanText = rawText
+    const cleanText = stripTangoStarsUnicode(rawText)
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/[*_#`~]/g, '')
-      .replace(/[🐱🐾🎓👨‍👩‍👧🚀📚💡📱📧]/gu, '')
+      .replace(/[🐱🐾🎓👨‍👩‍👧🚀📚💡📱📧👋😊]/gu, '')
       .trim();
     if (!cleanText) {
       onEnd?.();
@@ -1405,9 +1407,100 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
     }
   }, [speakerEnabled, chatOpen]);
 
+  // Safe React markdown renderer for Tango chat bubbles:
+  // - Renders **bold** (and *bold*) as real <strong> text
+  // - Renders "• " and "- " lines as a clean <ul><li> list
+  // - Ensures no literal "*" or "**" characters are ever visible
+  const renderTangoInline = (lineText: string, keyPrefix: string): React.ReactNode[] => {
+    const cleaned = stripTangoStarsUnicode(lineText);
+    const nodes: React.ReactNode[] = [];
+    const boldRegex = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let partIdx = 0;
+
+    while ((match = boldRegex.exec(cleaned)) !== null) {
+      if (match.index > lastIndex) {
+        const plainBefore = cleaned.slice(lastIndex, match.index).replace(/\*/g, '');
+        if (plainBefore) {
+          nodes.push(<React.Fragment key={`${keyPrefix}-t-${partIdx++}`}>{plainBefore}</React.Fragment>);
+        }
+      }
+      const boldContent = (match[1] ?? match[2] ?? '').replace(/\*/g, '');
+      if (boldContent) {
+        nodes.push(
+          <strong key={`${keyPrefix}-b-${partIdx++}`} className="font-extrabold">
+            {boldContent}
+          </strong>
+        );
+      }
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < cleaned.length) {
+      const remaining = cleaned.slice(lastIndex).replace(/\*/g, '');
+      if (remaining) {
+        nodes.push(<React.Fragment key={`${keyPrefix}-t-${partIdx++}`}>{remaining}</React.Fragment>);
+      }
+    }
+
+    return nodes.length > 0 ? nodes : [cleaned.replace(/\*/g, '')];
+  };
+
+  const renderTangoMessageContent = (rawContent: string): React.ReactNode => {
+    const safeText = stripTangoStarsUnicode(rawContent || '');
+    const lines = safeText.split(/\r?\n/);
+    const blocks: React.ReactNode[] = [];
+    let pendingBullets: string[] = [];
+
+    const flushBullets = (keyIndex: number) => {
+      if (pendingBullets.length === 0) return;
+      blocks.push(
+        <ul key={`ul-${keyIndex}`} className="list-disc pl-4 my-1 space-y-1">
+          {pendingBullets.map((item, idx) => (
+            <li key={`li-${keyIndex}-${idx}`} className="leading-relaxed">
+              {renderTangoInline(item, `li-${keyIndex}-${idx}`)}
+            </li>
+          ))}
+        </ul>
+      );
+      pendingBullets = [];
+    };
+
+    lines.forEach((rawLine, lineIdx) => {
+      const trimmedLine = rawLine.trim();
+      const bulletMatch = /^(?:[•\-]|\*(?!\*))\s+(.*)$/.exec(trimmedLine);
+      if (bulletMatch) {
+        pendingBullets.push(bulletMatch[1]);
+        return;
+      }
+
+      flushBullets(lineIdx);
+
+      if (!trimmedLine) {
+        return;
+      }
+
+      blocks.push(
+        <p key={`p-${lineIdx}`} className={blocks.length > 0 ? 'mt-1.5 leading-relaxed' : 'leading-relaxed'}>
+          {renderTangoInline(trimmedLine, `p-${lineIdx}`)}
+        </p>
+      );
+    });
+
+    flushBullets(lines.length);
+
+    return blocks.length > 0 ? blocks : renderTangoInline(safeText, 'fallback');
+  };
+
   const sendPublicGuideQuestion = async (questionText: string) => {
-    const trimmed = questionText.trim().slice(0, 500);
+    const trimmed = truncateByCodePoints(stripTangoStarsUnicode(questionText.trim()), 500);
     if (!trimmed || isSending) return;
+
+    const recentHistory = messages.slice(-6).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
     const userMsg: TangoChatMessage = {
       id: `u-${Date.now()}`,
@@ -1415,8 +1508,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       content: trimmed,
     };
 
-    const nextHistory = [...messages, userMsg];
-    setMessages(nextHistory);
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsSending(true);
     setTangoState('thinking');
@@ -1427,19 +1519,14 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed,
-          history: nextHistory.slice(-6).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          history: recentHistory,
         }),
       });
 
       const data = (await res.json()) as { reply?: string };
-      const replyText =
-        (data?.reply?.trim() || getPublicGuideLocalAnswer(trimmed)).replace(
-          /[✦★✨⭐🌟💫]/g,
-          ''
-        );
+      const replyText = stripTangoStarsUnicode(
+        data?.reply?.trim() || getPublicGuideLocalAnswer(trimmed)
+      );
 
       const botMsg: TangoChatMessage = {
         id: `a-${Date.now()}`,
@@ -1458,7 +1545,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         );
       }
     } catch {
-      const fallbackReply = getPublicGuideLocalAnswer(trimmed).replace(/[✦★✨⭐🌟💫]/g, '');
+      const fallbackReply = stripTangoStarsUnicode(getPublicGuideLocalAnswer(trimmed));
       const botMsg: TangoChatMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
@@ -1714,13 +1801,13 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
                 className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed ${
                     m.role === 'user'
                       ? 'bg-[#F4C430] text-black font-semibold rounded-br-xs'
                       : 'bg-zinc-900/95 text-zinc-100 border border-zinc-800 rounded-bl-xs'
                   }`}
                 >
-                  {m.content}
+                  {renderTangoMessageContent(m.content)}
                 </div>
               </div>
             ))}
@@ -1752,7 +1839,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
                 type="text"
                 data-testid="tango-guide-input"
                 value={input}
-                onChange={(e) => setInput(e.target.value.slice(0, 500))}
+                onChange={(e) => setInput(truncateByCodePoints(e.target.value, 500))}
                 maxLength={500}
                 placeholder="Ask Tango about boards, fees, live classes..."
                 aria-label="Ask Tango a question about SHS Virtual Academy"
