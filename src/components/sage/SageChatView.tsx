@@ -76,6 +76,13 @@ import {
 } from './useSageAvatarState';
 
 import { Sage3DAvatar } from './Sage3DAvatar';
+import {
+  detectThoughtCategory,
+  getThoughtReactionLine,
+  getThinkingThoughtLine,
+  getCompletionThoughtLine,
+  getIdleThoughtLine,
+} from './sageThoughtLines';
 
 function formatSageModelLabel(modelId: string): string {
   const id = (modelId || '').toLowerCase();
@@ -844,24 +851,39 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
   const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeed>(1);
   const [speechVolume, setSpeechVolume] = useState<number>(0);
 
+  // ── Live Thought Bubble State ──
+  const [currentThoughtText, setCurrentThoughtText] = useState<string | null>(null);
+  const [currentThoughtMode, setCurrentThoughtMode] = useState<
+    'typing' | 'thinking' | 'streaming' | 'done' | 'idle' | null
+  >(null);
+  const [isThoughtTyping, setIsThoughtTyping] = useState(false);
+  const [streamingSnippet, setStreamingSnippet] = useState<string>('');
+  const typingDebounceTimerRef = useRef<number | null>(null);
+  const thoughtHideTimerRef = useRef<number | null>(null);
+  const prevStreamingTokensRef = useRef<boolean>(false);
+
   const isStreamingTokens = Boolean(
     streamingId && messages.find((m) => m.id === streamingId)?.content
   );
   const isWaitingForFirstToken =
     (isLoading && !isStreamingTokens) || isTranscribing;
 
+  // While user types OR while answer is streaming in, avatar is typing on its pad
+  const isWritingOrTyping =
+    (input.trim().length > 0 && !isLoading && !isRecording) || isStreamingTokens;
+
   const avatarController = useSageAvatarController({
-    isTyping: input.trim().length > 0 && !isLoading && !isRecording,
+    isTyping: isWritingOrTyping,
     isRecording,
     isThinking: isWaitingForFirstToken,
-    isSpeaking: speechStatus === 'playing' || isStreamingTokens,
+    isSpeaking: speechStatus === 'playing',
     audioLevel:
       speechStatus === 'playing'
         ? speechVolume
         : isRecording
         ? recordingLevel
         : isStreamingTokens
-        ? 0.55
+        ? 0.45
         : 0,
     userId: profile?.id,
   });
@@ -1050,14 +1072,104 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     scrollToBottom();
   }, [messages, isLoading, isTranscribing]);
 
-  // Auto-resize textarea
+  // Auto-resize textarea & debounced live thought reactions
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
     }
+
+    if (val.trim().length > 0) {
+      avatarController.wakeUp();
+      setIsThoughtTyping(true);
+      if (typingDebounceTimerRef.current !== null) {
+        window.clearTimeout(typingDebounceTimerRef.current);
+      }
+      if (thoughtHideTimerRef.current !== null) {
+        window.clearTimeout(thoughtHideTimerRef.current);
+      }
+
+      typingDebounceTimerRef.current = window.setTimeout(() => {
+        const cat = detectThoughtCategory(val);
+        const line = getThoughtReactionLine(avatarController.characterId, cat);
+        setCurrentThoughtText(line);
+        setCurrentThoughtMode('typing');
+        setIsThoughtTyping(false);
+
+        // Hide bubble after 4.5 seconds if user stops typing
+        thoughtHideTimerRef.current = window.setTimeout(() => {
+          setCurrentThoughtText(null);
+          setCurrentThoughtMode(null);
+        }, 4500);
+      }, 260);
+    } else {
+      setIsThoughtTyping(false);
+      setCurrentThoughtText(null);
+      setCurrentThoughtMode(null);
+    }
   };
+
+  // Rotate thinking thought lines while waiting for first token
+  useEffect(() => {
+    if (!isWaitingForFirstToken) return;
+    const interval = window.setInterval(() => {
+      setCurrentThoughtText(getThinkingThoughtLine(avatarController.characterId));
+    }, 2800);
+    return () => window.clearInterval(interval);
+  }, [isWaitingForFirstToken, avatarController.characterId]);
+
+  // Update streaming snippet while answer is streaming in
+  useEffect(() => {
+    if (isStreamingTokens && streamingId) {
+      const streamingMsg = messages.find((m) => m.id === streamingId);
+      if (streamingMsg?.content) {
+        setCurrentThoughtMode('streaming');
+        const words = streamingMsg.content.trim().split(/\s+/);
+        const lastWords = words.slice(-7).join(' ');
+        setStreamingSnippet(lastWords);
+        setCurrentThoughtText('Penning the solution...');
+      }
+    }
+  }, [isStreamingTokens, streamingId, messages]);
+
+  // Completion happy nod and line when answer finishes streaming
+  useEffect(() => {
+    if (prevStreamingTokensRef.current && !isStreamingTokens && !isLoading) {
+      avatarController.triggerNod();
+      setCurrentThoughtMode('done');
+      setCurrentThoughtText(getCompletionThoughtLine(avatarController.characterId));
+      setStreamingSnippet('');
+      if (thoughtHideTimerRef.current !== null) {
+        window.clearTimeout(thoughtHideTimerRef.current);
+      }
+      thoughtHideTimerRef.current = window.setTimeout(() => {
+        setCurrentThoughtText(null);
+        setCurrentThoughtMode(null);
+      }, 4200);
+    }
+    prevStreamingTokensRef.current = isStreamingTokens;
+  }, [isStreamingTokens, isLoading, avatarController]);
+
+  // Rare calm study tip thought bubble during idle (every ~45s)
+  useEffect(() => {
+    if (isLoading || isRecording || input.trim().length > 0) return;
+    const idleInterval = window.setInterval(() => {
+      if (!isLoading && !isRecording && input.trim().length === 0) {
+        setCurrentThoughtMode('idle');
+        setCurrentThoughtText(getIdleThoughtLine(avatarController.characterId));
+        if (thoughtHideTimerRef.current !== null) {
+          window.clearTimeout(thoughtHideTimerRef.current);
+        }
+        thoughtHideTimerRef.current = window.setTimeout(() => {
+          setCurrentThoughtText(null);
+          setCurrentThoughtMode(null);
+        }, 5000);
+      }
+    }, 45000);
+    return () => window.clearInterval(idleInterval);
+  }, [isLoading, isRecording, input, avatarController.characterId]);
 
   const handleClear = () => {
     if (abortControllerRef.current) {
@@ -1432,6 +1544,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
     if (textToSend) {
       setLastSentPrompt(textToSend);
+      const detectedCat = detectThoughtCategory(textToSend);
+      setCurrentThoughtMode('thinking');
+      setCurrentThoughtText(getThinkingThoughtLine(avatarController.characterId, detectedCat));
+      setIsThoughtTyping(false);
     }
     setErrorMsg(null);
     const currentAtt = pendingAttachment
@@ -1856,23 +1972,33 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           </div>
         )}
 
-        {/* ── Chat Messages Stream (Avatar sits directly on chat area with zero container/strip) ── */}
+        {/* ── Pinned Avatar Zone (Horizontal Center, Always Visible, Never Scrolls Away) ── */}
+        <div className="shrink-0 flex flex-col items-center justify-center px-3 pt-1.5 pb-1 z-20 pointer-events-none transition-all duration-300">
+          <div className="pointer-events-auto flex flex-col items-center w-full">
+            <Sage3DAvatar
+              state={avatarController.state}
+              characterId={avatarController.characterId}
+              headerCanvasRef={avatarController.headerCanvasRef}
+              audioLevel={avatarController.audioLevel}
+              compact={isConversationStarted}
+              greetingTitle={
+                avatarController.character.name === 'Sage'
+                  ? `Hi ${greetingName}, I'm Sage!`
+                  : `Hi ${greetingName}, I'm ${avatarController.character.name}!`
+              }
+              statusLabel={avatarController.stageCaption}
+              onPoke={() => avatarController.triggerPoke()}
+              pokeCount={avatarController.pokeCount}
+              thoughtText={currentThoughtText}
+              thoughtMode={currentThoughtMode}
+              isTypingTransition={isThoughtTyping}
+              streamingSnippet={streamingSnippet}
+            />
+          </div>
+        </div>
+
+        {/* ── Chat Messages Stream (Scrolls underneath without colliding with the avatar) ── */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
-          <Sage3DAvatar
-            state={avatarController.state}
-            characterId={avatarController.characterId}
-            headerCanvasRef={avatarController.headerCanvasRef}
-            audioLevel={avatarController.audioLevel}
-            compact={isConversationStarted}
-            greetingTitle={
-              avatarController.character.name === 'Sage'
-                ? `Hi ${greetingName}, I'm Sage!`
-                : `Hi ${greetingName}, I'm ${avatarController.character.name}!`
-            }
-            statusLabel={avatarController.stageCaption}
-            onPoke={() => avatarController.triggerPoke()}
-            pokeCount={avatarController.pokeCount}
-          />
 
           {messages.map((msg) => {
           const isUser = msg.role === 'user';
@@ -2598,25 +2724,44 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       toast.success(`${charItem.name} (${charItem.title}) selected!`);
                       setAvatarPickerOpen(false);
                     }}
+                    style={
+                      isSelected
+                        ? {
+                            borderColor: charItem.accentColor,
+                            boxShadow: `0 0 0 2px ${charItem.accentColor}55`,
+                            backgroundColor: `${charItem.accentColor}12`,
+                          }
+                        : {}
+                    }
                     className={`group relative flex flex-col items-center text-center p-3.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-[#F4C430] bg-amber-50/60 dark:bg-amber-950/25 ring-2 ring-[#F4C430]/70 shadow-sm'
-                        : 'border-zinc-200 dark:border-[#2A2A34] bg-zinc-50/70 dark:bg-[#1E1E26] hover:border-[#F4C430]/70 hover:bg-amber-50/30 dark:hover:bg-[#252530]'
+                        ? ''
+                        : 'border-zinc-200 dark:border-[#2A2A34] bg-zinc-50/70 dark:bg-[#1E1E26] hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-100/50 dark:hover:bg-[#252530]'
                     }`}
                   >
                     {/* Badge */}
                     <span
+                      style={
+                        isSelected
+                          ? { backgroundColor: charItem.accentColor, color: '#111111' }
+                          : {}
+                      }
                       className={`absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
                         isSelected
-                          ? 'bg-[#F4C430] text-[#111111]'
+                          ? ''
                           : 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
                       }`}
                     >
-                      {isSelected ? 'Selected' : charItem.badge}
+                      {isSelected ? 'Active' : charItem.badge}
                     </span>
 
                     {/* Character Animated Preview */}
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-[#FFFDF8] to-[#F5ECDA] dark:from-[#262420] dark:to-[#1B1A17] border border-[#E8DEC8] dark:border-[#3A352A] flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                    <div
+                      style={{
+                        borderColor: isSelected ? `${charItem.accentColor}66` : undefined,
+                      }}
+                      className="w-16 h-16 rounded-2xl bg-gradient-to-b from-[#FFFDF8] to-[#F5ECDA] dark:from-[#262420] dark:to-[#1B1A17] border border-[#E8DEC8] dark:border-[#3A352A] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-xs"
+                    >
                       <SageCharacterSvg
                         characterId={charItem.id}
                         avatarState={isSelected ? 'poke' : 'idle'}
@@ -2628,11 +2773,14 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                     <div className="font-extrabold text-xs sm:text-sm text-zinc-900 dark:text-white">
                       {charItem.name}
                     </div>
-                    <div className="text-[11px] font-semibold text-amber-700 dark:text-[#F4C430] mt-0.5">
-                      {charItem.title}
+                    <div
+                      style={{ color: charItem.accentColor }}
+                      className="text-[11px] font-bold mt-0.5"
+                    >
+                      {charItem.role}
                     </div>
                     <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 leading-snug">
-                      {charItem.tagline}
+                      {charItem.personality}
                     </p>
                   </button>
                 );
