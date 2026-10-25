@@ -516,12 +516,12 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       resizeObserver?.disconnect();
       renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
 
-      scene.traverse((obj) => {
+      scene.traverse((obj: THREE.Object3D) => {
         if ((obj as THREE.Mesh).isMesh) {
           const mesh = obj as THREE.Mesh;
           mesh.geometry?.dispose();
           if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((m) => m.dispose());
+            mesh.material.forEach((m: THREE.Material) => m.dispose());
           } else {
             mesh.material?.dispose();
           }
