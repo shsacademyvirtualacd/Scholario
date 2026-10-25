@@ -226,8 +226,13 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
     const height = Math.max(container.clientHeight, 68);
     renderer.setPixelRatio(currentDpr);
     renderer.setSize(width, height);
+    renderer.setClearColor(0x000000, 0);
+    renderer.setClearAlpha(0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.18;
+    renderer.domElement.style.background = 'transparent';
+    renderer.domElement.style.backgroundColor = 'transparent';
+    renderer.domElement.style.display = 'block';
 
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
@@ -1584,111 +1589,96 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
 
   const activeChar = getSageCharacterById(characterId);
 
+  const resolvedThoughtText =
+    thoughtText ||
+    (state === 'speaking'
+      ? 'Speaking step by step...'
+      : state === 'listening'
+      ? 'Listening to voice note...'
+      : null);
+
+  const resolvedThoughtMode =
+    thoughtMode ||
+    (state === 'speaking'
+      ? 'streaming'
+      : state === 'thinking'
+      ? 'thinking'
+      : state === 'listening'
+      ? 'typing'
+      : null);
+
+  const hasActiveThought = Boolean(
+    (resolvedThoughtText && resolvedThoughtText.trim().length > 0) || isTypingTransition
+  );
+
   return (
     <div
       data-testid="sage-stage-avatar"
       data-compact={compact ? 'true' : 'false'}
       data-character={characterId}
-      className={
-        compact
-          ? 'relative flex items-center justify-center gap-2.5 sm:gap-3 py-1 select-none transition-all duration-300 w-full max-w-2xl mx-auto'
-          : 'relative flex flex-col items-center justify-center py-2 px-4 select-none transition-all duration-300 w-full max-w-md mx-auto'
-      }
+      className="relative flex flex-col items-center justify-center w-full mx-auto bg-transparent border-0 shadow-none select-none pointer-events-none transition-all duration-300"
     >
-      <div className="relative flex items-center justify-center">
-        {/* Avatar Viewport (Pinned, Frameless, No Background Box) */}
-        <div
-          onClick={onPoke}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') onPoke?.();
-          }}
-          title={`Tap ${activeChar.name} to say hello!`}
-          style={
-            compact
-              ? { width: '76px', height: '76px' }
-              : { width: '180px', height: '180px' }
-          }
-          className={`relative flex items-center justify-center shrink-0 cursor-pointer transition-transform duration-200 ${
-            isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'
-          }`}
-        >
-          {/* Persistent WebGL Mount */}
-          {webglSupported && (
-            <div
-              ref={mountRef}
-              className={`w-full h-full relative z-10 transition-opacity duration-200 ${
-                webglReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-            />
-          )}
+      {/* Centered Frameless Avatar Viewport */}
+      <div
+        onClick={onPoke}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') onPoke?.();
+        }}
+        title={`Tap ${activeChar.name} to say hello!`}
+        className={`pointer-events-auto relative flex items-center justify-center shrink-0 mx-auto cursor-pointer bg-transparent border-0 shadow-none transition-all duration-200 ${
+          compact
+            ? 'w-[80px] h-[80px] sm:w-[88px] sm:h-[88px]'
+            : 'w-[160px] h-[160px] sm:w-[180px] sm:h-[180px]'
+        } ${isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'}`}
+      >
+        {/* Persistent Transparent WebGL Mount */}
+        {webglSupported && (
+          <div
+            ref={mountRef}
+            className={`w-full h-full relative z-10 bg-transparent border-0 shadow-none transition-opacity duration-200 ${
+              webglReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          />
+        )}
 
-          {/* 2D Fallback */}
-          {(!webglSupported || !webglReady) && (
-            <div className="absolute inset-0 flex items-center justify-center z-0">
-              <Plush2DFallback
-                state={state}
-                characterId={characterId}
-                compact={compact}
-                onPoke={onPoke}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Thought Bubble in Empty Chat (Floats Beside Avatar) */}
-        {!compact && (thoughtText || isTypingTransition) && (
-          <div className="absolute left-[calc(50%+86px)] top-2 z-30 hidden sm:block">
-            <SageThoughtBubble
+        {/* 2D Fallback */}
+        {(!webglSupported || !webglReady) && (
+          <div className="absolute inset-0 flex items-center justify-center z-0 bg-transparent">
+            <Plush2DFallback
+              state={state}
               characterId={characterId}
-              thoughtText={thoughtText}
-              isTypingTransition={isTypingTransition}
-              mode={thoughtMode}
-              streamingSnippet={streamingSnippet}
-              compact={false}
+              compact={compact}
+              onPoke={onPoke}
             />
           </div>
         )}
       </div>
 
-      {compact ? (
-        /* Thought Bubble in Compact Chat (Centered Beside 76px Avatar) */
-        <div className="flex-1 min-w-0 max-w-[280px] sm:max-w-xs">
-          <SageThoughtBubble
-            characterId={characterId}
-            thoughtText={
-              thoughtText ||
-              (state === 'speaking'
-                ? 'Speaking step by step...'
-                : state === 'listening'
-                ? 'Listening to voice note...'
-                : null)
-            }
-            isTypingTransition={isTypingTransition}
-            mode={
-              thoughtMode ||
-              (state === 'speaking'
-                ? 'streaming'
-                : state === 'thinking'
-                ? 'thinking'
-                : state === 'listening'
-                ? 'typing'
-                : null)
-            }
-            streamingSnippet={streamingSnippet}
-            compact={true}
-          />
-        </div>
-      ) : (
-        /* Empty Chat Greeting underneath Large Avatar */
-        <div className="text-center mt-2 max-w-md bg-transparent">
-          <h2 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
+      {/* Empty Chat Greeting Centered Underneath Large Avatar (No Background) */}
+      {!compact && (
+        <div className="text-center mt-1.5 px-3 max-w-md mx-auto bg-transparent border-0 shadow-none pointer-events-none">
+          <h2 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight bg-transparent">
             {greetingTitle}
           </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 bg-transparent">
             {statusLabel || 'Your friendly AI study companion — ask a question below or tap me!'}
           </p>
+        </div>
+      )}
+
+      {/* Centered Thought Bubble Directly Under Avatar (Never Shifts Avatar or Clips) */}
+      {hasActiveThought && (
+        <div className="mt-1 flex items-center justify-center w-full px-3 mx-auto bg-transparent pointer-events-none z-30">
+          <SageThoughtBubble
+            characterId={characterId}
+            thoughtText={resolvedThoughtText}
+            isTypingTransition={isTypingTransition}
+            mode={resolvedThoughtMode}
+            streamingSnippet={streamingSnippet}
+            compact={compact}
+          />
         </div>
       )}
     </div>

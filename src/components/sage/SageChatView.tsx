@@ -1759,8 +1759,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       <div
         className={
           embedded
-            ? 'flex flex-col h-full w-full bg-white dark:bg-[#121215] overflow-hidden'
-            : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-white dark:bg-[#121215] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
+            ? 'flex flex-col h-full w-full bg-[#FAFAFA] dark:bg-[#0E0E11] overflow-hidden'
+            : 'flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-[#FAFAFA] dark:bg-[#0E0E11] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
         }
       >
         {/* ── Clean Single-Row Top Header ── */}
@@ -1972,9 +1972,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           </div>
         )}
 
-        {/* ── Pinned Avatar Zone (Horizontal Center, Always Visible, Never Scrolls Away) ── */}
-        <div className="shrink-0 flex flex-col items-center justify-center px-3 pt-1.5 pb-1 z-20 pointer-events-none transition-all duration-300">
-          <div className="pointer-events-auto flex flex-col items-center w-full">
+        {/* ── Main Chat Body (Floating Centered Avatar + Masked Scrollable Message List) ── */}
+        <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-[#FAFAFA] dark:bg-[#0E0E11]">
+          {/* ── Pinned Avatar Layer (Exact Horizontal Center of Sage Panel, Frameless & Transparent) ── */}
+          <div className="absolute top-0 inset-x-0 z-20 flex flex-col items-center justify-center pt-1.5 pointer-events-none bg-transparent border-0 shadow-none">
             <Sage3DAvatar
               state={avatarController.state}
               characterId={avatarController.characterId}
@@ -1995,10 +1996,23 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               streamingSnippet={streamingSnippet}
             />
           </div>
-        </div>
 
-        {/* ── Chat Messages Stream (Scrolls underneath without colliding with the avatar) ── */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
+          {/* ── Chat Messages Stream (Starts below avatar, fades out softly at top edge when scrolling) ── */}
+          <div
+            style={{
+              WebkitMaskImage: isConversationStarted
+                ? 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.16) 44px, black 96px)'
+                : 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.12) 168px, black 236px)',
+              maskImage: isConversationStarted
+                ? 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.16) 44px, black 96px)'
+                : 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.12) 168px, black 236px)',
+            }}
+            className={`flex-1 overflow-y-auto px-4 sm:px-6 pb-5 space-y-5 bg-transparent ${
+              isConversationStarted
+                ? 'pt-[100px] sm:pt-[110px]'
+                : 'pt-[232px] sm:pt-[254px]'
+            }`}
+          >
 
           {messages.map((msg) => {
           const isUser = msg.role === 'user';
@@ -2363,7 +2377,8 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         )}
 
         <div ref={messagesEndRef} />
-      </div>
+          </div>
+        </div>
 
       {/* ── Suggested Questions (Neat Collapsible Horizontal Row) ── */}
       {messages.length <= 2 && !isLoading && (
