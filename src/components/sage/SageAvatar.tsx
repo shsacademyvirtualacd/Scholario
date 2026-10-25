@@ -18,6 +18,7 @@ export interface SageAvatarProps {
   showStatusText?: boolean;
   pulseOnThinking?: boolean;
   interactive?: boolean;
+  bubbleOrb?: boolean;
   className?: string;
   videoClassName?: string;
   onClick?: () => void;
@@ -25,24 +26,24 @@ export interface SageAvatarProps {
 
 const SIZE_MAP = {
   xs: {
-    container: 'w-7 h-7 rounded-xl',
-    svgSize: 26,
+    container: 'w-7 h-7 rounded-full',
+    svgSize: 24,
   },
   sm: {
-    container: 'w-9 h-9 rounded-xl',
-    svgSize: 36,
+    container: 'w-9 h-9 rounded-full',
+    svgSize: 32,
   },
   md: {
-    container: 'w-11 h-11 rounded-2xl',
-    svgSize: 42,
+    container: 'w-11 h-11 rounded-full',
+    svgSize: 38,
   },
   lg: {
-    container: 'w-14 h-14 rounded-2xl',
-    svgSize: 54,
+    container: 'w-14 h-14 rounded-full',
+    svgSize: 50,
   },
   xl: {
-    container: 'w-20 h-20 rounded-3xl',
-    svgSize: 78,
+    container: 'w-20 h-20 rounded-full',
+    svgSize: 72,
   },
 };
 
@@ -688,6 +689,7 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
   showStatusText = false,
   pulseOnThinking = true,
   interactive = false,
+  bubbleOrb = true,
   className = '',
   onClick,
 }) => {
@@ -700,13 +702,24 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
   const isSpeaking = avatarState === 'speaking';
 
   return (
-    <div className={`inline-flex items-center gap-2.5 bg-transparent ${className}`}>
+    <div className={`sage-mini-avatar inline-flex items-center gap-2.5 bg-transparent ${className}`}>
       <div
-        className={`relative shrink-0 flex items-center justify-center bg-transparent border-0 shadow-none overflow-visible transition-transform duration-200 ${
+        style={
+          bubbleOrb
+            ? {
+                background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.45) 0%, ${charDef.accentColor}26 55%, ${charDef.accentColor}12 100%)`,
+                borderColor: `${charDef.accentColor}4D`,
+                boxShadow: `inset 0 1.5px 3px rgba(255,255,255,0.45), inset 0 -2px 4px ${charDef.accentColor}20`,
+              }
+            : undefined
+        }
+        className={`sage-bubble-orb relative shrink-0 flex items-center justify-center overflow-hidden transition-transform duration-200 ${
           sizeConfig.container
         } ${
+          bubbleOrb ? 'border' : 'bg-transparent border-0 shadow-none'
+        } ${
           pulseOnThinking && (isThinking || isSpeaking)
-            ? 'drop-shadow-[0_0_8px_rgba(244,196,48,0.55)]'
+            ? 'ring-2 ring-[#F4C430]/55'
             : ''
         } ${interactive ? 'cursor-pointer hover:scale-105 active:scale-95' : ''}`}
         onClick={onClick}
@@ -737,15 +750,15 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
             width={96}
             height={96}
             style={{ background: 'transparent' }}
-            className="absolute inset-0 w-full h-full object-contain pointer-events-none bg-transparent"
+            className="absolute inset-0 w-full h-full object-contain rounded-full pointer-events-none bg-transparent"
           />
         )}
       </div>
 
       {showStatusText && (
         <div className="flex flex-col min-w-0">
-          <span className="text-xs font-bold text-white tracking-tight">{displayLabel}</span>
-          <span className="text-[11px] text-[#A3A3A3] truncate max-w-[200px]">{meta.statusText}</span>
+          <span className="text-xs font-bold text-[#111111] dark:text-white tracking-tight">{displayLabel}</span>
+          <span className="text-[11px] text-[#737373] dark:text-[#A3A3A3] truncate max-w-[200px]">{meta.statusText}</span>
         </div>
       )}
     </div>

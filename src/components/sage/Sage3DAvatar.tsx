@@ -1554,6 +1554,32 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       goldRimLight.color.set(persona.accentColor);
       deskScreenMat.color.set(persona.accentBg);
 
+      // Normalize camera framing per character so every companion fills ~80% of the orb at the same scale
+      const isOrbOrPortrait = Boolean(portraitFraming || useSharedRenderer);
+      let camCenterY = 0.05;
+      let camDistZ = isOrbOrPortrait ? 4.82 : 4.45;
+
+      if (id === 'nova-bot') {
+        // Nova has a wider rectangular head casing, top antenna (+1.32), and bottom hover pod (-1.11)
+        camCenterY = 0.08;
+        camDistZ = isOrbOrPortrait ? 5.38 : 4.95;
+      } else if (id === 'gigi-giraffe') {
+        // Gigi has tall ossicone horns (+1.42) and hooves (-1.04)
+        camCenterY = 0.14;
+        camDistZ = isOrbOrPortrait ? 5.22 : 4.82;
+      } else if (id === 'lumi-lamp') {
+        // Lumi is a compact articulated desk lamp (-0.96 to +0.74) centered slightly lower
+        camCenterY = -0.09;
+        camDistZ = isOrbOrPortrait ? 4.12 : 3.92;
+      } else if (id === 'milo-owl' || id === 'tango-cat') {
+        // Milo and Tango have tall pointed ear tufts / ears (+1.16)
+        camCenterY = 0.06;
+        camDistZ = isOrbOrPortrait ? 4.92 : 4.52;
+      }
+
+      camera.position.set(0, camCenterY, camDistZ);
+      camera.lookAt(0, camCenterY, 0);
+
       if (animateSwitch) {
         switchScaleDip = 1.0;
       }
@@ -2005,6 +2031,9 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         }
       }
 
+      if (useSharedRenderer) {
+        renderer.clear();
+      }
       renderer.render(scene, camera);
       if (useSharedRenderer && cardCanvas2D) {
         const ctx2d = cardCanvas2D.getContext('2d');

@@ -1927,19 +1927,19 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             : 'sage-chat-shell flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-w-5xl mx-auto bg-[#FAFAFA] dark:bg-[#0E0E11] rounded-3xl border border-[#E5E5E5] dark:border-[#27272A] shadow-xs overflow-hidden'
         }
       >
-        {/* ── Clean Single-Row Top Header ── */}
-        <div className="sage-chat-header bg-[#111114] px-3.5 sm:px-5 py-2.5 text-white flex items-center justify-between gap-2 border-b border-[#23232B] shrink-0">
-          {/* Left: Back/List button, Live Mini-Avatar, Name + Hover-only Pencil, Role Badge, and Online Status Dot */}
+        {/* ── Clean Single-Row Top Header (Matches Scholario Site Header Style in Light & Dark Mode) ── */}
+        <div className="sage-chat-header bg-white/95 dark:bg-[#141416] px-3.5 sm:px-5 py-2.5 text-[#111111] dark:text-[#F4F4F5] flex items-center justify-between gap-2 border-b border-[#E5E5E5] dark:border-[#27272A] shrink-0">
+          {/* Left: Back/List button, Mini-Avatar in Round Bubble Orb, Name + Hover-only Pencil, Role Pill, Online Dot */}
           <div className="flex items-center gap-2.5 min-w-0">
             {onBack && (
               <button
                 type="button"
                 onClick={onBack}
-                className="w-9 h-9 rounded-xl hover:bg-white/10 text-zinc-200 hover:text-white shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+                className="w-9 h-9 rounded-full bg-[#F5F5F5] dark:bg-[#222227] hover:bg-[#EAEAEA] dark:hover:bg-[#2E2E36] text-[#111111] dark:text-zinc-200 shrink-0 transition-colors flex items-center justify-center cursor-pointer"
                 title="Back"
                 aria-label="Back"
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={17} />
               </button>
             )}
 
@@ -1947,7 +1947,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               type="button"
               id="choose-sage-avatar-btn"
               onClick={() => setAvatarPickerOpen(true)}
-              className="w-9 h-9 rounded-xl bg-[#1A1A20] hover:bg-[#24242C] text-zinc-200 hover:text-[#F4C430] border border-[#2B2B35] shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+              className="w-9 h-9 rounded-full bg-[#F5F5F5] dark:bg-[#222227] hover:bg-[#FDF3C8] dark:hover:bg-[#2E2E36] text-[#111111] dark:text-zinc-200 hover:text-[#92700A] dark:hover:text-[#F4C430] border border-[#E5E5E5] dark:border-[#2F2F37] shrink-0 transition-colors flex items-center justify-center cursor-pointer"
               title="Choose companion"
               aria-label="Choose companion"
             >
@@ -1961,6 +1961,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               customName={avatarController.displayName}
               headerCanvasRef={avatarController.headerCanvasRef}
               size="sm"
+              bubbleOrb={true}
               interactive={true}
               onClick={() => setProfilePanelOpen(true)}
             />
@@ -1969,28 +1970,28 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               type="button"
               data-testid="sage-header-profile-trigger"
               onClick={() => setProfilePanelOpen(true)}
-              className="min-w-0 text-left group cursor-pointer focus:outline-none rounded-lg focus-visible:ring-2 focus-visible:ring-[#F4C430]/50 px-1 py-0.5 -mx-1"
+              className="min-w-0 text-left group cursor-pointer focus:outline-none rounded-xl focus-visible:ring-2 focus-visible:ring-[#F4C430] px-1 py-0.5 -mx-1"
               title="Open Profile and Voice settings"
               aria-label={`Open profile and voice settings for ${avatarController.displayName}`}
             >
               <div className="flex items-center gap-1.5 min-w-0">
-                <h1 className="text-[15px] sm:text-base font-extrabold tracking-tight text-white group-hover:text-[#F4C430] transition-colors truncate">
+                <h1 className="text-[15px] sm:text-base font-extrabold tracking-tight text-[#111111] dark:text-white group-hover:text-[#92700A] dark:group-hover:text-[#F4C430] transition-colors truncate">
                   {avatarController.displayName}
                 </h1>
                 <Pencil
                   size={12}
-                  className="text-zinc-400 group-hover:text-[#F4C430] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 shrink-0 transition-all duration-150"
+                  className="text-[#737373] dark:text-zinc-400 group-hover:text-[#92700A] dark:group-hover:text-[#F4C430] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 shrink-0 transition-all duration-150"
                 />
                 <span
-                  className="px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide bg-white/8 text-zinc-300 border border-white/10 shrink-0"
+                  className="badge-gold px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide shrink-0"
                   title={`${role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'} mode`}
                 >
                   {role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student'}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 leading-tight truncate mt-0.5">
+              <div className="flex items-center gap-1.5 text-[11px] text-[#737373] dark:text-zinc-400 leading-tight truncate mt-0.5">
                 <span
-                  className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                  className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"
                   aria-hidden="true"
                 />
                 <span className="truncate">
@@ -2000,7 +2001,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             </button>
           </div>
 
-          {/* Right: ONLY two visible actions — Voice toggle and "..." overflow menu */}
+          {/* Right: "Voice" Pill (Gold when ON) and Round "..." Button */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
@@ -2013,35 +2014,30 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                   ? `Voice is ON for ${avatarController.displayName} — click to turn off`
                   : `Voice is OFF for ${avatarController.displayName} — click to turn on`
               }
-              className={`sage-header-voice-toggle h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all border text-xs font-bold cursor-pointer ${
+              className={`sage-header-voice-toggle h-9 px-3 sm:px-3.5 rounded-full flex items-center gap-1.5 transition-all border text-xs font-extrabold cursor-pointer ${
                 voiceEnabled
-                  ? 'bg-[#F4C430]/15 hover:bg-[#F4C430]/22 text-[#F4C430] border-[#F4C430]/45'
-                  : 'bg-[#1A1A20] hover:bg-[#24242C] text-zinc-300 hover:text-white border-[#2B2B35]'
+                  ? 'bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] border-[#F4C430] shadow-[0_2px_10px_rgba(244,196,48,0.28)]'
+                  : 'bg-[#F5F5F5] dark:bg-[#222227] hover:bg-[#EAEAEA] dark:hover:bg-[#2E2E36] text-[#525252] dark:text-zinc-300 border-[#E5E5E5] dark:border-[#2F2F37]'
               }`}
             >
               {voiceEnabled ? (
-                <Volume2 size={15} className="text-[#F4C430] shrink-0" />
+                <Volume2 size={15} className="text-[#111111] shrink-0" />
               ) : (
-                <VolumeX size={15} className="text-zinc-400 shrink-0" />
+                <VolumeX size={15} className="text-[#737373] dark:text-zinc-400 shrink-0" />
               )}
               <span className="hidden sm:inline">Voice</span>
-              <span
-                className={`hidden sm:inline-block w-1.5 h-1.5 rounded-full ${
-                  voiceEnabled ? 'bg-[#F4C430]' : 'bg-zinc-600'
-                }`}
-              />
             </button>
 
-            {/* "⋯" Overflow Menu */}
+            {/* Round "⋯" Overflow Menu Button */}
             <div className="relative" ref={overflowMenuRef}>
               <button
                 type="button"
                 data-testid="sage-header-overflow-btn"
                 onClick={() => setOverflowMenuOpen((prev) => !prev)}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors border cursor-pointer ${
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors border cursor-pointer ${
                   overflowMenuOpen
-                    ? 'bg-[#24242C] text-white border-[#3A3A46]'
-                    : 'bg-[#1A1A20] hover:bg-[#24242C] text-zinc-300 hover:text-white border-[#2B2B35]'
+                    ? 'bg-[#111111] text-white border-[#111111] dark:bg-[#F4C430] dark:text-[#111111] dark:border-[#F4C430]'
+                    : 'bg-[#F5F5F5] dark:bg-[#222227] hover:bg-[#EAEAEA] dark:hover:bg-[#2E2E36] text-[#525252] dark:text-zinc-300 border-[#E5E5E5] dark:border-[#2F2F37]'
                 }`}
                 title="More actions"
                 aria-label="More actions"
@@ -2055,10 +2051,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                 <div
                   role="menu"
                   aria-label="Sage chat options"
-                  className="sage-overflow-menu absolute right-0 top-full mt-2 w-64 rounded-2xl bg-[#16161C] text-zinc-200 border border-[#2B2B36] shadow-2xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 origin-top-right"
+                  className="sage-overflow-menu absolute right-0 top-full mt-2 w-64 rounded-[20px] bg-white dark:bg-[#18181B] text-[#111111] dark:text-[#F4F4F5] border border-[#E5E5E5] dark:border-[#27272A] shadow-[0_12px_36px_rgba(0,0,0,0.12)] p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 origin-top-right"
                 >
                   {/* Group 1: Companion */}
-                  <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  <div className="px-3 pt-1.5 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-[#737373] dark:text-zinc-500">
                     Companion
                   </div>
                   <button
@@ -2069,9 +2065,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       setOverflowMenuOpen(false);
                       setProfilePanelOpen(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] dark:text-zinc-200 hover:bg-[#F5F5F5] dark:hover:bg-[#27272A] transition-colors cursor-pointer text-left"
                   >
-                    <User size={14} className="text-[#F4C430] shrink-0" />
+                    <User size={14} className="text-[#D4A017] dark:text-[#F4C430] shrink-0" />
                     <span>Profile and Voice</span>
                   </button>
 
@@ -2082,16 +2078,16 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       setOverflowMenuOpen(false);
                       setAvatarPickerOpen(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] dark:text-zinc-200 hover:bg-[#F5F5F5] dark:hover:bg-[#27272A] transition-colors cursor-pointer text-left"
                   >
-                    <Smile size={14} className="text-[#F4C430] shrink-0" />
+                    <Smile size={14} className="text-[#D4A017] dark:text-[#F4C430] shrink-0" />
                     <span>Choose companion</span>
                   </button>
 
-                  <div className="my-1.5 border-t border-[#24242E]" />
+                  <div className="my-1.5 border-t border-[#E5E5E5] dark:border-[#27272A]" />
 
                   {/* Group 2: Chat */}
-                  <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  <div className="px-3 pt-1 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-[#737373] dark:text-zinc-500">
                     Chat
                   </div>
                   <button
@@ -2102,12 +2098,12 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       handleDownloadConversationPdf();
                     }}
                     disabled={isExportingConversationPdf || isLoading || messages.length === 0}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-40 cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] dark:text-zinc-200 hover:bg-[#F5F5F5] dark:hover:bg-[#27272A] transition-colors disabled:opacity-40 cursor-pointer text-left"
                   >
                     {isExportingConversationPdf ? (
-                      <Loader2 size={14} className="animate-spin text-[#F4C430] shrink-0" />
+                      <Loader2 size={14} className="animate-spin text-[#D4A017] dark:text-[#F4C430] shrink-0" />
                     ) : (
-                      <FileDown size={14} className="text-[#F4C430] shrink-0" />
+                      <FileDown size={14} className="text-[#D4A017] dark:text-[#F4C430] shrink-0" />
                     )}
                     <span>Download PDF</span>
                   </button>
@@ -2120,12 +2116,12 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       handleShareConversationPdf();
                     }}
                     disabled={isSharingConversationPdf || isLoading || messages.length === 0}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-40 cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] dark:text-zinc-200 hover:bg-[#F5F5F5] dark:hover:bg-[#27272A] transition-colors disabled:opacity-40 cursor-pointer text-left"
                   >
                     {isSharingConversationPdf ? (
-                      <Loader2 size={14} className="animate-spin text-[#F4C430] shrink-0" />
+                      <Loader2 size={14} className="animate-spin text-[#D4A017] dark:text-[#F4C430] shrink-0" />
                     ) : (
-                      <Share2 size={14} className="text-[#F4C430] shrink-0" />
+                      <Share2 size={14} className="text-[#D4A017] dark:text-[#F4C430] shrink-0" />
                     )}
                     <span>Share</span>
                   </button>
@@ -2140,41 +2136,45 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                         handleSyncNotes();
                       }}
                       disabled={isSyncingNotes}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:bg-white/8 hover:text-white transition-colors disabled:opacity-50 cursor-pointer text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[#111111] dark:text-zinc-200 hover:bg-[#F5F5F5] dark:hover:bg-[#27272A] transition-colors disabled:opacity-50 cursor-pointer text-left"
                     >
                       <RefreshCw
                         size={14}
                         className={
                           isSyncingNotes
-                            ? 'animate-spin text-[#F4C430] shrink-0'
-                            : 'text-[#F4C430] shrink-0'
+                            ? 'animate-spin text-[#D4A017] dark:text-[#F4C430] shrink-0'
+                            : 'text-[#D4A017] dark:text-[#F4C430] shrink-0'
                         }
                       />
                       <span>{isSyncingNotes ? 'Syncing Note Vault...' : 'Sync RAG Note Vault'}</span>
                     </button>
                   )}
 
-                  <div className="my-1.5 border-t border-[#24242E]" />
+                  <div className="my-1.5 border-t border-[#E5E5E5] dark:border-[#27272A]" />
 
                   {/* Muted Non-Clickable Info Row */}
                   <div
                     aria-label="System information"
-                    className="px-3 py-2 rounded-xl bg-[#111116] border border-[#22222B] space-y-1 select-none"
+                    className="px-3 py-2 rounded-xl bg-[#FAFAFA] dark:bg-[#141416] border border-[#E5E5E5] dark:border-[#27272A] space-y-1 select-none"
                   >
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                    <div className="flex items-center justify-between text-[11px] text-[#737373] dark:text-zinc-500">
                       <span>AI Engine</span>
-                      <span className="font-medium text-zinc-400">{activeModelDisplayName}</span>
+                      <span className="font-semibold text-[#525252] dark:text-zinc-400">
+                        {activeModelDisplayName}
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                    <div className="flex items-center justify-between text-[11px] text-[#737373] dark:text-zinc-500">
                       <span className="flex items-center gap-1">
-                        <Database size={10} className="text-zinc-500" />
+                        <Database size={10} className="text-[#737373] dark:text-zinc-500" />
                         <span>Knowledge Base</span>
                       </span>
-                      <span className="font-medium text-zinc-400">RAG Note Vault</span>
+                      <span className="font-semibold text-[#525252] dark:text-zinc-400">
+                        RAG Note Vault
+                      </span>
                     </div>
                   </div>
 
-                  <div className="my-1.5 border-t border-[#24242E]" />
+                  <div className="my-1.5 border-t border-[#E5E5E5] dark:border-[#27272A]" />
 
                   {/* Danger Action: Reset Chat Session */}
                   <button
@@ -2185,7 +2185,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       setOverflowMenuOpen(false);
                       setConfirmClearOpen(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:bg-red-500/12 hover:text-red-300 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/12 transition-colors cursor-pointer text-left"
                   >
                     <RotateCcw size={14} className="shrink-0" />
                     <span>Reset chat session</span>
@@ -2214,14 +2214,14 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                 onClick={() =>
                   handleSend(`Can you guide me on what I'm looking at on the ${activePageContext.title} page?`)
                 }
-                className="px-2 py-0.5 rounded-md bg-amber-200/75 dark:bg-amber-900/50 hover:bg-amber-300/80 text-amber-950 dark:text-amber-100 font-semibold transition-colors cursor-pointer"
+                className="px-2.5 py-0.5 rounded-full bg-amber-200/75 dark:bg-amber-900/50 hover:bg-amber-300/80 text-amber-950 dark:text-amber-100 font-semibold transition-colors cursor-pointer"
               >
                 Ask about screen
               </button>
               <button
                 type="button"
                 onClick={() => setActivePageContext(null)}
-                className="p-0.5 hover:bg-amber-200/70 dark:hover:bg-amber-900/50 rounded text-amber-700 dark:text-amber-300 transition-colors cursor-pointer"
+                className="p-0.5 hover:bg-amber-200/70 dark:hover:bg-amber-900/50 rounded-full text-amber-700 dark:text-amber-300 transition-colors cursor-pointer"
                 title="Dismiss page context"
                 aria-label="Dismiss page context"
               >
@@ -2231,10 +2231,26 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
           </div>
         )}
 
-        {/* ── Main Chat Body (Floating Centered Avatar + Masked Scrollable Message List) ── */}
+        {/* ── Main Chat Body: Flex Column with (1) Non-Scrolling Avatar Stage Row + (2) Scrolling Message List Below ── */}
         <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-[#FAFAFA] dark:bg-[#0E0E11]">
-          {/* ── Pinned Avatar Layer (Exact Horizontal Center of Sage Panel, ~30% Bigger, Frameless & Transparent) ── */}
-          <div className="absolute top-0 inset-x-0 z-20 flex flex-col items-center justify-center pt-1.5 pointer-events-none bg-transparent border-0 shadow-none">
+          {/* (1) Non-Scrolling Avatar Stage Row (~128px when empty, ~84px once messages exist, centered, transparent, soft accent glow) */}
+          <div
+            data-testid="sage-avatar-stage-row"
+            className={`sage-avatar-stage-row shrink-0 relative w-full flex flex-col items-center justify-center bg-transparent border-0 shadow-none z-10 transition-all duration-300 ${
+              isConversationStarted ? 'h-[84px]' : 'h-[128px]'
+            }`}
+          >
+            {/* Soft Accent Radial Glow Behind Avatar */}
+            <div
+              aria-hidden="true"
+              style={{
+                background: `radial-gradient(circle, ${avatarController.character.accentColor}2A 0%, ${avatarController.character.accentColor}0D 48%, transparent 72%)`,
+              }}
+              className={`pointer-events-none rounded-full transition-all duration-300 ${
+                isConversationStarted ? 'w-[96px] h-[82px]' : 'w-[144px] h-[124px]'
+              } absolute`}
+            />
+
             <Sage3DAvatar
               state={avatarController.state}
               characterId={avatarController.characterId}
@@ -2242,32 +2258,27 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               headerCanvasRef={avatarController.headerCanvasRef}
               audioLevel={avatarController.audioLevel}
               compact={isConversationStarted}
-              greetingTitle={`Hi ${greetingName}, I'm ${avatarController.displayName}!`}
-              statusLabel={avatarController.stageCaption}
+              sizeClassName={
+                isConversationStarted
+                  ? 'w-[78px] h-[78px]'
+                  : 'w-[114px] h-[114px]'
+              }
+              chromeless={true}
+              portraitFraming={true}
               onPoke={() => avatarController.triggerPoke()}
               pokeCount={avatarController.pokeCount}
-              thoughtText={currentThoughtText}
-              thoughtMode={currentThoughtMode}
-              isTypingTransition={isThoughtTyping}
-              streamingSnippet={streamingSnippet}
             />
           </div>
 
-          {/* ── Chat Messages Stream (Starts below ~30% bigger avatar, fades out softly at top edge when scrolling) ── */}
+          {/* (2) Scrolling Message List Below Stage (Never behind the avatar; short gradient fade at top stage edge) */}
           <div
             style={{
-              WebkitMaskImage: isConversationStarted
-                ? 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.16) 58px, black 122px)'
-                : 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.12) 216px, black 284px)',
-              maskImage: isConversationStarted
-                ? 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.16) 58px, black 122px)'
-                : 'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.12) 216px, black 284px)',
+              WebkitMaskImage:
+                'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.45) 8px, black 20px)',
+              maskImage:
+                'linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.45) 8px, black 20px)',
             }}
-            className={`flex-1 overflow-y-auto px-4 sm:px-6 pb-5 space-y-5 bg-transparent ${
-              isConversationStarted
-                ? 'pt-[124px] sm:pt-[136px]'
-                : 'pt-[282px] sm:pt-[310px]'
-            }`}
+            className="sage-messages-stream flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pt-3 pb-5 space-y-5 bg-transparent"
           >
 
           {messages.map((msg) => {
@@ -2959,10 +2970,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         </div>
       </div>
 
-      {/* ── "Choose your companion" Picker Modal (Desktop centered max-w-[880px] max-h-[85vh], Mobile full-height bottom sheet) ── */}
+      {/* ── "Choose your companion" Picker Modal (28px Radius, Glossy Bubble Orbs, Scholario Theme Tokens) ── */}
       {avatarPickerOpen && (
         <div
-          className="sage-companion-picker-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150 motion-reduce:animate-none"
+          className="sage-companion-picker-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150 motion-reduce:animate-none"
           onClick={() => setAvatarPickerOpen(false)}
           role="dialog"
           aria-modal="true"
@@ -2970,26 +2981,26 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         >
           <div
             ref={pickerModalRef}
-            className="sage-companion-picker-modal w-full sm:max-w-[880px] h-[92dvh] sm:h-auto sm:max-h-[85vh] bg-[#121217] text-zinc-100 rounded-t-3xl sm:rounded-3xl border border-[#282833] shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 motion-reduce:animate-none"
+            className="sage-companion-picker-modal w-full sm:max-w-[880px] h-[92dvh] sm:h-auto sm:max-h-[85vh] bg-[#FAFAF9] dark:bg-[#141416] text-[#111111] dark:text-[#F4F4F5] rounded-t-[28px] sm:rounded-[28px] border border-[#E5E5E5] dark:border-[#27272A] shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 motion-reduce:animate-none"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Sticky Clean Header Row */}
-            <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 bg-[#14141A]/95 backdrop-blur-md text-white flex items-center justify-between border-b border-[#252530] shrink-0">
-              <div className="min-w-0">
+            {/* Sticky Header Row */}
+            <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 bg-white/95 dark:bg-[#18181B]/95 backdrop-blur-md flex items-center justify-between gap-3 border-b border-[#E5E5E5] dark:border-[#27272A] shrink-0">
+              <div className="flex flex-wrap items-center gap-2.5 min-w-0">
                 <h3
                   id="sage-companion-picker-title"
-                  className="text-base sm:text-lg font-extrabold tracking-tight text-white"
+                  className="text-base sm:text-lg font-extrabold tracking-tight text-[#111111] dark:text-white"
                 >
                   Choose your companion
                 </h3>
-                <p className="text-xs font-bold text-[#F4C430] mt-0.5 truncate">
+                <span className="badge-gold px-2.5 py-0.5 rounded-full text-[11px] font-extrabold truncate">
                   Current: {avatarController.displayName}
-                </p>
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setAvatarPickerOpen(false)}
-                className="w-9 h-9 rounded-xl bg-white/8 hover:bg-white/14 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
+                className="w-9 h-9 rounded-full bg-[#F5F5F5] dark:bg-[#27272A] hover:bg-[#E5E5E5] dark:hover:bg-[#3F3F46] text-[#525252] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430]"
                 aria-label="Close companion picker"
                 title="Close (Esc)"
               >
@@ -2997,11 +3008,11 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               </button>
             </div>
 
-            {/* Scrollable 9-Card Grid (3 cols desktop, 2 cols tablet, 1 col phone horizontal card) */}
+            {/* Scrollable 9-Card Grid (3 cols desktop, 2 cols tablet, 1 col phone horizontal card; 24px bottom padding) */}
             <div
               role="listbox"
               aria-label="Study companions"
-              className="sage-companion-picker-grid flex-1 overflow-y-auto px-4 sm:px-6 pt-4 sm:pt-5 pb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 auto-rows-fr"
+              className="sage-companion-picker-grid flex-1 overflow-y-auto px-4 sm:px-6 pt-4 sm:pt-5 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr"
             >
               {SAGE_CHARACTERS.map((charItem, idx) => {
                 const isSelected = avatarController.characterId === charItem.id;
@@ -3065,32 +3076,22 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       isSelected
                         ? {
                             borderColor: charItem.accentColor,
-                            boxShadow: `0 0 0 1px ${charItem.accentColor}66, 0 10px 28px -10px ${charItem.accentColor}40`,
-                            backgroundColor: `${charItem.accentColor}12`,
+                            boxShadow: `0 0 0 1.5px ${charItem.accentColor}80, 0 8px 24px -8px ${charItem.accentColor}40`,
+                          }
+                        : isHovered || isFocused
+                        ? {
+                            borderColor: `${charItem.accentColor}66`,
+                            boxShadow: `0 8px 22px -6px ${charItem.accentColor}30`,
                           }
                         : undefined
                     }
-                    className={`sage-companion-card group relative h-full flex flex-row sm:flex-col items-center sm:text-center gap-3.5 sm:gap-2 p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 motion-reduce:transition-none hover:-translate-y-0.5 focus-visible:-translate-y-0.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430] ${
+                    className={`sage-companion-card group relative overflow-hidden h-full sm:min-h-[220px] flex flex-row sm:flex-col items-center sm:justify-between sm:text-center gap-3.5 sm:gap-2 p-4 rounded-[22px] border transition-all duration-200 motion-reduce:transition-none hover:-translate-y-[3px] focus-visible:-translate-y-[3px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430] ${
                       isSelected
-                        ? ''
-                        : 'border-[#262632] bg-[#181820] hover:border-[#3A3A4A] hover:bg-[#1E1E28]'
+                        ? 'bg-[#FFFDF5] dark:bg-[#1E1E24]'
+                        : 'bg-white dark:bg-[#18181B] border-[#E5E5E5] dark:border-[#27272A]'
                     }`}
                   >
-                    {/* Active Pill ONLY on the currently selected card */}
-                    {isSelected && (
-                      <span
-                        style={{
-                          backgroundColor: charItem.accentColor,
-                          color: '#111111',
-                        }}
-                        className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide shadow-xs"
-                      >
-                        <Check size={11} strokeWidth={3} />
-                        <span>Active</span>
-                      </span>
-                    )}
-
-                    {/* Preview Voice Speaker Button on Each Card */}
+                    {/* Top-Left 32px Round Voice Preview Speaker Button (Never Overlapping Orb) */}
                     <button
                       type="button"
                       data-testid={`sage-picker-voice-preview-${charItem.id}`}
@@ -3111,21 +3112,31 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                       }}
                       title={`Preview ${charItem.name}'s voice`}
                       aria-label={`Preview ${charItem.name}'s voice`}
-                      className={`sage-card-voice-btn sm:absolute sm:top-2.5 sm:left-2.5 order-last sm:order-none ml-auto sm:ml-0 w-7 h-7 rounded-lg flex items-center justify-center border transition-colors shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430] ${
+                      className={`sage-card-voice-btn sm:absolute sm:top-3 sm:left-3 order-last sm:order-none ml-auto sm:ml-0 w-8 h-8 rounded-full flex items-center justify-center border transition-colors shrink-0 cursor-pointer z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4C430] ${
                         isPreviewingThisVoice
-                          ? 'bg-[#F4C430] text-black border-[#F4C430]'
-                          : 'bg-[#121218]/90 hover:bg-[#262633] text-zinc-300 hover:text-[#F4C430] border-[#2E2E3C]'
+                          ? 'bg-[#F4C430] text-[#111111] border-[#F4C430]'
+                          : 'bg-[#F5F5F5] dark:bg-[#222228] hover:bg-[#FDF3C8] dark:hover:bg-[#2E2E36] text-[#525252] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-[#F4C430] border-[#E5E5E5] dark:border-[#2F2F37]'
                       }`}
                     >
-                      <Volume2 size={13} />
+                      <Volume2 size={14} />
                     </button>
 
-                    {/* Live 3D Character Preview on Transparent Background (Shared WebGL Pool — No White Sheet) */}
+                    {/* Top-Right Gold "Active" Pill with Check (Selected Card Only, Not Covering Orb) */}
+                    {isSelected && (
+                      <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#F4C430] text-[#111111] text-[10px] font-extrabold tracking-wide shadow-2xs">
+                        <Check size={11} strokeWidth={3} />
+                        <span>Active</span>
+                      </span>
+                    )}
+
+                    {/* (1) Preview Glossy "Bubble Orb" (~112px desktop, Clipped with border-radius & overflow-hidden) */}
                     <div
-                      className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 bg-transparent border-0 shadow-none"
                       style={{
-                        background: `radial-gradient(circle, ${charItem.accentColor}1E 0%, transparent 68%)`,
+                        background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.65) 0%, ${charItem.accentColor}2E 52%, ${charItem.accentColor}12 100%)`,
+                        borderColor: `${charItem.accentColor}59`,
+                        boxShadow: `inset 0 2px 6px rgba(255,255,255,0.55), inset 0 -3px 8px ${charItem.accentColor}24`,
                       }}
+                      className="sage-companion-orb relative w-[92px] h-[92px] sm:w-[112px] sm:h-[112px] rounded-full border overflow-hidden flex items-center justify-center shrink-0"
                     >
                       <Sage3DAvatar
                         characterId={charItem.id}
@@ -3137,33 +3148,34 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                             : 'idle'
                         }
                         audioLevel={isPreviewingThisVoice ? 0.55 : 0}
-                        sizeClassName="w-20 h-20 sm:w-24 sm:h-24"
+                        sizeClassName="w-[92px] h-[92px] sm:w-[112px] sm:h-[112px]"
                         chromeless={true}
                         portraitFraming={true}
                         useSharedRenderer={true}
                       />
                     </div>
 
-                    {/* Card Text Details */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-center sm:items-center text-left sm:text-center">
-                      <div className="font-extrabold text-sm sm:text-[15px] text-white leading-tight truncate max-w-full">
-                        {displayCardName}
-                      </div>
-
-                      {isDefaultChar && (
-                        <span className="text-[10px] font-semibold text-zinc-400 mt-0.5">
-                          Default
+                    {/* Fixed Column Text Structure: (2) Name, (3) Role in Accent Color, (4) 2-Line Description */}
+                    <div className="flex-1 min-w-0 w-full flex flex-col justify-center sm:items-center text-left sm:text-center overflow-hidden">
+                      <div className="flex items-center sm:justify-center gap-1.5 max-w-full">
+                        <span className="font-extrabold text-sm sm:text-[15px] text-[#111111] dark:text-white leading-tight truncate">
+                          {displayCardName}
                         </span>
-                      )}
+                        {isDefaultChar && (
+                          <span className="px-1.5 py-0.2 rounded-full bg-[#F5F5F5] dark:bg-[#27272A] border border-[#E5E5E5] dark:border-[#3F3F46] text-[9px] font-bold text-[#737373] dark:text-zinc-400 shrink-0">
+                            Default
+                          </span>
+                        )}
+                      </div>
 
                       <div
                         style={{ color: charItem.accentColor }}
-                        className="text-xs font-bold mt-0.5 truncate max-w-full"
+                        className="text-xs font-extrabold mt-0.5 truncate max-w-full"
                       >
                         {charItem.role}
                       </div>
 
-                      <p className="text-[11px] text-zinc-400 mt-1.5 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-[#525252] dark:text-zinc-400 mt-1 line-clamp-2 leading-snug max-w-full">
                         {charItem.description}
                       </p>
                     </div>

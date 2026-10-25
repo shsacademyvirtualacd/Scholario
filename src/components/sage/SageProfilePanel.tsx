@@ -7,6 +7,7 @@ import {
   Volume2,
   UserCheck,
   AlertCircle,
+  ChevronDown,
 } from 'lucide-react';
 import {
   Sage3DAvatarState,
@@ -163,7 +164,7 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
       ? 'bg-amber-400 animate-ping'
       : avatarState === 'thinking'
       ? 'bg-sky-400 animate-pulse'
-      : 'bg-emerald-400';
+      : 'bg-emerald-500';
 
   const handleSaveName = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -225,6 +226,12 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
   };
 
   const handlePreviewVoice = async () => {
+    if (isPreviewingVoice) {
+      sageSpeech.stop();
+      setIsPreviewingVoice(false);
+      setPreviewAudioLevel(0);
+      return;
+    }
     setIsPreviewingVoice(true);
     await sageSpeech.previewVoice(characterId, displayName, {
       onBoundaryLevel: (lvl) => setPreviewAudioLevel(lvl),
@@ -236,18 +243,25 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
   };
 
   const resolvedDefaultVoice = sageSpeech.resolveVoiceForAvatar(characterId, false).voice;
-  const selectedVoiceObj = voices.find((v) => v.voiceURI === voicePref.voiceURI) || resolvedDefaultVoice;
+  const selectedVoiceObj =
+    voices.find((v) => v.voiceURI === voicePref.voiceURI) || resolvedDefaultVoice;
   const fullVoiceTooltip = selectedVoiceObj
     ? `${selectedVoiceObj.name} (${selectedVoiceObj.lang})`
     : 'System Default Voice';
 
   const rateMin = 0.6;
   const rateMax = 1.5;
-  const ratePct = Math.max(0, Math.min(100, ((voicePref.rate - rateMin) / (rateMax - rateMin)) * 100));
+  const ratePct = Math.max(
+    0,
+    Math.min(100, ((voicePref.rate - rateMin) / (rateMax - rateMin)) * 100)
+  );
 
   const pitchMin = 0.7;
   const pitchMax = 1.35;
-  const pitchPct = Math.max(0, Math.min(100, ((voicePref.pitch - pitchMin) / (pitchMax - pitchMin)) * 100));
+  const pitchPct = Math.max(
+    0,
+    Math.min(100, ((voicePref.pitch - pitchMin) / (pitchMax - pitchMin)) * 100)
+  );
 
   const isRateModified = Math.abs(voicePref.rate - activeChar.voiceProfile.defaultRate) > 0.01;
   const isPitchModified = Math.abs(voicePref.pitch - activeChar.voiceProfile.defaultPitch) > 0.01;
@@ -255,26 +269,33 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
   return (
     <div
       data-testid="sage-profile-panel-backdrop"
-      className="sage-profile-backdrop fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end bg-black/65 backdrop-blur-xs animate-in fade-in duration-200"
+      className="sage-profile-backdrop fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <style>{`
         .sage-profile-drawer .sage-voice-slider {
           -webkit-appearance: none;
           appearance: none;
-          height: 6px;
+          height: 7px;
           border-radius: 9999px;
           outline: none;
+          background: linear-gradient(
+            to right,
+            #F4C430 0%,
+            #F4C430 var(--sage-slider-pct, 50%),
+            rgba(163, 163, 163, 0.32) var(--sage-slider-pct, 50%),
+            rgba(163, 163, 163, 0.32) 100%
+          );
         }
         .sage-profile-drawer .sage-voice-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 18px;
-          height: 18px;
+          width: 20px;
+          height: 20px;
           border-radius: 9999px;
           background: #F4C430;
-          border: 2px solid #111115;
-          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+          border: 2.5px solid #111111;
+          box-shadow: 0 2px 6px rgba(17, 17, 17, 0.28);
           cursor: pointer;
           transition: transform 0.15s ease;
         }
@@ -282,12 +303,12 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
           transform: scale(1.12);
         }
         .sage-profile-drawer .sage-voice-slider::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
+          width: 20px;
+          height: 20px;
           border-radius: 9999px;
           background: #F4C430;
-          border: 2px solid #111115;
-          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+          border: 2.5px solid #111111;
+          box-shadow: 0 2px 6px rgba(17, 17, 17, 0.28);
           cursor: pointer;
           transition: transform 0.15s ease;
         }
@@ -302,18 +323,18 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
         aria-modal="true"
         aria-label="Profile and Voice"
         onClick={(e) => e.stopPropagation()}
-        className="sage-profile-drawer relative w-full sm:w-[400px] max-h-[90dvh] sm:max-h-none sm:h-full bg-[#111115] text-zinc-100 border-t sm:border-t-0 sm:border-l border-zinc-800/90 rounded-t-3xl sm:rounded-none shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-right duration-200"
+        className="sage-profile-drawer relative w-full sm:w-[400px] max-h-[90dvh] sm:max-h-none sm:h-full bg-[#FAFAF9] dark:bg-[#141416] text-[#111111] dark:text-[#F4F4F5] border-t sm:border-t-0 sm:border-l border-[#E5E5E5] dark:border-[#27272A] rounded-t-[28px] sm:rounded-none shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-right duration-200"
       >
         {/* Sticky Top Bar */}
-        <div className="sticky top-0 z-20 bg-[#111115]/95 backdrop-blur-md pt-3 sm:pt-4 px-5 pb-3.5 border-b border-zinc-800/80 flex items-center justify-between shrink-0">
-          <div className="w-10 h-1 rounded-full bg-zinc-700 mx-auto absolute top-2 left-1/2 -translate-x-1/2 sm:hidden" />
-          <h3 className="text-sm font-extrabold tracking-tight text-white">
+        <div className="sticky top-0 z-20 bg-white/95 dark:bg-[#18181B]/95 backdrop-blur-md pt-3.5 sm:pt-4 px-5 pb-3.5 border-b border-[#E5E5E5] dark:border-[#27272A] flex items-center justify-between shrink-0">
+          <div className="w-10 h-1 rounded-full bg-[#D4D4D4] dark:bg-zinc-700 mx-auto absolute top-2 left-1/2 -translate-x-1/2 sm:hidden" />
+          <h3 className="text-base font-extrabold tracking-tight text-[#111111] dark:text-white">
             Profile and Voice
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/80 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full bg-[#F5F5F5] dark:bg-[#27272A] hover:bg-[#E5E5E5] dark:hover:bg-[#3F3F46] text-[#525252] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
             title="Close drawer"
             aria-label="Close Profile and Voice drawer"
           >
@@ -321,18 +342,19 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
           </button>
         </div>
 
-        {/* Scrollable Content with Bottom Padding */}
-        <div className="flex-1 overflow-y-auto px-5 pt-4 pb-8 space-y-5">
-          {/* 1. Live 3D Avatar Portrait with Soft Radial Glow & Uncropped Framing */}
-          <div className="flex flex-col items-center text-center bg-transparent border-0 shadow-none">
-            <div className="relative flex items-center justify-center w-[184px] h-[184px] bg-transparent border-0 shadow-none">
-              <div
-                aria-hidden="true"
-                style={{
-                  background: `radial-gradient(circle, ${activeChar.accentColor}2E 0%, ${activeChar.accentColor}0D 46%, transparent 72%)`,
-                }}
-                className="absolute inset-0 rounded-full pointer-events-none"
-              />
+        {/* Scrollable Content with 24px Bottom Padding */}
+        <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-4">
+          {/* 1. Companion Identity Card with 180px Glossy Bubble Orb */}
+          <div className="rounded-[24px] bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] p-5 shadow-2xs flex flex-col items-center text-center">
+            {/* Large 180px Bubble Orb — Never Cropped at Any Scroll Position */}
+            <div
+              style={{
+                background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.65) 0%, ${activeChar.accentColor}2D 52%, ${activeChar.accentColor}12 100%)`,
+                borderColor: `${activeChar.accentColor}59`,
+                boxShadow: `inset 0 2px 8px rgba(255,255,255,0.55), inset 0 -4px 12px ${activeChar.accentColor}24, 0 8px 24px -8px ${activeChar.accentColor}33`,
+              }}
+              className="sage-profile-orb relative w-[180px] h-[180px] rounded-full border overflow-hidden flex items-center justify-center shrink-0"
+            >
               <Sage3DAvatar
                 state={isPreviewingVoice ? 'speaking' : avatarState}
                 characterId={characterId}
@@ -347,13 +369,13 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
             </div>
 
             {/* Name & Inline Rename Editor */}
-            <div className="mt-1.5 w-full max-w-xs">
+            <div className="mt-3.5 w-full max-w-xs">
               {!isEditingName ? (
                 <div className="flex flex-col items-center">
                   <div className="flex items-center justify-center gap-2">
                     <h2
                       data-testid="sage-profile-display-name"
-                      className="text-xl font-black text-white tracking-tight"
+                      className="text-xl font-black text-[#111111] dark:text-white tracking-tight"
                     >
                       {displayName}
                     </h2>
@@ -365,24 +387,27 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                         setNameError(null);
                         setIsEditingName(true);
                       }}
-                      className="p-1.5 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 text-[#F4C430] transition-colors cursor-pointer"
+                      className="w-7 h-7 rounded-full bg-[#FDF3C8] dark:bg-[#27272A] hover:bg-[#F4C430] text-[#111111] dark:text-[#F4C430] flex items-center justify-center border border-[#F4C430]/40 transition-colors cursor-pointer"
                       title="Rename companion"
                       aria-label="Rename companion"
                     >
-                      <Pencil size={13} />
+                      <Pencil size={12} />
                     </button>
                   </div>
 
                   {customName && customName !== activeChar.name && (
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[11px] text-zinc-400">
-                        Default: <strong className="text-zinc-300">{activeChar.name}</strong>
+                      <span className="text-[11px] text-[#737373] dark:text-zinc-400">
+                        Default:{' '}
+                        <strong className="text-[#111111] dark:text-zinc-200">
+                          {activeChar.name}
+                        </strong>
                       </span>
                       <button
                         type="button"
                         data-testid="sage-reset-name-btn"
                         onClick={handleResetToDefaultName}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92700A] dark:text-[#F4C430] hover:underline cursor-pointer"
                       >
                         <RotateCcw size={10} />
                         Reset name
@@ -391,7 +416,7 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                   )}
 
                   {nameSavedFlash && (
-                    <p className="text-[11px] text-emerald-400 font-semibold mt-1">
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                       Name updated across Scholario
                     </p>
                   )}
@@ -407,17 +432,24 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                         setNameInput(e.target.value);
                         if (nameError) setNameError(null);
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          e.stopPropagation();
+                          setIsEditingName(false);
+                          setNameError(null);
+                        }
+                      }}
                       maxLength={20}
                       placeholder={activeChar.name}
                       autoFocus
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-sm font-bold text-white focus:outline-none focus:border-[#F4C430]"
+                      className="flex-1 px-3 py-1.5 rounded-[14px] bg-white dark:bg-[#141416] border border-[#E5E5E5] dark:border-[#3F3F46] text-sm font-bold text-[#111111] dark:text-white focus:outline-none focus:border-[#F4C430]"
                     />
                     <button
                       type="submit"
                       data-testid="sage-rename-save-btn"
-                      className="px-3 py-1.5 rounded-xl bg-[#F4C430] hover:bg-[#e5b625] text-black font-bold text-xs flex items-center gap-1 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-full bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] font-extrabold text-xs flex items-center gap-1 cursor-pointer"
                     >
-                      <Check size={14} />
+                      <Check size={13} />
                       Save
                     </button>
                     <button
@@ -426,17 +458,17 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                         setIsEditingName(false);
                         setNameError(null);
                       }}
-                      className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold cursor-pointer"
+                      className="px-3 py-1.5 rounded-full bg-[#F5F5F5] dark:bg-[#27272A] hover:bg-[#E5E5E5] dark:hover:bg-[#3F3F46] text-[#525252] dark:text-zinc-300 text-xs font-bold cursor-pointer"
                     >
                       Cancel
                     </button>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-zinc-400 px-1">
+                  <div className="flex items-center justify-between text-[10px] text-[#737373] dark:text-zinc-400 px-1">
                     <span>1–20 characters</span>
                     <span>{nameInput.trim().length}/20</span>
                   </div>
                   {nameError && (
-                    <div className="flex items-center gap-1.5 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/50 rounded-lg px-2.5 py-1.5">
+                    <div className="flex items-center gap-1.5 text-xs text-red-700 dark:text-rose-300 bg-red-50 dark:bg-rose-950/40 border border-red-200 dark:border-rose-800/50 rounded-xl px-2.5 py-1.5">
                       <AlertCircle size={13} className="shrink-0" />
                       <span>{nameError}</span>
                     </div>
@@ -445,33 +477,35 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
               )}
             </div>
 
-            {/* Role Chip & Status Line */}
+            {/* Role Chip & Online Chip */}
             <div className="flex flex-wrap items-center justify-center gap-2 mt-2.5">
               <span
                 style={{
                   color: activeChar.accentColor,
-                  borderColor: `${activeChar.accentColor}45`,
-                  backgroundColor: `${activeChar.accentColor}14`,
+                  borderColor: `${activeChar.accentColor}4D`,
+                  backgroundColor: `${activeChar.accentColor}16`,
                 }}
-                className="px-2.5 py-0.5 rounded-full border text-[11px] font-bold tracking-wide"
+                className="px-3 py-0.5 rounded-full border text-[11px] font-bold tracking-wide"
               >
                 {activeChar.role}
               </span>
 
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-900/90 border border-zinc-800 text-[11px] font-medium text-zinc-300">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#F5F5F5] dark:bg-[#222227] border border-[#E5E5E5] dark:border-[#2F2F37] text-[11px] font-bold text-[#525252] dark:text-zinc-300">
                 <span className="relative flex h-2 w-2">
-                  <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${statusDotColor}`} />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                  <span
+                    className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${statusDotColor}`}
+                  />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
                 <span>{liveStatusLabel}</span>
               </span>
             </div>
 
-            <p className="text-xs text-zinc-400 mt-2 max-w-[300px] leading-relaxed">
+            <p className="text-xs text-[#525252] dark:text-zinc-400 mt-2 max-w-[290px] leading-relaxed">
               {activeChar.description}
             </p>
 
-            {/* Full-Width "Change companion" Button */}
+            {/* Full-Width "Change companion" Secondary Pill Button */}
             <button
               type="button"
               data-testid="sage-profile-change-avatar-btn"
@@ -479,19 +513,21 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                 onClose();
                 onOpenCharacterPicker();
               }}
-              className="w-full mt-4 py-2.5 px-4 rounded-xl bg-[#F4C430]/15 hover:bg-[#F4C430]/25 border border-[#F4C430]/40 text-[#F4C430] text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full mt-4 py-2.5 px-4 rounded-full bg-[#111111] dark:bg-[#27272A] hover:bg-[#1f1f1f] dark:hover:bg-[#3F3F46] border border-[#111111] dark:border-[#3F3F46] text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
             >
-              <UserCheck size={15} />
+              <UserCheck size={15} className="text-[#F4C430]" />
               <span>Change companion</span>
             </button>
           </div>
 
           {/* 2. Clean Voice Card */}
-          <div className="rounded-2xl bg-[#16161C] border border-zinc-800/90 p-4 space-y-4">
+          <div className="rounded-[24px] bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] p-5 shadow-2xs space-y-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Volume2 size={15} className="text-[#F4C430]" />
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-zinc-200">
+                <div className="w-7 h-7 rounded-full bg-[#FDF3C8] dark:bg-[#F4C430]/15 flex items-center justify-center text-[#92700A] dark:text-[#F4C430]">
+                  <Volume2 size={14} />
+                </div>
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#111111] dark:text-zinc-200">
                   Voice Settings
                 </h4>
               </div>
@@ -499,92 +535,102 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                 type="button"
                 data-testid="sage-profile-preview-voice-btn"
                 onClick={handlePreviewVoice}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4C430] hover:bg-[#e5b625] text-black text-xs font-extrabold transition-colors cursor-pointer shrink-0"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#F4C430] hover:bg-[#e6b82a] text-[#111111] text-xs font-extrabold shadow-2xs transition-all cursor-pointer shrink-0"
               >
                 <Volume2 size={13} />
-                <span>{isPreviewingVoice ? 'Speaking...' : 'Preview voice'}</span>
+                <span>{isPreviewingVoice ? 'Stop' : 'Preview voice'}</span>
               </button>
             </div>
 
-            {/* Voice Dropdown Grouped by Language (Urdu First) */}
+            {/* Voice Dropdown Grouped by Language (Urdu First, Rounded 14px, Chevron, Ellipsis, Full Tooltip) */}
             <div className="space-y-1.5">
               <label
                 htmlFor="sage-profile-voice-select"
-                className="block text-[11px] font-semibold text-zinc-400"
+                className="block text-[11px] font-bold text-[#525252] dark:text-zinc-400"
               >
                 Assigned voice for {displayName}
               </label>
-              <select
-                id="sage-profile-voice-select"
-                data-testid="sage-profile-voice-select"
-                value={voicePref.voiceURI || ''}
-                onChange={(e) => handleVoiceChange(e.target.value)}
-                title={fullVoiceTooltip}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-medium text-zinc-100 truncate focus:outline-none focus:border-[#F4C430]"
-              >
-                <option
-                  value=""
-                  title={
-                    resolvedDefaultVoice
-                      ? `Default: ${resolvedDefaultVoice.name} (${resolvedDefaultVoice.lang})`
-                      : 'Auto System Default'
-                  }
+              <div className="relative">
+                <select
+                  id="sage-profile-voice-select"
+                  data-testid="sage-profile-voice-select"
+                  value={voicePref.voiceURI || ''}
+                  onChange={(e) => handleVoiceChange(e.target.value)}
+                  title={fullVoiceTooltip}
+                  className="w-full appearance-none pl-3.5 pr-9 py-2.5 rounded-[14px] bg-[#FAFAFA] dark:bg-[#141416] border border-[#E5E5E5] dark:border-[#2F2F37] hover:border-[#D4D4D4] text-xs font-semibold text-[#111111] dark:text-zinc-100 truncate focus:outline-none focus:border-[#F4C430]"
                 >
-                  Auto ({resolvedDefaultVoice ? formatShortVoiceLabel(resolvedDefaultVoice) : 'System Default'})
-                </option>
+                  <option
+                    value=""
+                    title={
+                      resolvedDefaultVoice
+                        ? `Default: ${resolvedDefaultVoice.name} (${resolvedDefaultVoice.lang})`
+                        : 'Auto System Default'
+                    }
+                  >
+                    Auto (
+                    {resolvedDefaultVoice
+                      ? formatShortVoiceLabel(resolvedDefaultVoice)
+                      : 'System Default'}
+                    )
+                  </option>
 
-                {groupedVoices.urdu.length > 0 && (
-                  <optgroup label="Urdu (اردو)">
-                    {groupedVoices.urdu.map((v) => (
-                      <option
-                        key={v.voiceURI}
-                        value={v.voiceURI}
-                        title={`${v.name} (${v.lang})`}
-                      >
-                        {formatShortVoiceLabel(v)}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
+                  {groupedVoices.urdu.length > 0 && (
+                    <optgroup label="Urdu (اردو)">
+                      {groupedVoices.urdu.map((v) => (
+                        <option
+                          key={v.voiceURI}
+                          value={v.voiceURI}
+                          title={`${v.name} (${v.lang})`}
+                        >
+                          {formatShortVoiceLabel(v)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
 
-                {groupedVoices.english.length > 0 && (
-                  <optgroup label="English">
-                    {groupedVoices.english.map((v) => (
-                      <option
-                        key={v.voiceURI}
-                        value={v.voiceURI}
-                        title={`${v.name} (${v.lang})`}
-                      >
-                        {formatShortVoiceLabel(v)}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
+                  {groupedVoices.english.length > 0 && (
+                    <optgroup label="English">
+                      {groupedVoices.english.map((v) => (
+                        <option
+                          key={v.voiceURI}
+                          value={v.voiceURI}
+                          title={`${v.name} (${v.lang})`}
+                        >
+                          {formatShortVoiceLabel(v)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
 
-                {groupedVoices.other.length > 0 && (
-                  <optgroup label="Other Languages">
-                    {groupedVoices.other.map((v) => (
-                      <option
-                        key={v.voiceURI}
-                        value={v.voiceURI}
-                        title={`${v.name} (${v.lang})`}
-                      >
-                        {formatShortVoiceLabel(v)}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
+                  {groupedVoices.other.length > 0 && (
+                    <optgroup label="Other Languages">
+                      {groupedVoices.other.map((v) => (
+                        <option
+                          key={v.voiceURI}
+                          value={v.voiceURI}
+                          title={`${v.name} (${v.lang})`}
+                        >
+                          {formatShortVoiceLabel(v)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+                <ChevronDown
+                  size={15}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#737373] dark:text-zinc-400"
+                />
+              </div>
             </div>
 
-            {/* Speed & Pitch Sliders with Gold Filled Track, Value Pill & Individual Reset Button */}
-            <div className="space-y-3.5 pt-1">
+            {/* Speed & Pitch Sliders with Gold Filled Track, Large Round Thumb, Value Pill & Reset Icon */}
+            <div className="space-y-4 pt-1">
               {/* Speed Slider */}
               <div>
                 <div className="flex items-center justify-between text-[11px] mb-2">
-                  <span className="font-semibold text-zinc-300">Speed</span>
+                  <span className="font-bold text-[#404040] dark:text-zinc-300">Speed</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 font-mono text-[11px] font-bold text-[#F4C430]">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#FDF3C8] dark:bg-[#222229] border border-[#F4C430]/40 font-mono text-[11px] font-bold text-[#92700A] dark:text-[#F4C430]">
                       {voicePref.rate.toFixed(2)}x
                     </span>
                     <button
@@ -593,7 +639,7 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                       disabled={!isRateModified}
                       title={`Reset speed to ${activeChar.voiceProfile.defaultRate.toFixed(2)}x`}
                       aria-label="Reset speed"
-                      className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[#737373] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-white hover:bg-[#F5F5F5] dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                     >
                       <RotateCcw size={12} />
                     </button>
@@ -607,9 +653,7 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                   step={0.05}
                   value={voicePref.rate}
                   onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                  style={{
-                    background: `linear-gradient(to right, #F4C430 0%, #F4C430 ${ratePct}%, #27272A ${ratePct}%, #27272A 100%)`,
-                  }}
+                  style={{ '--sage-slider-pct': `${ratePct}%` } as React.CSSProperties}
                   className="sage-voice-slider w-full cursor-pointer"
                 />
               </div>
@@ -617,9 +661,9 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
               {/* Pitch Slider */}
               <div>
                 <div className="flex items-center justify-between text-[11px] mb-2">
-                  <span className="font-semibold text-zinc-300">Pitch</span>
+                  <span className="font-bold text-[#404040] dark:text-zinc-300">Pitch</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 font-mono text-[11px] font-bold text-[#F4C430]">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#FDF3C8] dark:bg-[#222229] border border-[#F4C430]/40 font-mono text-[11px] font-bold text-[#92700A] dark:text-[#F4C430]">
                       {voicePref.pitch.toFixed(2)}
                     </span>
                     <button
@@ -628,7 +672,7 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                       disabled={!isPitchModified}
                       title={`Reset pitch to ${activeChar.voiceProfile.defaultPitch.toFixed(2)}`}
                       aria-label="Reset pitch"
-                      className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[#737373] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-white hover:bg-[#F5F5F5] dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                     >
                       <RotateCcw size={12} />
                     </button>
@@ -642,21 +686,19 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                   step={0.03}
                   value={voicePref.pitch}
                   onChange={(e) => handlePitchChange(parseFloat(e.target.value))}
-                  style={{
-                    background: `linear-gradient(to right, #F4C430 0%, #F4C430 ${pitchPct}%, #27272A ${pitchPct}%, #27272A 100%)`,
-                  }}
+                  style={{ '--sage-slider-pct': `${pitchPct}%` } as React.CSSProperties}
                   className="sage-voice-slider w-full cursor-pointer"
                 />
               </div>
             </div>
 
-            {/* Quiet Reset Actions & Saved Note */}
-            <div className="pt-3 border-t border-zinc-800/80 space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Two Clearly Separated Quiet Buttons + Saved Per Avatar Note */}
+            <div className="pt-3.5 border-t border-[#E5E5E5] dark:border-[#27272A] space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={handleResetVoicePref}
-                  className="text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                  className="w-full py-2 px-3 rounded-full bg-[#F5F5F5] dark:bg-[#222228] hover:bg-[#EAEAEA] dark:hover:bg-[#2C2C34] border border-[#E5E5E5] dark:border-[#2F2F37] text-[11px] font-bold text-[#525252] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white transition-colors cursor-pointer"
                 >
                   Reset voice defaults
                 </button>
@@ -664,12 +706,12 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
                   type="button"
                   data-testid="sage-reset-companion-btn"
                   onClick={handleResetToDefaultCompanion}
-                  className="text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                  className="w-full py-2 px-3 rounded-full bg-[#F5F5F5] dark:bg-[#222228] hover:bg-[#EAEAEA] dark:hover:bg-[#2C2C34] border border-[#E5E5E5] dark:border-[#2F2F37] text-[11px] font-bold text-[#525252] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white transition-colors cursor-pointer"
                 >
                   Reset to default companion
                 </button>
               </div>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-[#737373] dark:text-zinc-500 text-center">
                 Saved per avatar on your account
               </p>
             </div>

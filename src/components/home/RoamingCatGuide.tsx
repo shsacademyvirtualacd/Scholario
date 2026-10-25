@@ -1113,6 +1113,10 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
   const [activeBubble, setActiveBubble] = useState<RoamingSectionBubble | null>(
     ROAMING_TANGO_SECTION_BUBBLES[0]
   );
+  const [bubbleVisible, setBubbleVisible] = useState<boolean>(true);
+  const [bubbleTailPlacement, setBubbleTailPlacement] = useState<'above' | 'below'>('above');
+  const [bubbleTailLeftPx, setBubbleTailLeftPx] = useState<number>(48);
+  const [bubbleOverlapsMobileText, setBubbleOverlapsMobileText] = useState<boolean>(false);
 
   const [messages, setMessages] = useState<TangoChatMessage[]>([
     {
@@ -1140,7 +1144,6 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
   const lastHopTimeRef = useRef<number>(0);
   const lastScrollTargetYRef = useRef<number | null>(null);
   const lastBubbleIndexRef = useRef<number>(0);
-  const lastBubbleTimeRef = useRef<number>(Date.now());
   const isFrozenRef = useRef<boolean>(isFrozen);
   const chatOpenRef = useRef<boolean>(chatOpen);
 
@@ -1166,6 +1169,9 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
+    if (chatOpen) {
+      setBubbleVisible(false);
+    }
   }, [chatOpen]);
 
   useEffect(() => {
@@ -1176,23 +1182,19 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
     }
   }, [isMinimized]);
 
-  // Apply speech bubble position directly onto bubbleRef so it stays 100% inside the container
-  // and NEVER covers the cat itself at any width (360, 390, 768, 1024, 1366).
+  // Position speech bubble ABOVE Tango if there is room, otherwise BELOW Tango,
+  // always clamped inside [8, containerWidth - bubbleWidth - 8], and check mobile text overlap.
   const syncSpeechBubblePosition = useCallback(
     (catX: number, catY: number, size: number, cw: number, ch: number) => {
       const bubbleEl = bubbleRef.current;
       if (!bubbleEl) return;
 
       const isMob = cw < 640;
-      const bubbleW = Math.min(Math.floor(cw * 0.7), isMob ? 220 : 240);
-      const bubbleH = bubbleEl.offsetHeight || 64;
+      const bubbleW = Math.min(Math.floor(cw * 0.72), isMob ? 216 : 240);
+      const bubbleH = bubbleEl.offsetHeight || 72;
 
       bubbleEl.style.width = `${bubbleW}px`;
-      bubbleEl.style.maxWidth = 'min(70vw, 240px)';
-
-      const rightSpace = cw - (catX + size + 8) - 8;
-      const leftSpace = catX - 8 - 8;
-      const topSpace = catY - 74;
+      bubbleEl.style.maxWidth = 'min(72vw, 240px)';
 
       // Reset positioning properties
       bubbleEl.style.left = '';
@@ -1200,36 +1202,62 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       bubbleEl.style.top = '';
       bubbleEl.style.bottom = '';
 
-      if (leftSpace >= bubbleW && (catX > cw * 0.45 || rightSpace < bubbleW)) {
-        // Place to the left of the cat
-        bubbleEl.style.left = `${Math.round(-(bubbleW + 8))}px`;
-        const clampedTop = Math.round(
-          Math.max(74 - catY, Math.min(0, ch - catY - bubbleH - 12))
-        );
-        bubbleEl.style.top = `${clampedTop}px`;
-      } else if (rightSpace >= bubbleW) {
-        // Place to the right of the cat
-        bubbleEl.style.left = `${Math.round(size + 8)}px`;
-        const clampedTop = Math.round(
-          Math.max(74 - catY, Math.min(0, ch - catY - bubbleH - 12))
-        );
-        bubbleEl.style.top = `${clampedTop}px`;
-      } else if (topSpace >= bubbleH + 8) {
-        // Place above the cat (never covering the cat, clamped inside [8, cw - bubbleW - 8])
-        const centeredOffset = Math.round((size - bubbleW) * 0.5);
-        const minOffset = 8 - catX;
-        const maxOffset = cw - bubbleW - 8 - catX;
-        const safeLeft = Math.round(Math.max(minOffset, Math.min(maxOffset, centeredOffset)));
-        bubbleEl.style.left = `${safeLeft}px`;
-        bubbleEl.style.bottom = `${Math.round(size + 6)}px`;
+      // Clamp horizontal position strictly inside [8, cw - bubbleW - 8]
+      const centeredOffset = Math.round((size - bubbleW) * 0.5);
+      const minOffset = 8 - catX;
+      const maxOffset = Math.max(minOffset, cw - bubbleW - 8 - catX);
+      const safeLeft = Math.round(Math.max(minOffset, Math.min(maxOffset, centeredOffset)));
+      bubbleEl.style.left = `${safeLeft}px`;
+
+      const topSafe = 74;
+      const canPlaceAbove = catY - (bubbleH + 12) >= topSafe;
+      const canPlaceBelow = catY + size + 34 + bubbleH <= ch - 8;
+
+      let absBubbleTop = 0;
+      if (canPlaceAbove || !canPlaceBelow) {
+        bubbleEl.style.bottom = `${Math.round(size + 10)}px`;
+        absBubbleTop = catY - bubbleH - 10;
+        setBubbleTailPlacement('above');
       } else {
-        // Place below the cat and its Stay-here control bar (never covering the cat)
-        const centeredOffset = Math.round((size - bubbleW) * 0.5);
-        const minOffset = 8 - catX;
-        const maxOffset = cw - bubbleW - 8 - catX;
-        const safeLeft = Math.round(Math.max(minOffset, Math.min(maxOffset, centeredOffset)));
-        bubbleEl.style.left = `${safeLeft}px`;
-        bubbleEl.style.top = `${Math.round(size + 30)}px`;
+        bubbleEl.style.top = `${Math.round(size + 32)}px`;
+        absBubbleTop = catY + size + 32;
+        setBubbleTailPlacement('below');
+      }
+
+      // Compute tail horizontal offset pointing toward Tango's center
+      const catCenterRel = Math.round(size * 0.5 - safeLeft);
+      const clampedTailLeft = Math.max(18, Math.min(bubbleW - 18, catCenterRel));
+      setBubbleTailLeftPx(clampedTailLeft);
+
+      // On mobile (< 768px), hide the bubble if its bounding box overlaps any text or control element
+      if (cw < 768) {
+        const absBubbleLeft = catX + safeLeft;
+        const absBubbleRight = absBubbleLeft + bubbleW;
+        const absBubbleBottom = absBubbleTop + bubbleH;
+        let overlapsText = false;
+
+        try {
+          const textEls = document.querySelectorAll(
+            'h1, h2, h3, h4, p, table, summary, label, [role="tab"], [id^="feature-filter-"]'
+          );
+          for (let i = 0; i < textEls.length; i++) {
+            const el = textEls[i];
+            if (wrapperRef.current && wrapperRef.current.contains(el)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width < 8 || r.height < 8 || r.bottom <= 0 || r.top >= ch) continue;
+            const ox = Math.max(0, Math.min(absBubbleRight, r.right) - Math.max(absBubbleLeft, r.left));
+            const oy = Math.max(0, Math.min(absBubbleBottom, r.bottom) - Math.max(absBubbleTop, r.top));
+            if (ox * oy > 36) {
+              overlapsText = true;
+              break;
+            }
+          }
+        } catch {
+          // ignore
+        }
+        setBubbleOverlapsMobileText(overlapsText);
+      } else {
+        setBubbleOverlapsMobileText(false);
       }
     },
     []
@@ -1246,11 +1274,12 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       );
 
       const newSize = getTangoSizeForContainerWidth(next.width);
-      const clampedX = Math.round(
-        Math.max(6, Math.min(next.width - newSize - 6, posRef.current.x))
-      );
+      const isDesktopGutter = next.width >= 1024;
+      const clampedX = isDesktopGutter
+        ? Math.round(Math.max(8, Math.min(next.width - newSize - 8, posRef.current.x)))
+        : Math.round(Math.max(8, next.width - newSize - 8));
       const clampedY = Math.round(
-        Math.max(72, Math.min(next.height - newSize - 32, posRef.current.y))
+        Math.max(76, Math.min(next.height - newSize - 38, posRef.current.y))
       );
       posRef.current.x = clampedX;
       posRef.current.y = clampedY;
@@ -1283,9 +1312,9 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
     };
   }, [measurePreviewContainer, syncSpeechBubblePosition]);
 
-  // Re-sync bubble placement whenever activeBubble changes
+  // Re-sync bubble placement whenever activeBubble or visibility changes
   useEffect(() => {
-    if (!activeBubble || chatOpen) return;
+    if (!activeBubble || !bubbleVisible || chatOpen) return;
     syncSpeechBubblePosition(
       Math.round(posRef.current.x),
       Math.round(posRef.current.y),
@@ -1293,7 +1322,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       containerDimsRef.current.width,
       containerDimsRef.current.height
     );
-  }, [activeBubble, chatOpen, avatarSize, containerDims, syncSpeechBubblePosition]);
+  }, [activeBubble, bubbleVisible, chatOpen, avatarSize, containerDims, syncSpeechBubblePosition]);
 
   const getAvatarPixelSize = useCallback(() => {
     return avatarSizeRef.current;
@@ -1306,88 +1335,100 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       : ROAM_SPEED_PX_PER_SEC;
   }, []);
 
-  // Compute safe waypoint that keeps Tango at the edges / section gaps and avoids:
-  // hero text, filter pills, CTA buttons, the Android download card, and "Showing 7 features" labels.
+  // Compute safe waypoint:
+  // - Desktop (cw >= 1024): dock in left or right gutter outside the centered content column and roam slowly along it.
+  // - Mobile/Tablet (cw < 1024, no gutters): dock at bottom-right above any sticky bottom bar and roam ONLY vertically along the right edge, never entering board/grade selectors or content cards.
+  // - Full no-go zones for headings, paragraphs, tables, FAQ rows, cards with text, form controls, chips, sticky bars, and footer link columns.
   const pickSafeWaypoint = useCallback(
     (preferSectionY?: number) => {
       if (typeof window === 'undefined') return { x: 24, y: 300 };
       const cw = containerDimsRef.current.width || window.innerWidth;
       const ch = containerDimsRef.current.height || window.innerHeight;
       const size = avatarSizeRef.current;
-      const isMob = cw < 640;
+      const isDesktopWithGutters = cw >= 1024;
 
-      const topSafe = 74; // below top navbar
-      const bottomSafe = Math.max(topSafe + 20, ch - size - 34);
-      const leftMargin = isMob ? 6 : 12;
-      const rightMargin = Math.max(leftMargin, cw - size - (isMob ? 6 : 12));
+      const topSafe = 78; // below floating pill navbar
+      let bottomSafe = Math.max(topSafe + 24, ch - size - 42);
 
-      // Strict avoid-zones: navbar, hero text, filter pills, CTA buttons, download card, feature count label
-      const strictAvoidSelectors = [
-        'header',
-        'nav',
-        '[data-roam-nogo]',
-        'h1',
-        'h2',
-        'h3',
-        '.hero-stagger-1',
-        '.hero-stagger-2',
-        '.hero-stagger-3',
-        '.hero-stagger-4',
-        '.hero-stagger-5',
-        '[id^="feature-filter-"]',
-        '#features-section .sticky',
-        '#landing-apk-download-btn',
-        'button',
-        'a[href]',
-        'input',
-        'textarea',
-        'select',
-      ].join(', ');
-
-      const strictRects: DOMRect[] = [];
-      const softRects: DOMRect[] = [];
-
+      // Respect any sticky bottom bar on mobile
       try {
-        document.querySelectorAll(strictAvoidSelectors).forEach((el) => {
-          if (wrapperRef.current && wrapperRef.current.contains(el)) return;
-          const r = el.getBoundingClientRect();
-          if (r.width > 12 && r.height > 12 && r.bottom > 0 && r.top < ch) {
-            strictRects.push(r);
-          }
-        });
-
-        // Also include the entire Android promo card and the "Showing X features" label row
-        const apkBtn = document.getElementById('landing-apk-download-btn');
-        const apkCard = apkBtn?.closest('section');
-        if (apkCard) {
-          const r = apkCard.getBoundingClientRect();
-          if (r.bottom > 0 && r.top < ch) strictRects.push(r);
-        }
-
-        document.querySelectorAll('#features-section span, p, article').forEach((el) => {
-          if (wrapperRef.current && wrapperRef.current.contains(el)) return;
-          const txt = (el.textContent || '').trim();
-          const r = el.getBoundingClientRect();
-          if (r.width < 10 || r.height < 10 || r.bottom <= 0 || r.top >= ch) return;
-          if (/^showing\s+\d+\s+feature/i.test(txt)) {
-            strictRects.push(r);
-          } else {
-            softRects.push(r);
+        document.querySelectorAll('.fixed.bottom-0, .sticky.bottom-0, [data-sticky-bottom]').forEach((bar) => {
+          if (wrapperRef.current && wrapperRef.current.contains(bar)) return;
+          const r = bar.getBoundingClientRect();
+          if (r.height > 10 && r.top < ch && r.bottom >= ch - 20) {
+            bottomSafe = Math.min(bottomSafe, Math.max(topSafe + 20, Math.round(r.top - size - 36)));
           }
         });
       } catch {
         // ignore
       }
 
-      // Collect vertical section gaps on the page so Tango prefers gaps between sections on mobile
-      const gapYs: number[] = [];
+      const rightDockX = Math.max(8, cw - size - 8);
+
+      // No-go selectors: headings, paragraphs, tables, FAQ rows, cards with text,
+      // form controls, chips, sticky bars, and footer link columns
+      const noGoSelectors = [
+        'header',
+        'nav',
+        '.sticky',
+        '[data-roam-nogo]',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'p',
+        'table',
+        'thead',
+        'tbody',
+        'tr',
+        '[id*="faq"]',
+        'details',
+        'summary',
+        '.card',
+        '.teacher-card',
+        '.admin-card',
+        'article',
+        'input',
+        'textarea',
+        'select',
+        'button',
+        'label',
+        '[role="tab"]',
+        '[role="button"]',
+        '[role="listbox"]',
+        '.pill',
+        '.chip',
+        '.badge',
+        '[id^="feature-filter-"]',
+        '#landing-apk-download-btn',
+        'footer',
+        'footer a',
+        'footer ul',
+      ].join(', ');
+
+      const noGoRects: DOMRect[] = [];
+      let contentLeftEdge = Math.round(cw * 0.12);
+      let contentRightEdge = Math.round(cw * 0.88);
+
       try {
-        document.querySelectorAll('main > section').forEach((sec) => {
-          const r = sec.getBoundingClientRect();
-          const topGap = Math.round(r.top - size * 0.5);
-          const bottomGap = Math.round(r.bottom - size * 0.5);
-          if (topGap >= topSafe && topGap <= bottomSafe) gapYs.push(topGap);
-          if (bottomGap >= topSafe && bottomGap <= bottomSafe) gapYs.push(bottomGap);
+        // Measure main centered container column on desktop so Tango stays in the outer gutters
+        const mainContainers = document.querySelectorAll('main .max-w-7xl, main .max-w-6xl, main .container');
+        mainContainers.forEach((c) => {
+          const r = c.getBoundingClientRect();
+          if (r.width > 300 && r.width < cw - 40) {
+            contentLeftEdge = Math.min(contentLeftEdge, Math.round(r.left));
+            contentRightEdge = Math.max(contentRightEdge, Math.round(r.right));
+          }
+        });
+
+        document.querySelectorAll(noGoSelectors).forEach((el) => {
+          if (wrapperRef.current && wrapperRef.current.contains(el)) return;
+          const r = el.getBoundingClientRect();
+          if (r.width > 10 && r.height > 10 && r.bottom > 0 && r.top < ch) {
+            noGoRects.push(r);
+          }
         });
       } catch {
         // ignore
@@ -1402,59 +1443,110 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         return ox * oy;
       };
 
+      // Mobile / Tablet (no gutters): dock at bottom-right above any sticky bottom bar and roam ONLY vertically along the right edge
+      if (!isDesktopWithGutters) {
+        const defaultBottomRight = {
+          x: rightDockX,
+          y: bottomSafe,
+        };
+
+        // Collect clean vertical gaps along the right edge (x = rightDockX)
+        const candidateYs: number[] = [bottomSafe];
+        if (typeof preferSectionY === 'number') {
+          candidateYs.push(Math.round(Math.max(topSafe, Math.min(bottomSafe, preferSectionY))));
+        }
+
+        try {
+          document.querySelectorAll('main > section').forEach((sec) => {
+            const r = sec.getBoundingClientRect();
+            const topGap = Math.round(r.top - size * 0.5);
+            const bottomGap = Math.round(r.bottom - size * 0.5);
+            if (topGap >= topSafe && topGap <= bottomSafe) candidateYs.push(topGap);
+            if (bottomGap >= topSafe && bottomGap <= bottomSafe) candidateYs.push(bottomGap);
+          });
+        } catch {
+          // ignore
+        }
+
+        for (let i = 0; i < 8; i++) {
+          candidateYs.push(
+            Math.round(bottomSafe - Math.random() * Math.max(24, (bottomSafe - topSafe) * 0.45))
+          );
+        }
+
+        let bestY = defaultBottomRight.y;
+        let bestScore = Number.POSITIVE_INFINITY;
+
+        for (const cy of candidateYs) {
+          const clampedY = Math.round(Math.max(topSafe, Math.min(bottomSafe, cy)));
+          const footprint = {
+            left: rightDockX + 2,
+            right: rightDockX + size - 2,
+            top: clampedY + 2,
+            bottom: clampedY + size + 28,
+          };
+
+          let penalty = 0;
+          for (const nr of noGoRects) {
+            penalty += rectOverlapArea(footprint, nr);
+          }
+
+          if (penalty === 0) {
+            return { x: rightDockX, y: clampedY };
+          }
+          if (penalty < bestScore) {
+            bestScore = penalty;
+            bestY = clampedY;
+          }
+        }
+
+        return { x: rightDockX, y: bestY };
+      }
+
+      // Desktop (cw >= 1024): dock in the left or right gutter outside the centered content column
+      const leftGutterMaxX = Math.max(12, contentLeftEdge - size - 10);
+      const rightGutterMinX = Math.min(cw - size - 12, contentRightEdge + 10);
+
       let bestCandidate = {
-        x: rightMargin,
-        y: Math.round(Math.max(topSafe, bottomSafe - 12)),
+        x: Math.max(12, cw - size - 16),
+        y: bottomSafe,
       };
       let bestScore = Number.POSITIVE_INFINITY;
 
-      const totalAttempts = 20;
-      for (let attempt = 0; attempt < totalAttempts; attempt++) {
-        const useRightEdge = attempt % 2 === 0 ? Math.random() > 0.3 : Math.random() <= 0.3;
-        const laneWidth = isMob ? 4 : Math.min(56, Math.max(12, cw * 0.05));
-        const candidateX = Math.round(
-          useRightEdge
-            ? Math.max(leftMargin, rightMargin - Math.random() * laneWidth)
-            : Math.min(rightMargin, leftMargin + Math.random() * laneWidth)
-        );
+      for (let attempt = 0; attempt < 24; attempt++) {
+        const useRightGutter = attempt % 2 === 0 ? Math.random() > 0.25 : Math.random() <= 0.25;
+        const candidateX = useRightGutter
+          ? Math.round(
+              rightGutterMinX +
+                Math.random() * Math.max(4, cw - size - 12 - rightGutterMinX)
+            )
+          : Math.round(12 + Math.random() * Math.max(4, leftGutterMaxX - 12));
 
         let candidateY: number;
-        if (typeof preferSectionY === 'number' && attempt < 8) {
-          const jitter = (Math.random() - 0.5) * 70;
+        if (typeof preferSectionY === 'number' && attempt < 10) {
+          const jitter = (Math.random() - 0.5) * 80;
           candidateY = Math.round(Math.max(topSafe, Math.min(bottomSafe, preferSectionY + jitter)));
-        } else if (gapYs.length > 0 && attempt < 12) {
-          const pickGap = gapYs[attempt % gapYs.length];
-          candidateY = Math.round(
-            Math.max(topSafe, Math.min(bottomSafe, pickGap + (Math.random() - 0.5) * 24))
-          );
         } else {
-          candidateY = Math.round(topSafe + Math.random() * Math.max(20, bottomSafe - topSafe));
+          candidateY = Math.round(topSafe + Math.random() * Math.max(24, bottomSafe - topSafe));
         }
 
-        // Footprint of the cat + its small Stay-here bar below
         const catFootprint = {
-          left: candidateX + 4,
-          right: candidateX + size - 4,
-          top: candidateY + 4,
-          bottom: candidateY + size + 24,
+          left: candidateX + 2,
+          right: candidateX + size - 2,
+          top: candidateY + 2,
+          bottom: candidateY + size + 28,
         };
 
-        let strictPenalty = 0;
-        for (const sr of strictRects) {
-          strictPenalty += rectOverlapArea(catFootprint, sr) * 10;
+        let penalty = 0;
+        for (const nr of noGoRects) {
+          penalty += rectOverlapArea(catFootprint, nr);
         }
 
-        let softPenalty = 0;
-        for (const pr of softRects) {
-          softPenalty += rectOverlapArea(catFootprint, pr);
-        }
-
-        const totalScore = strictPenalty + softPenalty;
-        if (totalScore === 0) {
+        if (penalty === 0) {
           return { x: candidateX, y: candidateY };
         }
-        if (totalScore < bestScore) {
-          bestScore = totalScore;
+        if (penalty < bestScore) {
+          bestScore = penalty;
           bestCandidate = { x: candidateX, y: candidateY };
         }
       }
@@ -1470,7 +1562,11 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       const now = performance.now();
       const startX = Math.round(posRef.current.x);
       const startY = Math.round(posRef.current.y);
-      const cleanTargetX = Math.round(targetX);
+      const cw = containerDimsRef.current.width || (typeof window !== 'undefined' ? window.innerWidth : 1280);
+      const size = avatarSizeRef.current;
+
+      // On mobile/tablet (< 1024px), lock X strictly to the right edge so Tango roams only vertically
+      const cleanTargetX = cw < 1024 ? Math.max(8, cw - size - 8) : Math.round(targetX);
       const cleanTargetY = Math.round(targetY);
       const distance = Math.hypot(cleanTargetX - startX, cleanTargetY - startY);
 
@@ -1494,7 +1590,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         customSpeedPxPerSec ?? getCurrentRoamSpeedPxPerSec()
       );
       const durationMs = (distance / speedPxPerSec) * 1000;
-      const arcOffset = (Math.random() - 0.5) * Math.min(14, distance * 0.06);
+      const arcOffset = cw < 1024 ? 0 : (Math.random() - 0.5) * Math.min(10, distance * 0.04);
 
       walkSegRef.current = {
         active: true,
@@ -1563,20 +1659,23 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       if (dist < curSize * 0.36 && dist > 10) {
         lastHopTimeRef.current = now;
         const pushAngle = Math.atan2(centerY - e.clientY, centerX - e.clientX);
-        const hopX = Math.round(
-          Math.max(
-            6,
-            Math.min(
-              curVw - curSize - 6,
-              posRef.current.x + Math.cos(pushAngle) * POINTER_HOP_DISTANCE_PX
-            )
-          )
-        );
+        const hopX =
+          curVw < 1024
+            ? Math.max(8, curVw - curSize - 8)
+            : Math.round(
+                Math.max(
+                  8,
+                  Math.min(
+                    curVw - curSize - 8,
+                    posRef.current.x + Math.cos(pushAngle) * POINTER_HOP_DISTANCE_PX
+                  )
+                )
+              );
         const hopY = Math.round(
           Math.max(
-            74,
+            78,
             Math.min(
-              curVh - curSize - 32,
+              curVh - curSize - 42,
               posRef.current.y + Math.sin(pushAngle) * POINTER_HOP_DISTANCE_PX
             )
           )
@@ -1594,7 +1693,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       if (!prefersReducedMotion && !isFrozenRef.current && !chatOpenRef.current) {
         const curVh = containerDimsRef.current.height || window.innerHeight;
         const targetY =
-          84 + scrollRatio * Math.max(60, curVh - getAvatarPixelSize() - 120);
+          84 + scrollRatio * Math.max(60, curVh - getAvatarPixelSize() - 126);
         if (
           lastScrollTargetYRef.current === null ||
           Math.abs(targetY - lastScrollTargetYRef.current) > 48
@@ -1603,34 +1702,6 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
           const nextWaypoint = pickSafeWaypoint(targetY);
           beginSlowWalkTo(nextWaypoint.x, nextWaypoint.y);
         }
-      }
-
-      const now = Date.now();
-      if (now - lastBubbleTimeRef.current >= 10000 && !chatOpenRef.current) {
-        lastBubbleTimeRef.current = now;
-        let sectionHint: RoamingSectionBubble['sectionHint'] = 'hero';
-        if (scrollRatio > 0.84) sectionHint = 'faq';
-        else if (scrollRatio > 0.68) sectionHint = 'pricing';
-        else if (scrollRatio > 0.52) sectionHint = 'comparison';
-        else if (scrollRatio > 0.36) sectionHint = 'how-it-works';
-        else if (scrollRatio > 0.2) sectionHint = 'features';
-        else if (scrollRatio > 0.08) sectionHint = 'android';
-
-        const matching = ROAMING_TANGO_SECTION_BUBBLES.filter((b) => b.sectionHint === sectionHint);
-        const pool = matching.length > 0 ? matching : ROAMING_TANGO_SECTION_BUBBLES;
-        const nextIdx = Math.floor(Math.random() * pool.length);
-        let chosen = pool[nextIdx];
-        if (
-          ROAMING_TANGO_SECTION_BUBBLES.indexOf(chosen) === lastBubbleIndexRef.current &&
-          ROAMING_TANGO_SECTION_BUBBLES.length > 1
-        ) {
-          chosen =
-            ROAMING_TANGO_SECTION_BUBBLES[
-              (lastBubbleIndexRef.current + 1) % ROAMING_TANGO_SECTION_BUBBLES.length
-            ];
-        }
-        lastBubbleIndexRef.current = ROAMING_TANGO_SECTION_BUBBLES.indexOf(chosen);
-        setActiveBubble(chosen);
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -1658,13 +1729,13 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
       // When chat panel is open, walk slowly toward parked position next to chat panel
       if (chatOpenRef.current) {
         const parkX =
-          curVw < 640
-            ? Math.max(8, curVw - curSize - 10)
+          curVw < 1024
+            ? Math.max(8, curVw - curSize - 8)
             : Math.max(12, curVw - 380 - curSize - 12);
         const parkY =
           curVw < 640
-            ? Math.max(72, curVh - 430 - curSize)
-            : Math.max(84, curVh - curSize - 38);
+            ? Math.max(78, curVh - 430 - curSize)
+            : Math.max(84, curVh - curSize - 42);
         const distToPark = Math.hypot(
           parkX - walkSegRef.current.targetX,
           parkY - walkSegRef.current.targetY
@@ -1696,8 +1767,11 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         const nextX = seg.startX + dx * eased + perpX * arc;
         const nextY = seg.startY + dy * eased + perpY * arc;
 
-        const roundedX = Math.round(Math.max(6, Math.min(curVw - curSize - 6, nextX)));
-        const roundedY = Math.round(Math.max(72, Math.min(curVh - curSize - 32, nextY)));
+        const roundedX =
+          curVw < 1024
+            ? Math.max(8, curVw - curSize - 8)
+            : Math.round(Math.max(8, Math.min(curVw - curSize - 8, nextX)));
+        const roundedY = Math.round(Math.max(76, Math.min(curVh - curSize - 38, nextY)));
         posRef.current.x = roundedX;
         posRef.current.y = roundedY;
 
@@ -1751,17 +1825,74 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
     syncSpeechBubblePosition,
   ]);
 
-  // Rotate idle bubbles every 12 seconds if user hasn't scrolled
+  // Speech bubble cycle: show for 4–5 seconds (4500ms), then fade out and stay hidden
+  // for 20–30 seconds before showing the next one. Never show while chatOpen is true.
   useEffect(() => {
-    if (chatOpen || isMinimized || !isPublicRoute) return;
-    const interval = window.setInterval(() => {
-      if (Date.now() - lastBubbleTimeRef.current < 10000) return;
-      lastBubbleTimeRef.current = Date.now();
-      const nextIdx = (lastBubbleIndexRef.current + 1) % ROAMING_TANGO_SECTION_BUBBLES.length;
-      lastBubbleIndexRef.current = nextIdx;
-      setActiveBubble(ROAMING_TANGO_SECTION_BUBBLES[nextIdx]);
-    }, 12000);
-    return () => window.clearInterval(interval);
+    if (chatOpen || isMinimized || !isPublicRoute) {
+      setBubbleVisible(false);
+      return;
+    }
+
+    let showTimer: number | null = null;
+    let hideTimer: number | null = null;
+    let cancelled = false;
+
+    const pickContextualBubble = (): RoamingSectionBubble => {
+      const scrollRatio =
+        typeof window !== 'undefined'
+          ? window.scrollY /
+            Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+          : 0;
+      let sectionHint: RoamingSectionBubble['sectionHint'] = 'hero';
+      if (scrollRatio > 0.84) sectionHint = 'faq';
+      else if (scrollRatio > 0.68) sectionHint = 'pricing';
+      else if (scrollRatio > 0.52) sectionHint = 'comparison';
+      else if (scrollRatio > 0.36) sectionHint = 'how-it-works';
+      else if (scrollRatio > 0.2) sectionHint = 'features';
+      else if (scrollRatio > 0.08) sectionHint = 'android';
+
+      const matching = ROAMING_TANGO_SECTION_BUBBLES.filter((b) => b.sectionHint === sectionHint);
+      const pool = matching.length > 0 ? matching : ROAMING_TANGO_SECTION_BUBBLES;
+      let chosen = pool[Math.floor(Math.random() * pool.length)];
+      if (
+        ROAMING_TANGO_SECTION_BUBBLES.indexOf(chosen) === lastBubbleIndexRef.current &&
+        ROAMING_TANGO_SECTION_BUBBLES.length > 1
+      ) {
+        chosen =
+          ROAMING_TANGO_SECTION_BUBBLES[
+            (lastBubbleIndexRef.current + 1) % ROAMING_TANGO_SECTION_BUBBLES.length
+          ];
+      }
+      lastBubbleIndexRef.current = ROAMING_TANGO_SECTION_BUBBLES.indexOf(chosen);
+      return chosen;
+    };
+
+    const runBubbleCycle = (isFirst: boolean) => {
+      if (cancelled) return;
+      if (!isFirst) {
+        setActiveBubble(pickContextualBubble());
+      }
+      setBubbleVisible(true);
+
+      const visibleDurationMs = 4200 + Math.round(Math.random() * 700); // 4.2–4.9 seconds
+      hideTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        setBubbleVisible(false);
+
+        const hiddenPauseMs = 20000 + Math.round(Math.random() * 10000); // 20–30 seconds
+        showTimer = window.setTimeout(() => {
+          runBubbleCycle(false);
+        }, hiddenPauseMs);
+      }, visibleDurationMs);
+    };
+
+    runBubbleCycle(true);
+
+    return () => {
+      cancelled = true;
+      if (showTimer !== null) window.clearTimeout(showTimer);
+      if (hideTimer !== null) window.clearTimeout(hideTimer);
+    };
   }, [chatOpen, isMinimized, isPublicRoute]);
 
   useEffect(() => {
@@ -1930,6 +2061,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
 
   const handleOpenChatWithPrompt = (topicPrompt?: string) => {
     setChatOpen(true);
+    setBubbleVisible(false);
     setPokeCount((c) => c + 1);
     setTangoState('poke');
     window.setTimeout(() => setTangoState('idle'), 1100);
@@ -1942,7 +2074,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
 
   const isMobileSize = avatarSize === TANGO_SIZE_MOBILE;
 
-  // If visitor minimized Tango, show a compact dark floating pill in bottom-right corner (~26px high on mobile)
+  // If visitor minimized Tango, show a compact Scholario secondary pill in bottom-right corner
   if (isMinimized) {
     return (
       <button
@@ -1951,16 +2083,16 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         onClick={() => setIsMinimized(false)}
         style={{
           bottom: 'max(14px, env(safe-area-inset-bottom))',
-          height: isMobileSize ? '26px' : '30px',
+          height: isMobileSize ? '28px' : '32px',
         }}
-        className="tango-restore-btn fixed right-3 z-40 flex items-center gap-1.5 px-2.5 rounded-full bg-[#141418] hover:bg-[#1E1E24] text-white border border-[#F4C430]/55 shadow-lg transition-colors cursor-pointer"
+        className="tango-restore-btn fixed right-3 z-40 flex items-center gap-1.5 px-3 rounded-full bg-white/95 dark:bg-[#18181B]/95 hover:bg-[#FFFDF5] dark:hover:bg-[#222226] text-[#111111] dark:text-[#F4F4F5] border border-[#E5E5E5] dark:border-[#27272A] shadow-[0_8px_20px_rgba(17,17,17,0.08)] transition-all cursor-pointer"
         title="Bring back Tango the Academy Guide"
         aria-label="Bring back Tango the Academy Guide"
       >
         <div className="flex items-center justify-center bg-transparent shrink-0">
-          <TangoGuideSvg svgSize={isMobileSize ? 18 : 22} uid="restore-tango" />
+          <TangoGuideSvg svgSize={isMobileSize ? 18 : 20} uid="restore-tango" />
         </div>
-        <span className="text-[11px] font-extrabold text-[#F4C430] whitespace-nowrap">
+        <span className="text-[11px] font-bold text-[#111111] dark:text-[#F4F4F5] whitespace-nowrap">
           Ask Tango 🐾
         </span>
       </button>
@@ -1968,8 +2100,14 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
   }
 
   const bubbleShortText = activeBubble
-    ? truncateByCodePoints(stripTangoStarsUnicode(activeBubble.text), 90)
+    ? truncateByCodePoints(stripTangoStarsUnicode(activeBubble.text), 88)
     : '';
+
+  const showBubbleNow =
+    Boolean(activeBubble) &&
+    bubbleVisible &&
+    !chatOpen &&
+    !bubbleOverlapsMobileText;
 
   return (
     <>
@@ -1983,8 +2121,8 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         }}
         className="tango-roaming-wrapper fixed top-0 left-0 z-40 pointer-events-none select-none bg-transparent border-0 shadow-none"
       >
-        {/* Dark Speech Bubble (No Blur, Single-Line Header, Max 90 Chars, Always Inside Container) */}
-        {activeBubble && !chatOpen && (
+        {/* Scholario Assistant-Style Speech Bubble (Rounded 20px, White/Cream Surface, Gold "Tango" Pill, Small Tail) */}
+        {showBubbleNow && activeBubble && (
           <div
             ref={bubbleRef}
             data-testid="roaming-tango-speech-bubble"
@@ -1998,22 +2136,33 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
               }
             }}
             style={{
-              maxWidth: 'min(70vw, 240px)',
-              padding: isMobileSize ? '8px 10px' : '9px 11px',
+              maxWidth: 'min(72vw, 240px)',
+              padding: isMobileSize ? '9px 11px' : '10px 12px',
             }}
-            className="tango-speech-bubble pointer-events-auto absolute rounded-2xl bg-[#141418] text-zinc-100 border border-[#F4C430]/55 shadow-lg cursor-pointer hover:border-[#F4C430] transition-colors"
+            className="tango-speech-bubble pointer-events-auto absolute rounded-[20px] bg-white dark:bg-[#18181D] text-[#111111] dark:text-[#E4E4E7] border border-[#E5E5E5] dark:border-[#2A2A32] shadow-[0_8px_24px_rgba(17,17,17,0.08)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4)] cursor-pointer hover:border-[#F4C430] transition-all duration-200 animate-in fade-in duration-200"
           >
-            <div className="tango-bubble-header flex items-center justify-between gap-2 mb-0.5 whitespace-nowrap overflow-hidden">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#FB923C] whitespace-nowrap truncate">
-                {isMobileSize ? 'TANGO' : 'TANGO - ACADEMY GUIDE'}
+            <div className="tango-bubble-header flex items-center justify-between gap-2 mb-1 whitespace-nowrap overflow-hidden">
+              <span className="tango-bubble-pill inline-flex items-center px-2 py-0.5 rounded-full bg-[#F4C430] text-[#111111] text-[10px] font-bold tracking-tight leading-none shrink-0">
+                Tango
               </span>
-              <span className="text-[10px] text-zinc-400 font-semibold whitespace-nowrap shrink-0">
+              <span className="tango-bubble-hint text-[10px] text-[#737373] dark:text-[#A3A3A3] font-medium whitespace-nowrap shrink-0">
                 Tap to ask
               </span>
             </div>
-            <p className="tango-bubble-text text-[12px] sm:text-[12.5px] leading-[1.35] text-zinc-100 font-medium break-words">
+            <p className="tango-bubble-text text-[12px] sm:text-[12.5px] leading-[1.35] text-[#111111] dark:text-[#E4E4E7] font-medium line-clamp-2 sm:line-clamp-3 break-words">
               {bubbleShortText}
             </p>
+
+            {/* Small Tail Pointing to Tango */}
+            <span
+              aria-hidden="true"
+              style={{ left: `${bubbleTailLeftPx}px` }}
+              className={`tango-bubble-tail pointer-events-none absolute -translate-x-1/2 w-2.5 h-2.5 rotate-45 bg-white dark:bg-[#18181D] border-[#E5E5E5] dark:border-[#2A2A32] ${
+                bubbleTailPlacement === 'above'
+                  ? '-bottom-[6px] border-r border-b'
+                  : '-top-[6px] border-l border-t'
+              }`}
+            />
           </div>
         )}
 
@@ -2022,6 +2171,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
           data-testid="roaming-tango-avatar-trigger"
           onClick={() => {
             setChatOpen((o) => !o);
+            setBubbleVisible(false);
             setPokeCount((c) => c + 1);
             setTangoState('poke');
             window.setTimeout(() => setTangoState('idle'), 1100);
@@ -2050,7 +2200,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
           />
         </div>
 
-        {/* Scaled Control Bar Under Tango (Roam/Stay Toggle + Minimize, ~24-26px high on mobile) */}
+        {/* Secondary Pill Controls Under Tango ("Stay here" / "Roam" + Minimize) */}
         <div
           style={{ top: `${avatarSize + 2}px` }}
           className="tango-controls-bar pointer-events-auto absolute left-1/2 -translate-x-1/2 flex items-center justify-center gap-1 whitespace-nowrap"
@@ -2063,18 +2213,18 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
               setIsFrozen((f) => !f);
             }}
             style={{ height: isMobileSize ? '24px' : '26px' }}
-            className="tango-roam-btn inline-flex items-center gap-1 px-2 rounded-full bg-[#141418] hover:bg-[#1F1F26] text-[10px] font-bold text-zinc-200 border border-zinc-700/90 shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+            className="tango-roam-btn inline-flex items-center gap-1 px-2.5 rounded-full bg-white/95 dark:bg-[#18181B]/95 hover:bg-[#FFFDF5] dark:hover:bg-[#222226] text-[10px] font-bold text-[#111111] dark:text-[#F4F4F5] border border-[#E5E5E5] dark:border-[#27272A] shadow-xs transition-colors cursor-pointer whitespace-nowrap"
             title={isFrozen ? 'Let Tango roam slowly' : 'Freeze Tango in this spot'}
             aria-label={isFrozen ? 'Let Tango roam slowly' : 'Keep Tango staying here'}
           >
             {isFrozen ? (
               <>
-                <PinOff size={isMobileSize ? 9 : 10} className="text-[#F4C430] shrink-0" />
+                <PinOff size={isMobileSize ? 9 : 10} className="text-[#B38600] dark:text-[#F4C430] shrink-0" />
                 <span>Roam</span>
               </>
             ) : (
               <>
-                <Pin size={isMobileSize ? 9 : 10} className="text-[#F4C430] shrink-0" />
+                <Pin size={isMobileSize ? 9 : 10} className="text-[#B38600] dark:text-[#F4C430] shrink-0" />
                 <span>Stay here</span>
               </>
             )}
@@ -2092,7 +2242,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
               width: isMobileSize ? '24px' : '26px',
               height: isMobileSize ? '24px' : '26px',
             }}
-            className="tango-minimize-btn inline-flex items-center justify-center rounded-full bg-[#141418] hover:bg-[#1F1F26] text-zinc-400 hover:text-white border border-zinc-700/90 shadow-sm transition-colors cursor-pointer shrink-0"
+            className="tango-minimize-btn inline-flex items-center justify-center rounded-full bg-white/95 dark:bg-[#18181B]/95 hover:bg-[#FFFDF5] dark:hover:bg-[#222226] text-[#525252] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-[#27272A] shadow-xs transition-colors cursor-pointer shrink-0"
             title="Minimize Tango guide"
             aria-label="Minimize Tango guide"
           >
@@ -2101,7 +2251,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
         </div>
       </div>
 
-      {/* ── Public Tango Guide Chat Panel (Dark-Themed Bottom Sheet on Mobile, Floating Card on Desktop) ── */}
+      {/* ── Public Tango Guide Chat Panel (Matches Scholario Card/Modal Theme, Rounded 24px) ── */}
       {chatOpen && (
         <div
           ref={chatPanelRef}
@@ -2110,35 +2260,40 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
           role="dialog"
           aria-label="Tango Academy Guide Chat"
           style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
-          className="fixed inset-x-3 sm:inset-x-auto sm:right-5 z-50 sm:w-[370px] max-h-[78dvh] sm:max-h-[540px] rounded-3xl bg-[#121216]/98 text-zinc-100 border border-[#2C2C35] shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-200"
+          className="tango-chat-panel fixed inset-x-3 sm:inset-x-auto sm:right-5 z-50 sm:w-[376px] max-h-[78dvh] sm:max-h-[540px] rounded-[24px] bg-[#FAFAFA] dark:bg-[#141416] text-[#111111] dark:text-[#F4F4F5] border border-[#E5E5E5] dark:border-[#27272A] shadow-[0_12px_40px_rgba(0,0,0,0.14)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.55)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-200"
         >
           {/* Header */}
-          <div className="px-4 py-3 bg-[#18181E] border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0">
+          <div className="tango-chat-header px-4 py-3 bg-white dark:bg-[#18181B] border-b border-[#E5E5E5] dark:border-[#27272A] flex items-center justify-between gap-2 shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 flex items-center justify-center bg-transparent shrink-0">
-                <TangoGuideSvg svgSize={32} uid="chat-hdr-tango" />
+              <div className="w-9 h-9 rounded-full bg-[#FFFDF5] dark:bg-[#222226] border border-[#F4C430]/40 flex items-center justify-center shrink-0 overflow-hidden">
+                <TangoGuideSvg svgSize={30} uid="chat-hdr-tango" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs sm:text-sm font-extrabold text-white truncate flex items-center gap-1.5">
-                  <span>Tango • Academy Guide</span>
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
-                </h3>
-                <p className="text-[10px] text-zinc-400 truncate">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-xs sm:text-sm font-bold text-[#111111] dark:text-white truncate">
+                    Tango
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full bg-[#F4C430]/20 text-[#997300] dark:text-[#F4C430] border border-[#F4C430]/35 text-[10px] font-bold leading-none">
+                    Academy Guide
+                  </span>
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                </div>
+                <p className="text-[10px] text-[#737373] dark:text-[#A1A1AA] truncate mt-0.5">
                   SHS Virtual Academy & Scholario Official Info
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {/* Speaker Toggle (OFF by default, no autoplay) */}
               <button
                 type="button"
                 data-testid="roaming-tango-speaker-toggle"
                 onClick={() => setSpeakerEnabled((s) => !s)}
-                className={`p-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
                   speakerEnabled
-                    ? 'bg-[#F4C430]/20 border-[#F4C430]/60 text-[#F4C430]'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                    ? 'bg-[#F4C430] border-[#E5B820] text-[#111111]'
+                    : 'bg-[#F5F5F4] dark:bg-[#222226] border-[#E5E5E5] dark:border-[#2E2E34] text-[#525252] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white'
                 }`}
                 title={
                   speakerEnabled
@@ -2156,7 +2311,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
                 type="button"
                 data-testid="roaming-tango-chat-close"
                 onClick={() => setChatOpen(false)}
-                className="p-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#F5F5F4] dark:bg-[#222226] hover:bg-[#E5E5E5] dark:hover:bg-[#2E2E34] text-[#525252] dark:text-[#A1A1AA] hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-[#2E2E34] flex items-center justify-center transition-colors cursor-pointer"
                 title="Close Tango chat"
                 aria-label="Close Tango chat"
               >
@@ -2165,8 +2320,8 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
             </div>
           </div>
 
-          {/* Quick-Reply Chips */}
-          <div className="px-3.5 py-2 bg-[#15151B] border-b border-zinc-800/80 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          {/* Quick-Reply Pill Chips */}
+          <div className="tango-chat-chips px-3.5 py-2 bg-[#F5F5F4]/80 dark:bg-[#16161A] border-b border-[#E5E5E5] dark:border-[#27272A] flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
             {PUBLIC_GUIDE_QUICK_CHIPS.map((chip) => (
               <button
                 key={chip.id}
@@ -2174,7 +2329,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
                 data-testid={`tango-guide-chip-${chip.id}`}
                 onClick={() => sendPublicGuideQuestion(chip.prompt)}
                 disabled={isSending}
-                className="shrink-0 px-2.5 py-1 rounded-full bg-zinc-900 hover:bg-[#F4C430]/15 border border-zinc-700/90 hover:border-[#F4C430]/60 text-[11px] font-bold text-zinc-200 hover:text-[#F4C430] transition-colors disabled:opacity-50 cursor-pointer"
+                className="shrink-0 px-3 py-1 rounded-full bg-white dark:bg-[#1E1E24] hover:bg-[#FFFDF5] dark:hover:bg-[#27272F] border border-[#E5E5E5] dark:border-[#2E2E36] hover:border-[#F4C430] text-[11px] font-semibold text-[#262626] dark:text-[#E4E4E7] transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
               >
                 {chip.label}
               </button>
@@ -2182,17 +2337,17 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
           </div>
 
           {/* Messages Stream */}
-          <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-2.5 text-xs">
+          <div className="tango-chat-messages flex-1 overflow-y-auto px-3.5 py-3 space-y-2.5 text-xs">
             {messages.map((m) => (
               <div
                 key={m.id}
                 className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed ${
+                  className={`max-w-[85%] rounded-[18px] px-3.5 py-2.5 leading-relaxed ${
                     m.role === 'user'
-                      ? 'bg-[#F4C430] text-black font-semibold rounded-br-xs'
-                      : 'bg-zinc-900/95 text-zinc-100 border border-zinc-800 rounded-bl-xs'
+                      ? 'bg-[#F4C430] text-[#111111] font-semibold rounded-br-xs shadow-2xs'
+                      : 'bg-white dark:bg-[#18181D] text-[#262626] dark:text-[#E4E4E7] border border-[#E5E5E5] dark:border-[#2A2A32] rounded-bl-xs shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
                   }`}
                 >
                   {renderTangoMessageContent(m.content)}
@@ -2201,7 +2356,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
             ))}
             {isSending && (
               <div className="flex justify-start">
-                <div className="rounded-2xl px-3.5 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 text-[11px] flex items-center gap-2">
+                <div className="rounded-[18px] px-3.5 py-2 bg-white dark:bg-[#18181D] border border-[#E5E5E5] dark:border-[#2A2A32] text-[#737373] dark:text-[#A1A1AA] text-[11px] flex items-center gap-2 shadow-2xs">
                   <span>Tango is checking the academy guide</span>
                   <span className="inline-flex gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#F4C430] animate-bounce" />
@@ -2215,7 +2370,7 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
           </div>
 
           {/* Input & Get Started CTA */}
-          <div className="p-3 bg-[#18181E] border-t border-zinc-800 space-y-2 shrink-0">
+          <div className="tango-chat-footer p-3 bg-white dark:bg-[#18181B] border-t border-[#E5E5E5] dark:border-[#27272A] space-y-2 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -2231,30 +2386,32 @@ export const PublicTangoGuide: React.FC<PublicTangoGuideProps> = ({
                 maxLength={500}
                 placeholder="Ask Tango about boards, fees, live classes..."
                 aria-label="Ask Tango a question about SHS Virtual Academy"
-                className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#F4C430]"
+                className="flex-1 px-3.5 py-2 rounded-full bg-[#FAFAFA] dark:bg-[#121215] border border-[#E5E5E5] dark:border-[#2E2E36] text-xs text-[#111111] dark:text-[#F4F4F5] placeholder:text-[#737373] dark:placeholder:text-[#71717A] focus:outline-none focus:border-[#F4C430]"
               />
               <button
                 type="submit"
                 data-testid="tango-guide-send-btn"
                 disabled={!input.trim() || isSending}
-                className="p-2 rounded-xl bg-[#F4C430] hover:bg-[#e5b625] text-black disabled:opacity-40 transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#F4C430] hover:bg-[#E5B820] text-[#111111] flex items-center justify-center disabled:opacity-40 transition-colors cursor-pointer shrink-0 shadow-2xs"
                 title="Send question to Tango"
                 aria-label="Send question to Tango"
               >
-                <Send size={14} />
+                <Send size={13} />
               </button>
             </form>
 
             {onNavigate && (
-              <div className="flex items-center justify-between pt-0.5 text-[11px]">
-                <span className="text-zinc-400">Ready to join SHS Virtual Academy?</span>
+              <div className="flex items-center justify-between pt-0.5 px-1 text-[11px]">
+                <span className="text-[#737373] dark:text-[#A1A1AA]">
+                  Ready to join SHS Virtual Academy?
+                </span>
                 <button
                   type="button"
                   onClick={() => {
                     setChatOpen(false);
                     onNavigate('login');
                   }}
-                  className="inline-flex items-center gap-1 font-extrabold text-[#F4C430] hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1 font-bold text-[#997300] dark:text-[#F4C430] hover:underline cursor-pointer"
                 >
                   <span>Get Started / Sign In</span>
                   <ArrowRight size={11} />
@@ -2272,3 +2429,4 @@ export const RoamingTangoGuide = PublicTangoGuide;
 export const RoamingCatGuide = PublicTangoGuide;
 
 export default PublicTangoGuide;
+
