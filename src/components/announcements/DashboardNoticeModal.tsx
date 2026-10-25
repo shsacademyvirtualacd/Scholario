@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
-  Sparkles,
+  Bot,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
@@ -57,7 +57,7 @@ const STUDENT_GUIDE_STEPS = [
   {
     step: 4,
     title: 'Sage AI Study Companion',
-    icon: Sparkles,
+    icon: Bot,
     subtitle: '24/7 Academic Explanation Companion',
     description:
       'Have a question about a tricky numerical, grammar rule, or textbook concept? Chat with Sage 24/7 for step-by-step explanations grounded in your curriculum.',
@@ -187,7 +187,6 @@ export const DashboardNoticeModal: React.FC<DashboardNoticeModalProps> = ({ role
             <div className="space-y-1 flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#F4C430] text-[#111111] shadow-2xs">
-                  <Sparkles size={12} className="text-[#111111]" />
                   {isStudentGuide ? 'Quick Start Walkthrough' : (currentAnnouncement.badge_label || (role === 'student' ? 'Student Guide' : 'Faculty Notice'))}
                 </span>
 
@@ -267,7 +266,7 @@ export const DashboardNoticeModal: React.FC<DashboardNoticeModalProps> = ({ role
                     </p>
 
                     <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400 bg-amber-50/60 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 px-3.5 py-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/50">
-                      <Sparkles size={14} className="shrink-0 text-[#D4A017] dark:text-[#F4C430]" />
+                      <CheckCircle2 size={14} className="shrink-0 text-[#D4A017] dark:text-[#F4C430]" />
                       <span>{stepData.tip}</span>
                     </div>
                   </div>

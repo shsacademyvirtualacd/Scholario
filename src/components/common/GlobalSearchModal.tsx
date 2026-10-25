@@ -6,7 +6,7 @@ import {
   Command,
   ArrowRight,
   Clock,
-  Sparkles,
+  Bot,
   Loader2,
   BookMarked,
   FileCheck2,
@@ -108,7 +108,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
         { id: 'page-admin-question-bank', title: 'Question Bank', subtitle: 'Repository of exam questions', category: 'Pages', path: '/admin/question-bank', icon: Database, keywords: ['mcqs', 'questions', 'repository'] },
         { id: 'page-admin-announcements', title: 'Announcements', subtitle: 'School-wide banners and notices', category: 'Pages', path: '/admin/announcements', icon: Bell, keywords: ['notices', 'alerts', 'broadcast'] },
         { id: 'page-admin-visibility', title: 'Visibility Requests', subtitle: 'Student profile access requests', category: 'Pages', path: '/admin/visibility-requests', icon: ShieldAlert, keywords: ['privacy', 'approvals'] },
-        { id: 'page-admin-sage', title: 'Sage Academic AI', subtitle: 'Curriculum assistant & analytics', category: 'Pages', path: '/admin/sage', icon: Sparkles, keywords: ['ai', 'sage', 'assistant', 'bot'] },
+        { id: 'page-admin-sage', title: 'Sage Academic AI', subtitle: 'Curriculum assistant & analytics', category: 'Pages', path: '/admin/sage', icon: Bot, keywords: ['ai', 'sage', 'assistant', 'bot'] },
         { id: 'page-admin-prices', title: 'Price Manager', subtitle: 'Tuition fees & pricing configuration', category: 'Pages', path: '/admin/prices', icon: DollarSign, keywords: ['pricing', 'plans', 'tuition'] },
         { id: 'page-admin-fees', title: 'Fees & Reconciliation', subtitle: 'Student fee vouchers & verification', category: 'Pages', path: '/admin/fees', icon: Coins, keywords: ['payments', 'slips', 'vouchers', 'finance'] },
         { id: 'page-admin-profile', title: 'Admin Profile', subtitle: 'Account settings & security', category: 'Pages', path: '/admin/profile', icon: User, keywords: ['account', 'settings', 'password'] },
@@ -123,7 +123,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
         { id: 'page-teacher-tests', title: 'Testing Center', subtitle: 'Create tests & evaluate submissions', category: 'Pages', path: '/teacher/tests', icon: FileCheck2, keywords: ['grading', 'mcq', 'written tests'] },
         { id: 'page-teacher-schedule', title: 'Class Schedule', subtitle: 'Timetable & upcoming live sessions', category: 'Pages', path: '/teacher/schedule', icon: Calendar, keywords: ['timetable', 'slots', 'calendar'] },
         { id: 'page-teacher-announcements', title: 'Announcements', subtitle: 'View institutional updates', category: 'Pages', path: '/teacher/announcements', icon: Bell, keywords: ['notices', 'alerts'] },
-        { id: 'page-teacher-sage', title: 'Sage Assistant', subtitle: 'AI lesson planner and question generator', category: 'Pages', path: '/teacher/sage', icon: Sparkles, keywords: ['ai', 'sage', 'lesson planner'] },
+        { id: 'page-teacher-sage', title: 'Sage Assistant', subtitle: 'AI lesson planner and question generator', category: 'Pages', path: '/teacher/sage', icon: Bot, keywords: ['ai', 'sage', 'lesson planner'] },
         { id: 'page-teacher-profile', title: 'Faculty Profile', subtitle: 'Account & biography settings', category: 'Pages', path: '/teacher/profile', icon: User, keywords: ['account', 'settings'] },
       ];
     }
@@ -135,7 +135,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       { id: 'page-student-notes', title: 'Study Notes', subtitle: 'Handouts, chapters & curriculum PDFs', category: 'Notes', path: '/student/notes', icon: BookMarked, keywords: ['books', 'handouts', 'pdfs', 'chapters'] },
       { id: 'page-student-tests', title: 'Testing Center', subtitle: 'Take tests & view marked results', category: 'Tests', path: '/student/tests', icon: FileCheck2, keywords: ['exams', 'marks', 'grading', 'mcqs'] },
       { id: 'page-student-self-testing', title: 'Self Testing', subtitle: 'Practice tests & instant evaluation', category: 'Tests', path: '/student/self-testing', icon: Target, keywords: ['practice', 'mock exam'] },
-      { id: 'page-student-sage', title: 'Sage AI Tutor', subtitle: '24/7 personal academic tutor', category: 'Pages', path: '/student/sage', icon: Sparkles, keywords: ['ai tutor', 'homework help', 'bot'] },
+      { id: 'page-student-sage', title: 'Sage AI Tutor', subtitle: '24/7 personal academic tutor', category: 'Pages', path: '/student/sage', icon: Bot, keywords: ['ai tutor', 'homework help', 'bot'] },
       { id: 'page-student-chat', title: 'Class Chat', subtitle: 'Connect with peers & instructors', category: 'Pages', path: '/student/chat', icon: MessageSquare, keywords: ['messages', 'questions'] },
       { id: 'page-student-announcements', title: 'Announcements', subtitle: 'Notices, dates & circulars', category: 'Announcements', path: '/student/announcements', icon: Bell, keywords: ['circulars', 'holidays', 'notices'] },
       { id: 'page-student-checkout', title: 'Tuition & Fees', subtitle: 'Payment vouchers & fee status', category: 'Pages', path: '/student/checkout', icon: Coins, keywords: ['tuition', 'fee payment', 'voucher'] },
@@ -753,7 +753,6 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
               {/* Quick Navigation Links */}
               <div>
                 <div className="px-3 py-1 text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-[#8A6A00] dark:text-[#F2C230]" />
                   Quick Links
                 </div>
                 <div className="space-y-1 mt-1">

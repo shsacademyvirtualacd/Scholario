@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   X,
   Megaphone,
-  Sparkles,
   ArrowRight,
   Award,
   Layers,

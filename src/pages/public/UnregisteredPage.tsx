@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, Sparkles, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle, Check, BookMarked, Award, UploadCloud, FileText } from 'lucide-react';
+import { ShieldAlert, LogOut, GraduationCap, ArrowRight, Loader2, BookOpen, CheckCircle2, User, DollarSign, Layers, AlertCircle, Check, BookMarked, Award, UploadCloud, FileText } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -802,7 +802,7 @@ export const UnregisteredPage: React.FC = () => {
               <div className="border-b border-[#F5F5F5] pb-4">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Sparkles size={18} className="text-[#F4C430]" />
+                    <GraduationCap size={18} className="text-[#F4C430]" />
                     <h1 className="text-xl font-black text-[#111111] tracking-tight">Student Registration</h1>
                   </div>
                   <span className="text-xs font-bold text-[#111111] bg-[#F5F5F5] px-2.5 py-1 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0">
@@ -1038,7 +1038,7 @@ export const UnregisteredPage: React.FC = () => {
                           onClick={() => setShowPlanComparison(true)}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-[#111111] bg-[#FFFBF0] border border-[#FDE68A] hover:bg-[#FEF3C7] transition-all cursor-pointer shadow-2xs"
                         >
-                          <Sparkles size={12} className="text-[#F4C430]" />
+                          <Layers size={12} className="text-[#F4C430]" />
                           <span>Compare Plans</span>
                         </button>
                       </div>
@@ -1160,7 +1160,7 @@ export const UnregisteredPage: React.FC = () => {
                               onClick={() => setShowPlanComparison(true)}
                               className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92700A] hover:underline cursor-pointer"
                             >
-                              <Sparkles size={11} className="text-[#F4C430]" />
+                              <Layers size={11} className="text-[#F4C430]" />
                               <span>{isCambridge ? 'View Rates & Discounts' : 'Compare Plans'}</span>
                             </button>
                           </div>

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Sparkles, Heart, Eye, Target } from 'lucide-react';
+import { X, Heart, Eye, Target } from 'lucide-react';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
 
 interface AboutModalProps {
@@ -45,7 +45,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
         <div className="px-6 py-5 border-b border-[#F5F5F5] flex items-center justify-between bg-[#FAFAFA] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FDF3C8] text-[#D4A017] flex items-center justify-center shrink-0 border border-[#FDF3C8]">
-              <Sparkles size={20} />
+              <Target size={20} />
             </div>
             <div>
               <h2 className="text-lg md:text-xl font-extrabold text-[#111111] tracking-tight">
@@ -150,7 +150,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ open, onClose }) => {
             {/* The Bigger Picture */}
             <div className="p-6 rounded-2xl bg-[#FFFBF0] border border-[#FDF3C8] space-y-3">
               <div className="flex items-center gap-2 text-[#111111]">
-                <Sparkles size={16} className="text-[#D4A017]" />
+                <Target size={16} className="text-[#D4A017]" />
                 <h4 className="font-bold text-base">The Bigger Picture</h4>
               </div>
               <p className="text-xs text-[#525252] leading-relaxed">

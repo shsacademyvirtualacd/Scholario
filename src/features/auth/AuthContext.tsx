@@ -605,21 +605,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── resetPasswordForEmail ─────────────────────────────────────────────────
   const resetPasswordForEmail = async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase();
-    return await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+    const redirectTo = `${window.location.origin}/reset-password`;
+    const result = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo,
     });
+    if (result.error) {
+      console.error('[AuthContext.resetPasswordForEmail] Supabase error:', {
+        message: result.error.message,
+        status: (result.error as any).status,
+        code: (result.error as any).code,
+        redirectTo,
+      });
+    }
+    return result;
   };
 
   // ── resendVerificationEmail ───────────────────────────────────────────────
   const resendVerificationEmail = async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase();
-    return await supabase.auth.resend({
+    const result = await supabase.auth.resend({
       type: 'signup',
       email: normalizedEmail,
       options: {
         emailRedirectTo: window.location.origin,
       },
     });
+    if (result.error) {
+      console.error('[AuthContext.resendVerificationEmail] Supabase error:', result.error);
+    }
+    return result;
   };
 
   // ── updatePassword ────────────────────────────────────────────────────────

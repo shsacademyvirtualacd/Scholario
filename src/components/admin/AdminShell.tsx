@@ -11,7 +11,7 @@ import {
   DollarSign,
   UserCheck,
   Coins,
-  Sparkles,
+  Bot,
   ClipboardCheck,
   ShieldAlert,
   Database,
@@ -85,7 +85,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Finance & Tools',
     items: [
-      { icon: Sparkles, label: 'Sage', path: '/admin/sage' },
+      { icon: Bot, label: 'Sage', path: '/admin/sage' },
       { icon: DollarSign, label: 'Prices', path: '/admin/prices' },
       { icon: Coins, label: 'Fees', path: '/admin/fees' },
     ],

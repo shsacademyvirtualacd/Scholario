@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
+import { Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
 
 interface AboutAndContactSectionProps {
   onOpenAbout: () => void;
@@ -58,7 +58,6 @@ export const AboutAndContactSection: React.FC<AboutAndContactSectionProps> = ({
 
             <div className="space-y-6">
               <span className="inline-flex items-center gap-2 text-[9px] font-bold tracking-[0.12em] uppercase text-[#F4C430]">
-                <Sparkles size={10} />
                 Connect With Us
               </span>
               

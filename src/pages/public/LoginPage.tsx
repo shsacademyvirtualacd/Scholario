@@ -7,7 +7,7 @@ import {
   ArrowRight,
   RefreshCw,
   MessageCircle,
-  Sparkles,
+  Bot,
   BookOpen,
   Calendar,
   CheckCircle2,
@@ -612,7 +612,6 @@ const LoginPage: React.FC = () => {
         {/* Brand Kicker */}
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F4C430]/10 border border-[#F4C430]/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#F4C430]" />
             <span className="text-xs font-bold text-[#F4C430] uppercase tracking-wider">
               SHS Virtual Academy Portal
             </span>
@@ -649,7 +648,7 @@ const LoginPage: React.FC = () => {
                 desc: 'Automated MCQ grading with instant solutions and parent-monitored performance.'
               },
               {
-                icon: Sparkles,
+                icon: Bot,
                 title: 'Sage AI Academic Companion',
                 desc: '24/7 syllabus-grounded concept explanations and step-by-step problem solver.'
               }

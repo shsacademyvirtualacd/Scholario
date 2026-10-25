@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  BookOpen, Video, LayoutDashboard, FileText, Bell, ClipboardList, Sparkles, ArrowRight
+  BookOpen, Video, LayoutDashboard, FileText, Bell, ClipboardList, Bot, ArrowRight
 } from 'lucide-react';
 
 interface FeatureItem {
@@ -12,7 +12,7 @@ interface FeatureItem {
 
 const ALL_FEATURES: FeatureItem[] = [
   {
-    icon: Sparkles,
+    icon: Bot,
     title: 'Sage AI Academic Assistant',
     description: 'Advanced AI tutor with multimodal document and diagram analysis, intelligent curriculum semantic search across Subject Note Vault materials, and real-time page-aware context.',
     tag: 'AI',
@@ -181,7 +181,7 @@ const FeaturesSection: React.FC = () => {
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="w-11 h-11 rounded-2xl bg-[#F2C230]/20 border border-[#F2C230]/35 text-[#D4A017] dark:text-[#F2C230] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  <Sparkles size={22} className="stroke-[2.5]" />
+                  <Bot size={22} className="stroke-[2.5]" />
                 </div>
                 <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#F2C230] text-[#111111] shadow-xs shrink-0">
                   AI FEATURE
@@ -190,7 +190,6 @@ const FeaturesSection: React.FC = () => {
 
               <h3 className="text-lg sm:text-xl font-extrabold text-[#111111] dark:text-white tracking-tight mb-2 flex items-center gap-2">
                 <span>{sageFeature.title}</span>
-                <span className="inline-block w-2 h-2 rounded-full bg-[#F2C230] animate-pulse" />
               </h3>
 
               <p

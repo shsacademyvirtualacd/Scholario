@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 import { deleteProfilePicture } from '../../lib/avatarService';
 import NotificationsAndPrivacyCard from '../../components/common/NotificationsAndPrivacyCard';
+import AccountSecurityCard from '../../components/common/AccountSecurityCard';
 
 export const ProfilePage: React.FC = () => {
   const isMobile = useMobile();
@@ -464,6 +465,9 @@ export const ProfilePage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* ── 1B. Sign-in & Security Section ── */}
+            <AccountSecurityCard />
 
             {/* ── 2. Platform Scope Statistics (2x2 grid, single 10% gold tint for ALL tiles) ── */}
             <div className="bg-white dark:bg-[#101726] border border-neutral-200 dark:border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">

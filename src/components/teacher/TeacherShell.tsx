@@ -8,7 +8,7 @@ import {
   BookMarked,
   FileCheck2,
   Bell,
-  Sparkles,
+  Bot,
   PanelLeftClose,
   PanelLeft,
   ChevronDown,
@@ -60,7 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { icon: BookMarked, label: 'Notes Manager', path: '/teacher/notes' },
       { icon: FileCheck2, label: 'Testing Center', path: '/teacher/tests' },
-      { icon: Sparkles, label: 'Sage', path: '/teacher/sage' },
+      { icon: Bot, label: 'Sage', path: '/teacher/sage' },
     ],
   },
 ];

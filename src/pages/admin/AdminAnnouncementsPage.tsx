@@ -4,7 +4,6 @@ import {
   Trash2,
   Megaphone,
   Calendar,
-  Sparkles,
   CheckCircle2,
   Loader2,
   Eye,
@@ -544,7 +543,7 @@ export const AdminAnnouncementsPage: React.FC = () => {
               <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between bg-[#FAFAFA]">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-xl bg-[#111111] text-[#F4C430]">
-                    <Sparkles size={18} />
+                    <Megaphone size={18} />
                   </div>
                   <div>
                     <h2 className="font-black text-[#111111] text-lg">

@@ -18,7 +18,8 @@ export async function onRequest(context: EventContext<Env, any, any>): Promise<a
   }
 
   const url = new URL(request.url);
-  if (url.pathname === '/api/auth-email') {
+  const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
+  if (normalizedPath === '/api/auth-email') {
     return context.next();
   }
 

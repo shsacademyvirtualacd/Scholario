@@ -1,14 +1,33 @@
 /**
  * Helper to map raw Supabase Auth error codes and messages to friendly, user-facing text.
  */
-export function mapAuthError(err: any): { message: string; isUnconfirmedEmail?: boolean; isRateLimited?: boolean } {
+export function mapAuthError(err: any): {
+  message: string;
+  isUnconfirmedEmail?: boolean;
+  isRateLimited?: boolean;
+  isSessionExpired?: boolean;
+} {
   if (!err) return { message: 'An unexpected authentication error occurred. Please try again.' };
 
-  const rawMsg = (typeof err === 'string' ? err : err.message || err.error_description || '').toLowerCase();
+  const rawMsg = (
+    typeof err === 'string' ? err : err.message || err.error_description || ''
+  ).toLowerCase();
   const rawCode = (err.code || err.error || '').toLowerCase();
   const rawStatus = err.status || 0;
 
-  // 1. Email Not Confirmed
+  // 1. Same as Old Password
+  if (
+    rawCode === 'same_password' ||
+    rawMsg.includes('different from the old password') ||
+    rawMsg.includes('same as the old password') ||
+    rawMsg.includes('should be different')
+  ) {
+    return {
+      message: 'Your new password must be different from your current password.',
+    };
+  }
+
+  // 2. Email Not Confirmed
   if (
     rawCode === 'email_not_confirmed' ||
     rawMsg.includes('email not confirmed') ||
@@ -16,26 +35,28 @@ export function mapAuthError(err: any): { message: string; isUnconfirmedEmail?: 
     rawMsg.includes('confirm your email')
   ) {
     return {
-      message: 'Please verify your email address before signing in. Check your inbox for the confirmation link.',
+      message:
+        'Please verify your email address before signing in. Check your inbox for the confirmation link.',
       isUnconfirmedEmail: true,
     };
   }
 
-  // 2. Invalid Credentials / Password Incorrect
+  // 3. Invalid Credentials / Password Incorrect
   if (
     rawCode === 'invalid_credentials' ||
     rawCode === 'invalid_grant' ||
     rawMsg.includes('invalid login credentials') ||
     rawMsg.includes('invalid credentials') ||
     rawMsg.includes('invalid username or password') ||
-    rawMsg.includes('password') && (rawMsg.includes('wrong') || rawMsg.includes('incorrect') || rawMsg.includes('invalid'))
+    (rawMsg.includes('password') &&
+      (rawMsg.includes('wrong') || rawMsg.includes('incorrect') || rawMsg.includes('invalid')))
   ) {
     return {
       message: 'Invalid email or password. Please verify your credentials and try again.',
     };
   }
 
-  // 3. User Already Registered / Duplicate
+  // 4. User Already Registered / Duplicate
   if (
     rawCode === 'user_already_exists' ||
     rawCode === 'email_exists' ||
@@ -49,19 +70,39 @@ export function mapAuthError(err: any): { message: string; isUnconfirmedEmail?: 
     };
   }
 
-  // 4. Weak Password
+  // 5. Weak Password
   if (
     rawCode === 'weak_password' ||
     rawMsg.includes('weak password') ||
     rawMsg.includes('password should be at least') ||
-    rawMsg.includes('password must be at least')
+    rawMsg.includes('password must be at least') ||
+    rawMsg.includes('password is too short')
   ) {
     return {
-      message: 'Password is too weak. Please use at least 8 characters with letters, numbers, and symbols.',
+      message:
+        'Password is too weak. Please use at least 8 characters with a mix of letters, numbers, and symbols.',
     };
   }
 
-  // 5. Rate Limit Exceeded
+  // 6. Session Expired / Re-authentication Required
+  if (
+    rawCode === 'session_not_found' ||
+    rawCode === 'no_authorization' ||
+    rawCode === 'reauthentication_needed' ||
+    rawCode === 'bad_jwt' ||
+    rawCode === 'jwt_expired' ||
+    (rawMsg.includes('session') && (rawMsg.includes('expired') || rawMsg.includes('not found') || rawMsg.includes('missing'))) ||
+    rawMsg.includes('reauthentication') ||
+    rawMsg.includes('recent login')
+  ) {
+    return {
+      message:
+        'For your security, changing your password requires a recent sign-in. Please sign out and sign back in, or use the password reset email option.',
+      isSessionExpired: true,
+    };
+  }
+
+  // 7. Rate Limit Exceeded
   if (
     rawStatus === 429 ||
     rawCode === 'over_email_send_rate_limit' ||
@@ -71,12 +112,13 @@ export function mapAuthError(err: any): { message: string; isUnconfirmedEmail?: 
     rawMsg.includes('security purposes')
   ) {
     return {
-      message: 'Too many attempts. For security purposes, please wait a minute before trying again.',
+      message:
+        'Too many attempts. For security purposes, please wait a minute before trying again.',
       isRateLimited: true,
     };
   }
 
-  // 6. Network / Offline / Unreachable
+  // 8. Network / Offline / Unreachable
   if (
     rawMsg.includes('network') ||
     rawMsg.includes('failed to fetch') ||
@@ -89,7 +131,7 @@ export function mapAuthError(err: any): { message: string; isUnconfirmedEmail?: 
     };
   }
 
-  // 7. Expired or Invalid Recovery Token / Link
+  // 9. Expired or Invalid Recovery Token / Link
   if (
     rawCode === 'otp_expired' ||
     rawMsg.includes('token has expired') ||
@@ -98,13 +140,15 @@ export function mapAuthError(err: any): { message: string; isUnconfirmedEmail?: 
     rawMsg.includes('otp expired')
   ) {
     return {
-      message: 'The verification or reset link has expired or has already been used. Please request a new one.',
+      message:
+        'The verification or reset link has expired or has already been used. Please request a new one.',
     };
   }
 
   // Fallback generic friendly message
   return {
-    message: 'Unable to complete your request. Please double-check your information and try again.',
+    message:
+      'Unable to complete your request right now. Please double-check your details and try again.',
   };
 }
 

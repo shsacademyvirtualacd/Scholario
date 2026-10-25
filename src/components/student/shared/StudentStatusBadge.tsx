@@ -9,7 +9,6 @@ import {
   Calendar,
   AlertTriangle,
   Radio,
-  Sparkles,
   Ban,
 } from 'lucide-react';
 
@@ -139,7 +138,7 @@ export const StudentStatusBadge: React.FC<StudentStatusBadgeProps> = ({
 
     case 'graded':
       text = text || 'Graded';
-      icon = <Sparkles size={size === 'sm' ? 12 : 14} className="text-emerald-500 shrink-0" />;
+      icon = <CheckCircle2 size={size === 'sm' ? 12 : 14} className="text-emerald-500 shrink-0" />;
       styleClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60';
       break;
 

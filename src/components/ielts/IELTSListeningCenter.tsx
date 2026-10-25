@@ -6,7 +6,6 @@ import {
   Square,
   Play,
   Pause,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   Award,
@@ -655,7 +654,7 @@ export const IELTSListeningCenter: React.FC<IELTSListeningCenterProps> = ({ onCo
                   {/* Actionable Tips */}
                   <div className="p-4 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800/50 space-y-2">
                     <div className="flex items-center gap-2 text-xs font-bold text-indigo-800 dark:text-indigo-300">
-                      <Sparkles className="w-4 h-4 text-indigo-600" />
+                      <Award className="w-4 h-4 text-indigo-600" />
                       Targeted Coaching Recommendation
                     </div>
                     <ul className="space-y-1 text-xs text-indigo-900 dark:text-indigo-200 list-disc list-inside">

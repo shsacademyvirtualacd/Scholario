@@ -16,7 +16,6 @@ import {
   ClipboardCheck,
   ChevronDown,
   ChevronUp,
-  Sparkles,
   Calendar,
   Timer,
 } from 'lucide-react';

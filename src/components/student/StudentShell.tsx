@@ -8,7 +8,7 @@ import {
   FileCheck2,
   Bell,
   CreditCard,
-  Sparkles,
+  Bot,
   ClipboardCheck,
   Target,
   PanelLeftClose,
@@ -124,7 +124,7 @@ export const StudentShell: React.FC<StudentShellProps> = ({ children }) => {
         { icon: BookMarked, label: 'Notes', path: '/student/notes' },
         { icon: FileCheck2, label: 'Testing Center', path: '/student/tests' },
         { icon: Target, label: 'Self Testing', path: '/student/self-testing' },
-        { icon: Sparkles, label: 'Sage', path: '/student/sage' },
+        { icon: Bot, label: 'Sage', path: '/student/sage' },
       ],
     },
     {

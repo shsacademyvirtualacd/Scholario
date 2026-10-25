@@ -298,6 +298,319 @@ export function renderMathAndTypography(rawText: string | undefined | null): str
 const SVG_WATERMARK_DATA = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 100 100" opacity="0.035"><polygon points="50,5 95,28 95,72 50,95 5,72 5,28" fill="%23111111"/><text x="50" y="58" font-family="sans-serif" font-size="28" font-weight="900" fill="%23F4C430" text-anchor="middle">SHS</text></svg>`;
 
 /**
+ * Converts a general Markdown + LaTeX string into discrete, page-break-safe HTML elements
+ * for A4 PDF pagination (headings, paragraphs, lists, tables, code blocks, blockquotes, KaTeX, Urdu/RTL).
+ */
+function buildMarkdownPdfBlocks(
+  markdown: string,
+  urduFontFamily: string
+): HTMLElement[] {
+  const blocks: HTMLElement[] = [];
+  const lines = (markdown || '').replace(/\r\n/g, '\n').split('\n');
+
+  let i = 0;
+  while (i < lines.length) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // 1. Horizontal rule
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      const hr = document.createElement('div');
+      hr.style.borderTop = '1px solid #e2e8f0';
+      hr.style.margin = '8px 0';
+      blocks.push(hr);
+      i++;
+      continue;
+    }
+
+    // 2. Fenced Code Block ```...```
+    if (trimmed.startsWith('```')) {
+      const lang = trimmed.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // skip closing ```
+
+      const codeBlock = document.createElement('div');
+      codeBlock.style.boxSizing = 'border-box';
+      codeBlock.style.width = '100%';
+      codeBlock.style.breakInside = 'avoid';
+      codeBlock.style.pageBreakInside = 'avoid';
+      codeBlock.style.marginBottom = '10px';
+      codeBlock.style.borderRadius = '6px';
+      codeBlock.style.overflow = 'hidden';
+      codeBlock.style.border = '1px solid #cbd5e1';
+      codeBlock.style.background = '#f8fafc';
+
+      const escapedCode = codeLines
+        .join('\n')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      codeBlock.innerHTML = `
+        ${
+          lang
+            ? `<div style="background: #e2e8f0; color: #334155; font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 3px 10px; letter-spacing: 0.05em;">${lang}</div>`
+            : ''
+        }
+        <pre style="margin: 0; padding: 10px 12px; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10pt; line-height: 1.45; color: #0f172a; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;"><code>${escapedCode}</code></pre>
+      `;
+      blocks.push(codeBlock);
+      continue;
+    }
+
+    // 3. Display Math Block $$...$$ spanning multiple lines
+    if (trimmed.startsWith('$$') && !trimmed.slice(2).includes('$$')) {
+      const mathLines: string[] = [trimmed];
+      i++;
+      while (i < lines.length) {
+        mathLines.push(lines[i]);
+        if (lines[i].includes('$$')) {
+          i++;
+          break;
+        }
+        i++;
+      }
+      const mathBlock = document.createElement('div');
+      mathBlock.style.boxSizing = 'border-box';
+      mathBlock.style.width = '100%';
+      mathBlock.style.breakInside = 'avoid';
+      mathBlock.style.pageBreakInside = 'avoid';
+      mathBlock.style.margin = '8px 0 10px 0';
+      mathBlock.style.padding = '8px 12px';
+      mathBlock.style.background = '#fafafa';
+      mathBlock.style.border = '1px solid #f1f5f9';
+      mathBlock.style.borderRadius = '6px';
+      mathBlock.style.textAlign = 'center';
+      mathBlock.style.fontSize = '12pt';
+      mathBlock.innerHTML = renderMathAndTypography(mathLines.join('\n'));
+      blocks.push(mathBlock);
+      continue;
+    }
+
+    // 4. Markdown Table (| col1 | col2 |)
+    if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.split('|').length >= 3) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+
+      const rows = tableLines
+        .filter((l) => !/^\|[\s:|-]+\|$/.test(l))
+        .map((l) =>
+          l
+            .replace(/^\||\|$/g, '')
+            .split('|')
+            .map((cell) => cell.trim())
+        );
+
+      if (rows.length > 0) {
+        const tableWrapper = document.createElement('div');
+        tableWrapper.style.boxSizing = 'border-box';
+        tableWrapper.style.width = '100%';
+        tableWrapper.style.breakInside = 'avoid';
+        tableWrapper.style.pageBreakInside = 'avoid';
+        tableWrapper.style.marginBottom = '12px';
+
+        const headerCells = rows[0]
+          .map(
+            (c) =>
+              `<th style="border: 1px solid #cbd5e1; background: #111111; color: #F4C430; padding: 6px 10px; text-align: left; font-size: 10.5pt; font-weight: 800;">${renderMathAndTypography(
+                c
+              )}</th>`
+          )
+          .join('');
+
+        const bodyRows = rows
+          .slice(1)
+          .map(
+            (r, rIdx) =>
+              `<tr style="background: ${rIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">${r
+                .map(
+                  (c) =>
+                    `<td style="border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 10.5pt; color: #1e293b; vertical-align: top;">${renderMathAndTypography(
+                      c
+                    )}</td>`
+                )
+                .join('')}</tr>`
+          )
+          .join('');
+
+        tableWrapper.innerHTML = `
+          <table style="width: 100%; border-collapse: collapse; table-layout: auto;">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        `;
+        blocks.push(tableWrapper);
+      }
+      continue;
+    }
+
+    // 5. Headings (#, ##, ###, ####)
+    const headingMatch = trimmed.match(/^(#{1,4})\s+(.+)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const headingText = headingMatch[2].trim();
+      const hEl = document.createElement('div');
+      hEl.style.boxSizing = 'border-box';
+      hEl.style.width = '100%';
+      hEl.style.breakInside = 'avoid';
+      hEl.style.pageBreakInside = 'avoid';
+      hEl.style.marginTop = level === 1 ? '12px' : '10px';
+      hEl.style.marginBottom = '6px';
+
+      if (containsUrdu(headingText)) {
+        hEl.dir = 'rtl';
+        hEl.style.fontFamily = urduFontFamily;
+        hEl.style.textAlign = 'right';
+      }
+
+      if (level <= 2) {
+        hEl.innerHTML = `
+          <div style="font-weight: 800; font-size: ${level === 1 ? '13pt' : '11.5pt'}; color: #111111; border-bottom: 1.5px solid #F4C430; padding-bottom: 3px;">
+            ${renderMathAndTypography(headingText)}
+          </div>
+        `;
+      } else {
+        hEl.innerHTML = `
+          <div style="font-weight: 700; font-size: 11pt; color: #1e293b;">
+            ${renderMathAndTypography(headingText)}
+          </div>
+        `;
+      }
+      blocks.push(hEl);
+      i++;
+      continue;
+    }
+
+    // 6. Bullet or Numbered List Item
+    const listMatch = trimmed.match(/^([-*•]|\d+[.)])\s+(.+)$/);
+    if (listMatch) {
+      const marker = listMatch[1];
+      const itemText = listMatch[2];
+      const liEl = document.createElement('div');
+      liEl.style.boxSizing = 'border-box';
+      liEl.style.width = '100%';
+      liEl.style.breakInside = 'avoid';
+      liEl.style.pageBreakInside = 'avoid';
+      liEl.style.marginBottom = '6px';
+      liEl.style.paddingLeft = '8px';
+      liEl.style.fontSize = '11.5pt';
+      liEl.style.lineHeight = '1.55';
+      liEl.style.color = '#1e293b';
+
+      const isUrdu = containsUrdu(itemText);
+      if (isUrdu) {
+        liEl.dir = 'rtl';
+        liEl.style.fontFamily = urduFontFamily;
+        liEl.style.textAlign = 'right';
+        liEl.style.paddingLeft = '0';
+        liEl.style.paddingRight = '8px';
+      }
+
+      const bulletLabel = /^[-*•]$/.test(marker) ? '•' : marker;
+      liEl.innerHTML = `
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span style="font-weight: 700; color: #111111; flex-shrink: 0;">${bulletLabel}</span>
+          <div style="flex: 1; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(
+            itemText
+          )}</div>
+        </div>
+      `;
+      blocks.push(liEl);
+      i++;
+      continue;
+    }
+
+    // 7. Blockquote (> ...)
+    if (trimmed.startsWith('>')) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        quoteLines.push(lines[i].trim().replace(/^>\s?/, ''));
+        i++;
+      }
+      const quoteText = quoteLines.join(' ');
+      const qEl = document.createElement('div');
+      qEl.style.boxSizing = 'border-box';
+      qEl.style.width = '100%';
+      qEl.style.breakInside = 'avoid';
+      qEl.style.pageBreakInside = 'avoid';
+      qEl.style.marginBottom = '8px';
+      qEl.style.padding = '8px 12px';
+      qEl.style.borderLeft = '3px solid #F4C430';
+      qEl.style.background = '#fffbeb';
+      qEl.style.borderRadius = '0 6px 6px 0';
+      qEl.style.fontSize = '11pt';
+      qEl.style.lineHeight = '1.5';
+      qEl.style.color = '#1e293b';
+      if (containsUrdu(quoteText)) {
+        qEl.dir = 'rtl';
+        qEl.style.fontFamily = urduFontFamily;
+        qEl.style.textAlign = 'right';
+      }
+      qEl.innerHTML = renderMathAndTypography(quoteText);
+      blocks.push(qEl);
+      continue;
+    }
+
+    // 8. Standard Paragraph (merge consecutive plain lines up to ~450 chars so page breaks stay granular)
+    const paraLines: string[] = [trimmed];
+    let charCount = trimmed.length;
+    i++;
+    while (
+      i < lines.length &&
+      lines[i].trim().length > 0 &&
+      !lines[i].trim().startsWith('#') &&
+      !lines[i].trim().startsWith('```') &&
+      !lines[i].trim().startsWith('$$') &&
+      !lines[i].trim().startsWith('|') &&
+      !lines[i].trim().startsWith('>') &&
+      !/^([-*•]|\d+[.)])\s+/.test(lines[i].trim()) &&
+      charCount < 450
+    ) {
+      paraLines.push(lines[i].trim());
+      charCount += lines[i].trim().length;
+      i++;
+    }
+
+    const paraText = paraLines.join(' ');
+    const pEl = document.createElement('div');
+    pEl.style.boxSizing = 'border-box';
+    pEl.style.width = '100%';
+    pEl.style.breakInside = 'avoid';
+    pEl.style.pageBreakInside = 'avoid';
+    pEl.style.marginBottom = '8px';
+    pEl.style.fontSize = '11.5pt';
+    pEl.style.lineHeight = '1.58';
+    pEl.style.color = '#1e293b';
+    pEl.style.overflowWrap = 'anywhere';
+    pEl.style.wordBreak = 'break-word';
+
+    if (containsUrdu(paraText)) {
+      pEl.dir = 'rtl';
+      pEl.style.fontFamily = urduFontFamily;
+      pEl.style.textAlign = 'right';
+    }
+
+    pEl.innerHTML = renderMathAndTypography(paraText);
+    blocks.push(pEl);
+  }
+
+  return blocks;
+}
+
+/**
  * Generate client-side PDF from Sage AI message content
  */
 export async function generateSageContentPdf(
@@ -307,15 +620,13 @@ export async function generateSageContentPdf(
   const mode = options?.mode || 'teacher';
   const autoMeta = extractAcademicMetadata(rawContent, options?.teacherName);
 
-  const teacherName = options?.teacherName || autoMeta.teacherName || 'Faculty Mentor';
+  const teacherName = options?.teacherName || autoMeta.teacherName || 'Sage AI Tutor';
   const subject = options?.subject || autoMeta.subject || 'Scholario Academic';
   const className = options?.className || autoMeta.className || 'Grade 9-12';
-  const topic = options?.topic || autoMeta.topic || 'Academic Assessment';
+  const topic = options?.topic || autoMeta.topic || 'Study Notes & Solutions';
   const dateStr = options?.date || autoMeta.date || new Date().toISOString().split('T')[0];
 
   const sanitizeFilename = (s: string) => s.replace(/[\/\\?%*:|"<> ]/g, '_').slice(0, 25) || 'Academic';
-  const copyLabel = mode === 'student' ? 'Student_Copy' : 'Teacher_Copy';
-  const filename = `${sanitizeFilename(subject)}_${sanitizeFilename(className)}_${sanitizeFilename(topic)}_${copyLabel}.pdf`;
 
   // Parse structured assessment data
   const parsedQuiz = parseQuizJsonOrMarkdown(rawContent, {
@@ -329,15 +640,33 @@ export async function generateSageContentPdf(
   // Strict enforcement: Student Copy template receives zero answers in data model
   const quizData: StructuredQuiz = mode === 'student' ? sanitizeQuizForStudent(parsedQuiz) : parsedQuiz;
 
-  // Calculate actual total marks matching all rendered questions
+  // Calculate actual total marks & check whether this content is truly a structured quiz vs general markdown
   let calculatedMarks = 0;
   let totalQuestionCount = 0;
+  let mcqQuestionCount = 0;
   for (const s of quizData.sections) {
     for (const q of s.questions) {
       totalQuestionCount++;
       calculatedMarks += q.marks || 1;
+      if (q.type === 'mcq' && q.options) {
+        mcqQuestionCount++;
+      }
     }
   }
+
+  const isStructuredQuizMode =
+    options?.docType !== 'notes' &&
+    options?.docType !== 'general' &&
+    totalQuestionCount >= 2 &&
+    (mcqQuestionCount >= 1 || /\b(quiz|mcq|test|assessment|worksheet|answer\s+key)\b/i.test(rawContent));
+
+  const copyLabel = isStructuredQuizMode
+    ? mode === 'student'
+      ? 'Student_Copy'
+      : 'Teacher_Copy'
+    : 'Study_Notes';
+  const filename = `${sanitizeFilename(subject)}_${sanitizeFilename(className)}_${sanitizeFilename(topic)}_${copyLabel}.pdf`;
+
   const displayTotalMarks = calculatedMarks > 0 ? calculatedMarks : (quizData.totalMarks || totalQuestionCount || 5);
 
   // Preload KaTeX CSS into document head if not present
@@ -422,7 +751,7 @@ export async function generateSageContentPdf(
     const styleEl = document.createElement('style');
     styleEl.textContent = `
       .katex {
-        font-size: 1.15em !important;
+        font-size: 1.12em !important;
         line-height: 1.25 !important;
         text-rendering: auto !important;
       }
@@ -462,6 +791,12 @@ export async function generateSageContentPdf(
       ? `<img src="${logoDataUrl}" alt="SHS Virtual Academy" style="width: 48px; height: 48px; object-fit: contain; flex-shrink: 0;" crossOrigin="anonymous" />`
       : `<div style="width: 48px; height: 48px; background: #111111; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #F4C430; font-weight: 900; font-size: 16px; flex-shrink: 0;">SHS</div>`;
 
+    const badgeSubtitle = isStructuredQuizMode
+      ? mode === 'student'
+        ? 'Student Edition (No Answers)'
+        : 'Faculty & Teacher Copy (With Solutions)'
+      : 'Sage AI Study Notes & Reference';
+
     const topBanner = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111111; padding-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -471,7 +806,7 @@ export async function generateSageContentPdf(
               SHS VIRTUAL ACADEMY
             </h1>
             <p style="margin: 2px 0 0 0; font-size: 9.5px; font-weight: 700; color: #525252; text-transform: uppercase; letter-spacing: 0.04em;">
-              Scholario Sage v2.0 • Academic Testing & Assessment
+              Scholario Sage AI • Official Academic Resource
             </p>
           </div>
         </div>
@@ -479,7 +814,7 @@ export async function generateSageContentPdf(
           <div style="font-size: 14px; font-weight: 900; color: #111111; line-height: 1.15;">Scholario</div>
           <div style="font-size: 9.5px; font-weight: 700; color: #737373;">scholario.me</div>
           <div style="font-size: 9px; font-weight: 800; color: ${mode === 'student' ? '#059669' : '#d97706'}; text-transform: uppercase; margin-top: 1px;">
-            ${mode === 'student' ? 'Student Edition (No Answers)' : 'Faculty & Teacher Copy (With Solutions)'}
+            ${badgeSubtitle}
           </div>
         </div>
       </div>
@@ -490,20 +825,24 @@ export async function generateSageContentPdf(
         ${topBanner}
         <div style="text-align: center; padding: 8px 0; border-bottom: 1px solid #e5e5e5;">
           <h2 style="margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; color: #111111; letter-spacing: 0.02em;">
-            ${renderMathAndTypography(quizData.title)}
+            ${renderMathAndTypography(quizData.title || topic)}
           </h2>
           <div style="font-size: 10px; font-weight: 600; color: #525252; margin-top: 2px;">
-            ${quizData.subject} • ${quizData.grade} • Prepared by ${quizData.instructor}
+            ${quizData.subject} • ${quizData.grade} • Prepared by ${quizData.instructor} • ${dateStr}
           </div>
         </div>
-        <div style="margin: 8px 0 10px 0; padding: 8px 14px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; color: #374151;">
-          <div><strong>Subject:</strong> ${quizData.subject}</div>
-          <div><strong>Grade:</strong> ${quizData.grade}</div>
-          <div><strong>Total Marks:</strong> ${displayTotalMarks}</div>
-          <div><strong>Time Allowed:</strong> ${quizData.timeAllowed || '45 Mins'}</div>
-        </div>
         ${
-          mode === 'student'
+          isStructuredQuizMode
+            ? `<div style="margin: 8px 0 10px 0; padding: 8px 14px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; color: #374151;">
+                <div><strong>Subject:</strong> ${quizData.subject}</div>
+                <div><strong>Grade:</strong> ${quizData.grade}</div>
+                <div><strong>Total Marks:</strong> ${displayTotalMarks}</div>
+                <div><strong>Time Allowed:</strong> ${quizData.timeAllowed || '45 Mins'}</div>
+              </div>`
+            : `<div style="margin-bottom: 10px;"></div>`
+        }
+        ${
+          isStructuredQuizMode && mode === 'student'
             ? `<div style="margin-bottom: 12px; padding: 8px 14px; background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: 6px; font-size: 10.5px; display: flex; justify-content: space-between; color: #1e293b;">
                 <div><strong>Student Name:</strong> _____________________________</div>
                 <div><strong>Roll No:</strong> ______________</div>
@@ -517,7 +856,7 @@ export async function generateSageContentPdf(
         ${topBanner}
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 9.5px; font-weight: 700; color: #475569; margin-top: 4px; margin-bottom: 10px;">
           <span>${quizData.subject} • ${quizData.grade}</span>
-          <span style="color: #0f172a; font-weight: 800;">${renderMathAndTypography(quizData.title)}</span>
+          <span style="color: #0f172a; font-weight: 800;">${renderMathAndTypography(quizData.title || topic)}</span>
           <span style="color: #94a3b8; font-size: 8.5px; font-weight: 700; text-transform: uppercase;">Continued</span>
         </div>
       `;
@@ -576,155 +915,169 @@ export async function generateSageContentPdf(
     }
   }
 
-  // ── Render Sections & Questions ──
-  let sequentialQuestionNumber = 0;
+  if (isStructuredQuizMode) {
+    // ── Render Sections & Questions ──
+    let sequentialQuestionNumber = 0;
 
-  for (const section of quizData.sections) {
-    if (section.questions.length === 0) continue;
+    for (const section of quizData.sections) {
+      if (section.questions.length === 0) continue;
 
-    const secHeader = document.createElement('div');
-    secHeader.style.boxSizing = 'border-box';
-    secHeader.style.breakInside = 'avoid';
-    secHeader.style.pageBreakInside = 'avoid';
-    secHeader.style.marginTop = '10px';
-    secHeader.style.marginBottom = '8px';
-    secHeader.innerHTML = `
-      <div style="font-weight: 800; font-size: 11px; text-transform: uppercase; background: #111111; color: #ffffff; padding: 5px 12px; border-radius: 4px; letter-spacing: 0.02em; display: flex; justify-content: space-between;">
-        <span>${renderMathAndTypography(section.name)}</span>
-        ${section.marks ? `<span>[${section.marks} Marks]</span>` : ''}
-      </div>
-    `;
-    appendBlock(secHeader);
+      const secHeader = document.createElement('div');
+      secHeader.style.boxSizing = 'border-box';
+      secHeader.style.breakInside = 'avoid';
+      secHeader.style.pageBreakInside = 'avoid';
+      secHeader.style.marginTop = '10px';
+      secHeader.style.marginBottom = '8px';
+      secHeader.innerHTML = `
+        <div style="font-weight: 800; font-size: 11px; text-transform: uppercase; background: #111111; color: #ffffff; padding: 5px 12px; border-radius: 4px; letter-spacing: 0.02em; display: flex; justify-content: space-between;">
+          <span>${renderMathAndTypography(section.name)}</span>
+          ${section.marks ? `<span>[${section.marks} Marks]</span>` : ''}
+        </div>
+      `;
+      appendBlock(secHeader);
 
-    for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
-      const q = section.questions[qIdx];
-      sequentialQuestionNumber++;
-      const displayNumber = sequentialQuestionNumber; // Sequentially numbered 1, 2, 3, 4, 5...
+      for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
+        const q = section.questions[qIdx];
+        sequentialQuestionNumber++;
+        const displayNumber = sequentialQuestionNumber;
 
-      const qBlock = document.createElement('div');
-      qBlock.style.boxSizing = 'border-box';
-      qBlock.style.width = '100%';
-      qBlock.style.breakInside = 'avoid';
-      qBlock.style.pageBreakInside = 'avoid';
-      qBlock.style.marginBottom = '10px';
-      qBlock.style.padding = '10px 14px';
-      qBlock.style.background = '#ffffff';
-      qBlock.style.border = '1px solid #e2e8f0';
-      qBlock.style.borderRadius = '6px';
-      qBlock.style.fontSize = '12pt';
+        const qBlock = document.createElement('div');
+        qBlock.style.boxSizing = 'border-box';
+        qBlock.style.width = '100%';
+        qBlock.style.breakInside = 'avoid';
+        qBlock.style.pageBreakInside = 'avoid';
+        qBlock.style.marginBottom = '10px';
+        qBlock.style.padding = '10px 14px';
+        qBlock.style.background = '#ffffff';
+        qBlock.style.border = '1px solid #e2e8f0';
+        qBlock.style.borderRadius = '6px';
+        qBlock.style.fontSize = '12pt';
 
-      const isUrdu = containsUrdu(q.text);
-      if (isUrdu) {
-        qBlock.dir = 'rtl';
-        qBlock.style.fontFamily = urduFontFamily;
-        qBlock.style.textAlign = 'right';
-      }
+        const isUrdu = containsUrdu(q.text);
+        if (isUrdu) {
+          qBlock.dir = 'rtl';
+          qBlock.style.fontFamily = urduFontFamily;
+          qBlock.style.textAlign = 'right';
+        }
 
-      try {
-        const questionText = q.text || '[Question content unavailable]';
+        try {
+          const questionText = q.text || '[Question content unavailable]';
 
-        if (q.type === 'mcq' && q.options) {
-          const optA = q.options.A || '—';
-          const optB = q.options.B || '—';
-          const optC = q.options.C || '—';
-          const optD = q.options.D || '—';
+          if (q.type === 'mcq' && q.options) {
+            const optA = q.options.A || '—';
+            const optB = q.options.B || '—';
+            const optC = q.options.C || '—';
+            const optD = q.options.D || '—';
 
+            qBlock.innerHTML = `
+              <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px; line-height: 1.5; font-size: 12pt;">
+                <strong>${displayNumber}.</strong> ${renderMathAndTypography(questionText)}
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9; box-sizing: border-box; width: 100%; min-width: 0;">
+                <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                  <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(A)</span>
+                  <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optA)}</span>
+                </div>
+                <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                  <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(B)</span>
+                  <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optB)}</span>
+                </div>
+                <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                  <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(C)</span>
+                  <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optC)}</span>
+                </div>
+                <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
+                  <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(D)</span>
+                  <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optD)}</span>
+                </div>
+              </div>
+            `;
+          } else {
+            qBlock.innerHTML = `
+              <div style="font-weight: 700; color: #0f172a; margin-bottom: 6px; line-height: 1.5; font-size: 12pt;">
+                <strong>${displayNumber}.</strong> ${renderMathAndTypography(questionText)}
+              </div>
+              ${
+                mode === 'student'
+                  ? `<div style="margin-top: 8px; min-height: 52px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fafafa; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; font-style: italic;">
+                      Student Answer / Working Space
+                    </div>`
+                  : ''
+              }
+            `;
+          }
+        } catch (err) {
           qBlock.innerHTML = `
-            <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px; line-height: 1.5; font-size: 12pt;">
-              <strong>${displayNumber}.</strong> ${renderMathAndTypography(questionText)}
+            <div style="color: #dc2626; font-size: 12pt; font-weight: 600;">
+              <strong>${displayNumber}.</strong> [Question could not be rendered: ${err instanceof Error ? err.message : 'Unknown error'}]
             </div>
-            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9; box-sizing: border-box; width: 100%; min-width: 0;">
-              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
-                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(A)</span>
-                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optA)}</span>
-              </div>
-              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
-                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(B)</span>
-                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optB)}</span>
-              </div>
-              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
-                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(C)</span>
-                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optC)}</span>
-              </div>
-              <div style="min-width: 0; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; display: flex; align-items: baseline; gap: 6px; font-size: 12pt; line-height: 1.45;">
-                <span style="font-weight: 700; color: #1e293b; flex-shrink: 0;">(D)</span>
-                <span style="min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderMathAndTypography(optD)}</span>
-              </div>
-            </div>
-          `;
-        } else {
-          // Short / descriptive question
-          qBlock.innerHTML = `
-            <div style="font-weight: 700; color: #0f172a; margin-bottom: 6px; line-height: 1.5; font-size: 12pt;">
-              <strong>${displayNumber}.</strong> ${renderMathAndTypography(questionText)}
-            </div>
-            ${
-              mode === 'student'
-                ? `<div style="margin-top: 8px; min-height: 52px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fafafa; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; font-style: italic;">
-                    Student Answer / Working Space
-                  </div>`
-                : ''
-            }
           `;
         }
-      } catch (err) {
-        // Show error placeholder instead of dropping question
-        qBlock.innerHTML = `
-          <div style="color: #dc2626; font-size: 12pt; font-weight: 600;">
-            <strong>${displayNumber}.</strong> [Question could not be rendered: ${err instanceof Error ? err.message : 'Unknown error'}]
-          </div>
-        `;
+
+        appendBlock(qBlock);
       }
-
-      appendBlock(qBlock);
     }
-  }
 
-  // ── Render Solutions (FACULTY / TEACHER COPY ONLY) ──
-  if (mode === 'teacher' && quizData.answers && quizData.answers.length > 0) {
-    const ansHeader = document.createElement('div');
-    ansHeader.style.boxSizing = 'border-box';
-    ansHeader.style.breakInside = 'avoid';
-    ansHeader.style.pageBreakInside = 'avoid';
-    ansHeader.style.marginTop = '14px';
-    ansHeader.style.marginBottom = '10px';
-    ansHeader.innerHTML = `
-      <div style="font-weight: 900; font-size: 12px; text-transform: uppercase; background: #111111; color: #F4C430; padding: 6px 14px; border-radius: 4px; letter-spacing: 0.03em;">
-        OFFICIAL ANSWER KEY & STEP-BY-STEP SOLUTIONS
-      </div>
-    `;
-    appendBlock(ansHeader);
-
-    for (let aIdx = 0; aIdx < quizData.answers.length; aIdx++) {
-      const ans = quizData.answers[aIdx];
-      const ansBlock = document.createElement('div');
-      ansBlock.style.boxSizing = 'border-box';
-      ansBlock.style.breakInside = 'avoid';
-      ansBlock.style.pageBreakInside = 'avoid';
-      ansBlock.style.marginBottom = '10px';
-      ansBlock.style.padding = '10px 14px';
-      ansBlock.style.background = '#f0fdf4';
-      ansBlock.style.border = '1px solid #bbf7d0';
-      ansBlock.style.borderRadius = '6px';
-      ansBlock.style.fontSize = '11pt';
-
-      const stepsHtml =
-        ans.steps && ans.steps.length > 0
-          ? `<div style="margin-top: 6px; padding-left: 10px; border-left: 2px solid #86efac; font-size: 10.5pt; color: #166534;">
-              ${ans.steps.map((st, sIdx) => `<div style="margin-bottom: 3px;"><strong>Step ${sIdx + 1}:</strong> ${renderMathAndTypography(st.replace(/^step\s*[0-9]+:?\s*/i, ''))}</div>`).join('')}
-            </div>`
-          : '';
-
-      ansBlock.innerHTML = `
-        <div style="display: flex; align-items: baseline; gap: 8px; font-weight: 800; color: #15803d; margin-bottom: 4px;">
-          <span>Question ${aIdx + 1}:</span>
-          <span style="background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1px solid #86efac; font-family: monospace;">${renderMathAndTypography(ans.answer)}</span>
+    // ── Render Solutions (FACULTY / TEACHER COPY ONLY) ──
+    if (mode === 'teacher' && quizData.answers && quizData.answers.length > 0) {
+      const ansHeader = document.createElement('div');
+      ansHeader.style.boxSizing = 'border-box';
+      ansHeader.style.breakInside = 'avoid';
+      ansHeader.style.pageBreakInside = 'avoid';
+      ansHeader.style.marginTop = '14px';
+      ansHeader.style.marginBottom = '10px';
+      ansHeader.innerHTML = `
+        <div style="font-weight: 900; font-size: 12px; text-transform: uppercase; background: #111111; color: #F4C430; padding: 6px 14px; border-radius: 4px; letter-spacing: 0.03em;">
+          OFFICIAL ANSWER KEY & STEP-BY-STEP SOLUTIONS
         </div>
-        ${ans.explanation ? `<div style="color: #166534; font-size: 10.5pt; line-height: 1.45;">${renderMathAndTypography(ans.explanation)}</div>` : ''}
-        ${stepsHtml}
       `;
+      appendBlock(ansHeader);
 
-      appendBlock(ansBlock);
+      for (let aIdx = 0; aIdx < quizData.answers.length; aIdx++) {
+        const ans = quizData.answers[aIdx];
+        const ansBlock = document.createElement('div');
+        ansBlock.style.boxSizing = 'border-box';
+        ansBlock.style.breakInside = 'avoid';
+        ansBlock.style.pageBreakInside = 'avoid';
+        ansBlock.style.marginBottom = '10px';
+        ansBlock.style.padding = '10px 14px';
+        ansBlock.style.background = '#f0fdf4';
+        ansBlock.style.border = '1px solid #bbf7d0';
+        ansBlock.style.borderRadius = '6px';
+        ansBlock.style.fontSize = '11pt';
+
+        const stepsHtml =
+          ans.steps && ans.steps.length > 0
+            ? `<div style="margin-top: 6px; padding-left: 10px; border-left: 2px solid #86efac; font-size: 10.5pt; color: #166534;">
+                ${ans.steps.map((st, sIdx) => `<div style="margin-bottom: 3px;"><strong>Step ${sIdx + 1}:</strong> ${renderMathAndTypography(st.replace(/^step\s*[0-9]+:?\s*/i, ''))}</div>`).join('')}
+              </div>`
+            : '';
+
+        ansBlock.innerHTML = `
+          <div style="display: flex; align-items: baseline; gap: 8px; font-weight: 800; color: #15803d; margin-bottom: 4px;">
+            <span>Question ${aIdx + 1}:</span>
+            <span style="background: #dcfce7; padding: 2px 8px; border-radius: 4px; border: 1px solid #86efac; font-family: monospace;">${renderMathAndTypography(ans.answer)}</span>
+          </div>
+          ${ans.explanation ? `<div style="color: #166534; font-size: 10.5pt; line-height: 1.45;">${renderMathAndTypography(ans.explanation)}</div>` : ''}
+          ${stepsHtml}
+        `;
+
+        appendBlock(ansBlock);
+      }
+    }
+  } else {
+    // ── Render General Markdown Study Notes / Answer / Conversation ──
+    const mdBlocks = buildMarkdownPdfBlocks(rawContent, urduFontFamily);
+    if (mdBlocks.length === 0) {
+      const fallbackEl = document.createElement('div');
+      fallbackEl.style.fontSize = '11.5pt';
+      fallbackEl.style.color = '#1e293b';
+      fallbackEl.innerHTML = renderMathAndTypography(rawContent || 'No content available.');
+      appendBlock(fallbackEl);
+    } else {
+      for (const blk of mdBlocks) {
+        appendBlock(blk);
+      }
     }
   }
 
@@ -772,12 +1125,10 @@ export async function generateSageContentPdf(
         windowHeight: PAGE_HEIGHT,
       });
       const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-      // Scale image to full page width (210mm) and height (297mm) without letterboxing
       pdf.addImage(pageImgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
     }
 
     const blob = pdf.output('blob');
-    // Use fast native Object URL instead of multi-megabyte base64 string
     const dataUrl = URL.createObjectURL(blob);
 
     return {
@@ -794,16 +1145,146 @@ export async function generateSageContentPdf(
 }
 
 /**
- * Downloads generated PDF directly in browser
+ * Generates a complete multi-page PDF of an entire Sage AI conversation
  */
-export async function downloadSagePdf(rawContent: string, options?: SagePdfOptions): Promise<string> {
-  const result = await generateSageContentPdf(rawContent, options);
+export async function generateSageConversationPdf(
+  messages: Array<{ role: string; content: string; created_at?: string }>,
+  options?: SagePdfOptions
+): Promise<GeneratedPdfResult> {
+  const validMessages = (messages || []).filter((m) => m && m.content && m.content.trim().length > 0);
+  const formattedTranscript = validMessages
+    .map((m, idx) => {
+      const speakerLabel = m.role === 'user' ? 'Student / User Question' : 'Sage AI Response';
+      return `## ${idx + 1}. ${speakerLabel}\n\n${m.content.trim()}\n\n---`;
+    })
+    .join('\n\n');
+
+  return generateSageContentPdf(formattedTranscript || 'Empty conversation.', {
+    ...options,
+    docType: 'notes',
+    topic: options?.topic || 'Sage AI Study Session Transcript',
+  });
+}
+
+/**
+ * Converts a Blob to a Base64 Data URL (data:application/pdf;base64,...)
+ * Needed for Android WebView DownloadListeners that cannot read blob: URLs.
+ */
+export function blobToBase64DataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Detects whether the app is running inside an Android WebView
+ */
+export function isAndroidWebView(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return (
+    /Android/i.test(ua) &&
+    (/; wv\)/i.test(ua) || /Version\/[0-9.]+ Chrome\/[0-9.]+ Mobile/i.test(ua) || Boolean((window as any).AndroidBridge || (window as any).Android))
+  );
+}
+
+/**
+ * Reliable PDF download helper that works on Desktop, Mobile Browsers, and Android WebViews
+ */
+export async function triggerPdfBlobDownload(blob: Blob, filename: string): Promise<void> {
+  const w = window as any;
+
+  // 1. If a native Android JavascriptInterface bridge is registered in the APK wrapper, call it directly
+  if (w.AndroidBridge?.downloadBase64Pdf || w.Android?.downloadBase64Pdf) {
+    const base64DataUrl = await blobToBase64DataUrl(blob);
+    const fn = w.AndroidBridge?.downloadBase64Pdf || w.Android?.downloadBase64Pdf;
+    fn(base64DataUrl, filename, 'application/pdf');
+    return;
+  }
+
+  // 2. If inside an Android WebView where blob: URLs fail in DownloadManager:
+  //    Try Web Share API with the PDF file first (native Android share/save sheet),
+  //    then trigger a data:application/pdf;base64,... download for WebView DownloadListener.
+  if (isAndroidWebView()) {
+    try {
+      const pdfFile = new File([blob], filename, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: filename,
+          text: 'Scholario Sage AI Study Document',
+        });
+        return;
+      }
+    } catch (shareErr: any) {
+      if (shareErr?.name === 'AbortError') return;
+    }
+
+    const base64Url = await blobToBase64DataUrl(blob);
+    const a = document.createElement('a');
+    a.href = base64Url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+
+  // 3. Standard browser blob download
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = result.dataUrl;
-  a.download = result.filename;
+  a.href = objectUrl;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 12000);
+}
+
+/**
+ * Shares a generated PDF using Web Share API (navigator.share with files) when supported,
+ * or falls back to downloading the PDF so the user can attach/share it.
+ */
+export async function shareSagePdfBlob(
+  blob: Blob,
+  filename: string,
+  title = 'Scholario Sage AI Notes'
+): Promise<{ shared: boolean; method: 'web-share-files' | 'download-fallback' }> {
+  try {
+    const pdfFile = new File([blob], filename, { type: 'application/pdf' });
+    if (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [pdfFile] })
+    ) {
+      await navigator.share({
+        files: [pdfFile],
+        title,
+        text: `${title} — Generated by Sage AI on Scholario (SHS Virtual Academy)`,
+      });
+      return { shared: true, method: 'web-share-files' };
+    }
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      return { shared: false, method: 'web-share-files' };
+    }
+    console.warn('[shareSagePdfBlob] Web Share API failed, falling back to download:', err);
+  }
+
+  await triggerPdfBlobDownload(blob, filename);
+  return { shared: false, method: 'download-fallback' };
+}
+
+/**
+ * Downloads generated PDF directly in browser / Android WebView
+ */
+export async function downloadSagePdf(rawContent: string, options?: SagePdfOptions): Promise<string> {
+  const result = await generateSageContentPdf(rawContent, options);
+  await triggerPdfBlobDownload(result.blob, result.filename);
   setTimeout(() => URL.revokeObjectURL(result.dataUrl), 10000);
   return result.filename;
 }

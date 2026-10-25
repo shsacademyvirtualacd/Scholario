@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   Search,
   Users,
-  Sparkles,
   TrendingUp,
   AlertTriangle,
   Phone,
@@ -668,7 +667,7 @@ export const StudentsAdminPage: React.FC = () => {
           </div>
         ) : filteredStudents.length === 0 ? (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-center py-16 p-4 shadow-xs">
-            <Sparkles size={28} className="mx-auto text-neutral-400 mb-3" />
+            <Users size={28} className="mx-auto text-neutral-400 mb-3" />
             <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">No matching students found</h3>
             <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
               Try adjusting your search keywords, board or stream filters, or uncheck "At Risk".

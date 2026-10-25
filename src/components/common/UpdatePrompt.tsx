@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCw, X, Sparkles } from 'lucide-react';
+import { RotateCw, X } from 'lucide-react';
 import {
   UPDATE_AVAILABLE_EVENT,
   performFullUpdateAndReload,
@@ -94,7 +94,7 @@ export const UpdatePrompt: React.FC = () => {
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs sm:text-sm">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-7 h-7 rounded-lg bg-[#F4C430] text-black flex items-center justify-center shrink-0 shadow-xs">
-                <Sparkles size={15} className="text-black stroke-[2.5]" />
+                <RotateCw size={15} className="text-black stroke-[2.5]" />
               </span>
               <span className="font-extrabold text-white text-xs sm:text-sm truncate">
                 A new version is available
@@ -118,7 +118,7 @@ export const UpdatePrompt: React.FC = () => {
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs sm:text-sm">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#F4C430] text-black flex items-center justify-center shrink-0 shadow-xs">
-                <Sparkles size={14} className="text-black stroke-[2.5]" />
+                <RotateCw size={14} className="text-black stroke-[2.5]" />
               </span>
               <div className="flex items-center gap-1.5 truncate">
                 <span className="font-extrabold text-white">New update available:</span>

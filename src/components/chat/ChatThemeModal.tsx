@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, Sparkles, Paintbrush, Sun, Moon, Palette } from 'lucide-react';
+import { X, Check, Paintbrush, Sun, Moon, Palette } from 'lucide-react';
 import { CHAT_THEMES } from '../../lib/chatThemes';
 import { ChatTheme } from '../../types/chatTheme';
 import { useModalScrollLock } from '../../hooks/useModalScrollLock';
@@ -138,7 +138,7 @@ export const ChatThemeModal: React.FC<ChatThemeModalProps> = ({
                 : 'bg-white dark:bg-zinc-800 text-[#737373] dark:text-zinc-300 hover:text-[#111111] dark:hover:text-white border border-[#E5E5E5] dark:border-zinc-700'
             }`}
           >
-            <Sparkles size={13} />
+            <Paintbrush size={13} />
             <span>Doodle Patterns</span>
           </button>
         </div>

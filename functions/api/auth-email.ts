@@ -19,9 +19,15 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
-// Helper: Decode base64 to Uint8Array (pure Web standards)
+// Helper: Decode base64 / base64url to Uint8Array (pure Web standards)
 function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
+  // Normalize base64url characters and restore missing padding
+  let normalized = base64.trim().replace(/-/g, '+').replace(/_/g, '/');
+  const padMod = normalized.length % 4;
+  if (padMod === 2) normalized += '==';
+  else if (padMod === 3) normalized += '=';
+
+  const binaryString = atob(normalized);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
@@ -45,27 +51,33 @@ async function verifyWebhookSignature(
   headers: Headers,
   secretKey: string
 ): Promise<{ valid: boolean; reason?: string }> {
-  const webhookId = headers.get('webhook-id');
-  const webhookTimestamp = headers.get('webhook-timestamp');
-  const webhookSignature = headers.get('webhook-signature');
+  const webhookId = headers.get('webhook-id') || headers.get('svix-id');
+  const webhookTimestamp = headers.get('webhook-timestamp') || headers.get('svix-timestamp');
+  const webhookSignature = headers.get('webhook-signature') || headers.get('svix-signature');
 
   if (!webhookId || !webhookTimestamp || !webhookSignature) {
-    return { valid: false, reason: 'Missing standard webhook verification headers' };
+    return {
+      valid: false,
+      reason: `Missing standard webhook verification headers (id=${Boolean(webhookId)}, ts=${Boolean(webhookTimestamp)}, sig=${Boolean(webhookSignature)})`,
+    };
   }
 
   // Reject requests older than 5 minutes (300 seconds) to prevent replay attacks
   const timestampNum = parseInt(webhookTimestamp, 10);
   const nowSeconds = Math.floor(Date.now() / 1000);
   if (isNaN(timestampNum) || Math.abs(nowSeconds - timestampNum) > 300) {
-    return { valid: false, reason: 'Webhook timestamp is expired or invalid' };
+    return {
+      valid: false,
+      reason: `Webhook timestamp is expired or invalid (received=${webhookTimestamp}, now=${nowSeconds})`,
+    };
   }
 
-  // Standard-webhooks secret starts with "whsec_" or raw base64
+  // Standard-webhooks secret starts with "v1,whsec_", "whsec_", or raw base64
   let cleanSecret = secretKey.trim();
-  if (cleanSecret.startsWith('whsec_')) {
-    cleanSecret = cleanSecret.slice(6);
-  } else if (cleanSecret.startsWith('v1,whsec_')) {
+  if (cleanSecret.startsWith('v1,whsec_')) {
     cleanSecret = cleanSecret.slice(9);
+  } else if (cleanSecret.startsWith('whsec_')) {
+    cleanSecret = cleanSecret.slice(6);
   }
 
   try {
@@ -84,11 +96,11 @@ async function verifyWebhookSignature(
     const computedSignatureBase64 = arrayBufferToBase64(signatureBuffer);
 
     // webhook-signature can contain multiple space-delimited signatures, e.g. "v1,signature1 v1,signature2"
-    const signatures = webhookSignature.split(' ');
+    const signatures = webhookSignature.trim().split(/\s+/);
     let matched = false;
     for (const sig of signatures) {
-      const parts = sig.split(',');
-      const signatureToCompare = parts.length > 1 ? parts[1] : parts[0];
+      const commaIdx = sig.indexOf(',');
+      const signatureToCompare = commaIdx !== -1 ? sig.slice(commaIdx + 1) : sig;
       if (timingSafeEqual(computedSignatureBase64, signatureToCompare)) {
         matched = true;
         break;
@@ -96,7 +108,7 @@ async function verifyWebhookSignature(
     }
 
     if (!matched) {
-      return { valid: false, reason: 'Signature mismatch' };
+      return { valid: false, reason: 'HMAC-SHA256 signature mismatch against SEND_EMAIL_HOOK_SECRET' };
     }
 
     return { valid: true };
@@ -296,6 +308,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   try {
     rawBody = await request.text();
   } catch (err: any) {
+    console.error('[Supabase Send Email Hook] Failed to read raw request body:', err?.message || err);
     return new Response(
       JSON.stringify({ error: { http_code: 400, message: 'Invalid request body' } }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -307,19 +320,24 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   if (hookSecret) {
     const verification = await verifyWebhookSignature(rawBody, request.headers, hookSecret);
     if (!verification.valid) {
-      console.warn('[Supabase Send Email Hook] Signature verification rejected:', verification.reason);
+      console.error('[Supabase Send Email Hook] Signature verification failed:', verification.reason);
       return new Response(
-        JSON.stringify({ error: { http_code: 401, message: 'Unauthorized: Invalid webhook signature' } }),
+        JSON.stringify({
+          error: { http_code: 401, message: `Unauthorized: Invalid webhook signature (${verification.reason})` },
+        }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
+  } else {
+    console.warn('[Supabase Send Email Hook] SEND_EMAIL_HOOK_SECRET is not set; skipping signature check.');
   }
 
   // 3. Parse JSON payload
   let payload: any;
   try {
     payload = JSON.parse(rawBody);
-  } catch {
+  } catch (err: any) {
+    console.error('[Supabase Send Email Hook] Failed to parse JSON payload:', err?.message || err);
     return new Response(
       JSON.stringify({ error: { http_code: 400, message: 'Invalid JSON payload' } }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -328,6 +346,11 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
   const { user, email_data } = payload || {};
   if (!user || !user.email || !email_data) {
+    console.error('[Supabase Send Email Hook] Missing user or email_data in hook payload:', {
+      hasUser: Boolean(user),
+      hasEmail: Boolean(user?.email),
+      hasEmailData: Boolean(email_data),
+    });
     return new Response(
       JSON.stringify({ error: { http_code: 400, message: 'Missing user or email_data in hook payload' } }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -337,13 +360,46 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   // 4. Extract parameters and build verification link
   const recipientEmail = (user.email as string).trim().toLowerCase();
   const recipientName = user.user_metadata?.full_name || '';
-  const actionType = email_data.email_action_type || 'signup';
+  const actionType = (email_data.email_action_type || 'signup').trim();
   const tokenHash = email_data.token_hash || '';
   const token = email_data.token || '';
-  const redirectTo = email_data.redirect_to || email_data.site_url || 'https://shsvirtualacademy.pro';
 
-  // Construct confirmation link
-  const supabaseUrl = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+  const siteOrigin = (email_data.site_url || env.PUBLIC_DOMAIN || 'https://shsvirtualacademy.pro').replace(/\/+$/, '');
+  let redirectTo = (email_data.redirect_to || '').trim();
+
+  // For password recovery, ensure redirect_to lands on /reset-password
+  if (actionType === 'recovery') {
+    if (!redirectTo || redirectTo.replace(/\/+$/, '') === siteOrigin) {
+      redirectTo = `${siteOrigin}/reset-password`;
+    }
+  } else if (!redirectTo) {
+    redirectTo = siteOrigin;
+  }
+
+  // Resolve Supabase project URL for the /auth/v1/verify link
+  const supabaseUrl = (
+    env.SUPABASE_URL ||
+    env.VITE_SUPABASE_URL ||
+    (env as any).VITE_DATABASE_URL ||
+    (env as any).DATABASE_URL ||
+    ''
+  ).replace(/\/+$/, '');
+
+  if (!supabaseUrl && actionType !== 'reauthentication') {
+    console.error(
+      '[Supabase Send Email Hook] Missing SUPABASE_URL / VITE_SUPABASE_URL environment variable on Cloudflare; cannot construct /auth/v1/verify URL.'
+    );
+    return new Response(
+      JSON.stringify({
+        error: {
+          http_code: 500,
+          message: 'SUPABASE_URL or VITE_SUPABASE_URL is not configured in Cloudflare environment variables.',
+        },
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   const confirmLink = `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(tokenHash)}&type=${encodeURIComponent(actionType)}&redirect_to=${encodeURIComponent(redirectTo)}`;
 
   // 5. Generate template
@@ -360,7 +416,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
   if (!resendApiKey) {
     console.error('[Supabase Send Email Hook] RESEND_API_KEY environment variable is not configured.');
     return new Response(
-      JSON.stringify({ error: { http_code: 500, message: 'Resend API service is not configured on Cloudflare Pages.' } }),
+      JSON.stringify({ error: { http_code: 500, message: 'Resend API service is not configured on Cloudflare.' } }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -385,20 +441,30 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
 
     if (!resendRes.ok) {
       const errBody = await resendRes.text();
-      console.error('[Supabase Send Email Hook] Resend API error status:', resendRes.status, 'body:', errBody);
+      console.error(
+        `[Supabase Send Email Hook] Resend API failure (action=${actionType}, to=${recipientEmail}, from=${resendFrom}, status=${resendRes.status}):`,
+        errBody
+      );
       return new Response(
-        JSON.stringify({ error: { http_code: resendRes.status, message: 'Failed to deliver email through Resend' } }),
+        JSON.stringify({
+          error: {
+            http_code: resendRes.status,
+            message: `Failed to deliver email through Resend (${resendRes.status}): ${errBody}`,
+          },
+        }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Success response: Supabase Auth Hook expects an empty JSON object `{}`
+    console.log(`[Supabase Send Email Hook] Dispatched '${actionType}' email to ${recipientEmail} via Resend.`);
+
+    // Success response: Supabase Auth Hook expects HTTP 200 with an empty JSON object `{}`
     return new Response('{}', {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
-    console.error('[Supabase Send Email Hook] Exception sending email via Resend:', err.message);
+    console.error('[Supabase Send Email Hook] Exception sending email via Resend:', err?.message || err);
     return new Response(
       JSON.stringify({ error: { http_code: 500, message: 'Internal error delivering auth email' } }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

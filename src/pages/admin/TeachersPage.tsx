@@ -4,7 +4,6 @@ import {
   Search,
   Users,
   GraduationCap,
-  Sparkles,
   Eye,
   HelpCircle,
   Lock,
@@ -497,7 +496,7 @@ export const TeachersPage: React.FC = () => {
           </div>
         ) : filteredTeachers.length === 0 ? (
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-12 text-center space-y-3">
-            <Sparkles className="w-8 h-8 mx-auto text-neutral-400 animate-pulse" />
+            <Users className="w-8 h-8 mx-auto text-neutral-400" />
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
               No matching teachers found
             </h3>

@@ -6,7 +6,8 @@ import {
   CheckCheck,
   ArrowLeft,
   UserPlus,
-  Sparkles,
+  Bot,
+  Palette,
   Shield,
   GraduationCap,
   Users,
@@ -1562,7 +1563,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   }`}
                   title="Ask Sage AI tutor"
                 >
-                  <Sparkles size={15} className={isSageActive ? 'text-[#111111]' : 'text-[#F4C430]'} />
+                  <Bot size={15} className={isSageActive ? 'text-[#111111]' : 'text-[#F4C430]'} />
                   <span className="hidden sm:inline text-xs font-bold">Sage AI</span>
                 </button>
 
@@ -2040,7 +2041,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                 className="w-full text-left px-4 py-2.5 hover:bg-black/5 dark:hover:bg-zinc-800 active:bg-black/10 active:opacity-75 flex items-center justify-between gap-3 transition-all group text-[13px] outline-none select-none cursor-pointer"
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <Sparkles size={16} className="text-[#54656F] dark:text-zinc-400 group-hover:text-[#111111] dark:group-hover:text-white shrink-0" />
+                                  <Palette size={16} className="text-[#54656F] dark:text-zinc-400 group-hover:text-[#111111] dark:group-hover:text-white shrink-0" />
                                   <span className="font-medium">Chat theme</span>
                                 </div>
                                 <span className="text-[11px] text-[#737373] dark:text-zinc-400 font-medium truncate max-w-[100px]">

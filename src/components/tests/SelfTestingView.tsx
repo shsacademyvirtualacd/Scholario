@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Sparkles,
   Play,
   RotateCcw,
   CheckCircle2,
@@ -952,7 +951,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             <div className="relative w-20 h-20 mx-auto">
               <div className="absolute inset-0 rounded-3xl bg-[#F4C430]/20 animate-ping opacity-75" />
               <div className="relative w-20 h-20 rounded-3xl bg-[#111111] text-[#F4C430] flex items-center justify-center shadow-lg">
-                <Sparkles size={36} className="animate-spin" />
+                <RotateCcw size={36} className="animate-spin" />
               </div>
             </div>
 
@@ -1033,7 +1032,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             {/* Progressive delivery note */}
             {targetTotalQuestions > 5 && (
               <div className="p-3.5 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#92400E] max-w-md mx-auto text-left flex items-start gap-2.5">
-                <Sparkles size={16} className="text-[#D97706] shrink-0 mt-0.5" />
+                <Zap size={16} className="text-[#D97706] shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold">Progressive Generation Active</p>
                   <p className="text-[11px] text-[#B45309] mt-0.5">
@@ -1152,7 +1151,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             {/* 2-line Intro & Realistic AI Disclaimer */}
             <div className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xs space-y-1.5">
               <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-amber-500 shrink-0" />
+                <Target size={16} className="text-amber-500 shrink-0" />
                 <h3 className="text-sm sm:text-base font-bold text-neutral-900 dark:text-neutral-100">
                   {isIelts ? 'Configure IELTS Practice Test' : 'Configure Practice Quiz'}
                 </h3>
@@ -1715,7 +1714,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             >
               {isGenerating ? (
                 <>
-                  <Sparkles size={16} className="animate-spin text-neutral-900" />
+                  <RotateCcw size={16} className="animate-spin text-neutral-900" />
                   <span>Synthesizing MCQs...</span>
                 </>
               ) : (
@@ -1819,7 +1818,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             {/* Background Generation Indicator & Controls */}
             {isBackgroundGenerating && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-xs font-bold text-[#92400E] animate-pulse">
-                <Sparkles size={13} className="text-[#D97706] animate-spin" />
+                <RotateCcw size={13} className="text-[#D97706] animate-spin" />
                 <span>Background Sync ({questions.length}/{targetTotalQuestions})</span>
               </div>
             )}
@@ -1931,7 +1930,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             <div className="relative w-14 h-14 mx-auto">
               <div className="absolute inset-0 rounded-2xl bg-[#FFFBEB] animate-ping opacity-60" />
               <div className="relative w-14 h-14 rounded-2xl bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] flex items-center justify-center shadow-xs">
-                <Sparkles size={26} className="animate-spin text-[#D97706]" />
+                <RotateCcw size={26} className="animate-spin text-[#D97706]" />
               </div>
             </div>
 
@@ -2062,7 +2061,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
             >
               <span>Next</span>
               {currentIdx + 1 >= questions.length && isBackgroundGenerating && (
-                <Sparkles size={11} className="text-[#D97706] animate-spin" />
+                <RotateCcw size={11} className="text-[#D97706] animate-spin" />
               )}
             </button>
           </div>
@@ -2214,7 +2213,7 @@ export const SelfTestingView: React.FC<SelfTestingViewProps> = ({
                 onClick={() => setViewMode('config')}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-bold hover:bg-[#222222] transition-colors shadow-xs"
               >
-                <Sparkles size={14} className="text-[#F4C430]" />
+                <Target size={14} className="text-[#F4C430]" />
                 <span>Generate New Test</span>
               </button>
             </div>

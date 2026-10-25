@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Check, 
-  Sparkles, 
   ArrowRight, 
   ArrowLeft, 
   Zap, 
@@ -613,7 +612,6 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
                     className="inline-flex items-center justify-center gap-1.5 px-4 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shadow-md whitespace-nowrap"
                     style={{ background: '#F4C430', color: '#111111' }}
                   >
-                    <Sparkles size={12} className="text-[#111111] shrink-0" />
                     <span className="whitespace-nowrap">Recommended • Best Value</span>
                   </span>
                 </div>
@@ -655,7 +653,7 @@ export const PlanComparisonPage: React.FC<PlanComparisonProps> = ({
 
                   <div className="p-3.5 rounded-xl bg-[#1C2619] border border-[#2e4c27] text-emerald-300">
                     <div className="flex items-start gap-2">
-                      <Sparkles size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
                       <div className="text-xs leading-snug">
                         <span className="font-extrabold text-emerald-200 block mb-0.5">
                           {liveComparisonDiff > 0

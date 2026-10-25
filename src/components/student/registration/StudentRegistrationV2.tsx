@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Loader2,
   Award,
-  Sparkles,
   Phone,
   Mail,
   ShieldAlert,

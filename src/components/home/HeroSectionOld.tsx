@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Sparkles, Shield, Zap, MessageCircle } from 'lucide-react';
+import { ArrowRight, Bot, Shield, Zap, MessageCircle } from 'lucide-react';
 import DashboardPreview from './DashboardPreview';
 
 interface HeroSectionProps {
@@ -37,12 +37,6 @@ export const HeroSectionOld: React.FC<HeroSectionProps> = ({ onNavigate }) => {
           <div
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-full border border-[#E5E5E5] bg-white shadow-sm"
           >
-            <span
-              className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0"
-              style={{ background: '#F4C430', color: '#111111' }}
-            >
-              <Sparkles size={10} />
-            </span>
             <span className="text-sm font-medium text-[#525252]">
               Built for SHS Virtual Academy
             </span>
@@ -109,7 +103,7 @@ export const HeroSectionOld: React.FC<HeroSectionProps> = ({ onNavigate }) => {
           {[
             { icon: Shield, text: 'Enterprise Security' },
             { icon: Zap, text: '99.9% Uptime SLA' },
-            { icon: Sparkles, text: 'AI-Powered' },
+            { icon: Bot, text: 'AI-Powered' },
           ].map(({ icon: Icon, text }) => (
             <div key={text} className="flex items-center gap-2 text-sm text-[#737373]">
               <Icon size={14} style={{ color: '#F4C430' }} />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, LogIn, Video, BookOpen, ClipboardCheck, UserCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, LogIn, Video, BookOpen, ClipboardCheck, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardPreview from './DashboardPreview';
 import { isRedesignEnabled } from '../../lib/featureFlags';
@@ -75,11 +75,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
             {/* ── 1. Compact Content-Width Glass Pill Badge ── */}
             <div className="hero-stagger-1 mb-5 self-start md:self-center lg:self-start w-fit max-w-full">
               <div className="inline-flex items-center gap-1.5 h-[32px] min-h-[32px] px-3 rounded-full bg-white/70 dark:bg-[#161616]/70 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.12] shadow-xs max-w-full">
-                <Sparkles size={13} className="text-[#F2C230] shrink-0" />
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
                 <span className="text-[13px] font-semibold text-[#333333] dark:text-[#E5E5E5] tracking-tight whitespace-nowrap truncate">
                   Official Portal · SHS Virtual Academy
                 </span>

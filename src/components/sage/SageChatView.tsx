@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import 'katex/dist/katex.min.css';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -23,7 +23,7 @@ import {
   X,
   FileText,
   Compass,
-  Sparkles,
+  RefreshCw,
   Database,
   Mic,
   Play,
@@ -35,6 +35,8 @@ import {
   GraduationCap,
   ChevronDown,
   ChevronUp,
+  Volume2,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmModal from '../admin/ConfirmModal';
@@ -49,14 +51,25 @@ import {
 } from '../../lib/sageVoiceRecorder';
 import {
   generateSageContentPdf,
+  generateSageConversationPdf,
   downloadSagePdf,
+  triggerPdfBlobDownload,
+  shareSagePdfBlob,
   revokeSagePdfUrl,
   hasAcademicContent,
   hasAnswerKeyOrSolutions,
   detectPdfRequest,
   extractAcademicMetadata,
 } from '../../lib/sagePdfGenerator';
+import {
+  sageSpeech,
+  SpeechPlaybackStatus,
+  SpeechSpeed,
+} from '../../lib/sageSpeech';
 import { SAGE_MODEL_DISPLAY_NAME } from '../../lib/knowledgeBaseService';
+import type { Sage3DAvatarState } from './Sage3DAvatar';
+
+const LazySage3DAvatar = React.lazy(() => import('./Sage3DAvatar'));
 
 export interface ChatAttachment {
   key?: string;
@@ -368,9 +381,10 @@ const SagePdfCard: React.FC<{
   hasAnswers: boolean;
   role: 'student' | 'teacher' | 'admin';
   onDownload: (mode: 'student' | 'teacher') => void;
+  onShare: (mode: 'student' | 'teacher') => void;
   onPreview: (mode: 'student' | 'teacher') => void;
   isGenerating?: boolean;
-}> = ({ title, subject, className, hasAnswers, role, onDownload, onPreview, isGenerating }) => {
+}> = ({ title, subject, className, hasAnswers, role, onDownload, onShare, onPreview, isGenerating }) => {
   const isStudent = role === 'student';
 
   return (
@@ -396,14 +410,13 @@ const SagePdfCard: React.FC<{
       </div>
 
       <div className="mt-3 pt-3 border-t border-amber-200/60 flex flex-wrap items-center gap-2">
-        {/* For Students: Always show ONE clear primary "Download PDF" button (No Answers) */}
         {isStudent ? (
           <button
             type="button"
             onClick={() => onDownload('student')}
             disabled={isGenerating}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-xs font-semibold text-[#F4C430] shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-            title="Download clean student copy (questions only, zero answers)"
+            title="Download clean student copy (questions/notes)"
           >
             <Download size={14} />
             <span>Download PDF</span>
@@ -445,6 +458,17 @@ const SagePdfCard: React.FC<{
 
         <button
           type="button"
+          onClick={() => onShare(isStudent ? 'student' : 'teacher')}
+          disabled={isGenerating}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-xs font-semibold text-amber-950 border border-amber-300 transition-all disabled:opacity-50 cursor-pointer"
+          title="Share or send PDF via WhatsApp / Email / System Share"
+        >
+          <Share2 size={13} />
+          <span>Share / Send</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => onPreview(isStudent ? 'student' : hasAnswers ? 'student' : 'teacher')}
           disabled={isGenerating}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-semibold text-zinc-700 transition-all disabled:opacity-50 cursor-pointer"
@@ -476,6 +500,7 @@ const PdfPreviewModal: React.FC<{
   role: 'student' | 'teacher' | 'admin';
   onToggleMode: (newMode: 'student' | 'teacher') => void;
   onDownload: () => void;
+  onShare: () => void;
 }> = React.memo(({
   isOpen,
   onClose,
@@ -488,6 +513,7 @@ const PdfPreviewModal: React.FC<{
   role,
   onToggleMode,
   onDownload,
+  onShare,
 }) => {
   const isStudent = role === 'student';
 
@@ -545,6 +571,16 @@ const PdfPreviewModal: React.FC<{
                 </button>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={onShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold transition-colors cursor-pointer"
+              title="Share or send PDF"
+            >
+              <Share2 size={14} />
+              <span className="hidden sm:inline">Share</span>
+            </button>
 
             <button
               type="button"
@@ -632,7 +668,7 @@ const STARTER_PROMPTS: Record<'student' | 'teacher' | 'admin', Array<{ label: st
     {
       label: 'Balance Chemical Equations',
       text: 'Help me understand step-by-step how to balance chemical equations with examples from our syllabus.',
-      icon: Sparkles,
+      icon: BookOpen,
       tone: 'neutral',
     },
     {
@@ -761,6 +797,9 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
   // ── PDF Generation & Preview State ──
   const [generatingPdfMsgId, setGeneratingPdfMsgId] = useState<string | null>(null);
+  const [sharingPdfMsgId, setSharingPdfMsgId] = useState<string | null>(null);
+  const [isExportingConversationPdf, setIsExportingConversationPdf] = useState(false);
+  const [isSharingConversationPdf, setIsSharingConversationPdf] = useState(false);
   const [pdfMenuMsgId, setPdfMenuMsgId] = useState<string | null>(null);
   const [pdfPreviewModal, setPdfPreviewModal] = useState<{
     isOpen: boolean;
@@ -779,6 +818,13 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     mode: 'teacher',
     hasAnswers: false,
   });
+
+  // ── Text-to-Speech (TTS) & 3D Avatar State ──
+  const [speechStatus, setSpeechStatus] = useState<SpeechPlaybackStatus>('idle');
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeed>(1);
+  const [speechVolume, setSpeechVolume] = useState<number>(0);
+  const [avatar3DCollapsed, setAvatar3DCollapsed] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -800,9 +846,22 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     }
   }, []);
 
-  // Cleanup voice preview URL on unmount
+  // Cleanup voice preview URL and TTS on unmount
   useEffect(() => {
+    sageSpeech.setCallbacks({
+      onStatusChange: (status, msgId, errText) => {
+        setSpeechStatus(status);
+        setSpeakingMsgId(status === 'idle' ? null : msgId);
+        if (status === 'error' && errText) {
+          toast.error(errText);
+        }
+      },
+      onVolumeChange: (vol) => {
+        setSpeechVolume(vol);
+      },
+    });
     return () => {
+      sageSpeech.stop();
       if (audioPreviewUrl) {
         URL.revokeObjectURL(audioPreviewUrl);
       }
@@ -1116,15 +1175,42 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
     }
   };
 
-  // ── PDF Generation Helpers ──
+  // ── TTS Controls ──
+  const handleToggleSpeak = async (msgId: string, content: string) => {
+    if (speakingMsgId === msgId) {
+      if (speechStatus === 'playing') {
+        sageSpeech.pause();
+        return;
+      }
+      if (speechStatus === 'paused') {
+        sageSpeech.resume();
+        return;
+      }
+    }
+    await sageSpeech.speak(msgId, content);
+  };
+
+  const handleStopSpeak = () => {
+    sageSpeech.stop();
+  };
+
+  const handleCycleSpeechSpeed = () => {
+    const speeds: SpeechSpeed[] = [0.75, 1, 1.25, 1.5];
+    const nextIdx = (speeds.indexOf(speechSpeed) + 1) % speeds.length;
+    const nextSpeed = speeds[nextIdx];
+    setSpeechSpeed(nextSpeed);
+    sageSpeech.setSpeed(nextSpeed);
+    toast.info(`Playback speed: ${nextSpeed}x`);
+  };
+
+  // ── PDF Generation & Sharing Helpers ──
   const handleDownloadPdf = async (rawContent: string, mode: 'student' | 'teacher' = 'teacher', msgId?: string) => {
-    // Strict role enforcement in code: students can NEVER download teacher copy with solutions
     const effectiveMode = role === 'student' ? 'student' : mode;
 
     if (msgId) setGeneratingPdfMsgId(msgId);
     try {
       const filename = await downloadSagePdf(rawContent, {
-        teacherName: profile?.full_name || 'Faculty Mentor',
+        teacherName: profile?.full_name || 'Sage AI Tutor',
         mode: effectiveMode,
       });
       toast.success(`Downloaded: ${filename}`);
@@ -1134,6 +1220,80 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
       toast.error('Failed to generate PDF. Please try again.');
     } finally {
       if (msgId) setGeneratingPdfMsgId(null);
+    }
+  };
+
+  const handleSharePdf = async (rawContent: string, mode: 'student' | 'teacher' = 'teacher', msgId?: string) => {
+    const effectiveMode = role === 'student' ? 'student' : mode;
+    if (msgId) setSharingPdfMsgId(msgId);
+    try {
+      const result = await generateSageContentPdf(rawContent, {
+        teacherName: profile?.full_name || 'Sage AI Tutor',
+        mode: effectiveMode,
+      });
+      const shareOutcome = await shareSagePdfBlob(result.blob, result.filename, result.filename);
+      revokeSagePdfUrl(result.dataUrl);
+      if (shareOutcome.shared) {
+        toast.success('Shared PDF document!');
+      } else {
+        toast.success(`Saved ${result.filename} — ready to attach on WhatsApp or Email!`);
+      }
+      setPdfMenuMsgId(null);
+    } catch (err: any) {
+      console.error('PDF share error:', err);
+      toast.error('Could not share PDF. Please try downloading instead.');
+    } finally {
+      if (msgId) setSharingPdfMsgId(null);
+    }
+  };
+
+  const handleDownloadConversationPdf = async () => {
+    if (messages.length === 0 || isExportingConversationPdf) return;
+    setIsExportingConversationPdf(true);
+    try {
+      const effectiveMode = role === 'student' ? 'student' : 'teacher';
+      const result = await generateSageConversationPdf(messages, {
+        teacherName: profile?.full_name || 'Sage AI Tutor',
+        mode: effectiveMode,
+        topic: 'Sage AI Study Session Transcript',
+      });
+      await triggerPdfBlobDownload(result.blob, result.filename);
+      revokeSagePdfUrl(result.dataUrl);
+      toast.success(`Downloaded Conversation PDF: ${result.filename}`);
+    } catch (err: any) {
+      console.error('Conversation PDF error:', err);
+      toast.error('Failed to export conversation PDF.');
+    } finally {
+      setIsExportingConversationPdf(false);
+    }
+  };
+
+  const handleShareConversationPdf = async () => {
+    if (messages.length === 0 || isSharingConversationPdf) return;
+    setIsSharingConversationPdf(true);
+    try {
+      const effectiveMode = role === 'student' ? 'student' : 'teacher';
+      const result = await generateSageConversationPdf(messages, {
+        teacherName: profile?.full_name || 'Sage AI Tutor',
+        mode: effectiveMode,
+        topic: 'Sage AI Study Session Transcript',
+      });
+      const outcome = await shareSagePdfBlob(
+        result.blob,
+        result.filename,
+        'Sage AI Study Session Transcript'
+      );
+      revokeSagePdfUrl(result.dataUrl);
+      if (outcome.shared) {
+        toast.success('Shared conversation PDF!');
+      } else {
+        toast.success(`Saved ${result.filename} — ready to send via WhatsApp or Email!`);
+      }
+    } catch (err: any) {
+      console.error('Conversation PDF share error:', err);
+      toast.error('Failed to share conversation PDF.');
+    } finally {
+      setIsSharingConversationPdf(false);
     }
   };
 
@@ -1444,17 +1604,6 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               </span>
             </div>
             <p className="text-[11px] text-[#A3A3A3] flex items-center gap-1.5 mt-0.5">
-              <span
-                className={`w-2 h-2 rounded-full inline-block ${
-                  activeEmotion === 'thinking'
-                    ? 'bg-purple-400 animate-ping'
-                    : activeEmotion === 'concerned'
-                    ? 'bg-red-500 animate-pulse'
-                    : activeEmotion === 'positive'
-                    ? 'bg-emerald-400'
-                    : 'bg-[#22C55E]'
-                }`}
-              />
               <span>{activeEmotionMeta.statusText}</span>
             </p>
           </div>
@@ -1485,8 +1634,39 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             })}
           </div>
 
+          {/* Export Whole Conversation PDF & Share */}
+          <button
+            type="button"
+            onClick={handleDownloadConversationPdf}
+            disabled={isExportingConversationPdf || isLoading || messages.length === 0}
+            className="min-h-[44px] sm:min-h-[36px] flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-[#F4C430] transition-colors border border-[#3D3D3D] disabled:opacity-50 cursor-pointer"
+            title="Download full conversation as A4 PDF"
+          >
+            {isExportingConversationPdf ? (
+              <Loader2 size={13} className="animate-spin text-[#F4C430]" />
+            ) : (
+              <FileDown size={13} className="text-[#F4C430]" />
+            )}
+            <span className="hidden sm:inline">{isExportingConversationPdf ? 'Exporting...' : 'Chat PDF'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShareConversationPdf}
+            disabled={isSharingConversationPdf || isLoading || messages.length === 0}
+            className="min-h-[44px] sm:min-h-[36px] flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-[#D4D4D4] hover:text-white transition-colors border border-[#333333] disabled:opacity-50 cursor-pointer"
+            title="Share or send conversation PDF"
+          >
+            {isSharingConversationPdf ? (
+              <Loader2 size={13} className="animate-spin text-[#F4C430]" />
+            ) : (
+              <Share2 size={13} />
+            )}
+            <span className="hidden lg:inline">{isSharingConversationPdf ? 'Sharing...' : 'Share PDF'}</span>
+          </button>
+
           {/* RAG Vault Badge */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#1C1C1E] border border-[#2B2B2B] text-[11px] text-[#A3A3A3]">
+          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#1C1C1E] border border-[#2B2B2B] text-[11px] text-[#A3A3A3]">
             <Database size={12} className="text-[#38BDF8]" />
             <span className="font-semibold text-white">RAG Note Vault</span>
           </div>
@@ -1500,7 +1680,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
               className="min-h-[44px] sm:min-h-[36px] hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] hover:bg-[#333333] text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors border border-[#3D3D3D] disabled:opacity-50 interactive cursor-pointer"
               title="Index Subject Note Vault documents into vector knowledge base"
             >
-              <Sparkles size={13} className={isSyncingNotes ? 'animate-spin text-amber-400' : 'text-amber-400'} />
+              <RefreshCw size={13} className={isSyncingNotes ? 'animate-spin text-amber-400' : 'text-amber-400'} />
               <span>{isSyncingNotes ? 'Syncing...' : 'Sync Notes'}</span>
             </button>
           )}
@@ -1514,7 +1694,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
             title="Reset Chat Session"
           >
             <RotateCcw size={13} />
-            <span className="hidden sm:inline">Reset Session</span>
+            <span className="hidden sm:inline">Reset</span>
           </button>
         </div>
       </div>
@@ -1669,13 +1849,14 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                     className={msg.pdfCard.className}
                     hasAnswers={role === 'student' ? false : msg.pdfCard.hasAnswers}
                     role={role}
-                    isGenerating={generatingPdfMsgId === msg.id}
+                    isGenerating={generatingPdfMsgId === msg.id || sharingPdfMsgId === msg.id}
                     onDownload={(m) => handleDownloadPdf(msg.content, m, msg.id)}
+                    onShare={(m) => handleSharePdf(msg.content, m, msg.id)}
                     onPreview={(m) => handleOpenPdfPreview(msg.content, m)}
                   />
                 )}
 
-                {/* Footer info: time, tone indicator, copy & Download PDF */}
+                {/* Footer info: time, tone indicator, Listen (TTS), Copy, Download PDF, & Share PDF */}
                 <div
                   className={`flex flex-wrap items-center gap-2 px-1 text-[11px] text-[#A3A3A3] ${
                     isUser ? 'justify-end' : 'justify-start'
@@ -1688,10 +1869,64 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                         • {SAGE_EMOTIONS[msgEmotion]?.badgeLabel}
                       </span>
 
+                      {/* Listen / Text-to-Speech (TTS) Controls */}
+                      {speakingMsgId === msg.id && speechStatus !== 'idle' ? (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#111111] text-[#F4C430] border border-[#F4C430]/40 text-[11px] font-semibold">
+                          {speechStatus === 'loading' ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Loader2 size={11} className="animate-spin" />
+                              <span>Loading voice...</span>
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSpeak(msg.id, msg.content)}
+                                className="inline-flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
+                                title={speechStatus === 'playing' ? 'Pause reading' : 'Resume reading'}
+                              >
+                                {speechStatus === 'playing' ? <Pause size={11} /> : <Play size={11} />}
+                                <span>{speechStatus === 'playing' ? 'Pause' : 'Resume'}</span>
+                              </button>
+                              <span className="text-white/25">|</span>
+                              <button
+                                type="button"
+                                onClick={handleStopSpeak}
+                                className="inline-flex items-center gap-0.5 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                                title="Stop reading"
+                              >
+                                <Square size={10} className="fill-current" />
+                                <span>Stop</span>
+                              </button>
+                              <span className="text-white/25">|</span>
+                              <button
+                                type="button"
+                                onClick={handleCycleSpeechSpeed}
+                                className="px-1 rounded bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white cursor-pointer"
+                                title="Change reading speed (0.75x, 1x, 1.25x, 1.5x)"
+                              >
+                                {speechSpeed}x
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSpeak(msg.id, msg.content)}
+                          disabled={isCurrentStreaming}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-semibold text-[11px] transition-colors disabled:opacity-50 cursor-pointer"
+                          title="Listen to this answer read aloud (English / Urdu)"
+                        >
+                          <Volume2 size={12} className="text-[#D4A017]" />
+                          <span>Listen</span>
+                        </button>
+                      )}
+
                       {/* Copy Button */}
                       <button
                         onClick={() => handleCopy(msg.id, msg.content)}
-                        className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-1 text-zinc-500 hover:text-zinc-900 cursor-pointer"
+                        className="flex items-center gap-1 hover:text-[#111111] transition-colors interactive ml-0.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white cursor-pointer"
                         title="Copy response"
                       >
                         {copiedId === msg.id ? (
@@ -1702,17 +1937,18 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                         <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                       </button>
 
-                      {/* Download PDF Button (Only shown if inline PDF card is not already displayed, preventing duplicate buttons) */}
-                      {!msg.pdfCard && isAcademic && (
-                        <div className="relative inline-block ml-1">
-                          {role === 'student' ? (
-                            /* Clean single button for students (No answers, no confusing dropdown) */
+                      {/* Download PDF & Share PDF Buttons on every Sage answer */}
+                      {!msg.pdfCard && !msg.id.startsWith('welcome-') && (
+                        <div className="relative inline-flex items-center gap-1.5 ml-0.5">
+                          {role === 'student' || !hasAnswers ? (
                             <button
                               type="button"
-                              onClick={() => handleDownloadPdf(msg.content, 'student', msg.id)}
+                              onClick={() =>
+                                handleDownloadPdf(msg.content, role === 'student' ? 'student' : 'teacher', msg.id)
+                              }
                               disabled={generatingPdfMsgId === msg.id}
                               className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100/70 hover:bg-amber-200/90 text-amber-950 font-semibold text-[11px] border border-amber-300/80 transition-colors disabled:opacity-50 cursor-pointer"
-                              title="Download clean Student Copy (No Answers)"
+                              title="Download answer as formatted A4 PDF"
                             >
                               {generatingPdfMsgId === msg.id ? (
                                 <Loader2 size={11} className="animate-spin text-amber-700" />
@@ -1722,17 +1958,10 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                               <span>Download PDF</span>
                             </button>
                           ) : (
-                            /* Dual export dropdown for teachers and administrators */
                             <>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (hasAnswers) {
-                                    setPdfMenuMsgId(pdfMenuMsgId === msg.id ? null : msg.id);
-                                  } else {
-                                    handleDownloadPdf(msg.content, 'teacher', msg.id);
-                                  }
-                                }}
+                                onClick={() => setPdfMenuMsgId(pdfMenuMsgId === msg.id ? null : msg.id)}
                                 disabled={generatingPdfMsgId === msg.id}
                                 className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-100/70 hover:bg-amber-200/90 text-amber-950 font-semibold text-[11px] border border-amber-300/80 transition-colors disabled:opacity-50 cursor-pointer"
                                 title="Export this content to a formatted PDF document"
@@ -1743,11 +1972,11 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                                   <FileDown size={11} className="text-amber-800" />
                                 )}
                                 <span>Download PDF</span>
-                                {hasAnswers && <ChevronDown size={10} />}
+                                <ChevronDown size={10} />
                               </button>
 
                               {pdfMenuMsgId === msg.id && (
-                                <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-zinc-200 p-1.5 z-30 text-left animate-in fade-in slide-in-from-top-1">
+                                <div className="absolute left-0 top-full mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-zinc-200 p-1.5 z-30 text-left animate-in fade-in slide-in-from-top-1">
                                   <button
                                     type="button"
                                     onClick={() => handleDownloadPdf(msg.content, 'student', msg.id)}
@@ -1786,6 +2015,24 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
                               )}
                             </>
                           )}
+
+                          {/* Share / Send PDF Button */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleSharePdf(msg.content, role === 'student' ? 'student' : 'teacher', msg.id)
+                            }
+                            disabled={sharingPdfMsgId === msg.id}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-semibold text-[11px] transition-colors disabled:opacity-50 cursor-pointer"
+                            title="Share or send this answer as a PDF"
+                          >
+                            {sharingPdfMsgId === msg.id ? (
+                              <Loader2 size={11} className="animate-spin" />
+                            ) : (
+                              <Share2 size={11} />
+                            )}
+                            <span>Share PDF</span>
+                          </button>
                         </div>
                       )}
                     </>
@@ -1868,8 +2115,43 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         </div>
       )}
 
+      {/* ── 3D AI Tutor Avatar (Middle of Sage Window, Above Chat Input) ── */}
+      <div className="px-4 sm:px-6 pt-2.5 pb-1 bg-white dark:bg-[#141418] border-t border-[#F0F0F0] dark:border-[#27272A] shrink-0">
+        <Suspense
+          fallback={
+            <div className="h-28 rounded-2xl bg-[#111318] border border-[#D4A017]/25 flex items-center justify-center text-xs text-[#F4C430]">
+              Loading 3D AI Tutor...
+            </div>
+          }
+        >
+          <LazySage3DAvatar
+            state={
+              speechStatus === 'playing' || Boolean(streamingId)
+                ? 'speaking'
+                : isLoading || isTranscribing
+                ? 'thinking'
+                : isRecording || input.trim().length > 0
+                ? 'listening'
+                : ('idle' as Sage3DAvatarState)
+            }
+            audioLevel={
+              speechStatus === 'playing'
+                ? speechVolume
+                : isRecording
+                ? recordingLevel
+                : streamingId
+                ? 0.55
+                : 0
+            }
+            compact={messages.length > 2}
+            collapsed={avatar3DCollapsed}
+            onToggleCollapse={() => setAvatar3DCollapsed((prev) => !prev)}
+          />
+        </Suspense>
+      </div>
+
       {/* ── Input Box & Controls ── */}
-      <div className="p-4 sm:p-5 bg-white border-t border-[#E5E5E5] shrink-0">
+      <div className="p-4 sm:p-5 bg-white dark:bg-[#141418] border-t border-[#E5E5E5] dark:border-[#27272A] shrink-0">
         {/* Pending Attachment Preview */}
         {pendingAttachment && !isRecording && (
           <div className="mb-2.5 p-2.5 bg-[#F4F4F5] border border-[#E4E4E7] rounded-xl flex items-center justify-between gap-3 text-xs">
@@ -2147,6 +2429,7 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
         role={role}
         onToggleMode={handleTogglePreviewMode}
         onDownload={() => handleDownloadPdf(pdfPreviewModal.rawContent, pdfPreviewModal.mode)}
+        onShare={() => handleSharePdf(pdfPreviewModal.rawContent, pdfPreviewModal.mode)}
       />
 
       {/* ── Reset / Clear Chat Confirmation Modal ── */}

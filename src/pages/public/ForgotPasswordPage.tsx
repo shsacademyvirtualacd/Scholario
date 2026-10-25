@@ -32,10 +32,19 @@ export const ForgotPasswordPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await resetPasswordForEmail(cleanEmail);
-      // Requirement: Always show the same generic message for security
+      const { error } = await resetPasswordForEmail(cleanEmail);
+      if (error) {
+        console.error('[ForgotPasswordPage] Password reset request failed:', error);
+        const mapped = mapAuthError(error);
+        if (mapped.isRateLimited) {
+          setErrorMessage(mapped.message);
+          return;
+        }
+      }
+      // Always show the same generic message to the user for account enumeration protection
       setSubmitted(true);
     } catch (err: any) {
+      console.error('[ForgotPasswordPage] Unexpected exception during password reset:', err);
       const mapped = mapAuthError(err);
       if (mapped.isRateLimited) {
         setErrorMessage(mapped.message);

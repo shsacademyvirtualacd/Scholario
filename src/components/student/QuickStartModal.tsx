@@ -3,7 +3,7 @@ import {
   Video,
   BookMarked,
   FileCheck2,
-  Sparkles,
+  Bot,
   MessageSquare,
   X,
   ChevronRight,
@@ -42,7 +42,7 @@ const STEPS = [
     tip: 'Always check submission due dates to avoid overdue penalties.',
   },
   {
-    icon: <Sparkles size={28} className="text-purple-500" />,
+    icon: <Bot size={28} className="text-purple-500" />,
     title: '4. Sage AI Academic Assistant',
     subtitle: '24/7 Study Help',
     description:

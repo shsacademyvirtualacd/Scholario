@@ -41,6 +41,7 @@ import type { Enrollment } from '../../types';
 import ChatPrivacySettingCard from '../../components/chat/ChatPrivacySettingCard';
 import { StudentDataRightsCard } from '../../components/student/StudentDataRightsCard';
 import { PushNotificationSettings } from '../../components/common/PushNotificationSettings';
+import AccountSecurityCard from '../../components/common/AccountSecurityCard';
 import { validatePakistaniPhoneNumber } from '../../lib/phoneValidation';
 import {
   getStudentScholarshipApplication,
@@ -442,6 +443,9 @@ export const ProfilePage: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* ════ 1B. SIGN-IN & SECURITY SECTION ════ */}
+              <AccountSecurityCard />
 
               {/* ════ 2. COURSE REGISTRATION SECTION ════ */}
               <div className="bg-white dark:bg-[#101726] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">

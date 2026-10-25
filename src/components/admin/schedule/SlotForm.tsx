@@ -9,7 +9,6 @@ import {
   Calendar,
   Video,
   X,
-  Sparkles,
 } from 'lucide-react';
 import { useMobile } from '../../../hooks/useMobile';
 import { formatTime12h } from '../../../lib/scheduleUtils';
@@ -955,7 +954,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 dark:bg-amber-400/10 dark:border-amber-400/25 space-y-1">
         <div className="flex items-center justify-between text-xs font-black text-amber-950 dark:text-amber-200 uppercase tracking-wide">
           <div className="flex items-center gap-1.5">
-            <Sparkles size={13} className="text-[#F4C430]" />
+            <Calendar size={13} className="text-[#F4C430]" />
             <span>Schedule Summary</span>
           </div>
           {!isEditMode && selectedDays.length > 0 && (

@@ -27,6 +27,7 @@ import {
   onRequestGet as apkFileGetHandler,
   onRequestOptions as apkFileOptionsHandler,
 } from '../functions/apk/[filename]';
+import { onRequestPost as authEmailPostHandler } from '../functions/api/auth-email';
 
 export interface Env {
   NOTES_BUCKET: any;
@@ -45,6 +46,9 @@ export interface Env {
   VITE_SUPABASE_ANON_KEY?: string;
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM?: string;
+  SEND_EMAIL_HOOK_SECRET?: string;
 }
 
 export default {
@@ -53,6 +57,41 @@ export default {
 
     // Normalize path by stripping trailing slashes for routing checks
     const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
+
+    // ── Supabase Send Email Auth Hook (/api/auth-email) ──
+    if (normalizedPath === '/api/auth-email') {
+      if (request.method === 'POST') {
+        try {
+          return await authEmailPostHandler({
+            request,
+            env,
+            params: {},
+            waitUntil: ctx?.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+            next: () => Promise.resolve(new Response('')),
+            data: {},
+          } as any);
+        } catch (err: any) {
+          console.error('[Worker /api/auth-email] Unhandled error:', err?.message || err);
+          return new Response(
+            JSON.stringify({ error: { http_code: 500, message: err?.message || 'Internal auth-email error' } }),
+            {
+              status: 500,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+      return new Response(
+        JSON.stringify({ error: { http_code: 405, message: `Method ${request.method} not allowed, expected POST` } }),
+        {
+          status: 405,
+          headers: {
+            'Content-Type': 'application/json',
+            Allow: 'POST',
+          },
+        }
+      );
+    }
 
     // ── Android APK Upload & Distribution Endpoints ──
     if (normalizedPath === '/api/admin/upload-apk' || normalizedPath === '/api/admin/apk/upload') {

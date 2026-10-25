@@ -10,7 +10,6 @@ import {
   Loader2,
   RefreshCw,
   X,
-  Sparkles,
   Check,
   FileText,
 } from 'lucide-react';
@@ -619,7 +618,7 @@ export const SiteAnnouncementsPage: React.FC = () => {
               {/* 2. Quick Template Selector */}
               <div className="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/15 space-y-2">
                 <label className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-[#F4C430]" />
+                  <FileText size={13} className="text-[#F4C430]" />
                   Quick Templates
                 </label>
                 <select

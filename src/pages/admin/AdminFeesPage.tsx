@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, Clock, Search, Check,
-  AlertCircle, Sparkles, Save, Loader2, Coins, BookOpen,
+  AlertCircle, Save, Loader2, Coins, BookOpen,
   Award, FileText, ExternalLink, XCircle, CheckCircle2, Plus, Trash2, ShieldAlert, X,
   AlertTriangle, RefreshCw
 } from 'lucide-react';
@@ -754,7 +754,7 @@ export const AdminFeesPage: React.FC = () => {
                             )}
                             {item.explanation_label && (
                               <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1 bg-emerald-50/70 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                <Sparkles size={11} className="text-emerald-600" />
+                                <CheckCircle2 size={11} className="text-emerald-600" />
                                 {item.explanation_label}
                               </span>
                             )}
@@ -1745,7 +1745,7 @@ export const AdminFeesPage: React.FC = () => {
                 {/* Section 3: Universal Payment Setup */}
                 <form onSubmit={handleSaveConfig} className="bg-white rounded-2xl border border-[#E5E5E5] p-6 space-y-6">
                   <div className="flex items-center gap-2 border-b border-[#F5F5F5] pb-3">
-                    <Sparkles size={16} className="text-[#F4C430]" />
+                    <Coins size={16} className="text-[#F4C430]" />
                     <div>
                       <h2 className="font-extrabold text-[#111111] text-base">
                         Universal Payment Accounts & WhatsApp Verification

@@ -13,8 +13,7 @@ import {
   Edit2,
   X,
   Check,
-  Download,
-  Sparkles
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -449,7 +448,7 @@ export const StaffAttendanceAdminView: React.FC = () => {
             disabled={sweepLoading}
             className="w-full mt-3 py-1.5 px-3 rounded-lg bg-[#2A2A2A] hover:bg-[#3D3D3D] text-[#F4C430] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <Sparkles size={13} className={sweepLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={sweepLoading ? 'animate-spin' : ''} />
             <span>{sweepLoading ? 'Sweeping...' : 'Run Sweep Now'}</span>
           </button>
         </div>

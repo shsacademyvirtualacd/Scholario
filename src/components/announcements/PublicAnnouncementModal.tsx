@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
-  Sparkles,
   ArrowRight,
   GraduationCap,
   CheckCircle2,
@@ -95,7 +94,6 @@ export const PublicAnnouncementModal: React.FC = () => {
           className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#111111] text-white shadow-xl hover:bg-[#222222] border border-[#333333] transition-all hover:scale-105 active:scale-95 group text-xs font-bold"
           title="View announcement"
         >
-          <span className="w-2 h-2 rounded-full bg-[#F4C430] animate-pulse" />
           <Megaphone size={15} className="text-[#F4C430] group-hover:rotate-12 transition-transform" />
           <span className="truncate max-w-[200px]">
             {announcement.badge_label || 'Admissions Notice'}
@@ -121,7 +119,6 @@ export const PublicAnnouncementModal: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#F4C430] text-[#111111] shadow-2xs">
-                      <Sparkles size={13} className="text-[#111111]" />
                       {announcement.badge_label || 'Official Announcement'}
                     </span>
                     <span className="text-[11px] text-[#A3A3A3] font-medium flex items-center gap-1">

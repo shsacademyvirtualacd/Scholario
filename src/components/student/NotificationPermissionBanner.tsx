@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X, Sparkles } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PERMISSION_RESOLVED_KEY = 'scholario_notifications_permission_resolved';
@@ -149,7 +149,7 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
                 {displayTitle}
               </h3>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200">
-                <Sparkles size={10} /> Instant
+                Instant
               </span>
             </div>
             <p className="text-xs text-[#525252] dark:text-[#A1A1AA] mt-0.5 leading-relaxed font-medium">

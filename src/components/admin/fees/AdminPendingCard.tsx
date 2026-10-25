@@ -9,7 +9,6 @@ import {
   AlertCircle,
   XCircle,
   Award,
-  Sparkles,
   Phone,
   Mail,
   Loader2,

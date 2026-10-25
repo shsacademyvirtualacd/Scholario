@@ -34,20 +34,9 @@ export const ResetPasswordPage: React.FC = () => {
   const strength = evaluatePasswordStrength(password);
   const doPasswordsMatch = password.length > 0 && confirmPassword.length > 0 && password === confirmPassword;
 
-  // 1. Detect recovery session on mount
+  // 1. Detect recovery session on mount (supports #access_token, ?code= PKCE, and ?token_hash= OTP)
   useEffect(() => {
     let mounted = true;
-
-    // Check if there is an active session or hash parameters for recovery
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      if (session) {
-        setIsRecoveryReady(true);
-      }
-      setCheckingRecovery(false);
-    }).catch(() => {
-      if (mounted) setCheckingRecovery(false);
-    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
@@ -56,6 +45,88 @@ export const ResetPasswordPage: React.FC = () => {
         setCheckingRecovery(false);
       }
     });
+
+    const initializeRecoverySession = async () => {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+        const tokenHash =
+          searchParams.get('token_hash') ||
+          searchParams.get('token') ||
+          hashParams.get('token_hash');
+        const type = searchParams.get('type') || hashParams.get('type');
+        const code = searchParams.get('code');
+
+        // A. Direct token_hash / OTP verification if present in URL
+        if (tokenHash && (type === 'recovery' || !type)) {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+          if (error) {
+            console.error('[ResetPasswordPage] verifyOtp recovery error:', error);
+          } else if (data?.session && mounted) {
+            setIsRecoveryReady(true);
+            setCheckingRecovery(false);
+            return;
+          }
+        }
+
+        // B. PKCE ?code= exchange if present and not yet exchanged by detectSessionInUrl
+        if (code) {
+          const { data: existing } = await supabase.auth.getSession();
+          if (existing?.session && mounted) {
+            setIsRecoveryReady(true);
+            setCheckingRecovery(false);
+            return;
+          }
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            // detectSessionInUrl may have already consumed the code; re-check session
+            const { data: retry } = await supabase.auth.getSession();
+            if (retry?.session && mounted) {
+              setIsRecoveryReady(true);
+              setCheckingRecovery(false);
+              return;
+            }
+            console.error('[ResetPasswordPage] exchangeCodeForSession error:', error);
+          } else if (data?.session && mounted) {
+            setIsRecoveryReady(true);
+            setCheckingRecovery(false);
+            return;
+          }
+        }
+
+        // C. Check active session (including hash #access_token parsed by Supabase client)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (session) {
+          setIsRecoveryReady(true);
+          setCheckingRecovery(false);
+          return;
+        }
+
+        // Give onAuthStateChange a brief window if hash contains recovery tokens
+        if (window.location.hash.includes('access_token') || window.location.hash.includes('type=recovery')) {
+          setTimeout(async () => {
+            if (!mounted) return;
+            const { data: { session: delayedSession } } = await supabase.auth.getSession();
+            if (delayedSession) {
+              setIsRecoveryReady(true);
+            }
+            setCheckingRecovery(false);
+          }, 800);
+        } else {
+          setCheckingRecovery(false);
+        }
+      } catch (err) {
+        console.error('[ResetPasswordPage] Error checking recovery session:', err);
+        if (mounted) setCheckingRecovery(false);
+      }
+    };
+
+    initializeRecoverySession();
 
     return () => {
       mounted = false;

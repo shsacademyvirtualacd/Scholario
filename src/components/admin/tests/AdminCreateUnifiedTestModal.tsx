@@ -13,7 +13,6 @@ import {
   FileText,
   CheckCircle2,
   Layers,
-  Sparkles,
   Edit2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -634,7 +633,7 @@ export const AdminCreateUnifiedTestModal: React.FC<AdminCreateUnifiedTestModalPr
           {step === 1 && (
             <div className="space-y-6 animate-in fade-in duration-150">
               <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-950 flex items-start gap-3">
-                <Sparkles size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                <Layers size={20} className="text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-black text-amber-900 text-sm">Flexible Question Combination</h4>
                   <p className="mt-0.5 text-amber-800 leading-relaxed">
