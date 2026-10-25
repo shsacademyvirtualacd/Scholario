@@ -1,0 +1,406 @@
+2026-10-25T07:37:53.152Z	Initializing build environment...
+2026-10-25T07:37:55.691Z	Success: Finished initializing build environment
+2026-10-25T07:37:56.341Z	Cloning repository...
+2026-10-25T07:37:58.656Z	No build output detected to cache. Skipping.
+2026-10-25T07:37:58.656Z	No dependencies detected to cache. Skipping.
+2026-10-25T07:37:58.664Z	Detected the following tools from environment: bun@1.4.4, nodejs@24.22.1
+2026-10-25T07:37:58.667Z	Installing project dependencies: bun install
+2026-10-25T07:38:00.587Z	bun install v1.4.4 (38afee6c8)
+2026-10-25T07:38:00.592Z	Resolving dependencies
+2026-10-25T07:38:03.693Z	Resolved, downloaded and extracted [2628]
+2026-10-25T07:38:04.261Z	Saved lockfile
+2026-10-25T07:38:04.263Z	
+2026-10-25T07:38:04.263Z	+ @eslint/js@10.0.1
+2026-10-25T07:38:04.264Z	+ @tailwindcss/vite@4.1.17 (v4.3.3 available)
+2026-10-25T07:38:04.264Z	+ @types/express@5.0.6
+2026-10-25T07:38:04.264Z	+ @types/katex@0.16.8
+2026-10-25T07:38:04.264Z	+ @types/node@22.19.17 (v26.6.5 available)
+2026-10-25T07:38:04.264Z	+ @types/pg@8.23.1
+2026-10-25T07:38:04.264Z	+ @types/react@19.2.7 (v19.3.0 available)
+2026-10-25T07:38:04.264Z	+ @types/react-dom@19.2.3 (v19.3.0 available)
+2026-10-25T07:38:04.264Z	+ @types/web-push@3.6.4
+2026-10-25T07:38:04.264Z	+ @typescript-eslint/parser@8.72.0
+2026-10-25T07:38:04.265Z	+ @vitejs/plugin-react@5.1.1 (v6.1.2 available)
+2026-10-25T07:38:04.265Z	+ esbuild@0.28.2
+2026-10-25T07:38:04.265Z	+ eslint@10.13.0
+2026-10-25T07:38:04.265Z	+ eslint-plugin-react@7.37.5
+2026-10-25T07:38:04.265Z	+ eslint-plugin-react-hooks@7.1.1
+2026-10-25T07:38:04.265Z	+ globals@17.13.0
+2026-10-25T07:38:04.265Z	+ tailwindcss@4.1.17 (v4.3.3 available)
+2026-10-25T07:38:04.265Z	+ tsx@4.23.15
+2026-10-25T07:38:04.265Z	+ typescript@5.9.3 (v7.0.2 available)
+2026-10-25T07:38:04.265Z	+ vite@7.3.2 (v8.3.5 available)
+2026-10-25T07:38:04.266Z	+ vite-plugin-singlefile@2.3.0 (v2.3.4 available)
+2026-10-25T07:38:04.266Z	+ @aws-sdk/client-s3@3.1156.0
+2026-10-25T07:38:04.266Z	+ @emailjs/browser@4.4.1 (v5.0.3 available)
+2026-10-25T07:38:04.266Z	+ @fontsource/plus-jakarta-sans@5.3.0
+2026-10-25T07:38:04.266Z	+ @google/genai@2.31.0
+2026-10-25T07:38:04.266Z	+ @hookform/resolvers@5.9.2 (v6.0.0 available)
+2026-10-25T07:38:04.266Z	+ @supabase/supabase-js@2.118.0
+2026-10-25T07:38:04.266Z	+ @types/multer@2.3.0
+2026-10-25T07:38:04.266Z	+ clsx@2.1.1
+2026-10-25T07:38:04.266Z	+ date-fns@4.4.0
+2026-10-25T07:38:04.267Z	+ express@5.3.0
+2026-10-25T07:38:04.267Z	+ html2canvas@1.4.1
+2026-10-25T07:38:04.267Z	+ jspdf@4.2.1
+2026-10-25T07:38:04.267Z	+ katex@0.18.10 (v0.19.1 available)
+2026-10-25T07:38:04.267Z	+ lucide-react@1.61.0
+2026-10-25T07:38:04.267Z	+ motion@13.5.1 (v14.6.0 available)
+2026-10-25T07:38:04.267Z	+ multer@2.5.0
+2026-10-25T07:38:04.267Z	+ pdfjs-dist@6.4.299
+2026-10-25T07:38:04.267Z	+ pg@8.23.1
+2026-10-25T07:38:04.267Z	+ react@19.2.6 (v19.3.1 available)
+2026-10-25T07:38:04.268Z	+ react-dom@19.2.6 (v19.3.1 available)
+2026-10-25T07:38:04.268Z	+ react-hook-form@7.91.0
+2026-10-25T07:38:04.268Z	+ react-markdown@10.1.0
+2026-10-25T07:38:04.268Z	+ react-router-dom@7.18.4
+2026-10-25T07:38:04.268Z	+ rehype-katex@7.0.1
+2026-10-25T07:38:04.268Z	+ remark-gfm@4.0.1
+2026-10-25T07:38:04.269Z	+ remark-math@6.0.0
+2026-10-25T07:38:04.269Z	+ sonner@2.0.8
+2026-10-25T07:38:04.269Z	+ tailwind-merge@3.4.0 (v3.7.0 available)
+2026-10-25T07:38:04.269Z	+ web-push@3.6.7
+2026-10-25T07:38:04.270Z	+ zod@4.6.7
+2026-10-25T07:38:04.270Z	+ zustand@5.0.16
+2026-10-25T07:38:04.270Z	
+2026-10-25T07:38:04.270Z	625 packages installed [3.85s]
+2026-10-25T07:38:04.270Z	
+2026-10-25T07:38:04.270Z	Blocked 3 postinstalls. Run `bun pm untrusted` for details.
+2026-10-25T07:38:04.367Z	Executing user build command: bun run build
+2026-10-25T07:38:04.448Z	$ tsc --noEmit && eslint src/ && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
+2026-10-25T07:38:46.622Z	vite v7.3.2 building client environment for production...
+2026-10-25T07:38:46.726Z	transforming...
+2026-10-25T07:39:00.761Z	✓ 3302 modules transformed.
+2026-10-25T07:39:00.980Z	Generated an empty chunk: "react".
+2026-10-25T07:39:02.019Z	rendering chunks...
+2026-10-25T07:39:05.326Z	computing gzip size...
+2026-10-25T07:39:05.532Z	dist/assets/KaTeX_Size3-Regular-CTq5MqoE.woff             4.42 kB
+2026-10-25T07:39:05.532Z	dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2            4.93 kB
+2026-10-25T07:39:05.532Z	dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2            5.21 kB
+2026-10-25T07:39:05.533Z	dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2            5.47 kB
+2026-10-25T07:39:05.534Z	dist/assets/KaTeX_Size4-Regular-BF-4gkZK.woff             5.98 kB
+2026-10-25T07:39:05.534Z	dist/assets/KaTeX_Size2-Regular-oD1tc_U0.woff             6.19 kB
+2026-10-25T07:39:05.534Z	dist/assets/KaTeX_Size1-Regular-C195tn64.woff             6.50 kB
+2026-10-25T07:39:05.534Z	dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2      6.91 kB
+2026-10-25T07:39:05.534Z	dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2         6.91 kB
+2026-10-25T07:39:05.536Z	dist/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf              7.59 kB
+2026-10-25T07:39:05.536Z	dist/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff       7.66 kB
+2026-10-25T07:39:05.536Z	dist/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff          7.72 kB
+2026-10-25T07:39:05.536Z	dist/index.html                                           8.56 kB │ gzip:     2.70 kB
+2026-10-25T07:39:05.536Z	dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2           9.64 kB
+2026-10-25T07:39:05.536Z	dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2       10.34 kB
+2026-10-25T07:39:05.536Z	dist/assets/KaTeX_Size4-Regular-DWFBv043.ttf             10.36 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Script-Regular-D5yQViql.woff           10.59 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2         11.32 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2            11.35 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf             11.51 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2        12.03 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2          12.22 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf             12.23 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff        12.32 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf       12.34 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf          12.37 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff          13.21 kB
+2026-10-25T07:39:05.537Z	dist/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff             13.30 kB
+2026-10-25T07:39:05.538Z	dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2      13.57 kB
+2026-10-25T07:39:05.538Z	dist/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff         14.11 kB
+2026-10-25T07:39:05.538Z	dist/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff           14.41 kB
+2026-10-25T07:39:05.538Z	dist/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff       16.03 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2         16.40 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Math-Italic-t53AETM-.woff2             16.44 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Script-Regular-C5JkGWo-.ttf            16.65 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2         16.78 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2             16.99 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff          18.67 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Math-Italic-DA0__PXp.woff              18.75 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff          19.41 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf         19.44 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Fraktur-Regular-CB_wures.ttf           19.57 kB
+2026-10-25T07:39:05.539Z	dist/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf              19.58 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Italic-BMLOBm91.woff              19.68 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf          22.36 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf            24.50 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2               25.32 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Regular-B22Nviop.woff2            26.27 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf        27.56 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2             28.08 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Bold-Jm3AIy58.woff                29.91 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Regular-Dr94JaBh.woff             30.77 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf           31.20 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Math-Italic-flOr_0UB.ttf               31.31 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf           32.97 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_AMS-Regular-DMm9YOAa.woff              33.52 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Italic-3WenGoN9.ttf               33.58 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Bold-waoOVXN0.ttf                 51.34 kB
+2026-10-25T07:39:05.540Z	dist/assets/KaTeX_Main-Regular-ypZvNtVU.ttf              53.58 kB
+2026-10-25T07:39:05.547Z	dist/assets/KaTeX_AMS-Regular-DRggAlZN.ttf               63.63 kB
+2026-10-25T07:39:05.547Z	dist/assets/pdf.worker.min-CjEcRF4W.mjs               1,264.34 kB
+2026-10-25T07:39:05.550Z	dist/assets/index-Bi9GRGRZ.css                          413.90 kB │ gzip:    58.78 kB
+2026-10-25T07:39:05.550Z	dist/assets/react-l0sNRNKZ.js                             0.00 kB │ gzip:     0.02 kB
+2026-10-25T07:39:05.550Z	dist/assets/chevron-left-5FHlNjp4.js                      0.16 kB │ gzip:     0.16 kB
+2026-10-25T07:39:05.550Z	dist/assets/square-B28HKRIl.js                            0.18 kB │ gzip:     0.17 kB
+2026-10-25T07:39:05.550Z	dist/assets/trending-up-Baxuz0EP.js                       0.21 kB │ gzip:     0.19 kB
+2026-10-25T07:39:05.550Z	dist/assets/flame-D9-meboo.js                             0.23 kB │ gzip:     0.21 kB
+2026-10-25T07:39:05.550Z	dist/assets/lock-open-BpnQGAdE.js                         0.26 kB │ gzip:     0.23 kB
+2026-10-25T07:39:05.550Z	dist/assets/upload-CJoTVc0q.js                            0.26 kB │ gzip:     0.21 kB
+2026-10-25T07:39:05.550Z	dist/assets/circle-x-B6ato99r.js                          0.26 kB │ gzip:     0.21 kB
+2026-10-25T07:39:05.550Z	dist/assets/copy-BbGfrpha.js                              0.27 kB │ gzip:     0.22 kB
+2026-10-25T07:39:05.550Z	dist/assets/mic-C7Cxh2ED.js                               0.27 kB │ gzip:     0.22 kB
+2026-10-25T07:39:05.550Z	dist/assets/globe-jw_NQctP.js                             0.27 kB │ gzip:     0.21 kB
+2026-10-25T07:39:05.550Z	dist/assets/maximize-2-EFZUaMB9.js                        0.27 kB │ gzip:     0.21 kB
+2026-10-25T07:39:05.551Z	dist/assets/arrow-up-down-CZRCquCR.js                     0.28 kB │ gzip:     0.22 kB
+2026-10-25T07:39:05.551Z	dist/assets/square-check-big-D-JQiLwb.js                  0.29 kB │ gzip:     0.23 kB
+2026-10-25T07:39:05.551Z	dist/assets/ellipsis-vertical-DNvFWOcd.js                 0.30 kB │ gzip:     0.21 kB
+2026-10-25T07:39:05.551Z	dist/assets/image-BmR79Zyl.js                             0.30 kB │ gzip:     0.24 kB
+2026-10-25T07:39:05.551Z	dist/assets/funnel-CV0QUva4.js                            0.31 kB │ gzip:     0.25 kB
+2026-10-25T07:39:05.551Z	dist/assets/hash-CFAT5lvi.js                              0.33 kB │ gzip:     0.21 kB
+2026-10-25T07:39:05.551Z	dist/assets/pen-line-CWYPDEas.js                          0.33 kB │ gzip:     0.26 kB
+2026-10-25T07:39:05.551Z	dist/assets/save-dP2j3K3T.js                              0.36 kB │ gzip:     0.25 kB
+2026-10-25T07:39:05.551Z	dist/assets/share-2-B_TRRYNU.js                           0.39 kB │ gzip:     0.26 kB
+2026-10-25T07:39:05.551Z	dist/assets/bell-off-7nw7KrqE.js                          0.40 kB │ gzip:     0.29 kB
+2026-10-25T07:39:05.551Z	dist/assets/radio-BzFMjDxQ.js                             0.41 kB │ gzip:     0.27 kB
+2026-10-25T07:39:05.551Z	dist/assets/sliders-horizontal-KCGQHPut.js                0.46 kB │ gzip:     0.26 kB
+2026-10-25T07:39:05.552Z	dist/assets/SectionHeader-DAbS-S5E.js                     0.49 kB │ gzip:     0.30 kB
+2026-10-25T07:39:05.552Z	dist/assets/pen-tool-CkLSiA75.js                          0.55 kB │ gzip:     0.34 kB
+2026-10-25T07:39:05.552Z	dist/assets/zoom-out-B1EwePKr.js                          0.57 kB │ gzip:     0.26 kB
+2026-10-25T07:39:05.552Z	dist/assets/trash-CDerIrJG.js                             0.61 kB │ gzip:     0.34 kB
+2026-10-25T07:39:05.552Z	dist/assets/TeacherSagePage-C_8Nits5.js                   0.62 kB │ gzip:     0.37 kB
+2026-10-25T07:39:05.552Z	dist/assets/StaffAttendancePage-BPKtJhjK.js               0.87 kB │ gzip:     0.53 kB
+2026-10-25T07:39:05.552Z	dist/assets/StudentSagePage-CknRWAd2.js                   0.87 kB │ gzip:     0.53 kB
+2026-10-25T07:39:05.552Z	dist/assets/StudentChatPage-IgRD16yV.js                   1.42 kB │ gzip:     0.83 kB
+2026-10-25T07:39:05.552Z	dist/assets/AdminDrawer-Dg4wAWtT.js                       1.47 kB │ gzip:     0.77 kB
+2026-10-25T07:39:05.552Z	dist/assets/TeacherChatPage-gsSraPqv.js                   1.64 kB │ gzip:     0.92 kB
+2026-10-25T07:39:05.552Z	dist/assets/StudentEmptyState-CgpFd3LL.js                 1.76 kB │ gzip:     0.70 kB
+2026-10-25T07:39:05.552Z	dist/assets/StudentPageHeader-D8LNyZZs.js                 1.77 kB │ gzip:     0.70 kB
+2026-10-25T07:39:05.553Z	dist/assets/StudentBottomSheet-2f-Ez91a.js                2.42 kB │ gzip:     1.06 kB
+2026-10-25T07:39:05.553Z	dist/assets/AdminSagePage-hA6xF3_n.js                     2.58 kB │ gzip:     0.98 kB
+2026-10-25T07:39:05.553Z	dist/assets/MathText-CRy3lxjL.js                          2.58 kB │ gzip:     1.13 kB
+2026-10-25T07:39:05.555Z	dist/assets/StudentSkeleton-CCmYBz4I.js                   2.86 kB │ gzip:     0.58 kB
+2026-10-25T07:39:05.555Z	dist/assets/ieltsWritingService-DeyLAth1.js               3.02 kB │ gzip:     1.25 kB
+2026-10-25T07:39:05.555Z	dist/assets/scheduleCardTheme-CbJpYMrQ.js                 3.60 kB │ gzip:     0.77 kB
+2026-10-25T07:39:05.555Z	dist/assets/AdminChatPage-Dpfwxht6.js                     4.06 kB │ gzip:     1.57 kB
+2026-10-25T07:39:05.555Z	dist/assets/ConfirmModal-DLGS5nSW.js                      4.23 kB │ gzip:     1.61 kB
+2026-10-25T07:39:05.555Z	dist/assets/NoteViewerModal-CZ5l8DjU.js                   4.86 kB │ gzip:     1.88 kB
+2026-10-25T07:39:05.555Z	dist/assets/StudentStatusBadge-B71fSjX8.js                4.87 kB │ gzip:     1.17 kB
+2026-10-25T07:39:05.555Z	dist/assets/pushSubscriptionService-BGgBH70n.js           5.04 kB │ gzip:     1.87 kB
+2026-10-25T07:39:05.555Z	dist/assets/NotificationPermissionBanner-Broc6SAk.js      5.23 kB │ gzip:     2.00 kB
+2026-10-25T07:39:05.555Z	dist/assets/TeacherShell-xNXIulLd.js                      5.52 kB │ gzip:     2.22 kB
+2026-10-25T07:39:05.556Z	dist/assets/SchedulePage-Dq-41wA1.js                      5.65 kB │ gzip:     2.41 kB
+2026-10-25T07:39:05.556Z	dist/assets/visibilityRequestsService-DUp8rhba.js         6.32 kB │ gzip:     1.84 kB
+2026-10-25T07:39:05.556Z	dist/assets/AdminNoteCard-CnBDO14F.js                     6.59 kB │ gzip:     2.23 kB
+2026-10-25T07:39:05.556Z	dist/assets/TeacherAnnouncementsPage-BZVH5dk6.js          6.78 kB │ gzip:     2.23 kB
+2026-10-25T07:39:05.556Z	dist/assets/announcementService-CRySz8Ba.js               7.28 kB │ gzip:     2.73 kB
+2026-10-25T07:39:05.556Z	dist/assets/AdminShell-Ch6g7YZM.js                        7.81 kB │ gzip:     2.89 kB
+2026-10-25T07:39:05.556Z	dist/assets/TeacherSchedulePage-DA5DuQwz.js               9.15 kB │ gzip:     3.06 kB
+2026-10-25T07:39:05.556Z	dist/assets/NotesPage-DuUzkfsN.js                         9.61 kB │ gzip:     3.45 kB
+2026-10-25T07:39:05.556Z	dist/assets/ProfilePage-D49Mx5Bu.js                       9.78 kB │ gzip:     2.99 kB
+2026-10-25T07:39:05.556Z	dist/assets/DashboardNoticeModal-BpW9rztB.js             10.43 kB │ gzip:     3.48 kB
+2026-10-25T07:39:05.556Z	dist/assets/StudentClassCard-BYEi_w23.js                 10.62 kB │ gzip:     3.19 kB
+2026-10-25T07:39:05.556Z	dist/assets/staffAttendanceService-B1jvIvAT.js           10.82 kB │ gzip:     3.39 kB
+2026-10-25T07:39:05.556Z	dist/assets/StudentAnnouncementsPage-DcOHJscD.js         11.35 kB │ gzip:     3.30 kB
+2026-10-25T07:39:05.556Z	dist/assets/NotificationsPage-Chfjrt-t.js                11.52 kB │ gzip:     3.35 kB
+2026-10-25T07:39:05.556Z	dist/assets/RefundPolicyPage-CeoFYIkO.js                 11.57 kB │ gzip:     3.40 kB
+2026-10-25T07:39:05.556Z	dist/assets/NotificationsAndPrivacyCard-6ooziuVx.js      11.67 kB │ gzip:     3.71 kB
+2026-10-25T07:39:05.556Z	dist/assets/TeacherNotesPage-C3KXUMhZ.js                 12.12 kB │ gzip:     3.95 kB
+2026-10-25T07:39:05.556Z	dist/assets/StudentShell-DjzQS4_N.js                     16.25 kB │ gzip:     5.41 kB
+2026-10-25T07:39:05.556Z	dist/assets/TermsOfServicePage-DqOIQI_7.js               16.32 kB │ gzip:     4.78 kB
+2026-10-25T07:39:05.557Z	dist/assets/ProfilePage-bkhXq_CG.js                      16.36 kB │ gzip:     4.08 kB
+2026-10-25T07:39:05.557Z	dist/assets/LeadershipPage-DGOI5gTt.js                   16.47 kB │ gzip:     4.20 kB
+2026-10-25T07:39:05.557Z	dist/assets/AdminVisibilityRequestsPage-DGd9UKdL.js      17.66 kB │ gzip:     4.69 kB
+2026-10-25T07:39:05.557Z	dist/assets/StudentDashboardPage-CdH4RlHs.js             17.90 kB │ gzip:     4.85 kB
+2026-10-25T07:39:05.557Z	dist/assets/StaffAttendanceWidget-JKTmwItu.js            18.61 kB │ gzip:     5.16 kB
+2026-10-25T07:39:05.557Z	dist/assets/AdminAndroidAppPage-BP9VIBmp.js              19.00 kB │ gzip:     5.74 kB
+2026-10-25T07:39:05.557Z	dist/assets/AttendancePage-CHAulntT.js                   19.20 kB │ gzip:     4.82 kB
+2026-10-25T07:39:05.557Z	dist/assets/PriceManagerPage-BF9EOTOs.js                 21.33 kB │ gzip:     5.40 kB
+2026-10-25T07:39:05.557Z	dist/assets/SiteAnnouncementsPage-BoV64hGl.js            21.93 kB │ gzip:     5.75 kB
+2026-10-25T07:39:05.557Z	dist/assets/PrivacyPolicyPage-CZoJjITK.js                23.78 kB │ gzip:     6.26 kB
+2026-10-25T07:39:05.557Z	dist/assets/TeacherTestsPage-B2Pd4w7s.js                 24.90 kB │ gzip:     6.55 kB
+2026-10-25T07:39:05.557Z	dist/assets/AdminAnnouncementsPage-DYgbSkUG.js           25.59 kB │ gzip:     6.05 kB
+2026-10-25T07:39:05.559Z	dist/assets/StudentCheckoutPage-B9ROGLZe.js              27.76 kB │ gzip:     7.62 kB
+2026-10-25T07:39:05.559Z	dist/assets/writtenTestService-D1YxdSIv.js               29.21 kB │ gzip:     8.41 kB
+2026-10-25T07:39:05.559Z	dist/assets/purify.es-18JuyMri.js                        30.12 kB │ gzip:    11.51 kB
+2026-10-25T07:39:05.559Z	dist/assets/NotesManagerPage-DE3YIgQs.js                 30.17 kB │ gzip:     7.86 kB
+2026-10-25T07:39:05.559Z	dist/assets/TeachersPage-Qas02-Tg.js                     37.56 kB │ gzip:     8.05 kB
+2026-10-25T07:39:05.559Z	dist/assets/TeacherAttendancePage-CH-vtbRR.js            44.18 kB │ gzip:     8.62 kB
+2026-10-25T07:39:05.559Z	dist/assets/AdminQuestionBankPage-Dw6BrQvG.js            45.30 kB │ gzip:     9.57 kB
+2026-10-25T07:39:05.560Z	dist/assets/StudentsAdminPage-AmFQeqJH.js                46.61 kB │ gzip:     9.31 kB
+2026-10-25T07:39:05.560Z	dist/assets/router-DgxID2vq.js                           50.53 kB │ gzip:    17.93 kB
+2026-10-25T07:39:05.560Z	dist/assets/ProfilePage-C21JzwWc.js                      51.65 kB │ gzip:    13.06 kB
+2026-10-25T07:39:05.560Z	dist/assets/TeacherDashboardPage-DUayfwU9.js             52.54 kB │ gzip:    11.48 kB
+2026-10-25T07:39:05.560Z	dist/assets/AdminDashboardPage-DsYdbu2O.js               54.38 kB │ gzip:    11.12 kB
+2026-10-25T07:39:05.560Z	dist/assets/RosterManagerPage-BwQNHg0F.js                69.33 kB │ gzip:    14.31 kB
+2026-10-25T07:39:05.560Z	dist/assets/AdminFeesPage-DmjPXc5v.js                    77.97 kB │ gzip:    17.37 kB
+2026-10-25T07:39:05.560Z	dist/assets/GlobalSearchModal-B7O4VeN0.js                92.88 kB │ gzip:    24.49 kB
+2026-10-25T07:39:05.560Z	dist/assets/AttendanceAdminPage-C1slIN7P.js              96.34 kB │ gzip:    19.87 kB
+2026-10-25T07:39:05.560Z	dist/assets/StudentResultsView-mqGlbcqm.js               98.65 kB │ gzip:    20.83 kB
+2026-10-25T07:39:05.560Z	dist/assets/TestsPage-DTOn7QM0.js                       101.08 kB │ gzip:    23.30 kB
+2026-10-25T07:39:05.561Z	dist/assets/ScheduleManagerPage-DHH5mkhP.js             110.95 kB │ gzip:    24.83 kB
+2026-10-25T07:39:05.561Z	dist/assets/react-B0YC61lM.js                           128.10 kB │ gzip:    42.30 kB
+2026-10-25T07:39:05.561Z	dist/assets/index.es-B5u29MVD.js                        159.03 kB │ gzip:    53.09 kB
+2026-10-25T07:39:05.561Z	dist/assets/index-B1midtsU.js                           159.75 kB │ gzip:    48.67 kB
+2026-10-25T07:39:05.561Z	dist/assets/AdminTestsPage-DCfhnfG1.js                  201.95 kB │ gzip:    45.73 kB
+2026-10-25T07:39:05.561Z	dist/assets/SelfTestingPage-iFOYZava.js                 212.28 kB │ gzip:    62.33 kB
+2026-10-25T07:39:05.561Z	dist/assets/ChatView-BM1u4JG0.js                        213.78 kB │ gzip:    55.61 kB
+2026-10-25T07:39:05.561Z	dist/assets/supabase-CB7MGzWB.js                        223.73 kB │ gzip:    58.62 kB
+2026-10-25T07:39:05.561Z	dist/assets/katex-CuvMN-SW.js                           261.46 kB │ gzip:    77.81 kB
+2026-10-25T07:39:05.561Z	dist/assets/SageChatView-CgVq2-pE.js                    373.93 kB │ gzip:   114.67 kB
+2026-10-25T07:39:05.563Z	dist/assets/PdfViewer-Cicsn9es.js                       447.28 kB │ gzip:   134.39 kB
+2026-10-25T07:39:05.563Z	dist/assets/urduReshaper-CnaXpxVb.js                    587.71 kB │ gzip:   173.68 kB
+2026-10-25T07:39:05.563Z	dist/assets/index-BkysWvu3.js                           856.19 kB │ gzip:   215.32 kB
+2026-10-25T07:39:05.563Z	dist/assets/questionBankService-Cdy7FEIX.js           1,069.68 kB │ gzip:   248.48 kB
+2026-10-25T07:39:05.563Z	dist/assets/index-BcRLt8VD.js                         6,059.33 kB │ gzip: 1,031.11 kB
+2026-10-25T07:39:05.563Z	✓ built in 18.88s
+2026-10-25T07:39:05.563Z	
+2026-10-25T07:39:05.564Z	(!) Some chunks are larger than 500 kB after minification. Consider:
+2026-10-25T07:39:05.564Z	- Using dynamic import() to code-split the application
+2026-10-25T07:39:05.564Z	- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2026-10-25T07:39:05.564Z	- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+2026-10-25T07:39:06.159Z	
+2026-10-25T07:39:06.159Z	  dist/server.cjs      10.1mb ⚠️
+2026-10-25T07:39:06.159Z	  dist/server.cjs.map  14.4mb
+2026-10-25T07:39:06.159Z	
+2026-10-25T07:39:06.159Z	⚡ Done in 402ms
+2026-10-25T07:39:06.180Z	Success: Build command completed
+2026-10-25T07:39:06.370Z	Executing user deploy command: npx wrangler deploy
+2026-10-25T07:39:08.356Z	npm warn exec The following package was not found and will be installed: wrangler@4.152.0
+2026-10-25T07:39:17.459Z	
+2026-10-25T07:39:17.460Z	 ⛅️ wrangler 4.152.0
+2026-10-25T07:39:17.460Z	────────────────────
+2026-10-25T07:39:19.159Z	🌀 Building list of assets...
+2026-10-25T07:39:19.162Z	✨ Read 198 files from the assets directory /opt/buildhome/repo/dist
+2026-10-25T07:39:19.440Z	🌀 Starting asset upload...
+2026-10-25T07:39:20.676Z	🌀 Found 111 new or modified static assets to upload. Proceeding with upload...
+2026-10-25T07:39:20.676Z	+ /version.json
+2026-10-25T07:39:20.676Z	+ /assets/trending-up-Baxuz0EP.js
+2026-10-25T07:39:20.676Z	+ /assets/upload-CJoTVc0q.js
+2026-10-25T07:39:20.677Z	+ /assets/mic-C7Cxh2ED.js
+2026-10-25T07:39:20.677Z	+ /assets/arrow-up-down-CZRCquCR.js
+2026-10-25T07:39:20.677Z	+ /assets/image-BmR79Zyl.js
+2026-10-25T07:39:20.677Z	+ /assets/pen-line-CWYPDEas.js
+2026-10-25T07:39:20.677Z	+ /assets/bell-off-7nw7KrqE.js
+2026-10-25T07:39:20.678Z	+ /assets/SectionHeader-DAbS-S5E.js
+2026-10-25T07:39:20.678Z	+ /assets/trash-CDerIrJG.js
+2026-10-25T07:39:20.678Z	+ /assets/StudentSagePage-CknRWAd2.js
+2026-10-25T07:39:20.678Z	+ /assets/TeacherChatPage-gsSraPqv.js
+2026-10-25T07:39:20.678Z	+ /assets/StudentBottomSheet-2f-Ez91a.js
+2026-10-25T07:39:20.678Z	+ /assets/StudentSkeleton-CCmYBz4I.js
+2026-10-25T07:39:20.678Z	+ /assets/ConfirmModal-DLGS5nSW.js
+2026-10-25T07:39:20.678Z	+ /assets/pushSubscriptionService-BGgBH70n.js
+2026-10-25T07:39:20.678Z	+ /assets/SchedulePage-Dq-41wA1.js
+2026-10-25T07:39:20.678Z	+ /assets/TeacherAnnouncementsPage-BZVH5dk6.js
+2026-10-25T07:39:20.678Z	+ /assets/AdminShell-Ch6g7YZM.js
+2026-10-25T07:39:20.678Z	+ /assets/NotesPage-DuUzkfsN.js
+2026-10-25T07:39:20.678Z	+ /assets/StudentClassCard-BYEi_w23.js
+2026-10-25T07:39:20.678Z	+ /assets/NotificationsPage-Chfjrt-t.js
+2026-10-25T07:39:20.678Z	+ /assets/TeacherNotesPage-C3KXUMhZ.js
+2026-10-25T07:39:20.678Z	+ /assets/ProfilePage-bkhXq_CG.js
+2026-10-25T07:39:20.678Z	+ /assets/StudentDashboardPage-CdH4RlHs.js
+2026-10-25T07:39:20.678Z	+ /assets/AttendancePage-CHAulntT.js
+2026-10-25T07:39:20.678Z	+ /assets/PrivacyPolicyPage-CZoJjITK.js
+2026-10-25T07:39:20.678Z	+ /assets/StudentCheckoutPage-B9ROGLZe.js
+2026-10-25T07:39:20.678Z	+ /assets/TeachersPage-Qas02-Tg.js
+2026-10-25T07:39:20.679Z	+ /assets/StudentsAdminPage-AmFQeqJH.js
+2026-10-25T07:39:20.679Z	+ /assets/AdminDashboardPage-DsYdbu2O.js
+2026-10-25T07:39:20.679Z	+ /assets/GlobalSearchModal-B7O4VeN0.js
+2026-10-25T07:39:20.679Z	+ /assets/TestsPage-DTOn7QM0.js
+2026-10-25T07:39:20.679Z	+ /assets/index.es-B5u29MVD.js
+2026-10-25T07:39:20.679Z	+ /assets/SelfTestingPage-iFOYZava.js
+2026-10-25T07:39:20.682Z	+ /assets/index-Bi9GRGRZ.css
+2026-10-25T07:39:20.682Z	+ /assets/index-BkysWvu3.js
+2026-10-25T07:39:20.682Z	+ /assets/chevron-left-5FHlNjp4.js
+2026-10-25T07:39:20.682Z	+ /assets/flame-D9-meboo.js
+2026-10-25T07:39:20.682Z	+ /assets/circle-x-B6ato99r.js
+2026-10-25T07:39:20.682Z	+ /assets/globe-jw_NQctP.js
+2026-10-25T07:39:20.682Z	+ /assets/square-check-big-D-JQiLwb.js
+2026-10-25T07:39:20.682Z	+ /assets/funnel-CV0QUva4.js
+2026-10-25T07:39:20.682Z	+ /assets/save-dP2j3K3T.js
+2026-10-25T07:39:20.683Z	+ /assets/radio-BzFMjDxQ.js
+2026-10-25T07:39:20.683Z	+ /assets/pen-tool-CkLSiA75.js
+2026-10-25T07:39:20.683Z	+ /assets/TeacherSagePage-C_8Nits5.js
+2026-10-25T07:39:20.683Z	+ /assets/StudentChatPage-IgRD16yV.js
+2026-10-25T07:39:20.683Z	+ /assets/StudentEmptyState-CgpFd3LL.js
+2026-10-25T07:39:20.683Z	+ /assets/AdminSagePage-hA6xF3_n.js
+2026-10-25T07:39:20.683Z	+ /assets/ieltsWritingService-DeyLAth1.js
+2026-10-25T07:39:20.683Z	+ /assets/NoteViewerModal-CZ5l8DjU.js
+2026-10-25T07:39:20.683Z	+ /assets/NotificationPermissionBanner-Broc6SAk.js
+2026-10-25T07:39:20.683Z	+ /assets/visibilityRequestsService-DUp8rhba.js
+2026-10-25T07:39:20.683Z	+ /assets/announcementService-CRySz8Ba.js
+2026-10-25T07:39:20.683Z	+ /index.html
+2026-10-25T07:39:20.683Z	+ /assets/ProfilePage-D49Mx5Bu.js
+2026-10-25T07:39:20.683Z	+ /assets/staffAttendanceService-B1jvIvAT.js
+2026-10-25T07:39:20.684Z	+ /assets/RefundPolicyPage-CeoFYIkO.js
+2026-10-25T07:39:20.684Z	+ /assets/StudentShell-DjzQS4_N.js
+2026-10-25T07:39:20.684Z	+ /assets/LeadershipPage-DGOI5gTt.js
+2026-10-25T07:39:20.684Z	+ /assets/StaffAttendanceWidget-JKTmwItu.js
+2026-10-25T07:39:20.684Z	+ /assets/PriceManagerPage-BF9EOTOs.js
+2026-10-25T07:39:20.684Z	+ /assets/TeacherTestsPage-B2Pd4w7s.js
+2026-10-25T07:39:20.684Z	+ /assets/writtenTestService-D1YxdSIv.js
+2026-10-25T07:39:20.684Z	+ /assets/TeacherAttendancePage-CH-vtbRR.js
+2026-10-25T07:39:20.684Z	+ /assets/ProfilePage-C21JzwWc.js
+2026-10-25T07:39:20.684Z	+ /assets/RosterManagerPage-BwQNHg0F.js
+2026-10-25T07:39:20.684Z	+ /assets/AttendanceAdminPage-C1slIN7P.js
+2026-10-25T07:39:20.684Z	+ /assets/ScheduleManagerPage-DHH5mkhP.js
+2026-10-25T07:39:20.684Z	+ /assets/index-B1midtsU.js
+2026-10-25T07:39:20.684Z	+ /assets/ChatView-BM1u4JG0.js
+2026-10-25T07:39:20.684Z	+ /assets/PdfViewer-Cicsn9es.js
+2026-10-25T07:39:20.684Z	+ /assets/questionBankService-Cdy7FEIX.js
+2026-10-25T07:39:20.684Z	+ /assets/square-B28HKRIl.js
+2026-10-25T07:39:20.684Z	+ /assets/lock-open-BpnQGAdE.js
+2026-10-25T07:39:20.684Z	+ /assets/copy-BbGfrpha.js
+2026-10-25T07:39:20.684Z	+ /assets/maximize-2-EFZUaMB9.js
+2026-10-25T07:39:20.684Z	+ /assets/ellipsis-vertical-DNvFWOcd.js
+2026-10-25T07:39:20.684Z	+ /assets/hash-CFAT5lvi.js
+2026-10-25T07:39:20.685Z	+ /assets/share-2-B_TRRYNU.js
+2026-10-25T07:39:20.685Z	+ /assets/sliders-horizontal-KCGQHPut.js
+2026-10-25T07:39:20.685Z	+ /assets/zoom-out-B1EwePKr.js
+2026-10-25T07:39:20.685Z	+ /assets/StaffAttendancePage-BPKtJhjK.js
+2026-10-25T07:39:20.685Z	+ /assets/AdminDrawer-Dg4wAWtT.js
+2026-10-25T07:39:20.685Z	+ /assets/StudentPageHeader-D8LNyZZs.js
+2026-10-25T07:39:20.685Z	+ /assets/MathText-CRy3lxjL.js
+2026-10-25T07:39:20.685Z	+ /assets/AdminChatPage-Dpfwxht6.js
+2026-10-25T07:39:20.685Z	+ /assets/StudentStatusBadge-B71fSjX8.js
+2026-10-25T07:39:20.685Z	+ /assets/TeacherShell-xNXIulLd.js
+2026-10-25T07:39:20.685Z	+ /assets/AdminNoteCard-CnBDO14F.js
+2026-10-25T07:39:20.685Z	+ /sw.js
+2026-10-25T07:39:20.685Z	+ /assets/TeacherSchedulePage-DA5DuQwz.js
+2026-10-25T07:39:20.685Z	+ /assets/DashboardNoticeModal-BpW9rztB.js
+2026-10-25T07:39:20.685Z	+ /assets/StudentAnnouncementsPage-DcOHJscD.js
+2026-10-25T07:39:20.686Z	+ /assets/NotificationsAndPrivacyCard-6ooziuVx.js
+2026-10-25T07:39:20.686Z	+ /assets/TermsOfServicePage-DqOIQI_7.js
+2026-10-25T07:39:20.686Z	+ /assets/AdminVisibilityRequestsPage-DGd9UKdL.js
+2026-10-25T07:39:20.686Z	+ /assets/AdminAndroidAppPage-BP9VIBmp.js
+2026-10-25T07:39:20.686Z	+ /assets/SiteAnnouncementsPage-BoV64hGl.js
+2026-10-25T07:39:20.686Z	   (truncating changed assets log, set `WRANGLER_LOG=debug` environment variable to see full diff)
+2026-10-25T07:39:22.383Z	Uploaded 37 of 111 assets
+2026-10-25T07:39:22.578Z	Uploaded 74 of 111 assets
+2026-10-25T07:39:23.799Z	Uploaded 111 of 111 assets
+2026-10-25T07:39:23.805Z	✨ Success! Uploaded 111 files (80 already uploaded) (3.12 sec)
+2026-10-25T07:39:23.805Z	
+2026-10-25T07:39:24.014Z	Total Upload: 2094.21 KiB / gzip: 338.12 KiB
+2026-10-25T07:39:24.508Z	Your Worker has access to the following bindings:
+2026-10-25T07:39:24.509Z	Binding                                                      Resource                  
+2026-10-25T07:39:24.509Z	env.NOTES_BUCKET (scholario-notes)                           R2 Bucket                 
+2026-10-25T07:39:24.509Z	env.AVATARS_BUCKET (scholario-avatars)                       R2 Bucket                 
+2026-10-25T07:39:24.509Z	env.CHAT_ATTACHMENTS (scholario-chat-attachments)            R2 Bucket                 
+2026-10-25T07:39:24.509Z	env.APK_BUCKET (scholario-apk)                               R2 Bucket                 
+2026-10-25T07:39:24.509Z	env.ASSETS                                                   Assets                    
+2026-10-25T07:39:24.509Z	env.BUN_VERSION ("1.2.15")                                   Environment Variable      
+2026-10-25T07:39:24.509Z	env.SUPABASE_URL ("")                                        Environment Variable      
+2026-10-25T07:39:24.509Z	env.SUPABASE_ANON_KEY ("")                                   Environment Variable      
+2026-10-25T07:39:24.510Z	env.VITE_SUPABASE_URL ("")                                   Environment Variable      
+2026-10-25T07:39:24.510Z	env.VITE_SUPABASE_ANON_KEY ("")                              Environment Variable      
+2026-10-25T07:39:24.510Z	
+2026-10-25T07:39:24.512Z	
+2026-10-25T07:39:24.512Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2026-10-25T07:39:24.516Z	
+2026-10-25T07:39:24.614Z	✘ [ERROR] A request to the Cloudflare API (/accounts/49f055620de80035963248feffc09f65/workers/scripts/scholario/versions) failed.
+2026-10-25T07:39:24.615Z	
+2026-10-25T07:39:24.615Z	  Invalid _redirects configuration:
+2026-10-25T07:39:24.615Z	  Line 1: Infinite loop detected in this rule. This would cause a redirect to strip `.html` or `/index` and end up triggering this rule again. [code: 100324]
+2026-10-25T07:39:24.615Z	
+2026-10-25T07:39:24.615Z	  
+2026-10-25T07:39:24.616Z	  If you think this is a bug, please open an issue at: https://github.com/cloudflare/workers-sdk/issues/new/choose
+2026-10-25T07:39:24.616Z	
+2026-10-25T07:39:24.616Z	
+2026-10-25T07:39:24.641Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2026-10-25_07-39-17_105.log"
+2026-10-25T07:39:24.868Z	Failed: error occurred while running deploy command
