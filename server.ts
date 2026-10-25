@@ -89,8 +89,17 @@ function sanitizeSupabaseUrl(rawUrl?: string): string {
   return '';
 }
 
-const rawSupabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const rawSupabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const rawSupabaseUrl =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  process.env.VITE_DATABASE_URL ||
+  '';
+const rawSupabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.VITE_DATABASE_ANON_KEY ||
+  '';
 
 const isPlaceholderKey =
   !rawSupabaseKey ||
@@ -426,17 +435,21 @@ If the user asks questions such as "what am I looking at?", "how do I use this p
               const queryEmbedding = embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values;
 
               if (queryEmbedding && Array.isArray(queryEmbedding)) {
-                // Try Supabase match_knowledge_base RPC
-                try {
-                  const { data: rpcData, error: rpcErr } = await requestSupabase.rpc('match_knowledge_base', {
-                    query_embedding: queryEmbedding,
-                    match_threshold: 0.28,
-                    match_count: 4,
-                  });
-                  if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
-                    matchedChunks = rpcData;
+                // Try Supabase match_knowledge_base RPC only if Supabase is configured
+                if (isSupabaseConfigured) {
+                  try {
+                    const { data: rpcData, error: rpcErr } = await requestSupabase.rpc('match_knowledge_base', {
+                      query_embedding: queryEmbedding,
+                      match_threshold: 0.28,
+                      match_count: 4,
+                    });
+                    if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
+                      matchedChunks = rpcData;
+                    }
+                  } catch (rpcCatchErr: any) {
+                    console.warn('[Sage RAG RPC Warning]:', rpcCatchErr?.message);
                   }
-                } catch {}
+                }
 
                 // Fallback to direct pgPool query if available
                 if (matchedChunks.length === 0 && realPool) {
@@ -862,6 +875,78 @@ Transcribe what the person said verbatim.
     }
   });
 
+  // ── Sage AI Text-to-Speech Endpoint (/api/sage/tts) ────────────────────────
+  app.post('/api/sage/tts', async (req, res) => {
+    try {
+      const rawText = String(req.body?.text || '').trim();
+      const voiceName = String(req.body?.voiceName || 'Kore');
+      if (!rawText) {
+        return res.status(400).json({ error: 'text string is required' });
+      }
+
+      const client = getGeminiClient();
+      if (!client) {
+        return res.status(503).json({
+          error: 'Gemini API key is not configured for server TTS',
+        });
+      }
+
+      const response = await client.models.generateContent({
+        model: SAGE_AI_MODELS.TTS,
+        contents: [{ parts: [{ text: rawText.slice(0, 3500) }] }],
+        config: {
+          responseModalities: ['AUDIO' as any],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName },
+            },
+          },
+        },
+      });
+
+      const base64Pcm = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!base64Pcm) {
+        return res.status(502).json({ error: 'No audio data returned from TTS model' });
+      }
+
+      const audioBuf = Buffer.from(base64Pcm, 'base64');
+      const hasRiffHeader =
+        audioBuf.byteLength > 44 &&
+        audioBuf[0] === 0x52 &&
+        audioBuf[1] === 0x49 &&
+        audioBuf[2] === 0x46 &&
+        audioBuf[3] === 0x46;
+
+      let wavBuf: Buffer;
+      if (hasRiffHeader) {
+        wavBuf = audioBuf;
+      } else {
+        const header = Buffer.alloc(44);
+        header.write('RIFF', 0);
+        header.writeUInt32LE(36 + audioBuf.byteLength, 4);
+        header.write('WAVE', 8);
+        header.write('fmt ', 12);
+        header.writeUInt32LE(16, 16);
+        header.writeUInt16LE(1, 20);
+        header.writeUInt16LE(1, 22);
+        header.writeUInt32LE(24000, 24);
+        header.writeUInt32LE(48000, 28);
+        header.writeUInt16LE(2, 32);
+        header.writeUInt16LE(16, 34);
+        header.write('data', 36);
+        header.writeUInt32LE(audioBuf.byteLength, 40);
+        wavBuf = Buffer.concat([header, audioBuf]);
+      }
+
+      res.setHeader('Content-Type', 'audio/wav');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).send(wavBuf);
+    } catch (ttsErr: any) {
+      console.error('[Sage Server TTS Error]:', ttsErr?.message || ttsErr);
+      return res.status(500).json({ error: ttsErr?.message || 'TTS generation failed' });
+    }
+  });
+
   // ── Sage Knowledge Base Management & Ingestion Endpoints ───────────
   app.post('/api/knowledge-base/ingest', async (req, res) => {
     try {
@@ -914,13 +999,15 @@ Transcribe what the person said verbatim.
 
         // 1. Try Supabase insert
         let didInsert = false;
-        try {
-          const { data, error } = await supabaseServer.from('knowledge_base').insert(payload).select().single();
-          if (!error && data) {
-            insertedRows.push(data);
-            didInsert = true;
-          }
-        } catch {}
+        if (isSupabaseConfigured) {
+          try {
+            const { data, error } = await supabaseServer.from('knowledge_base').insert(payload).select().single();
+            if (!error && data) {
+              insertedRows.push(data);
+              didInsert = true;
+            }
+          } catch {}
+        }
 
         // 2. Fallback to direct pgPool insert
         if (!didInsert && realPool && embedding) {
@@ -954,8 +1041,14 @@ Transcribe what the person said verbatim.
   });
 
   // Sync Note Vault materials into knowledge base
-  app.post('/api/knowledge-base/sync-notes', async (req, res) => {
+  app.post('/api/knowledge-base/sync-notes', async (_req, res) => {
     try {
+      if (!isSupabaseConfigured) {
+        return res.status(503).json({
+          error: 'Cannot sync Note Vault because runtime database configuration is missing: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY).',
+        });
+      }
+
       const client = getGeminiClient();
 
       // Retrieve notes with joined offering, subject, and class metadata

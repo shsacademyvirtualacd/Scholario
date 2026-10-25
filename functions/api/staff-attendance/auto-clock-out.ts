@@ -1,17 +1,25 @@
 import type { EventContext } from '@cloudflare/workers-types';
-import { createClient } from '@supabase/supabase-js';
 import type { Env } from '../../env';
-
-const DEFAULT_URL = '';
-const DEFAULT_ANON_KEY = '';
+import { createSafeSupabaseClient } from '../../_lib/supabaseAuth';
 
 export async function onRequest(context: EventContext<Env, any, any>): Promise<Response> {
-  const { env } = context;
+  const { request, env } = context;
 
-  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL || DEFAULT_URL;
-  const supabaseKey = (env as any).SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+  const { supabase, missingVars } = createSafeSupabaseClient(env, request, {
+    useServiceRole: true,
+  });
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  if (!supabase) {
+    return new Response(
+      JSON.stringify({
+        error: `Database configuration is incomplete. Missing runtime environment variable(s): ${missingVars.join(', ')}.`,
+      }),
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
 
   try {
     // 1. Try stored procedure if provisioned
@@ -35,7 +43,7 @@ export async function onRequest(context: EventContext<Env, any, any>): Promise<R
     }
 
     const shiftIds = Array.from(new Set(openLogs.map((l) => l.shift_id).filter(Boolean)));
-    let shiftsMap = new Map<string, any>();
+    const shiftsMap = new Map<string, any>();
     if (shiftIds.length > 0) {
       const { data: shiftsData } = await supabase
         .from('staff_shifts')

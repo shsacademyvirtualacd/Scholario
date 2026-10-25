@@ -12,12 +12,17 @@ export interface Env {
   VITE_APK_PUBLIC_DOMAIN?: string;
   SUPABASE_URL?: string;
   VITE_SUPABASE_URL?: string;
+  VITE_DATABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_ANON_KEY?: string;
+  VITE_DATABASE_ANON_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
   FROM_EMAIL?: string;
   SEND_EMAIL_HOOK_SECRET?: string;
   GEMINI_API_KEY?: string;
+  GOOGLE_API_KEY?: string;
+  VITE_GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
 }

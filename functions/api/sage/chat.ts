@@ -1,9 +1,12 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../env';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
-import { createClient } from '@supabase/supabase-js';
 import { adminToolDeclarations, executeAdminDataQuery } from '../../../src/lib/adminDataTools';
-import { SAGE_AI_MODELS, SAGE_MODEL_FALLBACK_CHAIN } from '../../../src/lib/knowledgeBaseService';
+import {
+  SAGE_MODEL_FALLBACK_CHAIN,
+  searchFallbackKnowledgeBase,
+} from '../../../src/lib/knowledgeBaseService';
+import { createSafeSupabaseClient } from '../../_lib/supabaseAuth';
 
 function withModelTimeout<T>(promise: Promise<T>, ms: number, modelId: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -28,7 +31,11 @@ function classifyGeminiError(err: any): string {
   if (status === 429 || /429|quota|rate.?limit|resource_exhausted/i.test(msg)) {
     return 'Sage is busy right now (rate limit reached). Please wait a few seconds and tap Retry.';
   }
-  if (status === 401 || status === 403 || /api_key_invalid|invalid api key|permission_denied|unauthenticated/i.test(msg)) {
+  if (
+    status === 401 ||
+    status === 403 ||
+    /api_key_invalid|invalid api key|permission_denied|unauthenticated/i.test(msg)
+  ) {
     return 'Sage API key is invalid or restricted. Please verify GEMINI_API_KEY in Cloudflare Pages runtime settings.';
   }
   if (status === 503 || /503|unavailable|high demand|overloaded|timeout/i.test(msg)) {
@@ -65,11 +72,8 @@ interface ChatRequestBody {
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Supabase-Url, X-Supabase-Anon-Key',
 };
-
-const DEFAULT_SUPABASE_URL = '';
-const DEFAULT_SUPABASE_KEY = '';
 
 export async function onRequestOptions(): Promise<Response> {
   return new Response(null, {
@@ -113,24 +117,37 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     );
   }
 
-  const apiKey =
+  const apiKey = (
     env?.GEMINI_API_KEY ||
-    (env as any)?.GOOGLE_API_KEY ||
-    (env as any)?.VITE_GEMINI_API_KEY ||
+    env?.GOOGLE_API_KEY ||
+    env?.VITE_GEMINI_API_KEY ||
     (typeof process !== 'undefined'
-      ? process.env?.GEMINI_API_KEY || process.env?.GOOGLE_API_KEY
-      : undefined);
+      ? process.env?.GEMINI_API_KEY || process.env?.GOOGLE_API_KEY || process.env?.VITE_GEMINI_API_KEY
+      : undefined) ||
+    ''
+  ).trim();
 
-  const supabaseUrl = env?.SUPABASE_URL || env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-  const supabaseKey = env?.SUPABASE_ANON_KEY || env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
-  const authHeader = request.headers.get('Authorization') || request.headers.get('authorization') || undefined;
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    global: {
-      headers: authHeader ? { Authorization: authHeader } : {},
-    },
-  });
+  if (!apiKey) {
+    console.error('[Sage Chat] Missing required runtime environment variable: GEMINI_API_KEY');
+  }
 
   const isAdmin = userRole === 'admin';
+
+  // Resolve Supabase client safely from runtime `context.env` without ever throwing "supabaseUrl is required."
+  // Service role key is used ONLY for read-only admin tool queries on the server; student/teacher requests use anon key + RLS.
+  const {
+    supabase,
+    missingVars: missingSupabaseVars,
+  } = createSafeSupabaseClient(env, request, {
+    useServiceRole: isAdmin,
+    forwardAuthHeader: !isAdmin,
+  });
+
+  if (missingSupabaseVars.length > 0) {
+    console.warn(
+      `[Sage Chat] Optional Supabase client unavailable — missing runtime variable(s): ${missingSupabaseVars.join(', ')}. Proceeding with in-memory institutional RAG fallback.`
+    );
+  }
 
   // Build context-aware system instruction
   const roleDescription = isAdmin
@@ -148,7 +165,6 @@ ACCESS CONTROL & PRIVACY RULE: You are in general-purpose academic assistant mod
       }${stream ? ` (${stream} stream)` : ''}. Assist with academic questions, step-by-step problem solving, revision notes, conceptual explanations, and exam preparation.
 ACCESS CONTROL & PRIVACY RULE: You are an academic study assistant and DO NOT have access to administrative database records or private platform data. If the student asks data-specific questions about real platform data (such as how many students are enrolled, other students' records, or private administrative settings), politely explain that this information isn't available to them here and suggest checking with an administrator or their student dashboard instead.`;
 
-  // Page-aware context prompt
   let pageContextPrompt = '';
   if (page_context && (page_context.path || page_context.title)) {
     pageContextPrompt = `\nCURRENT APPLICATION PAGE CONTEXT:
@@ -159,10 +175,144 @@ The user is currently viewing (or just navigated from) the following screen:
 If the user asks questions such as "what am I looking at?", "how do I use this page?", or refers to "this test" / "this schedule", directly incorporate this screen context without asking them to re-explain.`;
   }
 
-  const systemInstruction = `You are Sage, the intelligent, friendly, and expert AI study and academic companion built exclusively for Scholario & SHS Virtual Academy (FBISE and Sindh Board 9th-12th grade curricula: Mathematics, Physics, Chemistry, Biology, Computer Science, English, Urdu, Islamiat, and Pakistan Studies).
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+
+  (async () => {
+    try {
+      if (!apiKey) {
+        const missingMsg =
+          'Sage AI is not configured yet: missing runtime variable GEMINI_API_KEY in Cloudflare Pages → Settings → Variables and secrets.';
+        await writer.write(encoder.encode(`data: ${JSON.stringify({ error: missingMsg })}\n\n`));
+        await writer.write(encoder.encode('data: [DONE]\n\n'));
+        await writer.close();
+        return;
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      // ── Optional Non-Blocking RAG / Note Vault Lookup ───────────────────
+      let ragContextPrompt = '';
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+      const userQueryText = String(lastUserMsg?.content || '').trim();
+
+      if (userQueryText) {
+        try {
+          let matchedChunks: any[] = [];
+
+          if (supabase) {
+            // 1. Try vector similarity search via match_knowledge_base RPC (non-blocking 3s cap)
+            try {
+              const embedRes = await withModelTimeout(
+                ai.models.embedContent({
+                  model: 'gemini-embedding-001',
+                  contents: userQueryText,
+                  config: { outputDimensionality: 768 },
+                }),
+                3000,
+                'gemini-embedding-001'
+              );
+              const queryEmbedding =
+                embedRes.embeddings?.[0]?.values || (embedRes as any).embedding?.values;
+
+              if (queryEmbedding && Array.isArray(queryEmbedding)) {
+                const { data: rpcData, error: rpcErr } = await supabase.rpc(
+                  'match_knowledge_base',
+                  {
+                    query_embedding: queryEmbedding,
+                    match_threshold: 0.28,
+                    match_count: 4,
+                  }
+                );
+                if (rpcErr) {
+                  console.warn('[Sage RAG] match_knowledge_base RPC warning:', rpcErr.message);
+                } else if (Array.isArray(rpcData) && rpcData.length > 0) {
+                  matchedChunks = rpcData;
+                }
+              }
+            } catch (embedOrRpcErr: any) {
+              console.warn(
+                '[Sage RAG] Vector lookup skipped, falling back to Note Vault / local knowledge:',
+                embedOrRpcErr?.message || String(embedOrRpcErr)
+              );
+            }
+
+            // 2. Also check Note Vault (`notes` table) for matching chapter/title if vector search returned no chunks
+            if (matchedChunks.length === 0) {
+              try {
+                const { data: noteRows, error: notesErr } = await supabase
+                  .from('notes')
+                  .select('title, chapter_name, file_type, offering:class_offerings(class:classes(name), subject:subjects(name))')
+                  .order('created_at', { ascending: false })
+                  .limit(15);
+
+                if (notesErr) {
+                  console.warn('[Sage RAG] Note Vault query warning:', notesErr.message);
+                } else if (Array.isArray(noteRows) && noteRows.length > 0) {
+                  const qLower = userQueryText.toLowerCase();
+                  const terms = qLower
+                    .replace(/[^a-z0-9\s]/g, ' ')
+                    .split(/\s+/)
+                    .filter((w) => w.length > 2);
+
+                  const relevantNotes = (noteRows as any[])
+                    .filter((n) => {
+                      const hay = `${n.title || ''} ${n.chapter_name || ''} ${n.offering?.subject?.name || ''} ${n.offering?.class?.name || ''}`.toLowerCase();
+                      return terms.length === 0 || terms.some((t) => hay.includes(t));
+                    })
+                    .slice(0, 3);
+
+                  if (relevantNotes.length > 0) {
+                    matchedChunks = relevantNotes.map((n) => ({
+                      title: `${n.offering?.subject?.name || 'Subject'}: ${n.title}`,
+                      category: 'notes',
+                      content_chunk: `Note Vault Material — Subject: ${n.offering?.subject?.name || 'General'} (${n.offering?.class?.name || 'Grade 9-12'}), Chapter: "${n.chapter_name || 'General'}", Title: "${n.title}" (${String(n.file_type || 'pdf').toUpperCase()}).`,
+                    }));
+                  }
+                }
+              } catch (noteLookupErr: any) {
+                console.warn('[Sage RAG] Note Vault fallback lookup warning:', noteLookupErr?.message);
+              }
+            }
+          }
+
+          // 3. Always fall back to verified institutional knowledge base if DB returned nothing
+          if (matchedChunks.length === 0) {
+            matchedChunks = searchFallbackKnowledgeBase(userQueryText, 3);
+          }
+
+          if (matchedChunks.length > 0) {
+            ragContextPrompt = `\nRELEVANT INSTITUTIONAL KNOWLEDGE BASE & NOTE VAULT CONTEXT (RAG):
+Authoritative reference materials retrieved for this inquiry:
+${matchedChunks
+  .map(
+    (c, i) =>
+      `--- [Document ${i + 1}: ${c.title} (${c.category || 'General'})] ---\n${c.content_chunk}`
+  )
+  .join('\n\n')}
+Use this authoritative context when answering questions regarding academy policies, grading transmutation, note vault structure, and subject curricula.`;
+          }
+        } catch (ragErr: any) {
+          console.warn(
+            '[Sage RAG] Non-fatal RAG lookup error, continuing without notes:',
+            ragErr?.message || String(ragErr)
+          );
+        }
+      }
+
+      const systemInstruction = `You are Sage, the intelligent, friendly, and expert AI study and academic companion built exclusively for Scholario & SHS Virtual Academy (FBISE and Sindh Board 9th-12th grade curricula: Mathematics, Physics, Chemistry, Biology, Computer Science, English, Urdu, Islamiat, and Pakistan Studies).
 
 ${roleDescription}
 ${pageContextPrompt}
+${ragContextPrompt}
 
 Key Guidelines:
 1. **Be Concise & Direct by Default**: Keep answers short, direct, and to the point (typically 1-3 focused paragraphs or bullet points). Avoid conversational fluff or unnecessary preambles.
@@ -186,47 +336,6 @@ Key Guidelines:
 6. **Curriculum Alignment**: Adhere to FBISE / Sindh Board high school & college syllabus standards. Break multi-step derivations or numerical problems into clear, numbered steps.
 7. **Persona**: Friendly, supportive, sharp, and academic study companion for Scholario & SHS Virtual Academy.`;
 
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const encoder = new TextEncoder();
-
-  // Handle streaming generation asynchronously
-  (async () => {
-    try {
-      if (!apiKey) {
-        // Fallback simulation when GEMINI_API_KEY is not yet set
-        const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
-        let fallbackText = '';
-
-        if (isAdmin) {
-          try {
-            const overview = await executeAdminDataQuery('queryPlatformOverview', {}, supabase);
-            fallbackText = `**Sage (Live Platform Overview — Admin Mode)**:\n\n` +
-              `Here is the live snapshot from Scholario's database:\n` +
-              `- **Registered Students**: ${overview?.kpis?.total_registered_students ?? 0} (Onboarded: ${overview?.kpis?.onboarded_students ?? 0})\n` +
-              `- **Faculty Teachers**: ${overview?.kpis?.total_faculty_teachers ?? 0} (Active: ${overview?.kpis?.active_teachers ?? 0})\n` +
-              `- **Active Class Offerings**: ${overview?.kpis?.active_class_offerings ?? 0}\n` +
-              `- **Published Assessments**: ${overview?.kpis?.published_assessments_count ?? 0} (Submissions: ${overview?.kpis?.total_student_submissions ?? 0})\n` +
-              `- **Tuition Fee Configurations**: ${overview?.kpis?.total_fee_configurations ?? 0} active tiers\n\n` +
-              `*Note: Configure \`GEMINI_API_KEY\` in your Cloudflare Pages environment variables for custom interactive AI responses.*`;
-          } catch {
-            fallbackText = `**Sage (Admin Mode)**: I received your query about *"_**${lastUserMsg}**_*. Please ensure \`GEMINI_API_KEY\` is configured in Cloudflare Pages project settings.`;
-          }
-        } else {
-          fallbackText = `**Sage (Study Companion)**: I received your question about *"_**${lastUserMsg}**_*. Note: \`GEMINI_API_KEY\` is not yet configured in your Cloudflare Pages environment variables/secrets. Please add \`GEMINI_API_KEY\` in your Cloudflare Pages project settings to activate live Gemini AI responses!`;
-        }
-
-        const words = fallbackText.split(' ');
-        for (let i = 0; i < words.length; i += 3) {
-          const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
-          await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
-          await new Promise((r) => setTimeout(r, 40));
-        }
-        await writer.write(encoder.encode('data: [DONE]\n\n'));
-        await writer.close();
-        return;
-      }
-
       // Format conversation history for @google/genai with multimodal inlineData
       const contents = messages.map((m) => {
         const parts: any[] = [];
@@ -237,7 +346,9 @@ Key Guidelines:
           const cleanBase64 = m.attachment.base64.includes('base64,')
             ? m.attachment.base64.split('base64,')[1]
             : m.attachment.base64;
-          const mimeType = m.attachment.mime_type || (m.attachment.filename?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+          const mimeType =
+            m.attachment.mime_type ||
+            (m.attachment.filename?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
           parts.push({
             inlineData: {
               data: cleanBase64,
@@ -254,14 +365,6 @@ Key Guidelines:
         };
       });
 
-      const ai = new GoogleGenAI({
-        apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          },
-        },
-      });
       const rawEnvModel = (
         env?.GEMINI_MODEL ||
         (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
@@ -278,7 +381,9 @@ Key Guidelines:
       );
 
       const getThinkingConfig = (modelId: string) =>
-        modelId.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } : {};
+        modelId.startsWith('gemini-3')
+          ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
+          : {};
 
       const runWithModel = async (modelId: string) => {
         let modelAnnounced = false;
@@ -289,7 +394,7 @@ Key Guidelines:
           }
         };
 
-        if (isAdmin) {
+        if (isAdmin && supabase) {
           let currentContents: any[] = [...contents];
           const maxTurns = 3;
           let turn = 0;
@@ -315,7 +420,13 @@ Key Guidelines:
               const toolParts: any[] = [];
               for (const call of genRes.functionCalls) {
                 const toolName = call.name || '';
-                const data = await executeAdminDataQuery(toolName, call.args || {}, supabase);
+                let data: any;
+                try {
+                  data = await executeAdminDataQuery(toolName, call.args || {}, supabase);
+                } catch (toolErr: any) {
+                  console.warn(`[Sage Admin Tool Warning] ${toolName}:`, toolErr?.message);
+                  data = { error: 'Live database query unavailable for this tool right now.' };
+                }
                 toolParts.push({
                   functionResponse: {
                     name: toolName,
@@ -340,8 +451,11 @@ Key Guidelines:
                 await announceModel();
                 const words = genRes.text.split(' ');
                 for (let i = 0; i < words.length; i += 3) {
-                  const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
-                  await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
+                  const chunk =
+                    words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
+                  await writer.write(
+                    encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+                  );
                   await new Promise((r) => setTimeout(r, 15));
                 }
                 finalResponseSent = true;
@@ -368,12 +482,14 @@ Key Guidelines:
               const chunkText = chunk.text;
               if (chunkText) {
                 await announceModel();
-                await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`));
+                await writer.write(
+                  encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`)
+                );
               }
             }
           }
         } else {
-          // Teacher/Student flow (no tools)
+          // Standard streaming flow (Student, Teacher, or Admin when live DB variables aren't set)
           const streamResponse = await withModelTimeout(
             ai.models.generateContentStream({
               model: modelId,
@@ -391,7 +507,9 @@ Key Guidelines:
             const chunkText = chunk.text;
             if (chunkText) {
               await announceModel();
-              await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`));
+              await writer.write(
+                encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`)
+              );
             }
           }
         }
@@ -439,7 +557,7 @@ Key Guidelines:
       ...CORS_HEADERS,
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
     },
   });
 }

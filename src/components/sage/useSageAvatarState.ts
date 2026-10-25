@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 export type Sage3DAvatarState =
   | 'idle'
@@ -256,26 +256,28 @@ export function useSageAvatarController(input: SageAvatarControllerInput = {}): 
       // ignore
     }
 
-    supabase.auth
-      .getUser()
-      .then(({ data }) => {
-        if (!mounted) return;
-        const metaAvatar = data?.user?.user_metadata?.sage_avatar_id;
-        if (isValidSageCharacterId(metaAvatar)) {
-          setCharacterIdState(metaAvatar);
-          try {
-            window.localStorage.setItem(STORAGE_KEY_GLOBAL, metaAvatar);
-            if (data?.user?.id) {
-              window.localStorage.setItem(`${STORAGE_KEY_GLOBAL}_${data.user.id}`, metaAvatar);
+    if (isSupabaseConfigured) {
+      supabase.auth
+        .getUser()
+        .then(({ data }) => {
+          if (!mounted) return;
+          const metaAvatar = data?.user?.user_metadata?.sage_avatar_id;
+          if (isValidSageCharacterId(metaAvatar)) {
+            setCharacterIdState(metaAvatar);
+            try {
+              window.localStorage.setItem(STORAGE_KEY_GLOBAL, metaAvatar);
+              if (data?.user?.id) {
+                window.localStorage.setItem(`${STORAGE_KEY_GLOBAL}_${data.user.id}`, metaAvatar);
+              }
+            } catch {
+              // ignore
             }
-          } catch {
-            // ignore
           }
-        }
-      })
-      .catch(() => {
-        // ignore offline/guest
-      });
+        })
+        .catch(() => {
+          // ignore offline/guest
+        });
+    }
 
     return () => {
       mounted = false;
@@ -295,11 +297,13 @@ export function useSageAvatarController(input: SageAvatarControllerInput = {}): 
         // ignore storage errors
       }
       // Persist to Supabase user metadata asynchronously in background
-      supabase.auth
-        .updateUser({ data: { sage_avatar_id: nextId } })
-        .catch(() => {
-          // ignore if not signed into Supabase
-        });
+      if (isSupabaseConfigured) {
+        supabase.auth
+          .updateUser({ data: { sage_avatar_id: nextId } })
+          .catch(() => {
+            // ignore if not signed into Supabase
+          });
+      }
     },
     [userId]
   );

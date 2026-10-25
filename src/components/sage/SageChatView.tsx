@@ -75,7 +75,7 @@ import {
   SAGE_CHARACTERS,
 } from './useSageAvatarState';
 
-const LazySage3DAvatar = React.lazy(() => import('./Sage3DAvatar'));
+import { Sage3DAvatar } from './Sage3DAvatar';
 
 function formatSageModelLabel(modelId: string): string {
   const id = (modelId || '').toLowerCase();
@@ -1858,29 +1858,21 @@ export const SageChatView: React.FC<SageChatViewProps> = ({ role, embedded = fal
 
         {/* ── Chat Messages Stream (Avatar sits directly on chat area with zero container/strip) ── */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFA]/70 dark:bg-[#0E0E11]">
-          <Suspense
-            fallback={
-              <div className={isConversationStarted ? 'h-[72px] flex items-center px-2 text-xs text-zinc-400' : 'h-48 flex items-center justify-center text-xs text-zinc-400'}>
-                Loading Sage...
-              </div>
+          <Sage3DAvatar
+            state={avatarController.state}
+            characterId={avatarController.characterId}
+            headerCanvasRef={avatarController.headerCanvasRef}
+            audioLevel={avatarController.audioLevel}
+            compact={isConversationStarted}
+            greetingTitle={
+              avatarController.character.name === 'Sage'
+                ? `Hi ${greetingName}, I'm Sage!`
+                : `Hi ${greetingName}, I'm ${avatarController.character.name}!`
             }
-          >
-            <LazySage3DAvatar
-              state={avatarController.state}
-              characterId={avatarController.characterId}
-              headerCanvasRef={avatarController.headerCanvasRef}
-              audioLevel={avatarController.audioLevel}
-              compact={isConversationStarted}
-              greetingTitle={
-                avatarController.character.name === 'Sage'
-                  ? `Hi ${greetingName}, I'm Sage!`
-                  : `Hi ${greetingName}, I'm ${avatarController.character.name}!`
-              }
-              statusLabel={avatarController.stageCaption}
-              onPoke={() => avatarController.triggerPoke()}
-              pokeCount={avatarController.pokeCount}
-            />
-          </Suspense>
+            statusLabel={avatarController.stageCaption}
+            onPoke={() => avatarController.triggerPoke()}
+            pokeCount={avatarController.pokeCount}
+          />
 
           {messages.map((msg) => {
           const isUser = msg.role === 'user';

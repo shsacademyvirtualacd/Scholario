@@ -159,6 +159,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [webglSupported, setWebglSupported] = useState<boolean>(true);
+  const [webglReady, setWebglReady] = useState<boolean>(false);
   const [isSwitchingChar, setIsSwitchingChar] = useState<boolean>(false);
 
   const stateRef = useRef<Sage3DAvatarState>(state);
@@ -166,6 +167,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
   const audioLevelRef = useRef<number>(audioLevel);
   const pokeCountRef = useRef<number>(pokeCount);
   const applyCharacterRef = useRef<((id: SageCharacterId, animateSwitch: boolean) => void) | null>(null);
+  const syncSizeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -178,6 +180,12 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
   useEffect(() => {
     pokeCountRef.current = pokeCount;
   }, [pokeCount]);
+
+  useEffect(() => {
+    if (syncSizeRef.current) {
+      syncSizeRef.current();
+    }
+  }, [compact]);
 
   useEffect(() => {
     const prev = characterIdRef.current;
@@ -1305,6 +1313,10 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       }
 
       renderer.render(scene, camera);
+      if (!hasMarkedReady) {
+        hasMarkedReady = true;
+        setWebglReady(true);
+      }
 
       // ── Live-mirror the rendered 3D character into the top-left header profile picture ──
       const headerCanvas = headerCanvasRef?.current;
@@ -1324,6 +1336,17 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         }
       }
     };
+
+    let hasMarkedReady = false;
+
+    const syncContainerSize = () => {
+      const w = Math.max(container.clientWidth || (compact ? 72 : 196), 68);
+      const h = Math.max(container.clientHeight || (compact ? 72 : 196), 68);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    syncSizeRef.current = syncContainerSize;
 
     const startLoop = () => {
       if (rafId === null && isVisible && isDocumentVisible) {
@@ -1365,8 +1388,8 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       resizeObserver = new ResizeObserver((entries) => {
         const entry = entries[0];
         if (!entry) return;
-        const w = Math.max(entry.contentRect.width, 64);
-        const h = Math.max(entry.contentRect.height, 64);
+        const w = Math.max(entry.contentRect.width, 68);
+        const h = Math.max(entry.contentRect.height, 68);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
@@ -1378,14 +1401,17 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       e.preventDefault();
       stopLoop();
       setWebglSupported(false);
+      setWebglReady(false);
     };
     renderer.domElement.addEventListener('webglcontextlost', handleContextLost, false);
 
+    syncContainerSize();
     startLoop();
 
     return () => {
       stopLoop();
       applyCharacterRef.current = null;
+      syncSizeRef.current = null;
       window.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       observer?.disconnect();
@@ -1413,34 +1439,63 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
 
   const activeChar = getSageCharacterById(characterId);
 
-  // ── Compactframeless Stage (72px tall once conversation has started — sits directly on chat area) ──
-  if (compact) {
-    return (
-      <div className="relative flex items-center gap-3 px-4 sm:px-6 pt-2 pb-1 bg-transparent shrink-0 select-none transition-all duration-300">
-        <div
-          onClick={onPoke}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') onPoke?.();
-          }}
-          title={`Tap ${activeChar.name} for a cute reaction!`}
-          className={`relative w-[72px] h-[72px] flex items-center justify-center shrink-0 cursor-pointer transition-transform duration-200 ${
-            isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'
-          }`}
-        >
-          {webglSupported ? (
-            <div ref={mountRef} className="w-full h-full" />
-          ) : (
+  // ── Unified Frameless Stage (never unmounts mountRef when transitioning between large & compact) ──
+  return (
+    <div
+      data-testid="sage-stage-avatar"
+      data-compact={compact ? 'true' : 'false'}
+      data-character={characterId}
+      className={
+        compact
+          ? 'relative flex items-center gap-3 px-4 sm:px-6 pt-2 pb-1 bg-transparent shrink-0 select-none transition-all duration-300'
+          : 'relative flex flex-col items-center justify-center py-2 px-4 bg-transparent select-none transition-all duration-300'
+      }
+    >
+      <div
+        onClick={onPoke}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') onPoke?.();
+        }}
+        title={
+          compact
+            ? `Tap ${activeChar.name} for a cute reaction!`
+            : `Tap ${activeChar.name} to say hello!`
+        }
+        style={
+          compact
+            ? { width: '76px', height: '76px' }
+            : { width: '200px', height: `${SAGE_AVATAR_THEME.sizes.heroHeightPx}px` }
+        }
+        className={`relative flex items-center justify-center shrink-0 cursor-pointer transition-transform duration-200 ${
+          isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'
+        }`}
+      >
+        {/* Persistent WebGL mount container — never unmounted when compact changes */}
+        {webglSupported && (
+          <div
+            ref={mountRef}
+            className={`w-full h-full relative z-10 transition-opacity duration-200 ${
+              webglReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          />
+        )}
+
+        {/* Instant 2D Plush Character rendered whenever WebGL is unavailable or initializing */}
+        {(!webglSupported || !webglReady) && (
+          <div className="absolute inset-0 flex items-center justify-center z-0">
             <Plush2DFallback
               state={state}
               characterId={characterId}
-              compact={true}
+              compact={compact}
               onPoke={onPoke}
             />
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
+      {compact ? (
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100">
@@ -1457,47 +1512,16 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
             {statusLabel || `Ask a follow-up question or tap ${activeChar.name} to say hi`}
           </p>
         </div>
-      </div>
-    );
-  }
-
-  // ── Full Frameless Center Stage (When Chat is Fresh / Empty — sits directly on chat area) ──
-  return (
-    <div className="relative flex flex-col items-center justify-center py-2 px-4 bg-transparent select-none transition-all duration-300">
-      <div
-        onClick={onPoke}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') onPoke?.();
-        }}
-        title={`Tap ${activeChar.name} to say hello!`}
-        style={{ height: `${SAGE_AVATAR_THEME.sizes.heroHeightPx}px` }}
-        className={`relative w-full max-w-[260px] flex items-center justify-center cursor-pointer transition-transform duration-200 ${
-          isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'
-        }`}
-      >
-        {webglSupported ? (
-          <div ref={mountRef} className="w-full h-full relative z-10" />
-        ) : (
-          <Plush2DFallback
-            state={state}
-            characterId={characterId}
-            compact={false}
-            onPoke={onPoke}
-          />
-        )}
-      </div>
-
-      {/* Greeting & Live Status Caption directly on chat background */}
-      <div className="text-center mt-0.5 max-w-md bg-transparent">
-        <h2 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-          {greetingTitle}
-        </h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-          {statusLabel || 'Your friendly AI study companion — ask a question below or tap me!'}
-        </p>
-      </div>
+      ) : (
+        <div className="text-center mt-0.5 max-w-md bg-transparent">
+          <h2 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            {greetingTitle}
+          </h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            {statusLabel || 'Your friendly AI study companion — ask a question below or tap me!'}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

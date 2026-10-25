@@ -29,6 +29,10 @@ import {
   onRequestOptions as apkFileOptionsHandler,
 } from '../functions/apk/[filename]';
 import { onRequestPost as authEmailPostHandler } from '../functions/api/auth-email';
+import {
+  onRequestPost as syncNotesPostHandler,
+  onRequestOptions as syncNotesOptionsHandler,
+} from '../functions/api/knowledge-base/sync-notes';
 
 export interface Env {
   NOTES_BUCKET: any;
@@ -43,9 +47,14 @@ export interface Env {
   VITE_APK_PUBLIC_DOMAIN?: string;
   SUPABASE_URL?: string;
   VITE_SUPABASE_URL?: string;
+  VITE_DATABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_ANON_KEY?: string;
+  VITE_DATABASE_ANON_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   GEMINI_API_KEY?: string;
+  GOOGLE_API_KEY?: string;
+  VITE_GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
@@ -245,6 +254,34 @@ export default {
           } as any);
         } catch (err: any) {
           return new Response(JSON.stringify({ error: err?.message || 'TTS synthesis error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle Sage RAG Note Vault Sync Route
+    if (normalizedPath === '/api/knowledge-base/sync-notes') {
+      if (request.method === 'OPTIONS') {
+        return await syncNotesOptionsHandler();
+      }
+      if (request.method === 'POST') {
+        try {
+          return await syncNotesPostHandler({
+            request,
+            env,
+            params: {},
+            waitUntil: ctx?.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+            next: () => Promise.resolve(new Response('')),
+            data: {},
+          } as any);
+        } catch (err: any) {
+          return new Response(JSON.stringify({ error: err?.message || 'Note Vault sync error' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
           });
