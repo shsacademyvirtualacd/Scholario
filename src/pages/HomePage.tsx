@@ -6,7 +6,7 @@ import HowItWorksSection from '../components/home/HowItWorksSection';
 import ComparisonSection from '../components/home/ComparisonSection';
 import PricingSection from '../components/home/PricingSection';
 import FAQSection from '../components/home/FAQSection';
-import RoamingCatGuide from '../components/home/RoamingCatGuide';
+import PublicTangoGuide from '../components/home/PublicTangoGuide';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -22,8 +22,8 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
       <ComparisonSection />
       <PricingSection />
       <FAQSection />
-      {/* Free-roaming Tango Cat Guide on the public home page before login */}
-      <RoamingCatGuide onNavigate={onNavigate} />
+      {/* Slow-roaming Tango Cat Guide on the public home page before login */}
+      <PublicTangoGuide onNavigate={onNavigate} />
     </main>
   );
 };

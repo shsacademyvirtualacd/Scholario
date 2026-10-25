@@ -5,7 +5,11 @@ import {
   getPublicGuideLocalAnswer,
 } from '../../src/data/academyKnowledge';
 
-const PUBLIC_GUIDE_MODEL_CHAIN = [
+/**
+ * Cloudflare Pages Function for Tango — the Public Home Page Guide (/api/public-guide)
+ * Introduces itself strictly as Tango (never Sage) and never outputs star/sparkle symbols.
+ */
+const TANGO_PUBLIC_GUIDE_MODEL_CHAIN = [
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
@@ -23,6 +27,7 @@ function sanitizePlainText(text: string): string {
   return (text || '')
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/<\/?[a-z][^>]*>/gi, '')
+    .replace(/[✦★✨⭐🌟💫]/g, '')
     .trim();
 }
 
@@ -31,7 +36,7 @@ async function checkIpRateLimit(
   env: Env
 ): Promise<{ allowed: boolean; remaining: number }> {
   const now = Date.now();
-  const key = `pub_guide_rl:${ip}`;
+  const key = `tango_pub_guide_rl:${ip}`;
 
   if (env.PUBLIC_GUIDE_KV) {
     try {
@@ -110,7 +115,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return new Response(
       JSON.stringify({
         reply:
-          "Meow! You've sent quite a few messages in a short time 🐾 Please wait a few minutes, or tap **Get Started** above to explore the portal directly!",
+          "Meow! Tango here 🐾 You've sent quite a few messages in a short time. Please wait a few minutes, or tap **Get Started** above to explore the portal directly!",
         rateLimited: true,
       }),
       {
@@ -132,7 +137,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     body = (await request.json()) as typeof body;
   } catch {
     return new Response(
-      JSON.stringify({ error: 'Invalid JSON request body.' }),
+      JSON.stringify({ error: 'Invalid JSON request body for Tango guide.' }),
       {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -143,7 +148,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const rawMessage = sanitizePlainText(String(body.message || '')).slice(0, MAX_INPUT_CHARS);
   if (!rawMessage) {
     return new Response(
-      JSON.stringify({ error: 'Message cannot be empty.' }),
+      JSON.stringify({ error: 'Message to Tango cannot be empty.' }),
       {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -171,8 +176,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!apiKey) {
     return new Response(
       JSON.stringify({
-        reply: getPublicGuideLocalAnswer(rawMessage),
-        model: 'local-knowledge-fallback',
+        reply: sanitizePlainText(getPublicGuideLocalAnswer(rawMessage)),
+        model: 'tango-local-knowledge-fallback',
       }),
       {
         status: 200,
@@ -192,7 +197,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     },
   ];
 
-  for (const modelName of PUBLIC_GUIDE_MODEL_CHAIN) {
+  for (const modelName of TANGO_PUBLIC_GUIDE_MODEL_CHAIN) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(
         apiKey
@@ -243,16 +248,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           }
         );
       }
-    } catch {
-      // Try next model in fallback chain
+    } catch (err) {
+      console.warn(`[Tango Public Guide] Model ${modelName} fallback:`, err);
     }
   }
 
   // Canned local fallback if all Gemini models fail
   return new Response(
     JSON.stringify({
-      reply: getPublicGuideLocalAnswer(rawMessage),
-      model: 'local-knowledge-fallback',
+      reply: sanitizePlainText(getPublicGuideLocalAnswer(rawMessage)),
+      model: 'tango-local-knowledge-fallback',
     }),
     {
       status: 200,

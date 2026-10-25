@@ -257,9 +257,9 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // ─── Public Roaming Cat Guide Endpoint (/api/public-guide) ─────────────────
-  const publicGuideRateMap = new Map<string, { count: number; resetAt: number }>();
-  const PUBLIC_GUIDE_MODELS = [
+  // ─── Public Roaming Tango Guide Endpoint (/api/public-guide) ────────────────
+  const tangoPublicGuideRateMap = new Map<string, { count: number; resetAt: number }>();
+  const TANGO_PUBLIC_GUIDE_MODELS = [
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
     'gemini-2.0-flash',
@@ -276,29 +276,30 @@ async function startServer() {
       const now = Date.now();
       const windowMs = 10 * 60 * 1000;
       const maxReqs = 15;
-      const existing = publicGuideRateMap.get(clientIp);
+      const existing = tangoPublicGuideRateMap.get(clientIp);
       if (existing && now < existing.resetAt) {
         if (existing.count >= maxReqs) {
           return res.status(429).json({
             reply:
-              "Meow! You've sent quite a few messages in a short time 🐾 Please wait a few minutes, or tap **Get Started** above to explore the portal directly!",
+              "Meow! Tango here 🐾 You've sent quite a few messages in a short time. Please wait a few minutes, or tap **Get Started** above to explore the portal directly!",
             rateLimited: true,
           });
         }
         existing.count += 1;
       } else {
-        publicGuideRateMap.set(clientIp, { count: 1, resetAt: now + windowMs });
+        tangoPublicGuideRateMap.set(clientIp, { count: 1, resetAt: now + windowMs });
       }
 
       const sanitizePlain = (s: string) =>
         (s || '')
           .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
           .replace(/<\/?[a-z][^>]*>/gi, '')
+          .replace(/[✦★✨⭐🌟💫]/g, '')
           .trim();
 
       const rawMessage = sanitizePlain(String(req.body?.message || '')).slice(0, 500);
       if (!rawMessage) {
-        return res.status(400).json({ error: 'Message cannot be empty.' });
+        return res.status(400).json({ error: 'Message to Tango cannot be empty.' });
       }
 
       const rawHistory = Array.isArray(req.body?.history) ? req.body.history.slice(-6) : [];
@@ -312,8 +313,8 @@ async function startServer() {
       const ai = getGeminiClient();
       if (!ai) {
         return res.json({
-          reply: getPublicGuideLocalAnswer(rawMessage),
-          model: 'local-knowledge-fallback',
+          reply: sanitizePlain(getPublicGuideLocalAnswer(rawMessage)),
+          model: 'tango-local-knowledge-fallback',
         });
       }
 
@@ -325,7 +326,7 @@ async function startServer() {
         },
       ];
 
-      for (const modelName of PUBLIC_GUIDE_MODELS) {
+      for (const modelName of TANGO_PUBLIC_GUIDE_MODELS) {
         try {
           const response = await ai.models.generateContent({
             model: modelName,
@@ -343,19 +344,19 @@ async function startServer() {
               model: modelName,
             });
           }
-        } catch {
-          // Try next model in fallback chain
+        } catch (err) {
+          console.warn(`[Tango Public Guide] Model ${modelName} fallback:`, err);
         }
       }
 
       return res.json({
-        reply: getPublicGuideLocalAnswer(rawMessage),
-        model: 'local-knowledge-fallback',
+        reply: sanitizePlain(getPublicGuideLocalAnswer(rawMessage)),
+        model: 'tango-local-knowledge-fallback',
       });
     } catch {
       return res.json({
         reply: getPublicGuideLocalAnswer(String(req.body?.message || '')),
-        model: 'local-knowledge-fallback',
+        model: 'tango-local-knowledge-fallback',
       });
     }
   });

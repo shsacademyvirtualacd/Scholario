@@ -1120,7 +1120,7 @@ export const SAGE_THOUGHT_DATA: Record<SageCharacterId, CharacterPersonaLines> =
         'All fee details lined up clearly!',
       ],
       greeting: [
-        'Meow & Assalam-o-Alaikum! Tango here! 🐱✨',
+        'Meow & Assalam-o-Alaikum! Tango here! 🐱🐾',
         'Purr-fect timing! What are we studying today?',
         'Hello friend! *happy ear twitch* Ready to learn?',
         'Welcome back! My pencil is sharpened and ready!',
@@ -1185,7 +1185,7 @@ export const SAGE_THOUGHT_DATA: Record<SageCharacterId, CharacterPersonaLines> =
       'Finishing up with a happy purr...',
     ],
     doneLines: [
-      'Purr-fect! All done! Anything else to explore? 🐱✨',
+      'Purr-fect! All done! Anything else to explore? 🐱🐾',
       'Finished! *happy slow blink* Hope that helps!',
       'There you go! Pounce on another question anytime!',
       'All wrapped up neatly! What shall we tackle next?',

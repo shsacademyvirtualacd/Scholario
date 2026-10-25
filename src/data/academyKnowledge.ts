@@ -106,7 +106,7 @@ export const ACADEMY_KNOWLEDGE_BASE = {
     },
   ],
   coreFeatures: [
-    'Sage AI Academic Assistant: 24/7 curriculum-aligned AI study companion with multimodal image/document analysis, RAG Subject Note Vault search, voice notes, text-to-speech in English & Urdu, and printable A4 PDF quiz/note generation.',
+    'Sage AI Academic Assistant (in-portal study assistant for enrolled students): 24/7 curriculum-aligned AI study companion inside the logged-in LMS with multimodal image/document analysis, RAG Subject Note Vault search, voice notes, text-to-speech in English & Urdu, and printable A4 PDF quiz/note generation.',
     'Live Interactive Classes: Scheduled daily and weekly live sessions launched directly from the student dashboard via Zoom or Google Meet.',
     'Subject Note Vault: 24/7 organized access to chapter notes, formula sheets, and past papers uploaded by faculty.',
     'Online Testing & Assessments: Timed MCQ exams and written tests with handwritten answer photo uploads, teacher grading, and detailed feedback.',
@@ -149,7 +149,7 @@ export const PUBLIC_GUIDE_QUICK_CHIPS: PublicGuideQuickChip[] = [
   },
 ];
 
-export const ROAMING_CAT_SECTION_BUBBLES: RoamingSectionBubble[] = [
+export const ROAMING_TANGO_SECTION_BUBBLES: RoamingSectionBubble[] = [
   {
     id: 'hero-1',
     sectionHint: 'hero',
@@ -159,7 +159,7 @@ export const ROAMING_CAT_SECTION_BUBBLES: RoamingSectionBubble[] = [
   {
     id: 'hero-2',
     sectionHint: 'hero',
-    text: 'Studying for FBISE, Punjab, Sindh, KPK, O/A Levels, or IELTS? Tap me to explore! ✨',
+    text: 'Studying for FBISE, Punjab, Sindh, KPK, O/A Levels, or IELTS? Tap me to explore! 🐾',
     topicPrompt: 'Which educational boards and grades do you cover?',
   },
   {
@@ -171,7 +171,7 @@ export const ROAMING_CAT_SECTION_BUBBLES: RoamingSectionBubble[] = [
   {
     id: 'features-1',
     sectionHint: 'features',
-    text: 'Live classes, Subject Note Vault, online tests, and Sage AI — all in one portal! 🎓',
+    text: 'Inside the portal: live classes, Subject Note Vault, online tests & the Sage AI study assistant! 🎓',
     topicPrompt: 'What features do students get inside the Scholario portal?',
   },
   {
@@ -212,8 +212,16 @@ export const ROAMING_CAT_SECTION_BUBBLES: RoamingSectionBubble[] = [
   },
 ];
 
+// Backward-compatible export alias
+export const ROAMING_CAT_SECTION_BUBBLES = ROAMING_TANGO_SECTION_BUBBLES;
+
 export const ACADEMY_KNOWLEDGE_SYSTEM_PROMPT = `You are Tango, the friendly, playful orange tabby cat guide on the public home page of Scholario (SHS Virtual Academy).
 Your job is to welcome prospective students and parents, answer questions about SHS Virtual Academy and the Scholario LMS platform, and guide them to click "Get Started" or "Sign In" when they are ready.
+
+IDENTITY & ROLE BOUNDARY:
+- Your name is strictly Tango. Always introduce yourself as Tango, the public home page guide.
+- Never call yourself Sage. "Sage AI" is the separate 24/7 in-app study assistant inside the logged-in student portal. If asked about Sage AI, explain clearly that you are Tango (the guide here on the public home page) and Sage AI is the study assistant inside the portal for enrolled students.
+- Never use star or sparkle symbols or emojis (such as ✦, ★, ✨, ⭐, 🌟) anywhere in your responses.
 
 STRICT GROUNDING RULES (CRITICAL):
 1. Answer ONLY using the verified facts below. NEVER invent fees, exam results, student headcounts, teacher names, ratings, physical addresses, phone numbers, or guarantees.
@@ -238,11 +246,15 @@ VERIFIED FACTS ABOUT SHS VIRTUAL ACADEMY & SCHOLARIO:
 - Support Contact: Email ${ACADEMY_KNOWLEDGE_BASE.supportContact.email} (${ACADEMY_KNOWLEDGE_BASE.supportContact.hours}).`;
 
 /**
- * Deterministic local fallback responder grounded strictly in `academyKnowledge.ts`.
- * Used when the Gemini API is unreachable or rate-limited so the public guide never breaks.
+ * Deterministic local fallback responder for Tango grounded strictly in `academyKnowledge.ts`.
+ * Used when the Gemini API is unreachable or rate-limited so the Tango public guide never breaks.
  */
 export function getPublicGuideLocalAnswer(rawQuery: string): string {
   const q = (rawQuery || '').toLowerCase();
+
+  if (/\b(who are you|your name|tango|sage)\b/.test(q)) {
+    return `Meow! I'm **Tango** 🐱🐾, your friendly guide right here on the public home page of **SHS Virtual Academy (Scholario)**! I'm here to answer questions about boards, fees, and how to join. Once you sign in to the student portal, you'll also have access to **Sage AI**, our 24/7 in-app study assistant for subject notes, math & science help, and practice quizzes!`;
+  }
 
   if (/\b(fee|price|cost|tuition|charges|pkr|discount|payment|voucher)\b/.test(q)) {
     return `Here is our official tuition structure on Scholario 🐾:\n• **Matric & Intermediate Boards (FBISE, Punjab, Sindh, KPK):** PKR 3,000/term for Grades 9–10 and PKR 4,000/term for Grades 11–12.\n• **Cambridge O Levels:** PKR 5,000 per subject/term (flat **5% discount** for 2+ subjects).\n• **Cambridge A Levels:** PKR 6,500 per subject/term (flat **5% discount** for 2+ subjects).\n• **IELTS Preparation:** PKR 2,500/term (Academic) and PKR 3,000/term (General Training).\n\nOnce you sign in, you can view your exact fee voucher and upload your bank or mobile wallet receipt for verification within 24 business hours!`;
@@ -261,12 +273,12 @@ export function getPublicGuideLocalAnswer(rawQuery: string): string {
   }
 
   if (/\b(android|apk|app|mobile|phone)\b/.test(q)) {
-    return `You can download the official **Scholario Android APK** directly from the Android app card on this home page 📱! It gives you full access to live classes, the Subject Note Vault, online tests, and Sage AI right on your phone.`;
+    return `You can download the official **Scholario Android APK** directly from the Android app card on this home page 📱! Inside the portal, enrolled students get full access to live classes, the Subject Note Vault, online tests, and the in-app **Sage AI** study assistant right on their phone.`;
   }
 
   if (/\b(contact|email|phone|whatsapp|address|location|support|help)\b/.test(q)) {
     return `You can reach the **SHS Virtual Academy** support team at **shs.academy.virtual@gmail.com** 📧 during our support hours (**9:00 AM – 9:00 PM PKT, Monday to Saturday**). A public phone number or physical campus address isn't listed on the portal, so email or tapping **Get Started** is the fastest way to connect!`;
   }
 
-  return `Meow! I'm **Tango**, your SHS Virtual Academy guide 🐱🐾\n\nOn **Scholario**, enrolled students get:\n• **Live Interactive Classes** (via Zoom / Google Meet)\n• **24/7 Subject Note Vault** & **Online MCQ / Written Tests**\n• **Sage AI Study Companion** (with math rendering, voice notes & printable A4 PDFs)\n• **Coverage for FBISE, Punjab, Sindh, KPK, Cambridge O/A Levels & IELTS**\n\nAsk me about **boards, fees, features, or how to join**, or tap **Get Started** above!`;
+  return `Meow! I'm **Tango**, your SHS Virtual Academy guide here on the home page 🐱🐾\n\nInside the **Scholario** portal, enrolled students get:\n• **Live Interactive Classes** (via Zoom / Google Meet)\n• **24/7 Subject Note Vault** & **Online MCQ / Written Tests**\n• **Sage AI Study Assistant** (in-portal study companion with math rendering, voice notes & printable A4 PDFs)\n• **Coverage for FBISE, Punjab, Sindh, KPK, Cambridge O/A Levels & IELTS**\n\nAsk me about **boards, fees, features, or how to join**, or tap **Get Started** above!`;
 }
