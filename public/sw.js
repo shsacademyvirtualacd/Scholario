@@ -56,8 +56,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Never intercept backend API calls or cross-origin requests
-  if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) {
+  // 2. Never intercept backend API calls, APK releases/downloads, or cross-origin requests
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/apk/') ||
+    url.origin !== self.location.origin
+  ) {
     return;
   }
 

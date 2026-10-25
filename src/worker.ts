@@ -19,12 +19,26 @@ import { onRequestDelete as avatarDeleteHandler, onRequestPost as avatarDeletePo
 import { onRequestGet as avatarViewHandler } from '../functions/api/profiles/avatar/view/[...key]';
 import { onRequestPost as chatUploadHandler } from '../functions/api/chat/upload';
 import { onRequestGet as chatAttachmentHandler } from '../functions/api/chat/attachment/[...key]';
+import {
+  onRequestPost as apkUploadPostHandler,
+  onRequestOptions as apkUploadOptionsHandler,
+} from '../functions/api/admin/upload-apk';
+import {
+  onRequestGet as apkFileGetHandler,
+  onRequestOptions as apkFileOptionsHandler,
+} from '../functions/apk/[filename]';
 
 export interface Env {
   NOTES_BUCKET: any;
   AVATARS_BUCKET?: any;
   CHAT_ATTACHMENTS?: any;
+  APK_BUCKET?: any;
+  R2_APK_BUCKET?: any;
+  BUCKET?: any;
   ASSETS: any;
+  PUBLIC_DOMAIN?: string;
+  APK_PUBLIC_DOMAIN?: string;
+  VITE_APK_PUBLIC_DOMAIN?: string;
   SUPABASE_URL?: string;
   VITE_SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
@@ -39,6 +53,83 @@ export default {
 
     // Normalize path by stripping trailing slashes for routing checks
     const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
+
+    // ── Android APK Upload & Distribution Endpoints ──
+    if (normalizedPath === '/api/admin/upload-apk' || normalizedPath === '/api/admin/apk/upload') {
+      const contextObj = {
+        request,
+        env,
+        params: {},
+        waitUntil: ctx?.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+        next: () => Promise.resolve(new Response('')),
+        data: {},
+      } as any;
+
+      if (request.method === 'OPTIONS') {
+        return await apkUploadOptionsHandler(contextObj);
+      }
+      if (request.method === 'POST') {
+        try {
+          return await apkUploadPostHandler(contextObj);
+        } catch (err: any) {
+          return new Response(
+            JSON.stringify({ error: err?.message || 'Internal APK upload error' }),
+            {
+              status: 500,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+      return new Response(
+        JSON.stringify({ error: `Method ${request.method} not allowed, expected POST` }),
+        {
+          status: 405,
+          headers: {
+            'Content-Type': 'application/json',
+            Allow: 'POST, OPTIONS',
+          },
+        }
+      );
+    }
+
+    if (normalizedPath === '/api/apk/latest' || url.pathname.startsWith('/apk/')) {
+      const filename =
+        normalizedPath === '/api/apk/latest'
+          ? 'latest.json'
+          : decodeURIComponent(url.pathname.slice('/apk/'.length).replace(/\/+$/, ''));
+
+      const fallbackNext = () =>
+        env.ASSETS
+          ? env.ASSETS.fetch(request)
+          : Promise.resolve(new Response('Not Found', { status: 404 }));
+
+      const contextObj = {
+        request,
+        env,
+        params: { filename },
+        waitUntil: ctx?.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+        next: fallbackNext,
+        data: {},
+      } as any;
+
+      if (request.method === 'OPTIONS') {
+        return await apkFileOptionsHandler(contextObj);
+      }
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        return await apkFileGetHandler(contextObj);
+      }
+      return new Response(
+        JSON.stringify({ error: `Method ${request.method} not allowed, expected GET` }),
+        {
+          status: 405,
+          headers: {
+            'Content-Type': 'application/json',
+            Allow: 'GET, HEAD, OPTIONS',
+          },
+        }
+      );
+    }
 
     // Handle Sage AI Chat Route
     if (normalizedPath === '/api/sage/chat') {
@@ -419,9 +510,23 @@ export default {
       }
     }
 
+    // Never let unmatched /api/* requests fall through to static assets (which returns 405 on POST/PUT)
+    if (url.pathname.startsWith('/api/')) {
+      return new Response(
+        JSON.stringify({
+          error: `API route not found: ${request.method} ${url.pathname}`,
+          code: 'API_ROUTE_NOT_FOUND',
+        }),
+        {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     // Serve Static Assets for all other routes
     if (env.ASSETS) {
-      const isApi = url.pathname.startsWith('/api/');
+      const isApi = false;
       const hasFileExt = /\.[a-zA-Z0-9]+$/.test(url.pathname);
 
       const assetResponse = await env.ASSETS.fetch(request);

@@ -5527,7 +5527,19 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
   }, 3 * 60 * 1000);
 
   // ── Android APK Release Management & Distribution ──
-  app.post('/api/admin/apk/upload', apkUpload.single('file'), async (req, res) => {
+  const apkUploadPaths = ['/api/admin/upload-apk', '/api/admin/apk/upload'];
+
+  app.options(apkUploadPaths, (_req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Authorization, Content-Type, X-Version, X-Release-Notes, X-Supabase-Url, X-Supabase-Anon-Key'
+    );
+    res.status(204).end();
+  });
+
+  app.post(apkUploadPaths, apkUpload.single('file'), async (req, res) => {
     try {
       // 1. Authenticate caller as Admin
       const authHeader = req.headers.authorization;
@@ -5563,7 +5575,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
         try {
           const payloadBase64 = token.split('.')[1];
           if (payloadBase64) {
-            const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+            const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf-8'));
             const userRole = payload.role || payload.user_metadata?.role || payload.app_metadata?.role;
             if (userRole === 'admin' || userRole === 'super_admin') {
               isAdmin = true;
@@ -5573,7 +5585,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       }
 
       if (!isAdmin) {
-        return res.status(403).json({ error: 'Permission denied: Administrator role required to publish APK releases' });
+        return res.status(403).json({ error: 'Forbidden: Administrator role required to publish APK releases' });
       }
 
       // 2. Validate uploaded file
@@ -5587,7 +5599,7 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       }
 
       if (file.size > 100 * 1024 * 1024) {
-        return res.status(400).json({ error: 'File size exceeds maximum allowed limit of 100 MB' });
+        return res.status(413).json({ error: 'File size exceeds maximum allowed limit of 100 MB' });
       }
 
       const version = ((req.body.version as string) || '').trim();
@@ -5601,21 +5613,27 @@ Ensure strictly valid JSON output with zero markdown formatting outside the JSON
       const sizeBytes = file.size;
       const formattedSize = sizeBytes < 1024 * 1024
         ? `${(sizeBytes / 1024).toFixed(1)} KB`
-        : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
-      const todayDate = new Date().toISOString().split('T')[0];
+        : `${(sizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+      const publishedAt = new Date().toISOString();
+      const todayDate = publishedAt.split('T')[0];
 
       // Custom domain or fallback to relative URL
       const publicBaseDomain = (process.env.APK_PUBLIC_DOMAIN || process.env.VITE_APK_PUBLIC_DOMAIN || '').replace(/\/+$/, '');
       const downloadUrl = publicBaseDomain ? `${publicBaseDomain}/apk/${apkFileName}` : `/apk/${apkFileName}`;
+      const releaseNotesText = notes || 'Performance improvements and bug fixes.';
 
       const manifest = {
         version: cleanVersion,
         fileName: apkFileName,
         url: downloadUrl,
+        downloadUrl: downloadUrl,
         size: formattedSize,
         sizeBytes: sizeBytes,
         date: todayDate,
-        notes: notes || 'Performance improvements and bug fixes.',
+        publishedDate: todayDate,
+        publishedAt: publishedAt,
+        notes: releaseNotesText,
+        releaseNotes: releaseNotesText,
       };
 
       // 3. Upload to Cloudflare R2 if configured

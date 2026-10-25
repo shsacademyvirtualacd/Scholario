@@ -36,7 +36,7 @@ export async function onRequestGet(context: EventContext<Env, any, any>): Promis
         const obj = await bucket.get('apk/latest.json');
         if (obj) {
           corsHeaders.set('Content-Type', 'application/json');
-          corsHeaders.set('Cache-Control', 'public, max-age=60');
+          corsHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
           if (obj.httpEtag) {
             corsHeaders.set('ETag', obj.httpEtag);
           }

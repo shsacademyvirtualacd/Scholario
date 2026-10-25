@@ -4,10 +4,13 @@ export interface LatestApkInfo {
   version: string;
   fileName: string;
   url: string;
+  downloadUrl?: string;
   size: string;
   sizeBytes?: number;
   date: string;
+  publishedDate?: string;
   notes?: string;
+  releaseNotes?: string;
 }
 
 export function useLatestApk() {
@@ -20,10 +23,11 @@ export function useLatestApk() {
 
     async function fetchLatestApk() {
       try {
-        // Look up <PUBLIC_DOMAIN>/apk/latest.json
-        const res = await fetch('/apk/latest.json', {
+        // Look up <PUBLIC_DOMAIN>/apk/latest.json with cache bypass
+        const res = await fetch(`/apk/latest.json?t=${Date.now()}`, {
+          cache: 'no-store',
           headers: {
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
           },
         });
 
@@ -36,9 +40,13 @@ export function useLatestApk() {
         }
 
         const data = await res.json();
-        if (data && data.url && data.version) {
+        const downloadUrl = data?.url || data?.downloadUrl;
+        if (data && downloadUrl && data.version) {
           if (isMounted) {
-            setApkInfo(data);
+            setApkInfo({
+              ...data,
+              url: downloadUrl,
+            });
           }
         } else {
           if (isMounted) {

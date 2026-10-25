@@ -1,19 +1,19 @@
 /**
  * Configuration for Android APK Upload
  *
- * Defaults to the built-in Cloudflare Pages Function / server endpoint:
- * /api/admin/apk/upload
+ * Defaults to the built-in Cloudflare Pages Function / Worker endpoint:
+ * /api/admin/upload-apk
  *
  * Can optionally be overridden via VITE_WORKER_UPLOAD_URL for custom workers.
  */
 export const WORKER_UPLOAD_URL: string =
   ((import.meta as any).env?.VITE_WORKER_UPLOAD_URL as string)?.trim() ||
   (typeof window !== 'undefined' && (window as any).WORKER_UPLOAD_URL)?.trim() ||
-  '/api/admin/apk/upload';
+  '/api/admin/upload-apk';
 
 /**
  * Validates that the upload URL is configured.
- * Supports relative paths like /api/admin/apk/upload and absolute URLs.
+ * Supports relative paths like /api/admin/upload-apk and absolute URLs.
  */
 export function validateWorkerUploadUrl(url: string): { isValid: boolean; error?: string } {
   if (!url || !url.trim()) {
@@ -36,15 +36,14 @@ export function validateWorkerUploadUrl(url: string): { isValid: boolean; error?
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       return {
         isValid: false,
-        error: "Upload service URL must start with https:// or http://",
+        error: 'Upload service URL must start with https:// or http://',
       };
     }
     return { isValid: true };
   } catch {
     return {
       isValid: false,
-      error: "Upload service has an invalid URL configuration",
+      error: 'Upload service has an invalid URL configuration',
     };
   }
 }
-

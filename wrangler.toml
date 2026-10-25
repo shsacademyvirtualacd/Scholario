@@ -5,16 +5,12 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 BUN_VERSION = "1.2.15"
-SUPABASE_URL = ""
-SUPABASE_ANON_KEY = ""
-VITE_SUPABASE_URL = ""
-VITE_SUPABASE_ANON_KEY = ""
 
 [assets]
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+run_worker_first = ["/api/*", "/apk/*"]
 
 [[r2_buckets]]
 binding = "NOTES_BUCKET"
@@ -31,5 +27,3 @@ bucket_name = "scholario-chat-attachments"
 [[r2_buckets]]
 binding = "APK_BUCKET"
 bucket_name = "scholario-apk"
-
-

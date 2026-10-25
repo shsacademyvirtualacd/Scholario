@@ -194,23 +194,24 @@ export default {
       return new Response(object.body, { headers });
     }
 
-    // 4. Handle APK Upload endpoint: /upload, /api/apk/upload, or /
+    // 4. Handle APK Upload endpoint: /api/admin/upload-apk, /api/admin/apk/upload, /api/apk/upload, /upload, or /
     const isUploadPath =
-      url.pathname === '/upload' ||
-      url.pathname === '/api/apk/upload' ||
+      url.pathname === '/api/admin/upload-apk' ||
       url.pathname === '/api/admin/apk/upload' ||
+      url.pathname === '/api/apk/upload' ||
+      url.pathname === '/upload' ||
       url.pathname === '/';
 
     if (isUploadPath) {
-      // 4a. Method check: Only PUT is allowed for file binary upload
-      if (request.method !== 'PUT') {
+      // 4a. Method check: Allow POST (multipart/form-data) or PUT (raw binary)
+      if (request.method !== 'POST' && request.method !== 'PUT') {
         return jsonResponse(
           {
-            error: `Method ${request.method} not allowed. APK uploads require HTTP PUT with binary body.`,
+            error: `Method ${request.method} not allowed, expected POST`,
           },
           405,
           request,
-          { Allow: 'PUT, OPTIONS' }
+          { Allow: 'POST, PUT, OPTIONS' }
         );
       }
 
@@ -220,15 +221,43 @@ export default {
         return jsonResponse({ error: auth.error || 'Unauthorized' }, auth.status || 401, request);
       }
 
-      // 4c. Version extraction & SemVer validation (400)
-      const rawVersion =
+      let rawVersion =
         request.headers.get('X-Version') ||
         url.searchParams.get('version') ||
         '';
+      let releaseNotes = '';
+      let uploadBody: ReadableStream | ArrayBuffer | null = request.body;
+      let uploadByteLength = 0;
+
+      if (request.method === 'POST') {
+        try {
+          const formData = await request.formData();
+          const file = formData.get('file') as File | null;
+          if (!file || typeof file.name !== 'string') {
+            return jsonResponse({ error: 'Missing APK file in form data (field "file").' }, 400, request);
+          }
+          if (!file.name.toLowerCase().endsWith('.apk')) {
+            return jsonResponse({ error: 'Invalid file format. Only .apk files are accepted.' }, 400, request);
+          }
+          if (file.size > 100 * 1024 * 1024) {
+            return jsonResponse({ error: 'APK file size exceeds the 100 MB limit.' }, 413, request);
+          }
+          uploadBody = await file.arrayBuffer();
+          uploadByteLength = file.size;
+          rawVersion = ((formData.get('version') as string) || rawVersion || '').trim();
+          releaseNotes = (
+            (formData.get('notes') as string) ||
+            (formData.get('releaseNotes') as string) ||
+            ''
+          ).trim();
+        } catch {
+          return jsonResponse({ error: 'Failed to parse multipart/form-data payload.' }, 400, request);
+        }
+      }
 
       if (!rawVersion.trim()) {
         return jsonResponse(
-          { error: 'Version name is required in X-Version header or ?version= parameter (e.g. 1.0.4).' },
+          { error: 'Version name is required (e.g. 1.0.4).' },
           400,
           request
         );
@@ -287,36 +316,37 @@ export default {
         );
       }
 
-      if (!request.body) {
+      if (!uploadBody) {
         return jsonResponse(
-          { error: 'Empty upload body. Send the .apk binary file directly in the PUT request body.' },
+          { error: 'Empty upload body. Send the .apk binary file in the request body.' },
           400,
           request
         );
       }
 
-      // Release notes extraction
-      let releaseNotes = '';
-      const rawNotesHeader = request.headers.get('X-Release-Notes');
-      if (rawNotesHeader) {
-        try {
-          releaseNotes = decodeURIComponent(rawNotesHeader);
-        } catch {
-          releaseNotes = rawNotesHeader;
+      // Release notes extraction fallback from headers/query
+      if (!releaseNotes) {
+        const rawNotesHeader = request.headers.get('X-Release-Notes');
+        if (rawNotesHeader) {
+          try {
+            releaseNotes = decodeURIComponent(rawNotesHeader);
+          } catch {
+            releaseNotes = rawNotesHeader;
+          }
+        } else if (url.searchParams.get('notes')) {
+          releaseNotes = url.searchParams.get('notes') || '';
         }
-      } else if (url.searchParams.get('notes')) {
-        releaseNotes = url.searchParams.get('notes') || '';
       }
 
       // 4f. Stream body directly to R2
       const apkFileName = `scholario-${cleanVersion}.apk`;
       const apkStorageKey = `apk/${apkFileName}`;
 
-      const publicBaseDomain = (env.PUBLIC_DOMAIN || 'https://files.scholario.app').replace(/\/+$/, '');
-      const downloadUrl = `${publicBaseDomain}/${apkStorageKey}`;
+      const publicBaseDomain = (env.PUBLIC_DOMAIN || '').replace(/\/+$/, '');
+      const downloadUrl = publicBaseDomain ? `${publicBaseDomain}/${apkStorageKey}` : `/${apkStorageKey}`;
 
       // Put APK binary to R2
-      const putResult = await env.APK_BUCKET.put(apkStorageKey, request.body, {
+      const putResult = await env.APK_BUCKET.put(apkStorageKey, uploadBody, {
         httpMetadata: {
           contentType: 'application/vnd.android.package-archive',
           contentDisposition: `attachment; filename="${apkFileName}"`,
@@ -327,7 +357,7 @@ export default {
         },
       });
 
-      const actualSize = putResult?.size || contentLength || 0;
+      const actualSize = putResult?.size || uploadByteLength || contentLength || 0;
       const formattedSize = formatFileSize(actualSize);
       const todayDate = new Date().toISOString().split('T')[0];
 

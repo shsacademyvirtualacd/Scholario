@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AdminShell from '../../components/admin/AdminShell';
 import {
   Smartphone,
@@ -22,13 +22,67 @@ interface ApkManifest {
   version: string;
   fileName: string;
   url: string;
+  downloadUrl?: string;
   size: string;
   sizeBytes?: number;
   date: string;
+  publishedDate?: string;
+  publishedAt?: string;
   notes?: string;
+  releaseNotes?: string;
 }
 
 const MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
+
+function formatUploadHttpError(status: number, statusText: string, responseText: string): string {
+  let bodyMessage = '';
+  const raw = (responseText || '').trim();
+
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      bodyMessage =
+        (typeof parsed?.error === 'string' && parsed.error.trim()) ||
+        (typeof parsed?.message === 'string' && parsed.message.trim()) ||
+        (typeof parsed?.detail === 'string' && parsed.detail.trim()) ||
+        '';
+    } catch {
+      // Strip HTML tags if the edge returned an HTML error document
+      const stripped = raw
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (stripped) {
+        bodyMessage = stripped.slice(0, 240);
+      }
+    }
+  }
+
+  if (!bodyMessage) {
+    if (status === 405) {
+      bodyMessage = 'Method not allowed, expected POST';
+    } else if (status === 401) {
+      bodyMessage = 'Unauthorized — please sign in again as an administrator';
+    } else if (status === 403) {
+      bodyMessage = 'Forbidden — administrator role is required to publish APK builds';
+    } else if (status === 413) {
+      bodyMessage = 'File is too large (maximum allowed size is 100 MB)';
+    } else if (status === 404) {
+      bodyMessage = 'Upload endpoint not found (/api/admin/upload-apk)';
+    } else if (statusText) {
+      bodyMessage = statusText;
+    } else {
+      bodyMessage = 'Request failed';
+    }
+  }
+
+  if (bodyMessage.startsWith(`${status}:`)) {
+    return bodyMessage;
+  }
+  return `${status}: ${bodyMessage}`;
+}
 
 export const AdminAndroidAppPage: React.FC = () => {
   const [currentApk, setCurrentApk] = useState<ApkManifest | null>(null);
@@ -43,13 +97,15 @@ export const AdminAndroidAppPage: React.FC = () => {
   // Upload Execution State
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedBytes, setUploadedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch current live release from /apk/latest.json
-  const fetchLatestRelease = async () => {
+  const fetchLatestRelease = useCallback(async (fallbackManifest?: ApkManifest) => {
     setLoadingCurrent(true);
     try {
       const res = await fetch(`/apk/latest.json?t=${Date.now()}`, {
@@ -59,23 +115,37 @@ export const AdminAndroidAppPage: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data && data.version) {
-          setCurrentApk(data);
-        } else {
-          setCurrentApk(null);
+          if (
+            fallbackManifest &&
+            fallbackManifest.version &&
+            isVersionHigher(fallbackManifest.version, data.version).isHigher
+          ) {
+            setCurrentApk(fallbackManifest);
+          } else {
+            setCurrentApk(data);
+          }
+          return;
         }
+      }
+      if (fallbackManifest) {
+        setCurrentApk(fallbackManifest);
       } else {
         setCurrentApk(null);
       }
     } catch {
-      setCurrentApk(null);
+      if (fallbackManifest) {
+        setCurrentApk(fallbackManifest);
+      } else {
+        setCurrentApk(null);
+      }
     } finally {
       setLoadingCurrent(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLatestRelease();
-  }, []);
+  }, [fetchLatestRelease]);
 
   const validateAndSetFile = (file: File) => {
     setErrorMessage(null);
@@ -140,6 +210,8 @@ export const AdminAndroidAppPage: React.FC = () => {
 
   const handleUploadAndPublish = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) return;
+
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -166,14 +238,27 @@ export const AdminAndroidAppPage: React.FC = () => {
       return;
     }
 
-    const uploadUrl = WORKER_UPLOAD_URL.trim() || '/api/admin/apk/upload';
+    const uploadUrl = WORKER_UPLOAD_URL.trim() || '/api/admin/upload-apk';
 
     setUploading(true);
     setUploadProgress(5);
+    setUploadedBytes(0);
+    setTotalBytes(selectedFile.size);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const token = session?.access_token || '';
+
+      const clientSupabaseUrl =
+        ((import.meta as any).env?.VITE_DATABASE_URL as string) ||
+        ((import.meta as any).env?.VITE_SUPABASE_URL as string) ||
+        '';
+      const clientSupabaseAnonKey =
+        ((import.meta as any).env?.VITE_DATABASE_ANON_KEY as string) ||
+        ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string) ||
+        '';
 
       // 4. Create multipart/form-data payload
       const formData = new FormData();
@@ -193,17 +278,25 @@ export const AdminAndroidAppPage: React.FC = () => {
         fileSize: selectedFile.size,
       });
 
-      // 5. Use XMLHttpRequest with POST multipart/form-data
-      await new Promise<void>((resolve, reject) => {
+      // 5. Use XMLHttpRequest with POST multipart/form-data for real-time upload progress
+      const publishedManifest = await new Promise<ApkManifest>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', uploadUrl);
 
         if (token) {
           xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         }
+        if (clientSupabaseUrl) {
+          xhr.setRequestHeader('X-Supabase-Url', clientSupabaseUrl);
+        }
+        if (clientSupabaseAnonKey) {
+          xhr.setRequestHeader('X-Supabase-Anon-Key', clientSupabaseAnonKey);
+        }
 
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
+            setUploadedBytes(event.loaded);
+            setTotalBytes(event.total);
             const pct = Math.round((event.loaded / event.total) * 95);
             setUploadProgress(Math.min(95, Math.max(5, pct)));
           }
@@ -219,52 +312,69 @@ export const AdminAndroidAppPage: React.FC = () => {
 
           if (xhr.status >= 200 && xhr.status < 300) {
             setUploadProgress(100);
+            setUploadedBytes(selectedFile.size);
+            const fallbackManifest: ApkManifest = {
+              version: cleanVersion,
+              fileName: `scholario-${cleanVersion}.apk`,
+              url: `/apk/scholario-${cleanVersion}.apk`,
+              size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
+              sizeBytes: selectedFile.size,
+              date: new Date().toISOString().split('T')[0],
+              notes: releaseNotes.trim() || 'Performance improvements and bug fixes.',
+            };
             try {
               const resData = JSON.parse(xhr.responseText);
-              if (resData.manifest) {
-                setCurrentApk(resData.manifest);
+              if (resData?.manifest && resData.manifest.version) {
+                resolve(resData.manifest);
+                return;
+              }
+              if (resData?.version) {
+                resolve({
+                  version: resData.version,
+                  fileName: resData.fileName || fallbackManifest.fileName,
+                  url: resData.url || resData.downloadUrl || fallbackManifest.url,
+                  size: resData.size || fallbackManifest.size,
+                  sizeBytes: resData.sizeBytes ?? fallbackManifest.sizeBytes,
+                  date: resData.date || resData.publishedDate || fallbackManifest.date,
+                  notes: resData.notes || resData.releaseNotes || fallbackManifest.notes,
+                });
+                return;
               }
             } catch {}
-            resolve();
+            resolve(fallbackManifest);
           } else {
-            let errorText = `Upload failed with HTTP ${xhr.status}`;
-            try {
-              const errJson = JSON.parse(xhr.responseText);
-              if (errJson && errJson.error) {
-                errorText = errJson.error;
-              }
-            } catch {
-              if (xhr.status === 401) {
-                errorText = 'Authentication failed (HTTP 401). Please sign in again as an administrator.';
-              } else if (xhr.status === 403) {
-                errorText = 'Access denied (HTTP 403). Only administrators can publish APK builds.';
-              } else if (xhr.status === 413) {
-                errorText = 'File is too large (HTTP 413). Maximum allowed size is 100 MB.';
-              } else if (xhr.status === 404) {
-                errorText = 'Upload endpoint not found (HTTP 404). Please ensure Cloudflare Pages functions are deployed.';
-              } else if (xhr.status >= 500) {
-                errorText = `Server error (HTTP ${xhr.status}). Cloudflare Pages or R2 bucket may be misconfigured.`;
-              }
-            }
+            const formattedError = formatUploadHttpError(
+              xhr.status,
+              xhr.statusText,
+              xhr.responseText
+            );
 
             console.error('[APK Upload Response: Error]', {
               url: uploadUrl,
               status: xhr.status,
-              error: errorText,
+              error: formattedError,
             });
 
-            reject(new Error(errorText));
+            reject(new Error(formattedError));
           }
         };
 
         xhr.onerror = () => {
-          reject(new Error('Network failure: Unable to reach the upload endpoint. Please check your network connection and Cloudflare Pages deployment.'));
+          reject(
+            new Error(
+              'Network error: Unable to reach the upload endpoint (/api/admin/upload-apk). Please check your connection and deployment.'
+            )
+          );
         };
 
         xhr.send(formData);
       });
 
-      setSuccessMessage(`Scholario v${cleanVersion} has been uploaded to Cloudflare R2 and published successfully!`);
+      // Immediately update the current-build card and refresh from /apk/latest.json
+      setCurrentApk(publishedManifest);
+      setSuccessMessage(
+        `Scholario v${cleanVersion} has been uploaded to Cloudflare R2 and published successfully!`
+      );
       setSelectedFile(null);
       setVersionName('');
       setReleaseNotes('');
@@ -272,8 +382,7 @@ export const AdminAndroidAppPage: React.FC = () => {
         fileInputRef.current.value = '';
       }
 
-      // Refresh Live Published Version card
-      await fetchLatestRelease();
+      await fetchLatestRelease(publishedManifest);
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred during APK upload.');
     } finally {
@@ -283,7 +392,7 @@ export const AdminAndroidAppPage: React.FC = () => {
 
   const formatBytes = (bytes?: number) => {
     if (!bytes) return '';
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
   return (
@@ -317,8 +426,9 @@ export const AdminAndroidAppPage: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={fetchLatestRelease}
-              className="text-xs font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+              onClick={() => fetchLatestRelease()}
+              disabled={loadingCurrent || uploading}
+              className="text-xs font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50"
             >
               Refresh Status
             </button>
@@ -354,20 +464,20 @@ export const AdminAndroidAppPage: React.FC = () => {
                   <div className="flex items-center gap-2 mt-1">
                     <Clock size={18} className="text-neutral-400" />
                     <p className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white">
-                      {currentApk.date || 'Recent'}
+                      {currentApk.date || currentApk.publishedDate || 'Recent'}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {currentApk.notes && (
+              {(currentApk.notes || currentApk.releaseNotes) && (
                 <div className="p-4 rounded-xl bg-neutral-50 dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.04] text-xs">
                   <div className="flex items-center gap-2 font-bold text-neutral-700 dark:text-neutral-300 mb-1">
                     <FileText size={14} className="text-[#8A6A00] dark:text-[#F2C230]" />
                     <span>What's New in this release:</span>
                   </div>
                   <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
-                    {currentApk.notes}
+                    {currentApk.notes || currentApk.releaseNotes}
                   </p>
                 </div>
               )}
@@ -378,7 +488,7 @@ export const AdminAndroidAppPage: React.FC = () => {
                 </span>
                 <div className="flex items-center gap-2">
                   <a
-                    href={currentApk.url}
+                    href={currentApk.url || currentApk.downloadUrl}
                     download={currentApk.fileName || `scholario-${currentApk.version}.apk`}
                     className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#F2C230] text-neutral-950 hover:bg-[#e0b024] transition-colors shadow-xs"
                   >
@@ -386,7 +496,7 @@ export const AdminAndroidAppPage: React.FC = () => {
                     <span>Download APK ({currentApk.size || 'Direct'})</span>
                   </a>
                   <a
-                    href={currentApk.url}
+                    href={currentApk.url || currentApk.downloadUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
@@ -420,7 +530,11 @@ export const AdminAndroidAppPage: React.FC = () => {
               Publish New APK Build
             </h2>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Select an .apk build to upload to Cloudflare R2. Once uploaded, <code className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-white/[0.06] text-[#8A6A00] dark:text-[#F2C230]">apk/latest.json</code> will update automatically.
+              Select an .apk build to upload to Cloudflare R2. Once uploaded,{' '}
+              <code className="px-1 py-0.5 rounded bg-neutral-100 dark:bg-white/[0.06] text-[#8A6A00] dark:text-[#F2C230]">
+                apk/latest.json
+              </code>{' '}
+              will update automatically.
             </p>
           </div>
 
@@ -428,7 +542,7 @@ export const AdminAndroidAppPage: React.FC = () => {
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3 text-xs text-rose-700 dark:text-rose-300">
               <AlertCircle size={16} className="shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium">{errorMessage}</div>
+              <div className="flex-1 font-medium break-words">{errorMessage}</div>
               <button
                 type="button"
                 onClick={() => setErrorMessage(null)}
@@ -487,7 +601,7 @@ export const AdminAndroidAppPage: React.FC = () => {
                   Click to browse or drag and drop your .apk file
                 </p>
                 <p className="text-xs text-neutral-500 mt-1">
-                  Only Android APK binaries accepted · Maximum file size 150 MB
+                  Only Android APK binaries accepted · Maximum file size 100 MB
                 </p>
               </div>
             ) : (
@@ -535,7 +649,7 @@ export const AdminAndroidAppPage: React.FC = () => {
                 onChange={(e) => setVersionName(e.target.value)}
                 placeholder="e.g. 1.0.4"
                 disabled={uploading}
-                className="w-full h-11 px-3.5 rounded-xl bg-neutral-50 dark:bg-white/[0.05] border border-neutral-300 dark:border-neutral-700 text-xs font-semibold text-neutral-900 dark:text-white focus:outline-hidden focus:border-[#F2C230] focus:ring-2 focus:ring-[#F2C230]/20 transition-all"
+                className="w-full h-11 px-3.5 rounded-xl bg-neutral-50 dark:bg-white/[0.05] border border-neutral-300 dark:border-neutral-700 text-xs font-semibold text-neutral-900 dark:text-white focus:outline-hidden focus:border-[#F2C230] focus:ring-2 focus:ring-[#F2C230]/20 transition-all disabled:opacity-60"
               />
               <p className="text-[11px] text-neutral-500 mt-1">
                 Semver format recommended (e.g. 1.0.4)
@@ -552,23 +666,30 @@ export const AdminAndroidAppPage: React.FC = () => {
                 placeholder="Describe bug fixes, new features, or performance improvements in this build..."
                 rows={3}
                 disabled={uploading}
-                className="w-full p-3 rounded-xl bg-neutral-50 dark:bg-white/[0.05] border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-900 dark:text-white focus:outline-hidden focus:border-[#F2C230] focus:ring-2 focus:ring-[#F2C230]/20 transition-all resize-y"
+                className="w-full p-3 rounded-xl bg-neutral-50 dark:bg-white/[0.05] border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-900 dark:text-white focus:outline-hidden focus:border-[#F2C230] focus:ring-2 focus:ring-[#F2C230]/20 transition-all resize-y disabled:opacity-60"
               />
             </div>
           </div>
 
           {/* Upload Progress Bar */}
           {uploading && (
-            <div className="space-y-2">
+            <div className="p-4 rounded-xl bg-neutral-50 dark:bg-white/[0.03] border border-[#F2C230]/30 space-y-2.5">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-neutral-700 dark:text-neutral-300">
-                  Uploading to Cloudflare R2...
+                <span className="text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-[#8A6A00] dark:border-[#F2C230] border-t-transparent animate-spin inline-block" />
+                  {uploadProgress < 95
+                    ? 'Uploading APK binary to Cloudflare R2...'
+                    : 'Writing apk/latest.json manifest...'}
                 </span>
-                <span className="text-[#8A6A00] dark:text-[#F2C230]">{uploadProgress}%</span>
+                <span className="text-[#8A6A00] dark:text-[#F2C230]">
+                  {totalBytes > 0
+                    ? `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB (${uploadProgress}%)`
+                    : `${uploadProgress}%`}
+                </span>
               </div>
-              <div className="w-full h-2.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+              <div className="w-full h-2.5 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#F2C230] to-[#E5A700] rounded-full transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-[#F2C230] to-[#E5A700] rounded-full transition-all duration-200"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
@@ -605,9 +726,23 @@ export const AdminAndroidAppPage: React.FC = () => {
               Cloudflare R2 Storage Architecture
             </p>
             <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              Files are saved under <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">apk/scholario-&lt;version&gt;.apk</code> and linked in <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">apk/latest.json</code>.
-              Downloads are served with <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">Content-Type: application/vnd.android.package-archive</code> and <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">Content-Disposition: attachment</code>.
-              R2 secret keys are never exposed in frontend code.
+              Files are saved under{' '}
+              <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">
+                apk/scholario-&lt;version&gt;.apk
+              </code>{' '}
+              and linked in{' '}
+              <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">
+                apk/latest.json
+              </code>
+              . Downloads are served with{' '}
+              <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">
+                Content-Type: application/vnd.android.package-archive
+              </code>{' '}
+              and{' '}
+              <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">
+                Content-Disposition: attachment
+              </code>
+              . R2 secret keys are never exposed in frontend code.
             </p>
           </div>
         </div>
